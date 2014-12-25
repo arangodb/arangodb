@@ -6,13 +6,13 @@ arangosh> query.toVertices([{name: "Bob"}, {name: "Diana"}]).toArray();
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "113983100", 
+    "_rev" : "117686903", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "female/diana", 
     "_key" : "diana", 
-    "_rev" : "114376316", 
+    "_rev" : "118080119", 
     "name" : "Diana" 
   } 
 ]

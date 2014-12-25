@@ -5,13 +5,13 @@ arangosh> graph._vertices([{name: "Alice"}, {name: "Bob"}]).toArray();
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "745487996", 
+    "_rev" : "747946615", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "745815676", 
+    "_rev" : "748274295", 
     "name" : "Bob" 
   } 
 ]

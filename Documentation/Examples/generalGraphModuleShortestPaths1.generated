@@ -5,52 +5,11 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
 [ 
   [ 
     { 
-      "startVertex" : "germanCity/Berlin", 
-      "vertex" : { 
-        "_id" : "frenchCity/Paris", 
-        "_key" : "Paris", 
-        "_rev" : "576208508", 
-        "isCapital" : true, 
-        "population" : 4000000 
-      }, 
-      "paths" : [ 
-        { 
-          "edges" : [ 
-            { 
-              "_id" : "internationalHighway/577781372", 
-              "_key" : "577781372", 
-              "_rev" : "577781372", 
-              "_from" : "germanCity/Berlin", 
-              "_to" : "frenchCity/Paris", 
-              "distance" : 1200 
-            } 
-          ], 
-          "vertices" : [ 
-            { 
-              "_id" : "germanCity/Berlin", 
-              "_key" : "Berlin", 
-              "_rev" : "575225468", 
-              "isCapital" : true, 
-              "population" : 3000000 
-            }, 
-            { 
-              "_id" : "frenchCity/Paris", 
-              "_key" : "Paris", 
-              "_rev" : "576208508", 
-              "isCapital" : true, 
-              "population" : 4000000 
-            } 
-          ] 
-        } 
-      ], 
-      "distance" : 1200 
-    }, 
-    { 
-      "startVertex" : "germanCity/Berlin", 
+      "startVertex" : "germanCity/Hamburg", 
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "576011900", 
+        "_rev" : "580960887", 
         "isCapital" : false, 
         "population" : 80000 
       }, 
@@ -58,91 +17,17 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         { 
           "edges" : [ 
             { 
-              "_id" : "internationalHighway/577584764", 
-              "_key" : "577584764", 
-              "_rev" : "577584764", 
-              "_from" : "germanCity/Berlin", 
-              "_to" : "frenchCity/Lyon", 
-              "distance" : 1100 
-            } 
-          ], 
-          "vertices" : [ 
-            { 
-              "_id" : "germanCity/Berlin", 
-              "_key" : "Berlin", 
-              "_rev" : "575225468", 
-              "isCapital" : true, 
-              "population" : 3000000 
+              "_id" : "germanHighway/581878391", 
+              "_key" : "581878391", 
+              "_rev" : "581878391", 
+              "_from" : "germanCity/Hamburg", 
+              "_to" : "germanCity/Cologne", 
+              "distance" : 500 
             }, 
             { 
-              "_id" : "frenchCity/Lyon", 
-              "_key" : "Lyon", 
-              "_rev" : "576011900", 
-              "isCapital" : false, 
-              "population" : 80000 
-            } 
-          ] 
-        } 
-      ], 
-      "distance" : 1100 
-    }, 
-    { 
-      "startVertex" : "germanCity/Cologne", 
-      "vertex" : { 
-        "_id" : "frenchCity/Paris", 
-        "_key" : "Paris", 
-        "_rev" : "576208508", 
-        "isCapital" : true, 
-        "population" : 4000000 
-      }, 
-      "paths" : [ 
-        { 
-          "edges" : [ 
-            { 
-              "_id" : "internationalHighway/578567804", 
-              "_key" : "578567804", 
-              "_rev" : "578567804", 
-              "_from" : "germanCity/Cologne", 
-              "_to" : "frenchCity/Paris", 
-              "distance" : 550 
-            } 
-          ], 
-          "vertices" : [ 
-            { 
-              "_id" : "germanCity/Cologne", 
-              "_key" : "Cologne", 
-              "_rev" : "575422076", 
-              "isCapital" : false, 
-              "population" : 1000000 
-            }, 
-            { 
-              "_id" : "frenchCity/Paris", 
-              "_key" : "Paris", 
-              "_rev" : "576208508", 
-              "isCapital" : true, 
-              "population" : 4000000 
-            } 
-          ] 
-        } 
-      ], 
-      "distance" : 550 
-    }, 
-    { 
-      "startVertex" : "germanCity/Cologne", 
-      "vertex" : { 
-        "_id" : "frenchCity/Lyon", 
-        "_key" : "Lyon", 
-        "_rev" : "576011900", 
-        "isCapital" : false, 
-        "population" : 80000 
-      }, 
-      "paths" : [ 
-        { 
-          "edges" : [ 
-            { 
-              "_id" : "internationalHighway/578371196", 
-              "_key" : "578371196", 
-              "_rev" : "578371196", 
+              "_id" : "internationalHighway/583320183", 
+              "_key" : "583320183", 
+              "_rev" : "583320183", 
               "_from" : "germanCity/Cologne", 
               "_to" : "frenchCity/Lyon", 
               "distance" : 700 
@@ -150,30 +35,37 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
           ], 
           "vertices" : [ 
             { 
+              "_id" : "germanCity/Hamburg", 
+              "_key" : "Hamburg", 
+              "_rev" : "580567671", 
+              "isCapital" : false, 
+              "population" : 1000000 
+            }, 
+            { 
               "_id" : "germanCity/Cologne", 
               "_key" : "Cologne", 
-              "_rev" : "575422076", 
+              "_rev" : "580371063", 
               "isCapital" : false, 
               "population" : 1000000 
             }, 
             { 
               "_id" : "frenchCity/Lyon", 
               "_key" : "Lyon", 
-              "_rev" : "576011900", 
+              "_rev" : "580960887", 
               "isCapital" : false, 
               "population" : 80000 
             } 
           ] 
         } 
       ], 
-      "distance" : 700 
+      "distance" : 1200 
     }, 
     { 
       "startVertex" : "germanCity/Hamburg", 
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "576208508", 
+        "_rev" : "581157495", 
         "isCapital" : true, 
         "population" : 4000000 
       }, 
@@ -181,9 +73,9 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         { 
           "edges" : [ 
             { 
-              "_id" : "internationalHighway/577977980", 
-              "_key" : "577977980", 
-              "_rev" : "577977980", 
+              "_id" : "internationalHighway/582926967", 
+              "_key" : "582926967", 
+              "_rev" : "582926967", 
               "_from" : "germanCity/Hamburg", 
               "_to" : "frenchCity/Paris", 
               "distance" : 900 
@@ -193,14 +85,14 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
             { 
               "_id" : "germanCity/Hamburg", 
               "_key" : "Hamburg", 
-              "_rev" : "575618684", 
+              "_rev" : "580567671", 
               "isCapital" : false, 
               "population" : 1000000 
             }, 
             { 
               "_id" : "frenchCity/Paris", 
               "_key" : "Paris", 
-              "_rev" : "576208508", 
+              "_rev" : "581157495", 
               "isCapital" : true, 
               "population" : 4000000 
             } 
@@ -210,11 +102,11 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
       "distance" : 900 
     }, 
     { 
-      "startVertex" : "germanCity/Hamburg", 
+      "startVertex" : "germanCity/Cologne", 
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "576011900", 
+        "_rev" : "580960887", 
         "isCapital" : false, 
         "population" : 80000 
       }, 
@@ -222,17 +114,9 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
         { 
           "edges" : [ 
             { 
-              "_id" : "germanHighway/576929404", 
-              "_key" : "576929404", 
-              "_rev" : "576929404", 
-              "_from" : "germanCity/Hamburg", 
-              "_to" : "germanCity/Cologne", 
-              "distance" : 500 
-            }, 
-            { 
-              "_id" : "internationalHighway/578371196", 
-              "_key" : "578371196", 
-              "_rev" : "578371196", 
+              "_id" : "internationalHighway/583320183", 
+              "_key" : "583320183", 
+              "_rev" : "583320183", 
               "_from" : "germanCity/Cologne", 
               "_to" : "frenchCity/Lyon", 
               "distance" : 700 
@@ -240,30 +124,146 @@ arangosh> g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestr
           ], 
           "vertices" : [ 
             { 
-              "_id" : "germanCity/Hamburg", 
-              "_key" : "Hamburg", 
-              "_rev" : "575618684", 
-              "isCapital" : false, 
-              "population" : 1000000 
-            }, 
-            { 
               "_id" : "germanCity/Cologne", 
               "_key" : "Cologne", 
-              "_rev" : "575422076", 
+              "_rev" : "580371063", 
               "isCapital" : false, 
               "population" : 1000000 
             }, 
             { 
               "_id" : "frenchCity/Lyon", 
               "_key" : "Lyon", 
-              "_rev" : "576011900", 
+              "_rev" : "580960887", 
               "isCapital" : false, 
               "population" : 80000 
             } 
           ] 
         } 
       ], 
+      "distance" : 700 
+    }, 
+    { 
+      "startVertex" : "germanCity/Cologne", 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "581157495", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      }, 
+      "paths" : [ 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "internationalHighway/583516791", 
+              "_key" : "583516791", 
+              "_rev" : "583516791", 
+              "_from" : "germanCity/Cologne", 
+              "_to" : "frenchCity/Paris", 
+              "distance" : 550 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "germanCity/Cologne", 
+              "_key" : "Cologne", 
+              "_rev" : "580371063", 
+              "isCapital" : false, 
+              "population" : 1000000 
+            }, 
+            { 
+              "_id" : "frenchCity/Paris", 
+              "_key" : "Paris", 
+              "_rev" : "581157495", 
+              "isCapital" : true, 
+              "population" : 4000000 
+            } 
+          ] 
+        } 
+      ], 
+      "distance" : 550 
+    }, 
+    { 
+      "startVertex" : "germanCity/Berlin", 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "581157495", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      }, 
+      "paths" : [ 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "internationalHighway/582730359", 
+              "_key" : "582730359", 
+              "_rev" : "582730359", 
+              "_from" : "germanCity/Berlin", 
+              "_to" : "frenchCity/Paris", 
+              "distance" : 1200 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "germanCity/Berlin", 
+              "_key" : "Berlin", 
+              "_rev" : "580174455", 
+              "isCapital" : true, 
+              "population" : 3000000 
+            }, 
+            { 
+              "_id" : "frenchCity/Paris", 
+              "_key" : "Paris", 
+              "_rev" : "581157495", 
+              "isCapital" : true, 
+              "population" : 4000000 
+            } 
+          ] 
+        } 
+      ], 
       "distance" : 1200 
+    }, 
+    { 
+      "startVertex" : "germanCity/Berlin", 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "580960887", 
+        "isCapital" : false, 
+        "population" : 80000 
+      }, 
+      "paths" : [ 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "internationalHighway/582533751", 
+              "_key" : "582533751", 
+              "_rev" : "582533751", 
+              "_from" : "germanCity/Berlin", 
+              "_to" : "frenchCity/Lyon", 
+              "distance" : 1100 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "germanCity/Berlin", 
+              "_key" : "Berlin", 
+              "_rev" : "580174455", 
+              "isCapital" : true, 
+              "population" : 3000000 
+            }, 
+            { 
+              "_id" : "frenchCity/Lyon", 
+              "_key" : "Lyon", 
+              "_rev" : "580960887", 
+              "isCapital" : false, 
+              "population" : 80000 
+            } 
+          ] 
+        } 
+      ], 
+      "distance" : 1100 
     } 
   ] 
 ]

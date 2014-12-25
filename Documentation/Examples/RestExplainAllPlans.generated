@@ -53,7 +53,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "hash", 
-            "id" : "1397505660", 
+            "id" : "1380565623", 
             "unique" : false, 
             "fields" : [ 
               "id" 
@@ -101,7 +101,7 @@ content-type: application/json; charset=utf-8
   ], 
   "warnings" : [ ], 
   "stats" : { 
-    "rulesExecuted" : 18, 
+    "rulesExecuted" : 19, 
     "rulesSkipped" : 0, 
     "plansCreated" : 1 
   }, 

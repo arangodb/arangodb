@@ -1,14 +1,14 @@
 arangosh> a1 = db.example.save({"a" : 1});
 { 
   "error" : false, 
-  "_id" : "example/132791932", 
-  "_rev" : "132791932", 
-  "_key" : "132791932" 
+  "_id" : "example/136495735", 
+  "_rev" : "136495735", 
+  "_key" : "136495735" 
 }
 arangosh> a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
 { 
   "error" : false, 
   "_id" : "example/18612115", 
-  "_rev" : "133185148", 
+  "_rev" : "136888951", 
   "_key" : "18612115" 
 }

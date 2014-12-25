@@ -11,7 +11,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/edge2", 
       "_key" : "edge2", 
-      "_rev" : "1453407868", 
+      "_rev" : "1446560375", 
       "_from" : "vertices/v1", 
       "_to" : "vertices/v3", 
       "$label" : null, 
@@ -20,7 +20,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/edge3", 
       "_key" : "edge3", 
-      "_rev" : "1453932156", 
+      "_rev" : "1447084663", 
       "_from" : "vertices/v2", 
       "_to" : "vertices/v4", 
       "$label" : null, 
@@ -29,7 +29,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/edge1", 
       "_key" : "edge1", 
-      "_rev" : "1452883580", 
+      "_rev" : "1446036087", 
       "_from" : "vertices/v1", 
       "_to" : "vertices/v2", 
       "$label" : null, 
@@ -38,7 +38,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/edge4", 
       "_key" : "edge4", 
-      "_rev" : "1454456444", 
+      "_rev" : "1447608951", 
       "_from" : "vertices/v1", 
       "_to" : "vertices/v5", 
       "$label" : null, 

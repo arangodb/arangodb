@@ -982,6 +982,7 @@ LEX_OUTPUT_ROOT = @LEX_OUTPUT_ROOT@
 LIBEV_CPPFLAGS = @LIBEV_CPPFLAGS@
 LIBEV_LDFLAGS = @LIBEV_LDFLAGS@
 LIBEV_LIBS = @LIBEV_LIBS@
+LIBEV_VERSION = @LIBEV_VERSION@
 LIBOBJS = @LIBOBJS@
 
 ################################################################################
@@ -1020,6 +1021,7 @@ RANLIB = @RANLIB@
 READLINE_CPPFLAGS = @READLINE_CPPFLAGS@
 READLINE_LDFLAGS = @READLINE_LDFLAGS@
 READLINE_LIBS = @READLINE_LIBS@
+READLINE_VERSION = @READLINE_VERSION@
 RT_LIBS = @RT_LIBS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
@@ -1033,10 +1035,12 @@ V8_CPPFLAGS = @V8_CPPFLAGS@
 V8_LDFLAGS = @V8_LDFLAGS@
 V8_LIBS = @V8_LIBS@
 V8_TARGET = @V8_TARGET@
+V8_VERSION = @V8_VERSION@
 VERSION = @VERSION@
 ZLIB_CPPFLAGS = @ZLIB_CPPFLAGS@
 ZLIB_LDFLAGS = @ZLIB_LDFLAGS@
 ZLIB_LIBS = @ZLIB_LIBS@
+ZLIB_VERSION = @ZLIB_VERSION@
 abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
@@ -1583,8 +1587,7 @@ bin_arangob_CPPFLAGS = \
 bin_arangob_LDADD = \
 	lib/libarango_client.a \
 	lib/libarango.a \
-	$(LIBS) \
-	@V8_LIBS@
+	$(LIBS)
 
 bin_arangob_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
@@ -1601,8 +1604,7 @@ bin_arangodump_CPPFLAGS = \
 bin_arangodump_LDADD = \
 	lib/libarango_client.a \
 	lib/libarango.a \
-	$(LIBS) \
-	@V8_LIBS@
+	$(LIBS)
 
 bin_arangodump_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
@@ -1640,8 +1642,7 @@ bin_arangorestore_CPPFLAGS = \
 bin_arangorestore_LDADD = \
 	lib/libarango_client.a \
 	lib/libarango.a \
-	$(LIBS) \
-	@V8_LIBS@
+	$(LIBS)
 
 bin_arangorestore_SOURCES = \
 	arangosh/ArangoShell/ArangoClient.cpp \
@@ -1881,8 +1882,8 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-modify-noncluster-serializetest.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
-			@top_srcdir@/js/server/tests/aql-optimizer-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
@@ -1898,6 +1899,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-calculations.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-unnecessary-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-replace-or-with-in.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-sort-rand.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-range.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-use-index-for-sort.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-stats-noncluster.js \
@@ -9195,10 +9197,10 @@ distclean-local:
 
 clean-local:
 	rm -rf $(CLEANUP)
-	rm -rf `find -name \*.gcno`
-	rm -rf `find -name \*.gcda`
+	rm -rf `find . -name \*.gcno`
+	rm -rf `find . -name \*.gcda`
 
-superclean: clean
+superclean: distclean
 	rm -rf arangod/*/.deps lib/*/.deps Makefile
 
 ################################################################################
@@ -9431,18 +9433,19 @@ clean-libev:
 	@echo "--------------------------------------------------------------------------------"
 	@echo
 
-@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ARM_TRUE@	cd @top_srcdir@/3rdParty/V8-3.29.59 \
 @ENABLE_ARM_TRUE@	  && $(MAKE) \
-@ENABLE_ARM_TRUE@		CFLAGS="-O2 -g -fsigned-char" \
-@ENABLE_ARM_TRUE@		CXXFLAGS="-O2 -g -fsigned-char" \
+@ENABLE_ARM_TRUE@		CFLAGS="-O2 -g -fsigned-char -march=armv6" \
+@ENABLE_ARM_TRUE@		CXXFLAGS="-O2 -g -fsigned-char -march=armv6" \
+@ENABLE_ARM_TRUE@		LDFLAGS="-march=armv6" \
 @ENABLE_ARM_TRUE@		CC=$(CC) \
 @ENABLE_ARM_TRUE@		CC.host=$(CC) \
 @ENABLE_ARM_TRUE@		CXX=$(CXX) \
 @ENABLE_ARM_TRUE@		CXX.host=$(CXX) \
 @ENABLE_ARM_TRUE@		LINK=$(CXX) \
-@ENABLE_ARM_TRUE@		GYPFLAGS="-Dstandalone_static_library=1" \
+@ENABLE_ARM_TRUE@		GYPFLAGS="-Darm_fpu=vfp -Darm_version=6 -Dstandalone_static_library=1" \
 @ENABLE_ARM_TRUE@		library=static strictaliasing=off snapshot=off werror=no hardfp=on @V8_TARGET@
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	cd @top_srcdir@/3rdParty/V8-3.29.59 \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@	  && $(MAKE) \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		LDFLAGS="-lc++" \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@                CFLAGS="-O2 -g" \
@@ -9454,7 +9457,7 @@ clean-libev:
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		LINK=$(CXX) \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		GYPFLAGS="-Dstandalone_static_library=1" \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_TRUE@		library=static strictaliasing=off snapshot=off werror=no @V8_TARGET@
-@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8 \
+@ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	cd @top_srcdir@/3rdParty/V8-3.29.59 \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@	  && $(MAKE) \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CFLAGS="-O2 -g" \
 @ENABLE_ARM_FALSE@@ENABLE_DARWIN_FALSE@		CXXFLAGS="-O2 -g" \
@@ -9476,9 +9479,9 @@ clean-libev:
 
 clean-v8:
 	rm -f @srcdir@/.v8-build-@TRI_BITS@
-	cd @top_srcdir@/3rdParty/V8 && ( $(MAKE) clean || true )
-	find @top_srcdir@/3rdParty/V8 -name "*.pyc" -exec rm "{}" ";"
-	rm -rf @top_srcdir@/3rdParty/V8/out
+	cd @top_srcdir@/3rdParty/V8-3.29.59 && ( $(MAKE) clean || true )
+	find @top_srcdir@/3rdParty/V8-3.29.59 -name "*.pyc" -exec rm "{}" ";"
+	rm -rf @top_srcdir@/3rdParty/V8-3.29.59/out
 
 @ZLIB_LIBS@: @srcdir@/.zlib-build-@TRI_BITS@
 
