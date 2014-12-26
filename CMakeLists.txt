@@ -837,14 +837,14 @@ if (MSVC)
             DESTINATION ${TRI_SBINDIR_INSTALL})
 
     install(FILES WindowsLibraries/64/icudtl.dat
-            DESTINATION ${TRI_PKGDATADIR}
+            DESTINATION share/arangodb
             RENAME icudt52l.dat)
   else()
     install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
 
     install(FILES WindowsLibraries/32/icudtl.dat
-            DESTINATION ${TRI_PKGDATADIR}
+            DESTINATION share/arangodb
             RENAME icudt52l.dat)
   endif()
 
