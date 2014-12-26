@@ -1618,7 +1618,32 @@ char* TRI_BinaryName (const char* argv0) {
 
 char* TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
-  char* binaryPath = NULL;
+  char* binaryPath = nullptr;
+
+#if _WIN32
+  if (argv0 == nullptr) {
+    char buff[4096];
+    int res = GetModuleFileName(NULL, buff, sizeof(buff));
+
+    if (res != 0) {
+      buff[4095] = '\0';
+
+      char* q = buff + res;
+      while (buff < q) {
+        if (*q == '\\' || *q == '/') {
+          *q = '\0';
+          break;
+        }
+
+        --q;
+      }
+
+      return TRI_DuplicateString(buff);
+    }
+
+    return nullptr;
+  }
+#endif
 
   // check if name contains a '/' ( or '\' for windows)
   p = argv0;
@@ -1630,7 +1655,7 @@ char* TRI_LocateBinaryPath (char const* argv0) {
   if (*p) {
     binaryPath = TRI_Dirname(argv0);
 
-    if (binaryPath == 0) {
+    if (binaryPath == nullptr) {
       binaryPath = TRI_DuplicateString("");
     }
   }
@@ -1639,7 +1664,7 @@ char* TRI_LocateBinaryPath (char const* argv0) {
   else {
     p = getenv("PATH");
 
-    if (p == 0) {
+    if (p == nullptr) {
       binaryPath = TRI_DuplicateString("");
     }
     else {
@@ -2075,7 +2100,7 @@ char * __LocateInstallDirectory_In(HKEY rootKey) {
   // open the key for reading
   long lResult = RegOpenKeyEx(
                               rootKey,
-                              "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+                              "SOFTWARE\\ArangoDB GmbH\\ArangoDB " TRI_VERSION,
                                0,
                                KEY_READ,
                                &key);
