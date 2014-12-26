@@ -39,6 +39,7 @@
 #include "Basics/logging.h"
 #include "Basics/files.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -356,7 +357,7 @@ void TRI_FixIcuDataEnv () {
     return;
   }
 
-  const char* p = nullptr;
+  char* p = nullptr;
 
   p = TRI_LocateInstallDirectory();
 
