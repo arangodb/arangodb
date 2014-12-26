@@ -5,7 +5,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 1610531447
+etag: 1601301672
 
 { 
   "error" : false, 
@@ -29,6 +29,6 @@ etag: 1610531447
       "otherVertices" 
     ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1610531447" 
+    "_rev" : "1601301672" 
   } 
 }

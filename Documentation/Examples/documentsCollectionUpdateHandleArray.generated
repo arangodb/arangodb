@@ -1,15 +1,15 @@
 arangosh> db.example.save({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
 { 
   "error" : false, 
-  "_id" : "example/725336695", 
-  "_rev" : "725336695", 
-  "_key" : "725336695" 
+  "_id" : "example/725478568", 
+  "_rev" : "725478568", 
+  "_key" : "725478568" 
 }
 arangosh> db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
 { 
   "error" : false, 
   "_id" : "example/20774803", 
-  "_rev" : "725860983", 
+  "_rev" : "726002856", 
   "_key" : "20774803" 
 }
 arangosh> db.example.document("example/20774803");
@@ -21,14 +21,14 @@ arangosh> db.example.document("example/20774803");
     "b1" : 1 
   }, 
   "_id" : "example/20774803", 
-  "_rev" : "725860983", 
+  "_rev" : "726002856", 
   "_key" : "20774803" 
 }
 arangosh> db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null }, false, false);
 { 
   "error" : false, 
   "_id" : "example/20774803", 
-  "_rev" : "726188663", 
+  "_rev" : "726330536", 
   "_key" : "20774803" 
 }
 arangosh> db.example.document("example/20774803");
@@ -37,6 +37,6 @@ arangosh> db.example.document("example/20774803");
     "four" : 4 
   }, 
   "_id" : "example/20774803", 
-  "_rev" : "726188663", 
+  "_rev" : "726330536", 
   "_key" : "20774803" 
 }

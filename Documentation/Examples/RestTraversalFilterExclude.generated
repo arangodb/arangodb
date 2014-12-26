@@ -11,13 +11,13 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1531626103", 
+          "_rev" : "1522330792", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/dave", 
           "_key" : "dave", 
-          "_rev" : "1532281463", 
+          "_rev" : "1522986152", 
           "name" : "Dave" 
         } 
       ], 
@@ -28,7 +28,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1531626103", 
+              "_rev" : "1522330792", 
               "name" : "Alice" 
             } 
           ] 
@@ -36,16 +36,16 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1532740215", 
-              "_key" : "1532740215", 
-              "_rev" : "1532740215", 
+              "_id" : "knows/1523444904", 
+              "_key" : "1523444904", 
+              "_rev" : "1523444904", 
               "_from" : "persons/alice", 
               "_to" : "persons/bob" 
             }, 
             { 
-              "_id" : "knows/1533133431", 
-              "_key" : "1533133431", 
-              "_rev" : "1533133431", 
+              "_id" : "knows/1523838120", 
+              "_key" : "1523838120", 
+              "_rev" : "1523838120", 
               "_from" : "persons/bob", 
               "_to" : "persons/dave" 
             } 
@@ -54,19 +54,19 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1531626103", 
+              "_rev" : "1522330792", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/bob", 
               "_key" : "bob", 
-              "_rev" : "1531822711", 
+              "_rev" : "1522527400", 
               "name" : "Bob" 
             }, 
             { 
               "_id" : "persons/dave", 
               "_key" : "dave", 
-              "_rev" : "1532281463", 
+              "_rev" : "1522986152", 
               "name" : "Dave" 
             } 
           ] 
