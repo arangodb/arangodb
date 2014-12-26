@@ -28,12 +28,20 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <io.h>
+
 #include "win-utils.h"
-#include "Basics/logging.h"
+
 #include <windows.h>
 #include <string.h>
 #include <malloc.h>
 #include <crtdbg.h>
+
+#include "Basics/logging.h"
+#include "Basics/files.h"
+#include "Basics/StringUtils.h"
+
+using namespace std;
+using namespace triagens::basics;
 
 // .............................................................................
 // Some global variables which may be required throughout the lifetime of the
@@ -337,6 +345,51 @@ int TRI_OPEN_WIN32 (const char* filename, int openFlags) {
 
   fileDescriptor = _open_osfhandle((intptr_t)(fileHandle), (openFlags & O_ACCMODE) | _O_BINARY);
   return fileDescriptor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fixes the ICU_DATA environment path
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FixIcuDataEnv () {
+  if (getenv("ICU_DATA") != nullptr) {
+    return;
+  }
+
+  const char* p;
+
+  p = TRI_LocateInstallDirectory();
+
+  if (p != nullptr) {
+    string e = string("ICU_DATA=") + p + "\\share\\arangodb\\";
+    e = StringUtils::replace(e, "\\", "\\\\");
+    putenv(e.c_str());
+  }
+  else {
+    char buff[4096];
+    int res = GetModuleFileName(NULL, buff, sizeof(buff));
+
+    if (res != 0) {
+      buff[4095] = '\0';
+
+      char* q = buff + res;
+      while (buff < q) {
+        if (*q == '\\' || *q == '/') {
+          *q = '\0';
+          break;
+        }
+
+        --q;
+      }
+
+      string e = string("ICU_DATA=") + buff + "\\";
+      e = StringUtils::replace(e, "\\", "\\\\");
+      putenv(e.c_str());
+    }
+    else {
+      putenv("ICU_DATA=.\\\\");
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------
