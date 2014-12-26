@@ -356,7 +356,7 @@ void TRI_FixIcuDataEnv () {
     return;
   }
 
-  const char* p;
+  const char* p = nullptr;
 
   p = TRI_LocateInstallDirectory();
 
@@ -366,29 +366,20 @@ void TRI_FixIcuDataEnv () {
     putenv(e.c_str());
   }
   else {
-    char buff[4096];
-    int res = GetModuleFileName(NULL, buff, sizeof(buff));
+    p = TRI_LocateBinaryPath(nullptr);
 
-    if (res != 0) {
-      buff[4095] = '\0';
-
-      char* q = buff + res;
-      while (buff < q) {
-        if (*q == '\\' || *q == '/') {
-          *q = '\0';
-          break;
-        }
-
-        --q;
-      }
-
-      string e = string("ICU_DATA=") + buff + "\\";
+    if (p != nullptr) {
+      string e = string("ICU_DATA=") + p + "\\";
       e = StringUtils::replace(e, "\\", "\\\\");
       putenv(e.c_str());
     }
     else {
       putenv("ICU_DATA=.\\\\");
     }
+  }
+
+  if (p != nullptr) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, p);
   }
 }
 
