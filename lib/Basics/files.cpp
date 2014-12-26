@@ -2100,7 +2100,7 @@ char * __LocateInstallDirectory_In(HKEY rootKey) {
   // open the key for reading
   long lResult = RegOpenKeyEx(
                               rootKey,
-                              "SOFTWARE\\triAGENS GmbH\\ArangoDB " TRI_VERSION,
+                              "SOFTWARE\\ArangoDB GmbH\\ArangoDB " TRI_VERSION,
                                0,
                                KEY_READ,
                                &key);
