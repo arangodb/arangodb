@@ -39,6 +39,7 @@ install_bits:
 	cp -a V8-3.29.59/build/Release$(BITS)/lib/*.lib ../WindowsLibraries/$(BITS)/lib/Release
 	cp -a V8-3.29.59/build/Debug$(BITS)/lib/*.lib ../WindowsLibraries/$(BITS)/lib/Debug
 	cp -a V8-3.29.59/include/* ../WindowsLibraries/$(BITS)/include
+	cp V8-3.29.59/third_party/icu/source/data/in/icudtl.dat ../WindowsLibraries/$(BITS)/icudtl.dat
 
 	for f in common i18n io; do \
 	  cp -a V8-3.29.59/third_party/icu/source/$${f}/unicode/* ../WindowsLibraries/$(BITS)/include/unicode/; \
