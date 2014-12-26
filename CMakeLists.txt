@@ -449,7 +449,7 @@ endif ()
 ################################################################################
 
 if (MSVC)
-  set(ICU_LIBS "icui18n;icuuc;icudata" CACHE path "ICU libraries")
+  set(ICU_LIBS "icui18n;icuuc" CACHE path "ICU libraries")
 
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 elseif (RASPBIAN)
@@ -835,9 +835,17 @@ if (MSVC)
   if(CMAKE_CL_64)
     install(PROGRAMS WindowsLibraries/64/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
+
+    install(FILES WindowsLibraries/64/icudtl.dat
+            DESTINATION ${TRI_PKGDATADIR}
+            RENAME icudt52l.dat)
   else()
     install(PROGRAMS WindowsLibraries/32/bin/etcd-arango.exe
             DESTINATION ${TRI_SBINDIR_INSTALL})
+
+    install(FILES WindowsLibraries/32/icudtl.dat
+            DESTINATION ${TRI_PKGDATADIR}
+            RENAME icudt52l.dat)
   endif()
 
 endif ()
