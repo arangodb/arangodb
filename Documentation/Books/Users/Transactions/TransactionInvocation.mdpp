@@ -66,7 +66,7 @@ the operations inside the transactions demand for it.
 The contents of *read* or *write* can each be lists with collection names or a 
 single collection name (as a string):
 
-```js    
+```js
 db._executeTransaction({
   collections: {
     write: "users",
@@ -202,7 +202,8 @@ db._executeTransaction({
 
 Aborting the transaction by throwing an exception in the *action* function
 will revert all changes, so as if the transaction never happened:
-``` js   
+
+```js
 // setup
 db._create("c1");
 
