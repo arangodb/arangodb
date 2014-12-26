@@ -4,4 +4,4 @@ arangosh> var ed2 = graph_module._relation("myEC2", ["myVC1"], ["myVC3"]);
 arangosh> var graph = graph_module._create("myGraph", [ed1, ed2]);
 arangosh> graph._deleteEdgeDefinition("myEC1");
 arangosh> db._collection("myEC1");
-[ArangoCollection 726975095, "myEC1" (type edge, status loaded)]
+[ArangoCollection 727116968, "myEC1" (type edge, status loaded)]

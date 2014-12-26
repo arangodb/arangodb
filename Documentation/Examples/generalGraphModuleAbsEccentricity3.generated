@@ -4,8 +4,8 @@ arangosh> graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'g
 ........> direction : 'outbound', weight : 'distance'});
 [ 
   { 
-    "germanCity/Berlin" : 1200, 
     "germanCity/Hamburg" : 1200, 
+    "germanCity/Berlin" : 1200, 
     "germanCity/Cologne" : 700 
   } 
 ]

@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/5", 
       "_key" : "5", 
-      "_rev" : "1361494647", 
+      "_rev" : "1362095272", 
       "_from" : "vertices/1", 
       "_to" : "vertices/3", 
       "$label" : "v1 -> v3" 
