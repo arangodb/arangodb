@@ -31,7 +31,14 @@ var console = require("console");
 var _ = require('underscore')
 
 var JSHINT = require("jshint").JSHINT;
-var jshintrc = JSON.parse(fs.read('./js/.jshintrc'));
+var jshintrc = {};
+
+try {
+  jshintrc = JSON.parse(fs.read('./js/.jshintrc'));
+}
+catch (err) {
+  // ignore any errors
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
