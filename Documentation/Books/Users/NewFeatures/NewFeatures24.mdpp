@@ -42,9 +42,16 @@ More details on the available ES6 features can be found in
 
 !SECTION FoxxGenerator
 
-ArangoDB 2.4 is shipped with FoxxGenerator, a framework for building 
-standardized Hypermedia APIs easily. The generated APIs can be consumed with 
+ArangoDB 2.4 is shipped with FoxxGenerator, a framework for building
+standardized Hypermedia APIs easily. The generated APIs can be consumed with
 client tools that understand [Siren](https://github.com/kevinswiber/siren).
+
+Hypermedia is the simple idea that our HTTP APIs should have links between their
+endpoints in the same way that our web sites have links between
+them. FoxxGenerator is based on the idea that you can represent an API as a
+statechart: Every endpoint is a state and the links are the transitions between
+them. Using your description of states and transitions, it can then create an
+API for you.
 
 The FoxxGenerator can create APIs based on a semantic description of entities
 and transitions. A blog series on the use cases and how to use the Foxx generator
