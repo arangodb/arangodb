@@ -175,21 +175,12 @@ v2.4.0 (XXXX-XX-XX)
   possible
 
 
-v2.3.3 (2014-12-17)
--------------------
-
-* fixed error handling in instanciation of distributed AQL queries, this 
-  also fixes a bug in cluster startup with many servers
-
-* issue #1185: parse non-fractional JSON numbers with exponent (e.g. `4e-261`)
-
-* issue #1159: allow --server.request-timeout and --server.connect-timeout of 0
-
-
 v2.3.5 (2015-XX-XX)
 -------------------
 
 * fixed issue #1200: Expansion operator results in "Cannot call method 'forEach' of null"
+
+* fixed issue #1199: Cannot unlink root node of plan
 
 
 v2.3.4 (2014-12-23)
