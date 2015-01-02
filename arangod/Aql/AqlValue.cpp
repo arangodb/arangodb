@@ -50,7 +50,7 @@ bool AqlValue::isTrue () const {
       return true;
     }
     else if (TRI_IsStringJson(json) && json->_value._string.length != 1) {
-      // the trailing NULL bytes counts, too...
+      // the trailing NULL byte counts, too...
       return true;
     }
     else if (TRI_IsArrayJson(json) || TRI_IsObjectJson(json)) {
