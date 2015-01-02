@@ -1,3 +1,10 @@
+
+v2.3.5 (2015-XX-XX)
+-------------------
+
+* fixed issue #1200: Expansion operator results in "Cannot call method 'forEach' of null"
+
+
 v2.3.4 (2014-12-23)
 -------------------
 
