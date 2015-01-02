@@ -124,9 +124,17 @@ AqlValue Functions::Length (triagens::arango::AqlTransaction* trx,
         break;
 
       case TRI_JSON_NUMBER:
+        try {
+          std::string toString = std::to_string(json->_value._number);
+          length = toString.size();
+        }
+        catch (...) {
+        }
+        break;
+
       case TRI_JSON_STRING:
       case TRI_JSON_STRING_REFERENCE:
-        // return number of characters (not byteS) in string
+        // return number of characters (not bytes) in string
         length = TRI_CharLengthUtf8String(json->_value._string.data);
         break;
 
