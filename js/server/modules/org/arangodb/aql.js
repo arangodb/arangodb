@@ -296,7 +296,6 @@ function COLLECTION (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function TO_LIST (param, isStringHash) {
-
   if (! param) {
     param = isStringHash ? [ ] : [ { } ];
   }

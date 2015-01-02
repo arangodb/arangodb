@@ -763,15 +763,11 @@ reference:
 
       // push the expand node into the statement list
       auto iterator = static_cast<AstNode*>(parser->popStack());
-      auto expand = parser->ast()->createNodeExpand(iterator, $4);
-      
-      std::string const nextName = parser->ast()->variables()->nextName();
-      char const* variableName = nextName.c_str();
-      auto let = parser->ast()->createNodeLet(variableName, expand, false);
-      parser->ast()->addOperation(let);
-      
-      // return a reference only
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeExpand(iterator, $4);
+
+      if ($$ == nullptr) {
+        ABORT_OOM
+      }
     }
   ;
 

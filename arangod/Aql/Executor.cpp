@@ -735,9 +735,9 @@ void Executor::generateCodeExpand (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->numMembers() == 2);
 
-  _buffer->appendText("(function () { var r = []; ");
+  _buffer->appendText("(function () { var r = []; _AQL.AQL_TO_LIST(");
   generateCodeNode(node->getMember(0));
-  _buffer->appendText(".forEach(function (v) { ");
+  _buffer->appendText(").forEach(function (v) { ");
   auto iterator = node->getMember(0);
   auto variable = static_cast<Variable*>(iterator->getMember(0)->getData());
   _buffer->appendText("vars[\"");
