@@ -76,9 +76,4 @@ exports.builtins = {
 };
 
 exports.deprecatedBuiltins = [
-  'PATHS',
-  'TRAVERSAL',
-  'TRAVERSAL_TREE',
-  'SHORTEST_PATH',
-  'NEIGHBORS'
 ];
