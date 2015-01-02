@@ -1,0 +1,17 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_admin/wal/properties
+{"logfileSize":33554432,"allowOversizeEntries":true}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "allowOversizeEntries" : true, 
+  "logfileSize" : 33554432, 
+  "historicLogfiles" : 10, 
+  "reserveLogfiles" : 1, 
+  "syncInterval" : 100, 
+  "throttleWait" : 15000, 
+  "throttleWhenPending" : 0, 
+  "error" : false, 
+  "code" : 200 
+}

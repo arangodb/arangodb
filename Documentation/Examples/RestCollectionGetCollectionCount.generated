@@ -1,0 +1,24 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/collection/products/count
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+location: /_db/_system/_api/collection/products/count
+
+{ 
+  "id" : "1174084424", 
+  "name" : "products", 
+  "isSystem" : false, 
+  "doCompact" : true, 
+  "isVolatile" : false, 
+  "journalSize" : 1048576, 
+  "keyOptions" : { 
+    "type" : "traditional", 
+    "allowUserKeys" : true 
+  }, 
+  "waitForSync" : true, 
+  "count" : 100, 
+  "status" : 3, 
+  "type" : 2, 
+  "error" : false, 
+  "code" : 200 
+}

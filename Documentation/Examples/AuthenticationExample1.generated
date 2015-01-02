@@ -1,0 +1,10 @@
+arangosh>   db._users.firstExample("user", "root")
+{ 
+  "_id" : "_users/1359303", 
+  "_rev" : "1359303", 
+  "_key" : "1359303", 
+  "active" : true, 
+  "changePassword" : false, 
+  "user" : "root", 
+  "password" : "$1$9a5f89f0$543a44da42c8295011625a570e60b0443543234a65708fefe4c165025d674b0b" 
+}

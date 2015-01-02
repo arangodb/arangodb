@@ -1,0 +1,34 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial/social/vertex
+{ 
+  "collection" : "otherVertices" 
+}
+
+HTTP/1.1 201 Created
+content-type: application/json
+etag: 1610554184
+
+{ 
+  "error" : false, 
+  "code" : 201, 
+  "graph" : { 
+    "name" : "social", 
+    "edgeDefinitions" : [ 
+      { 
+        "collection" : "relation", 
+        "from" : [ 
+          "female", 
+          "male" 
+        ], 
+        "to" : [ 
+          "female", 
+          "male" 
+        ] 
+      } 
+    ], 
+    "orphanCollections" : [ 
+      "otherVertices" 
+    ], 
+    "_id" : "_graphs/social", 
+    "_rev" : "1610554184" 
+  } 
+}

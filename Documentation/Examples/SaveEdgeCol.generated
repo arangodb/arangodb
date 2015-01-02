@@ -1,0 +1,30 @@
+arangosh> v1 = db.vertex.save({ name : "vertex 1" });
+{ 
+  "error" : false, 
+  "_id" : "vertex/613292872", 
+  "_rev" : "613292872", 
+  "_key" : "613292872" 
+}
+arangosh> v2 = db.vertex.save({ name : "vertex 2" });
+{ 
+  "error" : false, 
+  "_id" : "vertex/613489480", 
+  "_rev" : "613489480", 
+  "_key" : "613489480" 
+}
+arangosh> e1 = db.relation.save(v1, v2, { label : "knows" });
+{ 
+  "error" : false, 
+  "_id" : "relation/613817160", 
+  "_rev" : "613817160", 
+  "_key" : "613817160" 
+}
+arangosh> db._document(e1);
+{ 
+  "label" : "knows", 
+  "_id" : "relation/613817160", 
+  "_rev" : "613817160", 
+  "_key" : "613817160", 
+  "_from" : "vertex/613292872", 
+  "_to" : "vertex/613489480" 
+}

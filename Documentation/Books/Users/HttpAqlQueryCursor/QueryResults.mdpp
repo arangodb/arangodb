@@ -63,7 +63,7 @@ for the client that there are additional results to fetch from the server.
 
 Create and extract first batch:
 
-```js 
+```js
 > curl --data @- -X POST --dump - http://localhost:8529/_api/cursor
 { "query" : "FOR u IN users LIMIT 5 RETURN u", "count" : true, "batchSize" : 2 }
 
@@ -150,7 +150,7 @@ content-type: application/json
 
 Do not do this because *hasMore* now has a value of false:
 
-``` js 
+``` js
 > curl -X PUT --dump - http://localhost:8529/_api/cursor/26011191
 
 HTTP/1.1 404 Not Found

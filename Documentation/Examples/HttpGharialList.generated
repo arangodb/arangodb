@@ -1,0 +1,67 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{ 
+  "error" : false, 
+  "code" : 202, 
+  "graphs" : [ 
+    { 
+      "_id" : "_graphs/social", 
+      "_key" : "social", 
+      "_rev" : "1588403016", 
+      "edgeDefinitions" : [ 
+        { 
+          "collection" : "relation", 
+          "from" : [ 
+            "female", 
+            "male" 
+          ], 
+          "to" : [ 
+            "female", 
+            "male" 
+          ] 
+        } 
+      ], 
+      "orphanCollections" : [ ] 
+    }, 
+    { 
+      "_id" : "_graphs/routeplanner", 
+      "_key" : "routeplanner", 
+      "_rev" : "1592728392", 
+      "orphanCollections" : [ ], 
+      "edgeDefinitions" : [ 
+        { 
+          "collection" : "germanHighway", 
+          "from" : [ 
+            "germanCity" 
+          ], 
+          "to" : [ 
+            "germanCity" 
+          ] 
+        }, 
+        { 
+          "collection" : "frenchHighway", 
+          "from" : [ 
+            "frenchCity" 
+          ], 
+          "to" : [ 
+            "frenchCity" 
+          ] 
+        }, 
+        { 
+          "collection" : "internationalHighway", 
+          "from" : [ 
+            "frenchCity", 
+            "germanCity" 
+          ], 
+          "to" : [ 
+            "frenchCity", 
+            "germanCity" 
+          ] 
+        } 
+      ] 
+    } 
+  ] 
+}

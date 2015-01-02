@@ -1,0 +1,7 @@
+unix> curl -X PUT --dump - http://localhost:8529/_api/job/foobar
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{"error":true,"errorMessage":"not found","code":404,"errorNum":404}
+

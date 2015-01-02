@@ -48,7 +48,7 @@ actions.defineHttp({
     req.user = null;
     req.database = "_system";
 
-    var suffix = "system/cerberus";
+    var suffix = "_system/cerberus";
     suffix = suffix.split("/");
     suffix = suffix.concat(req.suffix);
 

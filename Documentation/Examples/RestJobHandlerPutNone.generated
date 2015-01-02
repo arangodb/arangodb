@@ -1,0 +1,7 @@
+unix> curl -X PUT --dump - http://localhost:8529/_api/job/
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{"error":true,"errorMessage":"bad parameter","code":400,"errorNum":400}
+

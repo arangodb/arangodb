@@ -1,0 +1,13 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/collection/products/rotate
+{ 
+}
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1105, 
+  "errorMessage" : "could not rotate journal: no journal" 
+}

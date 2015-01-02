@@ -1,0 +1,21 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR p IN products REMOVE p IN products"}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ ], 
+  "hasMore" : false, 
+  "extra" : { 
+    "stats" : { 
+      "writesExecuted" : 2, 
+      "writesIgnored" : 0, 
+      "scannedFull" : 2, 
+      "scannedIndex" : 0 
+    }, 
+    "warnings" : [ ] 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}

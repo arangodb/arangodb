@@ -1,0 +1,34 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/graph/vertices/v2
+{"batchSize" : 100, "filter" : {"direction" : "any", "properties":[] }}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "vertices/v1", 
+      "_key" : "v1", 
+      "_rev" : "1415781192", 
+      "optional1" : "val1" 
+    }, 
+    { 
+      "_id" : "vertices/v4", 
+      "_key" : "v4", 
+      "_rev" : "1416960840", 
+      "optional1" : "val1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "extra" : { 
+    "stats" : { 
+      "writesExecuted" : 0, 
+      "writesIgnored" : 0, 
+      "scannedFull" : 0, 
+      "scannedIndex" : 0 
+    }, 
+    "warnings" : [ ] 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}

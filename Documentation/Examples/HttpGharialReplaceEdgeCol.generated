@@ -1,0 +1,44 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/social/edge/relation
+{ 
+  "collection" : "relation", 
+  "from" : [ 
+    "female", 
+    "male", 
+    "animal" 
+  ], 
+  "to" : [ 
+    "female", 
+    "male", 
+    "animal" 
+  ] 
+}
+
+HTTP/1.1 200 OK
+content-type: application/json
+etag: 1632967496
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "graph" : { 
+    "name" : "social", 
+    "edgeDefinitions" : [ 
+      { 
+        "collection" : "relation", 
+        "from" : [ 
+          "animal", 
+          "female", 
+          "male" 
+        ], 
+        "to" : [ 
+          "animal", 
+          "female", 
+          "male" 
+        ] 
+      } 
+    ], 
+    "orphanCollections" : [ ], 
+    "_id" : "_graphs/social", 
+    "_rev" : "1632967496" 
+  } 
+}

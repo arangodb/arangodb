@@ -1,0 +1,14 @@
+arangosh> var a = 1;
+arangosh> a;
+1
+arangosh> while (a === 1) { a = 2; }
+arangosh> if (a === 2) {
+........>   b = 1;
+........> }
+........> else {
+........>   b = 2;
+........> }
+arangosh> b;
+1
+arangosh> geheim;
+2

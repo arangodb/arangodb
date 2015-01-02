@@ -1,0 +1,41 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
+{ 
+  "name" : "myGraph", 
+  "edgeDefinitions" : [ 
+    { 
+      "collection" : "edges", 
+      "from" : [ 
+        "startVertices" 
+      ], 
+      "to" : [ 
+        "endVertices" 
+      ] 
+    } 
+  ] 
+}
+
+HTTP/1.1 201 Created
+content-type: application/json
+etag: 1598298952
+
+{ 
+  "error" : false, 
+  "code" : 201, 
+  "graph" : { 
+    "name" : "myGraph", 
+    "edgeDefinitions" : [ 
+      { 
+        "collection" : "edges", 
+        "from" : [ 
+          "startVertices" 
+        ], 
+        "to" : [ 
+          "endVertices" 
+        ] 
+      } 
+    ], 
+    "orphanCollections" : [ ], 
+    "_id" : "_graphs/myGraph", 
+    "_rev" : "1598298952" 
+  } 
+}

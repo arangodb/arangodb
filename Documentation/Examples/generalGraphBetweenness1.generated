@@ -1,0 +1,12 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("RETURN GRAPH_BETWEENNESS('routeplanner')").toArray();
+[ 
+  { 
+    "germanCity/Berlin" : null, 
+    "germanCity/Hamburg" : null, 
+    "germanCity/Cologne" : null, 
+    "frenchCity/Paris" : null, 
+    "frenchCity/Lyon" : null 
+  } 
+]

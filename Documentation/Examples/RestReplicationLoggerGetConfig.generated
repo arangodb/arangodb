@@ -1,0 +1,12 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/logger-config
+undefined
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "autoStart" : true, 
+  "logRemoteChanges" : true, 
+  "maxEvents" : 0, 
+  "maxEventsSize" : 0 
+}

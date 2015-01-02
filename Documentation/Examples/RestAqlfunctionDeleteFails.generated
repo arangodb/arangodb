@@ -1,0 +1,11 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/aqlfunction/myfunction::x::y
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1582, 
+  "errorMessage" : "user function '%s()' not found" 
+}

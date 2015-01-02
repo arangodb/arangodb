@@ -1,0 +1,128 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/explain
+{"query":"FOR i IN 1..10 RETURN 1 / 0"}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "plan" : { 
+    "nodes" : [ 
+      { 
+        "type" : "SingletonNode", 
+        "dependencies" : [ ], 
+        "id" : 1, 
+        "estimatedCost" : 1, 
+        "estimatedNrItems" : 1 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          1 
+        ], 
+        "id" : 2, 
+        "estimatedCost" : 2, 
+        "estimatedNrItems" : 1, 
+        "expression" : { 
+          "type" : "range", 
+          "subNodes" : [ 
+            { 
+              "type" : "value", 
+              "value" : 1 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 10 
+            } 
+          ] 
+        }, 
+        "outVariable" : { 
+          "id" : 1, 
+          "name" : "1" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "CalculationNode", 
+        "dependencies" : [ 
+          2 
+        ], 
+        "id" : 4, 
+        "estimatedCost" : 3, 
+        "estimatedNrItems" : 1, 
+        "expression" : { 
+          "type" : "value", 
+          "value" : null 
+        }, 
+        "outVariable" : { 
+          "id" : 2, 
+          "name" : "2" 
+        }, 
+        "canThrow" : false 
+      }, 
+      { 
+        "type" : "EnumerateListNode", 
+        "dependencies" : [ 
+          4 
+        ], 
+        "id" : 3, 
+        "estimatedCost" : 103, 
+        "estimatedNrItems" : 100, 
+        "inVariable" : { 
+          "id" : 1, 
+          "name" : "1" 
+        }, 
+        "outVariable" : { 
+          "id" : 0, 
+          "name" : "i" 
+        } 
+      }, 
+      { 
+        "type" : "ReturnNode", 
+        "dependencies" : [ 
+          3 
+        ], 
+        "id" : 5, 
+        "estimatedCost" : 203, 
+        "estimatedNrItems" : 100, 
+        "inVariable" : { 
+          "id" : 2, 
+          "name" : "2" 
+        } 
+      } 
+    ], 
+    "rules" : [ 
+      "move-calculations-up", 
+      "move-calculations-up-2" 
+    ], 
+    "collections" : [ ], 
+    "variables" : [ 
+      { 
+        "id" : 2, 
+        "name" : "2" 
+      }, 
+      { 
+        "id" : 1, 
+        "name" : "1" 
+      }, 
+      { 
+        "id" : 0, 
+        "name" : "i" 
+      } 
+    ], 
+    "estimatedCost" : 203, 
+    "estimatedNrItems" : 100 
+  }, 
+  "warnings" : [ 
+    { 
+      "code" : 1562, 
+      "message" : "division by zero" 
+    } 
+  ], 
+  "stats" : { 
+    "rulesExecuted" : 17, 
+    "rulesSkipped" : 0, 
+    "plansCreated" : 1 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

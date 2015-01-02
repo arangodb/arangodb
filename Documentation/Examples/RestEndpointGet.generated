@@ -1,0 +1,18 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/endpoint
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+[ 
+  { 
+    "endpoint" : "tcp://127.0.0.1:34503", 
+    "databases" : [ ] 
+  }, 
+  { 
+    "endpoint" : "tcp://127.0.0.1:8532", 
+    "databases" : [ 
+      "mydb1", 
+      "mydb2" 
+    ] 
+  } 
+]

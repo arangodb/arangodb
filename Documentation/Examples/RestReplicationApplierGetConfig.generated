@@ -1,0 +1,15 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/applier-config
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "requestTimeout" : 300, 
+  "connectTimeout" : 10, 
+  "ignoreErrors" : 0, 
+  "maxConnectRetries" : 100, 
+  "sslProtocol" : 0, 
+  "chunkSize" : 0, 
+  "autoStart" : false, 
+  "adaptivePolling" : true 
+}
