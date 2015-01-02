@@ -1745,6 +1745,7 @@ class SortAnalysis {
   };
 
   std::vector<sortNodeData*> _sortNodeData;
+  std::unordered_set<size_t> removedNodes;
 
 public:
   size_t const sortNodeID;
@@ -1837,7 +1838,11 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
   void removeSortNodeFromPlan (ExecutionPlan* newPlan) {
-    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
+    // only remove a node once, otherwise this might cause follow up failures
+    if (removedNodes.find(sortNodeID) == removedNodes.end()) {
+      newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
+      removedNodes.insert(sortNodeID);
+    }
   }
 };
 
@@ -1938,28 +1943,43 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       auto result = _sortNode->getAttrsForVariableName(variableName);
 
       if (result.first.size() == 0) {
-        return true; // we didn't find anything replaceable by indice
+        return true; // we didn't find anything replaceable by index
       }
 
-      for (auto idx : node->getIndicesOrdered(result.first)) {
-        // make one new plan for each index that replaces this
-        // EnumerateCollectionNode with an IndexRangeNode
+      // get all candidate indexes
+      // note: can only use the index if it is a skip list (or a hash and we
+      // are checking equality)
 
-        // can only use the index if it is a skip list or (a hash and we
-        // are checking equality)
+      auto const& indexes = node->getIndicesOrdered(result.first);
 
+      EnumerateCollectionNode::IndexMatch const* preferredIndex = nullptr;
+ 
+      // enumerate all indexes and pick the first one that covers the condition
+      for (auto idx : indexes) {
+        if (idx.doesMatch) {
+          preferredIndex = &idx;
+          break;
+        }
+      }
+
+      if (preferredIndex == nullptr && ! indexes.empty()) {
+        // did not find an index which covers the condition. now pick the first one
+        preferredIndex = &indexes[0];
+      }
+
+      if (preferredIndex != nullptr) { 
         ExecutionNode* newNode = new IndexRangeNode(_plan,
                                                     _plan->nextId(),
                                                     node->vocbase(), 
                                                     node->collection(),
                                                     node->outVariable(),
-                                                    idx.index,
+                                                    preferredIndex->index,
                                                     result.second,
-                                                    (idx.doesMatch && idx.reverse));
+                                                    (preferredIndex->doesMatch && preferredIndex->reverse));
         _plan->registerNode(newNode);
         _plan->replaceNode(node, newNode);
 
-        if (idx.doesMatch) { // if the index superseedes the sort, remove it.
+        if (preferredIndex->doesMatch) { // if the index superseedes the sort, remove it.
           _sortNode->removeSortNodeFromPlan(_plan);
         }
         
