@@ -3807,12 +3807,7 @@ function AQL_SKIPLIST (collection, condition, skip, limit) {
 function AQL_HAS (element, name) {
   "use strict";
  
-  var weight = TYPEWEIGHT(element);
-  if (weight === TYPEWEIGHT_NULL) {
-    return false;
-  }
-
-  if (weight !== TYPEWEIGHT_OBJECT) {
+  if (TYPEWEIGHT(element) !== TYPEWEIGHT_OBJECT) {
     return false;
   }
 
