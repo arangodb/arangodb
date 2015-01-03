@@ -1212,7 +1212,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
    
   TRI_ASSERT(fid > 0);
   TRI_ASSERT(position != nullptr);
-
+  
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
@@ -1220,6 +1220,10 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT && sizeChanged) {
       document->_headersPtr->adjustTotalSize(0, sizeChanged);
     }
+  }
+  
+  TRI_IF_FAILURE("TransactionOperationAfterAdjust") {
+    return TRI_ERROR_DEBUG;
   }
 
   // set header file id
@@ -1267,6 +1271,10 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   }
 
   TRI_UpdateRevisionDocumentCollection(document, operation.rid, false);
+  
+  TRI_IF_FAILURE("TransactionOperationAtEnd") {
+    return TRI_ERROR_DEBUG;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }
