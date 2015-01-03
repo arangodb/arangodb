@@ -63,7 +63,7 @@ static inline size_t KeyEntrySize (TRI_hash_index_t const* idx) {
 template<typename T>
 static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* hashIndex,
                                                    TRI_index_search_value_t* key,
-                                                   T* element) {
+                                                   T const* element) {
   key->_values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, KeyEntrySize(hashIndex), false));
 
   if (key->_values == nullptr) {
@@ -90,6 +90,7 @@ template<typename T>
 static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
                                                T* element) {
 
+  TRI_ASSERT_EXPENSIVE(element->_subObjects == nullptr);
   element->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, KeyEntrySize(idx), false));
 
   if (element->_subObjects == nullptr) {
@@ -107,6 +108,7 @@ template<typename T>
 static void FreeSubObjectsHashIndexElement (T* element) {
   if (element->_subObjects != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+    element->_subObjects = nullptr;
   }
 }
 
@@ -198,6 +200,7 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
   // will be used for hashing.  Fill the json field list from the document.
   // .............................................................................
 
+  hashElement->_subObjects = nullptr;
   int res = AllocateSubObjectsHashIndexElement<T>(hashIndex, hashElement);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -216,9 +219,6 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
 
   if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING && ! hashIndex->base._unique) {
     res = TRI_ERROR_NO_ERROR;
-  }
-  else if (res != TRI_ERROR_NO_ERROR) {
-    FreeSubObjectsHashIndexElement<T>(hashElement);
   }
 
   return res;
@@ -240,7 +240,7 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int HashIndex_insert (TRI_hash_index_t* hashIndex,
-                             TRI_hash_index_element_t* element,
+                             TRI_hash_index_element_t const* element,
                              bool isRollback) {
   TRI_IF_FAILURE("InsertHashIndex") {
     return TRI_ERROR_DEBUG;
@@ -254,7 +254,7 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
     return res;
   }
 
-  res = TRI_InsertKeyHashArray(&hashIndex->_hashArray, &key, element, false, isRollback);
+  res = TRI_InsertKeyHashArray(&hashIndex->_hashArray, &key, element, isRollback);
 
   if (key._values != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
@@ -459,35 +459,46 @@ static int InsertHashIndex (TRI_index_t* idx,
                             TRI_doc_mptr_t const* document,
                             bool isRollback) {
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-
   int res;
+
   if (hashIndex->base._unique) {
     TRI_hash_index_element_t hashElement;
     res = HashIndexHelperAllocate<TRI_hash_index_element_t>(hashIndex, &hashElement, document);
 
     if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
       return TRI_ERROR_NO_ERROR;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
       return res;
     }
 
     res = HashIndex_insert(hashIndex, &hashElement, isRollback);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
+    }
   }
   else {
     TRI_hash_index_element_multi_t hashElement;
     res = HashIndexHelperAllocate<TRI_hash_index_element_multi_t>(hashIndex, &hashElement, document);
 
     if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
       return TRI_ERROR_NO_ERROR;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
       return res;
     }
 
     res = MultiHashIndex_insert(hashIndex, &hashElement, isRollback);
+    if (res != TRI_ERROR_NO_ERROR) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
+    }
   }
 
   return res;
@@ -508,10 +519,12 @@ static int RemoveHashIndex (TRI_index_t* idx,
     res = HashIndexHelperAllocate<TRI_hash_index_element_t>(hashIndex, &hashElement, document);
 
     if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
       return TRI_ERROR_NO_ERROR;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_t>(&hashElement);
       return res;
     }
     res = HashIndex_remove(hashIndex, &hashElement);
@@ -522,10 +535,12 @@ static int RemoveHashIndex (TRI_index_t* idx,
     res = HashIndexHelperAllocate<TRI_hash_index_element_multi_t>(hashIndex, &hashElement, document);
 
     if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
       return TRI_ERROR_NO_ERROR;
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
+      FreeSubObjectsHashIndexElement<TRI_hash_index_element_multi_t>(&hashElement);
       return res;
     }
     res = MultiHashIndex_remove(hashIndex, &hashElement);

@@ -4972,6 +4972,9 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   {
     TRI_IF_FAILURE("RemoveDocumentNoLock") {
       // test what happens if no lock can be acquired
+      if (freeMarker) {
+        delete marker;
+      }
       return TRI_ERROR_DEBUG;
     }
 
@@ -5019,8 +5022,11 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     }
 
     res = TRI_AddOperationTransaction(operation, forceSync);
-
-    if (res == TRI_ERROR_NO_ERROR && forceSync) {
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else if (forceSync) {
       markerTick = operation.tick;
     }
   }
@@ -5145,7 +5151,10 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     // insert into indexes
     res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else {
       TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
 
       if (forceSync) {
@@ -5246,8 +5255,11 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     operation.init();
 
     res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync);
-
-    if (res == TRI_ERROR_NO_ERROR && forceSync) {
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else if (forceSync) {
       markerTick = operation.tick;
     }
   }
