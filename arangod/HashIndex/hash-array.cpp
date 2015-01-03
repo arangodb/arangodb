@@ -47,18 +47,20 @@ static void DestroyElement (TRI_hash_array_t* array,
                             TRI_hash_index_element_t* element) {
   TRI_ASSERT_EXPENSIVE(element != nullptr);
   TRI_ASSERT_EXPENSIVE(element->_document != nullptr);
+  TRI_ASSERT_EXPENSIVE(element->_subObjects != nullptr);
 
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
   element->_document = nullptr;
+  element->_subObjects = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines if a key corresponds to an element
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool IsEqualKeyElement (TRI_hash_array_t* array,
-                               TRI_index_search_value_t* left,
-                               TRI_hash_index_element_t* right) {
+static bool IsEqualKeyElement (TRI_hash_array_t const* array,
+                               TRI_index_search_value_t const* left,
+                               TRI_hash_index_element_t const* right) {
   TRI_ASSERT_EXPENSIVE(right->_document != nullptr);
 
   for (size_t j = 0;  j < array->_numFields;  ++j) {
@@ -91,12 +93,11 @@ static bool IsEqualKeyElement (TRI_hash_array_t* array,
 /// @brief given a key generates a hash integer
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashKey (TRI_hash_array_t* array,
-                         TRI_index_search_value_t* key) {
+static uint64_t HashKey (TRI_hash_array_t const* array,
+                         TRI_index_search_value_t const* key) {
   uint64_t hash = 0x0123456789abcdef;
 
   for (size_t j = 0;  j < array->_numFields;  ++j) {
-
     // ignore the sid for hashing
     hash = fasthash64(key->_values[j]._data.data, key->_values[j]._data.length, hash);
   }
@@ -388,9 +389,8 @@ TRI_hash_index_element_t* TRI_FindByKeyHashArray (TRI_hash_array_t* array,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
-                            TRI_index_search_value_t* key,
-                            TRI_hash_index_element_t* element,
-                            bool overwrite,
+                            TRI_index_search_value_t const* key,
+                            TRI_hash_index_element_t const* element,
                             bool isRollback) {
 
   // ...........................................................................
@@ -422,15 +422,6 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   bool found = (arrayElement->_document != nullptr);
 
   if (found) {
-    if (overwrite) {
-      // destroy the underlying element since we are going to stomp on top if it
-      DestroyElement(array, arrayElement);
-      *arrayElement = *element;
-    }
-    else {
-      DestroyElement(array, element);
-    }
-
     return TRI_RESULT_KEY_EXISTS;
   }
 

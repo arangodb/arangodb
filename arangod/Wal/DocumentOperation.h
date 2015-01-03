@@ -18,7 +18,8 @@ namespace triagens {
         CREATED,
         INDEXED,
         HANDLED,
-        SWAPPED
+        SWAPPED,
+        REVERTED
       };
 
       DocumentOperation (Marker* marker,
@@ -45,7 +46,7 @@ namespace triagens {
             document->_headersPtr->release(header, false);  // PROTECTED by trx in trxCollection
           }
         }
-        else if (status != StatusType::SWAPPED) {
+        else if (status != StatusType::REVERTED) {
           revert();
         }
 
@@ -97,12 +98,11 @@ namespace triagens {
 
         // free the local marker buffer
         marker->freeBuffer();
-
         status = StatusType::HANDLED;
       }
 
       void revert () {
-        if (header == nullptr || status == StatusType::SWAPPED) {
+        if (header == nullptr || status == StatusType::SWAPPED || status == StatusType::REVERTED) {
           return;
         }
 
@@ -125,7 +125,7 @@ namespace triagens {
           }
         }
 
-        status = StatusType::SWAPPED;
+        status = StatusType::REVERTED;
       }
 
       Marker*                               marker;
