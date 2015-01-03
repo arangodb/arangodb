@@ -123,9 +123,8 @@ struct TRI_hash_index_element_s* TRI_FindByKeyHashArray (TRI_hash_array_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertKeyHashArray (TRI_hash_array_t*,
-                            struct TRI_index_search_value_s* key,
-                            struct TRI_hash_index_element_s* element,
-                            bool overwrite,
+                            struct TRI_index_search_value_s const* key,
+                            struct TRI_hash_index_element_s const* element,
                             bool isRollback);
 
 ////////////////////////////////////////////////////////////////////////////////
