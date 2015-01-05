@@ -12,11 +12,13 @@ exact words or prefixes of words contained in these documents.
 
 `ensureFulltextIndex(field, minWordLength)`
 
-Creates a fulltext index on all documents on attribute field. All documents, which do not have the attribute field or that have a non-textual value inside their field attribute are ignored.
+Creates a fulltext index on all documents on attribute field. 
+All documents which do not have the specified *field* attribute or that have a non-textual value inside their *field* attribute will be ignored for indexing.
+Only a single attribute can be indexed. Specifying multiple attributes is unsupported.
 
-The minimum length of words that are indexed can be specified with the minWordLength parameter. Words shorter than minWordLength characters will not be indexed. minWordLength has a default value of 2, but this value might be changed in future versions of ArangoDB. It is thus recommended to explicitly specify this value
+The minimum length of words that are indexed can be specified with the *minWordLength* parameter. Words shorter than minWordLength characters will not be indexed. minWordLength has a default value of 2, but this value might be changed in future versions of ArangoDB. It is thus recommended to explicitly specify this value
 
-In case that the index was successfully created, the index identifier is returned.
+In case the index is successfully created, the index identifier is returned.
 
 ```
 arangosh> db.emails.ensureFulltextIndex("body");
