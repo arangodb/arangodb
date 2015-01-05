@@ -85,7 +85,7 @@ static bool IsIndexHandle (v8::Handle<v8::Value> const arg,
 
   v8::String::Utf8Value str(arg);
 
-  if (*str == 0) {
+  if (*str == nullptr) {
     return false;
   }
 
@@ -305,8 +305,16 @@ static int EnhanceJsonIndexFulltext (v8::Isolate* isolate,
 
   // handle "minLength" attribute
   int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-  if (obj->Has(TRI_V8_ASCII_STRING("minLength")) && obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumber()) {
-    minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("minLength")));
+
+  if (obj->Has(TRI_V8_ASCII_STRING("minLength"))) {
+    if (obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumber() ||
+        obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNumberObject()) {
+      minWordLength = (int) TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("minLength")));
+    }
+    else if (! obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsNull() &&
+             ! obj->Get(TRI_V8_ASCII_STRING("minLength"))->IsUndefined()) {
+      return TRI_ERROR_BAD_PARAMETER;
+    }
   }
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, minWordLength));
 
@@ -369,7 +377,7 @@ static int EnhanceIndexJson (const v8::FunctionCallbackInfo<v8::Value>& args,
   if (obj->Has(TRI_V8_ASCII_STRING("type")) && obj->Get(TRI_V8_ASCII_STRING("type"))->IsString()) {
     TRI_Utf8ValueNFC typeString(TRI_UNKNOWN_MEM_ZONE, obj->Get(TRI_V8_ASCII_STRING("type")));
 
-    if (*typeString == 0) {
+    if (*typeString == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -470,16 +478,15 @@ static void EnsureIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& a
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
-  TRI_ASSERT(collection != 0);
-  TRI_ASSERT(json != 0);
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(json != nullptr);
 
   string const databaseName(collection->_dbName);
   string const cid = StringUtils::itoa(collection->_cid);
   // TODO: protect against races on _name
   string const collectionName(collection->_name);
 
-  TRI_json_t* resultJson = 0;
+  TRI_json_t* resultJson = nullptr;
   string errorMsg;
   int res = ClusterInfo::instance()->ensureIndexCoordinator(databaseName,
                                                             cid,
@@ -494,7 +501,7 @@ static void EnsureIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& a
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMsg);
   }
 
-  if (resultJson == 0) {
+  if (resultJson == nullptr) {
     if (! create) {
       // did not find a suitable index
       TRI_V8_RETURN_NULL();
@@ -594,7 +601,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   }
 
   bool created = false;
-  TRI_index_t* idx = 0;
+  TRI_index_t* idx = nullptr;
 
   switch (type) {
     case TRI_IDX_TYPE_UNKNOWN:
@@ -603,11 +610,15 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     case TRI_IDX_TYPE_PRIORITY_QUEUE_INDEX: 
     case TRI_IDX_TYPE_BITARRAY_INDEX: {
       // these indexes cannot be created directly
+      TRI_DestroyVectorPointer(&values);
+      TRI_DestroyVectorPointer(&attributes);
       TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
     }
 
     case TRI_IDX_TYPE_GEO1_INDEX: {
       if (attributes._length != 1) {
+        TRI_DestroyVectorPointer(&values);
+        TRI_DestroyVectorPointer(&attributes);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -646,13 +657,15 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case TRI_IDX_TYPE_GEO2_INDEX: {
       if (attributes._length != 2) {
+        TRI_DestroyVectorPointer(&values);
+        TRI_DestroyVectorPointer(&attributes);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
       
       TRI_ASSERT(attributes._length == 2);
 
       bool ignoreNull = false;
-      TRI_json_t* value = TRI_LookupObjectJson(json, "ignoreNull");
+      TRI_json_t const* value = TRI_LookupObjectJson(json, "ignoreNull");
       if (TRI_IsBooleanJson(value)) {
         ignoreNull = value->_value._boolean;
       }
@@ -678,6 +691,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (attributes._length == 0) {
+        TRI_DestroyVectorPointer(&values);
+        TRI_DestroyVectorPointer(&attributes);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -701,6 +716,8 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case TRI_IDX_TYPE_SKIPLIST_INDEX: {
       if (attributes._length == 0) {
+        TRI_DestroyVectorPointer(&values);
+        TRI_DestroyVectorPointer(&attributes);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
@@ -723,15 +740,23 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case TRI_IDX_TYPE_FULLTEXT_INDEX: {
       if (attributes._length != 1) {
+        TRI_DestroyVectorPointer(&values);
+        TRI_DestroyVectorPointer(&attributes);
         TRI_V8_THROW_EXCEPTION(TRI_ERROR_INTERNAL);
       }
 
       TRI_ASSERT(attributes._length == 1);
 
       int minWordLength = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
-      TRI_json_t* value = TRI_LookupObjectJson(json, "minLength");
+      TRI_json_t const* value = TRI_LookupObjectJson(json, "minLength");
       if (TRI_IsNumberJson(value)) {
         minWordLength = (int) value->_value._number;
+      }
+      else if (value != nullptr) {
+        // minLength defined but no number
+        TRI_DestroyVectorPointer(&values);
+        TRI_DestroyVectorPointer(&attributes);
+        TRI_V8_THROW_EXCEPTION_PARAMETER("<minLength> must be a number");
       }
 
       if (create) {
@@ -753,7 +778,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
     case TRI_IDX_TYPE_CAP_CONSTRAINT: {
       size_t size = 0;
-      TRI_json_t* value = TRI_LookupObjectJson(json, "size");
+      TRI_json_t const* value = TRI_LookupObjectJson(json, "size");
       if (TRI_IsNumberJson(value)) {
         size = (size_t) value->_value._number;
       }
@@ -778,7 +803,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
   }
 
-  if (idx == 0 && create) {
+  if (idx == nullptr && create) {
     // something went wrong during creation
     int res = TRI_errno();
     TRI_DestroyVectorPointer(&values);
@@ -791,7 +816,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   TRI_DestroyVectorPointer(&attributes);
 
 
-  if (idx == 0 && ! create) {
+  if (idx == nullptr && ! create) {
     // no index found
     TRI_V8_RETURN_NULL();
   }
@@ -799,7 +824,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   // found some index to return
   TRI_json_t* indexJson = idx->json(idx);
 
-  if (indexJson == 0) {
+  if (indexJson == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
@@ -1074,7 +1099,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
 
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-  if (indexes == 0) {
+  if (indexes == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -1082,7 +1107,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   // create a dummy primary index
   TRI_index_t* idx = TRI_CreatePrimaryIndex(0);
 
-  if (idx == 0) {
+  if (idx == nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     TRI_V8_THROW_EXCEPTION_MEMORY();
@@ -1098,7 +1123,7 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     // create a dummy edge index
     idx = TRI_CreateEdgeIndex(0, id);
 
-    if (idx == 0) {
+    if (idx == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, indexes);
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       TRI_V8_THROW_EXCEPTION_MEMORY();

@@ -56,6 +56,20 @@ function fulltextCreateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create with multiple fields
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateMultipleFields: function () {
+      try {
+        c.ensureFulltextIndex("a", "b");
+        fail();
+      }
+      catch (e) {
+        assertEqual(internal.errors.ERROR_BAD_PARAMETER.code, e.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the index creation
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -145,6 +159,29 @@ function fulltextCreateSuite () {
         assertEqual([ "iam-an-indexed-ATTRIBUTE" ], index.fields);
       
         assertEqual(idx.id, c.ensureFulltextIndex("iam-an-indexed-ATTRIBUTE").id);
+        return;
+      }
+
+      fail();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks the index creation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreateIndexSubattribute : function () {
+      var idx = c.ensureFulltextIndex("a.b.c");
+
+      var indexes = c.getIndexes();
+      for (var i = 0; i < indexes.length; ++i) {
+        var index = indexes[i];
+        if (index.type != "fulltext") {
+          continue;
+        }
+
+        assertEqual(idx.id, index.id);
+        assertEqual("fulltext", index.type);
+        assertEqual([ "a.b.c" ], index.fields);
         return;
       }
 
