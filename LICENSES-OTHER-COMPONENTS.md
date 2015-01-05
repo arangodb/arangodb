@@ -64,7 +64,7 @@
 
 ### ramda
 
-* https://github.com/CrossEye/ramda
+* https://github.com/ramda/ramda
 * MIT
 
 ### jasmine
@@ -75,7 +75,7 @@
 ### coffee-script
 
 * http://coffeescript.org
-* free "as is” license
+* MIT
 
 ### swagger
 
@@ -112,7 +112,7 @@
 
 ### Joi
 
-- AS-IS
+- BSD
 
 ### jqconsole
 
