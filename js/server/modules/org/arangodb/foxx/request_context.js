@@ -222,7 +222,13 @@ extend(RequestContext.prototype, {
 ///
 /// For more information on *joi* see [the official Joi documentation](https://github.com/spumko/joi).
 ///
-/// You can also provide a description of this parameter.
+/// *Parameter*
+///
+/// * *id*: name of the param.
+/// * *options*: a joi schema or an object with the following properties:
+///  * *type*: a joi schema.
+///  * *description*: documentation description for the parameter.
+///  * *required* (optional): whether the parameter is required. Default: determined by *type*.
 ///
 /// *Examples*
 ///
@@ -321,7 +327,16 @@ extend(RequestContext.prototype, {
 /// You can also provide a description of this parameter and
 /// whether you can provide the parameter multiple times.
 ///
-/// @EXAMPLES
+/// *Parameter*
+///
+/// * *id*: name of the parameter
+/// * *options*: a joi schema or an object with the following properties:
+///  * *type*: a joi schema
+///  * *description*: documentation description for this param.
+///  * *required* (optional): whether the param is required. Default: determined by *type*.
+///  * *allowMultiple* (optional): whether the param can be specified more than once. Default: `false`.
+///
+/// *Examples*
 ///
 /// ```js
 /// app.get("/foxx", function {
@@ -517,7 +532,7 @@ extend(RequestContext.prototype, {
 ///
 /// It also adds documentation for this error response to the generated documentation.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// ```js
 /// /* define our own error type, FoxxyError */
@@ -559,7 +574,7 @@ extend(RequestContext.prototype, {
 /// not be executed. Provide an `errorResponse` to define the behavior in this case.
 /// This can be used for authentication or authorization for example.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// ```js
 /// app.get("/foxx", function {
@@ -586,7 +601,7 @@ extend(RequestContext.prototype, {
 /// the status code and the reason you provided (the route handler won't be called).
 /// This will also add the according documentation for this route.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// ```js
 /// app.get("/foxx", function {
@@ -645,7 +660,7 @@ _.each([
 /// Defines an *errorResponse* for all routes of this controller. For details on
 /// *errorResponse* see the according method on routes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// ```js
 /// app.allroutes.errorResponse(FoxxyError, 303, "This went completely wrong. Sorry!");
@@ -666,7 +681,7 @@ _.each([
 /// Defines an *onlyIf* for all routes of this controller. For details on
 /// *onlyIf* see the according method on routes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// ```js
 /// app.allroutes.onlyIf(myPersonalCheck);
@@ -687,7 +702,7 @@ _.each([
 /// Defines an *onlyIfAuthenticated* for all routes of this controller. For details on
 /// *onlyIfAuthenticated* see the according method on routes.
 ///
-/// @EXAMPLES
+/// *Examples*
 ///
 /// ```js
 /// app.allroutes.onlyIfAuthenticated(401, "You need to be authenticated");
