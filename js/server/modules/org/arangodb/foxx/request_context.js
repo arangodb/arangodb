@@ -295,6 +295,11 @@ extend(RequestContext.prototype, {
       } else {
         regexType = 'string';
       }
+    } else {
+      require('console').log(
+        'RequestContext#pathParam({type: string}) is deprecated,' +
+        ' use RequestContext#pathParam({type: joi}) instead'
+      );
     }
 
     urlConstraint[paramName] = this.typeToRegex[regexType];
@@ -404,6 +409,11 @@ extend(RequestContext.prototype, {
       ) {
         type = 'integer';
       }
+    } else {
+      require('console').log(
+        'RequestContext#queryParam({type: string}) is deprecated,' +
+        ' use RequestContext#queryParam({type: joi}) instead'
+      );
     }
 
     this.docs.addQueryParam(
@@ -458,6 +468,10 @@ extend(RequestContext.prototype, {
   bodyParam: function (paramName, attributes, Proto) {
     'use strict';
     if (Proto !== undefined) {
+      require('console').log(
+        'RequestContext#bodyParam(paramName, description, Model) is deprecated,' +
+        ' use RequestContext#bodyParam(paramName, {description, type}) instead'
+      );
       // deprecated
       attributes = {
         description: attributes,
