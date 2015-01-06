@@ -278,8 +278,7 @@
     setGraphResponse(res, g, actions.HTTP_CREATED);
   })
   .queryParam("waitForSync", {
-    type: "boolean",
-    description: "define if the request should wait until synced to disk."
+    type: waitForSyncFlag
   })
   .errorResponse(
     ArangoError, actions.HTTP_CONFLICT, "Graph creation error.", function(e) {
