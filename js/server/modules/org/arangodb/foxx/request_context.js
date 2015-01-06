@@ -263,8 +263,7 @@ extend(RequestContext.prototype, {
     constraint = type;
     regexType = type;
 
-    // deprecated: assume type.describe is always a function
-    if (type && typeof type.describe === 'function') {
+    if (type) {
       if (typeof required === 'boolean') {
         constraint = required ? constraint.required() : constraint.optional();
       }
@@ -295,11 +294,6 @@ extend(RequestContext.prototype, {
       } else {
         regexType = 'string';
       }
-    } else {
-      require('console').log(
-        'RequestContext#pathParam({type: string}) is deprecated,' +
-        ' use RequestContext#pathParam({type: joi}) instead'
-      );
     }
 
     urlConstraint[paramName] = this.typeToRegex[regexType];
@@ -369,8 +363,7 @@ extend(RequestContext.prototype, {
 
     constraint = type;
 
-    // deprecated: assume type.describe is always a function
-    if (type && typeof type.describe === 'function') {
+    if (type) {
       if (typeof required === 'boolean') {
         constraint = required ? constraint.required() : constraint.optional();
       }
@@ -409,11 +402,6 @@ extend(RequestContext.prototype, {
       ) {
         type = 'integer';
       }
-    } else {
-      require('console').log(
-        'RequestContext#queryParam({type: string}) is deprecated,' +
-        ' use RequestContext#queryParam({type: joi}) instead'
-      );
     }
 
     this.docs.addQueryParam(
@@ -465,20 +453,8 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  bodyParam: function (paramName, attributes, Proto) {
+  bodyParam: function (paramName, attributes) {
     'use strict';
-    if (Proto !== undefined) {
-      require('console').log(
-        'RequestContext#bodyParam(paramName, description, Model) is deprecated,' +
-        ' use RequestContext#bodyParam(paramName, {description, type}) instead'
-      );
-      // deprecated
-      attributes = {
-        description: attributes,
-        type: Proto
-      };
-    }
-
     if (is.array(attributes.type)) {
       this.docs.addBodyParam(paramName, attributes.description, attributes.type[0].toJSONSchema(paramName));
     } else {

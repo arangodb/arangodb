@@ -70,12 +70,6 @@ excludeExtraAttributes = function (attributes, Model) {
       _.keys(metadataSchema),
       _.keys(Model.prototype.schema)
     );
-  } else {
-    // deprecated
-    extraAttributeNames = _.difference(
-      _.keys(metadataSchema),
-      _.keys(Model.attributes)
-    );
   }
   return _.omit(attributes, extraAttributeNames);
 };
@@ -125,26 +119,6 @@ Model = function (attributes) {
         instance.set(attributeName, attributes ? attributes[attributeName] : undefined);
       }
     );
-  } else if (instance.constructor.attributes) {
-    // deprecated
-    if (attributes) {
-      require('console').log(
-        'Model.extend({}, {attributes: object}) is deprecated,' +
-        ' use Model.extend({schema: joi}) instead'
-      );
-      instance.attributes = _.pick(
-        attributes,
-        _.union(
-          _.keys(metadataSchema),
-          _.keys(instance.constructor.attributes)
-        )
-      );
-    }
-    _.each(instance.constructor.attributes, function (attribute, attributeName) {
-      if (_.has(attribute, 'defaultValue') && instance.attributes[attributeName] === undefined) {
-        instance.attributes[attributeName] = attribute.defaultValue;
-      }
-    });
   } else if (attributes) {
     instance.attributes = _.clone(attributes);
   }
@@ -189,23 +163,6 @@ _.extend(Model, {
           jsonSchema.type = 'integer';
         }
 
-        properties[attributeName] = jsonSchema;
-      });
-    } else {
-      // deprecated
-      _.each(this.attributes, function (attribute, attributeName) {
-        var jsonSchema = {};
-        if (typeof attribute === 'string') {
-           jsonSchema.type = attribute;
-        } else if (attribute) {
-          if (typeof attribute.type === 'string') {
-            jsonSchema.type = attribute.type;
-          }
-          if (attribute.required) {
-            required.push(attributeName);
-            jsonSchema.required = true;
-          }
-        }
         properties[attributeName] = jsonSchema;
       });
     }
