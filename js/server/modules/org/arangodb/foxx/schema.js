@@ -27,57 +27,69 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var _ = require('underscore');
+var _ = require('underscore'),
+  joi = require('joi');
 
 function toJSONSchema(id, schema) {
   'use strict';
-  var required = [],
-    properties = {};
+  var jsonSchema = {
+    id: id,
+    required: [],
+    properties: {}
+  };
 
-
-  if (schema) {
-    if (
-      typeof schema.toJSONSchema === 'function' &&
-      schema.toJSONSchema !== toJSONSchema &&
-      schema.toJSONSchema !== require('org/arangodb/foxx/model').Model.toJSONSchema
-    ) {
-      // allow overriding toJSONSchema.
-      return schema.toJSONSchema(id);
-    }
-    if (!schema.isJoi) {
-      // assume schema is a Model
-      schema = schema.prototype.schema;
-    }
-    _.each(schema, function (attributeSchema, attributeName) {
-      var description = attributeSchema.describe(),
-        jsonSchema = {type: description.type},
-        rules = description.rules,
-        flags = description.flags;
-
-      if (flags && flags.presence === 'required') {
-        jsonSchema.required = true;
-        required.push(attributeName);
-      }
-
-      if (
-        jsonSchema.type === 'number' &&
-          _.isArray(rules) &&
-          _.some(rules, function (rule) {
-            return rule.name === 'integer';
-          })
-      ) {
-        jsonSchema.type = 'integer';
-      }
-
-      properties[attributeName] = jsonSchema;
-    });
+  if (!schema) {
+    return jsonSchema;
   }
 
-  return {
-    id: id,
-    required: required,
-    properties: properties
-  };
+  if (
+    typeof schema.toJSONSchema === 'function' &&
+    schema.toJSONSchema !== toJSONSchema &&
+    schema.toJSONSchema !== require('org/arangodb/foxx/model').Model.toJSONSchema
+  ) {
+    // allow overriding toJSONSchema.
+    return schema.toJSONSchema(id);
+  }
+
+  if (typeof schema === 'function') {
+    // assume schema is a Model
+    schema = schema.prototype.schema || {};
+  }
+
+  if (!schema.isJoi) {
+    schema = joi.object().keys(schema);
+  }
+
+  var description = schema.describe();
+
+  if (description.type !== 'object') {
+    return jsonSchema;
+  }
+
+  _.each(schema.children, function (attributeDescription, attributeName) {
+    var attributeSchema = {type: attributeDescription.type},
+      rules = attributeDescription.rules,
+      flags = attributeDescription.flags;
+
+    if (flags && flags.presence === 'required') {
+      attributeSchema.required = true;
+      jsonSchema.required.push(attributeName);
+    }
+
+    if (
+      attributeSchema.type === 'number' &&
+        _.isArray(rules) &&
+        _.some(rules, function (rule) {
+          return rule.name === 'integer';
+        })
+    ) {
+      attributeSchema.type = 'integer';
+    }
+
+    jsonSchema.properties[attributeName] = attributeSchema;
+  });
+
+  return jsonSchema;
 }
 
 exports.toJSONSchema = toJSONSchema;
