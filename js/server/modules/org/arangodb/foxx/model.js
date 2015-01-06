@@ -128,6 +128,10 @@ Model = function (attributes) {
   } else if (instance.constructor.attributes) {
     // deprecated
     if (attributes) {
+      require('console').log(
+        'Model.extend({}, {attributes: object}) is deprecated,' +
+        ' use Model.extend({schema: joi}) instead'
+      );
       instance.attributes = _.pick(
         attributes,
         _.union(

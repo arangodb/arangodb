@@ -54,6 +54,7 @@ migrations will also be detailed here.
 ## 2.5
 
 * Foxx: `controller.collection` has been removed entirely. Please use `appContext.collection` instead.
+* Foxx: `FoxxRepository.modelPrototype` has been removed entirely. Please use `FoxxRepository.model` instead.
 * Foxx: `Model.extend({}, {attributes: {}})`  has been removed entirely. Please use `Model.extend({schema: {}})` instead.
 * Foxx: `requestContext.bodyParam(paramName, description, Model)` has been removed entirely. Please use `requestContext.bodyParam(paramName, options)` instead.
 * Foxx: `requestContext.queryParam({type: string})` has been removed entirely. Please use `requestContext.queryParam({type: joi})` instead.
