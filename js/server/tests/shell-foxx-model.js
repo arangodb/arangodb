@@ -248,16 +248,17 @@ function ModelSpec () {
 }
 
 function ModelAnnotationSpec () {
-  var FoxxModel, jsonSchema, instance;
+  var FoxxModel, toJSONSchema, jsonSchema, instance;
 
   return {
     setUp: function () {
       FoxxModel = require('org/arangodb/foxx/model').Model;
+      toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
     },
 
     testGetEmptyJSONSchema: function () {
       var Model = FoxxModel.extend({});
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.required, []);
       assertEqual(jsonSchema.properties, {});
@@ -277,7 +278,7 @@ function ModelAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.required, []);
       assertEqual(jsonSchema.properties.x.type, "string");
@@ -290,7 +291,7 @@ function ModelAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.properties.x.type, "string");
       assertEqual(jsonSchema.required, ["x"]);
@@ -415,11 +416,12 @@ function ModelLegacySpec () {
 }
 
 function ModelLegacyAnnotationSpec () {
-  var FoxxModel, jsonSchema, instance;
+  var FoxxModel, toJSONSchema, jsonSchema, instance;
 
   return {
     setUp: function () {
       FoxxModel = require('org/arangodb/foxx/model').Model;
+      toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
     },
 
     testAddOptionalAttributeToJSONSchemaInLongForm: function () {
@@ -429,7 +431,7 @@ function ModelLegacyAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.required, []);
       assertEqual(jsonSchema.properties.x.type, "string");
@@ -442,7 +444,7 @@ function ModelLegacyAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.required, []);
       assertEqual(jsonSchema.properties.x.type, "string");
@@ -455,7 +457,7 @@ function ModelLegacyAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.properties.x.type, "string");
       assertEqual(jsonSchema.required, ["x"]);

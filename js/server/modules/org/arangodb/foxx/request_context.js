@@ -33,6 +33,7 @@ var RequestContext,
   _ = require("underscore"),
   extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
+  toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   is = require("org/arangodb/is"),
   elementExtractFactory,
   bubbleWrapFactory,
@@ -272,7 +273,7 @@ extend(RequestContext.prototype, {
       }
       this.constraints.urlParams[paramName] = constraint;
       cfg = constraint.describe();
-      if (Array.isArray(cfg)) {
+      if (is.array(cfg)) {
         cfg = cfg[0];
         type = 'string';
       } else {
@@ -375,7 +376,7 @@ extend(RequestContext.prototype, {
       }
       this.constraints.queryParams[paramName] = constraint;
       cfg = constraint.describe();
-      if (Array.isArray(cfg)) {
+      if (is.array(cfg)) {
         cfg = cfg[0];
         type = 'string';
       } else {
@@ -384,7 +385,7 @@ extend(RequestContext.prototype, {
       required = Boolean(cfg.flags && cfg.flags.presence === 'required');
       description = cfg.description;
       if (cfg.meta) {
-        if (!Array.isArray(cfg.meta)) {
+        if (!is.array(cfg.meta)) {
           cfg.meta = [cfg.meta];
         }
         _.each(cfg.meta, function (meta) {
@@ -456,9 +457,9 @@ extend(RequestContext.prototype, {
   bodyParam: function (paramName, attributes) {
     'use strict';
     if (is.array(attributes.type)) {
-      this.docs.addBodyParam(paramName, attributes.description, attributes.type[0].toJSONSchema(paramName));
+      this.docs.addBodyParam(paramName, attributes.description, toJSONSchema(paramName, attributes.type[0]));
     } else {
-      this.docs.addBodyParam(paramName, attributes.description, attributes.type.toJSONSchema(paramName));
+      this.docs.addBodyParam(paramName, attributes.description, toJSONSchema(paramName, attributes.type));
     }
     this.route.action.callback = createBodyParamBubbleWrap(
       this.route.action.callback,
