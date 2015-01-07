@@ -13,7 +13,7 @@ fi
 ## bison
 #############################################################################
 
-${BISON} -d -ra -o ${OUTPUT} ${INPUT}
+${BISON} -d -ra --warnings="deprecated,other,error=conflicts-sr,error=conflicts-rr" -o ${OUTPUT} ${INPUT}
 
 #############################################################################
 ## sanity checks
