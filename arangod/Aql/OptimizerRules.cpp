@@ -1333,7 +1333,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // results), for example
             // x.a == 1 || y.c == 2 || x.a == 3
             if (_rangeInfoMapVec->isMapped(var->name)) {
-
               std::vector<size_t> const validPos = _rangeInfoMapVec->validPositions(var->name);
 
               // are any of the RangeInfoMaps in the vector valid? 
@@ -1373,14 +1372,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     // index or == followed by a single <, >, >=, or <=
                     // if a skip index in the order of the fields of the
                     // index.
-                    auto idx = idxs.at(i);
+                    auto const idx = idxs.at(i);
                     TRI_ASSERT(idx != nullptr);
 
                     if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
 
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
 
                         if (range != map->end()) { 
@@ -1412,7 +1411,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
                       //each valid orCondition should match every field of the given index
                       for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
 
@@ -1429,7 +1428,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
@@ -1459,18 +1458,22 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
                     else if (idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
-                        size_t j = 0;
+                        // check if there is a range that contains the first index attribute
                         auto range = map->find(idx->fields[0]);
                         if (range == map->end()) { 
                           indexOrCondition.clear();
                           break; // not usable
                         }
+
+                        // insert the first index attribute
                         indexOrCondition.at(k).push_back(range->second);
-                        
+                       
+                        // iterate over all index attributes from left to right 
                         bool equality = range->second.is1ValueRangeInfo();
                         bool handled = false;
+                        size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
                           range = map->find(idx->fields[j]);
                           if (range == map->end()) { 
@@ -1481,6 +1484,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                           indexOrCondition.at(k).push_back(range->second);
                           equality = equality && range->second.is1ValueRangeInfo();
                         }
+
                         if (handled) {
                           // exit the for loop, too. otherwise it will crash because
                           // indexOrCondition is empty now
