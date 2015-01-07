@@ -4071,22 +4071,6 @@ static void JS_UpdateVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
   return UpdateVocbaseCol(false, args);
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the server version string
-/// @startDocuBlock databaseVersion
-/// `db._version()`
-///
-/// Returns the server version string.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-static void JS_VersionServer (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  v8::Isolate* isolate = args.GetIsolate();
-  v8::HandleScope scope(isolate);
-
-  TRI_V8_RETURN(TRI_V8_ASCII_STRING(TRI_VERSION));
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              javascript functions
 // -----------------------------------------------------------------------------
@@ -4313,7 +4297,7 @@ void TRI_InitV8collection (v8::Handle<v8::Context> context,
                            const size_t threadNumber,
                            TRI_v8_global_t* v8g,
                            v8::Isolate* isolate,
-                           v8::Handle<v8::ObjectTemplate>  ArangoDBNS){
+                           v8::Handle<v8::ObjectTemplate> ArangoDBNS){
 
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_changeMode"), JS_ChangeOperationModeVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_collection"), JS_CollectionVocbase);
@@ -4324,7 +4308,6 @@ void TRI_InitV8collection (v8::Handle<v8::Context> context,
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_remove"), JS_RemoveVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_replace"), JS_ReplaceVocbase);
   TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_update"), JS_UpdateVocbase);
-  TRI_AddMethodVocbase(isolate, ArangoDBNS, TRI_V8_ASCII_STRING("_version"), JS_VersionServer);
 
   v8::Handle<v8::ObjectTemplate> rt;
   v8::Handle<v8::FunctionTemplate> ft;
