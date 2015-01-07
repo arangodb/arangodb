@@ -653,7 +653,9 @@ void ApplicationV8::collectGarbage () {
         while(! isolate->IdleNotification(1000)) {
         }
 
+        localContext->Exit();
       }
+
       isolate->Exit();
       delete context->_locker;
 
@@ -734,6 +736,7 @@ void ApplicationV8::upgradeDatabase (bool skip,
 
           if (! ok) {
             if (localContext->Global()->Has(TRI_V8_ASCII_STRING("UPGRADE_STARTED"))) {
+              localContext->Exit();
               if (perform) {
                 LOG_FATAL_AND_EXIT(
                                    "Database '%s' upgrade failed. Please inspect the logs from the upgrade procedure",
@@ -754,12 +757,18 @@ void ApplicationV8::upgradeDatabase (bool skip,
         }
       }
     }
-  }
-  if (perform) {
 
+    // finally leave the context. otherwise v8 will crash with assertion failure when we delete
+    // the context locker below
+    localContext->Exit();
+  }
+
+  isolate->Exit();
+  delete context->_locker;
+
+  if (perform) {
     // issue #391: when invoked with --upgrade, the server will not always shut down
     LOG_INFO("database upgrade passed");
-    delete context->_locker;
 
     // regular shutdown... wait for all threads to finish
 
@@ -787,11 +796,8 @@ void ApplicationV8::upgradeDatabase (bool skip,
   }
   else {
     // and return from the context
-    delete context->_locker;
-    
     LOG_TRACE("finished database init/upgrade");
   }
-  isolate->Exit();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
