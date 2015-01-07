@@ -1,4 +1,4 @@
-
+%define lr.type ielr
 %define api.pure
 %name-prefix "Aql"
 %locations 
@@ -536,9 +536,9 @@ in_or_into_collection:
       $$ = $2;
     }
   | T_INTO collection_name {
-      $$ = $2;
-    }
-  ; 
+       $$ = $2;
+     }
+   ;
 
 remove_statement:
     T_REMOVE expression in_or_into_collection query_options {
@@ -546,6 +546,14 @@ remove_statement:
         YYABORT;
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_REMOVE expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4, $6, $8, $10)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeRemove($2, $3, $4, $6, $8, $10);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
@@ -560,6 +568,15 @@ insert_statement:
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
+  | T_INSERT expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4, $6, $8, $10)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeInsert($2, $3, $4, $6, $8, $10);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+
   ;
 
 update_statement:
@@ -579,6 +596,22 @@ update_statement:
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
+  | T_UPDATE expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $3, $4, $6, $8, $10)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4, $6, $8, $10);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_UPDATE expression T_WITH expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6, $8, $10, $12)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6, $8, $10, $12);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
   ;
 
 replace_statement:
@@ -586,6 +619,7 @@ replace_statement:
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
         YYABORT;
       }
+      fprintf(stderr, "aoeu1\n");
       auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -594,7 +628,26 @@ replace_statement:
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6)) {
         YYABORT;
       }
+      fprintf(stderr, "aoeu2\n");
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_REPLACE expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
+        YYABORT;
+      }
+      fprintf(stderr, "aoeu3\n");
+      auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_REPLACE expression T_WITH expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6, $8, $10, $12)) {
+        YYABORT;
+      }
+      fprintf(stderr, "aoeu4\n");
+      auto node = parser->ast()->createNodeReplace($2, $4, $5, $6, $8, $10, $12);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
