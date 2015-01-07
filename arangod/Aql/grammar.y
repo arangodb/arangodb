@@ -619,7 +619,6 @@ replace_statement:
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
         YYABORT;
       }
-      fprintf(stderr, "aoeu1\n");
       auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -628,7 +627,6 @@ replace_statement:
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6)) {
         YYABORT;
       }
-      fprintf(stderr, "aoeu2\n");
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -637,7 +635,6 @@ replace_statement:
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
         YYABORT;
       }
-      fprintf(stderr, "aoeu3\n");
       auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
@@ -646,7 +643,6 @@ replace_statement:
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6, $8, $10, $12)) {
         YYABORT;
       }
-      fprintf(stderr, "aoeu4\n");
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6, $8, $10, $12);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
