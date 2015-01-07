@@ -195,7 +195,7 @@
 
   if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
     internal.executeGlobalContextFunction = function() {
-      // nothing to do. we're probably in --console mode
+      // nothing to do. we're probably in --no-server mode
     };
   }
   else {

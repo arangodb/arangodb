@@ -1251,7 +1251,7 @@ bool IndexRangeBlock::initRanges () {
           for (size_t u = 0; u < _condition->at(s).size(); u++) {
             auto ri = _condition->at(s)[u];
             if (en->_index->fields[t].compare(ri._attr) == 0) {
-              prefix.at(s).insert(prefix.at(s).begin()+t, u);
+              prefix.at(s).insert(prefix.at(s).begin() + t, u);
               break;
             }
           }
@@ -1909,7 +1909,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   Json parameters(Json::Array); 
   size_t i = 0;
   for (; i < ranges.size(); i++) {
-    auto range = ranges[i];
+    auto const& range = ranges[i];
     TRI_ASSERT(range.isConstant());
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
       parameters(range._lowConst.bound().copy());

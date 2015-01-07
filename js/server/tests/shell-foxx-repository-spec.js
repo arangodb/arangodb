@@ -22,7 +22,7 @@ describe('Repository', function () {
     instance = new FoxxRepository(collection);
 
     expect(instance.collection).toEqual(collection);
-    expect(instance.modelPrototype).toEqual(Model);
+    expect(instance.model).toEqual(Model);
   });
 
   it('should initialize with collection and model prototype', function () {
@@ -31,7 +31,7 @@ describe('Repository', function () {
     });
 
     expect(instance.collection).toEqual(collection);
-    expect(instance.modelPrototype).toEqual(ModelPrototype);
+    expect(instance.model).toEqual(ModelPrototype);
   });
 
   it('should initialize with collection and prefix', function () {
@@ -40,7 +40,7 @@ describe('Repository', function () {
     });
 
     expect(instance.collection).toEqual(collection);
-    expect(instance.modelPrototype).toEqual(Model);
+    expect(instance.model).toEqual(Model);
     expect(instance.prefix).toEqual(prefix);
   });
 

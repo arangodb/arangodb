@@ -1758,7 +1758,10 @@ function FoxxControllerWithRootElement () {
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName] instanceof ModelPrototype);
-      }).bodyParam(paramName, description, ModelPrototype);
+      }).bodyParam(paramName, {
+        description: description,
+        type: ModelPrototype
+      });
 
       routes[0].action.callback(req, res);
 
@@ -1786,7 +1789,10 @@ function FoxxControllerWithRootElement () {
 
       app.get('/foxx', function (providedReq) {
         called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
-      }).bodyParam(paramName, description, [ModelPrototype]);
+      }).bodyParam(paramName, {
+        description: description,
+        type: [ModelPrototype]
+      });
 
       routes[0].action.callback(req, res);
 

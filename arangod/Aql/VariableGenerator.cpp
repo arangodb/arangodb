@@ -224,7 +224,7 @@ triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const
 void VariableGenerator::fromJson (Json const& query) {
   Json jsonAllVariablesList = query.get("variables");
   if (! jsonAllVariablesList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variables needs to be a list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variables needs to be an array");
   }
   
   auto len = jsonAllVariablesList.size();
