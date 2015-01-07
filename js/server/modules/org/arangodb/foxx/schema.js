@@ -66,7 +66,7 @@ function toJSONSchema(id, schema) {
     return jsonSchema;
   }
 
-  _.each(schema.children, function (attributeDescription, attributeName) {
+  _.each(description.children, function (attributeDescription, attributeName) {
     var attributeSchema = {type: attributeDescription.type},
       rules = attributeDescription.rules,
       flags = attributeDescription.flags;
