@@ -1404,7 +1404,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
   
   if (_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     // always an equality lookup
-    nrItems = incoming * _ranges.size() * docCount / EqualityReductionFactor;
+    nrItems = incoming * _ranges.size() * docCount / static_cast<size_t>(EqualityReductionFactor);
     return dependencyCost + nrItems;
   }
   
