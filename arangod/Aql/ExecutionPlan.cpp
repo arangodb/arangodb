@@ -165,15 +165,16 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
   triagens::basics::Json result = _root->toJson(zone, verbose); 
  
   // set up rules 
-  triagens::basics::Json rules(Json::Array);
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
+  triagens::basics::Json rules(Json::Array, appliedRules.size());
+
   for (auto r : appliedRules) {
     rules.add(triagens::basics::Json(r));
   }
   result.set("rules", rules);
 
-  triagens::basics::Json jsonCollectionList(Json::Array);
   auto usedCollections = *ast->query()->collections()->collections();
+  triagens::basics::Json jsonCollectionList(Json::Array, usedCollections.size());
 
   for (auto c : usedCollections) {
     Json json(Json::Object);
