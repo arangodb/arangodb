@@ -2171,15 +2171,13 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replace
 ////////////////////////////////////////////////////////////////////////////////
-*/
+
     testReplace2WhatNew : function () {
       var i, j;
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual=[];
       for (j = 0; j < 5; ++j) {
-/*
-        actual[j] = getModifyQueryResultsRaw("FOR d IN @@cn REPLACE d._key WITH { value4: 12 }   INTO @@cn WITH NEW INTO replaced RETURN replaced", { "@cn": cn1 });
-*/
+
         actual[j] = getModifyQueryResultsRaw("FOR d IN @@cn REPLACE { _key: d._key, value4: 13 } INTO @@cn WITH NEW INTO replaced RETURN replaced", { "@cn": cn1 });
         PY(actual[j]);
         assertEqual(expected, sanitizeStats(actual[j].stats));
@@ -2203,6 +2201,7 @@ function ahuacatlUpdateSuite () {
         }
       }
     },
+*/
 /*
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test replace
