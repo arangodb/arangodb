@@ -1309,7 +1309,7 @@ namespace triagens {
 /// @brief the actual work horse 
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void work (std::vector<AqlItemBlock*>&) = 0;
+        virtual AqlItemBlock*  work (std::vector<AqlItemBlock*>&) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from the AqlValue passed
@@ -1332,6 +1332,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output register
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _outReg;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection
@@ -1372,7 +1378,7 @@ namespace triagens {
 /// @brief the actual work horse for removing data
 ////////////////////////////////////////////////////////////////////////////////
 
-        void work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
 
     };
 
@@ -1407,7 +1413,7 @@ namespace triagens {
 /// @brief the actual work horse for inserting data
 ////////////////////////////////////////////////////////////////////////////////
 
-        void work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
 
     };
 
@@ -1442,7 +1448,7 @@ namespace triagens {
 /// @brief the actual work horse for updating data
 ////////////////////////////////////////////////////////////////////////////////
 
-        void work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
 
     };
 
@@ -1477,7 +1483,7 @@ namespace triagens {
 /// @brief the actual work horse for replacing data
 ////////////////////////////////////////////////////////////////////////////////
 
-        void work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
 
     };
 

@@ -10,9 +10,6 @@ echo "$0: configuring ArangoDB"
 # V8 needs lib realtime:
 ./configure \
 	--enable-relative \
-	--enable-all-in-one-libev \
-	--enable-all-in-one-v8 \
-	--enable-all-in-one-icu \
 	|| exit 1
 
 echo
