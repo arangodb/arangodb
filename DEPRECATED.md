@@ -45,7 +45,6 @@ migrations will also be detailed here.
 * Foxx: `requestContext.queryParam({type: string})` is deprecated, it will raise a warning if you use it. Please use `requestContext.queryParam({type: joi})` instead.
 * Foxx: `requestContext.pathParam({type: string})` is deprecated, it will raise a warning if you use it. Please use `requestContext.pathParam({type: joi})` instead.
 * Foxx: `Model.extend({}, {attributes: {}})` is deprecated, it will raise a warning if you use it. Please use `Model.extend({schema: {}})` instead.
-* Foxx: method `Model#toJSONSchema(id)` is deprecated. Please use `Foxx.toJSONSchema(id, model)` instead.
 * General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are deprecated. Both functions have been unified to `_relation`.
 * Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are deprecated. Please use module `org/arangodb/general-graph` instead.
 * The HTTP REST API `_api/graph` and all its methods are deprecated. Please use the general graph API `_api/gharial` instead.
@@ -60,6 +59,11 @@ migrations will also be detailed here.
 * Foxx: `requestContext.bodyParam(paramName, description, Model)` has been removed entirely. Please use `requestContext.bodyParam(paramName, options)` instead.
 * Foxx: `requestContext.queryParam({type: string})` has been removed entirely. Please use `requestContext.queryParam({type: joi})` instead.
 * Foxx: `requestContext.pathParam({type: string})` has been removed entirely. Please use `requestContext.pathParam({type: joi})` instead.
+* Foxx: method `Model#toJSONSchema(id)` is deprecated, it will raise a warning if you use it. Please use `Foxx.toJSONSchema(id, model)` instead.
 * Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` have been removed entirely. Please use module `org/arangodb/general-graph` instead.
 * Http: The api `_api/graph` has been removed entirely. Please use the general graph api `_api/gharial` instead.
 * General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are no longer available. Both functions have been unified to `_relation`.
+
+
+## 2.6
+* Foxx: method `Model#toJSONSchema(id)` has been removed entirely. Please use `Foxx.toJSONSchema(id, model)` instead.
