@@ -117,10 +117,10 @@ void Aqlerror (YYLTYPE* locp,
 %token T_COMMA ","
 %token T_OPEN "("
 %token T_CLOSE ")"
-%token T_DOC_OPEN "{"
-%token T_DOC_CLOSE "}"
-%token T_LIST_OPEN "["
-%token T_LIST_CLOSE "]"
+%token T_OBJECT_OPEN "{"
+%token T_OBJECT_CLOSE "}"
+%token T_ARRAY_OPEN "["
+%token T_ARRAY_CLOSE "]"
 
 %token T_END 0 "end of query string"
 
@@ -169,10 +169,10 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> optional_function_call_arguments;
 %type <node> function_arguments_list;
 %type <node> compound_type;
-%type <node> list;
-%type <node> optional_list_elements;
-%type <node> list_elements_list;
 %type <node> array;
+%type <node> optional_array_elements;
+%type <node> array_elements_list;
+%type <node> object;
 %type <node> query_options;
 %type <node> optional_object_elements;
 %type <node> object_elements_list;
@@ -778,35 +778,35 @@ function_arguments_list:
   ;
 
 compound_type:
-    list {
+    array {
       $$ = $1;
     }
-  | array {
+  | object {
       $$ = $1;
     }
   ;
 
-list: 
-    T_LIST_OPEN {
+array: 
+    T_ARRAY_OPEN {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    } optional_list_elements T_LIST_CLOSE {
+    } optional_array_elements T_ARRAY_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
     }
   ;
 
-optional_list_elements:
+optional_array_elements:
     /* empty */ {
     }
-  | list_elements_list {
+  | array_elements_list {
     }
   ;
 
-list_elements_list:
+array_elements_list:
     expression {
       parser->pushArray($1);
     }
-  | list_elements_list T_COMMA expression {
+  | array_elements_list T_COMMA expression {
       parser->pushArray($3);
     }
   ;
@@ -815,7 +815,7 @@ query_options:
     /* empty */ {
       $$ = nullptr;
     }
-  | T_STRING array {
+  | T_STRING object {
       if ($1 == nullptr || $2 == nullptr) {
         ABORT_OOM
       }
@@ -828,11 +828,11 @@ query_options:
     }
   ;
 
-array:
-    T_DOC_OPEN {
+object:
+    T_OBJECT_OPEN {
       auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
-    } optional_object_elements T_DOC_CLOSE {
+    } optional_object_elements T_OBJECT_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
     }
   ;
@@ -914,7 +914,7 @@ single_reference:
       // named variable access, e.g. variable.@reference
       $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
     }
-  | single_reference T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | single_reference T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, e.g. variable[index]
       $$ = parser->ast()->createNodeIndexedAccess($1, $3);
     }
@@ -931,7 +931,7 @@ expansion:
       auto node = static_cast<AstNode*>(parser->popStack());
       $$ = parser->ast()->createNodeBoundAttributeAccess(node, $2);
     }
-  | T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
       auto node = static_cast<AstNode*>(parser->popStack());
       $$ = parser->ast()->createNodeIndexedAccess(node, $2);
@@ -944,7 +944,7 @@ expansion:
       // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.xx.@reference
       $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
     }
-  | expansion T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | expansion T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
       $$ = parser->ast()->createNodeIndexedAccess($1, $3);
     }
