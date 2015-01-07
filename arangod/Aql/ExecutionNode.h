@@ -2199,11 +2199,14 @@ namespace triagens {
                           size_t id,
                           TRI_vocbase_t* vocbase, 
                           Collection* collection,
-                          ModificationOptions const& options)
+                          ModificationOptions const& options,
+                          Variable const* outVariable
+                          )
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
-            _options(options) {
+            _options(options),
+            _outVariable(outVariable) {
 
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
@@ -2291,6 +2294,12 @@ namespace triagens {
 
         ModificationOptions _options;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
+
     };
 
 
@@ -2321,12 +2330,10 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
-            _inVariable(inVariable),
-            _outVariable(outVariable) {
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
-          // _outVariable might be a nullptr
         }
         
         RemoveNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2389,12 +2396,6 @@ namespace triagens {
 
         Variable const* _inVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable (might be a nullptr)
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
     };
 
 // -----------------------------------------------------------------------------
@@ -2424,9 +2425,8 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
-            _inVariable(inVariable),
-            _outVariable(outVariable) {
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
@@ -2492,12 +2492,6 @@ namespace triagens {
 
         Variable const* _inVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
     };
 
 // -----------------------------------------------------------------------------
@@ -2527,15 +2521,15 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inDocVariable,
                     Variable const* inKeyVariable,
-                    Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
+                    Variable const* outVariable,
+                    bool returnNewValues)
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable),
-            _outVariable(outVariable) {
+            _inKeyVariable(inKeyVariable), 
+            _returnNewValues(returnNewValues){
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
-          // _outVariable might be a nullptr
         }
         
         UpdateNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2611,11 +2605,10 @@ namespace triagens {
         Variable const* _inKeyVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief if we return the changed fields, before or after state?
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _outVariable;
-
+        bool _returnNewValues;
     };
 
 // -----------------------------------------------------------------------------
@@ -2645,15 +2638,14 @@ namespace triagens {
                      ModificationOptions const& options,
                      Variable const* inDocVariable,
                      Variable const* inKeyVariable,
-                     Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
+                     Variable const* outVariable,
+                     bool returnNewValues)
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable),
-            _outVariable(outVariable) {
+            _inKeyVariable(inKeyVariable) {
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
-          // _outVariable might be a nullptr
         }
 
         ReplaceNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2729,10 +2721,10 @@ namespace triagens {
         Variable const* _inKeyVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief if we return the changed fields, before or after state?
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _outVariable;
+        bool _returnNewValues;
 
     };
 
