@@ -514,6 +514,17 @@ AstNode* Ast::createNodeReference (char const* variableName) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST reference node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeReference (Variable const* variable) {
+  AstNode* node = createNode(NODE_TYPE_REFERENCE);
+  node->setData(variable);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST parameter node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -752,7 +763,7 @@ AstNode* Ast::createNodeValueString (char const* value) {
 /// @brief create an AST list node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeList () {
+AstNode* Ast::createNodeArray () {
   AstNode* node = createNode(NODE_TYPE_ARRAY);
 
   return node;
@@ -762,18 +773,16 @@ AstNode* Ast::createNodeList () {
 /// @brief create an AST array node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeArray () {
-  AstNode* node = createNode(NODE_TYPE_OBJECT);
-
-  return node;
+AstNode* Ast::createNodeObject () {
+  return createNode(NODE_TYPE_OBJECT);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST array element node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeArrayElement (char const* attributeName,
-                                      AstNode const* expression) {
+AstNode* Ast::createNodeObjectElement (char const* attributeName,
+                                       AstNode const* expression) {
   if (attributeName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -1866,7 +1875,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
   }
 
   if (json->_type == TRI_JSON_ARRAY) {
-    auto node = createNodeList();
+    auto node = createNodeArray();
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
@@ -1877,7 +1886,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
   }
 
   if (json->_type == TRI_JSON_OBJECT) {
-    auto node = createNodeArray();
+    auto node = createNodeObject();
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; i += 2) {
@@ -1890,7 +1899,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 
       char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);
       
-      node->addMember(createNodeArrayElement(attributeName, nodeFromJson(value)));
+      node->addMember(createNodeObjectElement(attributeName, nodeFromJson(value)));
     }
 
     return node;

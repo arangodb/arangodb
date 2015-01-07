@@ -609,10 +609,8 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
   }
 
-  triagens::basics::Json json;
-
-  json = triagens::basics::Json(triagens::basics::Json::Object, 2)
-    ("type", triagens::basics::Json(getTypeString()));
+  triagens::basics::Json json(triagens::basics::Json::Object, 5);
+  json("type", triagens::basics::Json(getTypeString()));
 
   if (verbose) {
     json("typeID", triagens::basics::Json(static_cast<int>(getType())));
@@ -644,9 +642,8 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array, _registerPlan->varInfo.size());
       for (auto oneVarInfo: _registerPlan->varInfo) {
         triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Object, 2);
-        jsonOneVarInfoArray(
-                            "VariableId", 
-                            triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
+        jsonOneVarInfoArray
+          ("VariableId", triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
           ("depth", triagens::basics::Json(static_cast<double>(oneVarInfo.second.depth)))
           ("RegisterId", triagens::basics::Json(static_cast<double>(oneVarInfo.second.registerId)))
           ;
@@ -1579,6 +1576,7 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
                                     TRI_memory_zone_t* zone,
                                     bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
@@ -1586,7 +1584,6 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
       ("outVariable", _outVariable->toJson())
       ("canThrow", triagens::basics::Json(_expression->canThrow()));
-
 
   // And add it:
   nodes(json);
@@ -1613,6 +1610,7 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
         
 double CalculationNode::estimateCost (size_t& nrItems) const {
+  TRI_ASSERT(! _dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }
@@ -2009,11 +2007,13 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
 
   triagens::basics::Json values(triagens::basics::Json::Array, _aggregateVariables.size());
+
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); ++it) {
     triagens::basics::Json variable(triagens::basics::Json::Object);
     variable("outVariable", (*it).first->toJson())

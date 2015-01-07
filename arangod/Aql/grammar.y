@@ -174,10 +174,10 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> list_elements_list;
 %type <node> array;
 %type <node> query_options;
-%type <node> optional_array_elements;
-%type <node> array_elements_list;
-%type <node> array_element;
-%type <strval> array_element_name;
+%type <node> optional_object_elements;
+%type <node> object_elements_list;
+%type <node> object_element;
+%type <strval> object_element_name;
 %type <node> reference;
 %type <node> single_reference;
 %type <node> expansion;
@@ -279,7 +279,7 @@ count_into:
 
 collect_variable_list:
     T_COLLECT {
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } collect_list { 
       auto list = static_cast<AstNode*>(parser->popStack());
@@ -309,7 +309,7 @@ collect_statement:
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
       }
 
-      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeList(), $2);
+      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list count_into {
@@ -409,7 +409,7 @@ collect_list:
 collect_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeAssign($1, $3);
-      parser->pushList(node);
+      parser->pushArray(node);
     }
   ;
 
@@ -435,7 +435,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushList(node);
+      parser->pushArray(node);
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3)) {
@@ -449,7 +449,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushList(node);
+      parser->pushArray(node);
     }
   ;
 
@@ -462,7 +462,7 @@ optional_keep:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1, yylloc.first_line, yylloc.first_column);
       }
 
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } variable_list {
       auto list = static_cast<AstNode*>(parser->popStack());
@@ -472,7 +472,7 @@ optional_keep:
 
 sort_statement:
     T_SORT {
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } sort_list {
       auto list = static_cast<AstNode const*>(parser->popStack());
@@ -483,10 +483,10 @@ sort_statement:
 
 sort_list: 
     sort_element {
-      parser->pushList($1);
+      parser->pushArray($1);
     }
   | sort_list T_COMMA sort_element {
-      parser->pushList($3);
+      parser->pushArray($3);
     }
   ;
 
@@ -668,7 +668,7 @@ function_call:
     function_name {
       parser->pushStack($1);
 
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
@@ -770,10 +770,10 @@ expression_or_query:
 
 function_arguments_list:
     expression_or_query {
-      parser->pushList($1);
+      parser->pushArray($1);
     }
   | function_arguments_list T_COMMA expression_or_query {
-      parser->pushList($3);
+      parser->pushArray($3);
     }
   ;
 
@@ -788,7 +788,7 @@ compound_type:
 
 list: 
     T_LIST_OPEN {
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } optional_list_elements T_LIST_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
@@ -804,10 +804,10 @@ optional_list_elements:
 
 list_elements_list:
     expression {
-      parser->pushList($1);
+      parser->pushArray($1);
     }
   | list_elements_list T_COMMA expression {
-      parser->pushList($3);
+      parser->pushArray($3);
     }
   ;
 
@@ -830,30 +830,30 @@ query_options:
 
 array:
     T_DOC_OPEN {
-      auto node = parser->ast()->createNodeArray();
+      auto node = parser->ast()->createNodeObject();
       parser->pushStack(node);
-    } optional_array_elements T_DOC_CLOSE {
+    } optional_object_elements T_DOC_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
     }
   ;
 
-optional_array_elements:
+optional_object_elements:
     /* empty */ {
     }
-  | array_elements_list {
+  | object_elements_list {
     }
   ;
 
-array_elements_list:
-    array_element {
+object_elements_list:
+    object_element {
     }
-  | array_elements_list T_COMMA array_element {
+  | object_elements_list T_COMMA object_element {
     }
   ;
 
-array_element: 
-    array_element_name T_COLON expression {
-      parser->pushArray($1, $3);
+object_element: 
+    object_element_name T_COLON expression {
+      parser->pushObject($1, $3);
     }
   ;
 
@@ -1031,7 +1031,7 @@ bind_parameter:
     }
   ;
 
-array_element_name:
+object_element_name:
     T_STRING {
       if ($1 == nullptr) {
         ABORT_OOM
