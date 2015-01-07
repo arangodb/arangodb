@@ -496,6 +496,21 @@ extend(RequestContext.prototype, {
 /// });
 /// ```
 ///
+/// Using a joi schema:
+///
+/// ```js
+/// app.post("/foxx", function (req, res) {
+///   var joiBody = req.parameters.joiBody;
+///   // Do something with the number
+/// }).bodyParam("joiBody", {
+///   type: joi.number().integer().min(5),
+///   description: "A number greater than five",
+///   allowInvalid: false // default
+/// });
+/// ```
+///
+/// Shorthand version:
+///
 /// ```js
 /// app.post("/foxx", function (req, res) {
 ///   var joiBody = req.parameters.joiBody;
