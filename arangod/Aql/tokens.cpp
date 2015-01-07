@@ -1298,25 +1298,25 @@ YY_RULE_SETUP
 case 46:
 YY_RULE_SETUP
 {
-  return T_DOC_OPEN;
+  return T_OBJECT_OPEN;
 }
 	YY_BREAK
 case 47:
 YY_RULE_SETUP
 {
-  return T_DOC_CLOSE;
+  return T_OBJECT_CLOSE;
 }
 	YY_BREAK
 case 48:
 YY_RULE_SETUP
 {
-  return T_LIST_OPEN;
+  return T_ARRAY_OPEN;
 }
 	YY_BREAK
 case 49:
 YY_RULE_SETUP
 {
-  return T_LIST_CLOSE;
+  return T_ARRAY_CLOSE;
 }
 	YY_BREAK
 /* ---------------------------------------------------------------------------

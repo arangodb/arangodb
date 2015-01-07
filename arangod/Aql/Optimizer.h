@@ -151,6 +151,9 @@ namespace triagens {
         // remove SORT RAND() if appropriate
         removeSortRandRule_pass5                   = 730,
 
+        // specialize the variables used in a COLLECT INTO
+        specializeCollectVariables_pass5           = 735,
+
         // remove calculations that are never necessary
         removeUnnecessaryCalculationsRule_pass5    = 740,
 

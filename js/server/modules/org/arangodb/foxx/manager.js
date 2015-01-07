@@ -1111,7 +1111,7 @@ exports.mount = function (appId, mount, options) {
     [ appId, mount ] );
 
   // .............................................................................
-  // mark than app has an error and cannot be mounted
+  // mark that app has an error and cannot be mounted
   // .............................................................................
 
   function markAsIllegal (doc, err) {

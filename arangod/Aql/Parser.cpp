@@ -282,25 +282,25 @@ void Parser::registerWarning (int errorCode,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief push an AstNode into the list element on top of the stack
-////////////////////////////////////////////////////////////////////////////////
-
-void Parser::pushList (AstNode* node) {
-  auto list = static_cast<AstNode*>(peekStack());
-  TRI_ASSERT(list->type == NODE_TYPE_ARRAY);
-  list->addMember(node);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief push an AstNode into the array element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushArray (char const* attributeName,
-                        AstNode* node) {
+void Parser::pushArray (AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
-  TRI_ASSERT(array->type == NODE_TYPE_OBJECT);
-  auto element = _ast->createNodeArrayElement(attributeName, node);
-  array->addMember(element);
+  TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
+  array->addMember(node);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the object element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushObject (char const* attributeName,
+                         AstNode* node) {
+  auto object = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+  auto element = _ast->createNodeObjectElement(attributeName, node);
+  object->addMember(element);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

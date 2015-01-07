@@ -128,12 +128,6 @@ Controller = function (context, options) {
 extend(Controller.prototype, {
   currentPriority: 0,
 
-  collection: function (name) {
-    'use strict';
-    require('console').log('Controller#collection is deprecated, use appContext#collection instead');
-    return this.applicationContext.collection(name);
-  },
-
   addInjector: function (name, factory) {
     'use strict';
     if (factory === undefined) {

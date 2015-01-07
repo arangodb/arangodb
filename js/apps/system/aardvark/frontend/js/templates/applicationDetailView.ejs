@@ -38,7 +38,7 @@
         </div>
       </div>
       <div class="swagger">
-        <iframe src="http://localhost:8529/_db/_system/_admin/aardvark/standalone.html#application/documentation/<%= attributes._key %>" name="Documentation"></iframe>
+        <iframe src="./standalone.html#application/documentation/<%= attributes._key %>" name="Documentation"></iframe>
       </div>
     </section>
     <aside class="meta">
@@ -62,7 +62,7 @@
           <ul>
             <% if (!attributes.development) { %>
               <li>
-                <a href="http://localhost:8529/_db/_system/_admin/aardvark/swagger/<%= encodeURIComponent(encodeURIComponent(attributes.mount)) %>" target="_blank">
+                <a href="./swagger/<%= encodeURIComponent(encodeURIComponent(attributes.mount)) %>" target="_blank">
                   Download API Documentation
                 </a>
               </li>

@@ -462,8 +462,8 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inspect one index; only skiplist indices which match attrs in sequence.
-/// @returns a a qualification how good they match;
+/// @brief inspect one index; only skiplist indexes which match attrs in sequence.
+/// @returns a qualification how good they match;
 ///      match->index==nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -609,10 +609,8 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
     _dependencies[i]->toJsonHelper(nodes, zone, verbose);
   }
 
-  triagens::basics::Json json;
-
-  json = triagens::basics::Json(triagens::basics::Json::Object, 2)
-    ("type", triagens::basics::Json(getTypeString()));
+  triagens::basics::Json json(triagens::basics::Json::Object, 5);
+  json("type", triagens::basics::Json(getTypeString()));
 
   if (verbose) {
     json("typeID", triagens::basics::Json(static_cast<int>(getType())));
@@ -644,9 +642,8 @@ triagens::basics::Json ExecutionNode::toJsonHelperGeneric (triagens::basics::Jso
       triagens::basics::Json jsonVarInfoList(triagens::basics::Json::Array, _registerPlan->varInfo.size());
       for (auto oneVarInfo: _registerPlan->varInfo) {
         triagens::basics::Json jsonOneVarInfoArray(triagens::basics::Json::Object, 2);
-        jsonOneVarInfoArray(
-                            "VariableId", 
-                            triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
+        jsonOneVarInfoArray
+          ("VariableId", triagens::basics::Json(static_cast<double>(oneVarInfo.first)))
           ("depth", triagens::basics::Json(static_cast<double>(oneVarInfo.second.depth)))
           ("RegisterId", triagens::basics::Json(static_cast<double>(oneVarInfo.second.registerId)))
           ;
@@ -744,7 +741,6 @@ struct RegisterPlanningDebugger : public WalkerWorker<ExecutionNode> {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ExecutionNode::planRegisters (ExecutionNode* super) {
-  // std::cout << triagens::arango::ServerState::instance()->getId() << ": PLAN REGISTERS\n";
   // The super is only for the case of subqueries.
   shared_ptr<RegisterPlan> v;
   if (super == nullptr) {
@@ -1109,7 +1105,7 @@ size_t EnumerateCollectionNode::getUsableFieldsOfIndex (Index const* idx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get vector of indices with fields <attrs> 
+/// @brief get vector of indexes with fields <attrs> 
 ////////////////////////////////////////////////////////////////////////////////
 
 // checks if a subset of <attrs> is a prefix of <idx->_fields> for every index
@@ -1397,6 +1393,8 @@ ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pat
 ////////////////////////////////////////////////////////////////////////////////
  
 double IndexRangeNode::estimateCost (size_t& nrItems) const { 
+  static double const EqualityReductionFactor = 100.0;
+
   size_t incoming = 0;
   double const dependencyCost = _dependencies.at(0)->getCost(incoming);
   size_t docCount = _collection->count();
@@ -1404,22 +1402,33 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
   TRI_ASSERT(! _ranges.empty());
   
   if (_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
-    nrItems = incoming;
+    // always an equality lookup
+    nrItems = incoming * _ranges.size();
     return dependencyCost + nrItems;
   }
   
   if (_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
-    nrItems = incoming * docCount / 1000;
+    // always an equality lookup
+    nrItems = incoming * _ranges.size() * docCount / EqualityReductionFactor;
     return dependencyCost + nrItems;
   }
   
   if (_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+    // always an equality lookup
     if (_index->unique) {
-      nrItems = incoming;
+      nrItems = incoming * _ranges.size();
       return dependencyCost + nrItems;
     }
-    nrItems = incoming * docCount / 1000;
-    return dependencyCost + nrItems;
+
+    double cost = static_cast<double>(docCount) * incoming * _ranges.size();
+    // the more attributes are contained in the index, the more specific the lookup will be
+    for (auto const& x : _ranges.at(0)) { 
+      cost /= EqualityReductionFactor; 
+    }
+    
+    nrItems = static_cast<size_t>(cost);
+    cost *= 0.9999995; // this is to prefer the hash index over skiplists if everything else is equal
+    return dependencyCost + cost;
   }
 
   if (_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
@@ -1431,56 +1440,78 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
       return dependencyCost + nrItems;
     }
 
-    if (_index->unique && 
-        count == _index->fields.size()) {
-      if (_ranges.at(0).back().is1ValueRangeInfo()) {
+    if (_index->unique) {
+      bool allEquality = true;
+      for (auto const& x : _ranges) {
+        // check if we are using all indexed attributes in the query
+        if (x.size() != _index->fields.size()) {
+          allEquality = false;
+          break;
+        }
+
+        // check if this is an equality comparison
+        if (x.empty() || ! x.back().is1ValueRangeInfo()) {
+          allEquality = false;
+          break;
+        }
+      }
+
+      if (allEquality) {
         // unique index, all attributes compared using eq (==) operator
-        nrItems = incoming;
+        nrItems = incoming * _ranges.size();
         return dependencyCost + nrItems;
       }
     }
 
-    double cost = static_cast<double>(docCount) * incoming;
-    for (auto x: _ranges.at(0)) { //only doing the 1-d case so far
-      if (x.is1ValueRangeInfo()) {
-        // equality lookup
-        cost /= 100.0;
-        continue;
+    // build a total cost for the index usage by peeking into all ranges
+    double totalCost = 0.0;
+
+    for (auto const& x : _ranges) {
+      double cost = static_cast<double>(docCount) * incoming;
+
+      for (auto const& y : x) { //only doing the 1-d case so far
+        if (y.is1ValueRangeInfo()) {
+          // equality lookup
+          cost /= EqualityReductionFactor;
+          continue;
+        }
+
+        bool hasLowerBound = false;
+        bool hasUpperBound = false;
+
+        if (y._lowConst.isDefined() || y._lows.size() > 0) {
+          hasLowerBound = true;
+        }
+        if (y._highConst.isDefined() || y._highs.size() > 0) {
+          hasUpperBound = true;
+        }
+
+        if (hasLowerBound && hasUpperBound) {
+          // both lower and upper bounds defined
+          cost /= 10.0;
+        }
+        else if (hasLowerBound || hasUpperBound) {
+          // either only low or high bound defined
+          cost /= 2.0;
+        }
+
+        // each bound (const and dynamic) counts!
+        size_t const numBounds = y._lows.size() + 
+                                 y._highs.size() + 
+                                 (y._lowConst.isDefined() ? 1 : 0) + 
+                                 (y._highConst.isDefined() ? 1 : 0);
+
+        for (size_t j = 0; j < numBounds; ++j) {
+          // each dynamic bound again reduces the cost
+          cost *= 0.95;
+        }
       }
 
-      bool hasLowerBound = false;
-      bool hasUpperBound = false;
-
-      if (x._lowConst.isDefined() || x._lows.size() > 0) {
-        hasLowerBound = true;
-      }
-      if (x._highConst.isDefined() || x._highs.size() > 0) {
-        hasUpperBound = true;
-      }
-
-      if (hasLowerBound && hasUpperBound) {
-        // both lower and upper bounds defined
-        cost /= 10.0;
-      }
-      else if (hasLowerBound || hasUpperBound) {
-        // either only low or high bound defined
-        cost /= 2.0;
-      }
-
-      // each bound (const and dynamic) counts!
-      size_t const numBounds = x._lows.size() + 
-                               x._highs.size() + 
-                               (x._lowConst.isDefined() ? 1 : 0) + 
-                               (x._highConst.isDefined() ? 1 : 0);
-
-      for (size_t j = 0; j < numBounds; ++j) {
-        // each dynamic bound again reduces the cost
-        cost *= 0.95;
-      }
+      totalCost += cost;
     }
 
-    nrItems = static_cast<size_t>(cost);
-    return dependencyCost + cost;
+    nrItems = static_cast<size_t>(totalCost);
+    return dependencyCost + totalCost;
   }
 
   // no index
@@ -1587,6 +1618,7 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
                                     TRI_memory_zone_t* zone,
                                     bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
@@ -1594,7 +1626,6 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
   json("expression", _expression->toJson(TRI_UNKNOWN_MEM_ZONE, verbose))
       ("outVariable", _outVariable->toJson())
       ("canThrow", triagens::basics::Json(_expression->canThrow()));
-
 
   // And add it:
   nodes(json);
@@ -1621,6 +1652,7 @@ ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
 ////////////////////////////////////////////////////////////////////////////////
         
 double CalculationNode::estimateCost (size_t& nrItems) const {
+  TRI_ASSERT(! _dependencies.empty());
   double depCost = _dependencies.at(0)->getCost(nrItems);
   return depCost + nrItems;
 }
@@ -2017,11 +2049,13 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
 
   triagens::basics::Json values(triagens::basics::Json::Array, _aggregateVariables.size());
+
   for (auto it = _aggregateVariables.begin(); it != _aggregateVariables.end(); ++it) {
     triagens::basics::Json variable(triagens::basics::Json::Object);
     variable("outVariable", (*it).first->toJson())

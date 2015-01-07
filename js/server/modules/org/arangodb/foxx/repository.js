@@ -84,19 +84,6 @@ Repository = function (collection, opts) {
 ////////////////////////////////////////////////////////////////////////////////
 
   this.model = this.options.model || Model;
-  Object.defineProperty(this, 'modelPrototype', {
-    configurable: true,
-    enumerable: true,
-    get: function () {
-      require('console').log('Repository#modelPrototype is deprecated, use Repository#model instead');
-      return this.model;
-    },
-    set: function (val) {
-      require('console').log('Repository#modelPrototype is deprecated, use Repository#model instead');
-      this.model = val;
-      return this.model;
-    }
-  });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_modelSchema

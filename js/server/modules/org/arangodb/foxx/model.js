@@ -28,10 +28,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var Model,
-  _ = require("underscore"),
-  joi = require("joi"),
-  is = require("org/arangodb/is"),
+  _ = require('underscore'),
+  joi = require('joi'),
+  is = require('org/arangodb/is'),
   extend = require('org/arangodb/extend').extend,
+  toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema,
   EventEmitter = require('events').EventEmitter,
   util = require('util'),
   excludeExtraAttributes,
@@ -69,12 +70,6 @@ excludeExtraAttributes = function (attributes, Model) {
     extraAttributeNames = _.difference(
       _.keys(metadataSchema),
       _.keys(Model.prototype.schema)
-    );
-  } else {
-    // deprecated
-    extraAttributeNames = _.difference(
-      _.keys(metadataSchema),
-      _.keys(Model.attributes)
     );
   }
   return _.omit(attributes, extraAttributeNames);
@@ -125,22 +120,6 @@ Model = function (attributes) {
         instance.set(attributeName, attributes ? attributes[attributeName] : undefined);
       }
     );
-  } else if (instance.constructor.attributes) {
-    // deprecated
-    if (attributes) {
-      instance.attributes = _.pick(
-        attributes,
-        _.union(
-          _.keys(metadataSchema),
-          _.keys(instance.constructor.attributes)
-        )
-      );
-    }
-    _.each(instance.constructor.attributes, function (attribute, attributeName) {
-      if (_.has(attribute, 'defaultValue') && instance.attributes[attributeName] === undefined) {
-        instance.attributes[attributeName] = attribute.defaultValue;
-      }
-    });
   } else if (attributes) {
     instance.attributes = _.clone(attributes);
   }
@@ -160,57 +139,8 @@ _.extend(Model, {
 
   toJSONSchema: function (id) {
     'use strict';
-    var required = [],
-      properties = {};
-
-    if (this.prototype.schema) {
-      _.each(this.prototype.schema, function (schema, attributeName) {
-        var description = schema.describe(),
-          jsonSchema = {type: description.type},
-          rules = description.rules,
-          flags = description.flags;
-
-        if (flags && flags.presence === 'required') {
-          jsonSchema.required = true;
-          required.push(attributeName);
-        }
-
-        if (
-          jsonSchema.type === 'number' &&
-            _.isArray(rules) &&
-            _.some(rules, function (rule) {
-              return rule.name === 'integer';
-            })
-        ) {
-          jsonSchema.type = 'integer';
-        }
-
-        properties[attributeName] = jsonSchema;
-      });
-    } else {
-      // deprecated
-      _.each(this.attributes, function (attribute, attributeName) {
-        var jsonSchema = {};
-        if (typeof attribute === 'string') {
-           jsonSchema.type = attribute;
-        } else if (attribute) {
-          if (typeof attribute.type === 'string') {
-            jsonSchema.type = attribute.type;
-          }
-          if (attribute.required) {
-            required.push(attributeName);
-            jsonSchema.required = true;
-          }
-        }
-        properties[attributeName] = jsonSchema;
-      });
-    }
-
-    return {
-      id: id,
-      required: required,
-      properties: properties
-    };
+    require('console').log('Model.toJSONSchema(id) is deprecated, use Foxx.toJSONSchema(id, Model) instead');
+    return toJSONSchema(id, this);
   }
 });
 
