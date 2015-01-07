@@ -889,7 +889,7 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
-  TRI_ASSERT(node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() >= 3);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -903,17 +903,24 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
   auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
 
+  Variable const* outVariable = nullptr;
+
+  if (node->numMembers() > 3) {
+    auto returnVarNode = node->getMember(3);
+    outVariable = static_cast<Variable*>(returnVarNode->getData());
+  }
+
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, v, nullptr));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, v, outVariable));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, calc->outVariable(), nullptr));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, calc->outVariable(), outVariable));
     previous = calc;
   }
 
@@ -927,13 +934,21 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() == 3);
+  TRI_ASSERT(node->numMembers() <= 4);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
+
+  Variable const* outVariable = nullptr;
+
+  if (node->numMembers() > 3) {
+    auto returnVarNode = node->getMember(3);
+    outVariable = static_cast<Variable*>(returnVarNode->getData());
+  }
+
   ExecutionNode* en = nullptr;
 
   if (expression->type == NODE_TYPE_REFERENCE) {
@@ -941,14 +956,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
     en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, v, nullptr));
+                                     collection, options, v, outVariable));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
     en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                      collection, options, calc->outVariable(), nullptr));
+                      collection, options, calc->outVariable(), outVariable));
     previous = calc;
   }
 
@@ -962,16 +977,28 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() >= 3);
+  TRI_ASSERT(node->numMembers() >= 4);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
   auto collections = _ast->query()->collections();
   auto collection = collections->get(collectionName);
   auto docExpression = node->getMember(2);
-  auto keyExpression = node->getOptionalMember(3);
+  auto keyExpression = node->getMember(3);
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
+
+  Variable const* outVariable = nullptr;
+  bool returnNewValues = true;
+  auto returnVarNode = node->getOptionalMember(4);
+  if (returnVarNode != nullptr) {
+    outVariable = static_cast<Variable*>(returnVarNode->getData());
+    returnNewValues = node->getMember(5)->getBoolValue ();
+  }
+
+  if (keyExpression->type == NODE_TYPE_NOP) {
+    keyExpression = nullptr;
+  }
 
   if (keyExpression != nullptr) {
     if (keyExpression->type == NODE_TYPE_REFERENCE) {
@@ -994,14 +1021,16 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
     en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
-                      collection, options, v, keyVariable, nullptr));
+                                     collection, options, v,
+                                     keyVariable, outVariable, returnNewValues));
   }
   else {
     // document operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression);
     calc->addDependency(previous);
     en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
-              collection, options, calc->outVariable(), keyVariable, nullptr));
+                                     collection, options, calc->outVariable(),
+                                     keyVariable, outVariable, returnNewValues));
     previous = calc;
   }
 
@@ -1015,17 +1044,30 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() >= 3);
-  
-  auto options = createOptions(node->getMember(0));
-  char const* collectionName = node->getMember(1)->getStringValue();
-  auto collections = _ast->query()->collections();
-  auto collection = collections->get(collectionName);
-  auto docExpression = node->getMember(2);
-  auto keyExpression = node->getOptionalMember(3);
+  TRI_ASSERT(node->numMembers() >= 4);
+
+  auto options        = createOptions(node->getMember(0));
+  auto collectionName = node->getMember(1)->getStringValue();
+  auto collections    = _ast->query()->collections();
+  auto collection     = collections->get(collectionName);
+  auto docExpression  = node->getMember(2);
+  auto keyExpression  = node->getMember(3);
+
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
+
+  Variable const* outVariable = nullptr;
+  bool returnNewValues = true;
+  auto returnVarNode = node->getOptionalMember(4);
+  if (returnVarNode != nullptr) {
+    outVariable = static_cast<Variable*>(returnVarNode->getData());
+    returnNewValues = node->getMember(5)->getBoolValue ();
+  }
   
+  if (keyExpression->type == NODE_TYPE_NOP) {
+    keyExpression = nullptr;
+  }
+
   if (keyExpression != nullptr) {
     if (keyExpression->type == NODE_TYPE_REFERENCE) {
       // key operand is already a variable
@@ -1047,14 +1089,16 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
     auto v = static_cast<Variable*>(docExpression->getData());
     TRI_ASSERT(v != nullptr);
     en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
-                      collection, options, v, keyVariable, nullptr));
+                                      collection, options, v,
+                                      keyVariable, outVariable, returnNewValues));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(docExpression);
     calc->addDependency(previous);
     en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
-              collection, options, calc->outVariable(), keyVariable, nullptr));
+                                      collection, options, calc->outVariable(),
+                                      keyVariable, outVariable, returnNewValues));
     previous = calc;
   }
 

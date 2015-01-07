@@ -199,8 +199,11 @@ namespace triagens {
 
         bool configureWriteQuery (QueryType,
                                   AstNode const*,
-                                  AstNode*);
-
+                                  AstNode* optionNode,
+                                  char const* newOld = nullptr,
+                                  char const* varInto = nullptr,
+                                  char const* varReturn = nullptr);
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
