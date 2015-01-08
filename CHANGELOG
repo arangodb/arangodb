@@ -1,9 +1,26 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* added optional return value for AQL data-modification queries.
+  This allows returning the documents inserted, removed or updated with the query, e.g.
+
+      FOR doc IN docs REMOVE doc._key IN docs LET removed = OLD RETURN removed
+      FOR doc IN docs INSERT { } IN docs LET inserted = NEW RETURN inserted
+      FOR doc IN docs UPDATE doc._key WITH { } IN docs LET previous = OLD RETURN previous
+      FOR doc IN docs UPDATE doc._key WITH { } IN docs LET updated = NEW RETURN updated
+
+  The variables `OLD` and `NEW` are automatically available when a `REMOVE`, `INSERT`,
+  `UPDATE` or `REPLACE` statement is immediately followed by a `LET` statement.
+  Note that the `LET` and `RETURN` statements in data-modification queries are not as
+  flexible as the general versions of `LET` and `RETURN`. When returning documents from
+  data-modification operations, only a single variable can be assigned using `LET`, and
+  the assignment can only be either `OLD` or `NEW`, but not an arbitrary expression. The
+  `RETURN` statement also allows using the just-created variable only, and no arbitrary
+  expressions.
+
 * fixed issue #1065: Aardvark: added creation of documents and edges with _key property
 
-* fixed issue #1198: Aardvark: current aql editor query is now cached
+* fixed issue #1198: Aardvark: current AQL editor query is now cached
 
 * Upgraded V8 version from 3.16.14 to 3.29.59
 
