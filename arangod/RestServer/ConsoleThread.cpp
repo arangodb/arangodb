@@ -169,7 +169,6 @@ void ConsoleThread::inner () {
 
       if (input == nullptr) {
         _userAborted = true;
-        localContext->Exit();
         break;
       }
 
