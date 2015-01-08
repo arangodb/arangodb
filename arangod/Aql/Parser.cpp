@@ -103,46 +103,43 @@ bool Parser::configureWriteQuery (QueryType type,
   _type = type;
 
   switch(_type) {
-  case AQL_QUERY_READ:
-    break;
-  case AQL_QUERY_REMOVE:
-    if (newOld != nullptr) {
-      if (!TRI_CaseEqualString(newOld, "OLD")) {
-        _query->registerError(TRI_ERROR_QUERY_PARSE, "OLD expected");
-        return false;
+    case AQL_QUERY_READ:
+      break;
+
+    case AQL_QUERY_REMOVE:
+      if (newOld != nullptr) {
+        if (! TRI_CaseEqualString(newOld, "OLD")) {
+          _query->registerError(TRI_ERROR_QUERY_PARSE, "OLD expected");
+          return false;
+        }
       }
-      if (!TRI_CaseEqualString(varInto, varReturn)) {
-        _query->registerError(TRI_ERROR_QUERY_PARSE, "WITH thisVariable RETURN thisVariable expected.");
-        return false;
+      break;
+
+    case AQL_QUERY_INSERT:
+      if (newOld != nullptr) {
+        if (! TRI_CaseEqualString(newOld, "NEW")) {
+          _query->registerError(TRI_ERROR_QUERY_PARSE, "NEW expected");
+          return false;
+        }
       }
+      break;
+
+    case AQL_QUERY_UPDATE:
+    case AQL_QUERY_REPLACE:
+      if (newOld != nullptr) {
+        if (! TRI_CaseEqualString(newOld, "OLD") && ! TRI_CaseEqualString(newOld, "NEW")) {
+          _query->registerError(TRI_ERROR_QUERY_PARSE, "NEW or OLD expected");
+          return false;
+        }
+      }
+      break;
+  }
+
+  if (varInto != nullptr && varReturn != nullptr) {
+    if (! TRI_CaseEqualString(varInto, varReturn)) {
+      _query->registerError(TRI_ERROR_QUERY_PARSE, "invalid variable used in data-modification operation");
+      return false;
     }
-    break;
-  case AQL_QUERY_INSERT:
-    if (newOld != nullptr) {
-      if (!TRI_CaseEqualString(newOld, "NEW")) {
-        _query->registerError(TRI_ERROR_QUERY_PARSE, "NEW expected");
-        return false;
-      }
-      if (!TRI_CaseEqualString(varInto, varReturn)) {
-        _query->registerError(TRI_ERROR_QUERY_PARSE, "WITH thisVariable RETURN thisVariable expected.");
-        return false;
-      }
-      
-    }
-    break;
-  case AQL_QUERY_UPDATE:
-  case AQL_QUERY_REPLACE:
-    if (newOld != nullptr) {
-      if (!TRI_CaseEqualString(newOld, "OLD") && !TRI_CaseEqualString(newOld, "NEW")) {
-        _query->registerError(TRI_ERROR_QUERY_PARSE, "NEW|OLD expected");
-        return false;
-      }
-      if (!TRI_CaseEqualString(varInto, varReturn)) {
-        _query->registerError(TRI_ERROR_QUERY_PARSE, "WITH thisVariable RETURN thisVariable expected.");
-        return false;
-      }
-    }
-    break;
   }
 
   return true;

@@ -2537,7 +2537,6 @@ ExecutionNode* UpdateNode::clone (ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            methods of ReplaceNode
 // -----------------------------------------------------------------------------

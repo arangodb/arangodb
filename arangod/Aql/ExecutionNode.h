@@ -2526,7 +2526,7 @@ namespace triagens {
           : ModificationNode(plan, id, vocbase, collection, options, outVariable),
             _inDocVariable(inDocVariable),
             _inKeyVariable(inKeyVariable), 
-            _returnNewValues(returnNewValues){
+            _returnNewValues(returnNewValues) {
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
@@ -2642,7 +2642,8 @@ namespace triagens {
                      bool returnNewValues)
           : ModificationNode(plan, id, vocbase, collection, options, outVariable),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable) {
+            _inKeyVariable(inKeyVariable),
+            _returnNewValues(returnNewValues) {
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
