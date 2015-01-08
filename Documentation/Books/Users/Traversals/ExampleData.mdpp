@@ -197,3 +197,13 @@ db.e.save("v/capital-yamoussoukro", "v/country-cote-d-ivoire", { type: "is-in" }
 db.e.save("v/capital-yaounde", "v/country-cameroon", { type: "is-in" });
 db.e.save("v/capital-zagreb", "v/country-croatia", { type: "is-in" });
 ```
+
+To create a graph consisting of these vertices and edges: 
+
+```js
+var graph_module = require("org/arangodb/general-graph");
+var graph = graph_module._create("world_graph");
+graph._addVertexCollection("v");
+var rel = graph_module._relation("e", ["v"], ["v"]);
+graph._extendEdgeDefinitions(rel);
+```
