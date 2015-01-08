@@ -201,7 +201,6 @@ bool ApplicationV8::V8Context::addGlobalContextMethod (string const& method) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::V8Context::handleGlobalContextMethods () {
-
   vector<GlobalContextMethods::MethodType> copy;
 
   {
@@ -637,6 +636,7 @@ void ApplicationV8::collectGarbage () {
     if (context != nullptr) {
       LOG_TRACE("collecting V8 garbage");
       auto isolate = context->isolate;
+      TRI_ASSERT(context->_locker == nullptr);
       context->_locker = new v8::Locker(isolate);
       isolate->Enter();
       {
@@ -707,6 +707,7 @@ void ApplicationV8::upgradeDatabase (bool skip,
   // enter context and isolate
   V8Context* context = _contexts[name][0];
 
+  TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(context->isolate);
   auto isolate = context->isolate;
   isolate->Enter();
@@ -816,6 +817,7 @@ void ApplicationV8::versionCheck () {
   // enter context and isolate
   V8Context* context = _contexts[name][0];
 
+  TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(context->isolate);
   auto isolate = context->isolate;
   isolate->Enter();
@@ -929,6 +931,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
     // and generate MAIN
     V8Context* context = _contexts[name][i];
 
+    TRI_ASSERT(context->_locker == nullptr);
     context->_locker = new v8::Locker(context->isolate);
     auto isolate = context->isolate;
     isolate->Enter();
@@ -1279,16 +1282,19 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
   v8::Isolate* isolate = v8::Isolate::New();
   
-  V8Context* context = _contexts[name][i] =new V8Context();
+  V8Context* context = _contexts[name][i] = new V8Context();
 
   if (context == nullptr) {
     LOG_FATAL_AND_EXIT("cannot initialize V8 context #%d", (int) i);
   }
+  
+  TRI_ASSERT(context->_locker == nullptr);
 
   // enter a new isolate
   context->_name = name;
   context->_id = i;
   context->isolate = isolate;
+  TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(isolate);
   context->isolate->Enter();
 
@@ -1396,6 +1402,7 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
   V8Context* context = _contexts[name][i];
 
   auto isolate = context->isolate;
+  TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(isolate);
   v8::HandleScope scope(isolate);
   isolate->Enter();
@@ -1434,6 +1441,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
 
   auto isolate = context->isolate;
   isolate->Enter();
+  TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(isolate);
   {
     v8::HandleScope scope(isolate);
