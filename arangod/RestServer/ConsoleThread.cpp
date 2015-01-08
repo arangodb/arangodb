@@ -117,7 +117,7 @@ void ConsoleThread::run () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ConsoleThread::inner () {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent(); // TODO: this may go away.
+  v8::Isolate* isolate = _context->isolate;
   v8::HandleScope globalScope(isolate);
 
   // run the shell
@@ -127,71 +127,74 @@ void ConsoleThread::inner () {
 
   auto localContext = v8::Local<v8::Context>::New(isolate, _context->_context);
   localContext->Enter();
-  v8::Context::Scope contextScope(localContext);
+  {
+    v8::Context::Scope contextScope(localContext);
 
-  // .............................................................................
-  // run console
-  // .............................................................................
+    // .............................................................................
+    // run console
+    // .............................................................................
 
-  const uint64_t gcInterval = 10;
-  uint64_t nrCommands = 0;
+    const uint64_t gcInterval = 10;
+    uint64_t nrCommands = 0;
 
-  const std::string pretty = "start_pretty_print();";
+    const std::string pretty = "start_pretty_print();";
 
-  TRI_ExecuteJavaScriptString(isolate,
-                              localContext,
-                              TRI_V8_STD_STRING(pretty),
-                              TRI_V8_ASCII_STRING("(internal)"),
-                              false);
+    TRI_ExecuteJavaScriptString(isolate,
+                                localContext,
+                                TRI_V8_STD_STRING(pretty),
+                                TRI_V8_ASCII_STRING("(internal)"),
+                                false);
 
-  V8LineEditor console(localContext, ".arangod.history");
+    V8LineEditor console(localContext, ".arangod.history");
 
-  console.open(true);
+    console.open(true);
 
-  while (! _userAborted) {
-    if (nrCommands >= gcInterval) {
-      isolate->LowMemoryNotification();
-      while (! isolate->IdleNotification(1000)) {
+    while (! _userAborted) {
+      if (nrCommands >= gcInterval) {
+        isolate->LowMemoryNotification();
+        while (! isolate->IdleNotification(1000)) {
+        }
+
+        nrCommands = 0;
       }
 
-      nrCommands = 0;
-    }
+      char* input = console.prompt("arangod> ");
 
-    char* input = console.prompt("arangod> ");
+      if (_userAborted) {
+        if (input != nullptr) {
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+        }
+        break;
+      }
 
-    if (_userAborted) {
-      if (input != nullptr) {
+      if (input == nullptr) {
+        _userAborted = true;
+        localContext->Exit();
+        break;
+      }
+
+      if (*input == '\0') {
         TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+        continue;
       }
-      throw "user aborted";
-    }
 
-    if (input == nullptr) {
-      _userAborted = true;
+      nrCommands++;
+      console.addHistory(input);
 
-      // this will be caught by "run"
-      throw "user aborted";
-    }
+      {
+        v8::TryCatch tryCatch;
+        v8::HandleScope scope(isolate);
 
-    if (*input == '\0') {
-      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-      continue;
-    }
+        TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input), name, true);
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
 
-    nrCommands++;
-    console.addHistory(input);
-
-    v8::TryCatch tryCatch;
-    v8::HandleScope scope(isolate);
-
-    TRI_ExecuteJavaScriptString(isolate, localContext, TRI_V8_STRING(input), name, true);
-    TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-
-    if (tryCatch.HasCaught()) {
-      std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+        if (tryCatch.HasCaught()) {
+          std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+        }
+      }
     }
   }
-
+  localContext->Exit();
   throw "user aborted";
 }
 
