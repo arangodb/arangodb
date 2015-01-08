@@ -109,7 +109,7 @@ bool Parser::configureWriteQuery (QueryType type,
     case AQL_QUERY_REMOVE:
       if (newOld != nullptr) {
         if (! TRI_CaseEqualString(newOld, "OLD")) {
-          _query->registerError(TRI_ERROR_QUERY_PARSE, "OLD expected");
+          _query->registerError(TRI_ERROR_QUERY_PARSE, "remove operations can only refer to 'OLD' value");
           return false;
         }
       }
@@ -118,7 +118,7 @@ bool Parser::configureWriteQuery (QueryType type,
     case AQL_QUERY_INSERT:
       if (newOld != nullptr) {
         if (! TRI_CaseEqualString(newOld, "NEW")) {
-          _query->registerError(TRI_ERROR_QUERY_PARSE, "NEW expected");
+          _query->registerError(TRI_ERROR_QUERY_PARSE, "insert operations can only refer to 'NEW' value");
           return false;
         }
       }
@@ -128,7 +128,7 @@ bool Parser::configureWriteQuery (QueryType type,
     case AQL_QUERY_REPLACE:
       if (newOld != nullptr) {
         if (! TRI_CaseEqualString(newOld, "OLD") && ! TRI_CaseEqualString(newOld, "NEW")) {
-          _query->registerError(TRI_ERROR_QUERY_PARSE, "NEW or OLD expected");
+          _query->registerError(TRI_ERROR_QUERY_PARSE, "update/replace operations can only refer to 'NEW' or 'OLD' values");
           return false;
         }
       }
@@ -137,7 +137,7 @@ bool Parser::configureWriteQuery (QueryType type,
 
   if (varInto != nullptr && varReturn != nullptr) {
     if (! TRI_CaseEqualString(varInto, varReturn)) {
-      _query->registerError(TRI_ERROR_QUERY_PARSE, "invalid variable used in data-modification operation");
+      _query->registerError(TRI_ERROR_QUERY_PARSE, "invalid variable used in data-modification operation return value");
       return false;
     }
   }
