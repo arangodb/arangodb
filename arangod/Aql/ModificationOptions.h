@@ -54,7 +54,8 @@ namespace triagens {
         : ignoreErrors(false),
           waitForSync(false),
           nullMeansRemove(false),
-          mergeObjects(true) {
+          mergeObjects(true),
+          ignoreDocumentNotFound(false) {
       }
 
       void toJson (triagens::basics::Json& json, TRI_memory_zone_t* zone) const;
@@ -67,6 +68,7 @@ namespace triagens {
       bool waitForSync;
       bool nullMeansRemove;
       bool mergeObjects;
+      bool ignoreDocumentNotFound;
 
     };
 

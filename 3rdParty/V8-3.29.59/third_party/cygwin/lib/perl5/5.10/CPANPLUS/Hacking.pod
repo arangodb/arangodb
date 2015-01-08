@@ -1,0 +1,142 @@
+=pod
+
+=head1 NAME
+
+CPANPLUS::Hacking
+
+=head1 DESCRIPTION
+
+This document attempts to describe how to easiest develop with the
+CPANPLUS environment, how certain things work and why.
+
+This is basically a quick-start guide to people who want to add
+features or patches to CPANPLUS.
+
+=head1 OBTAINING CPANPLUS
+
+CPANPLUS offers snapshots from the stable and unstable branches.
+After every patch to either of the branches, the snapshot is
+automatically updated.
+
+You can find the stable branch here (which should be equal to the
+CPAN release): L<http://p4.elixus.org/snap/cpanplus-dist.tar.gz>
+
+And the development branch here:
+L<http://p4.elixus.org/snap/cpanplus-devel.tar.gz>
+
+=head1 INSTALLING CPANPLUS
+
+CPANPLUS follows the standard perl module installation process:
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+=head1 CONFIGURING CPANPLUS
+
+When running C<perl Makefile.PL> you will be prompted to configure.
+If you have already done so, and merely wish to update the C<Makefile>,
+simply run:
+
+    perl Makefile.PL JFDI=1
+
+This will keep your configuration intact. Note however, if there are
+changes to the default configuration file C<Config.pm-orig>, you should
+either delete your current config file and reconfigure, or patch your
+config file from the new entries in C<Config.pm-orig>.
+
+=head1 RUNNING CPANPLUS FROM DEVELOPMENT ENVIRONMENT
+
+If you'd rather not install the development version to your
+C<site_perl> directory, that's no problem. You can set your C<PERL5LIB>
+environment variable to CPANPLUS' C<lib> directory, and you can run it
+from there.
+
+=head1 RUNNING CPANPLUS TESTS
+
+Tests are what tells us if CPANPLUS is working. If a test is not working,
+try to run it explicilty like this:
+
+    perl -I/path/to/cpanplus/lib t/XX_name_of_test.t 1
+
+The extra '1' makes sure that all the messages and errors (they might
+be errors we're testing for!) are being printed rather than kept quiet.
+This is a great way to find out the context of any failures that may
+occur.
+
+If you believe this test failure proves a bug in CPANPLUS, the long
+output of the test file is something we'd like to see alongside your
+bug report.
+
+=head1 FINDING BUGS
+
+Sometimes you might find bugs in CPANPLUS' behaviour. If you encounter
+these in a development snapshot, we'd appreciate a complete patch (as
+described below in the L<SENDING PATCHES> section.
+
+If it's way over your head, then of course reporting the bug is always
+better than not reporting it at all. Before you do so though, make
+sure you have the B<latest> development snapshot, and the bug still
+persists there. If so, report the bug to this address:
+
+    cpanplus-devel@lists.sourceforge.net
+
+A good C<patch> would have the following characteristics:
+
+=over 4
+
+=item Problem description
+
+Describe clearly what the bug is you found, and what it should have
+done instead.
+
+=item Program demonstrating the bug
+
+Show us how to reproduce the bug, in a simple of a program as possible
+
+=item [OPTIONAL] A patch to the test suite to test for the bug
+
+Amend our test suite by making sure this bug will be found in this, and
+future versions of CPANPLUS (see L<SUPPLYING PATCHES>)
+
+=item [OPTIONAL] A patch to the code + tests + documentation
+
+Fix the bug, update the docs & tests. That way your bug will be gone
+forever :)
+
+=back
+
+=head1 SUPPLYING PATCHES
+
+Patches are a good thing, and they are welcome. Especially if they fix
+bugs you've found along the way, or that others have reported.
+
+We prefer patches in the following format:
+
+=over 4
+
+=item * In C<diff -u> or C<diff -c> format
+
+=item * From the root of the snapshot
+
+=item * Including patches for code + tests + docs
+
+=item * Sent per mail to cpanplus-devel@lists.sourceforge.net
+
+=item * With subject containing C<[PATCH]> + description of the patch
+
+=back
+
+You will always be informed if a patch is applied or rejected, and in
+case of rejection why that is (perhaps you can tweak the patch to have
+it accepted after all).
+
+=cut
+
+__END__
+
+* perl5lib
+* perl t/foo 1
+* patches to cpanplus-devel
+* snap/devel.tgz

@@ -183,11 +183,16 @@ exports._PRINT = function (context) {
 
   context.output += "\n\n" +
                     headline + "\n\n" +
-                    process(lessons[index].text + "\n") + "\n" +
-                    next + "\n";
+                    process(lessons[index].text + "\n") + "\n";
 
-  if (index++ >= lessons.length) {
+  ++index;
+
+  if (index >= lessons.length) {
+    context.output += "Congratulations! You finished the tutorial.\n";
     index = 0;
+  }
+  else {
+    context.output += next + "\n";
   }
 };
 

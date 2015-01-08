@@ -856,6 +856,18 @@ static int CloneMarkerNoLegend (triagens::wal::Marker*& marker,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BeginRead (TRI_document_collection_t* document) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(document->_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginRead blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "BeginRead: " << document->_info._name << std::endl;
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return TRI_ERROR_NO_ERROR;
@@ -866,6 +878,18 @@ static int BeginRead (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EndRead (TRI_document_collection_t* document) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(document->_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndRead blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "EndRead: " << document->_info._name << std::endl;
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return TRI_ERROR_NO_ERROR;
@@ -876,6 +900,18 @@ static int EndRead (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int BeginWrite (TRI_document_collection_t* document) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(document->_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWrite blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING_DEBUG
+  // std::cout << "BeginWrite: " << document->_info._name << std::endl;
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return TRI_ERROR_NO_ERROR;
@@ -886,6 +922,18 @@ static int BeginWrite (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int EndWrite (TRI_document_collection_t* document) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(document->_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "EndWrite blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+  // LOCKING-DEBUG
+  // std::cout << "EndWrite: " << document->_info._name << std::endl;
   TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   return TRI_ERROR_NO_ERROR;
@@ -898,8 +946,20 @@ static int EndWrite (TRI_document_collection_t* document) {
 static int BeginReadTimed (TRI_document_collection_t* document,
                            uint64_t timeout,
                            uint64_t sleepPeriod) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(document->_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginReadTimed blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
   uint64_t waited = 0;
 
+  // LOCKING-DEBUG
+  // std::cout << "BeginReadTimed: " << document->_info._name << std::endl;
   while (! TRI_TRY_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
 #ifdef _WIN32
     usleep((unsigned long) sleepPeriod);
@@ -924,8 +984,20 @@ static int BeginReadTimed (TRI_document_collection_t* document,
 static int BeginWriteTimed (TRI_document_collection_t* document,
                             uint64_t timeout,
                             uint64_t sleepPeriod) {
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(document->_info._name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "BeginWriteTimed blocked: " << document->_info._name << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
   uint64_t waited = 0;
 
+  // LOCKING-DEBUG
+  // std::cout << "BeginWriteTimed: " << document->_info._name << std::endl;
   while (! TRI_TRY_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document)) {
 #ifdef _WIN32
     usleep((unsigned long) sleepPeriod);
@@ -4900,6 +4972,9 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
   {
     TRI_IF_FAILURE("RemoveDocumentNoLock") {
       // test what happens if no lock can be acquired
+      if (freeMarker) {
+        delete marker;
+      }
       return TRI_ERROR_DEBUG;
     }
 
@@ -4947,8 +5022,11 @@ int TRI_RemoveShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     }
 
     res = TRI_AddOperationTransaction(operation, forceSync);
-
-    if (res == TRI_ERROR_NO_ERROR && forceSync) {
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else if (forceSync) {
       markerTick = operation.tick;
     }
   }
@@ -5073,7 +5151,10 @@ int TRI_InsertShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     // insert into indexes
     res = InsertDocument(trxCollection, header, operation, mptr, forceSync);
 
-    if (res == TRI_ERROR_NO_ERROR) {
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else {
       TRI_ASSERT(mptr->getDataPtr() != nullptr);  // PROTECTED by trx in trxCollection
 
       if (forceSync) {
@@ -5174,8 +5255,11 @@ int TRI_UpdateShapedJsonDocumentCollection (TRI_transaction_collection_t* trxCol
     operation.init();
 
     res = UpdateDocument(trxCollection, oldHeader, operation, mptr, forceSync);
-
-    if (res == TRI_ERROR_NO_ERROR && forceSync) {
+    
+    if (res != TRI_ERROR_NO_ERROR) {
+      operation.revert();
+    }
+    else if (forceSync) {
       markerTick = operation.tick;
     }
   }

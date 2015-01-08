@@ -134,7 +134,6 @@ namespace triagens {
         // move filters up the dependency chain (to make result sets as small
         // as possible as early as possible)
         moveFiltersUpRule_pass4                    = 620,
-        
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
@@ -146,14 +145,20 @@ namespace triagens {
         pass5                                      = 700,
         removeUnnecessaryFiltersRule_pass5         = 710,
 
-        // remove calculations that are never necessary
-        removeUnnecessaryCalculationsRule_pass5    = 720,
-
         // remove redundant sort blocks
-        removeRedundantSortsRule_pass5             = 730,
+        removeRedundantSortsRule_pass5             = 720,
+
+        // remove SORT RAND() if appropriate
+        removeSortRandRule_pass5                   = 730,
+
+        // specialize the variables used in a COLLECT INTO
+        specializeCollectVariables_pass5           = 735,
+
+        // remove calculations that are never necessary
+        removeUnnecessaryCalculationsRule_pass5    = 740,
 
         // remove INTO for COLLECT if appropriate
-        removeCollectIntoRule_pass5                = 740,
+        removeCollectIntoRule_pass5                = 750,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes

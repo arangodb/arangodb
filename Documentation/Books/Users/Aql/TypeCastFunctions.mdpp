@@ -46,13 +46,15 @@ will return a number value):
     is converted to a comma-separated array with the string representation of its members.
   - An object / document is converted to the string *[object Object]*.
 
-- *TO_LIST(value)*: Takes an input *value* of any type and converts it 
+- *TO_ARRAY(value)*: Takes an input *value* of any type and converts it 
   into an array value as follows:
   - *null* is converted to an empty array.
   - Boolean values, numbers and strings are converted to an array containing the original
     value as its single element.
   - Arrays keep their original value.
   - Objects / documents are converted to an array containing their attribute values as array elements
+
+- *TO_LIST(value)*: This is an alias for *TO_ARRAY*.
 
 !SECTION Type check functions
 
@@ -71,6 +73,10 @@ The following type check functions are available:
 
 - *IS_STRING(value)*: Checks whether *value* is a *string* value
 
-- *IS_LIST(value)*: Checks whether *value* is an *array* value
+- *IS_ARRAY(value)*: Checks whether *value* is an *array* value
 
-- *IS_DOCUMENT(value)*: Checks whether *value* is an *object* / *document* value
+- *IS_LIST(value)*: This is an alias for *IS_ARRAY*
+
+- *IS_OBJECT(value)*: Checks whether *value* is an *object* / *document* value
+
+- *IS_DOCUMENT(value)*: This is an alias for *IS_OBJECT*

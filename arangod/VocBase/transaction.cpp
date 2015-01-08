@@ -40,6 +40,7 @@
 #include "VocBase/vocbase.h"
 #include "Wal/DocumentOperation.h"
 #include "Wal/LogfileManager.h"
+#include "Utils/Transaction.h"
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 
@@ -341,6 +342,18 @@ static int LockCollection (TRI_transaction_collection_t* trxCollection,
   }
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
+
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(trxCollection->_collection->_name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "LockCollection blocked: " << collName << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(! IsLocked(trxCollection));
 
@@ -394,6 +407,18 @@ static int UnlockCollection (TRI_transaction_collection_t* trxCollection,
   }
 
   TRI_ASSERT(trxCollection->_collection != nullptr);
+
+  if (triagens::arango::Transaction::_makeNolockHeaders != nullptr) {
+    std::string collName(trxCollection->_collection->_name);
+    auto it = triagens::arango::Transaction::_makeNolockHeaders->find(collName);
+    if (it != triagens::arango::Transaction::_makeNolockHeaders->end()) {
+      // do not lock by command
+      // LOCKING-DEBUG
+      // std::cout << "UnlockCollection blocked: " << collName << std::endl;
+      return TRI_ERROR_NO_ERROR;
+    }
+  }
+
   TRI_ASSERT(trxCollection->_collection->_collection != nullptr);
   TRI_ASSERT(IsLocked(trxCollection));
 
@@ -1187,7 +1212,7 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
    
   TRI_ASSERT(fid > 0);
   TRI_ASSERT(position != nullptr);
-
+  
   if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT ||
       operation.type == TRI_VOC_DOCUMENT_OPERATION_UPDATE) {
     // adjust the data position in the header
@@ -1195,6 +1220,10 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
     if (operation.type == TRI_VOC_DOCUMENT_OPERATION_INSERT && sizeChanged) {
       document->_headersPtr->adjustTotalSize(0, sizeChanged);
     }
+  }
+  
+  TRI_IF_FAILURE("TransactionOperationAfterAdjust") {
+    return TRI_ERROR_DEBUG;
   }
 
   // set header file id
@@ -1242,6 +1271,10 @@ int TRI_AddOperationTransaction (triagens::wal::DocumentOperation& operation,
   }
 
   TRI_UpdateRevisionDocumentCollection(document, operation.rid, false);
+  
+  TRI_IF_FAILURE("TransactionOperationAtEnd") {
+    return TRI_ERROR_DEBUG;
+  }
 
   return TRI_ERROR_NO_ERROR;
 }

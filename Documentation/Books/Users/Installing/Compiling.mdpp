@@ -326,7 +326,10 @@ about missing files etc., the following commands should fix it:
     ./configure <your configure options go here>
     make
 
+This will clean up ArangoDB and the 3rd party libraries, and rebuild everything.
+
 If you forgot your previous configure options, you can look them up with
 
     head config.log
-    
+   
+before issuing `make superclean` (as make `superclean` also removes the file `config.log`). 

@@ -156,7 +156,7 @@ follows
 * If no file can be found, ArangoDB will check if the collection *_modules*
   contains a document of the form
 
-```js  
+```js
 {
   path: "/com/example/extension",
   content: "...."

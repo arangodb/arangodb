@@ -1,24 +1,24 @@
 #!/bin/bash
+set -e
+
+echo
+echo '$0: loading precompiled libraries'
+
+wget -q -O - "https://www.arangodb.com/support-files/travisCI/precompiled-libraries.tar.gz" | tar xzvf - 
 
 echo
 echo '$0: setup make-system'
 
-make setup || exit 1
+make setup
 
 echo
 echo "$0: configuring ArangoDB"
-# V8 needs lib realtime:
-./configure \
-	--enable-relative \
-	--enable-all-in-one-libev \
-	--enable-all-in-one-v8 \
-	--enable-all-in-one-icu \
-	|| exit 1
+./configure --enable-relative
 
 echo
 echo "$0: compiling ArangoDB"
 
-make -j2 || exit 1
+make -j2
 
 echo
 echo "$0: done"

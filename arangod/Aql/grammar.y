@@ -1,4 +1,4 @@
-
+%define lr.type ielr
 %define api.pure
 %name-prefix "Aql"
 %locations 
@@ -117,10 +117,10 @@ void Aqlerror (YYLTYPE* locp,
 %token T_COMMA ","
 %token T_OPEN "("
 %token T_CLOSE ")"
-%token T_DOC_OPEN "{"
-%token T_DOC_CLOSE "}"
-%token T_LIST_OPEN "["
-%token T_LIST_CLOSE "]"
+%token T_OBJECT_OPEN "{"
+%token T_OBJECT_CLOSE "}"
+%token T_ARRAY_OPEN "["
+%token T_ARRAY_CLOSE "]"
 
 %token T_END 0 "end of query string"
 
@@ -169,15 +169,15 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> optional_function_call_arguments;
 %type <node> function_arguments_list;
 %type <node> compound_type;
-%type <node> list;
-%type <node> optional_list_elements;
-%type <node> list_elements_list;
 %type <node> array;
-%type <node> query_options;
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
-%type <node> array_element;
-%type <strval> array_element_name;
+%type <node> object;
+%type <node> query_options;
+%type <node> optional_object_elements;
+%type <node> object_elements_list;
+%type <node> object_element;
+%type <strval> object_element_name;
 %type <node> reference;
 %type <node> single_reference;
 %type <node> expansion;
@@ -279,7 +279,7 @@ count_into:
 
 collect_variable_list:
     T_COLLECT {
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } collect_list { 
       auto list = static_cast<AstNode*>(parser->popStack());
@@ -309,7 +309,7 @@ collect_statement:
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
       }
 
-      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeList(), $2);
+      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2);
       parser->ast()->addOperation(node);
     }
   | collect_variable_list count_into {
@@ -409,7 +409,7 @@ collect_list:
 collect_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeAssign($1, $3);
-      parser->pushList(node);
+      parser->pushArray(node);
     }
   ;
 
@@ -435,7 +435,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushList(node);
+      parser->pushArray(node);
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3)) {
@@ -449,7 +449,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushList(node);
+      parser->pushArray(node);
     }
   ;
 
@@ -462,7 +462,7 @@ optional_keep:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1, yylloc.first_line, yylloc.first_column);
       }
 
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } variable_list {
       auto list = static_cast<AstNode*>(parser->popStack());
@@ -472,7 +472,7 @@ optional_keep:
 
 sort_statement:
     T_SORT {
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } sort_list {
       auto list = static_cast<AstNode const*>(parser->popStack());
@@ -483,10 +483,10 @@ sort_statement:
 
 sort_list: 
     sort_element {
-      parser->pushList($1);
+      parser->pushArray($1);
     }
   | sort_list T_COMMA sort_element {
-      parser->pushList($3);
+      parser->pushArray($3);
     }
   ;
 
@@ -536,9 +536,9 @@ in_or_into_collection:
       $$ = $2;
     }
   | T_INTO collection_name {
-      $$ = $2;
-    }
-  ; 
+       $$ = $2;
+     }
+   ;
 
 remove_statement:
     T_REMOVE expression in_or_into_collection query_options {
@@ -546,6 +546,14 @@ remove_statement:
         YYABORT;
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_REMOVE expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4, $6, $8, $10)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeRemove($2, $3, $4, $6, $8, $10);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
@@ -560,6 +568,15 @@ insert_statement:
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
+  | T_INSERT expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4, $6, $8, $10)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeInsert($2, $3, $4, $6, $8, $10);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+
   ;
 
 update_statement:
@@ -579,6 +596,22 @@ update_statement:
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
+  | T_UPDATE expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $3, $4, $6, $8, $10)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4, $6, $8, $10);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_UPDATE expression T_WITH expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6, $8, $10, $12)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6, $8, $10, $12);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
   ;
 
 replace_statement:
@@ -595,6 +628,22 @@ replace_statement:
         YYABORT;
       }
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_REPLACE expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
+      parser->ast()->addOperation(node);
+      parser->ast()->scopes()->endNested();
+    }
+  | T_REPLACE expression T_WITH expression in_or_into_collection query_options T_WITH T_STRING T_INTO variable_name T_RETURN variable_name {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6, $8, $10, $12)) {
+        YYABORT;
+      }
+      auto node = parser->ast()->createNodeReplace($2, $4, $5, $6, $8, $10, $12);
       parser->ast()->addOperation(node);
       parser->ast()->scopes()->endNested();
     }
@@ -668,7 +717,7 @@ function_call:
     function_name {
       parser->pushStack($1);
 
-      auto node = parser->ast()->createNodeList();
+      auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
     } T_OPEN optional_function_call_arguments T_CLOSE %prec FUNCCALL {
       auto list = static_cast<AstNode const*>(parser->popStack());
@@ -770,69 +819,27 @@ expression_or_query:
 
 function_arguments_list:
     expression_or_query {
-      parser->pushList($1);
+      parser->pushArray($1);
     }
   | function_arguments_list T_COMMA expression_or_query {
-      parser->pushList($3);
+      parser->pushArray($3);
     }
   ;
 
 compound_type:
-    list {
+    array {
       $$ = $1;
     }
-  | array {
+  | object {
       $$ = $1;
     }
   ;
 
-list: 
-    T_LIST_OPEN {
-      auto node = parser->ast()->createNodeList();
-      parser->pushStack(node);
-    } optional_list_elements T_LIST_CLOSE {
-      $$ = static_cast<AstNode*>(parser->popStack());
-    }
-  ;
-
-optional_list_elements:
-    /* empty */ {
-    }
-  | list_elements_list {
-    }
-  ;
-
-list_elements_list:
-    expression {
-      parser->pushList($1);
-    }
-  | list_elements_list T_COMMA expression {
-      parser->pushList($3);
-    }
-  ;
-
-query_options:
-    /* empty */ {
-      $$ = nullptr;
-    }
-  | T_STRING array {
-      if ($1 == nullptr || $2 == nullptr) {
-        ABORT_OOM
-      }
-
-      if (! TRI_CaseEqualString($1, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = $2;
-    }
-  ;
-
-array:
-    T_DOC_OPEN {
+array: 
+    T_ARRAY_OPEN {
       auto node = parser->ast()->createNodeArray();
       parser->pushStack(node);
-    } optional_array_elements T_DOC_CLOSE {
+    } optional_array_elements T_ARRAY_CLOSE {
       $$ = static_cast<AstNode*>(parser->popStack());
     }
   ;
@@ -845,15 +852,57 @@ optional_array_elements:
   ;
 
 array_elements_list:
-    array_element {
+    expression {
+      parser->pushArray($1);
     }
-  | array_elements_list T_COMMA array_element {
+  | array_elements_list T_COMMA expression {
+      parser->pushArray($3);
     }
   ;
 
-array_element: 
-    array_element_name T_COLON expression {
-      parser->pushArray($1, $3);
+query_options:
+    /* empty */ {
+      $$ = nullptr;
+    }
+  | T_STRING object {
+      if ($1 == nullptr || $2 == nullptr) {
+        ABORT_OOM
+      }
+
+      if (! TRI_CaseEqualString($1, "OPTIONS")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", $1, yylloc.first_line, yylloc.first_column);
+      }
+
+      $$ = $2;
+    }
+  ;
+
+object:
+    T_OBJECT_OPEN {
+      auto node = parser->ast()->createNodeObject();
+      parser->pushStack(node);
+    } optional_object_elements T_OBJECT_CLOSE {
+      $$ = static_cast<AstNode*>(parser->popStack());
+    }
+  ;
+
+optional_object_elements:
+    /* empty */ {
+    }
+  | object_elements_list {
+    }
+  ;
+
+object_elements_list:
+    object_element {
+    }
+  | object_elements_list T_COMMA object_element {
+    }
+  ;
+
+object_element: 
+    object_element_name T_COLON expression {
+      parser->pushObject($1, $3);
     }
   ;
 
@@ -877,15 +926,11 @@ reference:
 
       // push the expand node into the statement list
       auto iterator = static_cast<AstNode*>(parser->popStack());
-      auto expand = parser->ast()->createNodeExpand(iterator, $4);
-      
-      std::string const nextName = parser->ast()->variables()->nextName();
-      char const* variableName = nextName.c_str();
-      auto let = parser->ast()->createNodeLet(variableName, expand, false);
-      parser->ast()->addOperation(let);
-      
-      // return a reference only
-      $$ = parser->ast()->createNodeReference(variableName);
+      $$ = parser->ast()->createNodeExpand(iterator, $4);
+
+      if ($$ == nullptr) {
+        ABORT_OOM
+      }
     }
   ;
 
@@ -918,7 +963,7 @@ single_reference:
       // named variable access, e.g. variable.@reference
       $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
     }
-  | single_reference T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | single_reference T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, e.g. variable[index]
       $$ = parser->ast()->createNodeIndexedAccess($1, $3);
     }
@@ -935,7 +980,7 @@ expansion:
       auto node = static_cast<AstNode*>(parser->popStack());
       $$ = parser->ast()->createNodeBoundAttributeAccess(node, $2);
     }
-  | T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable[index]
       auto node = static_cast<AstNode*>(parser->popStack());
       $$ = parser->ast()->createNodeIndexedAccess(node, $2);
@@ -948,7 +993,7 @@ expansion:
       // named variable access w/ bind parameter, continuation from * expansion, e.g. [*].variable.xx.@reference
       $$ = parser->ast()->createNodeBoundAttributeAccess($1, $3);
     }
-  | expansion T_LIST_OPEN expression T_LIST_CLOSE %prec INDEXED {
+  | expansion T_ARRAY_OPEN expression T_ARRAY_CLOSE %prec INDEXED {
       // indexed variable access, continuation from * expansion, e.g. [*].variable.xx.[index]
       $$ = parser->ast()->createNodeIndexedAccess($1, $3);
     }
@@ -1035,7 +1080,7 @@ bind_parameter:
     }
   ;
 
-array_element_name:
+object_element_name:
     T_STRING {
       if ($1 == nullptr) {
         ABORT_OOM

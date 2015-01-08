@@ -29,35 +29,41 @@ migrations will also be detailed here.
 * Foxx: `controller.collection` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `appContext.collection` instead.
 * Foxx: `Model.extend({}, {attributes: {}})`  is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `Model.extend({schema: {}})` instead.
 * Foxx: `requestContext.bodyParam(paramName, description, Model)` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `requestContext.bodyParam(paramName, options)` instead.
-* Foxx: `requestContext.queryParam({type: string})` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `requestContext.queryParam({type: joi})` instead.
-* Foxx: `requestContext.pathParam({type: string})` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `requestContext.pathParam({type: joi})` instead.
-* Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use module `org/arangodb/general-graph` instead.
-* Http: The api `_api/graph` is now deprecated, it will raise a warning if you use it. To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use the general graph api `_api/gharial` instead.
+* Foxx: `requestContext.queryParam({type: string})` is now deprecated. Please use `requestContext.queryParam({type: joi})` instead.
+* Foxx: `requestContext.pathParam({type: string})` is now deprecated. Please use `requestContext.pathParam({type: joi})` instead.
+* Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are now deprecated. Please use module `org/arangodb/general-graph` instead.
+* Http: The api `_api/graph` is now deprecated. Please use the general graph api `_api/gharial` instead.
 * Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are now deprecated. Using them will raise a warning. 
 * Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are now deprecated. Using them will raise a warning.
 * General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` is no longer suggested, they will be deprecated int the next version. Both functions have been unified to `_relation`.
 
 ## 2.4
 
-* Foxx: `controller.collection` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `appContext.collection` instead.
-* Foxx: `Model.extend({}, {attributes: {}})`  is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `Model.extend({schema: {}})` instead.
-* Foxx: `requestContext.bodyParam(paramName, description, Model)` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `requestContext.bodyParam(paramName, options)` instead.
-* Foxx: `requestContext.queryParam({type: string})` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `requestContext.queryParam({type: joi})` instead.
-* Foxx: `requestContext.pathParam({type: string})` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use `requestContext.pathParam({type: joi})` instead.
-* Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are no longer available by default. If you still want to use them, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use module `org/arangodb/general-graph` instead.
-* Http: The api `_api/graph` is no longer available by default. If you still want to use it, please start `arangod` with the option `--server.default-api-compatibility 20200`. Please use the general graph api `_api/gharial` instead.
+* Foxx: method `controller.collection()` is deprecated, it will raise a warning if you use it. Please use `appContext.collection` instead.
+* Foxx: property `FoxxRepository.modelPrototype` is deprecated, it will raise a warning if you use it. Please use `FoxxRepository.model` instead.
+* Foxx: `requestContext.bodyParam(paramName, description, Model)` is deprecated, it will raise a warning if you use it. Please use `requestContext.bodyParam(paramName, options)` instead.
+* Foxx: `requestContext.queryParam({type: string})` is deprecated, it will raise a warning if you use it. Please use `requestContext.queryParam({type: joi})` instead.
+* Foxx: `requestContext.pathParam({type: string})` is deprecated, it will raise a warning if you use it. Please use `requestContext.pathParam({type: joi})` instead.
+* Foxx: `Model.extend({}, {attributes: {}})` is deprecated, it will raise a warning if you use it. Please use `Model.extend({schema: {}})` instead.
+* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are deprecated. Both functions have been unified to `_relation`.
+* Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are deprecated. Please use module `org/arangodb/general-graph` instead.
+* The HTTP REST API `_api/graph` and all its methods are deprecated. Please use the general graph API `_api/gharial` instead.
 * Replication: the methods `logger.start`, `logger.stop` and `logger.properties` are no longer available.
-* Replication: the HTTP methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are no longer available.
-To suppress the warning, please start `arangod` with the option `--server.default-api-compatibility 20200`. 
-* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are deprecated and will throw an error if you use them. Both functions have been unified to `_relation`.
+* Replication: the HTTP REST API methods `PUT /_api/replication/logger-start`, `PUT /_api/replication/logger-stop`, `GET /_api/replication/logger-config` and `PUT /_api/replication/logger-config` are no longer available.
 
 ## 2.5
 
 * Foxx: `controller.collection` has been removed entirely. Please use `appContext.collection` instead.
+* Foxx: `FoxxRepository.modelPrototype` has been removed entirely. Please use `FoxxRepository.model` instead.
 * Foxx: `Model.extend({}, {attributes: {}})`  has been removed entirely. Please use `Model.extend({schema: {}})` instead.
 * Foxx: `requestContext.bodyParam(paramName, description, Model)` has been removed entirely. Please use `requestContext.bodyParam(paramName, options)` instead.
 * Foxx: `requestContext.queryParam({type: string})` has been removed entirely. Please use `requestContext.queryParam({type: joi})` instead.
 * Foxx: `requestContext.pathParam({type: string})` has been removed entirely. Please use `requestContext.pathParam({type: joi})` instead.
+* Foxx: method `Model#toJSONSchema(id)` is deprecated, it will raise a warning if you use it. Please use `Foxx.toJSONSchema(id, model)` instead.
 * Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` have been removed entirely. Please use module `org/arangodb/general-graph` instead.
 * Http: The api `_api/graph` has been removed entirely. Please use the general graph api `_api/gharial` instead.
-* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are no longer available by default, if you still want to use them start `arangod` with the option `--server.default-api-compatibility 20300`. Both functions have been unified to `_relation`.
+* General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are no longer available. Both functions have been unified to `_relation`.
+
+
+## 2.6
+* Foxx: method `Model#toJSONSchema(id)` has been removed entirely. Please use `Foxx.toJSONSchema(id, model)` instead.

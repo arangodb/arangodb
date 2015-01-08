@@ -250,19 +250,19 @@ namespace triagens {
 }
 
 "{" {
-  return T_DOC_OPEN;
+  return T_OBJECT_OPEN;
 }
 
 "}" {
-  return T_DOC_CLOSE;
+  return T_OBJECT_CLOSE;
 }
 
 "[" {
-  return T_LIST_OPEN;
+  return T_ARRAY_OPEN;
 }
 
 "]" {
-  return T_LIST_CLOSE;
+  return T_ARRAY_CLOSE;
 }
  
  /* ---------------------------------------------------------------------------

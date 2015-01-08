@@ -48,6 +48,7 @@
 #include "Rest/Endpoint.h"
 #include "Rest/InitialiseRest.h"
 #include "Rest/HttpResponse.h"
+#include "Rest/Version.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "V8/JSLoader.h"
@@ -2060,9 +2061,7 @@ bool print_helo(bool useServer, bool promptError) {
     info << ", READLINE " << TRI_READLINE_VERSION;
 #endif
 
-#ifdef TRI_ICU_VERSION
-    info << ", ICU " << TRI_ICU_VERSION;
-#endif
+    info << ", ICU " << Version::getICUVersion();
 
     BaseClient.printLine(info.str(), true);
     BaseClient.printLine("", true);
@@ -2348,9 +2347,7 @@ int main (int argc, char* args[]) {
   // .............................................................................
 
   v8::V8::InitializeICU();
-  v8::Platform* platform = v8::platform::CreateDefaultPlatform();
 
-  v8::V8::InitializePlatform(platform);
   // set V8 options
   if (! V8Options.empty()) {
     // explicit option --javascript.v8-options used
@@ -2360,6 +2357,14 @@ int main (int argc, char* args[]) {
     // no explicit option used, now pass all command-line arguments to v8
     v8::V8::SetFlagsFromCommandLine(&argc, args, true);
   }
+
+#ifdef TRI_FORCE_ARMV6
+  const string forceARMv6 = "--noenable-armv7";
+  v8::V8::SetFlagsFromString(forceARMv6.c_str(), (int) forceARMv6.size());
+#endif
+
+  v8::Platform* platform = v8::platform::CreateDefaultPlatform();
+  v8::V8::InitializePlatform(platform);
 
   BufferAllocator bufferAllocator;
   v8::V8::SetArrayBufferAllocator(&bufferAllocator);

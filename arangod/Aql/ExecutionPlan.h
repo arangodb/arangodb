@@ -316,9 +316,15 @@ namespace triagens {
 /// @brief get ast
 ////////////////////////////////////////////////////////////////////////////////
 
-        Ast* getAst () {
+        inline Ast* getAst () const {
           return _ast;
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a calculation node for an arbitrary expression
+////////////////////////////////////////////////////////////////////////////////
+
+        CalculationNode* createTemporaryCalculation (AstNode const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -332,12 +338,6 @@ namespace triagens {
 
         ModificationOptions createOptions (AstNode const*);
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a calculation node for an arbitrary expression
-////////////////////////////////////////////////////////////////////////////////
-
-        CalculationNode* createTemporaryCalculation (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"

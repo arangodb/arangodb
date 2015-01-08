@@ -236,7 +236,10 @@ namespace triagens {
 
         AstNode* createNodeRemove (AstNode const*,
                                    AstNode const*,
-                                   AstNode const*);
+                                   AstNode const*,
+                                   char const* NewOld = nullptr,
+                                   char const* varInto = nullptr,
+                                   char const* varReturn = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST insert node
@@ -244,7 +247,11 @@ namespace triagens {
 
         AstNode* createNodeInsert (AstNode const*,
                                    AstNode const*,
-                                   AstNode const*);
+                                   AstNode const*,
+                                   char const* NewOld = nullptr,
+                                   char const* varInto = nullptr,
+                                   char const* varReturn = nullptr);
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST update node
@@ -253,7 +260,10 @@ namespace triagens {
         AstNode* createNodeUpdate (AstNode const*,
                                    AstNode const*,
                                    AstNode const*,
-                                   AstNode const*);
+                                   AstNode const*,
+                                   char const* NewOld = nullptr,
+                                   char const* varInto = nullptr,
+                                   char const* varReturn = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST replace node
@@ -262,7 +272,10 @@ namespace triagens {
         AstNode* createNodeReplace (AstNode const*,
                                     AstNode const*,
                                     AstNode const*,
-                                    AstNode const*);
+                                   AstNode const*,
+                                   char const* NewOld = nullptr,
+                                   char const* varInto = nullptr,
+                                   char const* varReturn = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
@@ -332,6 +345,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeReference (char const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST reference node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeReference (Variable const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST parameter node
@@ -438,20 +457,20 @@ namespace triagens {
 /// @brief create an AST list node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeList ();
+        AstNode* createNodeArray ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST array node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeArray ();
+        AstNode* createNodeObject ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST array element node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeArrayElement (char const*,
-                                         AstNode const*);
+        AstNode* createNodeObjectElement (char const*,
+                                          AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
