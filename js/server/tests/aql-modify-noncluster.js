@@ -262,6 +262,58 @@ function ahuacatlModifySuite () {
 
     testInvalidVariableNames2 : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty results
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyResultRemove : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1, {});
+    
+      assertEqual(0, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty results
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyResultInsert : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("INSERT { _key: 'baz' } IN " + cn1, {});
+
+      assertEqual(2, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty results
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyResultUpdate : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPDATE { _key: 'foo' } WITH { baz: true } IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test empty results
+////////////////////////////////////////////////////////////////////////////////
+
+    testEmptyResultReplace : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("REPLACE { _key: 'foo' } WITH { baz: true } IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
     }
 
   };
