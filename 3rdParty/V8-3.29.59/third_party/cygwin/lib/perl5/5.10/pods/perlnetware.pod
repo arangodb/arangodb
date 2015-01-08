@@ -1,0 +1,214 @@
+If you read this file _as_is_, just ignore the funny characters you
+see.  It is written in the POD format (see pod/perlpod.pod) which is
+specifically designed to be readable as is.
+
+=head1 NAME
+
+perlnetware - Perl for NetWare
+
+=head1 DESCRIPTION
+
+This file gives instructions for building Perl 5.7 and above, and also 
+Perl modules for NetWare. Before you start, you may want to read the
+README file found in the top level directory into which the Perl source
+code distribution was extracted. Make sure you read and understand
+the terms under which the software is being distributed.
+
+=head1 BUILD
+
+This section describes the steps to be performed to build a Perl NLM
+and other associated NLMs.
+
+=head2 Tools & SDK
+
+The build requires CodeWarrior compiler and linker.  In addition,
+the "NetWare SDK", "NLM & NetWare Libraries for C" and
+"NetWare Server Protocol Libraries for C", all available at
+L<http://developer.novell.com/wiki/index.php/Category:Novell_Developer_Kit>,
+are required. Microsoft Visual C++ version 4.2 or later is also
+required.
+
+=head2 Setup
+
+The build process is dependent on the location of the NetWare SDK.
+Once the Tools & SDK are installed, the build environment has to
+be setup.  The following batch files setup the environment.
+
+=over 4
+
+=item SetNWBld.bat
+
+The Execution of this file takes 2 parameters as input. The first
+being the NetWare SDK path, second being the path for CodeWarrior
+Compiler & tools. Execution of this file sets these paths and also
+sets the build type to Release by default.
+
+=item Buildtype.bat
+
+This is used to set the build type to debug or release. Change the
+build type only after executing SetNWBld.bat
+
+=item *
+
+Example:
+  1. Typing "buildtype d on" at the command prompt causes the buildtype
+     to be set to Debug type with D2 flag set. 
+  2. Typing "buildtype d off" or "buildtype d" at the command prompt causes
+     the buildtype to be set to Debug type with D1 flag set. 
+  2. Typing "buildtype r" at the command prompt sets it to Release Build type.
+
+=back
+
+=head2 Make
+
+The make process runs only under WinNT shell.  The NetWare makefile is
+located under the NetWare folder.  This makes use of miniperl.exe to
+run some of the Perl scripts. To create miniperl.exe, first set the
+required paths for Visual c++ compilier (specify vcvars32 location) at
+the command prompt.  Then run nmake from win32 folder through WinNT
+command prompt.  The build process can be stopped after miniperl.exe
+is created. Then run nmake from NetWare folder through WinNT command
+prompt.
+
+Currently the following two build types are tested on NetWare:
+
+=over 4
+
+=item *
+
+USE_MULTI, USE_ITHREADS & USE_IMP_SYS defined
+
+=item *
+
+USE_MULTI & USE_IMP_SYS defined and USE_ITHREADS not defined
+
+=back
+
+=head2 Interpreter
+
+Once miniperl.exe creation is over, run nmake from the NetWare folder.
+This will build the Perl interpreter for NetWare as I<perl.nlm>.
+This is copied under the I<Release> folder if you are doing
+a release build, else will be copied under I<Debug> folder for debug builds.
+
+=head2 Extensions
+
+The make process also creates the Perl extensions as I<<Extension>.nlm>
+
+=head1 INSTALL
+
+To install NetWare Perl onto a NetWare server, first map the Sys
+volume of a NetWare server to I<i:>. This is because the makefile by
+default sets the drive letter to I<i:>.  Type I<nmake nwinstall> from
+NetWare folder on a WinNT command prompt.  This will copy the binaries
+and module files onto the NetWare server under I<sys:\Perl>
+folder. The Perl interpreter, I<perl.nlm>, is copied under
+I<sys:\perl\system> folder.  Copy this to I<sys:\system> folder.
+
+Example: At the command prompt Type "nmake nwinstall".
+          This will install NetWare Perl on the NetWare Server.
+          Similiarly if you type "nmake install",
+          This will cause the binaries to be installed on the local machine.
+          (Typically under the c:\perl folder)
+
+=head1 BUILD NEW EXTENSIONS
+
+To build extensions other than standard extensions, NetWare Perl has
+to be installed on Windows along with Windows Perl. The Perl for
+Windows can be either downloaded from the CPAN site and built using
+the sources, or the binaries can be directly downloaded from the
+ActiveState site.  Installation can be done by invoking I<nmake
+install> from the NetWare folder on a WinNT command prompt after
+building NetWare Perl by following steps given above.  This will copy
+all the *.pm files and other required files.  Documentation files are
+not copied.  Thus one must first install Windows Perl, Then install
+NetWare Perl.
+
+Once this is done, do the following to build any extension:
+
+=over 4
+
+=item *
+
+Change to the extension directory where its source files are present.
+
+=item *
+
+Run the following command at the command prompt:
+
+    perl -II<path to NetWare lib dir> -II<path to lib> Makefile.pl
+
+Example:
+
+    perl -Ic:/perl/5.6.1/lib/NetWare-x86-multi-thread -Ic:\perl\5.6.1\lib MakeFile.pl
+
+or
+
+    perl -Ic:/perl/5.8.0/lib/NetWare-x86-multi-thread -Ic:\perl\5.8.0\lib MakeFile.pl
+
+=item *
+
+nmake
+
+=item *
+
+nmake install
+
+Install will copy the files into the Windows machine where NetWare
+Perl is installed and these files may have to be copied to the NetWare
+server manually. Alternatively, pass I<INSTALLSITELIB=i:\perl\lib> as
+an input to makefile.pl above. Here I<i:> is the mapped drive to the
+sys: volume of the server where Perl on NetWare is installed. Now
+typing I<nmake install>, will copy the files onto the NetWare server.
+
+Example: You can execute the following on the command prompt.
+
+          perl -Ic:/perl/5.6.1/lib/NetWare-x86-multi-thread -Ic:\perl\5.6.1\lib MakeFile.pl
+          INSTALLSITELIB=i:\perl\lib
+
+or
+
+          perl -Ic:/perl/5.8.0/lib/NetWare-x86-multi-thread -Ic:\perl\5.8.0\lib MakeFile.pl
+          INSTALLSITELIB=i:\perl\lib
+
+=item * 
+
+Note: Some modules downloaded from CPAN may require NetWare related
+API in order to build on NetWare.  Other modules may however build
+smoothly with or without minor changes depending on the type of
+module.
+
+=back
+
+=head1 ACKNOWLEDGEMENTS
+
+The makefile for Win32 is used as a reference to create the makefile
+for NetWare.  Also, the make process for NetWare port uses
+miniperl.exe to run scripts during the make and installation process.
+
+=head1 AUTHORS
+
+Anantha Kesari H Y (hyanantha@novell.com)
+Aditya C (caditya@novell.com)
+
+=head1 DATE
+
+=over 4
+
+=item *
+
+Created - 18 Jan 2001
+
+=item *
+
+Modified - 25 June 2001
+
+=item *
+
+Modified - 13 July 2001
+
+=item *
+
+Modified - 28 May 2002
+
+=back

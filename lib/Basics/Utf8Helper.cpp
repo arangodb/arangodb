@@ -39,6 +39,10 @@
 #include "Basics/tri-strings.h"
 #include "Basics/utf8-helper.h"
 
+#ifdef _WIN32
+#include "Basics/win-utils.h"
+#endif
+
 using namespace triagens::basics;
 using namespace std;
 
@@ -107,6 +111,10 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
 }
 
 void Utf8Helper::setCollatorLanguage (std::string const& lang) {
+#ifdef _WIN32
+  TRI_FixIcuDataEnv();
+#endif
+
   UErrorCode status = U_ZERO_ERROR;
 
   if (_coll) {

@@ -1,0 +1,39 @@
+If you read this file _as_is_, just ignore the funny characters you
+see.  It is written in the POD format (see pod/perlpod.pod) which is
+specifically designed to be readable as is.
+
+=head1 NAME
+
+README.linux - Perl version 5 on Linux systems
+
+=head1 DESCRIPTION
+
+This document describes various features of Linux that will affect how Perl
+version 5 (hereafter just Perl) is compiled and/or runs.
+
+=head2 Experimental Support for Sun Studio Compilers for Linux OS
+
+Sun Microsystems has released a port of their Sun Studio compiliers for
+Linux.  As of November 2005, only an alpha version has been released.  
+Until a release of these compilers is made, support for compiling Perl with
+these compiler experimental.
+
+Also, some special instructions for building Perl with Sun Studio on Linux.
+Following the normal C<Configure>, you have to run make as follows:
+
+    LDLOADLIBS=-lc make
+
+C<LDLOADLIBS> is an environment variable used by the linker to link modules
+C</ext> modules to glibc.  Currently, that environment variable is not getting
+populated by a combination of C<Config> entries and C<ExtUtil::MakeMaker>.
+While there may be a bug somewhere in Perl's configuration or
+C<ExtUtil::MakeMaker> causing the problem, the most likely cause is an
+incomplete understanding of Sun Studio by this author.  Further investigation
+is needed to get this working better.
+
+=head1 AUTHOR
+
+Steve Peters <steve@fisharerojo.org>
+
+Please report any errors, updates, or suggestions to F<perlbug@perl.org>.
+

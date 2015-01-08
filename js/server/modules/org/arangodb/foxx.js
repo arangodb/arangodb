@@ -33,6 +33,7 @@ var Controller = require("org/arangodb/foxx/controller").Controller,
   queues = require("org/arangodb/foxx/queues"),
   createQuery = require("org/arangodb/foxx/query").createQuery,
   manager = require("org/arangodb/foxx/manager"),
+  toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   arangodb = require("org/arangodb");
 
 exports.Controller = Controller;
@@ -40,6 +41,7 @@ exports.Model = Model;
 exports.Repository = Repository;
 exports.queues = queues;
 exports.createQuery = createQuery;
+exports.toJSONSchema = toJSONSchema;
 exports.requireApp = function (path) {
   'use strict';
   return manager.mountedApp(arangodb.normalizeURL('/' + path));

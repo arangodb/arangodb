@@ -28,6 +28,7 @@
 #include "Aql/OptimizerRules.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/Function.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 
@@ -254,6 +255,213 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+#if 0
+struct CollectVariableFinder {
+  Variable const* searchVariable;
+  std::unordered_set<std::string>& attributeNames;
+  std::vector<AstNode const*> stack;
+  bool canUseOptimization;
+  bool isArgumentToLength;
+
+  CollectVariableFinder (AggregateNode const* collectNode,
+                         std::unordered_set<std::string>& attributeNames)
+    : searchVariable(collectNode->outVariable()),
+      attributeNames(attributeNames),
+      stack(),
+      canUseOptimization(true),
+      isArgumentToLength(false) {
+
+    TRI_ASSERT(searchVariable != nullptr);
+    stack.reserve(4);
+  }
+
+  void analyze (AstNode const* node) {
+    TRI_ASSERT(node != nullptr);
+
+    if (! canUseOptimization) {
+      // we already know we cannot apply this optimization
+      return;
+    }
+
+    stack.push_back(node);
+
+    size_t const n = node->numMembers();
+    for (size_t i = 0; i < n; ++i) {
+      auto sub = node->getMember(i);
+      if (sub != nullptr) {
+        // recurse into subnodes
+        analyze(sub);
+      }
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      auto variable = static_cast<Variable const*>(node->getData());
+
+      TRI_ASSERT(variable != nullptr);
+
+      if (variable->id == searchVariable->id) {
+        bool handled = false;
+        auto const size = stack.size();
+
+        if (size >= 3 &&
+            stack[size - 3]->type == NODE_TYPE_EXPAND) {
+          // our variable is used in an expansion, e.g. g[*].attribute
+          auto expandNode = stack[size - 3];
+          TRI_ASSERT(expandNode->numMembers() == 2);
+          TRI_ASSERT(expandNode->getMember(0)->type == NODE_TYPE_ITERATOR);
+
+          auto expansion = expandNode->getMember(1);
+          TRI_ASSERT(expansion != nullptr);
+          while (expansion->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+            // note which attribute is used with our variable
+            if (expansion->getMember(0)->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+              expansion = expansion->getMember(0);
+            }
+            else {
+              attributeNames.emplace(expansion->getStringValue());
+              handled = true;
+              break;
+            }
+          }
+        } 
+        else if (size >= 3 &&
+                 stack[size - 2]->type == NODE_TYPE_ARRAY &&
+                 stack[size - 3]->type == NODE_TYPE_FCALL) {
+          auto func = static_cast<Function const*>(stack[size - 3]->getData());
+
+          if (func->externalName == "LENGTH" &&
+              stack[size - 2]->numMembers() == 1) {
+            // call to function LENGTH() with our variable as its single argument
+            handled = true;
+            isArgumentToLength = true;
+          }
+        }
+      
+        if (! handled) {
+          canUseOptimization = false;
+        }
+      }
+    }
+
+    stack.pop_back();
+  }
+
+};
+#endif
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief specialize the variables used in a COLLECT INTO
+////////////////////////////////////////////////////////////////////////////////
+
+#if 0    
+int triagens::aql::specializeCollectVariables (Optimizer* opt, 
+                                               ExecutionPlan* plan, 
+                                               Optimizer::Rule const* rule) {
+  bool modified = false;
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::AGGREGATE, true);
+  
+  for (auto n : nodes) {
+    auto collectNode = static_cast<AggregateNode*>(n);
+    TRI_ASSERT(collectNode != nullptr);
+          
+    auto const&& deps = collectNode->getDependencies();
+    if (deps.size() != 1) {
+      continue;
+    }
+
+    if (! collectNode->hasOutVariable() ||
+        collectNode->hasExpressionVariable() ||
+        collectNode->countOnly()) {
+      // COLLECT without INTO or a COLLECT that already uses an 
+      // expression variable or a COLLECT that only counts
+      continue;
+    }
+
+    auto outVariable = collectNode->outVariable();
+    // must have an outVariable if we got here
+    TRI_ASSERT(outVariable != nullptr);
+       
+    std::unordered_set<std::string> attributeNames; 
+    CollectVariableFinder finder(collectNode, attributeNames);
+
+    // check all following nodes for usage of the out variable
+    std::vector<ExecutionNode*> parents(n->getParents());
+    
+    while (! parents.empty() &&
+           finder.canUseOptimization) {
+      auto current = parents.back();
+      parents.pop_back();
+
+      for (auto it : current->getParents()) {
+        parents.emplace_back(it);
+      }
+
+      // now check current node for usage of out variable 
+      auto const&& variablesUsed = current->getVariablesUsedHere();
+
+      bool found = false;
+      for (auto it : variablesUsed) {
+        if (it == outVariable) {
+          found = true;
+          break;
+        }
+      }
+
+      if (found) {
+        // variable is used. now find out how it is used
+        if (current->getType() != EN::CALCULATION) {
+          // variable is used outside of a calculation... skip optimization
+          // TODO
+          break;
+        }
+
+        auto calculationNode = static_cast<CalculationNode*>(current);
+        auto expression = calculationNode->expression(); 
+        TRI_ASSERT(expression != nullptr);
+
+        finder.analyze(expression->node());
+      }
+    }
+
+    if (finder.canUseOptimization) {
+      // can use the optimization
+
+      if (! finder.attributeNames.empty()) {
+        auto obj = plan->getAst()->createNodeObject();
+
+        for (auto const& attributeName : finder.attributeNames) {
+          for (auto it : collectNode->getVariablesUsedHere()) {
+            if (it->name == attributeName) {
+              auto refNode = plan->getAst()->createNodeReference(it);
+              auto element = plan->getAst()->createNodeObjectElement(it->name.c_str(), refNode);
+              obj->addMember(element);
+            }
+          }
+        }
+
+        if (obj->numMembers() == attributeNames.size()) {
+          collectNode->removeDependency(deps[0]);
+          auto calculationNode = plan->createTemporaryCalculation(obj);
+          calculationNode->addDependency(deps[0]);
+          collectNode->addDependency(calculationNode);
+ 
+          collectNode->setExpressionVariable(calculationNode->outVariable());
+          modified = true;
+        }
+      }
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+ 
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+#endif
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove INTO of a COLLECT if not used
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,7 +470,6 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
                                           ExecutionPlan* plan, 
                                           Optimizer::Rule const* rule) {
   bool modified = false;
-  // should we enter subqueries??
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::AGGREGATE, true);
   
   for (auto n : nodes) {
@@ -285,6 +492,144 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
     // outVariable is not used later. remove it!
     collectNode->clearOutVariable();
     modified = true;
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove SORT RAND() if appropriate
+////////////////////////////////////////////////////////////////////////////////
+    
+int triagens::aql::removeSortRandRule (Optimizer* opt, 
+                                       ExecutionPlan* plan, 
+                                       Optimizer::Rule const* rule) {
+  bool modified = false;
+  // should we enter subqueries??
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::SORT, true);
+  
+  for (auto n : nodes) {
+    auto node = static_cast<SortNode*>(n);
+    auto const& elements = node->getElements();
+    if (elements.size() != 1) {
+      // we're looking for "SORT RAND()", which has just one sort criterion
+      continue;
+    }
+
+    auto const variable = elements[0].first;
+    TRI_ASSERT(variable != nullptr);
+
+    auto setter = plan->getVarSetBy(variable->id);
+    if (setter == nullptr || setter->getType() != EN::CALCULATION) {
+      continue;
+    }
+    auto cn = static_cast<CalculationNode*>(setter);
+    auto const expression = cn->expression();
+
+    if (expression == nullptr ||
+        expression->node() == nullptr ||
+        expression->node()->type != NODE_TYPE_FCALL) {
+      // not the right type of expression
+      // we're looking for "RAND([])", which is a function call
+      // with an empty list as parameter
+      continue;
+    }
+
+    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    try {
+      expression->stringify(&buffer);
+    }
+    catch (...) {
+      // stringification is not supported for all node types
+      // just ignore that and also ignore this node
+      continue;
+    }
+
+    if (std::string(buffer.c_str(), buffer.length()) != "RAND([])") {
+      continue;
+    }
+
+    // we found what we were looking for!
+    // now check if the dependencies qualify
+    auto deps = n->getDependencies();
+    if (deps.size() != 1) {
+      break;
+    }
+
+    auto current = deps[0];
+    ExecutionNode* collectionNode = nullptr;
+
+    while (current != nullptr) {
+      if (current->canThrow()) {
+        // we shouldn't bypass a node that can throw
+        collectionNode = nullptr;
+        break;
+      }
+
+      switch (current->getType()) {
+        case EN::SORT: 
+        case EN::AGGREGATE: 
+        case EN::FILTER: 
+        case EN::SUBQUERY:
+        case EN::ENUMERATE_LIST:
+        case EN::INDEX_RANGE: {
+          // if we found another SortNode, an AggregateNode, FilterNode, a SubqueryNode, 
+          // an EnumerateListNode or an IndexRangeNode
+          // this means we cannot apply our optimization
+          collectionNode = nullptr;
+          current = nullptr;
+          continue; // this will exit the while loop
+        }
+
+        case EN::ENUMERATE_COLLECTION: {
+          if (collectionNode == nullptr) {
+            // note this node
+            collectionNode = current;
+            break;
+          }
+          else {
+            // we already found another collection node before. this means we
+            // should not apply our optimization
+            collectionNode = nullptr;
+            current = nullptr;
+            continue; // this will exit the while loop
+          }
+          // cannot get here
+          TRI_ASSERT(false);
+        }
+
+        default: {
+          // ignore all other nodes
+        }
+      }
+
+      auto deps = current->getDependencies();
+      if (deps.size() != 1) {
+        break;
+      }
+          
+      current = deps[0];
+    }
+
+    if (collectionNode != nullptr) {
+      // we found a node to modify!
+      TRI_ASSERT(collectionNode->getType() == EN::ENUMERATE_COLLECTION);
+      // set the random iteration flag for the EnumerateCollectionNode
+      static_cast<EnumerateCollectionNode*>(collectionNode)->setRandom();
+
+      // remove the SortNode
+      // note: the CalculationNode will be removed by "remove-unnecessary-calculations"
+      // rule if not used
+
+      plan->unlinkNode(n);
+      modified = true;
+    }
   }
   
   if (modified) {
@@ -825,6 +1170,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   std::unordered_set<VariableId> _varIds;
   bool _modified;
   bool _canThrow; 
+  bool _mustNotUseRanges;
   // The following maps ids of EnumerateCollectionNodes in the original
   // plan to an index in the (outer vector) of the _changes container.
   std::unordered_map<size_t, size_t>& _changesPlaces;
@@ -845,6 +1191,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _varIds(),
         _modified(false),
         _canThrow(false),
+        _mustNotUseRanges(false),
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
@@ -860,7 +1207,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
     bool modified () const {
       return _modified;
     }
-
+    
     bool before (ExecutionNode* en) override final {
       _canThrow = (_canThrow || en->canThrow()); // can any node walked over throw?
 
@@ -881,6 +1228,12 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             else {
               _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
                   buildRangeInfo(node->expression()->node(), enumCollVar, attr));
+            }
+
+            if (_rangeInfoMapVec != nullptr && _mustNotUseRanges) {
+              // it is unsafe to use the ranges found. throw them away immediately
+              delete _rangeInfoMapVec;
+              _rangeInfoMapVec = nullptr;
             }
           }
           break;
@@ -980,7 +1333,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             // results), for example
             // x.a == 1 || y.c == 2 || x.a == 3
             if (_rangeInfoMapVec->isMapped(var->name)) {
-
               std::vector<size_t> const validPos = _rangeInfoMapVec->validPositions(var->name);
 
               // are any of the RangeInfoMaps in the vector valid? 
@@ -1020,14 +1372,14 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     // index or == followed by a single <, >, >=, or <=
                     // if a skip index in the order of the fields of the
                     // index.
-                    auto idx = idxs.at(i);
+                    auto const idx = idxs.at(i);
                     TRI_ASSERT(idx != nullptr);
 
                     if (idx->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
 
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_ID));
 
                         if (range != map->end()) { 
@@ -1059,7 +1411,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
                       //each valid orCondition should match every field of the given index
                       for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
 
@@ -1076,7 +1428,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
@@ -1106,18 +1458,22 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     }
                     else if (idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
-                        auto map = _rangeInfoMapVec->find(var->name, validPos[k]);
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
 
-                        size_t j = 0;
+                        // check if there is a range that contains the first index attribute
                         auto range = map->find(idx->fields[0]);
                         if (range == map->end()) { 
                           indexOrCondition.clear();
                           break; // not usable
                         }
+
+                        // insert the first index attribute
                         indexOrCondition.at(k).push_back(range->second);
-                        
+                       
+                        // iterate over all index attributes from left to right 
                         bool equality = range->second.is1ValueRangeInfo();
                         bool handled = false;
+                        size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
                           range = map->find(idx->fields[j]);
                           if (range == map->end()) { 
@@ -1128,6 +1484,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                           indexOrCondition.at(k).push_back(range->second);
                           equality = equality && range->second.is1ValueRangeInfo();
                         }
+
                         if (handled) {
                           // exit the for loop, too. otherwise it will crash because
                           // indexOrCondition is empty now
@@ -1387,6 +1744,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
 
       // default case
+      _mustNotUseRanges = true;
       attr.clear();
       enumCollVar = nullptr;
       return nullptr;
@@ -1598,6 +1956,7 @@ class SortAnalysis {
   };
 
   std::vector<sortNodeData*> _sortNodeData;
+  std::unordered_set<size_t> removedNodes;
 
 public:
   size_t const sortNodeID;
@@ -1690,7 +2049,11 @@ public:
 ////////////////////////////////////////////////////////////////////////////////
 
   void removeSortNodeFromPlan (ExecutionPlan* newPlan) {
-    newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
+    // only remove a node once, otherwise this might cause follow up failures
+    if (removedNodes.find(sortNodeID) == removedNodes.end()) {
+      newPlan->unlinkNode(newPlan->getNodeById(sortNodeID));
+      removedNodes.insert(sortNodeID);
+    }
   }
 };
 
@@ -1791,28 +2154,43 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       auto result = _sortNode->getAttrsForVariableName(variableName);
 
       if (result.first.size() == 0) {
-        return true; // we didn't find anything replaceable by indice
+        return true; // we didn't find anything replaceable by index
       }
 
-      for (auto idx : node->getIndicesOrdered(result.first)) {
-        // make one new plan for each index that replaces this
-        // EnumerateCollectionNode with an IndexRangeNode
+      // get all candidate indexes
+      // note: can only use the index if it is a skip list (or a hash and we
+      // are checking equality)
 
-        // can only use the index if it is a skip list or (a hash and we
-        // are checking equality)
+      auto const& indexes = node->getIndicesOrdered(result.first);
 
+      EnumerateCollectionNode::IndexMatch const* preferredIndex = nullptr;
+ 
+      // enumerate all indexes and pick the first one that covers the condition
+      for (auto idx : indexes) {
+        if (idx.doesMatch) {
+          preferredIndex = &idx;
+          break;
+        }
+      }
+
+      if (preferredIndex == nullptr && ! indexes.empty()) {
+        // did not find an index which covers the condition. now pick the first one
+        preferredIndex = &indexes[0];
+      }
+
+      if (preferredIndex != nullptr) { 
         ExecutionNode* newNode = new IndexRangeNode(_plan,
                                                     _plan->nextId(),
                                                     node->vocbase(), 
                                                     node->collection(),
                                                     node->outVariable(),
-                                                    idx.index,
+                                                    preferredIndex->index,
                                                     result.second,
-                                                    (idx.doesMatch && idx.reverse));
+                                                    (preferredIndex->doesMatch && preferredIndex->reverse));
         _plan->registerNode(newNode);
         _plan->replaceNode(node, newNode);
 
-        if (idx.doesMatch) { // if the index superseedes the sort, remove it.
+        if (preferredIndex->doesMatch) { // if the index superseedes the sort, remove it.
           _sortNode->removeSortNodeFromPlan(_plan);
         }
         
@@ -2352,6 +2730,12 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
                nodeType == ExecutionNode::REMOVE) {
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
+        if (nodeType == ExecutionNode::REMOVE ||
+            nodeType == ExecutionNode::UPDATE ||
+            nodeType == ExecutionNode::REPLACE) {
+          auto* modNode = static_cast<ModificationNode*>(node);
+          modNode->getOptions().ignoreDocumentNotFound = true;
+        }
       }
       else {
         TRI_ASSERT(false);
@@ -2406,7 +2790,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
 ///
 /// this rule inserts distribute, remote nodes so operations on sharded
 /// collections actually work, this differs from scatterInCluster in that every
-/// incoming row is only set to one shard and not all as in scatterInCluster
+/// incoming row is only sent to one shard and not all as in scatterInCluster
 ///
 /// it will change plans in place
 ////////////////////////////////////////////////////////////////////////////////
@@ -2424,21 +2808,32 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     auto const nodeType = node->getType();
     
     if (nodeType != ExecutionNode::INSERT  &&
-        nodeType != ExecutionNode::REMOVE) {
+        nodeType != ExecutionNode::REMOVE  &&
+        nodeType != ExecutionNode::REPLACE &&
+        nodeType != ExecutionNode::UPDATE) {
       opt->addPlan(plan, rule->level, wasModified);
       return TRI_ERROR_NO_ERROR;
     }
     
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
     
-    if (nodeType == ExecutionNode::REMOVE) {
-      // check if collection shard keys are only _key
-      std::vector<std::string> shardKeys = collection->shardKeys();
-      if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+    bool defaultSharding = true;
+    // check if collection shard keys are only _key
+    std::vector<std::string> shardKeys = collection->shardKeys();
+    if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
+      defaultSharding = false;
+    }
+
+    if (nodeType == ExecutionNode::REMOVE ||
+        nodeType == ExecutionNode::UPDATE) {
+      if (! defaultSharding) {
+        // We have to use a ScatterNode.
         opt->addPlan(plan, rule->level, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
     }
+
+    // In the INSERT and REPLACE cases we use a DistributeNode...
 
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
@@ -2450,9 +2845,41 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
 
     // insert a distribute node
-    TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
-    ExecutionNode* distNode = new DistributeNode(plan, plan->nextId(), 
-        vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    ExecutionNode* distNode = nullptr;
+    if (nodeType == ExecutionNode::INSERT ||
+        nodeType == ExecutionNode::REMOVE) {
+      TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, node->getVariablesUsedHere()[0]->id);
+    }
+    else if (nodeType == ExecutionNode::REPLACE) {
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      if (defaultSharding && v.size() > 1) {
+        // We only look into _inKeyVariable
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[1]->id);
+      }
+      else {
+        // We only look into _inDocVariable
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[0]->id);
+      }
+    }
+    else {   // if (nodeType == ExecutionNode::UPDATE)
+      std::vector<Variable const*> v = node->getVariablesUsedHere();
+      if (v.size() > 1) {
+        // If there is a key variable:
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[1]->id);
+        // This is the _inKeyVariable! This works, since we use a ScatterNode
+        // for non-default-sharding attributes.
+      }
+      else {
+        // was only UPDATE <doc> IN <collection>
+        distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, v[0]->id);
+      }
+    }
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
 
@@ -3055,7 +3482,7 @@ struct OrToInConverter {
 
   AstNode* buildInExpression (Ast* ast) {
     // the list of comparison values
-    auto list = ast->createNodeList();
+    auto list = ast->createNodeArray();
     for (auto x : valueNodes) {
       list->addMember(x);
     }

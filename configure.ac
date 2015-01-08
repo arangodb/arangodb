@@ -217,7 +217,7 @@ dnl V8
 dnl ----------------------------------------------------------------------------
 
 V8_VERSION="3.29.59"
-V8_CPPFLAGS="-I${srcdir}/3rdParty/V8/include -DTRI_V8_VERSION='\"${V8_VERSION}\"'"
+V8_CPPFLAGS="-I${srcdir}/3rdParty/V8-3.29.59/include -DTRI_V8_VERSION='\"${V8_VERSION}\"'"
 V8_LDFLAGS=""
 V8_TARGET="native"
 
@@ -225,7 +225,7 @@ v8_lib_dir=""
 
 if test x$tr_ARM == xyes;  then
   V8_TARGET="arm.release"
-  v8_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp"
+  v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/tools/gyp"
 
 elif test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
@@ -234,7 +234,7 @@ elif test x$tr_DARWIN == xyes;  then
     V8_TARGET="ia32.release"
   fi
 
-  v8_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET"
+  v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET"
 
 else
   if test "x$tr_BITS" == x64;  then
@@ -243,7 +243,7 @@ else
     V8_TARGET="ia32.release"
   fi
 
-  v8_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/tools/gyp"
+  v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/tools/gyp"
 fi
 
 V8_LIBS="${v8_lib_dir}/libv8_base.a ${v8_lib_dir}/libv8_libbase.a ${v8_lib_dir}/libv8_libplatform.a ${v8_lib_dir}/libv8_nosnapshot.a"
@@ -252,6 +252,7 @@ if test "x$tr_FREEBSD" == xyes;  then
   V8_LIBS="$V8_LIBS -lexecinfo"
 fi
 
+AC_SUBST(V8_VERSION)
 AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
 AC_SUBST(V8_LIBS)
@@ -273,13 +274,13 @@ dnl ICU
 dnl ----------------------------------------------------------------------------
 
 ICU_VERSION="52.2"
-ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8/third_party/icu/source/common -I${srcdir}/3rdParty/V8/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8/third_party/icu/source/io -DTRI_ICU_VERSION='\"${ICU_VERSION}\"'"
+ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/common -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/io"
 ICU_LDFLAGS=""
 
 if test "x$tr_DARWIN" = xyes; then
-  icu_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET"
+  icu_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET"
 else
-  icu_lib_dir="${srcdir}/3rdParty/V8/out/$V8_TARGET/obj.target/third_party/icu"
+  icu_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/third_party/icu"
 fi
 
 ICU_LIBS="-ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm"
@@ -310,6 +311,7 @@ LIBEV_CPPFLAGS="${LIBEV_CPPFLAGS}"
 LIBEV_LDFLAGS=""
 LIBEV_LIBS="${srcdir}/3rdParty/libev/BUILD/.libs/libev.a"
 
+AC_SUBST(LIBEV_VERSION)
 AC_SUBST(LIBEV_CPPFLAGS)
 AC_SUBST(LIBEV_LDFLAGS)
 AC_SUBST(LIBEV_LIBS)
@@ -333,6 +335,7 @@ ZLIB_CPPFLAGS=""
 ZLIB_LDFLAGS=""
 ZLIB_LIBS="${srcdir}/3rdParty/zlib-${ZLIB_VERSION}/libz.a"
 
+AC_SUBST(ZLIB_VERSION)
 AC_SUBST(ZLIB_CPPFLAGS)
 AC_SUBST(ZLIB_LDFLAGS)
 AC_SUBST(ZLIB_LIBS)

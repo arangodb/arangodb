@@ -22,7 +22,7 @@ existing collection named "users" on the server.
 Let's further assume the import at hand is encoded in JSON. We'll be using these
 example user records to import:
 
-``` js
+```js
 { "name" : { "first" : "John", "last" : "Connor" }, "active" : true, "age" : 25, "likes" : [ "swimming"] }
 { "name" : { "first" : "Jim", "last" : "O'Brady" }, "age" : 19, "likes" : [ "hiking", "singing" ] }
 { "name" : { "first" : "Lisa", "last" : "Jones" }, "dob" : "1981-04-09", "likes" : [ "running" ] }

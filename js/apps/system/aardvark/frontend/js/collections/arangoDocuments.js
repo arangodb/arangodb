@@ -272,10 +272,19 @@
         dataType: 'json',
         complete: function(xhr) {
           if (xhr.readyState === 4 && xhr.status === 201) {
-            result =  true;
+            result = true;
           } else {
-            result =  "Upload error";
+            result = "Upload error";
           }
+
+          try {
+            var data = JSON.parse(xhr.responseText);
+            if (data.errors > 0) {
+              result = "At least one error occurred during upload";
+            }
+          }
+          catch (err) {
+          }               
         }
       });
       return result;

@@ -200,7 +200,6 @@ namespace triagens {
           return _parents;
         }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect one index; only skiplist indices which match attrs in sequence.
 /// returns a a qualification how good they match;
@@ -910,6 +909,14 @@ namespace triagens {
         std::vector<IndexMatch> getIndicesOrdered (IndexMatchVec const& attrs) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief enable random iteration of documents in collection
+////////////////////////////////////////////////////////////////////////////////
+
+        void setRandom () {
+          _random = true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the database
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -961,7 +968,7 @@ namespace triagens {
 /// @brief whether or not we want random iteration
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const _random;
+        bool _random;
     };
 
 // -----------------------------------------------------------------------------
@@ -1879,7 +1886,7 @@ namespace triagens {
 /// @brief get Variables Used Here including ASC/DESC
 ////////////////////////////////////////////////////////////////////////////////
 
-        SortElementVector const & getElements () const {
+        SortElementVector const& getElements () const {
           return _elements;
         }
 
@@ -1992,6 +1999,14 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the countOnly flag is set
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool countOnly () const {
+          return _countOnly;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the node has an outVariable (i.e. INTO ...)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2014,6 +2029,32 @@ namespace triagens {
         void clearOutVariable () {
           TRI_ASSERT(_outVariable != nullptr);
           _outVariable = nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the node has an expression variable (i.e. INTO ...
+/// = expr)
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool hasExpressionVariable () const {
+          return _expressionVariable != nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the expression variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void setExpressionVariable (Variable const* variable) {
+          TRI_ASSERT(! hasExpressionVariable());
+          _expressionVariable = variable;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the variable map
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<VariableId, std::string const> const& variableMap () const {
+          return _variableMap;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2191,11 +2232,14 @@ namespace triagens {
                           size_t id,
                           TRI_vocbase_t* vocbase, 
                           Collection* collection,
-                          ModificationOptions const& options)
+                          ModificationOptions const& options,
+                          Variable const* outVariable
+                          )
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
-            _options(options) {
+            _options(options),
+            _outVariable(outVariable) {
 
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
@@ -2243,6 +2287,22 @@ namespace triagens {
         
         double estimateCost (size_t&) const override final;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOptions
+////////////////////////////////////////////////////////////////////////////////
+        
+        ModificationOptions const& getOptions () const {
+          return _options;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getOptions
+////////////////////////////////////////////////////////////////////////////////
+        
+        ModificationOptions& getOptions () {
+          return _options;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -2266,6 +2326,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ModificationOptions _options;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariable;
 
     };
 
@@ -2297,12 +2363,10 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
-            _inVariable(inVariable),
-            _outVariable(outVariable) {
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
-          // _outVariable might be a nullptr
         }
         
         RemoveNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2365,12 +2429,6 @@ namespace triagens {
 
         Variable const* _inVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable (might be a nullptr)
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
     };
 
 // -----------------------------------------------------------------------------
@@ -2400,9 +2458,8 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inVariable,
                     Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
-            _inVariable(inVariable),
-            _outVariable(outVariable) {
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+            _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
@@ -2468,12 +2525,6 @@ namespace triagens {
 
         Variable const* _inVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
-////////////////////////////////////////////////////////////////////////////////
-
-        Variable const* _outVariable;
-
     };
 
 // -----------------------------------------------------------------------------
@@ -2503,15 +2554,15 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inDocVariable,
                     Variable const* inKeyVariable,
-                    Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
+                    Variable const* outVariable,
+                    bool returnNewValues)
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable),
-            _outVariable(outVariable) {
+            _inKeyVariable(inKeyVariable), 
+            _returnNewValues(returnNewValues){
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
-          // _outVariable might be a nullptr
         }
         
         UpdateNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2545,6 +2596,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2585,11 +2638,10 @@ namespace triagens {
         Variable const* _inKeyVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief if we return the changed fields, before or after state?
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _outVariable;
-
+        bool _returnNewValues;
     };
 
 // -----------------------------------------------------------------------------
@@ -2619,15 +2671,14 @@ namespace triagens {
                      ModificationOptions const& options,
                      Variable const* inDocVariable,
                      Variable const* inKeyVariable,
-                     Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options),
+                     Variable const* outVariable,
+                     bool returnNewValues)
+          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable),
-            _outVariable(outVariable) {
+            _inKeyVariable(inKeyVariable) {
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
-          // _outVariable might be a nullptr
         }
 
         ReplaceNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -2661,6 +2712,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
           std::vector<Variable const*> v;
           v.push_back(_inDocVariable);
 
@@ -2701,10 +2754,10 @@ namespace triagens {
         Variable const* _inKeyVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief if we return the changed fields, before or after state?
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _outVariable;
+        bool _returnNewValues;
 
     };
 
@@ -3079,7 +3132,7 @@ namespace triagens {
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
-            _varId(varId){
+            _varId(varId) {
         }
 
         DistributeNode (ExecutionPlan*, 

@@ -1,0 +1,364 @@
+=head1 NAME
+
+perlreref - Perl Regular Expressions Reference
+
+=head1 DESCRIPTION
+
+This is a quick reference to Perl's regular expressions.
+For full information see L<perlre> and L<perlop>, as well
+as the L</"SEE ALSO"> section in this document.
+
+=head2 OPERATORS
+
+C<=~> determines to which variable the regex is applied.
+In its absence, $_ is used.
+
+    $var =~ /foo/;
+
+C<!~> determines to which variable the regex is applied,
+and negates the result of the match; it returns
+false if the match succeeds, and true if it fails.
+
+    $var !~ /foo/;
+
+C<m/pattern/msixpogc> searches a string for a pattern match,
+applying the given options.
+
+    m  Multiline mode - ^ and $ match internal lines
+    s  match as a Single line - . matches \n
+    i  case-Insensitive
+    x  eXtended legibility - free whitespace and comments
+    p  Preserve a copy of the matched string -
+       ${^PREMATCH}, ${^MATCH}, ${^POSTMATCH} will be defined.
+    o  compile pattern Once
+    g  Global - all occurrences
+    c  don't reset pos on failed matches when using /g
+
+If 'pattern' is an empty string, the last I<successfully> matched
+regex is used. Delimiters other than '/' may be used for both this
+operator and the following ones. The leading C<m> can be omitted
+if the delimiter is '/'.
+
+C<qr/pattern/msixpo> lets you store a regex in a variable,
+or pass one around. Modifiers as for C<m//>, and are stored
+within the regex.
+
+C<s/pattern/replacement/msixpogce> substitutes matches of
+'pattern' with 'replacement'. Modifiers as for C<m//>,
+with one addition:
+
+    e  Evaluate 'replacement' as an expression
+
+'e' may be specified multiple times. 'replacement' is interpreted
+as a double quoted string unless a single-quote (C<'>) is the delimiter.
+
+C<?pattern?> is like C<m/pattern/> but matches only once. No alternate
+delimiters can be used.  Must be reset with reset().
+
+=head2 SYNTAX
+
+   \       Escapes the character immediately following it
+   .       Matches any single character except a newline (unless /s is used)
+   ^       Matches at the beginning of the string (or line, if /m is used)
+   $       Matches at the end of the string (or line, if /m is used)
+   *       Matches the preceding element 0 or more times
+   +       Matches the preceding element 1 or more times
+   ?       Matches the preceding element 0 or 1 times
+   {...}   Specifies a range of occurrences for the element preceding it
+   [...]   Matches any one of the characters contained within the brackets
+   (...)   Groups subexpressions for capturing to $1, $2...
+   (?:...) Groups subexpressions without capturing (cluster)
+   |       Matches either the subexpression preceding or following it
+   \1, \2, \3 ...           Matches the text from the Nth group
+   \g1 or \g{1}, \g2 ...    Matches the text from the Nth group
+   \g-1 or \g{-1}, \g-2 ... Matches the text from the Nth previous group
+   \g{name}     Named backreference
+   \k<name>     Named backreference
+   \k'name'     Named backreference
+   (?P=name)    Named backreference (python syntax)
+
+=head2 ESCAPE SEQUENCES
+
+These work as in normal strings.
+
+   \a       Alarm (beep)
+   \e       Escape
+   \f       Formfeed
+   \n       Newline
+   \r       Carriage return
+   \t       Tab
+   \037     Any octal ASCII value
+   \x7f     Any hexadecimal ASCII value
+   \x{263a} A wide hexadecimal value
+   \cx      Control-x
+   \N{name} A named character
+
+   \l  Lowercase next character
+   \u  Titlecase next character
+   \L  Lowercase until \E
+   \U  Uppercase until \E
+   \Q  Disable pattern metacharacters until \E
+   \E  End modification
+
+For Titlecase, see L</Titlecase>.
+
+This one works differently from normal strings:
+
+   \b  An assertion, not backspace, except in a character class
+
+=head2 CHARACTER CLASSES
+
+   [amy]    Match 'a', 'm' or 'y'
+   [f-j]    Dash specifies "range"
+   [f-j-]   Dash escaped or at start or end means 'dash'
+   [^f-j]   Caret indicates "match any character _except_ these"
+
+The following sequences work within or without a character class.
+The first six are locale aware, all are Unicode aware. See L<perllocale>
+and L<perlunicode> for details.
+
+   \d      A digit
+   \D      A nondigit
+   \w      A word character
+   \W      A non-word character
+   \s      A whitespace character
+   \S      A non-whitespace character
+   \h      An horizontal white space
+   \H      A non horizontal white space
+   \v      A vertical white space
+   \V      A non vertical white space
+   \R      A generic newline           (?>\v|\x0D\x0A)
+
+   \C      Match a byte (with Unicode, '.' matches a character)
+   \pP     Match P-named (Unicode) property
+   \p{...} Match Unicode property with long name
+   \PP     Match non-P
+   \P{...} Match lack of Unicode property with long name
+   \X      Match extended Unicode combining character sequence
+
+POSIX character classes and their Unicode and Perl equivalents:
+
+   alnum   IsAlnum              Alphanumeric
+   alpha   IsAlpha              Alphabetic
+   ascii   IsASCII              Any ASCII char
+   blank   IsSpace  [ \t]       Horizontal whitespace (GNU extension)
+   cntrl   IsCntrl              Control characters
+   digit   IsDigit  \d          Digits
+   graph   IsGraph              Alphanumeric and punctuation
+   lower   IsLower              Lowercase chars (locale and Unicode aware)
+   print   IsPrint              Alphanumeric, punct, and space
+   punct   IsPunct              Punctuation
+   space   IsSpace  [\s\ck]     Whitespace
+           IsSpacePerl   \s     Perl's whitespace definition
+   upper   IsUpper              Uppercase chars (locale and Unicode aware)
+   word    IsWord   \w          Alphanumeric plus _ (Perl extension)
+   xdigit  IsXDigit [0-9A-Fa-f] Hexadecimal digit
+
+Within a character class:
+
+    POSIX       traditional   Unicode
+    [:digit:]       \d        \p{IsDigit}
+    [:^digit:]      \D        \P{IsDigit}
+
+=head2 ANCHORS
+
+All are zero-width assertions.
+
+   ^  Match string start (or line, if /m is used)
+   $  Match string end (or line, if /m is used) or before newline
+   \b Match word boundary (between \w and \W)
+   \B Match except at word boundary (between \w and \w or \W and \W)
+   \A Match string start (regardless of /m)
+   \Z Match string end (before optional newline)
+   \z Match absolute string end
+   \G Match where previous m//g left off
+
+   \K Keep the stuff left of the \K, don't include it in $&
+
+=head2 QUANTIFIERS
+
+Quantifiers are greedy by default -- match the B<longest> leftmost.
+
+   Maximal Minimal Possessive Allowed range
+   ------- ------- ---------- -------------
+   {n,m}   {n,m}?  {n,m}+     Must occur at least n times
+                              but no more than m times
+   {n,}    {n,}?   {n,}+      Must occur at least n times
+   {n}     {n}?    {n}+       Must occur exactly n times
+   *       *?      *+         0 or more times (same as {0,})
+   +       +?      ++         1 or more times (same as {1,})
+   ?       ??      ?+         0 or 1 time (same as {0,1})
+
+The possessive forms (new in Perl 5.10) prevent backtracking: what gets
+matched by a pattern with a possessive quantifier will not be backtracked
+into, even if that causes the whole match to fail.
+
+There is no quantifier {,n} -- that gets understood as a literal string.
+
+=head2 EXTENDED CONSTRUCTS
+
+   (?#text)          A comment
+   (?:...)           Groups subexpressions without capturing (cluster)
+   (?pimsx-imsx:...) Enable/disable option (as per m// modifiers)
+   (?=...)           Zero-width positive lookahead assertion
+   (?!...)           Zero-width negative lookahead assertion
+   (?<=...)          Zero-width positive lookbehind assertion
+   (?<!...)          Zero-width negative lookbehind assertion
+   (?>...)           Grab what we can, prohibit backtracking
+   (?|...)           Branch reset
+   (?<name>...)      Named capture
+   (?'name'...)      Named capture
+   (?P<name>...)     Named capture (python syntax)
+   (?{ code })       Embedded code, return value becomes $^R
+   (??{ code })      Dynamic regex, return value used as regex
+   (?N)              Recurse into subpattern number N
+   (?-N), (?+N)      Recurse into Nth previous/next subpattern
+   (?R), (?0)        Recurse at the beginning of the whole pattern
+   (?&name)          Recurse into a named subpattern
+   (?P>name)         Recurse into a named subpattern (python syntax)
+   (?(cond)yes|no)
+   (?(cond)yes)      Conditional expression, where "cond" can be:
+                     (N)       subpattern N has matched something
+                     (<name>)  named subpattern has matched something
+                     ('name')  named subpattern has matched something
+                     (?{code}) code condition
+                     (R)       true if recursing
+                     (RN)      true if recursing into Nth subpattern
+                     (R&name)  true if recursing into named subpattern
+                     (DEFINE)  always false, no no-pattern allowed
+
+=head2 VARIABLES
+
+   $_    Default variable for operators to use
+
+   $`    Everything prior to matched string
+   $&    Entire matched string
+   $'    Everything after to matched string
+
+   ${^PREMATCH}   Everything prior to matched string
+   ${^MATCH}      Entire matched string
+   ${^POSTMATCH}  Everything after to matched string
+
+The use of C<$`>, C<$&> or C<$'> will slow down B<all> regex use
+within your program. Consult L<perlvar> for C<@->
+to see equivalent expressions that won't cause slow down.
+See also L<Devel::SawAmpersand>. Starting with Perl 5.10, you
+can also use the equivalent variables C<${^PREMATCH}>, C<${^MATCH}>
+and C<${^POSTMATCH}>, but for them to be defined, you have to
+specify the C</p> (preserve) modifier on your regular expression.
+
+   $1, $2 ...  hold the Xth captured expr
+   $+    Last parenthesized pattern match
+   $^N   Holds the most recently closed capture
+   $^R   Holds the result of the last (?{...}) expr
+   @-    Offsets of starts of groups. $-[0] holds start of whole match
+   @+    Offsets of ends of groups. $+[0] holds end of whole match
+   %+    Named capture buffers
+   %-    Named capture buffers, as array refs
+
+Captured groups are numbered according to their I<opening> paren.
+
+=head2 FUNCTIONS
+
+   lc          Lowercase a string
+   lcfirst     Lowercase first char of a string
+   uc          Uppercase a string
+   ucfirst     Titlecase first char of a string
+
+   pos         Return or set current match position
+   quotemeta   Quote metacharacters
+   reset       Reset ?pattern? status
+   study       Analyze string for optimizing matching
+
+   split       Use a regex to split a string into parts
+
+The first four of these are like the escape sequences C<\L>, C<\l>,
+C<\U>, and C<\u>.  For Titlecase, see L</Titlecase>.
+
+=head2 TERMINOLOGY
+
+=head3 Titlecase
+
+Unicode concept which most often is equal to uppercase, but for
+certain characters like the German "sharp s" there is a difference.
+
+=head1 AUTHOR
+
+Iain Truskett. Updated by the Perl 5 Porters.
+
+This document may be distributed under the same terms as Perl itself.
+
+=head1 SEE ALSO
+
+=over 4
+
+=item *
+
+L<perlretut> for a tutorial on regular expressions.
+
+=item *
+
+L<perlrequick> for a rapid tutorial.
+
+=item *
+
+L<perlre> for more details.
+
+=item *
+
+L<perlvar> for details on the variables.
+
+=item *
+
+L<perlop> for details on the operators.
+
+=item *
+
+L<perlfunc> for details on the functions.
+
+=item *
+
+L<perlfaq6> for FAQs on regular expressions.
+
+=item *
+
+L<perlrebackslash> for a reference on backslash sequences.
+
+=item *
+
+L<perlrecharclass> for a reference on character classes.
+
+=item *
+
+The L<re> module to alter behaviour and aid
+debugging.
+
+=item *
+
+L<perldebug/"Debugging regular expressions">
+
+=item *
+
+L<perluniintro>, L<perlunicode>, L<charnames> and L<perllocale>
+for details on regexes and internationalisation.
+
+=item *
+
+I<Mastering Regular Expressions> by Jeffrey Friedl
+(F<http://regex.info/>) for a thorough grounding and
+reference on the topic.
+
+=back
+
+=head1 THANKS
+
+David P.C. Wollmann,
+Richard Soderberg,
+Sean M. Burke,
+Tom Christiansen,
+Jim Cromie,
+and
+Jeffrey Goff
+for useful advice.
+
+=cut

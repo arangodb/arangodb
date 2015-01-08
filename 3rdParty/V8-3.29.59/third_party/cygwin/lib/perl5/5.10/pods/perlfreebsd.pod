@@ -1,0 +1,47 @@
+If you read this file _as_is_, just ignore the funny characters you
+see.  It is written in the POD format (see pod/perlpod.pod) which is
+specifically designed to be readable as is.
+
+=head1 NAME
+
+README.freebsd - Perl version 5 on FreeBSD systems
+
+=head1 DESCRIPTION
+
+This document describes various features of FreeBSD that will affect how Perl
+version 5 (hereafter just Perl) is compiled and/or runs.
+
+=head2 FreeBSD core dumps from readdir_r with ithreads
+
+When perl is configured to use ithreads, it will use re-entrant library calls
+in preference to non-re-entrant versions.  There is a bug in FreeBSD's
+C<readdir_r> function in versions 4.5 and earlier that can cause a SEGV when
+reading large directories. A patch for FreeBSD libc is available
+(see http://www.freebsd.org/cgi/query-pr.cgi?pr=misc/30631 )
+which has been integrated into FreeBSD 4.6.
+
+=head2 $^X doesn't always contain a full path in FreeBSD
+
+perl 5.8.0 sets C<$^X> where possible to a full path by asking the operating
+system. On FreeBSD the full path of the perl interpreter is found by reading
+the symlink F</proc/curproc/file>. There is a bug on FreeBSD, where the
+result of reading this symlink is can be wrong in certain circumstances
+(see http://www.freebsd.org/cgi/query-pr.cgi?pr=35703 ).
+In these cases perl will fall back to the old behaviour of using C's
+argv[0] value for C<$^X>.
+
+=head2 Perl will no longer be part of "base FreeBSD"
+
+Not as bad as it sounds--what this means is that Perl will no longer be
+part of the B<kernel build system> of FreeBSD.  Perl will still very
+probably be part of the "default install", and in any case the latest
+version will be in the ports system.  The first FreeBSD version this
+change will affect is 5.0, all 4.n versions will keep the status quo.
+
+=head1 AUTHOR
+
+Nicholas Clark <nick@ccl4.org>, collating wisdom supplied by Slaven Rezic
+and Tim Bunce.
+
+Please report any errors, updates, or suggestions to F<perlbug@perl.org>.
+

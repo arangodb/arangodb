@@ -248,16 +248,17 @@ function ModelSpec () {
 }
 
 function ModelAnnotationSpec () {
-  var FoxxModel, jsonSchema, instance;
+  var FoxxModel, toJSONSchema, jsonSchema, instance;
 
   return {
     setUp: function () {
       FoxxModel = require('org/arangodb/foxx/model').Model;
+      toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema;
     },
 
     testGetEmptyJSONSchema: function () {
       var Model = FoxxModel.extend({});
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.required, []);
       assertEqual(jsonSchema.properties, {});
@@ -277,7 +278,7 @@ function ModelAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.required, []);
       assertEqual(jsonSchema.properties.x.type, "string");
@@ -290,172 +291,7 @@ function ModelAnnotationSpec () {
         }
       });
 
-      jsonSchema = Model.toJSONSchema("myname");
-      assertEqual(jsonSchema.id, "myname");
-      assertEqual(jsonSchema.properties.x.type, "string");
-      assertEqual(jsonSchema.required, ["x"]);
-    }
-  };
-}
-
-function ModelLegacySpec () {
-  var FoxxModel, instance;
-
-  return {
-    setUp: function () {
-      FoxxModel = require('org/arangodb/foxx/model').Model;
-    },
-
-    testFilterUnknownProperties: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          a: {type: 'integer'}
-        }
-      });
-
-      var raw = {
-        a: 1,
-        b: 2
-      };
-
-      instance = new Model(raw);
-      var dbData = instance.forDB();
-      var clientData = instance.forClient();
-
-      assertEqual(_.keys(dbData).length, 1);
-      assertEqual(_.keys(clientData).length, 1);
-      assertEqual(dbData.a, raw.a);
-      assertEqual(clientData.a, raw.a);
-    },
-
-    testAlwaysAllowMetdataAttributes: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          anInteger: {type: 'integer'}
-        }
-      });
-
-      instance = new Model({ anInteger: 1, nonExistant: 2 });
-      assertEqual(_.keys(instance.attributes).length, 1);
-      instance.set("_key", "arango");
-      assertEqual(_.keys(instance.attributes).length, 2);
-      assertEqual(instance.get("_key"), "arango");
-    },
-
-    testFilterMetadata: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          a: {type: 'integer'}
-        }
-      });
-
-      var raw = {
-        a: 1,
-        _key: 2
-      };
-
-      instance = new Model(raw);
-      var dbData = instance.forDB();
-      var clientData = instance.forClient();
-
-      assertEqual(_.keys(dbData).length, 2);
-      assertEqual(_.keys(clientData).length, 1);
-      assertEqual(dbData.a, raw.a);
-      assertEqual(dbData._key, raw._key);
-      assertEqual(clientData.a, raw.a);
-    },
-
-    testFromClient: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          a: {type: 'integer'}
-        }
-      });
-
-      var raw = {
-        a: 1,
-        _key: 2
-      };
-
-      instance = Model.fromClient(raw);
-      var dbData = instance.forDB();
-      var clientData = instance.forClient();
-
-      assertEqual(_.keys(dbData).length, 1);
-      assertEqual(_.keys(clientData).length, 1);
-      assertEqual(dbData.a, raw.a);
-      assertEqual(clientData.a, raw.a);
-    },
-
-    testWhitelistConstructorAttributes: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          a: { type: "string", required: true },
-          b: { type: "string" }
-        }
-      });
-
-      instance = new Model({ a: "a", b: "b", c: "c" });
-      assertEqual(instance.attributes, { a: "a", b: "b" });
-    },
-
-    testSetDefaultAttributes: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          a: { type: "string", defaultValue: "test" },
-          b: { type: "string", defaultValue: "test" },
-          c: { type: "string" }
-        }
-      });
-
-      instance = new Model({ a: "a", c: "c" });
-      assertEqual(instance.attributes, { a: "a", c: "c", b: "test" });
-    }
-  };
-}
-
-function ModelLegacyAnnotationSpec () {
-  var FoxxModel, jsonSchema, instance;
-
-  return {
-    setUp: function () {
-      FoxxModel = require('org/arangodb/foxx/model').Model;
-    },
-
-    testAddOptionalAttributeToJSONSchemaInLongForm: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          x: { type: "string" }
-        }
-      });
-
-      jsonSchema = Model.toJSONSchema("myname");
-      assertEqual(jsonSchema.id, "myname");
-      assertEqual(jsonSchema.required, []);
-      assertEqual(jsonSchema.properties.x.type, "string");
-    },
-
-    testAddOptionalAttributeToJSONSchemaInShortForm: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          x: "string"
-        }
-      });
-
-      jsonSchema = Model.toJSONSchema("myname");
-      assertEqual(jsonSchema.id, "myname");
-      assertEqual(jsonSchema.required, []);
-      assertEqual(jsonSchema.properties.x.type, "string");
-    },
-
-    testAddRequiredAttributeToJSONSchema: function () {
-      var Model = FoxxModel.extend({}, {
-        attributes: {
-          x: { type: "string", required: true }
-        }
-      });
-
-      jsonSchema = Model.toJSONSchema("myname");
+      jsonSchema = toJSONSchema("myname", Model);
       assertEqual(jsonSchema.id, "myname");
       assertEqual(jsonSchema.properties.x.type, "string");
       assertEqual(jsonSchema.required, ["x"]);
@@ -465,7 +301,5 @@ function ModelLegacyAnnotationSpec () {
 
 jsunity.run(ModelSpec);
 jsunity.run(ModelAnnotationSpec);
-jsunity.run(ModelLegacySpec);
-jsunity.run(ModelLegacyAnnotationSpec);
 
 return jsunity.done();

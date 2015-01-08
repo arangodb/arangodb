@@ -821,6 +821,7 @@ static int FillShapeValueArray (v8::Isolate* isolate,
 
   if (found == nullptr) {
     LOG_TRACE("shaper failed to find shape %d", (int) a->base._type);
+    TRI_Free(shaper->_memoryZone, dst->_value);
     TRI_Free(shaper->_memoryZone, a);
 
     if (! create) {

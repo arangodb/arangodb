@@ -104,13 +104,17 @@ pack-dmg:
 
 pack-dmg-cmake:
 	cd Build && cmake \
+		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "USE_MRUBY=ON" \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "USE_MRUBY=ON" \
+		-D "V8_VERSION=${V8_VERSION}" \
+		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
 
 	${MAKE} .libev-build-64
@@ -145,13 +149,17 @@ pack-macosx:
 
 pack-macosx-cmake:
 	cd Build && cmake \
+		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "BUILD_PACKAGE=dmg-cli" \
 		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "USE_MRUBY=ON" \
-		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "USE_MRUBY=ON" \
+		-D "V8_VERSION=${V8_VERSION}" \
+		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
 
 	${MAKE} .libev-build-64
@@ -177,30 +185,31 @@ pack-arm:
 		--prefix=/usr \
 		--sysconfdir=/etc \
 		--localstatedir=/var \
-		--enable-all-in-one-icu \
-		--enable-all-in-one-v8 \
-		--enable-all-in-one-libev \
-		--with-v8=./3rdParty-ARM \
 		--disable-mruby
 
-	touch .icu-build-32
+	touch .libev-build-32
 	touch .v8-build-32
+	touch .zlib-build-32
 
 	${MAKE} pack-arm-cmake
 
 pack-arm-cmake:
 	cd Build && cmake \
-		-D "BUILD_PACKAGE=raspbian" \
-		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
-		-D "ETCDIR=${sysconfdir}" \
-		-D "VARDIR=${localstatedir}" \
-		-D "USE_MRUBY=OFF" \
 		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "BUILD_PACKAGE=raspbian" \
+		-D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		-D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-                -D "CMAKE_CXX_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
-                -D "CMAKE_C_FLAGS_RELEASE:STRING=-O2 -DNDEBUG" \
+		-D "ETCDIR=${sysconfdir}" \
+		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "USE_MRUBY=OFF" \
+		-D "V8_VERSION=${V8_VERSION}" \
+		-D "VARDIR=${localstatedir}" \
+		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
 
 	${MAKE} ${BUILT_SOURCES}
@@ -230,17 +239,20 @@ pack-winXX:
 pack-winXX-cmake:
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
-		-D "USE_MRUBY=OFF" \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "LIBEV_VERSION=4.11" \
+		-D "USE_MRUBY=OFF" \
+		-D "V8_VERSION=3.29.59" \
+		-D "ZLIB_VERSION=1.2.7" \
 		..
 
 	cd Build$(BITS) && cmake --build . --config Release
 
 	cd Build$(BITS) && cpack -G NSIS
-          
+
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 
 ################################################################################
@@ -263,12 +275,15 @@ pack-vistaXX:
 pack-vistaXX-cmake:
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
-		-D "USE_MRUBY=OFF" \
-		-D "USE_VISTA_LOCKS=ON" \
 		-D "ARANGODB_VERSION=${VERSION}" \
 		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "LIBEV_VERSION=4.11" \
+		-D "USE_MRUBY=OFF" \
+		-D "USE_VISTA_LOCKS=ON" \
+		-D "V8_VERSION=3.29.59" \
+		-D "ZLIB_VERSION=1.2.7" \
 		..
 
 	cd Build$(BITS) && cmake --build . --config Release

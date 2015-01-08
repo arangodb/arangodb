@@ -101,7 +101,7 @@ function getQueryExplanation (query, bindVars) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the results of a modify-query; compare aql 1 & 2 results
+/// @brief return the results of a modify-query
 ////////////////////////////////////////////////////////////////////////////////
 
 function getModifyQueryResults (query, bindVars) {
@@ -112,6 +112,20 @@ function getModifyQueryResults (query, bindVars) {
   }
 
   return queryResult.stats;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the results of a modify-query
+////////////////////////////////////////////////////////////////////////////////
+
+function getModifyQueryResultsRaw (query, bindVars) {
+  var queryResult = AQL_EXECUTE(query, bindVars);
+
+  if (queryResult instanceof arangodb.ArangoCursor) {
+    return queryResult.getExtra();
+  }
+
+  return queryResult;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -456,6 +470,12 @@ function removeAlwaysOnClusterRules (rules) {
   return copy;
 }
 
+function removeClusterNodes (nodeTypes) {
+  return nodeTypes.filter(function(nodeType) {
+    return ([ "ScatterNode", "GatherNode", "DistributeNode", "RemoteNode" ].indexOf(nodeType) === -1);
+  });
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports
 // -----------------------------------------------------------------------------
@@ -465,6 +485,7 @@ exports.getParseResults                    = getParseResults;
 exports.assertParseError                   = assertParseError;
 exports.getQueryExplanation                = getQueryExplanation;
 exports.getModifyQueryResults              = getModifyQueryResults;
+exports.getModifyQueryResultsRaw           = getModifyQueryResultsRaw;
 exports.getRawQueryResults                 = getRawQueryResults;
 exports.getQueryResults                    = getQueryResults;
 exports.assertQueryError                   = assertQueryError;
@@ -475,6 +496,7 @@ exports.findExecutionNodes                 = findExecutionNodes;
 exports.findReferencedNodes                = findReferencedNodes;
 exports.getQueryMultiplePlansAndExecutions = getQueryMultiplePlansAndExecutions;
 exports.removeAlwaysOnClusterRules         = removeAlwaysOnClusterRules;
+exports.removeClusterNodes                 = removeClusterNodes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
