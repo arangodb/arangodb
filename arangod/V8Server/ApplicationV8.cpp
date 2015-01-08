@@ -505,6 +505,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     _busyContexts[name].erase(context);
 
     delete context->_locker;
+    context->_locker = nullptr;
     TRI_ASSERT(! v8::Locker::IsLocked(isolate));
 
     guard.broadcast();
@@ -546,6 +547,7 @@ void ApplicationV8::exitContext (V8Context* context) {
     }
 
     delete context->_locker;
+    context->_locker = nullptr;
     _freeContexts[name].push_back(context);
   }
 
@@ -658,6 +660,7 @@ void ApplicationV8::collectGarbage () {
 
       isolate->Exit();
       delete context->_locker;
+      context->_locker = nullptr;
 
       // update garbage collection statistics
       context->_hasDeadObjects = false;
@@ -765,6 +768,7 @@ void ApplicationV8::upgradeDatabase (bool skip,
 
   isolate->Exit();
   delete context->_locker;
+  context->_locker = nullptr;
 
   if (perform) {
     // issue #391: when invoked with --upgrade, the server will not always shut down
@@ -854,6 +858,7 @@ void ApplicationV8::versionCheck () {
   }
   isolate->Exit();
   delete context->_locker;
+  context->_locker = nullptr;
 
   // regular shutdown... wait for all threads to finish
 
@@ -960,6 +965,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
     }
     isolate->Exit();
     delete context->_locker;
+    context->_locker = nullptr;
   }
 
   return result;
@@ -1366,6 +1372,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
   }
   isolate->Exit();
   delete context->_locker;
+  context->_locker = nullptr;
 
   // initialise garbage collection for context
   context->_numExecutions  = 0;
@@ -1410,6 +1417,7 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
   }
   isolate->Exit();
   delete context->_locker;
+  context->_locker = nullptr;
 
   // initialise garbage collection for context
   LOG_TRACE("initialised V8 server #%d", (int) i);
@@ -1453,6 +1461,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
 
   isolate->Exit();
   delete context->_locker;
+  context->_locker = nullptr;
 
   isolate->Dispose();
 
