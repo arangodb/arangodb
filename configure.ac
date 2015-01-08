@@ -223,24 +223,53 @@ V8_TARGET="native"
 
 v8_lib_dir=""
 
+AC_ARG_ENABLE(v8-debug,
+  AS_HELP_STRING([--enable-v8-debug], [build debug version of V8 (default: no)]),
+  [tr_V8_DEBUG="${enableval:-yes}"],
+  [tr_V8_DEBUG=no]
+)
+
+AM_CONDITIONAL(ENABLE_V8_DEBUG, test "x$tr_V8_DEBUG" = xyes)
+
 if test x$tr_ARM == xyes;  then
-  V8_TARGET="arm.release"
+  if test x$tr_V8_DEBUG == xyes;  then
+    V8_TARGET="arm.debug"
+  else
+    V8_TARGET="arm.release"
+  fi
+
   v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/tools/gyp"
 
 elif test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64.release"
+    if test x$tr_V8_DEBUG == xyes;  then
+      V8_TARGET="x64.debug"
+    else
+      V8_TARGET="x64.release"
+    fi
   else
-    V8_TARGET="ia32.release"
+    if test x$tr_V8_DEBUG == xyes;  then
+      V8_TARGET="ia32.debug"
+    else
+      V8_TARGET="ia32.release"
+    fi
   fi
 
   v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET"
 
 else
   if test "x$tr_BITS" == x64;  then
-    V8_TARGET="x64.release"
+    if test x$tr_V8_DEBUG == xyes;  then
+      V8_TARGET="x64.debug"
+    else
+      V8_TARGET="x64.release"
+    fi
   else
-    V8_TARGET="ia32.release"
+    if test x$tr_V8_DEBUG == xyes;  then
+      V8_TARGET="ia32.debug"
+    else
+      V8_TARGET="ia32.release"
+    fi
   fi
 
   v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/tools/gyp"
