@@ -186,7 +186,11 @@ repeated computations of the same value at multiple parts of a query.
 ```
 FOR u IN users
   LET numRecommendations = LENGTH(u.recommendations)
-  RETURN { "user" : u, "numRecommendations" : numRecommendations, "isPowerUser" : numRecommendations >= 10 } 
+  RETURN { 
+    "user" : u, 
+    "numRecommendations" : numRecommendations, 
+    "isPowerUser" : numRecommendations >= 10 
+  } 
 ```
 
 In the above example, the computation of the number of recommendations is
@@ -446,12 +450,14 @@ do not need to be identical to the ones produced by a preceding *FOR* statement:
 
 ```
 FOR i IN 1..1000
-  REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users
+  REMOVE { _key: CONCAT('test', i) } IN users
 
 FOR u IN users
   FILTER u.active == false
   REMOVE { _key: u._key } IN backup
 ```
+
+!SUBSUBSECTION Setting query options
 
 *options* can be used to suppress query errors that may occur when trying to
 remove non-existing documents. For example, the following query will fail if one
@@ -459,7 +465,7 @@ of the to-be-deleted documents does not exist:
 
 ```
 FOR i IN 1..1000
-  REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users
+  REMOVE { _key: CONCAT('test', i) } IN users
 ```
 
 By specifying the *ignoreErrors* query option, these errors can be suppressed so 
@@ -467,7 +473,7 @@ the query completes:
 
 ```
 FOR i IN 1..1000
-  REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users OPTIONS { ignoreErrors: true }
+  REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { ignoreErrors: true }
 ```
 
 To make sure data has been written to disk when a query returns, there is the *waitForSync* 
@@ -475,7 +481,26 @@ query option:
 
 ```
 FOR i IN 1..1000
-  REMOVE { _key: CONCAT('test', TO_STRING(i)) } IN users OPTIONS { waitForSync: true }
+  REMOVE { _key: CONCAT('test', i) } IN users OPTIONS { waitForSync: true }
+```
+
+!SUBSUBSECTION Returning the removed documents
+
+The removed documents can also be returned by the query. In this case, the `REMOVE` 
+statement must be directly followed by a special `LET` statement and a `RETURN` 
+statement. The `LET` statement is limited to assigning the pseudo-value `OLD`
+to a variable, and the `RETURN` statement is limited to returning this variable: 
+
+```
+REMOVE key-expression IN collection options LET variable-name = OLD RETURN variable-name
+```
+
+Following is an example using a variable named `removed` to return the removed
+documents:
+
+```
+FOR u IN users
+  REMOVE u IN users LET removed = OLD RETURN removed
 ```
 
 !SUBSECTION UPDATE
@@ -535,19 +560,21 @@ to the ones produced by a preceding *FOR* statement:
 
 ```
 FOR i IN 1..1000
-  UPDATE CONCAT('test', TO_STRING(i)) WITH { foobar: true } IN users
+  UPDATE CONCAT('test', i) WITH { foobar: true } IN users
 
 FOR u IN users
   FILTER u.active == false
   UPDATE u WITH { status: 'inactive' } IN backup
 ```
 
+!SUBSUBSECTION Setting query options
+
 *options* can be used to suppress query errors that may occur when trying to
 update non-existing documents or violating unique key constraints:
 
 ```
 FOR i IN 1..1000
-  UPDATE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+  UPDATE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
 ```
 
 An update operation will only update the attributes specified in *document* and
@@ -602,6 +629,42 @@ query option:
 FOR u IN users
   UPDATE u WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
+
+!SUBSUBSECTION Returning the modified documents
+
+The modified documents can also be returned by the query. In this case, the `UPDATE` 
+statement must be directly followed by a special `LET` statement and a `RETURN` 
+statement. The `LET` statement is limited to assigning either the pseudo-value `OLD`
+or `NEW` to a variable, and the `RETURN` statement is limited to returning this variable.
+The `OLD` pseudo-value refers to the document revisions before the update, and `NEW` 
+refers to document revisions after the update.
+
+```
+UPDATE document IN collection options LET variable-name = OLD RETURN variable-name
+UPDATE document IN collection options LET variable-name = NEW RETURN variable-name
+UPDATE key-expression WITH document IN collection options LET variable-name = OLD RETURN variable-name
+UPDATE key-expression WITH document IN collection options LET variable-name = NEW RETURN variable-name
+```
+
+Following is an example using a variable named `previous` to return the original
+documents before modification:
+
+```
+FOR u IN users
+  UPDATE u WITH { value: "test" } LET previous = OLD RETURN previous
+```
+
+The following query uses the `NEW` pseudo-value to return the updated 
+documents:
+
+```
+FOR u IN users
+  UPDATE u WITH { value: "test" } LET updated = NEW RETURN updated
+```
+
+In both cases, the returned documents will contain all attributes, even 
+those not specified in the update expression.
+
 
 !SUBSECTION REPLACE
 
@@ -666,19 +729,21 @@ to the ones produced by a preceding *FOR* statement:
 
 ```
 FOR i IN 1..1000
-  REPLACE CONCAT('test', TO_STRING(i)) WITH { foobar: true } IN users
+  REPLACE CONCAT('test', i) WITH { foobar: true } IN users
 
 FOR u IN users
   FILTER u.active == false
   REPLACE u WITH { status: 'inactive', name: u.name } IN backup
 ```
 
+!SUBSUBSECTION Setting query options
+
 *options* can be used to suppress query errors that may occur when trying to
 replace non-existing documents or when violating unique key constraints:
 
 ```
 FOR i IN 1..1000
-  REPLACE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+  REPLACE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
 ```
 
 To make sure data are durable when a replace query returns, there is the *waitForSync* 
@@ -686,8 +751,44 @@ query option:
 
 ```
 FOR i IN 1..1000
-  REPLACE { _key: CONCAT('test', TO_STRING(i)) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
+  REPLACE { _key: CONCAT('test', i) } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
+
+!SUBSUBSECTION Returning the modified documents
+
+The modified documents can also be returned by the query. In this case, the `REPLACE` 
+statement must be directly followed by a special `LET` statement and a `RETURN` 
+statement. The `LET` statement is limited to assigning either the pseudo-value `OLD`
+or `NEW` to a variable, and the `RETURN` statement is limited to returning this variable.
+The `OLD` pseudo-value refers to the document revisions before the update, and `NEW` 
+refers to document revisions after the update.
+
+```
+REPLACE document IN collection options LET variable-name = OLD RETURN variable-name
+REPLACE document IN collection options LET variable-name = NEW RETURN variable-name
+REPLACE key-expression WITH document IN collection options LET variable-name = OLD RETURN variable-name
+REPLACE key-expression WITH document IN collection options LET variable-name = NEW RETURN variable-name
+```
+
+Following is an example using a variable named `previous` to return the original
+documents before modification:
+
+```
+FOR u IN users
+  REPLACE u WITH { value: "test" } LET previous = OLD RETURN previous
+```
+
+The following query uses the `NEW` pseudo-value to return the replaced
+documents:
+
+```
+FOR u IN users
+  REPLACE u WITH { value: "test" } LET replaced = NEW RETURN replaced
+```
+
+In both cases, the returned documents will contain all attributes, even 
+those not specified in the replace expression.
+
 
 !SUBSECTION INSERT
 
@@ -728,12 +829,14 @@ FOR u IN users
     INSERT { _from: u._id, _to: p._id } IN recommendations
 ```
 
+!SUBSUBSECTION Setting query options
+
 *options* can be used to suppress query errors that may occur when violating unique
 key constraints:
 
 ```
 FOR i IN 1..1000
-  INSERT { _key: CONCAT('test', TO_STRING(i)), name: "test" } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
+  INSERT { _key: CONCAT('test', i), name: "test" } WITH { foobar: true } IN users OPTIONS { ignoreErrors: true }
 ```
 
 To make sure data are durable when an insert query returns, there is the *waitForSync* 
@@ -741,5 +844,27 @@ query option:
 
 ```
 FOR i IN 1..1000
-  INSERT { _key: CONCAT('test', TO_STRING(i)), name: "test" } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
+  INSERT { _key: CONCAT('test', i), name: "test" } WITH { foobar: true } IN users OPTIONS { waitForSync: true }
 ```
+
+!SUBSUBSECTION Returning the inserted documents
+
+The inserted documents can also be returned by the query. In this case, the `INSERT` 
+statement must be directly followed by a special `LET` statement and a `RETURN` 
+statement. The `LET` statement is limited to assigning the pseudo-value `NEW`
+to a variable, and the `RETURN` statement is limited to returning this variable: 
+
+```
+INSERT document IN collection options LET variable-name = OLD RETURN variable-name
+```
+
+Following is an example using a variable named `inserted` to return the inserted
+documents:
+
+```
+FOR i IN 1..100
+  INSERT { value: i } LET inserted = NEW RETURN inserted
+```
+
+The returned documents will contain all attributes, even those auto-generated by
+the database (e.g. `_id`, `_key`, `_rev`, `_from`, and `_to`).

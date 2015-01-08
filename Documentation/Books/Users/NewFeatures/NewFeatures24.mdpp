@@ -99,6 +99,39 @@ statement and move the random iteration into the appropriate `EnumerateCollectio
 This is usually more efficient than individually enumerating and sorting.
 
 
+!SUBSECTION Data-modification queries returning documents
+
+`INSERT`, `REMOVE`, `UPDATE` or `REPLACE` queries now can optionally return 
+the documents inserted, removed, updated, or replaced. This is helpful for tracking
+the auto-generated attributes (e.g. `_key`, `_rev`) created by an `INSERT` and in
+a lot of other situations.
+
+In order to return documents from a data-modification query, the statement must
+immediately be immediately followed by a `LET` statement that assigns either the 
+pseudo-value `NEW` or `OLD` to a variable. This `LET` statement must be followed 
+by a `RETURN` statement that returns the variable introduced by `LET`:
+
+    FOR i IN 1..100
+      INSERT { value: i } IN test LET inserted = NEW RETURN inserted
+
+    FOR u IN users
+      FILTER u.status == 'deleted'
+      REMOVE u IN users LET removed = OLD RETURN removed
+
+    FOR u IN users
+      FILTER u.status == 'not active'
+      UPDATE u WITH { status: 'inactive' } IN users LET updated = NEW RETURN updated
+
+`NEW` refers to the inserted or modified document revision, and `OLD` refers
+to the document revision before update or removal. `INSERT` statements can 
+only refer to the `NEW` pseudo-value, and `REMOVE` operations only to `OLD`. 
+`UPDATE` and `REPLACE` can refer to either.
+
+In all cases the full documents will be returned with all their attributes,
+including the potentially auto-generated attributes such as `_id`, `_key`, or `_rev`
+and the attributes not specified in the update expression of a partial update.
+
+
 !SUBSECTION Language improvements
 
 !SUBSUBSECTION `COUNT` clause
