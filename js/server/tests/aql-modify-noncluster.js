@@ -91,7 +91,7 @@ var validateDeleteGone = function (collection, results) {
         assertEqual(collection.document(results[index]._key), {});
         fail();
       }
-      catch(e) {
+      catch (e) {
         assertTrue(e.errorNum !== undefined, "unexpected error format while calling checking for deleted entry");
         assertEqual(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, e.errorNum, "unexpected error code (" + e.errorMessage + "): ");
       }
@@ -262,6 +262,14 @@ function ahuacatlModifySuite () {
 
     testInvalidVariableNames2 : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test variable names
+////////////////////////////////////////////////////////////////////////////////
+
+    testInvalidVariableNames3 : function () {
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN 1..1 UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN i", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
