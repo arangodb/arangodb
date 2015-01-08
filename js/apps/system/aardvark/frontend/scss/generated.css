@@ -4639,6 +4639,15 @@ pre.gv-object-view {
   margin-bottom: 0;
   width: 100%; }
 
+.foxx-store-row .foxx-name {
+  font-weight: 700; }
+.foxx-store-row .foxx-author {
+  margin-top: -4px;
+  font-size: 10pt;
+  font-weight: 300; }
+.foxx-store-row .foxx-version {
+  font-weight: 400; }
+
 .navlogo .stat_cpu {
   height: 26px;
   margin-top: 1px;
