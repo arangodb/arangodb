@@ -3531,15 +3531,16 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId const registerId = it->second.registerId;
   size_t removeCount = 0;
 
+  TRI_doc_mptr_copy_t nptr;
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
   if (ep->_outVariable != nullptr) {
     size_t count = 0;
 
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      auto res = (*it);
-      count += res->size();
+      count += (*it)->size();
     }
+
     if (count > 0) {
       result = new AqlItemBlock(count,//  * _outReg,<- currently 0
                                 getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
@@ -3556,7 +3557,6 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
     
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
-      TRI_doc_mptr_copy_t nptr;
       AqlValue a = res->getValue(i, registerId);
 
       std::string key;
@@ -3574,8 +3574,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       }
 
-      if ((errorCode == TRI_ERROR_NO_ERROR) && 
-          (result != nullptr)) {
+      if (errorCode == TRI_ERROR_NO_ERROR && 
+          result != nullptr) {
         errorCode = _trx->readSingle(trxCollection, &nptr, key);
       }
 
@@ -3590,8 +3590,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                  0, 
                                  nullptr,
                                  ep->_options.waitForSync);
-        if (ExecutionEngine::isDBServer() &&
-            errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            ExecutionEngine::isDBServer()) {
           auto* node = static_cast<RemoveNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             // Ignore document not found on the DBserver:
@@ -3599,8 +3599,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if ((result != nullptr) &&
-            (errorCode == TRI_ERROR_NO_ERROR)) {
+        if (result != nullptr &&
+            errorCode == TRI_ERROR_NO_ERROR) {
           
           result->setValue(removeCount++, 
                            _outReg,
@@ -3644,6 +3644,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
 
   auto trxCollection = _trx->trxCollection(_collection->cid());
 
+  TRI_doc_mptr_copy_t nptr;
   bool const isEdgeCollection = _collection->isEdgeCollection();
   size_t insertCount = 0;
 
@@ -3663,11 +3664,11 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     size_t count = 0;
 
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      auto res = (*it);
-      count += res->size();
+      count += (*it)->size();
     }
+
     if (count > 0) {
-      result = new AqlItemBlock(count, // * _outReg, <- 0 
+      result = new AqlItemBlock(count, 
                                 getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
@@ -3732,11 +3733,11 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           // document
           errorCode = _trx->create(trxCollection, &mptr, json.json(), nullptr, ep->_options.waitForSync);
         }
-        if ((errorCode == TRI_ERROR_NO_ERROR) &&
-            (result != nullptr)) {
-          TRI_doc_mptr_copy_t nptr;
 
+        if (errorCode == TRI_ERROR_NO_ERROR &&
+            result != nullptr) {
           errorCode = _trx->readSingle(trxCollection, &nptr, TRI_EXTRACT_MARKER_KEY(&mptr));
+
           if (errorCode == TRI_ERROR_NO_ERROR) {
             result->setValue(insertCount++,
                              _outReg,
@@ -3781,6 +3782,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
   RegisterId const docRegisterId = it->second.registerId;
   RegisterId keyRegisterId = 0; // default initialization
 
+  TRI_doc_mptr_copy_t nptr;
   bool const hasKeyVariable = (ep->_inKeyVariable != nullptr);
   std::string errorMessage;
   size_t updateCount = 0;
@@ -3797,11 +3799,10 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     size_t count = 0;
 
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      auto res = (*it);
-      count += res->size();
+      count += (*it)->size();
     }
     if (count > 0) {
-      result = new AqlItemBlock(count, // * _outReg,
+      result = new AqlItemBlock(count,
                                 getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
@@ -3881,26 +3882,33 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
           }
         }
-        if ((errorCode == TRI_ERROR_NO_ERROR) &&
-            (result != nullptr)) {
+
+        if (errorCode == TRI_ERROR_NO_ERROR &&
+            result != nullptr) {
+          TRI_doc_mptr_copy_t const* ptr = nullptr;
+
           if (ep->_returnNewValues) {
-            TRI_doc_mptr_copy_t nptr;
             errorCode = _trx->readSingle(trxCollection, &nptr, TRI_EXTRACT_MARKER_KEY(&mptr));
+
             if (errorCode == TRI_ERROR_NO_ERROR) {
-              result->setValue(updateCount++, 
-                               _outReg,
-                               AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
+              ptr = &nptr;
             }
           }
           else {
+            ptr = &oldDocument;
+          }
+
+          if (errorCode == TRI_ERROR_NO_ERROR) {
+            TRI_ASSERT(ptr != nullptr);
+
             result->setValue(updateCount++, 
                              _outReg,
-                             AqlValue(reinterpret_cast<TRI_df_marker_t
-                                      const*>(oldDocument.getDataPtr())));
+                             AqlValue(reinterpret_cast<TRI_df_marker_t const*>(ptr->getDataPtr())));
           }
         }
-        if (ExecutionEngine::isDBServer() &&
-            errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
+            ExecutionEngine::isDBServer()) {
           auto* node = static_cast<UpdateNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             // Ignore document not found on the DBserver:
@@ -3962,11 +3970,10 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     size_t count = 0;
 
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
-      auto res = (*it);
-      count += res->size();
+      count += (*it)->size();
     }
     if (count > 0) {
-      result = new AqlItemBlock(count, // * _outReg,
+      result = new AqlItemBlock(count, 
                                 getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
@@ -4007,7 +4014,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       }
 
-      if ((result != nullptr) && !ep->_returnNewValues) {
+      if (result != nullptr && ! ep->_returnNewValues) {
         readErrorCode = _trx->readSingle(trxCollection, &nptr, key);
       }
 
@@ -4017,8 +4024,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           
         // all exceptions are caught in _trx->update()
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
-        if (ExecutionEngine::isDBServer() &&
-            errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && ExecutionEngine::isDBServer()) {
           auto* node = static_cast<ReplaceNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             errorCode = TRI_ERROR_NO_ERROR;
@@ -4028,26 +4034,19 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if ((result        != nullptr) &&
-            (errorCode     == TRI_ERROR_NO_ERROR) &&
-            (readErrorCode == TRI_ERROR_NO_ERROR)) {
+        if (result != nullptr &&
+            errorCode == TRI_ERROR_NO_ERROR &&
+            readErrorCode == TRI_ERROR_NO_ERROR) {
 
           if (ep->_returnNewValues) {
-
             readErrorCode = _trx->readSingle(trxCollection, &nptr, key);
-
-            if (readErrorCode == TRI_ERROR_NO_ERROR) {
-              result->setValue(replaceCounter++, 
-                               _outReg,
-                               AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
-            }
           }
-          else {
+
+          if (readErrorCode == TRI_ERROR_NO_ERROR) {
             result->setValue(replaceCounter++,
                              _outReg,
                              AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
           }
-
         }
       }
 
