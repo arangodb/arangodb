@@ -133,7 +133,7 @@ void Aqlerror (YYLTYPE* locp,
 %left T_OR 
 %left T_AND
 %left T_EQ T_NE 
-%left T_IN 
+%left T_IN T_NIN 
 %left T_LT T_GT T_LE T_GE
 %left T_RANGE
 %left T_PLUS T_MINUS
@@ -780,7 +780,7 @@ operator_binary:
   | expression T_IN expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_IN, $1, $3);
     }
-  | expression T_NOT T_IN expression {
+  | expression T_NOT T_IN expression %prec T_NIN {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_NIN, $1, $4);
     }
   ;
