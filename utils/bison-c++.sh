@@ -13,7 +13,7 @@ fi
 ## bison
 #############################################################################
 
-${BISON} -l -d -ra -S lalr1.cc -o ${OUTPUT} ${INPUT}
+${BISON} -l -d -ra -S lalr1.cc --warnings="deprecated,other,error=conflicts-sr,error=conflicts-rr" -o ${OUTPUT} ${INPUT}
 
 #############################################################################
 ## sanity checks
