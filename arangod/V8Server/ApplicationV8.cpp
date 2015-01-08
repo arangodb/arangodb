@@ -374,30 +374,31 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
   v8::HandleScope scope(isolate);
   auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
   localContext->Enter();
-  v8::Context::Scope contextScope(localContext);
+  {
+    v8::Context::Scope contextScope(localContext);
 
-  TRI_ASSERT(context->_locker->IsLocked(isolate));
-  TRI_ASSERT(v8::Locker::IsLocked(isolate));
-  TRI_GET_GLOBALS();
+    TRI_ASSERT(context->_locker->IsLocked(isolate));
+    TRI_ASSERT(v8::Locker::IsLocked(isolate));
+    TRI_GET_GLOBALS();
 
-  // set the current database
+    // set the current database
   
-  v8g->_vocbase = vocbase;
-  v8g->_allowUseDatabase = allowUseDatabase;
+    v8g->_vocbase = vocbase;
+    v8g->_allowUseDatabase = allowUseDatabase;
 
-  LOG_TRACE("entering V8 context %d", (int) context->_id);
-  context->handleGlobalContextMethods();
+    LOG_TRACE("entering V8 context %d", (int) context->_id);
+    context->handleGlobalContextMethods();
 
-  if (_developmentMode && ! initialise) {
-    v8::HandleScope scope(isolate);
+    if (_developmentMode && ! initialise) {
+      v8::HandleScope scope(isolate);
 
-    TRI_ExecuteJavaScriptString(isolate,
-                                localContext,
-                                TRI_V8_ASCII_STRING("require(\"internal\").resetEngine()"),
-                                TRI_V8_ASCII_STRING("global context method"),
-                                false);
+      TRI_ExecuteJavaScriptString(isolate,
+                                  localContext,
+                                  TRI_V8_ASCII_STRING("require(\"internal\").resetEngine()"),
+                                  TRI_V8_ASCII_STRING("global context method"),
+                                  false);
+    }
   }
-
   return context;
 }
 
@@ -505,6 +506,7 @@ void ApplicationV8::exitContext (V8Context* context) {
 
     delete context->_locker;
     context->_locker = nullptr;
+
     TRI_ASSERT(! v8::Locker::IsLocked(isolate));
 
     guard.broadcast();
