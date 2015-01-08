@@ -1425,7 +1425,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
 
     double cost = static_cast<double>(docCount) * incoming * _ranges.size();
     // the more attributes are contained in the index, the more specific the lookup will be
-    for (auto const& x : _ranges.at(0)) { 
+    for (size_t i = 0; i < _ranges.at(0).size(); ++i) { 
       cost /= EqualityReductionFactor; 
     }
     
