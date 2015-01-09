@@ -13,7 +13,10 @@ window.ApplicationDetailView = Backbone.View.extend({
   },
 
   render: function() {
-    $(this.el).html(this.template.render(this.model));
+    $(this.el).html(this.template.render({
+      app: this.model,
+      db: arangoHelper.currentDatabase()
+    }));
 
     if (!this.model.get('development') && !this.model.get('isSystem')) {
       $('.delete', this.el).prop('disabled', false);
