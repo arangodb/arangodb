@@ -5,7 +5,7 @@
         <a class="activeBread" href="#applications">Applications</a>
         &gt;
         <a class="disabledBread">
-          <%= attributes.mount %>
+          <%= app.attributes.mount %>
         </a>
       </div>
     </div>
@@ -13,43 +13,43 @@
       <div class="header">
         <div class="header_left">
           <div class="header-icon-container">
-            <img src="foxxes/thumbnail/<%=attributes.app %>" class="icon" alt="Icon for App">
+            <img src="foxxes/thumbnail/<%=app.attributes.app %>" class="icon" alt="Icon for App">
           </div>
           <input type="button" class="open button-success" disabled="true" value="Open">
           <input type="button" class="delete button-danger" disabled="true" value="Delete">
         </div>
         <div class="header_right">
           <h3>
-            <%= attributes.name %>
+            <%= app.attributes.name %>
           </h3>
           <h3>
-            <% if (attributes.license) { %>
-              <span class="license"><%= attributes.license %></span>
+            <% if (app.attributes.license) { %>
+              <span class="license"><%= app.attributes.license %></span>
             <% } %>
           </h3>
           <h3>
-            <% if (attributes.development) { %>
+            <% if (app.attributes.development) { %>
               <span class="version">devel</span>
             <% } else { %>
-              <span class="version"><%= attributes.app.split(':').pop() %></span>
+              <span class="version"><%= app.attributes.app.split(':').pop() %></span>
             <% } %>
           </h3>
-          <p class="description"><%= attributes.description %></p>
+          <p class="description"><%= app.attributes.description %></p>
         </div>
       </div>
       <div class="swagger">
-        <iframe src="./standalone.html#application/documentation/<%= attributes._key %>" name="Documentation"></iframe>
+        <iframe src="/_db/<%= app.attributes.db%>/_admin/aardvark/standalone.html#application/documentation/<%= app.attributes._key %>" name="Documentation"></iframe>
       </div>
     </section>
     <aside class="meta">
       <dl>
         <dt>Author</dt>
-        <dd><%= attributes.author %></dd>
+        <dd><%= app.attributes.author %></dd>
         <dt>Contributors</dt>
         <dd>
-          <% if (attributes.contributors && attributes.contributors.length > 0) { %>
+          <% if (app.attributes.contributors && app.attributes.contributors.length > 0) { %>
           <ul>
-          <% _.each(attributes.contributors, function (contributor) { %>
+          <% _.each(app.attributes.contributors, function (contributor) { %>
             <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
           <% }); %>
           </ul>
@@ -60,15 +60,15 @@
         <dt>Links</dt>
         <dd>
           <ul>
-            <% if (!attributes.development) { %>
+            <% if (!app.attributes.development) { %>
               <li>
-                <a href="./swagger/<%= encodeURIComponent(encodeURIComponent(attributes.mount)) %>" target="_blank">
+                <a href="./swagger/<%= encodeURIComponent(encodeURIComponent(app.attributes.mount)) %>" target="_blank">
                   Download API Documentation
                 </a>
               </li>
             <% } %>
-            <% if (attributes.repository && attributes.repository.type == 'git') { %>
-              <li><a href="<%= attributes.repository.url %>" target="_blank">Git Repository</a></li>
+            <% if (app.attributes.repository && app.attributes.repository.type == 'git') { %>
+              <li><a href="<%= app.attributes.repository.url %>" target="_blank">Git Repository</a></li>
             <% } %>
           </ul>
         </dd>
