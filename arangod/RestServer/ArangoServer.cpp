@@ -1074,12 +1074,14 @@ int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
       }
       else {
         // will stop, so need for v8g->_canceled = true;
-        return EXIT_FAILURE;
+        TRI_ASSERT(! ok);
       }
     }
     else {
       ok = TRI_ObjectToBoolean(localContext->Global()->Get(TRI_V8_ASCII_STRING("SYS_UNIT_TESTS_RESULT")));
     }
+
+    localContext->Exit();
   }
 
   _applicationV8->exitContext(context);
@@ -1096,59 +1098,64 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
   ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true, true);
   auto isolate = context->isolate;
 
-  v8::TryCatch tryCatch;
-  v8::HandleScope globalScope(isolate);
-
-  auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
-  localContext->Enter();
   {
-    v8::Context::Scope contextScope(localContext);
-    for (size_t i = 0;  i < _scriptFile.size();  ++i) {
-      bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
+    v8::HandleScope globalScope(isolate);
 
-      if (! r) {
-        LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
+    auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
+    localContext->Enter();
+    {
+      v8::TryCatch tryCatch;
+      v8::Context::Scope contextScope(localContext);
+      for (size_t i = 0;  i < _scriptFile.size();  ++i) {
+        bool r = TRI_ExecuteGlobalJavaScriptFile(isolate, _scriptFile[i].c_str());
+
+        if (! r) {
+          LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
+        }
       }
-    }
 
-    isolate->LowMemoryNotification();
-    while (! isolate->IdleNotification(1000)) {
-    }
+      isolate->LowMemoryNotification();
+      while (! isolate->IdleNotification(1000)) {
+      }
 
-    // parameter array
-    v8::Handle<v8::Array> params = v8::Array::New(isolate);
+      // parameter array
+      v8::Handle<v8::Array> params = v8::Array::New(isolate);
 
-    params->Set(0, TRI_V8_STD_STRING(_scriptFile[_scriptFile.size() - 1]));
+      params->Set(0, TRI_V8_STD_STRING(_scriptFile[_scriptFile.size() - 1]));
 
-    for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
-      params->Set((uint32_t) (i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
-    }
+      for (size_t i = 0;  i < _scriptParameters.size();  ++i) {
+        params->Set((uint32_t) (i + 1), TRI_V8_STD_STRING(_scriptParameters[i]));
+      }
 
-    // call main
-    v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
-    v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(localContext->Global()->Get(mainFuncName));
+      // call main
+      v8::Handle<v8::String> mainFuncName = TRI_V8_ASCII_STRING("main");
+      v8::Handle<v8::Function> main = v8::Handle<v8::Function>::Cast(localContext->Global()->Get(mainFuncName));
 
-    if (main.IsEmpty() || main->IsUndefined()) {
-      LOG_FATAL_AND_EXIT("no main function defined, giving up");
-    }
-    else {
-      v8::Handle<v8::Value> args[] = { params };
-      v8::Handle<v8::Value> result = main->Call(main, 1, args);
-
-      if (tryCatch.HasCaught()) {
-        if (tryCatch.CanContinue()) {
-          TRI_LogV8Exception(isolate, &tryCatch);
-        }
-        else {
-          // will stop, so need for v8g->_canceled = true;
-          return EXIT_FAILURE;
-        }
+      if (main.IsEmpty() || main->IsUndefined()) {
+        LOG_FATAL_AND_EXIT("no main function defined, giving up");
       }
       else {
-        ok = TRI_ObjectToDouble(result) == 0;
+        v8::Handle<v8::Value> args[] = { params };
+        v8::Handle<v8::Value> result = main->Call(main, 1, args);
+
+        if (tryCatch.HasCaught()) {
+          if (tryCatch.CanContinue()) {
+            TRI_LogV8Exception(isolate, &tryCatch);
+          }
+          else {
+            // will stop, so need for v8g->_canceled = true;
+            TRI_ASSERT(! ok);
+          }
+        }
+        else {
+          ok = TRI_ObjectToDouble(result) == 0;
+        }
       }
     }
+
+    localContext->Exit();
   }
+
   _applicationV8->exitContext(context);
   return ok ? EXIT_SUCCESS : EXIT_FAILURE;
 }
