@@ -52,6 +52,8 @@ namespace triagens {
         profile           = other.profile;
         zone              = other.zone;
         clusterplan       = other.clusterplan;
+        bindParameters    = other.bindParameters;
+        collectionNames   = other.collectionNames;
 
         other.warnings    = nullptr;
         other.json        = nullptr;
