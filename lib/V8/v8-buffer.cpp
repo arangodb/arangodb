@@ -810,11 +810,6 @@ bool V8Buffer::hasInstance (v8::Isolate *isolate, v8::Handle<v8::Value> val) {
   }
 
   v8::Local<v8::Object> obj = val->ToObject();
-  v8::ExternalArrayType type = obj->GetIndexedPropertiesExternalArrayDataType();
-
-  if (type != v8::kExternalUnsignedByteArray) {
-    return false;
-  }
 
   // Also check for SlowBuffers that are empty.
   TRI_GET_GLOBAL(BufferTempl, v8::FunctionTemplate);
@@ -876,10 +871,6 @@ void V8Buffer::replace (v8::Isolate* isolate,
   }
 
   auto handle = v8::Local<v8::Object>::New(isolate, _handle);
-  
-  handle->SetIndexedPropertiesToExternalArrayData(_data,
-                                                  v8::kExternalUnsignedByteArray,
-                                                  (int) _length);
   TRI_GET_GLOBAL(LengthKey, v8::String);
   handle->Set(LengthKey, v8::Integer::NewFromUnsigned(isolate, (uint32_t) _length));
 }
@@ -1466,26 +1457,25 @@ static void ReadFloatGeneric (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   double offset_tmp = args[0]->NumberValue();
   int64_t offset = static_cast<int64_t>(offset_tmp);
-  bool doTRI_ASSERT = !args[1]->BooleanValue();
+  bool doTRI_ASSERT = ! args[1]->BooleanValue();
+    
+  V8Buffer* buffer = V8Buffer::unwrap(args.This());
 
   if (doTRI_ASSERT) {
     if (offset_tmp != offset || offset < 0) {
       TRI_V8_THROW_TYPE_ERROR("<offset> is not uint");
     }
 
-    size_t len = static_cast<size_t>(
-      args.This()->GetIndexedPropertiesExternalArrayDataLength());
+    size_t len = static_cast<size_t>(buffer->_length);
 
     if (offset + sizeof(T) > len) {
       TRI_V8_THROW_RANGE_ERROR("trying to read beyond buffer length");
     }
   }
 
-  char* data = static_cast<char*>(
-    args.This()->GetIndexedPropertiesExternalArrayData());
+  char* data = static_cast<char*>(buffer->_data);
   char* ptr = data + offset;
 
   T val;
@@ -1495,7 +1485,7 @@ static void ReadFloatGeneric (const v8::FunctionCallbackInfo<v8::Value>& args) {
     Swizzle(reinterpret_cast<char*>(&val), sizeof(T));
   }
 
-  TRI_V8_RETURN(v8::Number::New(isolate,val));
+  TRI_V8_RETURN(v8::Number::New(isolate, val));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1539,28 +1529,27 @@ static void WriteFloatGeneric (const v8::FunctionCallbackInfo<v8::Value>& args) 
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   bool doTRI_ASSERT = !args[2]->BooleanValue();
 
   if (doTRI_ASSERT) {
-    if (!args[0]->IsNumber()) {
+    if (! args[0]->IsNumber()) {
       TRI_V8_THROW_TYPE_ERROR("<value> not a number");
     }
 
-    if (!args[1]->IsUint32()) {
+    if (! args[1]->IsUint32()) {
       TRI_V8_THROW_TYPE_ERROR("<offset> is not uint");
     }
   }
+  
+  V8Buffer* buffer = V8Buffer::unwrap(args.This());
 
   T val = static_cast<T>(args[0]->NumberValue());
   size_t offset = args[1]->Uint32Value();
-  char* data = static_cast<char*>(
-    args.This()->GetIndexedPropertiesExternalArrayData());
+  char* data = static_cast<char*>(buffer->_data);
   char* ptr = data + offset;
 
   if (doTRI_ASSERT) {
-    size_t len = static_cast<size_t>(
-      args.This()->GetIndexedPropertiesExternalArrayDataLength());
+    size_t len = static_cast<size_t>(buffer->_length);
 
     if (offset + sizeof(T) > len || offset + sizeof(T) < offset) {
       TRI_V8_THROW_RANGE_ERROR("trying to write beyond buffer length");
@@ -1635,12 +1624,11 @@ static void JS_MakeFastBuffer (const v8::FunctionCallbackInfo<v8::Value>& args) 
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   if (! V8Buffer::hasInstance(isolate, args[0])) {
     TRI_V8_THROW_EXCEPTION_USAGE("makeFastBuffer(<buffer>, <fastBuffer>, <offset>, <length>");
   }
 
-  V8Buffer *buffer = V8Buffer::unwrap(args[0]->ToObject());
+  V8Buffer* buffer = V8Buffer::unwrap(args[0]->ToObject());
   v8::Local<v8::Object> fast_buffer = args[1]->ToObject();;
   uint32_t offset = args[2]->Uint32Value();
   uint32_t length = args[3]->Uint32Value();
@@ -1680,6 +1668,49 @@ static void JS_SetFastBufferConstructor (const v8::FunctionCallbackInfo<v8::Valu
   TRI_V8_RETURN_UNDEFINED();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief selects an indexed attribute from the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static void MapGetIndexedBuffer (uint32_t idx,
+                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Object> self = args.Holder();
+  V8Buffer* buffer = V8Buffer::unwrap(self);
+
+  if (buffer == nullptr || idx >= buffer->_length) {
+    TRI_V8_RETURN(v8::Handle<v8::Value>());
+  }
+
+  TRI_V8_RETURN(v8::Integer::NewFromUnsigned(isolate, ((uint8_t) buffer->_data[idx])));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets an indexed attribute in the buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static void MapSetIndexedBuffer (uint32_t idx,
+                                 v8::Local<v8::Value> value,
+                                 const v8::PropertyCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  v8::Handle<v8::Object> self = args.Holder();
+  V8Buffer* buffer = V8Buffer::unwrap(self);
+
+  if (buffer == nullptr || idx >= buffer->_length) {
+    TRI_V8_RETURN(v8::Handle<v8::Value>());
+  }
+
+  auto val = static_cast<uint8_t>(value->NumberValue());
+
+  buffer->_data[idx] = (char) val;
+
+  TRI_V8_RETURN(v8::Integer::NewFromUnsigned(isolate, ((uint8_t) buffer->_data[idx])));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global functions
 // -----------------------------------------------------------------------------
@@ -1690,7 +1721,6 @@ static void JS_SetFastBufferConstructor (const v8::FunctionCallbackInfo<v8::Valu
 
 void TRI_InitV8Buffer (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   v8::HandleScope scope(isolate);
-
 
   // sanity checks
   TRI_ASSERT(unbase64('/') == 63);
@@ -1714,6 +1744,10 @@ void TRI_InitV8Buffer (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   ft->SetClassName(TRI_V8_ASCII_STRING("SlowBuffer"));
   rt = ft->InstanceTemplate();
   rt->SetInternalFieldCount(1);
+  
+  // accessor for indexed properties (e.g. buffer[1])
+  rt->SetIndexedPropertyHandler(MapGetIndexedBuffer, MapSetIndexedBuffer);
+
   v8g->BufferTempl.Reset(isolate, ft);
 
   // copy free
