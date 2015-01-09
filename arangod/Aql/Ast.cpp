@@ -318,7 +318,7 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
 
   if (newOld != nullptr) {
     node->addMember(createNodeVariable(varInto, true));
-    node->addMember(new AstNode(TRI_CaseEqualString(newOld, "NEW"), VALUE_TYPE_BOOL));
+    node->addMember(createNodeValueBool(TRI_CaseEqualString(newOld, "NEW")));
   }
 
   return node;
@@ -356,7 +356,7 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
 
   if (newOld != nullptr) {
     node->addMember(createNodeVariable(varInto, true));
-    node->addMember(new AstNode(TRI_CaseEqualString(newOld, "NEW"), VALUE_TYPE_BOOL));
+    node->addMember(createNodeValueBool(TRI_CaseEqualString(newOld, "NEW")));
   }
   return node;
 }
