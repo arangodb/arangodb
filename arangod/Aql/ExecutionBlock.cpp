@@ -1362,7 +1362,7 @@ IndexOrCondition* IndexRangeBlock::cartesian (
   std::vector<size_t> indexes;
   indexes.reserve(collector.size());
   for (size_t i = 0; i < collector.size(); i++) {
-    indexes[i] = 0;
+    indexes.push_back(0);
   }
   
   auto out = new IndexOrCondition();
