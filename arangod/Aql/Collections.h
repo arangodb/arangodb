@@ -104,6 +104,7 @@ namespace triagens {
 
         std::vector<std::string> collectionNames () const {
           std::vector<std::string> result;
+          result.reserve(_collections.size());
 
           for (auto it = _collections.begin(); it != _collections.end(); ++it) {
             result.push_back((*it).first);
