@@ -9,11 +9,18 @@ if test "x$BISON" = x -o "x$OUTPUT" = x -o "x$INPUT" = x;  then
   exit 1
 fi
 
+BISON_MAJOR_VER=`${BISON} --version |grep bison|sed -e "s;.* ;;" -e "s;\..*;;"`
+
+if test "${BISON_MAJOR_VER}" -ge "3"; then 
+    BISON_OPTS="--warnings=deprecated,other,error=conflicts-sr,error=conflicts-rr"
+
+fi
+
 #############################################################################
 ## bison
 #############################################################################
 
-${BISON} -d -ra --warnings="deprecated,other,error=conflicts-sr,error=conflicts-rr" -o ${OUTPUT} ${INPUT}
+${BISON} -d -ra ${BISON_OPTS} -o ${OUTPUT} ${INPUT}
 
 #############################################################################
 ## sanity checks
