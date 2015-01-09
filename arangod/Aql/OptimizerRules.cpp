@@ -1996,7 +1996,7 @@ public:
   }
 
   ~SortAnalysis () {
-    for (auto x : _sortNodeData){
+    for (auto x : _sortNodeData) {
       delete x;
     }
   }
@@ -2705,7 +2705,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       bool const isRootNode = plan->isRoot(node);
       // don't do this if we are already distributing!
       if (deps[0]->getType() == ExecutionNode::REMOTE &&
-          deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE){
+          deps[0]->getDependencies()[0]->getType() == ExecutionNode::DISTRIBUTE) {
         continue;
       }
       plan->unlinkNode(node, isRootNode);
@@ -2832,7 +2832,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         return TRI_ERROR_NO_ERROR;
       }
     }
-
+        
     // In the INSERT and REPLACE cases we use a DistributeNode...
 
     auto deps = node->getDependencies();
@@ -3186,7 +3186,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         _enumColl(nullptr),
         _setter(nullptr),
         _variable(nullptr), 
-        _lastNode(nullptr){
+        _lastNode(nullptr) {
     };
 
     ~RemoveToEnumCollFinder () {

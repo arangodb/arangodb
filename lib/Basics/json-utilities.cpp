@@ -735,12 +735,10 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
                            TRI_json_t const* rhs,
                            bool nullMeansRemove,
                            bool mergeObjects) {
-  TRI_json_t* result;
-
   TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
-  result = MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
+  TRI_json_t* result = MergeRecursive(zone, lhs, rhs, nullMeansRemove, mergeObjects);
 
   return result;
 }
@@ -752,12 +750,9 @@ TRI_json_t* TRI_MergeJson (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t HashBlock (uint64_t hash, char const* buffer, size_t length) {
-  uint64_t nMagicPrime;
-  size_t   j;
+  uint64_t nMagicPrime = 0x00000100000001b3ULL;
 
-  nMagicPrime = 0x00000100000001b3ULL;
-
-  for (j = 0; j < length; ++j) {
+  for (size_t j = 0; j < length; ++j) {
     hash ^= ((int8_t const*) buffer)[j];
     hash *= nMagicPrime;
   }
@@ -864,19 +859,15 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
                                    int nrAttributes,
                                    bool docComplete,
                                    int* error) {
-  uint64_t hash;
-
-  if (NULL != error) {
+  if (error != nullptr) {
     *error = TRI_ERROR_NO_ERROR;
   }
-  hash = TRI_FnvHashBlockInitial();
+  uint64_t hash = TRI_FnvHashBlockInitial();
   if (TRI_IsObjectJson(json)) {
-    int i;
-
-    for (i = 0; i < nrAttributes; i++) {
+    for (int i = 0; i < nrAttributes; i++) {
       TRI_json_t const* subjson = TRI_LookupObjectJson(json, attributes[i]);
 
-      if (NULL == subjson && !docComplete && NULL != error) {
+      if (subjson == nullptr && ! docComplete && error != nullptr) {
         *error = TRI_ERROR_CLUSTER_NOT_ALL_SHARDING_ATTRIBUTES_GIVEN;
       }
       hash = HashJsonRecursive(hash, subjson);

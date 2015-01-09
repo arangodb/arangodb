@@ -3485,7 +3485,7 @@ int ModificationBlock::extractKey (AqlValue const& value,
 
 void ModificationBlock::handleResult (int code,
                                       bool ignoreErrors,
-                                      std::string const *errorMessage) {
+                                      std::string const* errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
     ++_engine->_stats.writesExecuted;
@@ -3497,7 +3497,7 @@ void ModificationBlock::handleResult (int code,
     }
     else {
       // bubble up the error
-      if (errorMessage != nullptr) {
+      if (errorMessage != nullptr && ! errorMessage->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
       }
       else {
@@ -3794,7 +3794,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     keyRegisterId = it->second.registerId;
   }
   
-  auto* trxCollection = _trx->trxCollection(_collection->cid());
+  auto trxCollection = _trx->trxCollection(_collection->cid());
 
   if (ep->_outVariable != nullptr) {
     size_t count = 0;
@@ -3814,7 +3814,6 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto* res = b;   // This is intentionally a copy!
     auto document = res->getDocumentCollection(docRegisterId);
     decltype(document) keyDocument = nullptr;
-
 
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
@@ -3842,7 +3841,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
       else {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-        errorMessage += std::string("expecting 'array', got: ") +
+        errorMessage += std::string("expecting 'object', got: ") +
           a.getTypeString() + 
           std::string(" while handling: ") + 
           _exeNode->getTypeString();
@@ -4025,7 +4024,8 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           
         // all exceptions are caught in _trx->update()
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && ExecutionEngine::isDBServer()) {
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
+            ExecutionEngine::isDBServer()) {
           auto* node = static_cast<ReplaceNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             errorCode = TRI_ERROR_NO_ERROR;
@@ -5154,7 +5154,7 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
     THROW_ARANGO_EXCEPTION(res);
   }
 
-  TRI_ASSERT(!shardId.empty());
+  TRI_ASSERT(! shardId.empty());
 
   return getClientId(shardId); 
   LEAVE_BLOCK
