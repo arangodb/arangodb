@@ -114,8 +114,6 @@ class V8Wrapper {
         data->SetInternalField(0, v8::Undefined(_isolate));
         _handle.Reset();
 
-        _handle.Reset();
-
         if (_free != 0) {
           _free(_object);
         }
