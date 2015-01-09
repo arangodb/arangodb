@@ -1391,9 +1391,9 @@ nav.navbar, footer.footer {
   width: 100%;
   z-index: 1000; }
 
-.button-danger {
+.button-danger, .ajax-file-upload-red {
   background-color: #da4f49; }
-  .button-danger:hover, .button-danger:focus {
+  .button-danger:hover, .ajax-file-upload-red:hover, .button-danger:focus, .ajax-file-upload-red:focus {
     background-color: #be342e; }
 
 .deleteButton, .contentTables td span, .edit-index-table .icon_arangodb_roundminus {
@@ -1401,9 +1401,9 @@ nav.navbar, footer.footer {
   .deleteButton:hover, .contentTables td span:hover, .edit-index-table .icon_arangodb_roundminus:hover, .deleteButton:focus, .contentTables td span:focus, .edit-index-table .icon_arangodb_roundminus:focus {
     color: #be342e; }
 
-.button-success {
+.button-success, .ajax-file-upload {
   background-color: #8aa051; }
-  .button-success:hover, .button-success:focus {
+  .button-success:hover, .ajax-file-upload:hover, .button-success:focus, .ajax-file-upload:focus {
     background-color: #788f3d; }
 
 .addButton, .contentTables td.dbThSecond span {
@@ -1675,7 +1675,7 @@ div.footer-right {
   div.footer-right .isOnline {
     color: #8aa051 !important; }
 
-.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .button-header {
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .ajax-file-upload-red, .ajax-file-upload, .button-header {
   -moz-border-radius: 4px;
   -webkit-border-radius: 4px;
   border-radius: 4px;
@@ -1685,7 +1685,7 @@ div.footer-right {
   font-size: 14px;
   font-weight: 300 !important; }
 
-.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close {
+.button-neutral, .button-primary, .button-notification, .button-success, .button-danger, .button-warning, .button-inactive, .button-close, .ajax-file-upload-red, .ajax-file-upload {
   border: 0;
   color: #fff;
   margin-left: 10px;
@@ -5981,7 +5981,8 @@ input.gv-radio-button {
   margin-top: 7px; }
 
 .application-detail-view section.info {
-  float: left; }
+  float: left;
+  padding: 13px 0 0; }
   .application-detail-view section.info .header {
     float: left;
     height: 200px;
@@ -5989,7 +5990,7 @@ input.gv-radio-button {
     position: relative; }
     .application-detail-view section.info .header .header_left {
       position: absolute;
-      width: 170px;
+      width: 160px;
       text-align: center; }
       .application-detail-view section.info .header .header_left div.header-icon-container {
         height: 160px;
@@ -6000,6 +6001,14 @@ input.gv-radio-button {
           max-height: 160px;
           max-width: 160px;
           width: auto; }
+      .application-detail-view section.info .header .header_left input.open {
+        position: absolute;
+        margin-left: 0;
+        left: 0; }
+      .application-detail-view section.info .header .header_left input.delete {
+        position: absolute;
+        margin-right: 0;
+        right: 0; }
     .application-detail-view section.info .header .header_right {
       position: relative;
       left: 170px;
@@ -6268,122 +6277,67 @@ table .sorting {
   color: #000; }
 
 .ajax-file-upload-statusbar {
-  border: 1px solid #0ba1b5;
-  margin-top: 10px;
-  width: 420px;
-  margin-right: 10px;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.7);
   margin: 5px;
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
-  padding: 5px 5px 5px 5px; }
+  margin-right: 10px;
+  margin-top: 10px;
+  padding: 5px;
+  width: 420px; }
 
 .ajax-file-upload-filename {
-  width: 100%;
+  color: #808080;
   height: auto;
   margin: 0 5px 5px 10px;
-  color: #807579; }
+  width: 100%; }
 
 .ajax-file-upload-progress {
-  margin: 0 10px 5px 10px;
-  position: relative;
-  width: 250px;
-  border: 1px solid #ddd;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  border: 1px solid #d9d9d9;
+  display: inline-block;
+  margin: 0 10px 5px;
   padding: 1px;
-  border-radius: 3px;
-  display: inline-block; }
+  position: relative;
+  width: 250px; }
 
 .ajax-file-upload-bar {
-  background-color: #0ba1b5;
-  width: 0;
+  -moz-border-radius: 2px;
+  -webkit-border-radius: 2px;
+  border-radius: 2px;
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
   height: 20px;
-  border-radius: 3px;
-  color: #FFFFFF; }
+  width: 0; }
 
 .ajax-file-upload-percent {
-  position: absolute;
   display: inline-block;
-  top: 3px;
-  left: 48%; }
+  left: 48%;
+  position: absolute;
+  top: 3px; }
 
 .ajax-file-upload-red {
-  -moz-box-shadow: inset 0 39px 0 -24px #e67a73;
-  -webkit-box-shadow: inset 0 39px 0 -24px #e67a73;
-  box-shadow: inset 0 39px 0 -24px #e67a73;
-  background-color: #e4685d;
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
-  display: inline-block;
-  color: #fff;
-  font-family: arial;
   font-size: 13px;
   font-weight: normal;
+  margin-right: 5px;
   padding: 4px 15px;
-  text-decoration: none;
-  text-shadow: 0 1px 0 #b23e35;
-  cursor: pointer;
-  vertical-align: top;
-  margin-right: 5px; }
-
-.ajax-file-upload-green {
-  background-color: #77b55a;
-  -moz-border-radius: 4px;
-  -webkit-border-radius: 4px;
-  border-radius: 4px;
-  margin: 0;
-  padding: 0;
-  display: inline-block;
-  color: #fff;
-  font-family: arial;
-  font-size: 13px;
-  font-weight: normal;
-  padding: 4px 15px;
-  text-decoration: none;
-  cursor: pointer;
-  text-shadow: 0 1px 0 #5b8a3c;
-  vertical-align: top;
-  margin-right: 5px; }
+  vertical-align: top; }
 
 .ajax-file-upload {
-  font-family: Arial, Helvetica, sans-serif;
+  display: inline-block;
   font-size: 16px;
   font-weight: bold;
-  padding: 15px 20px;
-  cursor: pointer;
-  line-height: 20px;
   height: 25px;
   margin: 0 10px 10px 0;
-  display: inline-block;
-  background: #fff;
-  border: 1px solid #e8e8e8;
-  color: #888;
-  text-decoration: none;
-  border-radius: 3px;
-  -webkit-border-radius: 3px;
-  -moz-border-radius: 3px;
-  -moz-box-shadow: 0 2px 0 0 #e8e8e8;
-  -webkit-box-shadow: 0 2px 0 0 #e8e8e8;
-  box-shadow: 0 2px 0 0 #e8e8e8;
-  padding: 6px 10px 4px 10px;
-  color: #fff;
-  background: #2f8ab9;
-  border: none;
-  -moz-box-shadow: 0 2px 0 0 #13648d;
-  -webkit-box-shadow: 0 2px 0 0 #13648d;
-  box-shadow: 0 2px 0 0 #13648d;
-  vertical-align: middle; }
-
-.ajax-file-upload:hover {
-  background: #3396c9;
-  -moz-box-shadow: 0 2px 0 0 #15719f;
-  -webkit-box-shadow: 0 2px 0 0 #15719f;
-  box-shadow: 0 2px 0 0 #15719f; }
+  padding: 6px 10px 4px; }
 
 .ajax-upload-dragdrop {
-  border: 2px dotted #A5A5C7;
-  width: 420px;
-  color: #DADCE3;
+  border: 2px dotted #8f8d8c;
+  width: 506px;
+  color: #736b68;
   text-align: left;
   vertical-align: middle;
   padding: 10px 10px 0px 10px; }
