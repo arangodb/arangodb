@@ -1,15 +1,52 @@
 <script id="applicationsView.ejs" type="text/template">
-  <div class="headerBar">
-    <a class="arangoHeader">Applications</a>
+<div class="headerBar">
+  <a class="arangoHeader">Applications</a>
+  <div class="headerButtonBar">
+    <ul class="headerButtonList">
+      <li>
+        <a id="foxxToggle" class="headerButton">
+          <span class="icon_arangodb_settings2" title="Settings"></span>
+        </a>
+      </li>
+    </ul>
   </div>
+</div>
 
-  <div class="contentDiv">
-    <div id="installed">
-      <div id="installedList" class="tileList">
-        <div class="tile">
-          <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Application</a>
-        </div>
+<div id="foxxDropdownOut" class="headerDropdown">
+  <div id="foxxDropdown" class="dropdownInner">
+    <ul>
+      <li class="nav-header">Type</li>
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="checkProduction">
+          <label class="css-label"></label>Production
+        </label>
+      </a></li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" type="checkbox" id="checkDevel">
+          <label class="css-label"></label>Development
+        </label>
+      </a></li>
+
+      <li><a href="#">
+        <label class="checkbox checkboxLabel">
+          <input class="css-checkbox" id="checkSystem" type="checkbox">
+          <label class="css-label"></label>System applications
+        </label>
+      </a></li>
+    </ul>
+  </div>
+</div>
+
+<div class="contentDiv">
+  <div id="installed">
+    <div id="installedList" class="tileList">
+      <div class="tile">
+        <a href="#" id="addApp" class="add"><span class="pull-left icon_arangodb_roundplus arangoicon add-Icon" /> Add Application</a>
       </div>
     </div>
   </div>
+</div>
 </script>

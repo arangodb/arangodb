@@ -1,6 +1,7 @@
 .application-detail-view {
   section.info {
     float: left;
+    padding: 13px 0 0;
 
     .header {
       float: left;
@@ -10,7 +11,7 @@
 
       .header_left {
         position: absolute;
-        width: 170px;
+        width: 160px;
         text-align: center;
 
         div.header-icon-container {
@@ -25,6 +26,18 @@
             width: auto;
           }
 
+        }
+
+        input.open {
+          position: absolute;
+          margin-left: 0;
+          left: 0;
+        }
+
+        input.delete {
+          position: absolute;
+          margin-right: 0;
+          right: 0;
         }
       }
 

@@ -323,3 +323,19 @@ pre.gv-object-view {
   }
 
 }
+
+.foxx-store-row {
+  .foxx-name {
+    font-weight: 700;
+  }
+
+  .foxx-author {
+    margin-top: -4px;
+    font-size: 10pt;
+    font-weight: 300;
+  }
+
+  .foxx-version {
+    font-weight: 400;
+  }
+}
