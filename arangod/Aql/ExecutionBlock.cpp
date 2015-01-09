@@ -3524,7 +3524,7 @@ RemoveBlock::~RemoveBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
-  AqlItemBlock* result = nullptr;
+  std::unique_ptr<AqlItemBlock> result;
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3542,8 +3542,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
     }
 
     if (count > 0) {
-      result = new AqlItemBlock(count,//  * _outReg,<- currently 0
-                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+      result.reset(new AqlItemBlock(count,
+                                    getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
   }
@@ -3575,7 +3575,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
       }
 
       if (errorCode == TRI_ERROR_NO_ERROR && 
-          result != nullptr) {
+          result.get() != nullptr) {
         errorCode = _trx->readSingle(trxCollection, &nptr, key);
       }
 
@@ -3599,7 +3599,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (result != nullptr &&
+        if (result.get() != nullptr &&
             errorCode == TRI_ERROR_NO_ERROR) {
           
           result->setValue(removeCount++, 
@@ -3616,7 +3616,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
     (*it) = nullptr;  
     delete res;
   }
-  return result;
+
+  return result.release();
 }
 
 // -----------------------------------------------------------------------------
@@ -3636,7 +3637,7 @@ InsertBlock::~InsertBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
-  AqlItemBlock* result = nullptr;
+  std::unique_ptr<AqlItemBlock> result;
   auto ep = static_cast<InsertNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3668,8 +3669,8 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     }
 
     if (count > 0) {
-      result = new AqlItemBlock(count, 
-                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+      result.reset(new AqlItemBlock(count, 
+                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
   }
@@ -3735,7 +3736,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
         }
 
         if (errorCode == TRI_ERROR_NO_ERROR &&
-            result != nullptr) {
+            result.get() != nullptr) {
           errorCode = _trx->readSingle(trxCollection, &nptr, TRI_EXTRACT_MARKER_KEY(&mptr));
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
@@ -3753,9 +3754,9 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     // now free it already
     (*it) = nullptr;  
     delete res;
-    
   }
-  return result;
+
+  return result.release();
 }
 
 // -----------------------------------------------------------------------------
@@ -3775,7 +3776,7 @@ UpdateBlock::~UpdateBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
-  AqlItemBlock* result = nullptr;
+  std::unique_ptr<AqlItemBlock> result;
   auto ep = static_cast<UpdateNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3802,8 +3803,8 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
       count += (*it)->size();
     }
     if (count > 0) {
-      result = new AqlItemBlock(count,
-                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+      result.reset(new AqlItemBlock(count,
+                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
   }
@@ -3884,7 +3885,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
         }
 
         if (errorCode == TRI_ERROR_NO_ERROR &&
-            result != nullptr) {
+            result.get() != nullptr) {
           TRI_doc_mptr_copy_t const* ptr = nullptr;
 
           if (ep->_returnNewValues) {
@@ -3927,7 +3928,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     delete res;
   }
 
-  return result;
+  return result.release();
 }
 
 // -----------------------------------------------------------------------------
@@ -3947,7 +3948,7 @@ ReplaceBlock::~ReplaceBlock () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
-  AqlItemBlock* result = nullptr;
+  std::unique_ptr<AqlItemBlock> result;
   auto ep = static_cast<ReplaceNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inDocVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3973,8 +3974,8 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
       count += (*it)->size();
     }
     if (count > 0) {
-      result = new AqlItemBlock(count, 
-                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+      result.reset(new AqlItemBlock(count, 
+                                getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
       result->setDocumentCollection(_outReg, trxCollection->_collection->_collection);
     }
   }
@@ -4014,7 +4015,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
       }
 
-      if (result != nullptr && ! ep->_returnNewValues) {
+      if (result.get() != nullptr && ! ep->_returnNewValues) {
         readErrorCode = _trx->readSingle(trxCollection, &nptr, key);
       }
 
@@ -4034,7 +4035,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (result != nullptr &&
+        if (result.get() != nullptr &&
             errorCode == TRI_ERROR_NO_ERROR &&
             readErrorCode == TRI_ERROR_NO_ERROR) {
 
@@ -4058,9 +4059,9 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     b = nullptr;  
     delete res;
   }
-  return result;
-}
 
+  return result.release();
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              class NoResultsBlock
