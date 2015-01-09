@@ -22,17 +22,17 @@
 
     events: {
       "click #addApp"                : "createInstallModal",
-
-      "click #checkDevel"            : "toggleDevel",
-      "click #checkActive"           : "toggleActive",
-      "click .checkSystem"           : "toggleSystem",
-      "click #foxxToggle"            : "slideToggle",
       "click #importFoxxToggle"      : "slideToggleImport",
       "change #importFoxx"           : "uploadSetup",
       "click #confirmFoxxImport"     : "importFoxx",
       "click #installFoxxFromGithub" : "createGithubModal",
-      "click .css-label"             : "checkBoxes",
-      "change #appsDesc"             : "sorting"
+      "change #appsDesc"             : "sorting",
+
+      "click #foxxToggle"            : "slideToggle",
+      "click #checkDevel"            : "toggleDevel",
+      "click #checkProduction"       : "toggleProduction",
+      "click #checkSystem"           : "toggleSystem",
+      "click .css-label"             : "checkBoxes"
     },
 
 
@@ -190,11 +190,11 @@
       });
     },
 
-    toggleActive: function() {
+    toggleProduction: function() {
       var self = this;
-      this._showActive = !this._showActive;
+      this._showProd = !this._showProd;
       _.each(this._installedSubViews, function(v) {
-        v.toggle("active", self._showActive);
+        v.toggle("production", self._showProd);
       });
     },
 
@@ -204,8 +204,6 @@
       _.each(this._installedSubViews, function(v) {
         v.toggle("system", self._showSystem);
       });
-      this.createSubViews();
-      this.renderSubViews();
     },
 
     hideImportModal: function() {
@@ -223,24 +221,11 @@
       this.hideSettingsModal();
     },
 
-    slideToggle: function() {
-      //apply sorting to checkboxes
-      $('#appsDesc').attr('checked', this.collection.sortOptions.desc);
-
-      $('#importFoxxToggle').removeClass('activated');
-      $('#foxxToggle').toggleClass('activated');
-      $('#foxxDropdownOut').slideToggle(200);
-      this.hideImportModal();
-    },
-
     reload: function() {
       var self = this;
 
       // unbind and remove any unused views
       _.each(this._installedSubViews, function (v) {
-        v.undelegateEvents();
-      });
-      _.each(this._availableSubViews, function (v) {
         v.undelegateEvents();
       });
 
@@ -255,20 +240,10 @@
     createSubViews: function() {
       var self = this;
       this._installedSubViews = { };
-      this._availableSubViews = { };
 
       self.collection.each(function (foxx) {
-        if (foxx.get('isSystem') && ! self._showSystem) {
-          return;
-        }
         var subView;
-        if (foxx.get("type") === "app") {
-          subView = new window.FoxxInstalledView({
-            model: foxx,
-            appsView: self
-          });
-          self._availableSubViews[foxx.get('_id')] = subView;
-        } else if (foxx.get("type") === "mount") {
+        if (foxx.get("type") === "mount") {
           subView = new window.FoxxActiveView({
             model: foxx,
             appsView: self
@@ -280,10 +255,9 @@
 
     initialize: function() {
       this._installedSubViews = {};
-      this._availableSubViews = {};
       this._showDevel = true;
-      this._showActive = true;
-      this._showSystem = true;
+      this._showProd = true;
+      this._showSystem = false;
       this.reload();
     },
 
@@ -293,14 +267,13 @@
       $(this.el).html(this.template.render({}));
       this.renderSubViews();
       this.delegateEvents();
-      $('#checkActive').attr('checked', this._showActive);
       $('#checkDevel').attr('checked', this._showDevel);
-      $('.checkSystem').attr('checked', this._showSystem);
+      $('#checkProduction').attr('checked', this._showProd);
+      $('#checkSystem').attr('checked', this._showSystem);
       
       var self = this;
       _.each(this._installedSubViews, function(v) {
         v.toggle("devel", self._showDevel);
-        v.toggle("active", self._showActive);
         v.toggle("system", self._showSystem);
       });
 
@@ -312,58 +285,19 @@
       _.each(this._installedSubViews, function (v) {
         $("#installedList").append(v.render());
       });
-
-      var versions = { };
-      _.each(this._availableSubViews, function (v) {
-        var name = v.model.get("name");
-
-        //look which installed apps have multiple versions
-        if (versions[name]) {
-          versions[name].counter++;
-          versions[name].versions.push(v.model.get("version"));
-        }
-        else {
-          versions[name] = {
-            counter: 1,
-            versions: [v.model.get("version")]
-          };
-        }
-      });
-
-      _.each(this._availableSubViews, function (v) {
-        var name = v.model.get("name"),
-        version = v.model.get("version");
-        if (versions[name].counter > 1 ) {
-          //here comes special render for multiple versions view
-
-          var highestVersion = "0.0.0";
-          var selectOptions = [];
-
-          _.each(versions[name].versions, function(x) {
-            selectOptions.push({
-              value: x,
-              label: x
-            });
-            if (x > highestVersion) {
-              highestVersion = x;
-            }
-          });
-
-          if (version === highestVersion) {
-            v.model.set("highestVersion", highestVersion);
-            v.model.set("versions", versions[name].versions);
-            v.model.set("selectOptions", selectOptions);
-
-            $("#availableList").append(v.render());
-          }
-        }
-        else {
-          $("#availableList").append(v.render());
-        }
-      });
     },
 
     ///// NEW CODE 
+
+    slideToggle: function() {
+      //apply sorting to checkboxes
+      $('#appsDesc').attr('checked', this.collection.sortOptions.desc);
+
+      $('#importFoxxToggle').removeClass('activated');
+      $('#foxxToggle').toggleClass('activated');
+      $('#foxxDropdownOut').slideToggle(200);
+      this.hideImportModal();
+    },
 
     installFoxxFromZip: function(files, data) {
       var self = this;
@@ -463,7 +397,6 @@
           "The path the app will be mounted. Has to start with /. Is not allowed to start with /_",
           "/my/app",
           true,
-          //TODO nochmal schauen
           [
             {
               rule: Joi.string().required(),
@@ -744,7 +677,7 @@
         validateInput: function() {
           return [
             {
-              rule: Joi.string().required().regex(/^[a-zA-Z0-9 .,;-]+$/),
+              rule: Joi.string().required().regex(/^[a-zA-Z0-9 .,;\-]+$/),
               msg: "Has to be non empty."
             }
           ];

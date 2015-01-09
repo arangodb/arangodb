@@ -301,6 +301,7 @@
       //handle select2
       _.each(completeTableContent, function(r) {
         if (r.type === self.tables.SELECT2) {
+          console.log(r);
           $('#'+r.id).select2({
             tags: r.tags || [],
             showSearchBox: false,
