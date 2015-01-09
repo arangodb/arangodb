@@ -3136,7 +3136,7 @@ int ModificationBlock::extractKey (AqlValue const& value,
 
 void ModificationBlock::handleResult (int code,
                                       bool ignoreErrors,
-                                      std::string const *errorMessage) {
+                                      std::string const* errorMessage) {
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
     ++_engine->_stats.writesExecuted;
@@ -3148,7 +3148,7 @@ void ModificationBlock::handleResult (int code,
     }
     else {
       // bubble up the error
-      if (errorMessage != nullptr) {
+      if (errorMessage != nullptr && ! errorMessage->empty()) {
         THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
       }
       else {
