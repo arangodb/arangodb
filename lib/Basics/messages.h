@@ -48,6 +48,7 @@
 #define TRI_BYE_MESSAGE_FR "Au revoir!"
 #define TRI_BYE_MESSAGE_GR "Εις το επανιδείν!"
 #define TRI_BYE_MESSAGE_IT "Arrivederci!"
+#define TRI_BYE_MESSAGE_IL "להתראות!"
 #define TRI_BYE_MESSAGE_JP "さようなら"
 #define TRI_BYE_MESSAGE_NL "Tot ziens!"
 #define TRI_BYE_MESSAGE_RU "До свидания!"
@@ -62,6 +63,7 @@
   TRI_BYE_MESSAGE_ES " " \
   TRI_BYE_MESSAGE_FR "\n" \
   TRI_BYE_MESSAGE_IT " " \
+  TRI_BYE_MESSAGE_IL " " \
   TRI_BYE_MESSAGE_NL " " \
   TRI_BYE_MESSAGE_SV " " \
   TRI_BYE_MESSAGE_GR " " \
