@@ -24,6 +24,38 @@ v2.4.0 (XXXX-XX-XX)
 
 * Upgraded V8 version from 3.16.14 to 3.29.59
 
+  The built-in version of V8 has been upgraded from 3.16.14 to 3.29.59.
+  This activates several ES6 (also dubbed *Harmony* or *ES.next*) features in
+  ArangoDB, both in the ArangoShell and the ArangoDB server. They can be
+  used for scripting and in server-side actions such as Foxx routes, traversals
+  etc.
+
+  The following ES6 features are available in ArangoDB 2.4 by default:
+
+  * iterators
+  * the `of` operator
+  * symbols
+  * predefined collections types (Map, Set etc.)
+  * typed arrays
+
+  Many other ES6 features are disabled by default, but can be made available by
+  starting arangod or arangosh with the appropriate options:
+
+  * arrow functions
+  * proxies
+  * generators
+  * String, Array, and Number enhancements
+  * constants
+  * enhanced object and numeric literals
+
+  To activate all these ES6 features in arangod or arangosh, start it with 
+  the following options:
+
+      arangosh --javascript.v8-options="--harmony --harmony_generators"
+
+  More details on the available ES6 features can be found in 
+  [this blog](https://jsteemann.github.io/blog/2014/12/19/using-es6-features-in-arangodb/).
+
 * Added Foxx generator for building Hypermedia APIs
 
   A more detailed description is [here](https://www.arangodb.com/2014/12/08/building-hypermedia-apis-foxxgenerator)
