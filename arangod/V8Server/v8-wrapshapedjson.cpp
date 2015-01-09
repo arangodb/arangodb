@@ -786,7 +786,7 @@ static void MapSetIndexedShapedJson (uint32_t idx,
   char buffer[11];
   size_t len = TRI_StringUInt32InPlace(idx, (char*) &buffer);
 
-  v8::Local<v8::String> strVal = TRI_V8_PAIR_STRING((char*)&buffer, (int) len);
+  v8::Local<v8::String> strVal = TRI_V8_PAIR_STRING((char*) &buffer, (int) len);
 
   MapSetNamedShapedJson(strVal, value, args);
 }
