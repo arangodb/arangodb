@@ -167,7 +167,7 @@ is available that describes how to compile ArangoDB from source on Ubuntu.
 Verify that your system contains
 
 * the GNU C/C++ compilers "gcc" and "g++" and the standard C/C++ libraries, with support
-  for C++11. You will need version gcc number 4.8.1 or higher. For "clang" and "clang++", 
+  for C++11. You will need version gcc 4.8.1 or higher. For "clang" and "clang++", 
   you will need at least version 3.4.
 * the GNU autotools (autoconf, automake)
 * GNU make
@@ -278,8 +278,12 @@ the code.
 
 This option activates additional code in the server that intentionally makes the
 server crash or misbehave (e.g. by pretending the system ran out of memory). This
-option is useful to test the recovery after a crash and also several edge cases.
+option is useful for writing tests.
 
+`--enable-v8-debug`
+
+Builds a debug version of the V8 library. This is useful only when working on the
+V8 integration inside ArangoDB. 
 
 !SUBSECTION Compiling Go
 
