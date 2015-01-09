@@ -1,13 +1,6 @@
 {
   "theme": "./localtheme",
   "plugins":["-mathjax"],
-  "plugins": ["piwik"],
-  "pluginsConfig": {
-      "piwik": {
-          "URL": "www.arangodb.org/piwik/",
-      "siteId": 12
-      }
-  },
   "pdf": {
     "fontSize": 12,
     "toc": true,
