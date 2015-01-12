@@ -136,6 +136,30 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief eraseValue, erase the current value of a register and freeing it
+/// if this was the last reference to the value
+/// use with caution only in special situations when it can be ensured that
+/// no one else will be pointing to the same value
+////////////////////////////////////////////////////////////////////////////////
+
+        void destroyValue (size_t index, RegisterId varNr) {
+          if (! _data[index * _nrRegs + varNr].isEmpty()) {
+            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+            if (it != _valueCount.end()) {
+              if (--it->second == 0) {
+                try {
+                  _valueCount.erase(it);
+                  _data[index * _nrRegs + varNr].destroy();
+                }
+                catch (...) {
+                }
+              }
+            }
+            _data[index * _nrRegs + varNr].erase();
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief eraseValue, erase the current value of a register not freeing it
 /// this is used if the value is stolen and later released from elsewhere
 ////////////////////////////////////////////////////////////////////////////////
