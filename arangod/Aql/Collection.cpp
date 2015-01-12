@@ -184,6 +184,19 @@ Index* Collection::getIndex (std::string const& id) const {
   return getIndex(triagens::basics::StringUtils::uint64(id));
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the collection uses the default sharding
+////////////////////////////////////////////////////////////////////////////////
+
+bool Collection::usesDefaultSharding () const {
+  // check if collection shard keys are only _key
+  std::vector<std::string>&& sk = shardKeys();
+  if (sk.size() != 1 || sk[0] != TRI_VOC_ATTRIBUTE_KEY) {
+    return false;
+  }
+  return true;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
