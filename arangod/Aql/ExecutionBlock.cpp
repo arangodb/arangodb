@@ -4890,6 +4890,8 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   _regId = (*it).second.registerId;
+
+  _usesDefaultSharding = collection->usesDefaultSharding();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5131,8 +5133,63 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
   TRI_json_t* obj = nullptr;
   if (TRI_IsStringJson(json)) {
     obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
-    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, "_key", json);
+    if (obj == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, json);
     mustFreeJson = true;
+  }
+
+  if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
+    // we are responsible for creating keys if none present
+
+    if (_usesDefaultSharding) {
+      // the collection is sharded by _key...
+      if (! mustFreeJson && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
+        // there is no _key attribute present, so we are responsible for creating one
+        ClusterInfo* ci = ClusterInfo::instance();
+        uint64_t uid = ci->uniqid();
+        std::string const keyString(std::to_string(uid));
+
+        TRI_ASSERT(obj == nullptr);
+        obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+        if (obj == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+        mustFreeJson = true;
+      } 
+    }
+    else {
+      // the collection is not sharded by _key
+      if (mustFreeJson) {
+        // a _key was given, but user is not allowed to specify _key
+        TRI_ASSERT(obj != nullptr);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+      }
+      else if (TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
+        // a _key was given, but user is not allowed to specify _key
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+      }
+      else {
+        // no _key given. now create one
+        ClusterInfo* ci = ClusterInfo::instance();
+        uint64_t uid = ci->uniqid();
+        std::string const keyString(std::to_string(uid));
+
+        TRI_ASSERT(obj == nullptr);
+        obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+        if (obj == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+        mustFreeJson = true;
+      }
+    }
   }
 
   std::string shardId;
