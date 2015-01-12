@@ -148,7 +148,7 @@ void Aqlerror (YYLTYPE* locp,
 /* define token return types */
 %type <strval> T_STRING
 %type <strval> T_QUOTED_STRING
-%type <strval> T_INTEGER
+%type <node> T_INTEGER
 %type <strval> T_DOUBLE
 %type <strval> T_PARAMETER; 
 %type <node> sort_list;
@@ -1107,21 +1107,8 @@ integer_value:
       if ($1 == nullptr) {
         ABORT_OOM
       }
-
-      int64_t value = TRI_Int64String($1);
-      if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-        $$ = parser->ast()->createNodeValueInt(value);
-      }
-      else {
-        double value2 = TRI_DoubleString($1);
-        if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-          $$ = parser->ast()->createNodeValueDouble(value2);
-        }
-        else {
-          parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
-          $$ = parser->ast()->createNodeValueNull();
-        }
-      }
+      
+      $$ = $1;
     }
   ;
 
