@@ -52,7 +52,9 @@ function ahuacatlModifySuite () {
   var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlModify1";
   var cn2 = "UnitTestsAhuacatlModify2";
-  var c1, c2;
+  var cn3 = "UnitTestsAhuacatlModify3";
+  var cn4 = "UnitTestsAhuacatlModify4";
+  var c1, c2, c3, c4;
 
   return {
 
@@ -63,8 +65,8 @@ function ahuacatlModifySuite () {
     setUp : function () {
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards:5});
+      c2 = db._create(cn2, {numberOfShards:5});
 
       c1.save({ _key: "foo", a: 1 });
       c2.save({ _key: "foo", b: 1 });
@@ -184,8 +186,8 @@ function ahuacatlRemoveSuite () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards:5});
+      c2 = db._create(cn2, {numberOfShards:5});
 
       for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
@@ -506,8 +508,8 @@ function ahuacatlInsertSuite () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      c1 = db._create(cn1, {numberOfShards: 5});
+      c2 = db._create(cn2, {numberOfShards: 5});
 
       for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
@@ -808,14 +810,24 @@ function ahuacatlUpdateSuite () {
       var i;
       db._drop(cn1);
       db._drop(cn2);
-      c1 = db._create(cn1);
-      c2 = db._create(cn2);
+      db._drop(cn3);
+      db._drop(cn4);
+      c1 = db._create(cn1, {numberOfShards: 5});
+      c2 = db._create(cn2, {numberOfShards: 5});
+      c3 = db._create(cn3, {numberOfShards: 1});
+      c4 = db._create(cn4, {numberOfShards: 1});
 
       for (i = 0; i < 100; ++i) {
         c1.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
       for (i = 0; i < 50; ++i) {
         c2.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+      for (i = 0; i < 100; ++i) {
+        c3.save({ _key: "test" + i, value1: i, value2: "test" + i });
+      }
+      for (i = 0; i < 50; ++i) {
+        c4.save({ _key: "test" + i, value1: i, value2: "test" + i });
       }
     },
 
@@ -826,8 +838,12 @@ function ahuacatlUpdateSuite () {
     tearDown : function () {
       db._drop(cn1);
       db._drop(cn2);
+      db._drop(cn3);
+      db._drop(cn4);
       c1 = null;
       c2 = null;
+      c3 = null;
+      c4 = null;
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -881,7 +897,9 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint1 : function () {
-      c1.ensureUniqueConstraint("value1");
+      internal.print("Hallo1");
+      internal.print(c1.ensureUniqueConstraint("value1"));
+      internal.print("Hi");
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
     },
 
