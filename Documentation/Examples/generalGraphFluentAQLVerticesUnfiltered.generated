@@ -6,25 +6,25 @@ arangosh> query.vertices().toArray();
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "741862568", 
+    "_rev" : "737331722", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "742190248", 
+    "_rev" : "737659402", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "female/diana", 
     "_key" : "diana", 
-    "_rev" : "742583464", 
+    "_rev" : "738052618", 
     "name" : "Diana" 
   }, 
   { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "742386856", 
+    "_rev" : "737856010", 
     "name" : "Charly" 
   } 
 ]

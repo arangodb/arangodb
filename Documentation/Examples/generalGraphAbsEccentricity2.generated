@@ -4,9 +4,9 @@ arangosh> db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
 ........> +"'routeplanner', {}, {weight : 'distance'})").toArray();
 [ 
   { 
-    "germanCity/Berlin" : 1200, 
     "germanCity/Hamburg" : 1200, 
     "germanCity/Cologne" : 850, 
+    "germanCity/Berlin" : 1200, 
     "frenchCity/Paris" : 1200, 
     "frenchCity/Lyon" : 1200 
   } 

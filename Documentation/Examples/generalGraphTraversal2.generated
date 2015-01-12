@@ -9,7 +9,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hambur
       "vertex" : { 
         "_id" : "germanCity/Hamburg", 
         "_key" : "Hamburg", 
-        "_rev" : "393997480", 
+        "_rev" : "391236106", 
         "isCapital" : false, 
         "population" : 1000000 
       } 
@@ -18,7 +18,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hambur
       "vertex" : { 
         "_id" : "germanCity/Cologne", 
         "_key" : "Cologne", 
-        "_rev" : "393800872", 
+        "_rev" : "391039498", 
         "isCapital" : false, 
         "population" : 1000000 
       } 
@@ -27,7 +27,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hambur
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "394587304", 
+        "_rev" : "391825930", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -36,7 +36,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hambur
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "394390696", 
+        "_rev" : "391629322", 
         "isCapital" : false, 
         "population" : 80000 
       } 
