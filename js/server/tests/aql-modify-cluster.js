@@ -581,7 +581,16 @@ function ahuacatlInsertSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertInvalid3 : function () {
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn INSERT 'foo' IN @@cn", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn INSERT 'foo' IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertInvalid4 : function () {
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn INSERT { _key: 'foo' } IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },
 
@@ -726,7 +735,7 @@ function ahuacatlInsertSuite () {
         assertEqual(i, doc.a);
         assertEqual(i, doc.b);
         
-        var doc2 = c1.document(doc._key);
+        var doc2 = c3.document(doc._key);
         assertEqual(doc._key, doc2._key);
         assertEqual(doc._rev, doc2._rev);
         assertEqual(doc.a, doc2.a);
@@ -741,7 +750,7 @@ function ahuacatlInsertSuite () {
     testInsertKey6 : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       // no key is specified, must be created automatically
-      var actual = getModifyQueryResults("FOR d IN 1..100 INSERT { bar: d, a: d } IN @@cn", { "@cn": cn3 });
+      var actual = getModifyQueryResults("FOR d IN 0..99 INSERT { bar: d, a: d } IN @@cn", { "@cn": cn3 });
 
       assertEqual(100, c3.count());
       assertEqual(expected, sanitizeStats(actual));
@@ -754,7 +763,7 @@ function ahuacatlInsertSuite () {
         assertEqual(i, doc.bar);
         assertEqual(i, doc.a);
         
-        var doc2 = c1.document(doc._key);
+        var doc2 = c3.document(doc._key);
         assertEqual(doc._key, doc2._key);
         assertEqual(doc._rev, doc2._rev);
         assertEqual(doc.a, doc2.a);
@@ -1025,7 +1034,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalid1 : function () {
+    testUpdateInvalidType1 : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE d.foobar IN @@cn", { "@cn": cn1 });
     },
 
@@ -1033,7 +1042,7 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalid2 : function () {
+    testUpdateInvalidType2 : function () {
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE [ ] IN @@cn", { "@cn": cn1 });
     },
 
@@ -1041,8 +1050,8 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUpdateInvalid3 : function () {
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, "FOR d IN @@cn UPDATE 'foo' IN @@cn", { "@cn": cn1 });
+    testUpdateInvalidKey : function () {
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR d IN @@cn UPDATE 'foo' IN @@cn", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
