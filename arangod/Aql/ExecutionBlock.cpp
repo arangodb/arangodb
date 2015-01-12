@@ -4027,11 +4027,15 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && ExecutionEngine::isDBServer()) {
           auto* node = static_cast<ReplaceNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            errorCode = TRI_ERROR_NO_ERROR;
+          if (! node->getOptions().ignoreDocumentNotFound) {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
           }
           else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
+            // Note that this is coded here for the sake of completeness, 
+            // but it will intentionally never happen, since this flag is
+            // not set in the REPLACE case, because we will always use
+            // a DistributeNode rather than a ScatterNode:
+            errorCode = TRI_ERROR_NO_ERROR;
           }
         }
 
