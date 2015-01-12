@@ -1225,7 +1225,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
   char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(&skiplistIndex->_paths, j)));
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
 
     // ..........................................................................
     // Determine if document has that particular shape
@@ -1275,9 +1275,6 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 static int InsertSkiplistIndex (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 bool isRollback) {
-  TRI_skiplist_index_t* skiplistIndex;
-  int res;
-
   // ...........................................................................
   // Obtain the skip listindex structure
   // ...........................................................................
@@ -1287,7 +1284,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
     return TRI_ERROR_INTERNAL;
   }
   
-  skiplistIndex = (TRI_skiplist_index_t*) idx;
+  TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // ...........................................................................
   // Allocate storage to shaped json objects stored as a simple list.
@@ -1302,7 +1299,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
+  int res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
   // ...........................................................................
   // most likely the cause of this error is that the index is sparse
   // and not all attributes the index needs are set -- so the document
