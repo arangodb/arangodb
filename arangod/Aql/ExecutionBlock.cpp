@@ -208,10 +208,12 @@ int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
       return res;
     }
   }
-  for (auto x : _buffer) {
-    delete x;
+
+  for (auto it : _buffer) {
+    delete it;
   }
   _buffer.clear();
+
   _done = false;
   return TRI_ERROR_NO_ERROR;
 }
@@ -4626,10 +4628,17 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
   _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
+
   int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
+
   if (out != TRI_ERROR_NO_ERROR) {
+    if (result != nullptr) {
+      delete result;
+    }
+
     THROW_ARANGO_EXCEPTION(out);
   }
+
   return result;
   LEAVE_BLOCK
 }
@@ -4862,7 +4871,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
       }
     }
     if (popit) {
-      delete(_buffer.front());
+      delete _buffer.front();
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {
@@ -5025,12 +5034,18 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
     size_t i = 0;
     while (i < skipped) {
       std::vector<size_t> chosen;
-      size_t n = buf.front().first;
+      size_t const n = buf.front().first;
       while (buf.front().first == n && i < skipped) { 
         chosen.push_back(buf.front().second);
         buf.pop_front();
         i++;
+        
+        // make sure we are not overreaching over the end of the buffer
+        if (buf.empty()) {
+          break;
+        }
       }
+
       unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
       collector.push_back(more.get());
       more.release(); // do not delete it!
@@ -5151,7 +5166,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
 
     TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, json);
     // clear the previous value
-    cur->eraseValue(_pos, _regId);
+    cur->destroyValue(_pos, _regId);
 
     // overwrite with new value
     cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
@@ -5184,7 +5199,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
         TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
     
         // clear the previous value
-        cur->eraseValue(_pos, _regId);
+        cur->destroyValue(_pos, _regId);
 
         // overwrite with new value
         cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
@@ -5211,7 +5226,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
         
       // clear the previous value
-      cur->eraseValue(_pos, _regId);
+      cur->destroyValue(_pos, _regId);
 
       // overwrite with new value
       cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
