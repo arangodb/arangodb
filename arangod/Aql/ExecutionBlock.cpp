@@ -5124,16 +5124,18 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 
 size_t DistributeBlock::sendToClient (AqlValue val) {
   ENTER_BLOCK
-  TRI_json_t const* json;
-  if (val._type == AqlValue::JSON) {
-    json = val._json->json();
-  } 
-  else {
+  if (val._type != AqlValue::JSON) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
         "DistributeBlock: can only send JSON or SHAPED");
   }
+   
+  TRI_json_t const* json = val._json->json();
+
+  if (json == nullptr) {
+    TRI_ASSERT(false);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
+  }
   
-  bool mustFreeJson = false;
   TRI_json_t* obj = nullptr;
   if (TRI_IsStringJson(json)) {
     obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
@@ -5142,15 +5144,19 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
     }
 
     TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, json);
-    mustFreeJson = true;
   }
+  else if (! TRI_IsObjectJson(json)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  TRI_ASSERT(TRI_IsObjectJson(json) || TRI_IsObjectJson(obj));
 
   if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
     // we are responsible for creating keys if none present
 
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
-      if (! mustFreeJson && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
+      if (obj == nullptr && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
         // there is no _key attribute present, so we are responsible for creating one
         ClusterInfo* ci = ClusterInfo::instance();
         uint64_t uid = ci->uniqid();
@@ -5163,14 +5169,12 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
         }
 
         TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
-        mustFreeJson = true;
       } 
     }
     else {
       // the collection is not sharded by _key
-      if (mustFreeJson) {
+      if (obj != nullptr) {
         // a _key was given, but user is not allowed to specify _key
-        TRI_ASSERT(obj != nullptr);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
       }
@@ -5191,7 +5195,6 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
         }
 
         TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
-        mustFreeJson = true;
       }
     }
   }
@@ -5202,12 +5205,12 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
   auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
 
   int res = clusterInfo->getResponsibleShard(planId,
-                                             mustFreeJson ? obj : json,
+                                             (obj != nullptr) ? obj : json,
                                              true,
                                              shardId,
                                              usesDefaultShardingAttributes);
   
-  if (mustFreeJson) {
+  if (obj != nullptr) {
     TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
   }
 
