@@ -5099,10 +5099,12 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
     AqlItemBlock* cur = _buffer.at(_index);
       
     while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
-      // inspect cur in row _pos and check to which shard it should be sent . .
-      size_t id = sendToClient(cur->getValue(_pos, _regId));
-      buf.at(id).push_back(make_pair(_index, _pos++));
+      // this may modify the input item buffer in place
+      size_t id = sendToClient(cur);
+
+      buf.at(id).emplace_back(make_pair(_index, _pos++));
     }
+
     if (_pos == cur->size()) {
       _pos = 0;
       _index++;
@@ -5122,82 +5124,102 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 /// the row should be sent and return its clientId
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t DistributeBlock::sendToClient (AqlValue val) {
+size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
   ENTER_BLOCK
+      
+  // inspect cur in row _pos and check to which shard it should be sent . .
+  auto const& val = cur->getValueReference(_pos, _regId);
+
   if (val._type != AqlValue::JSON) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
-        "DistributeBlock: can only send JSON or SHAPED");
+        "DistributeBlock: can only send JSON");
   }
-   
-  TRI_json_t const* json = val._json->json();
 
+  bool hasCreatedKeyAttribute = false;
+  TRI_json_t const* json = val._json->json();
+  
   if (json == nullptr) {
-    TRI_ASSERT(false);
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
   }
   
-  TRI_json_t* obj = nullptr;
   if (TRI_IsStringJson(json)) {
-    obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+    TRI_json_t* obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+
     if (obj == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
     }
 
     TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, json);
+    // clear the previous value
+    cur->eraseValue(_pos, _regId);
+
+    // overwrite with new value
+    cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+
+    json = obj;
+    hasCreatedKeyAttribute = true;
   }
   else if (! TRI_IsObjectJson(json)) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
   }
 
-  TRI_ASSERT(TRI_IsObjectJson(json) || TRI_IsObjectJson(obj));
+  TRI_ASSERT(TRI_IsObjectJson(json));
 
   if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
     // we are responsible for creating keys if none present
 
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
-      if (obj == nullptr && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
-        // there is no _key attribute present, so we are responsible for creating one
-        ClusterInfo* ci = ClusterInfo::instance();
-        uint64_t uid = ci->uniqid();
-        std::string const keyString(std::to_string(uid));
 
-        TRI_ASSERT(obj == nullptr);
-        obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+      if (! hasCreatedKeyAttribute && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
+        // there is no _key attribute present, so we are responsible for creating one
+        std::string const&& keyString(createKey());
+
+        TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+      
         if (obj == nullptr) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+    
+        // clear the previous value
+        cur->eraseValue(_pos, _regId);
+
+        // overwrite with new value
+        cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+        json = obj;
       } 
     }
     else {
       // the collection is not sharded by _key
-      if (obj != nullptr) {
-        // a _key was given, but user is not allowed to specify _key
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
-      }
-      else if (TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
+
+      if (hasCreatedKeyAttribute || TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
         // a _key was given, but user is not allowed to specify _key
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
       }
-      else {
-        // no _key given. now create one
-        ClusterInfo* ci = ClusterInfo::instance();
-        uint64_t uid = ci->uniqid();
-        std::string const keyString(std::to_string(uid));
 
-        TRI_ASSERT(obj == nullptr);
-        obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-        if (obj == nullptr) {
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-        }
+      // no _key given. now create one
+      std::string const&& keyString(createKey());
 
-        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+      TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+      if (obj == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
+
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+        
+      // clear the previous value
+      cur->eraseValue(_pos, _regId);
+
+      // overwrite with new value
+      cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+      json = obj;
     }
   }
+
+  // std::cout << "JSON: " << triagens::basics::JsonHelper::toString(json) << "\n";
 
   std::string shardId;
   bool usesDefaultShardingAttributes;  
@@ -5205,15 +5227,13 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
   auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
 
   int res = clusterInfo->getResponsibleShard(planId,
-                                             (obj != nullptr) ? obj : json,
+                                             json,
                                              true,
                                              shardId,
                                              usesDefaultShardingAttributes);
   
-  if (obj != nullptr) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
-  }
-
+  // std::cout << "SHARDID: " << shardId << "\n";
+  
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -5222,6 +5242,16 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
 
   return getClientId(shardId); 
   LEAVE_BLOCK
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new document key
+////////////////////////////////////////////////////////////////////////////////
+
+std::string DistributeBlock::createKey () const {
+  ClusterInfo* ci = ClusterInfo::instance();
+  uint64_t uid = ci->uniqid();
+  return std::to_string(uid);
 }
 
 // -----------------------------------------------------------------------------
