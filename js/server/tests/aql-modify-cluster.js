@@ -1,5 +1,5 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertFalse, assertNull */
+/*global require, assertEqual, assertFalse, assertNull, assertException */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -52,9 +52,7 @@ function ahuacatlModifySuite () {
   var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlModify1";
   var cn2 = "UnitTestsAhuacatlModify2";
-  var cn3 = "UnitTestsAhuacatlModify3";
-  var cn4 = "UnitTestsAhuacatlModify4";
-  var c1, c2, c3, c4;
+  var c1, c2;
 
   return {
 
@@ -797,8 +795,9 @@ function ahuacatlUpdateSuite () {
   var errors = internal.errors;
   var cn1 = "UnitTestsAhuacatlUpdate1";
   var cn2 = "UnitTestsAhuacatlUpdate2";
-  var c1;
-  var c2;
+  var cn3 = "UnitTestsAhuacatlUpdate3";
+  var cn4 = "UnitTestsAhuacatlUpdate4";
+  var c1, c2, c3, c4;
 
   return {
 
@@ -897,9 +896,8 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint1 : function () {
-      internal.print("Hallo1");
-      internal.print(c1.ensureUniqueConstraint("value1"));
-      internal.print("Hi");
+      c1.ensureUniqueConstraint("value1");
+      // This throws, c3 and c4 should not, because of 1 shard only
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value1: 1 } IN @@cn", { "@cn": cn1 });
     },
 
