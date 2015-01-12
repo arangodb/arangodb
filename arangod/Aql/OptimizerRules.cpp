@@ -2731,8 +2731,10 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
         if (nodeType == ExecutionNode::REMOVE ||
-            nodeType == ExecutionNode::UPDATE ||
-            nodeType == ExecutionNode::REPLACE) {
+            nodeType == ExecutionNode::UPDATE) {
+          // Note that in the REPLACE case we are not getting here, since
+          // the distributeInClusterRule fires and a DistributionNode is
+          // used.
           auto* modNode = static_cast<ModificationNode*>(node);
           modNode->getOptions().ignoreDocumentNotFound = true;
         }
