@@ -342,16 +342,25 @@ function startInstance (protocol, options, addArgs, testname) {
   }
 
   // Wait until the server/coordinator is up:
+  var count = 0;
   var url = endpointToURL(endpoint);
+  instanceInfo.url = url;
+  instanceInfo.endpoint = endpoint;
+
   while (true) {
     wait(0.5);
-    var r = download(url+"/_api/version","",makeAuthorisationHeaders(options));
+    var r = download(url+"/_api/version", "", makeAuthorisationHeaders(options));
     if (!r.error && r.code === 200) {
       break;
     }
+    count ++;
+    if (count % 10 === 0) {
+      if (!checkInstanceAlive(instanceInfo, options)) {
+        print("startup failed! bailing out!");
+        return false;
+      }
+    }
   }
-  instanceInfo.endpoint = endpoint;
-  instanceInfo.url = url;
 
   return instanceInfo;
 }
@@ -657,6 +666,9 @@ function performTests(options, testList, testname, remote) {
   var instanceInfo;
   if (remote) {
     instanceInfo = startInstance("tcp", options, [], testname);
+    if (instanceInfo === false) {
+      return {status: false, message: "failed to start server!"};
+    }
   }
   var results = {};
   var i;
@@ -736,6 +748,9 @@ testFuncs.single_server = function (options) {
   var result = { };
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
+    if (instanceInfo === false) {
+      return {status: false, message: "failed to start server!"};
+    }
     var te = options.test;
     print("\narangod: Trying",te,"...");
     result = {};
@@ -771,6 +786,9 @@ testFuncs.single_client = function (options) {
   var result = { };
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
+    if (instanceInfo === false) {
+      return {status: false, message: "failed to start server!"};
+    }
     var te = options.test;
     print("\narangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
@@ -859,6 +877,9 @@ testFuncs.shell_client = function(options) {
   var te;
   var continueTesting = true;
   var filtered = {};
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
@@ -939,6 +960,9 @@ function rubyTests (options, ssl) {
   else {
     instanceInfo = startInstance("tcp", options, [], "http_server");
   }
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   var tmpname = fs.getTempFile()+".rb";
   fs.write(tmpname,'RSpec.configure do |c|\n'+
@@ -964,6 +988,13 @@ function rubyTests (options, ssl) {
   var args;
   var i;
   var continueTesting = true;
+  var command;
+  if (require("internal").platform.substr(0,3) === 'win') {
+    command = "rspec.bat";
+  }
+  else {
+    command = "rspec";
+  }
 
   for (i = 0; i < files.length; i++) {
     var te = files[i];
@@ -982,7 +1013,7 @@ function rubyTests (options, ssl) {
         }
         print("\nTrying ",te,"...");
 
-        result[te] = executeAndWait("rspec", args);
+        result[te] = executeAndWait(command, args);
         if (result[te].status === false && !options.force) {
           break;
         }
@@ -1103,6 +1134,9 @@ testFuncs.importing = function (options) {
   }
 
   var instanceInfo = startInstance("tcp", options, [ ], "importing");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   var result = {};
   try {
@@ -1176,6 +1210,9 @@ testFuncs.foxx_manager = function (options) {
   print("foxx_manager tests...");
   var instanceInfo = startInstance("tcp", options, [], "foxx_manager");
   var results = {};
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   results.update = runArangoshCmd(options, instanceInfo,
                                   ["--configuration",
@@ -1204,6 +1241,9 @@ testFuncs.dump = function (options) {
   }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options, [], "dump");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
@@ -1248,6 +1288,9 @@ var benchTodo = [
 testFuncs.arangob = function (options) {
   print("arangob tests...");
   var instanceInfo = startInstance("tcp",options, [], "arangob");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var results = {};
   var i,r;
   var continueTesting = true;
@@ -1286,6 +1329,9 @@ testFuncs.authentication = function (options) {
   var instanceInfo = startInstance("tcp", options,
                                    ["--server.disable-authentication", "false"],
                                    "authentication");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -1313,6 +1359,9 @@ testFuncs.authentication_parameters = function (options) {
                        ["--server.disable-authentication", "false",
                         "--server.authenticate-system-only", "false"],
                        "authentication_parameters_1");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var r;
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
@@ -1355,6 +1404,9 @@ testFuncs.authentication_parameters = function (options) {
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
                    "authentication_parameters_2");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
   print("Starting System test");
@@ -1390,6 +1442,9 @@ testFuncs.authentication_parameters = function (options) {
                    ["--server.disable-authentication", "true",
                     "--server.authenticate-system-only", "true"],
                    "authentication_parameters_3");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
