@@ -68,13 +68,13 @@ ArangoClient BaseClient("arangodump");
 /// @brief the initial default connection
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::GeneralClientConnection* Connection = 0;
+triagens::httpclient::GeneralClientConnection* Connection = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief HTTP client
 ////////////////////////////////////////////////////////////////////////////////
 
-triagens::httpclient::SimpleHttpClient* Client = 0;
+triagens::httpclient::SimpleHttpClient* Client = nullptr;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chunk size
@@ -278,7 +278,7 @@ static string GetHttpErrorMessage (SimpleHttpResult* result) {
 
   TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
 
-  if (json != 0) {
+  if (json != nullptr) {
     const string& errorMessage = JsonHelper::getStringValue(json, "errorMessage", "");
     const int errorNum = JsonHelper::getNumericValue<int>(json, "errorNum", 0);
 
@@ -308,8 +308,8 @@ static string GetArangoVersion () {
                                                0,
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
-    if (response != 0) {
+  if (response == nullptr || ! response->isComplete()) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -326,7 +326,7 @@ static string GetArangoVersion () {
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
-    if (json != 0) {
+    if (json != nullptr) {
       // look up "server" value
       const string server = JsonHelper::getStringValue(json, "server", "");
 
@@ -364,8 +364,8 @@ static bool GetArangoIsCluster () {
                                         0,
                                         headers);
 
-  if (response == 0 || ! response->isComplete()) {
-    if (response != 0) {
+  if (response == nullptr || ! response->isComplete()) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -379,7 +379,7 @@ static bool GetArangoIsCluster () {
     TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
                                       response->getBody().c_str());
 
-    if (json != 0) {
+    if (json != nullptr) {
       // look up "server" value
       role = JsonHelper::getStringValue(json, "role", "UNDEFINED");
 
@@ -419,10 +419,10 @@ static int StartBatch (string DBserver, string& errorMsg) {
                                                body.size(),
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -445,7 +445,7 @@ static int StartBatch (string DBserver, string& errorMsg) {
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, response->getBody().c_str());
   delete response;
 
-  if (json == 0) {
+  if (json == nullptr) {
     errorMsg = "got malformed JSON";
 
     return TRI_ERROR_INTERNAL;
@@ -483,7 +483,7 @@ static void ExtendBatch (string DBserver) {
                                                headers);
 
   // ignore any return value
-  if (response != 0) {
+  if (response != nullptr) {
     delete response;
   }
 }
@@ -506,12 +506,12 @@ static void EndBatch (string DBserver) {
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_DELETE,
                                                url + urlExt,
-                                               0,
+                                               nullptr,
                                                0,
                                                headers);
 
   // ignore any return value
-  if (response != 0) {
+  if (response != nullptr) {
     delete response;
   }
 }
@@ -546,14 +546,14 @@ static int DumpCollection (int fd,
 
     SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
-                                                 0,
+                                                 nullptr,
                                                  0,
                                                  headers);
 
-    if (response == 0 || ! response->isComplete()) {
+    if (response == nullptr || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-      if (response != 0) {
+      if (response != nullptr) {
         delete response;
       }
 
@@ -664,14 +664,14 @@ static int RunDump (string& errorMsg) {
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
-                                               0,
+                                               nullptr,
                                                0,
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -697,7 +697,7 @@ static int RunDump (string& errorMsg) {
   delete response;
 
   if (! JsonHelper::isObject(json)) {
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
 
@@ -903,14 +903,14 @@ static int DumpShard (int fd,
 
     SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                  url,
-                                                 0,
+                                                 nullptr,
                                                  0,
                                                  headers);
 
-    if (response == 0 || ! response->isComplete()) {
+    if (response == nullptr || ! response->isComplete()) {
       errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-      if (response != 0) {
+      if (response != nullptr) {
         delete response;
       }
 
@@ -1001,14 +1001,14 @@ static int RunClusterDump (string& errorMsg) {
 
   SimpleHttpResult* response = Client->request(HttpRequest::HTTP_REQUEST_GET,
                                                url,
-                                               0,
+                                               nullptr,
                                                0,
                                                headers);
 
-  if (response == 0 || ! response->isComplete()) {
+  if (response == nullptr || ! response->isComplete()) {
     errorMsg = "got invalid response from server: " + Client->getErrorMessage();
 
-    if (response != 0) {
+    if (response != nullptr) {
       delete response;
     }
 
@@ -1033,7 +1033,7 @@ static int RunClusterDump (string& errorMsg) {
   delete response;
 
   if (! JsonHelper::isObject(json)) {
-    if (json != 0) {
+    if (json != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
     }
 
@@ -1274,16 +1274,24 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
+  if (! OutputDirectory.empty() &&
+      OutputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
+    // trim trailing slash from path because it may cause problems on ... Windows
+    TRI_ASSERT(OutputDirectory.size() > 0);
+    OutputDirectory.pop_back();
+  }
+
+
   // .............................................................................
   // create output directory
   // .............................................................................
 
   bool isDirectory = false;
-  if (OutputDirectory != "") {
+  if (! OutputDirectory.empty()) {
     isDirectory = TRI_IsDirectory(OutputDirectory.c_str());
   }
 
-  if (OutputDirectory == "" ||
+  if (OutputDirectory.empty() ||
       (TRI_ExistsFile(OutputDirectory.c_str()) && ! isDirectory)) {
     cerr << "cannot write to output directory '" << OutputDirectory << "'" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
@@ -1293,6 +1301,7 @@ int main (int argc, char* argv[]) {
     cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
+
 
   // .............................................................................
   // set-up client connection
