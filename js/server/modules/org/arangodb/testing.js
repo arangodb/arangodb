@@ -294,7 +294,7 @@ function startInstance (protocol, options, addArgs, testname) {
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
-    var j = runInfo.length-1;
+    var j = runInfo.length - 1;
     while (j > 0 && runInfo[j].isStartServers === undefined) {
       j--;
     }
@@ -348,14 +348,14 @@ function startInstance (protocol, options, addArgs, testname) {
   instanceInfo.endpoint = endpoint;
 
   while (true) {
-    wait(0.5);
+    wait(0.5, false);
     var r = download(url+"/_api/version", "", makeAuthorisationHeaders(options));
-    if (!r.error && r.code === 200) {
+    if (! r.error && r.code === 200) {
       break;
     }
     count ++;
     if (count % 10 === 0) {
-      if (!checkInstanceAlive(instanceInfo, options)) {
+      if (! checkInstanceAlive(instanceInfo, options)) {
         print("startup failed! bailing out!");
         return false;
       }
@@ -557,10 +557,10 @@ function runThere (options, instanceInfo, file) {
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
-    o.timeout = 24*3600;
+    o.timeout = 24 * 3600;
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
-    if (!r.error && r.code === 200) {
+    if (! r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
     if (file.indexOf("-spec") !== -1) {
@@ -684,7 +684,7 @@ function performTests(options, testList, testname, remote) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
-      if (!continueTesting) {
+      if (! continueTesting) {
         print('oops!');
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
@@ -702,13 +702,13 @@ function performTests(options, testList, testname, remote) {
       }
       if (r.hasOwnProperty('status')) {
         results[te] = r;
-        if (!r.status && ! options.force) {
+        if (! r.status && ! options.force) {
           break;
         }
       }
       else {
         results[te] = {status: false, message: r};
-        if (!options.force) {
+        if (! options.force) {
           break;
         }
       }
@@ -896,7 +896,7 @@ testFuncs.shell_client = function(options) {
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
-      if (r.status !== true && !options.force) {
+      if (r.status !== true && ! options.force) {
         break;
       }
 
@@ -940,11 +940,11 @@ testFuncs.config = function () {
 testFuncs.boost = function (options) {
   var topDir = findTopDir();
   var results = {};
-  if (!options.skipBoost) {
+  if (! options.skipBoost) {
     results.basics = executeAndWait(fs.join(topDir,"UnitTests","basics_suite"),
                                     ["--show_progress"]);
   }
-  if (!options.skipGeo) {
+  if (! options.skipGeo) {
     results.geo_suite = executeAndWait(
                           fs.join(topDir,"UnitTests","geo_suite"),
                           ["--show_progress"]);
@@ -1005,7 +1005,7 @@ function rubyTests (options, ssl) {
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface", te)];
 
-        if (!continueTesting) {
+        if (! continueTesting) {
           print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
@@ -1297,7 +1297,7 @@ testFuncs.arangob = function (options) {
 
   for (i = 0; i < benchTodo.length; i++) {
     // On the cluster we do not yet have working transaction functionality:
-    if (!options.cluster ||
+    if (! options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
          benchTodo[i].indexOf("multitrx") === -1)) {
 
@@ -1411,8 +1411,8 @@ testFuncs.authentication_parameters = function (options) {
   all_ok = true;
   print("Starting System test");
   results.auth_system = {};
-  for (i = 0;i < urlsTodo.length;i++) {
-    if (!continueTesting) {
+  for (i = 0; i < urlsTodo.length; i++) {
+    if (! continueTesting) {
       print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
@@ -1450,8 +1450,8 @@ testFuncs.authentication_parameters = function (options) {
   all_ok = true;
   continueTesting = true;
   print("Starting None test");
-  for (i = 0;i < urlsTodo.length;i++) {
-    if (!continueTesting) {
+  for (i = 0; i < urlsTodo.length; i++) {
+    if (! continueTesting) {
       print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
@@ -1513,9 +1513,9 @@ function unitTestPrettyPrintResults(r) {
               else {
                 print("    [  Fail ] " + test);
                 for (oneTest in r[testrun][test]) {
-                  if ((r[testrun][test].hasOwnProperty(oneTest)) && 
+                  if (r[testrun][test].hasOwnProperty(oneTest) && 
                       (internalMembers.indexOf(oneTest) === -1) &&
-                      (!r[testrun][test][oneTest].status)) {
+                      (! r[testrun][test][oneTest].status)) {
                     testFail++;
                     print("          -> " + oneTest + " Failed; Verbose message:");
                     print(r[testrun][test][oneTest].message);
@@ -1556,7 +1556,7 @@ function UnitTest (which, options) {
   var ok;
   if (which === "all") {
     var n;
-    for (n = 0;n < allTests.length;n++) {
+    for (n = 0; n < allTests.length; n++) {
       print("Doing test",allTests[n],"with options",options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
@@ -1630,6 +1630,7 @@ function UnitTest (which, options) {
 exports.testFuncs = testFuncs;
 exports.UnitTest = UnitTest;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
