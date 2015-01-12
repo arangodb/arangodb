@@ -1,6 +1,14 @@
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
+* fixed V8 integration-related crashes
+
+* make `fs.move(src, dest)` also fail when both `src` and `dest` are
+  existing directories. This ensures the same behavior of the move operation 
+  on different platforms.
+
+* fixed AQL insert operation for multi-shard collections in cluster
+
 * added optional return value for AQL data-modification queries.
   This allows returning the documents inserted, removed or updated with the query, e.g.
 
@@ -17,6 +25,12 @@ v2.4.0 (XXXX-XX-XX)
   the assignment can only be either `OLD` or `NEW`, but not an arbitrary expression. The
   `RETURN` statement also allows using the just-created variable only, and no arbitrary
   expressions.
+
+
+v2.4.0-beta1 (2014-12-26)
+--------------------------
+
+* fixed superstates in FoxxGenerator
 
 * fixed issue #1065: Aardvark: added creation of documents and edges with _key property
 

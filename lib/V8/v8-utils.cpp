@@ -1844,8 +1844,9 @@ static void JS_MTime (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// `fs.move(source, destination)`
 ///
 /// Moves *source* to destination. Failure to move the file, or
-/// specifying a directory for target when source is a file will throw an
-/// exception.
+/// specifying a directory for destination when source is a file will throw an
+/// exception. Likewise, specifying a directory as source and destination will
+/// fail.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1860,6 +1861,20 @@ static void JS_Move (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   string source = TRI_ObjectToString(args[0]);
   string destination = TRI_ObjectToString(args[1]);
+
+  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (sourceIsDirectory && destinationIsDirectory) {
+    // source is a directory, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot move source directory into destination directory");
+  }
+
+  if (TRI_IsRegularFile(source.c_str()) &&
+      destinationIsDirectory) {
+    // source is a file, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot move source file into destination directory");
+  }
 
   int res = TRI_RenameFile(source.c_str(), destination.c_str());
 
