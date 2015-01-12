@@ -32,7 +32,6 @@ var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var cluster = require("org/arangodb/cluster");
 var getModifyQueryResults = helper.getModifyQueryResults;
 var assertQueryError = helper.assertQueryError;
 
@@ -261,14 +260,25 @@ function ahuacatlRemoveSuite () {
 /// @brief test remove
 ////////////////////////////////////////////////////////////////////////////////
 
-    testRemoveInvalid4 : function () {
-      if (cluster.isCluster()) {
-        // skip test in cluster as there are no distributed transactions yet
-        return;
-      }
+    testRemoveReturn : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN @@cn REMOVE d IN @@cn LET removed = OLD RETURN removed", { "@cn": cn1 });
 
-      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR i iN 0..100 REMOVE CONCAT('test', i) IN @@cn", { "@cn": cn1 });
-      assertEqual(100, c1.count());
+      assertEqual(0, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value1 - r.value1;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -656,6 +666,71 @@ function ahuacatlInsertSuite () {
 /// @brief test insert
 ////////////////////////////////////////////////////////////////////////////////
 
+    testInsertReturnNoKey : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      // key is specified
+      var actual = AQL_EXECUTE("FOR d IN 0..99 INSERT { bar: d } IN @@cn LET result = NEW RETURN result", { "@cn": cn1 });
+
+      assertEqual(200, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      actual.json = actual.json.sort(function(l, r) {
+        return l.bar - r.bar;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertMatch(/^\d+$/, doc._key);
+        assertEqual(i, doc.bar);
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+
+        var doc2 = c1.document(doc._key);
+        assertEqual(doc._key, doc2._key);
+        assertEqual(doc._rev, doc2._rev);
+        assertEqual(doc._id, doc2._id);
+        assertEqual(i, doc2.bar);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertReturnShardKeys : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      // key is specified
+      var actual = AQL_EXECUTE("FOR d IN 0..99 INSERT { a: d, b: d + 1, bar: d } IN @@cn LET result = NEW RETURN result", { "@cn": cn3 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      actual.json = actual.json.sort(function(l, r) {
+        return l.bar - r.bar;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertMatch(/^\d+$/, doc._key);
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertEqual(i, doc.bar);
+        assertEqual(i, doc.a);
+        assertEqual(i + 1, doc.b);
+
+        var doc2 = c3.document(doc._key);
+        assertEqual(doc._key, doc2._key);
+        assertEqual(doc._rev, doc2._rev);
+        assertEqual(doc._id, doc2._id);
+        assertEqual(i, doc2.bar);
+        assertEqual(i, doc2.a);
+        assertEqual(i + 1, doc2.b);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
     testInsertKey1 : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       // key is specified
@@ -944,6 +1019,46 @@ function ahuacatlInsertSuite () {
         assertEqual([ i ], doc.value);
         assertEqual({ foo: "bar" }, doc.sub);
       }
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertEdgeReturn : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR i IN 0..49 INSERT { _key: CONCAT('test', i), _from: CONCAT('UnitTestsAhuacatlInsert1/', i), _to: CONCAT('UnitTestsAhuacatlInsert2/', i), value: [ i ], sub: { foo: 'bar' } } INTO @@cn LET result = NEW RETURN result", { "@cn": edge.name() });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(50, edge.count());
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value[0] - r.value[0];
+      });
+
+      for (var i = 0; i < 50; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertEqual("UnitTestsAhuacatlInsert1/" + i, doc._from);
+        assertEqual("UnitTestsAhuacatlInsert2/" + i, doc._to);
+        assertEqual([ i ], doc.value);
+        assertEqual({ foo: "bar" }, doc.sub);
+
+        var doc2 = edge.document("test" + i);
+        assertEqual(doc._rev, doc2._rev);
+        assertEqual(doc._id, doc2._id);
+        assertEqual(doc._from, doc2._from);
+        assertEqual(doc._to, doc2._to);
+        assertEqual([ i ], doc2.value);
+        assertEqual({ foo: "bar" }, doc2.sub);
+      }
+
       db._drop("UnitTestsAhuacatlEdge");
     }
 
@@ -1288,6 +1403,78 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateAfterInsert : function () {
+      AQL_EXECUTE("FOR i IN 0..99 INSERT { _key: CONCAT('sometest', i), value: i, wantToFind: true } IN @@cn", { "@cn": cn1 });
+
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.wantToFind UPDATE d._key WITH { value2: d.value % 2 == 0 ? d.value : d.value + 1 } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("sometest" + i);
+        assertTrue(doc.wantToFind);
+        assertEqual(i, doc.value);
+        assertEqual(i % 2 === 0 ? i : i + 1, doc.value2);
+        assertEqual(i, doc.value);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnOld : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value1 - r.value1;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertFalse(doc.hasOwnProperty("value3"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnNew : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN @@cn UPDATE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value1 - r.value1;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertEqual(i + 5, doc.value3);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test replace
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1345,6 +1532,77 @@ function ahuacatlUpdateSuite () {
         var doc = c1.document("test" + i);
         assertEqual(i + 5, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceReturnOld : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value1 - r.value1;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertFalse(doc.hasOwnProperty("value3"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceReturnNew : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET now = NEW RETURN now", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value3 - r.value3;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertFalse(doc.hasOwnProperty("value1"));
+        assertFalse(doc.hasOwnProperty("value2"));
+        assertEqual(i + 5, doc.value3);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceAfterInsert : function () {
+      AQL_EXECUTE("FOR i IN 0..99 INSERT { _key: CONCAT('sometest', i), value: i, wantToFind: true } IN @@cn", { "@cn" : cn1 });
+
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR d IN @@cn FILTER d.wantToFind REPLACE d._key WITH { value2: d.value % 2 == 0 ? d.value : d.value + 1 } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual));
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("sometest" + i);
+        assertEqual(i % 2 === 0 ? i : i + 1, doc.value2);
+        assertFalse(doc.hasOwnProperty("value"));
+        assertFalse(doc.hasOwnProperty("wantToFind"));
       }
     }
 
