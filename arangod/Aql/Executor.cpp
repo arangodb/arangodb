@@ -474,13 +474,15 @@ void Executor::generateCodeString (std::string const& value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate JavaScript code for a list
+/// @brief generate JavaScript code for an array
 ////////////////////////////////////////////////////////////////////////////////
 
-void Executor::generateCodeList (AstNode const* node) {
+void Executor::generateCodeArray (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
+  // very conservative minimum bound
+  _buffer->reserve(2 + n * 3); 
 
   _buffer->appendChar('[');
   for (size_t i = 0; i < n; ++i) {
@@ -494,13 +496,15 @@ void Executor::generateCodeList (AstNode const* node) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generate JavaScript code for an array
+/// @brief generate JavaScript code for an object
 ////////////////////////////////////////////////////////////////////////////////
 
-void Executor::generateCodeArray (AstNode const* node) {
+void Executor::generateCodeObject (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
   size_t const n = node->numMembers();
+  // very conservative minimum bound
+  _buffer->reserve(2 + n * 6); 
 
   _buffer->appendChar('{');
   for (size_t i = 0; i < n; ++i) {
@@ -840,11 +844,11 @@ void Executor::generateCodeNode (AstNode const* node) {
       break;
 
     case NODE_TYPE_ARRAY:
-      generateCodeList(node);
+      generateCodeArray(node);
       break;
 
     case NODE_TYPE_OBJECT:
-      generateCodeArray(node);
+      generateCodeObject(node);
       break;
     
     case NODE_TYPE_OPERATOR_UNARY_PLUS:
