@@ -884,6 +884,13 @@ int main (int argc, char* argv[]) {
     ChunkSize = 1024 * 128;
   }
 
+  if (! InputDirectory.empty() &&
+      InputDirectory.back() == TRI_DIR_SEPARATOR_CHAR) {
+    // trim trailing slash from path because it may cause problems on ... Windows
+    TRI_ASSERT(InputDirectory.size() > 0);
+    InputDirectory.pop_back();
+  }
+
   // .............................................................................
   // check input directory
   // .............................................................................
