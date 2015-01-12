@@ -2759,7 +2759,8 @@ DistributeNode::DistributeNode (ExecutionPlan* plan,
   : ExecutionNode(plan, base),
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
-    _varId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "varId")){
+    _varId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "varId")),
+    _createKeys(JsonHelper::checkAndGetBooleanValue(base.json(), "createKeys")) {
 }
 
 void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
@@ -2773,7 +2774,8 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
   
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->getName()))
-      ("varId", triagens::basics::Json(static_cast<int>(_varId)));
+      ("varId", triagens::basics::Json(static_cast<int>(_varId)))
+      ("createKeys", triagens::basics::Json(_createKeys));
 
   // And add it:
   nodes(json);

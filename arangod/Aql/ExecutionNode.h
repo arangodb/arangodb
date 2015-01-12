@@ -3096,11 +3096,13 @@ namespace triagens {
                         size_t id,
                         TRI_vocbase_t* vocbase,
                         Collection const* collection, 
-                        VariableId const varId)
+                        VariableId const varId,
+                        bool createKeys)
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
-            _varId(varId) {
+            _varId(varId),
+            _createKeys(createKeys) {
         }
 
         DistributeNode (ExecutionPlan*, 
@@ -3129,7 +3131,7 @@ namespace triagens {
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
                                       bool withProperties) const {
-          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId);
+          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _createKeys);
           
           CloneHelper (c, plan, withDependencies, withProperties);
 
@@ -3177,6 +3179,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         VariableId const _varId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the node is responsible for creating document keys
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _createKeys;
 
     };
 
