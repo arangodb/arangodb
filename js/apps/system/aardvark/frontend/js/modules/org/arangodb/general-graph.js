@@ -589,15 +589,33 @@ AQLGenerator.prototype.inEdges = function(example) {
 /// Only for internal use, user gets different functions for directions
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._vertices = function(example, options) {
+AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
   this._clearCursor();
   this.options = options || {};
   var ex = transformExample(example);
   var vertexName = "vertices_" + this.stack.length;
   var query = "FOR " + vertexName
-    + " IN GRAPH_VERTICES(@graphName,@vertexExample_"
-    + this.stack.length + ',@options_'
-    + this.stack.length + ')';
+    + " IN GRAPH_VERTICES(@graphName,";
+  if (mergeWith !== undefined) {
+    if (Array.isArray(mergeWith)) {
+      var i;
+      query += "[";
+      for (i = 0; i < mergeWith.length; ++i) {
+        if (i > 0) {
+          query += ",";
+        }
+        query += "MERGE(@vertexExample_" + this.stack.length
+          + "," + mergeWith[i] + ")";
+      }
+      query += "]";
+    } else {
+      query += "MERGE(@vertexExample_" + this.stack.length
+        + "," + mergeWith + ")";
+    }
+  } else {
+    query += "@vertexExample_" + this.stack.length;
+  }
+  query += ',@options_' + this.stack.length + ')';
   this.bindVars["vertexExample_" + this.stack.length] = ex;
   this.bindVars["options_" + this.stack.length] = this.options;
   var stmt = new AQLStatement(query, "vertex");
@@ -663,16 +681,8 @@ AQLGenerator.prototype.vertices = function(example) {
     return this._vertices(example);
   }
   var edgeVar = this.getLastVar();
-  this._vertices(example);
-  var vertexVar = this.getLastVar();
-  var query = "FILTER " + edgeVar
-    + "._from == " + vertexVar
-    + "._id || " + edgeVar
-    + "._to == " + vertexVar
-    + "._id";
-  var stmt = new AQLStatement(query);
-  this.stack.push(stmt);
-  return this;
+  return this._vertices(example, undefined,
+    ["{'_id': " + edgeVar + "._from}", "{'_id': " + edgeVar + "._to}"]);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -729,14 +739,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
     return this._vertices(example);
   }
   var edgeVar = this.getLastVar();
-  this._vertices(example);
-  var vertexVar = this.getLastVar();
-  var query = "FILTER " + edgeVar
-    + "._from == " + vertexVar
-    + "._id";
-  var stmt = new AQLStatement(query);
-  this.stack.push(stmt);
-  return this;
+  return this._vertices(example, undefined, "{'_id': " + edgeVar + "._from}");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -793,14 +796,7 @@ AQLGenerator.prototype.toVertices = function(example) {
     return this._vertices(example);
   }
   var edgeVar = this.getLastVar();
-  this._vertices(example);
-  var vertexVar = this.getLastVar();
-  var query = "FILTER " + edgeVar
-    + "._to == " + vertexVar
-    + "._id";
-  var stmt = new AQLStatement(query);
-  this.stack.push(stmt);
-  return this;
+  return this._vertices(example, undefined, "{'_id': " + edgeVar + "._to}");
 };
 
 ////////////////////////////////////////////////////////////////////////////////
