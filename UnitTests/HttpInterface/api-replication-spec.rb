@@ -323,6 +323,21 @@ describe ArangoDB do
 ## inventory
 ################################################################################
 
+      it "checks the initial inventory with the default value for includeSystem" do
+        cmd = api + "/inventory"
+        doc = ArangoDB.log_get("#{prefix}-inventory-system-defaults", cmd, :body => "")
+
+        doc.code.should eq(200)
+        all = doc.parsed_response
+        all.should have_key('collections')
+        all.should have_key('state')
+
+        collections = all["collections"]
+        collections.each { |collection|
+          collection["parameters"]["name"].should_not match(/^_/)
+        }
+      end
+
       it "checks the initial inventory" do
         cmd = api + "/inventory?includeSystem=false"
         doc = ArangoDB.log_get("#{prefix}-inventory", cmd, :body => "")

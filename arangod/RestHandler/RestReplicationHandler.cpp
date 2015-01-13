@@ -1207,7 +1207,7 @@ void RestReplicationHandler::handleCommandInventory () {
   TRI_voc_tick_t tick = TRI_CurrentTickServer();
 
   // include system collections?
-  bool includeSystem = true;
+  bool includeSystem = false;
   bool found;
   const char* value = _request->value("includeSystem", found);
 
