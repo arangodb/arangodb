@@ -46,14 +46,22 @@ function resultsToXml(results, baseName) {
   }
 
   for (var testrun in results) {
-    if (results.hasOwnProperty(testrun)) { 
+    if ((testrun !== "all_ok") && (results.hasOwnProperty(testrun))) { 
       for (var test in results[testrun]) {
-        if (results[testrun].hasOwnProperty(test)) { 
+
+        if ((test !== "ok") && 
+            results[testrun].hasOwnProperty(test) && 
+            !results[testrun][test].hasOwnProperty('skipped')) { 
+
           var xml = buildXml();
 
+          var failuresFound = "";
+          if (results[testrun][test].hasOwnProperty('failed')) {
+            failuresFound = results[testrun][test].failed;
+          }
           xml.elem("testsuite", {
             errors: 0,
-            failures: results[testrun][test].failed,
+            failures: failuresFound,
             name: test,
             tests: results[testrun][test].total,
             time: results[testrun][test].duration
