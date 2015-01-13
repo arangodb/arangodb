@@ -348,12 +348,14 @@ bool ApplicationCluster::open () {
     AgencyCommLocker locker("Current", "WRITE");
 
     if (locker.successful()) {
-      TRI_json_t* ep = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
+      TRI_json_t* ep = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _myAddress.c_str(), _myAddress.size());
+
       if (ep == nullptr) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
-      TRI_json_t* json = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+      TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
+
       if (json == nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, ep);
         locker.unlock();
@@ -373,9 +375,9 @@ bool ApplicationCluster::open () {
     }
 
     if (role == ServerState::ROLE_COORDINATOR) {
-      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "none", 4);
+      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "none", strlen("none"));
 
-      if (json == 0) {
+      if (json == nullptr) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }
@@ -392,9 +394,9 @@ bool ApplicationCluster::open () {
       }
     }
     else if (role == ServerState::ROLE_PRIMARY) {
-      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "none", 4);
+      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "none", strlen("none"));
 
-      if (json == 0) {
+      if (json == nullptr) {
         locker.unlock();
         LOG_FATAL_AND_EXIT("out of memory");
       }

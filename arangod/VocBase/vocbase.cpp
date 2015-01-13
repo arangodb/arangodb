@@ -1207,7 +1207,7 @@ static int FilterCollectionIndex (TRI_vocbase_col_t* collection,
     else {
       // convert "id" to string
       char* idString = TRI_StringUInt64(iid);
-      TRI_InitStringJson(id, idString);
+      TRI_InitStringJson(id, idString, strlen(idString));
       TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, ij->_list, indexJson);
     }
   }
@@ -1732,7 +1732,7 @@ TRI_json_t* TRI_InventoryCollectionsVocBase (TRI_vocbase_t* vocbase,
       continue;
     }
 
-    TRI_json_t* result = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 2);
+    TRI_json_t* result = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
 
     if (result != nullptr) {
       TRI_json_t* collectionInfo = TRI_ReadJsonCollectionInfo(collection);

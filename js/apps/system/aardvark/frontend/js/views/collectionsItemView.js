@@ -213,11 +213,7 @@
             true,
             [
               {
-                rule: Joi.string().required(),
-                msg: "No journal size given."
-              },
-              {
-                rule: Joi.string().regex(/^[0-9]*$/),
+                rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
                 msg: "Must be a number."
               }
             ]

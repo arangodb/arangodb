@@ -396,7 +396,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
       if (yyleng <= 2) {
         // string is empty
         char const* ptr = EmptyString; // we'll create a reference to this compiled-in string
-        TRI_InitStringReference2Json(result, ptr, 0);
+        TRI_InitStringReferenceJson(result, ptr, 0);
       }
       else {
         // string is not empty, process it
@@ -407,7 +407,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
           return false;
         }
       
-       TRI_InitString2Json(result, ptr, outLength);
+       TRI_InitStringJson(result, ptr, outLength);
       }
       return true;
     }
@@ -416,7 +416,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
       if (yyleng <= 2) {
         // string is empty
         char const* ptr = EmptyString; // we'll create a reference to this compiled-in string
-        TRI_InitStringReference2Json(result, ptr, 0);
+        TRI_InitStringReferenceJson(result, ptr, 0);
        }
       else {
         char* ptr = TRI_DuplicateString2Z(yyextra._memoryZone, yytext + 1, yyleng - 2);
@@ -426,7 +426,7 @@ static bool ParseValue (yyscan_t scanner, TRI_json_t* result, int c) {
           return false;
         }
  
-        TRI_InitString2Json(result, ptr, yyleng - 2);
+        TRI_InitStringJson(result, ptr, yyleng - 2);
       }
       return true;
     }

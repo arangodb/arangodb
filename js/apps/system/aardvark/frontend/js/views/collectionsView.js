@@ -313,7 +313,7 @@
             },
             {
               rule: Joi.string().regex(/^[a-zA-Z0-9\-_]*$/),
-              msg: 'Only Symbols "_" and "-" are allowed.'
+              msg: 'Only symbols, "_" and "-" are allowed.'
             },
             {
               rule: Joi.string().required(),
@@ -371,11 +371,7 @@
           false,
           [
             {
-              rule: Joi.string().required(),
-              msg: "No journal size given."
-            },
-            {
-              rule: Joi.string().regex(/^[0-9]*$/),
+              rule: Joi.string().allow('').optional().regex(/^[0-9]*$/),
               msg: "Must be a number."
             }
           ]

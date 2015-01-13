@@ -631,6 +631,7 @@ static yyconst flex_int32_t yy_rule_can_match_eol[81] =
 #define YY_RESTORE_YY_MORE_OFFSET
 
 #include "Basics/Common.h"
+#include "Basics/conversions.h"
 
 // introduce the namespace here, otherwise following references to 
 // the namespace in auto-generated headers might fail
@@ -1449,7 +1450,27 @@ case 66:
 YY_RULE_SETUP
 {  
   /* a numeric integer value */
-  yylval->strval = yyextra->query()->registerString(yytext, yyleng, false); 
+  triagens::aql::AstNode* node = nullptr;
+  auto parser = yyextra;
+
+  int64_t value = TRI_Int64String2(yytext, yyleng);
+  if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+    node = parser->ast()->createNodeValueInt(value);
+  }
+  else {
+    double value2 = TRI_DoubleString(yytext);
+    if (TRI_errno() == TRI_ERROR_NO_ERROR) {
+      node = parser->ast()->createNodeValueDouble(value2);
+    }
+    else {
+      parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
+      node = parser->ast()->createNodeValueNull();
+    }
+  }
+
+  yylval->node = node;
+
+  // yylval->node = yyextra->query()->registerString(yytext, yyleng, false); 
   return T_INTEGER;
 }
 	YY_BREAK

@@ -1213,7 +1213,7 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
   char* planIdString;
 
   // create a json info object
-  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 9);
+  json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
 
   if (json == nullptr) {
     return nullptr;
@@ -1238,16 +1238,16 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "version",      TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_version));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "type",         TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_type));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "cid",          TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString, strlen(cidString)));
 
   if (info->_planId > 0) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "planId",     TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, planIdString));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "planId",     TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, planIdString, strlen(planIdString)));
   }
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_maximalSize));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "name",         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, info->_name, strlen(info->_name)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "isVolatile",   TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_isVolatile));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "waitForSync",  TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_waitForSync));
 

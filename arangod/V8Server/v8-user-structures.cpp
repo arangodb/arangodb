@@ -459,7 +459,7 @@ class KeySpace {
       auto found = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, key.c_str()));
 
       if (found == nullptr) {
-        TRI_json_t* list = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+        TRI_json_t* list = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
         if (list == nullptr) {
           return TRI_ERROR_OUT_OF_MEMORY;
@@ -560,7 +560,7 @@ class KeySpace {
       auto dest = static_cast<KeySpaceElement*>(TRI_LookupByKeyAssociativePointer(&_hash, keyTo.c_str()));
 
       if (dest == nullptr) {
-        TRI_json_t* list = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+        TRI_json_t* list = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
         if (list == nullptr) {
           TRI_V8_THROW_EXCEPTION_MEMORY();

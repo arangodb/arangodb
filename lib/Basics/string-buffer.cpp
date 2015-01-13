@@ -56,7 +56,7 @@ static inline size_t Remaining (TRI_string_buffer_t * self) {
 /// @brief reserve space
 ////////////////////////////////////////////////////////////////////////////////
 
-static int Reserve (TRI_string_buffer_t * self, const size_t size) {
+static int Reserve (TRI_string_buffer_t * self, size_t size) {
   if (size < 1) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -695,9 +695,7 @@ int TRI_ReplaceStringBufferStringBuffer (TRI_string_buffer_t * self, TRI_string_
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendCharStringBuffer (TRI_string_buffer_t * self, char chr) {
-  int res;
-
-  res = Reserve(self, 1);
+  int res = Reserve(self, 1);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -966,9 +964,7 @@ int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t * self,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInteger2StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  int res;
-
-  res = Reserve(self, 2);
+  int res = Reserve(self, 2);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -985,9 +981,7 @@ int TRI_AppendInteger2StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInteger3StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  int res;
-
-  res = Reserve(self, 3);
+  int res = Reserve(self, 3);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1005,9 +999,7 @@ int TRI_AppendInteger3StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInteger4StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  int res;
-
-  res = Reserve(self, 4);
+  int res = Reserve(self, 4);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -1026,16 +1018,13 @@ int TRI_AppendInteger4StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 4);
+  int res = Reserve(self, 4);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringInt8InPlace(attr, self->_current);
+  size_t len = TRI_StringInt8InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1046,16 +1035,13 @@ int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 3);
+  int res = Reserve(self, 3);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt8InPlace(attr, self->_current);
+  size_t len = TRI_StringUInt8InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1066,16 +1052,13 @@ int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 6);
+  int res = Reserve(self, 6);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringInt16InPlace(attr, self->_current);
+  size_t len = TRI_StringInt16InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1086,16 +1069,13 @@ int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 5);
+  int res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt16InPlace(attr, self->_current);
+  size_t len = TRI_StringUInt16InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1106,16 +1086,13 @@ int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 11);
+  int res = Reserve(self, 11);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringInt32InPlace(attr, self->_current);
+  size_t len = TRI_StringInt32InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1126,16 +1103,13 @@ int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 10);
+  int res = Reserve(self, 10);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt32InPlace(attr, self->_current);
+  size_t len = TRI_StringUInt32InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1146,16 +1120,13 @@ int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 20);
+  int res = Reserve(self, 20);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringInt64InPlace(attr, self->_current);
+  size_t len = TRI_StringInt64InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1166,16 +1137,13 @@ int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 21);
+  int res = Reserve(self, 21);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt64InPlace(attr, self->_current);
+  size_t len = TRI_StringUInt64InPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1206,16 +1174,13 @@ int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 11);
+  int res = Reserve(self, 11);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt32OctalInPlace(attr, self->_current);
+  size_t len = TRI_StringUInt32OctalInPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1226,16 +1191,13 @@ int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 22);
+  int res = Reserve(self, 22);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt64OctalInPlace(attr, self->_current);
+  size_t len = TRI_StringUInt64OctalInPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1266,16 +1228,13 @@ int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 5);
+  int res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt32HexInPlace(attr, self->_current);
+  size_t len = TRI_StringUInt32HexInPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1286,16 +1245,13 @@ int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) 
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
-  int res;
-  size_t len;
-
-  res = Reserve(self, 9);
+  int res = Reserve(self, 9);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  len = TRI_StringUInt64HexInPlace(attr, self->_current);
+  size_t len = TRI_StringUInt64HexInPlace(attr, self->_current);
   self->_current += len;
 
   return TRI_ERROR_NO_ERROR;
@@ -1326,8 +1282,6 @@ int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
-  int res;
-
   // IEEE754 NaN values have an interesting property that we can exploit...
   // if the architecture does not use IEEE754 values then this shouldn't do
   // any harm either
@@ -1342,7 +1296,7 @@ int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
     return TRI_AppendStringStringBuffer(self, "-inf");
   }
 
-  res = Reserve(self, 1);
+  int res = Reserve(self, 1);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

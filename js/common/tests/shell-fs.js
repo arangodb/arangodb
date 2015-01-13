@@ -417,7 +417,6 @@ function FileSystemSuite () {
       tempName2 = fs.join(tempDir, 'bar');
 
       fs.makeDirectory(tempName);
-      fs.makeDirectory(tempName2);
 
       fs.write(fs.join(tempName, "test"), "this is a test file");
 
@@ -426,6 +425,37 @@ function FileSystemSuite () {
       assertTrue(fs.isDirectory(tempName2));
       assertTrue(fs.isFile(fs.join(tempName2, "test")));
       assertEqual("this is a test file", fs.read(fs.join(tempName2, "test")));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testMoveDirectoryExists : function () {
+      var tempName, tempName2;
+      
+      // create a new file with a specific content
+      tempName = fs.join(tempDir, 'foo');
+      tempName2 = fs.join(tempDir, 'bar');
+
+      fs.makeDirectory(tempName);
+      fs.makeDirectory(tempName2);
+
+      fs.write(fs.join(tempName, "test"), "this is a test file");
+
+      try {
+        fs.move(tempName, tempName2);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+      }
+
+      // nothing moved
+      assertTrue(fs.isDirectory(tempName));
+      assertTrue(fs.isFile(fs.join(tempName, "test")));
+      assertEqual("this is a test file", fs.read(fs.join(tempName, "test")));
+      assertTrue(fs.isDirectory(tempName2));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -83,12 +83,10 @@ static bool CheckTerminateFlag (TRI_replication_applier_t* applier) {
 static int ReadTick (TRI_json_t const* json,
                      char const* attributeName,
                      TRI_voc_tick_t* dst) {
-  TRI_json_t* tick;
-
   TRI_ASSERT(json != nullptr); 
   TRI_ASSERT(json->_type == TRI_JSON_OBJECT);
 
-  tick = TRI_LookupObjectJson(json, attributeName);
+  TRI_json_t const* tick = TRI_LookupObjectJson(json, attributeName);
 
   if (! TRI_IsStringJson(tick)) {
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
@@ -113,9 +111,7 @@ static char* GetConfigurationFilename (TRI_vocbase_t* vocbase) {
 
 static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t const* config,
                                       bool includePassword) {
-  TRI_json_t* json;
-
-  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 9);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
 
   if (json == nullptr) {
     return nullptr;
@@ -125,28 +121,28 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "endpoint",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_endpoint));
+                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_endpoint, strlen(config->_endpoint)));
   }
 
   if (config->_database != nullptr) {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "database",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_database));
+                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_database, strlen(config->_database)));
   }
 
   if (config->_username != nullptr) {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "username",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_username));
+                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_username, strlen(config->_username)));
   }
 
   if (config->_password != nullptr && includePassword) {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                          json,
                          "password",
-                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_password));
+                         TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_password, strlen(config->_password)));
   }
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
@@ -197,14 +193,15 @@ static TRI_json_t* JsonConfiguration (TRI_replication_applier_configuration_t co
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "restrictType",
-                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str()));
+                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config->_restrictType.c_str(), config->_restrictType.size()));
   
   TRI_json_t* collections = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+
   if (collections != nullptr) {
     for (auto it : config->_restrictCollections) {
       TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE,
                             collections,
-                            TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, it.first.c_str()));
+                            TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, it.first.c_str(), it.first.size()));
     }
 
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
@@ -410,12 +407,11 @@ static char* GetStateFilename (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state) {
-  TRI_json_t* json;
   char* serverId;
   char* lastProcessedContinuousTick;
   char* lastAppliedContinuousTick;
 
-  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 4);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 4);
 
   if (json == nullptr) {
     return nullptr;
@@ -428,17 +424,17 @@ static TRI_json_t* JsonApplyState (TRI_replication_applier_state_t const* state)
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "serverId",
-                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId));
+                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverId, strlen(serverId)));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "lastProcessedContinuousTick",
-                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastProcessedContinuousTick));
+                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastProcessedContinuousTick, strlen(lastProcessedContinuousTick)));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        json,
                        "lastAppliedContinuousTick",
-                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastAppliedContinuousTick));
+                       TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastAppliedContinuousTick, strlen(lastAppliedContinuousTick)));
 
   return json;
 }
@@ -627,14 +623,13 @@ static int ShutdownApplier (TRI_replication_applier_t* applier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
-  TRI_json_t* json;
   TRI_json_t* last;
   TRI_json_t* progress;
   TRI_json_t* error;
   char* lastString;
   char timeString[24];
 
-  json = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 9);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
 
   // add replication state
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, state->_active));
@@ -642,7 +637,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   // lastAppliedContinuousTick
   if (state->_lastAppliedContinuousTick > 0) {
     lastString = TRI_StringUInt64(state->_lastAppliedContinuousTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString);
+    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
   }
   else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
@@ -652,7 +647,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   // lastProcessedContinuousTick
   if (state->_lastProcessedContinuousTick > 0) {
     lastString = TRI_StringUInt64(state->_lastProcessedContinuousTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString);
+    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
   }
   else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
@@ -662,7 +657,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   // lastAvailableContinuousTick
   if (state->_lastAvailableContinuousTick > 0) {
     lastString = TRI_StringUInt64(state->_lastAvailableContinuousTick);
-    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString);
+    last = TRI_CreateStringJson(TRI_CORE_MEM_ZONE, lastString, strlen(lastString));
   }
   else {
     last = TRI_CreateNullJson(TRI_CORE_MEM_ZONE);
@@ -670,11 +665,11 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "lastAvailableContinuousTick", last);
 
   // progress
-  progress = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 2);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime));
+  progress = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressTime, strlen(state->_progressTime)));
 
   if (state->_progressMsg != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "message", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "message", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_progressMsg, strlen(state->_progressMsg)));
   }
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, progress, "failedConnects", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) state->_failedConnects));
@@ -691,10 +686,10 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
 
   if (error != nullptr) {
     if (state->_lastError._code > 0) {
-      TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time));
+      TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._time, strlen(state->_lastError._time)));
 
       if (state->_lastError._msg != nullptr) {
-        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg));
+        TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, error, "errorMessage", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, state->_lastError._msg, strlen(state->_lastError._msg)));
       }
     }
 
@@ -704,7 +699,7 @@ static TRI_json_t* JsonState (TRI_replication_applier_state_t const* state) {
   }
 
   TRI_GetTimeStampReplication(timeString, sizeof(timeString) - 1);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, timeString, strlen(timeString)));
 
   return json;
 }
@@ -1050,9 +1045,8 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
   TRI_replication_applier_configuration_t config;
   TRI_json_t* server;
   TRI_json_t* json;
-  int res;
 
-  res = TRI_StateReplicationApplier(applier, &state);
+  int res = TRI_StateReplicationApplier(applier, &state);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
@@ -1072,12 +1066,11 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
   server = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE);
 
   if (server != nullptr) {
-    TRI_server_id_t serverId;
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION, strlen(TRI_VERSION)));
 
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VERSION));
-
-    serverId = TRI_GetIdServer();
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64(serverId)));
+    TRI_server_id_t serverId = TRI_GetIdServer();
+    char* serverIdString = TRI_StringUInt64(serverId);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, server, "serverId", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, serverIdString, strlen(serverIdString)));
 
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "server", server);
   }
@@ -1089,11 +1082,11 @@ TRI_json_t* TRI_JsonReplicationApplier (TRI_replication_applier_t* applier) {
   TRI_ReadUnlockReadWriteLock(&applier->_statusLock);
 
   if (config._endpoint != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "endpoint", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._endpoint, strlen(config._endpoint)));
   }
 
   if (config._database != nullptr) {
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "database", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._database));
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "database", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, config._database, strlen(config._database)));
   }
 
   TRI_DestroyConfigurationReplicationApplier(&config);
@@ -1125,9 +1118,7 @@ int TRI_SetErrorReplicationApplier (TRI_replication_applier_t* applier,
 void TRI_SetProgressReplicationApplier (TRI_replication_applier_t* applier,
                                         char const* msg,
                                         bool lock) {
-  char* copy;
-
-  copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, msg);
+  char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, msg);
 
   if (copy == nullptr) {
     return;
@@ -1184,19 +1175,17 @@ void TRI_DestroyStateReplicationApplier (TRI_replication_applier_state_t* state)
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
-  char* filename;
-  int res;
-
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  filename = GetStateFilename(vocbase);
+  char* filename = GetStateFilename(vocbase);
 
   if (filename == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  int res;
   if (TRI_ExistsFile(filename)) {
     LOG_TRACE("removing replication state file '%s'", filename);
     res = TRI_UnlinkFile(filename);
@@ -1217,23 +1206,20 @@ int TRI_RemoveStateReplicationApplier (TRI_vocbase_t* vocbase) {
 int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
                                      TRI_replication_applier_state_t const* state,
                                      bool doSync) {
-  TRI_json_t* json;
-  char* filename;
-  int res;
-
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  json = JsonApplyState(state);
+  TRI_json_t* json = JsonApplyState(state);
 
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  filename = GetStateFilename(vocbase);
+  char* filename = GetStateFilename(vocbase);
   LOG_TRACE("saving replication applier state to file '%s'", filename);
 
+  int res;
   if (! TRI_SaveJson(filename, json, doSync)) {
     res = TRI_errno();
   }
@@ -1253,17 +1239,12 @@ int TRI_SaveStateReplicationApplier (TRI_vocbase_t* vocbase,
 
 int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
                                      TRI_replication_applier_state_t* state) {
-  TRI_json_t* json;
-  TRI_json_t* serverId;
-  char* filename;
-  int res;
-
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
   TRI_InitStateReplicationApplier(state);
-  filename = GetStateFilename(vocbase);
+  char* filename = GetStateFilename(vocbase);
 
   if (filename == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1279,7 +1260,7 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
 
   LOG_TRACE("replication state file '%s' found", filename);
 
-  json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
+  TRI_json_t* json  = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, nullptr);
   TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
   if (! TRI_IsObjectJson(json)) {
@@ -1290,10 +1271,10 @@ int TRI_LoadStateReplicationApplier (TRI_vocbase_t* vocbase,
     return TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
   }
 
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
   // read the server id
-  serverId = TRI_LookupObjectJson(json, "serverId");
+  TRI_json_t* serverId = TRI_LookupObjectJson(json, "serverId");
 
   if (! TRI_IsStringJson(serverId)) {
     res = TRI_ERROR_REPLICATION_INVALID_APPLIER_STATE;
@@ -1419,19 +1400,17 @@ void TRI_CopyConfigurationReplicationApplier (TRI_replication_applier_configurat
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
-  char* filename;
-  int res;
-
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  filename = GetConfigurationFilename(vocbase);
+  char* filename = GetConfigurationFilename(vocbase);
 
   if (filename == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  int res;
   if (TRI_ExistsFile(filename)) {
     res = TRI_UnlinkFile(filename);
   }
@@ -1451,22 +1430,19 @@ int TRI_RemoveConfigurationReplicationApplier (TRI_vocbase_t* vocbase) {
 int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
                                              TRI_replication_applier_configuration_t const* config,
                                              bool doSync) {
-  TRI_json_t* json;
-  char* filename;
-  int res;
-
   if (vocbase->_type == TRI_VOCBASE_TYPE_COORDINATOR) {
     return TRI_ERROR_CLUSTER_UNSUPPORTED;
   }
 
-  json = JsonConfiguration(config, true);
+  TRI_json_t* json = JsonConfiguration(config, true);
 
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  filename = GetConfigurationFilename(vocbase);
+  char* filename = GetConfigurationFilename(vocbase);
 
+  int res;
   if (! TRI_SaveJson(filename, json, doSync)) {
     res = TRI_errno();
   }
@@ -1485,9 +1461,7 @@ int TRI_SaveConfigurationReplicationApplier (TRI_vocbase_t* vocbase,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ForgetReplicationApplier (TRI_replication_applier_t* applier) {
-  int res;
-
-  res = TRI_StopReplicationApplier(applier, true);
+  int res = TRI_StopReplicationApplier(applier, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;

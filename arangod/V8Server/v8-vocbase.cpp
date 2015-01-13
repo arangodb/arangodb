@@ -1871,20 +1871,25 @@ static void CreateDatabaseCoordinator (const v8::FunctionCallbackInfo<v8::Value>
   }
 
   uint64_t const id = ClusterInfo::instance()->uniqid();
+  std::string const idString(StringUtils::itoa(id));
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                               StringUtils::itoa(id).c_str()));
+                               idString.c_str(), idString.size()));
+
+  std::string const valueString(TRI_ObjectToString(args[0]));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",
       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
-                               TRI_ObjectToString(args[0]).c_str()));
+                               valueString.c_str(), valueString.size()));
+
   if (args.Length() > 1) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "options",
                          TRI_ObjectToJson(isolate, args[1]));
   }
 
+  std::string const serverId(ServerState::instance()->getId());
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "coordinator",
-      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, ServerState::instance()->getId().c_str()));
+      TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverId.c_str(), serverId.size()));
 
   ClusterInfo* ci = ClusterInfo::instance();
   string errorMsg;

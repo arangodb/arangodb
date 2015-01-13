@@ -1068,12 +1068,31 @@ function ChainedFluentAQLResultsSuite() {
 
   };
 
-  var plainVertexQueryStmt = function(depth) {
-    return "FOR vertices_" + depth + " IN "
+  var plainVertexQueryStmt = function(depth, mergeWith) {
+    var stmt = "FOR vertices_" + depth + " IN "
       + "GRAPH_VERTICES("
-      + "@graphName,"
-      + "@vertexExample_" + depth + ","
-      + "@options_" + depth + ")";
+      + "@graphName,";
+    if (mergeWith !== undefined) {
+      if (Array.isArray(mergeWith)) {
+        var i;
+        stmt += "[";
+        for (i = 0; i < mergeWith.length; ++i) {
+          if (i > 0) {
+            stmt += ",";
+          }
+          stmt += "MERGE(@vertexExample_" + depth
+            + "," + mergeWith[i] + ")";
+        }
+        stmt += "]";
+      } else {
+        stmt += "MERGE(@vertexExample_" + depth
+          + "," + mergeWith + ")";
+      }
+    } else {
+      stmt += "@vertexExample_" + depth;
+    }
+    stmt += ",@options_" + depth + ")";
+    return stmt;
   };
 
   var plainNeighborQueryStmt = function(depth, vdepth) {
@@ -1084,30 +1103,17 @@ function ChainedFluentAQLResultsSuite() {
       + "@options_" + depth + ")";
   };
 
-  var vertexFilterStmt = function(direction, eDepth, vDepth) {
+  var vertexMergeStmt = function(direction, eDepth) {
     switch(direction) {
       case "both":
-        return "FILTER edges_"
-          + eDepth
-          + "._from == vertices_"
-          + vDepth
-          + "._id || edges_"
-          + eDepth
-          + "._to == vertices_"
-          + vDepth
-          + "._id";
+        return [
+          vertexMergeStmt("from", eDepth),
+          vertexMergeStmt("to", eDepth)
+        ];
       case "from":
-        return "FILTER edges_"
-          + eDepth
-          + "._from == vertices_"
-          + vDepth
-          + "._id";
+        return  "{'_id': edges_" + eDepth + "._from}";
       case "to":
-        return "FILTER edges_"
-          + eDepth
-          + "._to == vertices_"
-          + vDepth
-          + "._id";
+        return  "{'_id': edges_" + eDepth + "._to}";
       default:
         fail("Helper function does not know direction:" + direction);
     }
@@ -1526,8 +1532,7 @@ function ChainedFluentAQLResultsSuite() {
       var stmt = query.printQuery();
       var expected = [];
       expected.push(plainEdgesQueryStmt(0));
-      expected.push(plainVertexQueryStmt(1));
-      expected.push(vertexFilterStmt("both", 0, 1));
+      expected.push(plainVertexQueryStmt(1, vertexMergeStmt("both", 0)));
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
@@ -1552,8 +1557,7 @@ function ChainedFluentAQLResultsSuite() {
       var stmt = query.printQuery();
       var expected = [];
       expected.push(plainEdgesQueryStmt(0));
-      expected.push(plainVertexQueryStmt(1));
-      expected.push(vertexFilterStmt("to", 0, 1));
+      expected.push(plainVertexQueryStmt(1, vertexMergeStmt("to", 0)));
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
@@ -1576,8 +1580,7 @@ function ChainedFluentAQLResultsSuite() {
       var stmt = query.printQuery();
       var expected = [];
       expected.push(plainEdgesQueryStmt(0));
-      expected.push(plainVertexQueryStmt(1));
-      expected.push(vertexFilterStmt("from", 0, 1));
+      expected.push(plainVertexQueryStmt(1, vertexMergeStmt("from", 0)));
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.options_0, {
         direction: "outbound",
@@ -1602,8 +1605,7 @@ function ChainedFluentAQLResultsSuite() {
       var expected = [];
       expected.push(plainVertexQueryStmt(0));
       expected.push(plainEdgesQueryStmt(1, 0));
-      expected.push(plainVertexQueryStmt(2));
-      expected.push(vertexFilterStmt("to", 1, 2));
+      expected.push(plainVertexQueryStmt(2, vertexMergeStmt("to", 1)));
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.vertexExample_0, {
         name: uaName
@@ -1639,8 +1641,7 @@ function ChainedFluentAQLResultsSuite() {
       var expected = [];
       expected.push(plainVertexQueryStmt(0));
       expected.push(plainEdgesQueryStmt(1, 0));
-      expected.push(plainVertexQueryStmt(2));
-      expected.push(vertexFilterStmt("to", 1, 2));
+      expected.push(plainVertexQueryStmt(2, vertexMergeStmt("to", 1)));
       assertEqual(stmt, expected.join(" "));
       assertEqual(query.bindVars.vertexExample_0, {
         name: uaName
