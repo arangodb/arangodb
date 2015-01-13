@@ -81,7 +81,7 @@ Preprocessor = function (input, type) {
     input = coffeeScript.compile(input, {bare: true});
   }
 
-  this.iterator = new ArrayIterator(input.split("\n"));
+  this.iterator = new ArrayIterator(input.replace('\r', '').split("\n"));
   this.inJSDoc = false;
 };
 
