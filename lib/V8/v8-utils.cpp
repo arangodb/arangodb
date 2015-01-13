@@ -518,6 +518,9 @@ static void JS_ParseFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// - @LIT{returnBodyOnError}: whether or not to return / save body on HTTP
 ///   error
 ///
+/// - @LIT{returnBodyAsBuffer}: whether or not to return the result body in
+///   a Buffer object (default is false, body will be returned in a String)
+///
 /// - @LIT{headers}: an optional array of headers to be sent for the first
 ///   (non-redirect) request.
 ///
@@ -548,7 +551,19 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string body;
   if (args.Length() > 1) {
     if (args[1]->IsString() || args[1]->IsStringObject()) {
+      // supplied body is a string
       body = TRI_ObjectToString(args[1]);
+    }
+    else if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
+      // supplied body is a Buffer object
+      char const* data = V8Buffer::data(args[1].As<v8::Object>());
+      size_t size = V8Buffer::length(args[1].As<v8::Object>());
+
+      if (data == nullptr) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid <body> buffer value");
+      }
+
+      body.assign(data, size);
     }
   }
 
@@ -557,6 +572,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   map<string, string> headerFields;
   double timeout = 10.0;
+  bool returnBodyAsBuffer = false;
   bool followRedirects = true;
   HttpRequest::HttpRequestType method = HttpRequest::HTTP_REQUEST_GET;
   bool returnBodyOnError = false;
@@ -600,6 +616,11 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       }
 
       timeout = TRI_ObjectToDouble(options->Get(TRI_V8_ASCII_STRING("timeout")));
+    }
+
+    // return body as a buffer?
+    if (options->Has(TRI_V8_ASCII_STRING("returnBodyAsBuffer"))) {
+      returnBodyAsBuffer = TRI_ObjectToBoolean(options->Get(TRI_V8_ASCII_STRING("returnBodyAsBuffer")));
     }
 
     // follow redirects
@@ -783,8 +804,17 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
           else {
             // set "body" attribute in result
             const StringBuffer& sb = response->getBody();
-            result->Set(TRI_V8_ASCII_STRING("body"),
-                        TRI_V8_STD_STRING(sb));
+
+            if (returnBodyAsBuffer) {
+              V8Buffer* buffer = V8Buffer::New(isolate, sb.c_str(), sb.length());
+              v8::Local<v8::Object> bufferObject = v8::Local<v8::Object>::New(isolate, buffer->_handle);
+              result->Set(TRI_V8_ASCII_STRING("body"),
+                          bufferObject);
+            }
+            else {
+              result->Set(TRI_V8_ASCII_STRING("body"),
+                          TRI_V8_STD_STRING(sb));
+            }
           }
         }
         catch (...) {
@@ -2173,8 +2203,12 @@ static void JS_Save (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (args[1]->IsObject() && V8Buffer::hasInstance(isolate, args[1])) {
     // content is a buffer
-    const char* data = V8Buffer::data(args[1].As<v8::Object>());
+    char const* data = V8Buffer::data(args[1].As<v8::Object>());
     size_t size = V8Buffer::length(args[1].As<v8::Object>());
+
+    if (data == nullptr) {
+      TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid <content> buffer value");
+    }
     
     ofstream file;
 
