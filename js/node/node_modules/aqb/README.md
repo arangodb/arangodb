@@ -462,6 +462,10 @@ qb.for('doc').in('my_collection').return('doc._key').toAQL()
 
 `PartialStatement::collect(definitions).into(varname) : Statement`
 
+### COLLECT var1 = expr1, var2 = expr2, …, varn = exprn INTO varname COUNT
+
+`PartialStatement::collect(definitions).into(varname).count() : Statement`
+
 ### SORT args…
 
 `PartialStatement::sort(args…) : Statement`

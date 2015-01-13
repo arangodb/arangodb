@@ -3,6 +3,13 @@ v2.5.0 (XXXX-XX-XX)
 
 * RequestContext#bodyParam now accepts arbitrary joi schemas and rejects invalid (but well-formed) request bodies.
 
+
+v2.4.1 (XXXX-XX-XX)
+-------------------
+
+* updated AQB module to 1.6.0.
+
+
 v2.4.0 (XXXX-XX-XX)
 -------------------
 
