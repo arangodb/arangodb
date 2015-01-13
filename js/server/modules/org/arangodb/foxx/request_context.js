@@ -30,19 +30,21 @@
 var RequestContext,
   RequestContextBuffer,
   SwaggerDocs,
+  joi = require("joi"),
   _ = require("underscore"),
   extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   is = require("org/arangodb/is"),
-  elementExtractFactory,
-  bubbleWrapFactory,
+  createBodyParamExtractor,
+  createModelInstantiator,
+  validateOrThrow,
   UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError,
   createErrorBubbleWrap,
   createBodyParamBubbleWrap,
   addCheck;
 
-elementExtractFactory = function (paramName, rootElement) {
+createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
   'use strict';
   var extractElement;
 
@@ -56,41 +58,56 @@ elementExtractFactory = function (paramName, rootElement) {
     };
   }
 
-  return extractElement;
-};
-
-bubbleWrapFactory = function (handler, paramName, Proto, extractElement, multiple) {
-  'use strict';
-  if (multiple) {
-    Proto = Proto[0];
+  if (!allowInvalid) {
+    return extractElement;
   }
 
-  return function (req, res) {
-    if (multiple) {
-      req.parameters[paramName] = _.map(extractElement(req), function (raw) {
-        return new Proto(raw);
-      });
-    } else {
-      req.parameters[paramName] = new Proto(extractElement(req));
+  return function (req) {
+    try {
+      return extractElement(req);
+    } catch (e) {
+      return {};
     }
-    handler(req, res);
   };
 };
 
-createBodyParamBubbleWrap = function (handler, paramName, Proto, allowInvalid, rootElement) {
+createModelInstantiator = function (Model, allowInvalid) {
   'use strict';
-  var extractElement = elementExtractFactory(paramName, rootElement, allowInvalid),
-    wrappedExtractElement = extractElement;
-  if (allowInvalid) {
-    wrappedExtractElement = function (req) {
-      try {
-        return extractElement(req);
-      } catch (err) {
-        return {};
-      }
-    };
+  var multiple = is.array(Model);
+  Model = multiple ? Model[0] : Model;
+  var instantiate = function (raw) {
+    if (!allowInvalid) {
+      raw = validateOrThrow(raw, Model.prototype.schema);
+    }
+    return new Model(raw);
+  };
+  if (!multiple) {
+    return instantiate;
   }
-  return bubbleWrapFactory(handler, paramName, Proto, wrappedExtractElement, is.array(Proto));
+  return function (raw) {
+    return _.map(raw, instantiate);
+  };
+};
+
+validateOrThrow = function (raw, schema, allowInvalid) {
+  'use strict';
+  if (!schema || !schema.isJoi) {
+    return raw;
+  }
+  var result = joi.validate(raw, schema);
+  if (result.error && !allowInvalid) {
+    throw result.error;
+  }
+  return result.value;
+};
+
+createBodyParamBubbleWrap = function (handle, extract, paramName, construct) {
+  'use strict';
+  return function (req, res) {
+    var raw = extract(req);
+    req.parameters[paramName] = construct(raw);
+    handle(req, res);
+  };
 };
 
 createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
@@ -448,6 +465,10 @@ extend(RequestContext.prototype, {
 /// and accordingly the return value of the *params* for the body call will also
 /// return an array of models.
 ///
+/// Alternatively you can provide a joi schema instead of a model to allow
+/// arbitrary data. When using a joi schema or a model that has a joi schema,
+/// well-formed request bodies will be rejected if they don't pass schema validation.
+///
 /// The behavior of *bodyParam* changes depending on the *rootElement* option
 /// set in the [manifest](../Foxx/FoxxManifest.md). If it is set to true, it is
 /// expected that the body is an
@@ -455,7 +476,15 @@ extend(RequestContext.prototype, {
 /// The value of this object is either a single object or in the case of a multi
 /// element an array of objects.
 ///
-/// @EXAMPLES
+/// *Parameter*
+///
+///  * *paramName*: name of the body parameter in `req.parameters`.
+///  * *options*: a joi schema or an object with the following properties:
+///   * *description*: the documentation description of the request body.
+///   * *type*: the Foxx model or joi schema to use.
+///   * *allowInvalid* (optional): `true` if validation should be skipped. (Default: `false`)
+///
+/// *Examples*
 ///
 /// ```js
 /// app.post("/foxx", function (req, res) {
@@ -466,22 +495,94 @@ extend(RequestContext.prototype, {
 ///   type: FoxxBodyModel
 /// });
 /// ```
+///
+/// Using a joi schema:
+///
+/// ```js
+/// app.post("/foxx", function (req, res) {
+///   var joiBody = req.parameters.joiBody;
+///   // Do something with the number
+/// }).bodyParam("joiBody", {
+///   type: joi.number().integer().min(5),
+///   description: "A number greater than five",
+///   allowInvalid: false // default
+/// });
+/// ```
+///
+/// Shorthand version:
+///
+/// ```js
+/// app.post("/foxx", function (req, res) {
+///   var joiBody = req.parameters.joiBody;
+///   // Do something with the number
+/// }).bodyParam(
+///   "joiBody",
+///   joi.number().integer().min(5)
+///   .description("A number greater than five")
+///   .meta({allowInvalid: false}) // default
+/// );
+/// ```
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, attributes) {
     'use strict';
-    if (is.array(attributes.type)) {
-      this.docs.addBodyParam(paramName, attributes.description, toJSONSchema(paramName, attributes.type[0]));
-    } else {
-      this.docs.addBodyParam(paramName, attributes.description, toJSONSchema(paramName, attributes.type));
+    var type = attributes.type,
+      description = attributes.description,
+      allowInvalid = attributes.allowInvalid,
+      cfg, construct;
+
+    if (attributes.isJoi) {
+      type = attributes;
+      description = undefined;
+      allowInvalid = undefined;
     }
+
+    if (!type) {
+      construct = function (raw) {
+        return raw;
+      };
+    } else if (typeof type === 'function' || is.array(type)) {
+      // assume ModelOrSchema is a Foxx Model
+      construct = createModelInstantiator(type, allowInvalid);
+    } else {
+      if (!type.isJoi) {
+        type = joi.object().keys(type).required();
+      }
+      if (typeof allowInvalid === 'boolean') {
+        type = type.meta({allowInvalid: allowInvalid});
+      }
+      if (typeof description === 'string') {
+        type = type.description(description);
+      }
+      cfg = type.describe();
+      description = cfg.description;
+      if (cfg.meta) {
+        if (!is.array(cfg.meta)) {
+          cfg.meta = [cfg.meta];
+        }
+        _.each(cfg.meta, function (meta) {
+          if (meta && typeof meta.allowInvalid === 'boolean') {
+            allowInvalid = meta.allowInvalid;
+          }
+        });
+      }
+      construct = function (raw) {
+        return validateOrThrow(raw, type, allowInvalid);
+      };
+    }
+
+    this.docs.addBodyParam(
+      paramName,
+      description,
+      toJSONSchema(paramName, is.array(type) ? type[0] : type)
+    );
+
     this.route.action.callback = createBodyParamBubbleWrap(
       this.route.action.callback,
+      createBodyParamExtractor(this.rootElement, paramName, allowInvalid),
       paramName,
-      attributes.type,
-      attributes.allowInvalid,
-      this.rootElement
+      construct
     );
 
     return this;

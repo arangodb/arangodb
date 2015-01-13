@@ -760,6 +760,185 @@ function DocumentationAndConstraintsSpec () {
       ModelPrototype.assertIsSatisfied();
     },
 
+    testSetParamForJoiBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = {x: 1},
+        schema = {x: joi.number().integer().required()},
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], {x: 1});
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForPureJoiBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = {x: 1},
+        schema = joi.object().keys({x: joi.number().integer().required()}),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], {x: 1});
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForPureJoiBodyParamWithEmbeddedArgs: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = 'o hi mark',
+        requestBody = {x: 1},
+        schema = joi.object().keys({x: joi.number().integer().required()}),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], {x: 1});
+      }).bodyParam(paramName, schema.description(description));
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForExoticJoiBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = [{x: 1}],
+        schema = joi.array().includes({x: joi.number().integer().required()}),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], [{x: 1}]);
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForInvalidJoiBodyParamWithAllowInvalid: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = 'banana',
+        schema = joi.array().includes({x: joi.number().integer().required()}),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], 'banana');
+      }).bodyParam(paramName, {
+        description: description,
+        allowInvalid: true,
+        type: schema
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForInvalidJoiBodyParamWithEmbeddedAllowInvalid: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = 'banana',
+        schema = joi.array().includes({x: joi.number().integer().required()}),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function (providedReq) {
+        called = _.isEqual(providedReq.parameters[paramName], 'banana');
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema.meta({allowInvalid: true})
+      });
+
+      routes[0].action.callback(req, res);
+
+      assertTrue(called);
+    },
+
+    testSetParamForInvalidJoiBodyParam: function () {
+      var req = { parameters: {} },
+        res = {},
+        paramName = 'flurb',
+        description = stub(),
+        requestBody = 'banana',
+        schema = joi.array().includes({x: joi.number().integer().required()}),
+        called = false,
+        thrown = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      app.get('/foxx', function () {
+        called = true;
+      }).bodyParam(paramName, {
+        description: description,
+        type: schema
+      });
+
+      try {
+        routes[0].action.callback(req, res);
+      } catch(e) {
+        thrown = true;
+      }
+
+      assertTrue(thrown);
+      assertFalse(called);
+    },
+
     testSetParamForUndocumentedBodyParam: function () {
       var reqBody = '{"foo": "bar"}',
         req = {
