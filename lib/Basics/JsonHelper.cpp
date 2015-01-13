@@ -50,11 +50,9 @@ using namespace triagens::basics;
 TRI_json_t* JsonHelper::uint64String (TRI_memory_zone_t* zone,
                                       uint64_t value) {
   char buffer[21];
-  size_t len;
+  size_t len = TRI_StringUInt64InPlace(value, (char*) &buffer);
 
-  len = TRI_StringUInt64InPlace(value, (char*) &buffer);
-
-  return TRI_CreateString2CopyJson(zone, buffer, len);
+  return TRI_CreateStringCopyJson(zone, buffer, len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -95,7 +93,7 @@ uint64_t JsonHelper::stringUInt64 (TRI_json_t const* json,
 
 TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
                                       std::map<std::string, std::string> const& values) {
-  TRI_json_t* json = TRI_CreateObject2Json(zone, values.size());
+  TRI_json_t* json = TRI_CreateObjectJson(zone, values.size());
 
   if (json == nullptr) {
     return nullptr;
@@ -106,7 +104,7 @@ TRI_json_t* JsonHelper::stringObject (TRI_memory_zone_t* zone,
     std::string const key = (*it).first;
     std::string const value = (*it).second;
 
-    TRI_json_t* v = TRI_CreateString2CopyJson(zone, value.c_str(), value.size());
+    TRI_json_t* v = TRI_CreateStringCopyJson(zone, value.c_str(), value.size());
     if (v != nullptr) {
       TRI_Insert3ObjectJson(zone, json, key.c_str(), v);
     }
@@ -144,14 +142,14 @@ std::map<std::string, std::string> JsonHelper::stringObject (TRI_json_t const* j
 
 TRI_json_t* JsonHelper::stringArray (TRI_memory_zone_t* zone,
                                     std::vector<std::string> const& values) {
-  TRI_json_t* json = TRI_CreateArray2Json(zone, values.size());
+  TRI_json_t* json = TRI_CreateArrayJson(zone, values.size());
 
   if (json == nullptr) {
     return nullptr;
   }
 
   for (size_t i = 0, n = values.size(); i < n; ++i) {
-    TRI_json_t* v = TRI_CreateString2CopyJson(zone, values[i].c_str(), values[i].size());
+    TRI_json_t* v = TRI_CreateStringCopyJson(zone, values[i].c_str(), values[i].size());
     if (v != nullptr) {
       TRI_PushBack3ArrayJson(zone, json, v);
     }

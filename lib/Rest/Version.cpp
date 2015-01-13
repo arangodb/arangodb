@@ -289,7 +289,7 @@ void Version::getJson (TRI_memory_zone_t* zone, TRI_json_t* dst) {
     if (! value.empty()) {
       std::string const& key = it.first;
 
-      TRI_Insert3ObjectJson(zone, dst, key.c_str(), TRI_CreateString2CopyJson(zone, value.c_str(), value.size()));
+      TRI_Insert3ObjectJson(zone, dst, key.c_str(), TRI_CreateStringCopyJson(zone, value.c_str(), value.size()));
     }
   }
 }

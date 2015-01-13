@@ -144,7 +144,7 @@ static TRI_json_t* GetMergedKeyList (TRI_json_t const* lhs,
   TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
   TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
-  keys = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE,
+  keys = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE,
                              lhs->_value._objects._length + rhs->_value._objects._length);
 
   if (keys == nullptr) {
@@ -487,7 +487,7 @@ TRI_json_t* TRI_UnionizeListsJson (TRI_json_t const* list1,
   }
 
   // create result list
-  result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n1 > n2 ? n1 : n2);
+  result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, n1 > n2 ? n1 : n2);
 
   if (result == nullptr) {
     return nullptr;
@@ -591,7 +591,7 @@ TRI_json_t* TRI_IntersectListsJson (TRI_json_t const* list1,
   n2 = list2->_value._objects._length;
 
   // create result list
-  result = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, n1 > n2 ? n1 : n2);
+  result = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, n1 > n2 ? n1 : n2);
 
   if (result == nullptr) {
     return nullptr;

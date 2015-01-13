@@ -251,7 +251,7 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   // convert location to string
   path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_location);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  if (path == 0) {
+  if (path == nullptr) {
     return nullptr;
   }
 
@@ -273,7 +273,7 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
 
   fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location, strlen(location)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -296,7 +296,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   // convert latitude to string
   path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_latitude);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  if (path == 0) {
+  if (path == nullptr) {
     return nullptr;
   }
 
@@ -305,7 +305,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   // convert longitude to string
   path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_longitude);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  if (path == 0) {
+  if (path == nullptr) {
     return nullptr;
   }
 
@@ -325,8 +325,8 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
 
   fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude));
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude, strlen(latitude)));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude, strlen(longitude)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;

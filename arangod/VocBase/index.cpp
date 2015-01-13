@@ -426,16 +426,12 @@ TRI_index_t* TRI_LookupIndex (TRI_document_collection_t* document,
 
 TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
                            TRI_index_t const* idx) {
-  TRI_json_t* json;
-
-  json = TRI_CreateObjectJson(zone);
+  TRI_json_t* json = TRI_CreateObjectJson(zone);
 
   if (json != nullptr) {
-    char* number;
-
-    number = TRI_StringUInt64(idx->_iid);
-    TRI_Insert3ObjectJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number));
-    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type)));
+    char* number = TRI_StringUInt64(idx->_iid);
+    TRI_Insert3ObjectJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number, strlen(number)));
+    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type), strlen(TRI_TypeNameIndex(idx->_type))));
     TRI_Insert3ObjectJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
@@ -541,7 +537,7 @@ static TRI_json_t* JsonPrimary (TRI_index_t const* idx) {
   }
 
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_KEY));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_KEY, strlen(TRI_VOC_ATTRIBUTE_KEY)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -936,8 +932,8 @@ static TRI_json_t* JsonEdge (TRI_index_t const* idx) {
   }
 
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM));
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_FROM, strlen(TRI_VOC_ATTRIBUTE_FROM)));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, TRI_VOC_ATTRIBUTE_TO, strlen(TRI_VOC_ATTRIBUTE_TO)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
@@ -1408,7 +1404,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
-    TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
+    TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j], strlen(fieldList[j])));
   }
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
@@ -1729,7 +1725,7 @@ static TRI_json_t* JsonFulltextIndex (TRI_index_t const* idx) {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "minLength", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) fulltextIndex->_minWordLength));
 
   fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
-  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, attributeName));
+  TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, attributeName, strlen(attributeName)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
   return json;
