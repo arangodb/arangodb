@@ -1488,8 +1488,8 @@ function unitTestPrettyPrintResults(r) {
   var oneTest;
   var testFail = 0;
   var testSuiteFail = 0;
-  var success = ""
-  var fail = ""
+  var success = "";
+  var fail = "";
 
   try {
     for (testrun in r) {    
