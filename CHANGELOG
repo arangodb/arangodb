@@ -3,15 +3,16 @@ v2.5.0 (XXXX-XX-XX)
 
 * RequestContext#bodyParam now accepts arbitrary joi schemas and rejects invalid (but well-formed) request bodies.
 
-
 v2.4.1 (XXXX-XX-XX)
 -------------------
 
 * updated AQB module to 1.8.0.
 
 
-v2.4.0 (XXXX-XX-XX)
+v2.4.0 (2015-01-13)
 -------------------
+
+* updated AQB module to 1.7.0.
 
 * fixed V8 integration-related crashes
 
@@ -37,8 +38,6 @@ v2.4.0 (XXXX-XX-XX)
   the assignment can only be either `OLD` or `NEW`, but not an arbitrary expression. The
   `RETURN` statement also allows using the just-created variable only, and no arbitrary
   expressions.
-
-* updated AQB module to 1.7.0
 
 
 v2.4.0-beta1 (2014-12-26)
