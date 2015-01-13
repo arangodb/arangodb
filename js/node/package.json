@@ -14,7 +14,7 @@
     "marked": "0.3.2",
     "moment": "2.6.0",
     "numeral": "1.5.3",
-    "ramda": "^0.7.2",
+    "ramda": "0.7.2",
     "semver": "2.3.0",
     "sinon": "1.10.0",
     "underscore": "1.6.0"
