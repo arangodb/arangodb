@@ -300,7 +300,7 @@ TRI_json_t* TraditionalKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
   TRI_json_t* json = TRI_CreateObjectJson(zone);
 
   if (json != nullptr) {
-    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
+    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
     TRI_Insert3ObjectJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
   }
 
@@ -451,7 +451,7 @@ TRI_json_t* AutoIncrementKeyGenerator::toJson (TRI_memory_zone_t* zone) const {
   TRI_json_t* json = TRI_CreateObjectJson(zone);
 
   if (json != nullptr) {
-    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str()));
+    TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, name().c_str(), name().size()));
     TRI_Insert3ObjectJson(zone, json, "allowUserKeys", TRI_CreateBooleanJson(zone, _allowUserKeys));
     TRI_Insert3ObjectJson(zone, json, "offset", TRI_CreateNumberJson(zone, (double) _offset));
     TRI_Insert3ObjectJson(zone, json, "increment", TRI_CreateNumberJson(zone, (double) _increment));

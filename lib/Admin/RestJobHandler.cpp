@@ -277,7 +277,7 @@ void RestJobHandler::getJobType (std::string const& type) {
     return;
   }
 
-  TRI_json_t* json = TRI_CreateArray2Json(TRI_CORE_MEM_ZONE, ids.size());
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE, ids.size());
 
   if (json != nullptr) {
     size_t const n = ids.size();
@@ -285,7 +285,7 @@ void RestJobHandler::getJobType (std::string const& type) {
       char* idString = TRI_StringUInt64(ids[i]);
 
       if (idString != nullptr) {
-        TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString));
+        TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, json, TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
       }
     }
 

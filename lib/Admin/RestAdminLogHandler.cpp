@@ -283,7 +283,7 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
 
   TRI_vector_t * logs = TRI_BufferLogging(ul, start, useUpto);
 
-  if (logs == 0) {
+  if (logs == nullptr) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return status_t(HANDLER_DONE);
   }
@@ -353,20 +353,20 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
     }
 
     // put the data into the individual vectors
-    if (lid != 0) {
+    if (lid != nullptr) {
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, lid, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) buf->_lid));
     }
 
-    if (level != 0) {
+    if (level != nullptr) {
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, level, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) l));
     }
 
-    if (timestamp != 0) {
+    if (timestamp != nullptr) {
       TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, timestamp, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) buf->_timestamp));
     }
 
-    if (text != 0) {
-      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, text, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buf->_text));
+    if (text != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, text, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, buf->_text, strlen(buf->_text)));
     }
   }
 
@@ -374,16 +374,16 @@ HttpHandler::status_t RestAdminLogHandler::execute () {
   TRI_DestroyVector(&clean);
 
   // now put the 4 vectors into the result
-  if (lid != 0) {
+  if (lid != nullptr) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "lid", lid);
   }
-  if (level != 0) {
+  if (level != nullptr) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "level", level);
   }
-  if (timestamp != 0) {
+  if (timestamp != nullptr) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "timestamp", timestamp);
   }
-  if (text != 0) {
+  if (text != nullptr) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "text", text);
   }
 

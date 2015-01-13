@@ -199,7 +199,7 @@ BOOST_AUTO_TEST_CASE (tst_json_number_negative2) {
 BOOST_AUTO_TEST_CASE (tst_json_string_empty) {
   INIT_BUFFER
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "");
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "", strlen(""));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
@@ -215,7 +215,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string_empty) {
 BOOST_AUTO_TEST_CASE (tst_json_string1) {
   INIT_BUFFER
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox");
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "the quick brown fox", strlen("the quick brown fox"));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
@@ -231,7 +231,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string1) {
 BOOST_AUTO_TEST_CASE (tst_json_string2) {
   INIT_BUFFER
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "The Quick Brown Fox");
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "The Quick Brown Fox", strlen("The Quick Brown Fox"));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
@@ -253,7 +253,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string_reference) {
   memset(copy, 0, sizeof(copy));
   memcpy(copy, data, strlen(data));
 
-  TRI_json_t* json = TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy);
+  TRI_json_t* json = TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy, strlen(copy));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
@@ -265,7 +265,7 @@ BOOST_AUTO_TEST_CASE (tst_json_string_reference) {
   // freeing JSON should not affect our string  
   BOOST_CHECK_EQUAL("The Quick Brown Fox", copy);
 
-  json = TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy);
+  json = TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy, strlen(copy));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   // modify the string we're referring to
@@ -308,10 +308,10 @@ BOOST_AUTO_TEST_CASE (tst_json_string_reference2) {
   json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "first",
-                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy1));
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy1, strlen(copy1)));
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "second",
-                       TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, copy2, len2));
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy2, len2));
 
   BOOST_CHECK_EQUAL(true, TRI_IsObjectJson(json));
 
@@ -328,10 +328,10 @@ BOOST_AUTO_TEST_CASE (tst_json_string_reference2) {
   json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "first",
-                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy1));
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy1, strlen(copy1)));
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "second",
-                       TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE, copy2, len2));
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE, copy2, len2));
 
   BOOST_CHECK_EQUAL(true, TRI_IsObjectJson(json));
 
@@ -369,8 +369,10 @@ BOOST_AUTO_TEST_CASE (tst_json_string_reference2) {
 
 BOOST_AUTO_TEST_CASE (tst_json_string_escaped) {
   INIT_BUFFER
+  
+  char const* value = "\"the quick \"fox\" jumped over the \\brown\\ dog '\n\\\" \\' \\\\ lazy";
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "\"the quick \"fox\" jumped over the \\brown\\ dog '\n\\\" \\' \\\\ lazy");
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, value, strlen(value));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
@@ -386,7 +388,8 @@ BOOST_AUTO_TEST_CASE (tst_json_string_escaped) {
 BOOST_AUTO_TEST_CASE (tst_json_string_utf8_1) {
   INIT_BUFFER
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기");
+  char const* value = "코리아닷컴 메일알리미 서비스 중단안내 [안내] 개인정보취급방침 변경 안내 회사소개 | 광고안내 | 제휴안내 | 개인정보취급방침 | 청소년보호정책 | 스팸방지정책 | 사이버고객센터 | 약관안내 | 이메일 무단수집거부 | 서비스 전체보기";
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, value, strlen(value));
   BOOST_CHECK_EQUAL(true, TRI_IsStringJson(json));
 
   STRINGIFY
@@ -403,7 +406,8 @@ BOOST_AUTO_TEST_CASE (tst_json_string_utf8_1) {
 BOOST_AUTO_TEST_CASE (tst_json_string_utf8_2) {
   INIT_BUFFER
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "äöüßÄÖÜ€µ");
+  char const* value = "äöüßÄÖÜ€µ";
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, value, strlen(value));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"\\u00E4\\u00F6\\u00FC\\u00DF\\u00C4\\u00D6\\u00DC\\u20AC\\u00B5\"", STRING_VALUE);
@@ -419,7 +423,8 @@ BOOST_AUTO_TEST_CASE (tst_json_string_utf8_2) {
 BOOST_AUTO_TEST_CASE (tst_json_string_utf8_3) {
   INIT_BUFFER
 
-  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "a𝛢");
+  char const* value = "a𝛢";
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, value, strlen(value));
 
   STRINGIFY
   BOOST_CHECK_EQUAL("\"a\\uD835\\uDEE2\"", STRING_VALUE);
@@ -456,7 +461,7 @@ BOOST_AUTO_TEST_CASE (tst_json_list_mixed) {
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -8093));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1.5));
-  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox"));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox", strlen("the quick brown fox")));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
 
@@ -483,7 +488,7 @@ BOOST_AUTO_TEST_CASE (tst_json_list_nested) {
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list1, TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list2, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -8093));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list2, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1.5));
-  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list3, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox"));
+  TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, list3, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox", strlen("the quick brown fox")));
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, list1);
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, list2);
   TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, list3);
@@ -523,7 +528,7 @@ BOOST_AUTO_TEST_CASE (tst_json_array_mixed) {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "three", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "four", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -8093));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "five", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1.5));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "six", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox"));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "six", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox", strlen("the quick brown fox")));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "seven", TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "eight", TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
 
@@ -550,7 +555,7 @@ BOOST_AUTO_TEST_CASE (tst_json_array_nested) {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array1, "three", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array2, "four", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, -8093));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array2, "five", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, 1.5));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array2, "six", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox"));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array2, "six", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (char*) "the quick brown fox", strlen("the quick brown fox")));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array3, "seven", TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, array3, "eight", TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "one", array1);

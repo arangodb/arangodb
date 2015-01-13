@@ -99,11 +99,10 @@ string const& RestShutdownHandler::queue () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestShutdownHandler::execute () {
-
   _applicationServer->beginShutdown();
 
   TRI_json_t result;
-  TRI_InitStringJson(&result, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "OK"));
+  TRI_InitStringJson(&result, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "OK"), strlen("OK"));
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 

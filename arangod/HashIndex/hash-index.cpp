@@ -442,7 +442,7 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
 
   for (size_t j = 0; j < hashIndex->_paths._length; ++j) {
-    TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j]));
+    TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, fieldList[j], strlen(fieldList[j])));
   }
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);

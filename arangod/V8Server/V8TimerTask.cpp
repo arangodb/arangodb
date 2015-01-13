@@ -99,10 +99,10 @@ void V8TimerTask::getDescription (TRI_json_t* json) {
   TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "created", created);
 
-  TRI_json_t* cmd = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, _command.c_str(), _command.size());
+  TRI_json_t* cmd = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _command.c_str(), _command.size());
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "command", cmd);
 
-  TRI_json_t* db = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _vocbase->_name);
+  TRI_json_t* db = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, _vocbase->_name, strlen(_vocbase->_name));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "database", db);
 }
 

@@ -498,7 +498,7 @@ bool ApplicationEndpointServer::saveEndpoints () {
     for (size_t i = 0; i < (*it).second.size(); ++i) {
       const string e = (*it).second.at(i);
 
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, list, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, list, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, e.c_str(), e.size()));
     }
 
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, (*it).first.c_str(), list);

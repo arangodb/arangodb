@@ -467,13 +467,14 @@ void RestReplicationHandler::handleCommandLoggerState () {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-
+  
   triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
+  std::string const lastTickString(StringUtils::itoa(s.lastTick));
 
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, StringUtils::itoa(s.lastTick).c_str()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "lastLogTick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, lastTickString.c_str(), lastTickString.size()));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) s.numEvents));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, s.timeString.c_str(), s.timeString.size()));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "state", state);
 
   // "server" part
@@ -485,9 +486,9 @@ void RestReplicationHandler::handleCommandLoggerState () {
     return;
   }
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "version", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION, strlen(TRI_VERSION)));
   char* serverIdString = TRI_StringUInt64(TRI_GetIdServer());
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString, strlen(serverIdString)));
   TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
  
@@ -643,7 +644,8 @@ void RestReplicationHandler::handleCommandBatch () {
 
     TRI_json_t json;
     TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, TRI_StringUInt64((uint64_t) id)));
+    char* idString = TRI_StringUInt64((uint64_t) id);
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "id", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, idString, strlen(idString)));
 
     generateResult(&json);
     TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -1253,12 +1255,12 @@ void RestReplicationHandler::handleCommandInventory () {
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "running", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
   char* logTickString = TRI_StringUInt64(s.lastTick);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, logTickString, strlen(logTickString)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "totalEvents", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) s.numEvents));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str()));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, state, "time", TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, s.timeString.c_str(), s.timeString.size()));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "state", state);
 
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "tick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
 
   generateResult(&json);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
@@ -1332,7 +1334,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
         else {
           map<string, AgencyCommResultEntry>::iterator it;
           TRI_json_t json;
-          TRI_InitArray2Json(TRI_CORE_MEM_ZONE, &json, result._values.size());
+          TRI_InitArrayJson(TRI_CORE_MEM_ZONE, &json, result._values.size());
           for (it = result._values.begin();
                it != result._values.end(); ++it) {
             if (TRI_IsObjectJson(it->second._json)) {
@@ -1341,7 +1343,7 @@ void RestReplicationHandler::handleCommandClusterInventory () {
               if (includeSystem ||
                   (TRI_IsBooleanJson(sub) && ! sub->_value._boolean)) {
                 TRI_json_t coll;
-                TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &coll, 2);
+                TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &coll, 2);
                 sub = TRI_LookupObjectJson( it->second._json, "indexes");
                 TRI_InsertObjectJson(TRI_CORE_MEM_ZONE,&coll,"indexes", sub);
                 TRI_DeleteObjectJson(TRI_UNKNOWN_MEM_ZONE, it->second._json,
@@ -1356,16 +1358,16 @@ void RestReplicationHandler::handleCommandClusterInventory () {
 
           // Wrap the result:
           TRI_json_t wrap;
-          TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &wrap, 3);
+          TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &wrap, 3);
           TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE,&wrap,"collections", &json);
           TRI_voc_tick_t tick = TRI_CurrentTickServer();
           char* tickString = TRI_StringUInt64(tick);
           char const* stateStatic = "unused";
           char* state = TRI_DuplicateString2(stateStatic, strlen(stateStatic));
           TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &wrap, "tick",
-                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
           TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &wrap, "state",
-                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, state));
+                      TRI_CreateStringJson(TRI_CORE_MEM_ZONE, state, strlen(state)));
 
           generateResult(HttpResponse::OK, &wrap);
           TRI_DestroyJson(TRI_CORE_MEM_ZONE, &wrap);
@@ -1821,8 +1823,8 @@ int RestReplicationHandler::processRestoreCollectionCoordinator (
   TRI_voc_tick_t new_id_tick = ci->uniqid(1);
   string new_id = StringUtils::itoa(new_id_tick);
   TRI_ReplaceObjectJson(TRI_UNKNOWN_MEM_ZONE, parameters, "id",
-                       TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE,
-                                              new_id.c_str(), new_id.size()));
+                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE,
+                                                new_id.c_str(), new_id.size()));
 
   // Now put in the primary and an edge index if needed:
   TRI_json_t* indexes = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
@@ -3123,18 +3125,18 @@ void RestReplicationHandler::handleCommandSync () {
     for (it = c.begin(); it != c.end(); ++it) {
       const string cidString = StringUtils::itoa((*it).first);
 
-      TRI_json_t* ci = TRI_CreateObject2Json(TRI_CORE_MEM_ZONE, 2);
+      TRI_json_t* ci = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 2);
 
       if (ci != nullptr) {
         TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                              ci,
                              "id",
-                             TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, cidString.c_str(), cidString.size()));
+                             TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, cidString.c_str(), cidString.size()));
 
         TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                              ci,
                              "name",
-                             TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, (*it).second.c_str(), (*it).second.size()));
+                             TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, (*it).second.c_str(), (*it).second.size()));
 
         TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, jsonCollections, ci);
       }
@@ -3144,7 +3146,7 @@ void RestReplicationHandler::handleCommandSync () {
   }
 
   char* tickString = TRI_StringUInt64(syncer.getLastLogTick());
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString));
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "lastLogTick", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, tickString, strlen(tickString)));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
@@ -3193,7 +3195,7 @@ void RestReplicationHandler::handleCommandServerId () {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE,
                        &result,
                        "serverId",
-                       TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
+                       TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, serverId.c_str(), serverId.size()));
 
   generateResult(&result);
   TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);

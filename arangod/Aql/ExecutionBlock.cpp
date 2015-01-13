@@ -5158,7 +5158,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
   }
   
   if (TRI_IsStringJson(json)) {
-    TRI_json_t* obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+    TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
     if (obj == nullptr) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -5196,7 +5196,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
-        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
     
         // clear the previous value
         cur->destroyValue(_pos, _regId);
@@ -5223,7 +5223,7 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       }
 
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
         
       // clear the previous value
       cur->destroyValue(_pos, _regId);
