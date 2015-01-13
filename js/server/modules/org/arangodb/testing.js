@@ -354,7 +354,7 @@ function startInstance (protocol, options, addArgs, testname) {
       break;
     }
     count ++;
-    if (count % 10 === 0) {
+    if (count % 60 === 0) {
       if (! checkInstanceAlive(instanceInfo, options)) {
         print("startup failed! bailing out!");
         return false;
