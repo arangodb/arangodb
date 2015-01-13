@@ -24,16 +24,16 @@ var jsUnity = exports.jsUnity = (function () {
     }
 
     function hash(v) {
-        if (v instanceof Object && v != null) {
+        if (v instanceof Object && v !== null) {
             var arr = [];
-            var sorted = Object.keys(v).sort();
+            var sorted = Object.keys(v).sort(), n = sorted.length;
             
-            for (var i = 0; i < sorted.length; i++) {
+            for (var i = 0; i < n; i++) {
               var p = sorted[i];
-                                if (v.hasOwnProperty(p)) {
-                                        arr.push(p);
-                                        arr.push(hash(v[p]));    
-                                }
+              if (v.hasOwnProperty(p)) {
+                arr.push(p);
+                arr.push(hash(v[p]));    
+              }
             }
             
             return arr.join("#");
@@ -95,7 +95,7 @@ var jsUnity = exports.jsUnity = (function () {
 
         assertEqual: function (expected, actual, message) {
             counter++;
-            if (hash(expected) != hash(actual)) {
+            if (hash(expected) !== hash(actual)) {
                 var err = new Error();
                 throw fmt("?: (?) is not equal to (?)\n(?)",
                     message || "assertEqual", actual, expected, err.stack);
@@ -104,7 +104,7 @@ var jsUnity = exports.jsUnity = (function () {
         
         assertNotEqual: function (expected, actual, message) {
             counter++;
-            if (hash(expected) == hash(actual)) {
+            if (hash(expected) === hash(actual)) {
                 var err = new Error();
                 throw fmt("?: (?) is equal to (?)\n(?)",
                     message || "assertNotEqual", actual, expected, err.stack);
