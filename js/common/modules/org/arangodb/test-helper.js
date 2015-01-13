@@ -68,6 +68,9 @@ exports.Helper = {
         require("console").log("waiting for collection " + collection.name() + " to unload");
       }
       else if (iterations === 400) {
+        require("console").log("waited very long for unload of collection " + collection.name());
+      }
+      else if (iterations === 800) {
         throw "waited too long for unload of collection " + collection.name();
       }
     }
