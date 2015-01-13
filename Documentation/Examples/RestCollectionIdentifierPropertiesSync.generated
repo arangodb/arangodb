@@ -7,7 +7,7 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "1206578344", 
+  "id" : "1204818501", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 

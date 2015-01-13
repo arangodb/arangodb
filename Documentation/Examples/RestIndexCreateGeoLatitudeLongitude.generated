@@ -5,7 +5,7 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1447095464", 
+  "id" : "products/1455952453", 
   "type" : "geo2", 
   "unique" : false, 
   "constraint" : false, 

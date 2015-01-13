@@ -1,18 +1,18 @@
 arangosh> a1 = db.example.save({ a : 1 });
 { 
   "error" : false, 
-  "_id" : "example/868805800", 
-  "_rev" : "868805800", 
-  "_key" : "868805800" 
+  "_id" : "example/868356677", 
+  "_rev" : "868356677", 
+  "_key" : "868356677" 
 }
 arangosh> db.example.document(a1);
 { 
   "a" : 1, 
-  "_id" : "example/868805800", 
-  "_rev" : "868805800", 
-  "_key" : "868805800" 
+  "_id" : "example/868356677", 
+  "_rev" : "868356677", 
+  "_key" : "868356677" 
 }
 arangosh> db.example.remove(a1);
 true
 arangosh> db.example.document(a1);
-[ArangoError 1202: document /_api/document/example/868805800 not found]
+[ArangoError 1202: document /_api/document/example/868356677 not found]

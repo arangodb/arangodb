@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/6", 
       "_key" : "6", 
-      "_rev" : "1357900968", 
+      "_rev" : "1357124165", 
       "_from" : "vertices/2", 
       "_to" : "vertices/1", 
       "$label" : "v2 -> v1" 
@@ -16,7 +16,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "edges/7", 
       "_key" : "7", 
-      "_rev" : "1358425256", 
+      "_rev" : "1357648453", 
       "_from" : "vertices/4", 
       "_to" : "vertices/1", 
       "$label" : "v4 -> v1" 
