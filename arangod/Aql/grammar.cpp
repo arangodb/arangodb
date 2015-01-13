@@ -3231,30 +3231,17 @@ yyreduce:
   case 151:
 #line 1106 "arangod/Aql/grammar.y" /* yacc.c:1646  */
     {
-      if ((yyvsp[0].strval) == nullptr) {
+      if ((yyvsp[0].node) == nullptr) {
         ABORT_OOM
       }
-
-      int64_t value = TRI_Int64String((yyvsp[0].strval));
-      if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-        (yyval.node) = parser->ast()->createNodeValueInt(value);
-      }
-      else {
-        double value2 = TRI_DoubleString((yyvsp[0].strval));
-        if (TRI_errno() == TRI_ERROR_NO_ERROR) {
-          (yyval.node) = parser->ast()->createNodeValueDouble(value2);
-        }
-        else {
-          parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
-          (yyval.node) = parser->ast()->createNodeValueNull();
-        }
-      }
+      
+      (yyval.node) = (yyvsp[0].node);
     }
-#line 3254 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3241 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
 
 
-#line 3258 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
+#line 3245 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires

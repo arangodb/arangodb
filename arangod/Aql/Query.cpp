@@ -980,15 +980,15 @@ TRI_json_t* Query::warningsToJson (TRI_memory_zone_t* zone) const {
   }
 
   size_t const n = _warnings.size();
-  TRI_json_t* json = TRI_CreateArray2Json(zone, n);
+  TRI_json_t* json = TRI_CreateArrayJson(zone, n);
 
   if (json != nullptr) {
     for (size_t i = 0; i < n; ++i) {
-      TRI_json_t* error = TRI_CreateObject2Json(zone, 2);
+      TRI_json_t* error = TRI_CreateObjectJson(zone, 2);
 
       if (error != nullptr) {
         TRI_Insert3ObjectJson(zone, error, "code", TRI_CreateNumberJson(zone, static_cast<double>(_warnings[i].first)));
-        TRI_Insert3ObjectJson(zone, error, "message", TRI_CreateString2CopyJson(zone, _warnings[i].second.c_str(), _warnings[i].second.size()));
+        TRI_Insert3ObjectJson(zone, error, "message", TRI_CreateStringCopyJson(zone, _warnings[i].second.c_str(), _warnings[i].second.size()));
 
         TRI_PushBack3ArrayJson(zone, json, error);
       }

@@ -294,7 +294,7 @@ function startInstance (protocol, options, addArgs, testname) {
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
     instanceInfo.kickstarter.launch();
     var runInfo = instanceInfo.kickstarter.runInfo;
-    var j = runInfo.length-1;
+    var j = runInfo.length - 1;
     while (j > 0 && runInfo[j].isStartServers === undefined) {
       j--;
     }
@@ -342,16 +342,25 @@ function startInstance (protocol, options, addArgs, testname) {
   }
 
   // Wait until the server/coordinator is up:
+  var count = 0;
   var url = endpointToURL(endpoint);
+  instanceInfo.url = url;
+  instanceInfo.endpoint = endpoint;
+
   while (true) {
-    wait(0.5);
-    var r = download(url+"/_api/version","",makeAuthorisationHeaders(options));
-    if (!r.error && r.code === 200) {
+    wait(0.5, false);
+    var r = download(url+"/_api/version", "", makeAuthorisationHeaders(options));
+    if (! r.error && r.code === 200) {
       break;
     }
+    count ++;
+    if (count % 60 === 0) {
+      if (! checkInstanceAlive(instanceInfo, options)) {
+        print("startup failed! bailing out!");
+        return false;
+      }
+    }
   }
-  instanceInfo.endpoint = endpoint;
-  instanceInfo.url = url;
 
   return instanceInfo;
 }
@@ -548,10 +557,10 @@ function runThere (options, instanceInfo, file) {
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
-    o.timeout = 24*3600;
+    o.timeout = 24 * 3600;
     o.returnBodyOnError = true;
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
-    if (!r.error && r.code === 200) {
+    if (! r.error && r.code === 200) {
       r = JSON.parse(r.body);
     }
     if (file.indexOf("-spec") !== -1) {
@@ -657,6 +666,9 @@ function performTests(options, testList, testname, remote) {
   var instanceInfo;
   if (remote) {
     instanceInfo = startInstance("tcp", options, [], testname);
+    if (instanceInfo === false) {
+      return {status: false, message: "failed to start server!"};
+    }
   }
   var results = {};
   var i;
@@ -672,7 +684,7 @@ function performTests(options, testList, testname, remote) {
   for (i = 0; i < testList.length; i++) {
     te = testList[i];
     if (filterTestcaseByOptions(te, options, filtered)) {
-      if (!continueTesting) {
+      if (! continueTesting) {
         print('oops!');
         print("Skipping, " + te + " server is gone.");
         results[te] = {status: false, message: instanceInfo.exitStatus};
@@ -690,13 +702,13 @@ function performTests(options, testList, testname, remote) {
       }
       if (r.hasOwnProperty('status')) {
         results[te] = r;
-        if (!r.status && ! options.force) {
+        if (! r.status && ! options.force) {
           break;
         }
       }
       else {
         results[te] = {status: false, message: r};
-        if (!options.force) {
+        if (! options.force) {
           break;
         }
       }
@@ -736,6 +748,9 @@ testFuncs.single_server = function (options) {
   var result = { };
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_server");
+    if (instanceInfo === false) {
+      return {status: false, message: "failed to start server!"};
+    }
     var te = options.test;
     print("\narangod: Trying",te,"...");
     result = {};
@@ -771,6 +786,9 @@ testFuncs.single_client = function (options) {
   var result = { };
   if (options.test !== undefined) {
     var instanceInfo = startInstance("tcp", options, [], "single_client");
+    if (instanceInfo === false) {
+      return {status: false, message: "failed to start server!"};
+    }
     var te = options.test;
     print("\narangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
@@ -859,6 +877,9 @@ testFuncs.shell_client = function(options) {
   var te;
   var continueTesting = true;
   var filtered = {};
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   for (i = 0; i < tests_shell_client.length; i++) {
     te = tests_shell_client[i];
@@ -875,7 +896,7 @@ testFuncs.shell_client = function(options) {
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
-      if (r.status !== true && !options.force) {
+      if (r.status !== true && ! options.force) {
         break;
       }
 
@@ -919,11 +940,11 @@ testFuncs.config = function () {
 testFuncs.boost = function (options) {
   var topDir = findTopDir();
   var results = {};
-  if (!options.skipBoost) {
+  if (! options.skipBoost) {
     results.basics = executeAndWait(fs.join(topDir,"UnitTests","basics_suite"),
                                     ["--show_progress"]);
   }
-  if (!options.skipGeo) {
+  if (! options.skipGeo) {
     results.geo_suite = executeAndWait(
                           fs.join(topDir,"UnitTests","geo_suite"),
                           ["--show_progress"]);
@@ -938,6 +959,9 @@ function rubyTests (options, ssl) {
   }
   else {
     instanceInfo = startInstance("tcp", options, [], "http_server");
+  }
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
   }
 
   var tmpname = fs.getTempFile()+".rb";
@@ -964,6 +988,13 @@ function rubyTests (options, ssl) {
   var args;
   var i;
   var continueTesting = true;
+  var command;
+  if (require("internal").platform.substr(0,3) === 'win') {
+    command = "rspec.bat";
+  }
+  else {
+    command = "rspec";
+  }
 
   for (i = 0; i < files.length; i++) {
     var te = files[i];
@@ -974,7 +1005,7 @@ function rubyTests (options, ssl) {
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface", te)];
 
-        if (!continueTesting) {
+        if (! continueTesting) {
           print("Skipping " + te + " server is gone.");
           result[te] = {status: false, message: instanceInfo.exitStatus};
           instanceInfo.exitStatus = "server is gone.";
@@ -982,7 +1013,7 @@ function rubyTests (options, ssl) {
         }
         print("\nTrying ",te,"...");
 
-        result[te] = executeAndWait("rspec", args);
+        result[te] = executeAndWait(command, args);
         if (result[te].status === false && !options.force) {
           break;
         }
@@ -1103,6 +1134,9 @@ testFuncs.importing = function (options) {
   }
 
   var instanceInfo = startInstance("tcp", options, [ ], "importing");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   var result = {};
   try {
@@ -1176,6 +1210,9 @@ testFuncs.foxx_manager = function (options) {
   print("foxx_manager tests...");
   var instanceInfo = startInstance("tcp", options, [], "foxx_manager");
   var results = {};
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
 
   results.update = runArangoshCmd(options, instanceInfo,
                                   ["--configuration",
@@ -1204,6 +1241,9 @@ testFuncs.dump = function (options) {
   }
   print("dump tests...");
   var instanceInfo = startInstance("tcp",options, [], "dump");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePath("js/server/tests/dump-setup"+cluster+".js"));
@@ -1248,13 +1288,16 @@ var benchTodo = [
 testFuncs.arangob = function (options) {
   print("arangob tests...");
   var instanceInfo = startInstance("tcp",options, [], "arangob");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var results = {};
   var i,r;
   var continueTesting = true;
 
   for (i = 0; i < benchTodo.length; i++) {
     // On the cluster we do not yet have working transaction functionality:
-    if (!options.cluster ||
+    if (! options.cluster ||
         (benchTodo[i].indexOf("counttrx") === -1 &&
          benchTodo[i].indexOf("multitrx") === -1)) {
 
@@ -1286,6 +1329,9 @@ testFuncs.authentication = function (options) {
   var instanceInfo = startInstance("tcp", options,
                                    ["--server.disable-authentication", "false"],
                                    "authentication");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var results = {};
   results.auth = runInArangosh(options, instanceInfo,
                                fs.join("js","client","tests","auth.js"));
@@ -1313,6 +1359,9 @@ testFuncs.authentication_parameters = function (options) {
                        ["--server.disable-authentication", "false",
                         "--server.authenticate-system-only", "false"],
                        "authentication_parameters_1");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var r;
   var i;
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
@@ -1355,12 +1404,15 @@ testFuncs.authentication_parameters = function (options) {
                    ["--server.disable-authentication", "false",
                     "--server.authenticate-system-only", "true"],
                    "authentication_parameters_2");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
   all_ok = true;
   print("Starting System test");
   results.auth_system = {};
-  for (i = 0;i < urlsTodo.length;i++) {
-    if (!continueTesting) {
+  for (i = 0; i < urlsTodo.length; i++) {
+    if (! continueTesting) {
       print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
@@ -1390,13 +1442,16 @@ testFuncs.authentication_parameters = function (options) {
                    ["--server.disable-authentication", "true",
                     "--server.authenticate-system-only", "true"],
                    "authentication_parameters_3");
+  if (instanceInfo === false) {
+    return {status: false, message: "failed to start server!"};
+  }
   var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
   results.auth_none = {};
   all_ok = true;
   continueTesting = true;
   print("Starting None test");
-  for (i = 0;i < urlsTodo.length;i++) {
-    if (!continueTesting) {
+  for (i = 0; i < urlsTodo.length; i++) {
+    if (! continueTesting) {
       print("Skipping " + urlsTodo[i] + " server is gone.");
       results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
       instanceInfo.exitStatus = "server is gone.";
@@ -1433,44 +1488,64 @@ function unitTestPrettyPrintResults(r) {
   var oneTest;
   var testFail = 0;
   var testSuiteFail = 0;
+  var success = "";
+  var fail = "";
 
   try {
     for (testrun in r) {    
       if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
-        print("Testrun: " + testrun);
+        var isSuccess = true;
+        var oneOutput = "";
+
+        oneOutput = "Testrun: " + testrun + "\n";
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
             if (r[testrun][test].status) {
-              print("     [Success] " + test);
+              oneOutput += "     [Success] " + test + "\n";
             }
             else {
               testSuiteFail++;
               if (r[testrun][test].hasOwnProperty('message')) {
-                print("    [  Fail ] " + test + ": Whole testsuite failed!");
+                isSuccess = false;
+                oneOutput += "     [  Fail ] " + test + ": Whole testsuite failed!\n";
                 if (typeof r[testrun][test].message === "object" &&
                     r[testrun][test].message.hasOwnProperty('body')) {
-                  print(r[testrun][test].message.body);
+                  oneOutput += r[testrun][test].message.body + "\n";
                 }
                 else {
-                  print(r[testrun][test].message);
+                  oneOutput += r[testrun][test].message + "\n";
                 }
               }
               else {
-                print("    [  Fail ] " + test);
+                isSuccess = false;
+                oneOutput += "    [  Fail ] " + test + "\n";
                 for (oneTest in r[testrun][test]) {
-                  if ((r[testrun][test].hasOwnProperty(oneTest)) && 
+                  if (r[testrun][test].hasOwnProperty(oneTest) && 
                       (internalMembers.indexOf(oneTest) === -1) &&
-                      (!r[testrun][test][oneTest].status)) {
+                      (! r[testrun][test][oneTest].status)) {
                     testFail++;
-                    print("          -> " + oneTest + " Failed; Verbose message:");
-                    print(r[testrun][test][oneTest].message);
+                    oneOutput += "          -> " + oneTest + " Failed; Verbose message:\n";
+                    oneOutput += r[testrun][test][oneTest].message + "\n";
                   }
                 }
               }
             }
           }
         }
+        if (isSuccess) {
+          success += oneOutput;
+        }
+        else {
+          fail += oneOutput;
+        }
+          
       }
+    }
+    if (success !== "") {
+      print(success);
+    }
+    if (fail !== "") {
+      print(fail);
     }
     print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
     if (r.all_ok !== true) {
@@ -1501,7 +1576,7 @@ function UnitTest (which, options) {
   var ok;
   if (which === "all") {
     var n;
-    for (n = 0;n < allTests.length;n++) {
+    for (n = 0; n < allTests.length; n++) {
       print("Doing test",allTests[n],"with options",options);
       results[allTests[n]] = r = testFuncs[allTests[n]](options);
       ok = true;
@@ -1575,6 +1650,7 @@ function UnitTest (which, options) {
 exports.testFuncs = testFuncs;
 exports.UnitTest = UnitTest;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -838,7 +838,7 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 
       TRI_json_t* json = (*it).second._json;
       // steal the json
-      (*it).second._json = 0;
+      (*it).second._json = nullptr;
 
       // check whether we already have a CollectionInfoCurrent:
       DatabaseCollectionsCurrent::iterator it3;
@@ -873,7 +873,6 @@ void ClusterInfo::loadCurrentCollections (bool acquireLock) {
 
   LOG_TRACE("Error while loading %s", prefix.c_str());
   _collectionsCurrentValid = false;
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1327,12 +1326,12 @@ int ClusterInfo::setCollectionPropertiesCoordinator (string const& databaseName,
   }
 
   TRI_json_t* json = (*it).second._json;
-  if (json == 0) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
   TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-  if (copy == 0) {
+  if (copy == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1391,7 +1390,7 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
   }
 
   TRI_json_t* json = (*it).second._json;
-  if (json == 0) {
+  if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1403,7 +1402,7 @@ int ClusterInfo::setCollectionStatusCoordinator (string const& databaseName,
   }
 
   TRI_json_t* copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
-  if (copy == 0) {
+  if (copy == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1442,7 +1441,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   const double interval = getPollInterval();
 
   resultJson = 0;
-  TRI_json_t* newIndex = 0;
+  TRI_json_t* newIndex = nullptr;
   int numberOfShards = 0;
 
   // check index id
@@ -1528,7 +1527,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
       // no existing index found.
       if (! create) {
-        TRI_ASSERT(resultJson == 0);
+        TRI_ASSERT(resultJson == nullptr);
         return setErrormsg(TRI_ERROR_NO_ERROR, errorMsg);
       }
 
@@ -1537,20 +1536,20 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
       collectionJson = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, c->getJson());
     }
 
-    if (collectionJson == 0) {
+    if (collectionJson == nullptr) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
     TRI_json_t* idx = TRI_LookupObjectJson(collectionJson, "indexes");
 
-    if (idx == 0) {
+    if (idx == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
     newIndex = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
 
-    if (newIndex == 0) {
+    if (newIndex == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
@@ -1559,7 +1558,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                          newIndex,
                          "id",
-                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str()));
+                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 
@@ -1682,8 +1681,8 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
       return setErrormsg(TRI_ERROR_CLUSTER_COULD_NOT_LOCK_PLAN, errorMsg);
     }
 
-    TRI_json_t* collectionJson = 0;
-    TRI_json_t const* indexes = 0;
+    TRI_json_t* collectionJson = nullptr;
+    TRI_json_t const* indexes = nullptr;
 
     {
       loadPlannedCollections(false);
@@ -1708,7 +1707,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
     }
 
 
-    if (collectionJson == 0) {
+    if (collectionJson == nullptr) {
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }
 
@@ -1719,7 +1718,7 @@ int ClusterInfo::dropIndexCoordinator (string const& databaseName,
 
     TRI_json_t* copy = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
-    if (copy == 0) {
+    if (copy == nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, collectionJson);
       return setErrormsg(TRI_ERROR_OUT_OF_MEMORY, errorMsg);
     }

@@ -110,7 +110,7 @@ void RestBaseHandler::generateCanceled () {
                        "errorNum", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (int32_t) TRI_ERROR_REQUEST_CANCELED));
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json,
-                       "errorMessage", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, msg));
+                       "errorMessage", TRI_CreateStringJson(TRI_CORE_MEM_ZONE, msg, strlen(msg)));
 
   generateResult(HttpResponse::REQUEST_TIMEOUT, json);
 

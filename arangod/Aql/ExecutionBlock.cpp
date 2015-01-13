@@ -208,10 +208,12 @@ int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
       return res;
     }
   }
-  for (auto x : _buffer) {
-    delete x;
+
+  for (auto it : _buffer) {
+    delete it;
   }
   _buffer.clear();
+
   _done = false;
   return TRI_ERROR_NO_ERROR;
 }
@@ -4027,11 +4029,15 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
             ExecutionEngine::isDBServer()) {
           auto* node = static_cast<ReplaceNode const*>(getPlanNode());
-          if (node->getOptions().ignoreDocumentNotFound) {
-            errorCode = TRI_ERROR_NO_ERROR;
+          if (! node->getOptions().ignoreDocumentNotFound) {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
           }
           else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
+            // Note that this is coded here for the sake of completeness, 
+            // but it will intentionally never happen, since this flag is
+            // not set in the REPLACE case, because we will always use
+            // a DistributeNode rather than a ScatterNode:
+            errorCode = TRI_ERROR_NO_ERROR;
           }
         }
 
@@ -4622,10 +4628,17 @@ AqlItemBlock* BlockWithClients::getSomeForShard (size_t atLeast,
   _ignoreShutdown = false;
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
+
   int out = getOrSkipSomeForShard(atLeast, atMost, false, result, skipped, shardId);
+
   if (out != TRI_ERROR_NO_ERROR) {
+    if (result != nullptr) {
+      delete result;
+    }
+
     THROW_ARANGO_EXCEPTION(out);
   }
+
   return result;
   LEAVE_BLOCK
 }
@@ -4858,7 +4871,7 @@ int ScatterBlock::getOrSkipSomeForShard (size_t atLeast,
       }
     }
     if (popit) {
-      delete(_buffer.front());
+      delete _buffer.front();
       _buffer.pop_front();
       // update the values in first coord of _posForClient
       for (size_t i = 0; i < _nrClients; i++) {
@@ -4890,6 +4903,8 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   _regId = (*it).second.registerId;
+
+  _usesDefaultSharding = collection->usesDefaultSharding();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5019,12 +5034,18 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
     size_t i = 0;
     while (i < skipped) {
       std::vector<size_t> chosen;
-      size_t n = buf.front().first;
+      size_t const n = buf.front().first;
       while (buf.front().first == n && i < skipped) { 
         chosen.push_back(buf.front().second);
         buf.pop_front();
         i++;
+        
+        // make sure we are not overreaching over the end of the buffer
+        if (buf.empty()) {
+          break;
+        }
       }
+
       unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
       collector.push_back(more.get());
       more.release(); // do not delete it!
@@ -5093,10 +5114,12 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
     AqlItemBlock* cur = _buffer.at(_index);
       
     while (_pos < cur->size() && buf.at(clientId).size() < atLeast) {
-      // inspect cur in row _pos and check to which shard it should be sent . .
-      size_t id = sendToClient(cur->getValue(_pos, _regId));
-      buf.at(id).push_back(make_pair(_index, _pos++));
+      // this may modify the input item buffer in place
+      size_t id = sendToClient(cur);
+
+      buf.at(id).emplace_back(make_pair(_index, _pos++));
     }
+
     if (_pos == cur->size()) {
       _pos = 0;
       _index++;
@@ -5116,24 +5139,102 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 /// the row should be sent and return its clientId
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t DistributeBlock::sendToClient (AqlValue val) {
+size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
   ENTER_BLOCK
-  TRI_json_t const* json;
-  if (val._type == AqlValue::JSON) {
-    json = val._json->json();
-  } 
-  else {
+      
+  // inspect cur in row _pos and check to which shard it should be sent . .
+  auto const& val = cur->getValueReference(_pos, _regId);
+
+  if (val._type != AqlValue::JSON) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
-        "DistributeBlock: can only send JSON or SHAPED");
+        "DistributeBlock: can only send JSON");
+  }
+
+  bool hasCreatedKeyAttribute = false;
+  TRI_json_t const* json = val._json->json();
+  
+  if (json == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
   }
   
-  bool mustFreeJson = false;
-  TRI_json_t* obj = nullptr;
   if (TRI_IsStringJson(json)) {
-    obj = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, 1);
-    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, "_key", json);
-    mustFreeJson = true;
+    TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
+
+    if (obj == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    TRI_InsertObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, json);
+    // clear the previous value
+    cur->destroyValue(_pos, _regId);
+
+    // overwrite with new value
+    cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+
+    json = obj;
+    hasCreatedKeyAttribute = true;
   }
+  else if (! TRI_IsObjectJson(json)) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID);
+  }
+
+  TRI_ASSERT(TRI_IsObjectJson(json));
+
+  if (static_cast<DistributeNode const*>(_exeNode)->_createKeys) {
+    // we are responsible for creating keys if none present
+
+    if (_usesDefaultSharding) {
+      // the collection is sharded by _key...
+
+      if (! hasCreatedKeyAttribute && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
+        // there is no _key attribute present, so we are responsible for creating one
+        std::string const&& keyString(createKey());
+
+        TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+      
+        if (obj == nullptr) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+        }
+
+        TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+    
+        // clear the previous value
+        cur->destroyValue(_pos, _regId);
+
+        // overwrite with new value
+        cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+        json = obj;
+      } 
+    }
+    else {
+      // the collection is not sharded by _key
+
+      if (hasCreatedKeyAttribute || TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
+        // a _key was given, but user is not allowed to specify _key
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
+      }
+
+      // no _key given. now create one
+      std::string const&& keyString(createKey());
+
+      TRI_json_t* obj = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+      if (obj == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, obj, TRI_VOC_ATTRIBUTE_KEY, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, keyString.c_str(), keyString.size()));
+        
+      // clear the previous value
+      cur->destroyValue(_pos, _regId);
+
+      // overwrite with new value
+      cur->setValue(_pos, _regId, AqlValue(new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, obj)));
+      json = obj;
+    }
+  }
+
+  // std::cout << "JSON: " << triagens::basics::JsonHelper::toString(json) << "\n";
 
   std::string shardId;
   bool usesDefaultShardingAttributes;  
@@ -5141,15 +5242,13 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
   auto const planId = triagens::basics::StringUtils::itoa(_collection->getPlanId());
 
   int res = clusterInfo->getResponsibleShard(planId,
-                                             mustFreeJson ? obj : json,
+                                             json,
                                              true,
                                              shardId,
                                              usesDefaultShardingAttributes);
   
-  if (mustFreeJson) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, obj);
-  }
-
+  // std::cout << "SHARDID: " << shardId << "\n";
+  
   if (res != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -5158,6 +5257,16 @@ size_t DistributeBlock::sendToClient (AqlValue val) {
 
   return getClientId(shardId); 
   LEAVE_BLOCK
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a new document key
+////////////////////////////////////////////////////////////////////////////////
+
+std::string DistributeBlock::createKey () const {
+  ClusterInfo* ci = ClusterInfo::instance();
+  uint64_t uid = ci->uniqid();
+  return std::to_string(uid);
 }
 
 // -----------------------------------------------------------------------------

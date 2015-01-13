@@ -419,15 +419,16 @@ static int EnhanceIndexJson (const v8::FunctionCallbackInfo<v8::Value>& args,
     uint64_t id = TRI_ObjectToUInt64(obj->Get(TRI_V8_ASCII_STRING("id")), true);
     if (id > 0) {
       char* idString = TRI_StringUInt64(id);
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString));
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString, strlen(idString)));
       TRI_FreeString(TRI_CORE_MEM_ZONE, idString);
     }
   }
 
+  char const* idxType = TRI_TypeNameIndex(type);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                        json,
                        "type",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, TRI_TypeNameIndex(type)));
+                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idxType, strlen(idxType)));
 
   int res = TRI_ERROR_INTERNAL;
 
@@ -1075,8 +1076,8 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "id",          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, cid.c_str(), cid.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._deleted));
@@ -1087,8 +1088,8 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
 
   TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-  if (keyOptions != 0) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional"));
+  if (keyOptions != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "traditional", strlen("traditional")));
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, keyOptions, "allowUserKeys", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, allowUserKeys));
 
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "keyOptions", keyOptions);

@@ -424,7 +424,7 @@ AgencyCommLocker::AgencyCommLocker (std::string const& key,
 
   AgencyComm comm;
 
-  _json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
+  _json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, type.c_str(), type.size());
 
   if (_json == nullptr) {
     return;
@@ -933,8 +933,8 @@ AgencyCommResult AgencyComm::sendServerState (double ttl) {
   const std::string status = ServerState::stateToString(ServerState::instance()->getState());
   const std::string stamp = AgencyComm::generateStamp();
 
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "time", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, status.c_str(), status.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "time", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, stamp.c_str(), stamp.size()));
 
   AgencyCommResult result(setValue("Sync/ServerStates/" + ServerState::instance()->getId(), json, ttl));
   TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
@@ -1229,7 +1229,7 @@ AgencyCommResult AgencyComm::watchValue (std::string const& key,
 bool AgencyComm::lockRead (std::string const& key,
                            double ttl,
                            double timeout) {
-  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", 4);
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ"));
 
   if (json == nullptr) {
     return false;
@@ -1247,7 +1247,7 @@ bool AgencyComm::lockRead (std::string const& key,
 bool AgencyComm::lockWrite (std::string const& key,
                             double ttl,
                             double timeout) {
-  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", 5);
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE"));
 
   if (json == nullptr) {
     return false;
@@ -1264,7 +1264,7 @@ bool AgencyComm::lockWrite (std::string const& key,
 
 bool AgencyComm::unlockRead (std::string const& key,
                              double timeout) {
-  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", 4);
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "READ", strlen("READ"));
 
   if (json == nullptr) {
     return false;
@@ -1281,7 +1281,7 @@ bool AgencyComm::unlockRead (std::string const& key,
 
 bool AgencyComm::unlockWrite (std::string const& key,
                               double timeout) {
-  TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", 5);
+  TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "WRITE", strlen("WRITE"));
 
   if (json == nullptr) {
     return false;
@@ -1309,7 +1309,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
     result = getValues(key, false);
 
     if (result.httpCode() == (int) triagens::rest::HttpResponse::NOT_FOUND) {
-      TRI_json_t* json = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "0", 1);
+      TRI_json_t* json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0"));
 
       if (json != nullptr) {
         // create the key on the fly
@@ -1337,7 +1337,7 @@ AgencyCommResult AgencyComm::uniqid (std::string const& key,
       (*it).second._json = nullptr;
     }
     else {
-      oldJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "0", 1);
+      oldJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "0", strlen("0"));
     }
 
     if (oldJson == nullptr) {
@@ -1404,7 +1404,7 @@ bool AgencyComm::lock (std::string const& key,
   const double end = TRI_microtime() + timeout;
 
   while (true) {
-    TRI_json_t* oldJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", 8);
+    TRI_json_t* oldJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED"));
 
     if (oldJson == nullptr) {
       return false;
@@ -1464,7 +1464,7 @@ bool AgencyComm::unlock (std::string const& key,
   const double end = TRI_microtime() + timeout;
 
   while (true) {
-    TRI_json_t* newJson = TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", 8);
+    TRI_json_t* newJson = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "UNLOCKED", strlen("UNLOCKED"));
 
     if (newJson == nullptr) {
       return false;

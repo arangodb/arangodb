@@ -359,13 +359,13 @@ namespace triagens {
               _json = TRI_CreateNumberJson(_zone, 0.0);
               break;
             case String:
-              _json = TRI_CreateString2CopyJson(_zone, "", 0);
+              _json = TRI_CreateStringCopyJson(_zone, "", 0);
               break;
             case Array:
-              _json = TRI_CreateArray2Json(_zone, size_hint);
+              _json = TRI_CreateArrayJson(_zone, size_hint);
               break;
             case Object:
-              _json = TRI_CreateObject2Json(_zone, 2 * size_hint);
+              _json = TRI_CreateObjectJson(_zone, 2 * size_hint);
               break;
           }
           if (_json == nullptr) {
@@ -508,7 +508,7 @@ namespace triagens {
 
         explicit Json (char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x);
+          _json = TRI_CreateStringCopyJson(_zone, x, strlen(x));
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -521,7 +521,7 @@ namespace triagens {
 
         explicit Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateStringCopyJson(_zone, x);
+          _json = TRI_CreateStringCopyJson(_zone, x, strlen(x));
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -534,7 +534,7 @@ namespace triagens {
 
         explicit Json (std::string const x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
+          _json = TRI_CreateStringCopyJson(_zone, x.c_str(), x.size());
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
@@ -547,7 +547,7 @@ namespace triagens {
 
         explicit Json (TRI_memory_zone_t* z, std::string const& x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
-          _json = TRI_CreateString2CopyJson(_zone, x.c_str(), x.size());
+          _json = TRI_CreateStringCopyJson(_zone, x.c_str(), x.size());
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");

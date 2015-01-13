@@ -90,14 +90,14 @@ HttpHandler::status_t RestDebugHelperHandler::execute () {
 
   RequestStatisticsAgentSetIgnore(this);
 
-  TRI_InitObject2Json(TRI_CORE_MEM_ZONE, &result, 3);
+  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result, 3);
 
   TRI_json_t server;
-  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"));
+  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"), strlen("arango"));
   TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
 
   TRI_json_t version;
-  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION));
+  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION), strlen(TRI_VERSION));
   TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
 
   bool found;

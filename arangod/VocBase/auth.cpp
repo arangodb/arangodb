@@ -329,7 +329,7 @@ void TRI_DestroyAuthInfo (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
-  TRI_json_t* json = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, 1);
+  TRI_json_t* json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
   if (json == nullptr) {
     return false;
@@ -346,7 +346,7 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                        user,
                        "user",
-                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "root"));
+                       TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "root", strlen("root")));
 
   TRI_json_t* authData = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
@@ -355,20 +355,23 @@ bool TRI_InsertInitialAuthInfo (TRI_vocbase_t* vocbase) {
     TRI_json_t* simple = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
     if (simple != nullptr) {
+      char const* hashType = "sha256";
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "method",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "sha256"));
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, hashType, strlen(hashType)));
 
+      char const* salt = "c776f5f4";
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "salt",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "c776f5f4"));
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, salt, strlen(salt)));
 
+      char const* hash = "ef74bc6fd59ac713bf5929c5ac2f42233e50d4d58748178132ea46dec433bd5b";
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
                            simple,
                            "hash",
-                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "ef74bc6fd59ac713bf5929c5ac2f42233e50d4d58748178132ea46dec433bd5b"));
+                           TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, hash, strlen(hash)));
 
       TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, authData, "simple", simple);
     }

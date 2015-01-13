@@ -2731,8 +2731,10 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
         if (nodeType == ExecutionNode::REMOVE ||
-            nodeType == ExecutionNode::UPDATE ||
-            nodeType == ExecutionNode::REPLACE) {
+            nodeType == ExecutionNode::UPDATE) {
+          // Note that in the REPLACE case we are not getting here, since
+          // the distributeInClusterRule fires and a DistributionNode is
+          // used.
           auto* modNode = static_cast<ModificationNode*>(node);
           modNode->getOptions().ignoreDocumentNotFound = true;
         }
@@ -2817,12 +2819,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
     
-    bool defaultSharding = true;
-    // check if collection shard keys are only _key
-    std::vector<std::string> shardKeys = collection->shardKeys();
-    if (shardKeys.size() != 1 || shardKeys[0] != TRI_VOC_ATTRIBUTE_KEY) {
-      defaultSharding = false;
-    }
+    bool const defaultSharding = collection->usesDefaultSharding();
 
     if (nodeType == ExecutionNode::REMOVE ||
         nodeType == ExecutionNode::UPDATE) {
@@ -2849,20 +2846,24 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     if (nodeType == ExecutionNode::INSERT ||
         nodeType == ExecutionNode::REMOVE) {
       TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
+
+      // in case of an INSERT, the DistributeNode is responsible for generating keys
+      // if none present
+      bool const createKeys = (nodeType == ExecutionNode::INSERT);
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, node->getVariablesUsedHere()[0]->id);
+          vocbase, collection, node->getVariablesUsedHere()[0]->id, createKeys);
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
         // We only look into _inKeyVariable
         distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[1]->id);
+            vocbase, collection, v[1]->id, false);
       }
       else {
         // We only look into _inDocVariable
         distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[0]->id);
+            vocbase, collection, v[0]->id, false);
       }
     }
     else {   // if (nodeType == ExecutionNode::UPDATE)
@@ -2870,14 +2871,14 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       if (v.size() > 1) {
         // If there is a key variable:
         distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[1]->id);
+            vocbase, collection, v[1]->id, false);
         // This is the _inKeyVariable! This works, since we use a ScatterNode
         // for non-default-sharding attributes.
       }
       else {
         // was only UPDATE <doc> IN <collection>
         distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[0]->id);
+            vocbase, collection, v[0]->id, false);
       }
     }
     plan->registerNode(distNode);

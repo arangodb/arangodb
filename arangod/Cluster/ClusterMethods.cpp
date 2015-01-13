@@ -557,16 +557,16 @@ int createDocumentOnCoordinator (
   // cluster-wide unique number. Note that we only know the sharding
   // attributes a bit further down the line when we have determined
   // the responsible shard.
-  TRI_json_t* subjson = TRI_LookupObjectJson(json, "_key");
+  TRI_json_t* subjson = TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY);
   bool userSpecifiedKey = false;
   string _key;
   if (subjson == nullptr) {
     // The user did not specify a key, let's create one:
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                         TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
-                                                        _key.c_str(), _key.size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_VOC_ATTRIBUTE_KEY,
+                         TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
+                                                       _key.c_str(), _key.size()));
   }
   else {
     userSpecifiedKey = true;
@@ -665,8 +665,8 @@ int deleteDocumentOnCoordinator (
   if (json == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                       TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_VOC_ATTRIBUTE_KEY,
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
   ShardID shardID;
@@ -857,7 +857,7 @@ int getDocumentOnCoordinator (
     return TRI_ERROR_OUT_OF_MEMORY;
   }
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                       TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
+                       TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
                                  key.c_str(), key.size()));
   bool usesDefaultShardingAttributes;
   ShardID shardID;
@@ -869,7 +869,7 @@ int getDocumentOnCoordinator (
   ClusterCommResult* res;
   string revstr;
   if (rev != 0) {
-    revstr = "?rev="+StringUtils::itoa(rev);
+    revstr = "?rev=" + StringUtils::itoa(rev);
   }
   triagens::rest::HttpRequest::HttpRequestType reqType;
   if (generateDocument) {
@@ -1259,8 +1259,8 @@ int createEdgeOnCoordinator (
     uint64_t uid = ci->uniqid();
     _key = triagens::basics::StringUtils::itoa(uid);
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "_key",
-                         TRI_CreateStringReference2Json(TRI_UNKNOWN_MEM_ZONE,
-                                                        _key.c_str(), _key.size()));
+                         TRI_CreateStringReferenceJson(TRI_UNKNOWN_MEM_ZONE,
+                                                       _key.c_str(), _key.size()));
   }
   else {
     userSpecifiedKey = true;

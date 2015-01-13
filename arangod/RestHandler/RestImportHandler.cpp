@@ -1244,7 +1244,7 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
 
     for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
       string const& msg = result._errors[i];
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateString2CopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
+      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
     }
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "details", messages);
   }
@@ -1298,7 +1298,7 @@ TRI_json_t* RestImportHandler::createJsonObject (TRI_json_t const* keys,
     return nullptr;
   }
 
-  TRI_json_t* result = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, n);
+  TRI_json_t* result = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, n);
 
   if (result == nullptr) {
     LOG_ERROR("out of memory");

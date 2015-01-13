@@ -1775,7 +1775,7 @@ static TRI_json_t* ObjectToJson (v8::Isolate* isolate,
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
     // move the string pointer into the JSON object
     if (*str != 0) {
-      TRI_json_t* j = TRI_CreateString2Json(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
+      TRI_json_t* j = TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
       // this passes ownership for the utf8 string to the JSON object
       str.steal();
 
@@ -1790,7 +1790,7 @@ static TRI_json_t* ObjectToJson (v8::Isolate* isolate,
     v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
     uint32_t const n = arrayParameter->Length();
 
-    TRI_json_t* listJson = TRI_CreateArray2Json(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t const>(n));
+    TRI_json_t* listJson = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t const>(n));
 
     if (listJson != nullptr) {
       for (uint32_t j = 0; j < n; ++j) {
@@ -1833,7 +1833,7 @@ static TRI_json_t* ObjectToJson (v8::Isolate* isolate,
           TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, result->ToString());
           // move the string pointer into the JSON object
           if (*str != 0) {
-            TRI_json_t* j = TRI_CreateString2Json(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
+            TRI_json_t* j = TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, *str, str.length());
             // this passes ownership for the utf8 string to the JSON object
             str.steal();
 
@@ -1868,7 +1868,7 @@ static TRI_json_t* ObjectToJson (v8::Isolate* isolate,
     v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
     uint32_t const n = names->Length();
 
-    TRI_json_t* arrayJson = TRI_CreateObject2Json(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t const>(n));
+    TRI_json_t* arrayJson = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, static_cast<size_t const>(n));
 
     if (arrayJson != nullptr && n > 0) {
       for (uint32_t j = 0; j < n; ++j) {

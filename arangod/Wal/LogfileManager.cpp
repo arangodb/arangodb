@@ -1624,17 +1624,17 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
   std::string val;
 
   val = basics::StringUtils::itoa(TRI_CurrentTickServer());
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
   val = basics::StringUtils::itoa(_lastCollectedId);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "lastCollected", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "lastCollected", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
   val = basics::StringUtils::itoa(_lastSealedId);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "lastSealed", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "lastSealed", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
   if (writeShutdownTime) {
     std::string const t(getTimeString());
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
   }
 
   if (! TRI_SaveJson(filename.c_str(), json, true)) {
