@@ -7,7 +7,7 @@ v2.5.0 (XXXX-XX-XX)
 v2.4.1 (XXXX-XX-XX)
 -------------------
 
-* updated AQB module to 1.6.0.
+* updated AQB module to 1.8.0.
 
 
 v2.4.0 (XXXX-XX-XX)
@@ -37,6 +37,8 @@ v2.4.0 (XXXX-XX-XX)
   the assignment can only be either `OLD` or `NEW`, but not an arbitrary expression. The
   `RETURN` statement also allows using the just-created variable only, and no arbitrary
   expressions.
+
+* updated AQB module to 1.7.0
 
 
 v2.4.0-beta1 (2014-12-26)
