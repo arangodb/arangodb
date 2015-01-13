@@ -1488,44 +1488,64 @@ function unitTestPrettyPrintResults(r) {
   var oneTest;
   var testFail = 0;
   var testSuiteFail = 0;
+  var success = ""
+  var fail = ""
 
   try {
     for (testrun in r) {    
       if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
-        print("Testrun: " + testrun);
+        var isSuccess = true;
+        var oneOutput = "";
+
+        oneOutput = "Testrun: " + testrun + "\n";
         for (test in  r[testrun]) {
           if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
             if (r[testrun][test].status) {
-              print("     [Success] " + test);
+              oneOutput += "     [Success] " + test + "\n";
             }
             else {
               testSuiteFail++;
               if (r[testrun][test].hasOwnProperty('message')) {
-                print("    [  Fail ] " + test + ": Whole testsuite failed!");
+                isSuccess = false;
+                oneOutput += "     [  Fail ] " + test + ": Whole testsuite failed!\n";
                 if (typeof r[testrun][test].message === "object" &&
                     r[testrun][test].message.hasOwnProperty('body')) {
-                  print(r[testrun][test].message.body);
+                  oneOutput += r[testrun][test].message.body + "\n";
                 }
                 else {
-                  print(r[testrun][test].message);
+                  oneOutput += r[testrun][test].message + "\n";
                 }
               }
               else {
-                print("    [  Fail ] " + test);
+                isSuccess = false;
+                oneOutput += "    [  Fail ] " + test + "\n";
                 for (oneTest in r[testrun][test]) {
                   if (r[testrun][test].hasOwnProperty(oneTest) && 
                       (internalMembers.indexOf(oneTest) === -1) &&
                       (! r[testrun][test][oneTest].status)) {
                     testFail++;
-                    print("          -> " + oneTest + " Failed; Verbose message:");
-                    print(r[testrun][test][oneTest].message);
+                    oneOutput += "          -> " + oneTest + " Failed; Verbose message:\n";
+                    oneOutput += r[testrun][test][oneTest].message + "\n";
                   }
                 }
               }
             }
           }
         }
+        if (isSuccess) {
+          success += oneOutput;
+        }
+        else {
+          fail += oneOutput;
+        }
+          
       }
+    }
+    if (success !== "") {
+      print(success);
+    }
+    if (fail !== "") {
+      print(fail);
     }
     print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
     if (r.all_ok !== true) {
