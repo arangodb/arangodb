@@ -60,6 +60,22 @@ console.log(db._query(qb.for('x').in('1..5').return('x')).toArray()); // [1, 2, 
 
 # API
 
+## Auto-casting raw data
+
+By default, the query builder will attempt to interpret raw strings as identifiers or references or other kinds of expressions. This may not always be what you want, especially when handling raw untrusted data.
+
+As of version 1.8 you can now pass arbitrary data directly to the query builder itself and it will be translated to the equivalent AQL structure (e.g. strings will be strings, dates will be converted to JSON, arrays and objects will be translated recursively, and so on):
+
+```js
+var doc = {
+    aString: "hello",
+    aDate: new Date(),
+    aNumber: 23,
+    anArray: [1, 2, 3, "potato"]
+};
+db._query(qb.insert(qb(doc)).into('my_collection'));
+```
+
 ## AQL Types
 
 If raw JavaScript values are passed to AQL statements, they will be wrapped in a matching AQL type automatically.

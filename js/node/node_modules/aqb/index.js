@@ -4,7 +4,6 @@
 var AqlError = require('./errors').AqlError,
   assumptions = require('./assumptions'),
   types = require('./types'),
-  QB = {},
   toArray,
   warn;
 
@@ -21,6 +20,31 @@ warn = (function () {
     return function () {};
   }
 }());
+
+function QB(obj) {
+  if (typeof obj === 'string') {
+    return QB.str(obj);
+  }
+  if (obj === null || obj === undefined) {
+    return new types.NullLiteral();
+  }
+  if (typeof obj === 'object') {
+    if (obj instanceof Date) {
+      return QB(JSON.stringify(obj));
+    }
+    if (obj instanceof Array) {
+      return new types.ListLiteral(obj.map(QB));
+    }
+    var result = {};
+    for (var key in obj) {
+      if (obj.hasOwnProperty(key)) {
+        result[key] = QB(obj[key]);
+      }
+    }
+    return new types.ObjectLiteral(result);
+  }
+  return types.autoCastToken(obj);
+}
 
 Object.keys(types._PartialStatement.prototype).forEach(function (key) {
   if (key === 'constructor') return;
