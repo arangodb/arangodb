@@ -1,16 +1,16 @@
 arangosh> a1 = db.example.save({ a : 1 });
 { 
   "error" : false, 
-  "_id" : "example/366734504", 
-  "_rev" : "366734504", 
-  "_key" : "366734504" 
+  "_id" : "example/363991621", 
+  "_rev" : "363991621", 
+  "_key" : "363991621" 
 }
 arangosh> a2 = db._replace(a1, { a : 2 });
 { 
   "error" : false, 
-  "_id" : "example/366734504", 
-  "_rev" : "366931112", 
-  "_key" : "366734504" 
+  "_id" : "example/363991621", 
+  "_rev" : "364188229", 
+  "_key" : "363991621" 
 }
 arangosh> a3 = db._replace(a1, { a : 3 });
 [ArangoError 1200: precondition failed]

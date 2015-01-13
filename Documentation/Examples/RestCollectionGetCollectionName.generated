@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/products/properties
 
 { 
-  "id" : "1182264488", 
+  "id" : "1181356613", 
   "name" : "products", 
   "isSystem" : false, 
   "doCompact" : true, 

@@ -5,26 +5,26 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/edge/?c
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1695804584"
-location: /_db/_system/_api/document/edges/1695804584
+etag: "1705120325"
+location: /_db/_system/_api/document/edges/1705120325
 
 { 
   "error" : false, 
-  "_id" : "edges/1695804584", 
-  "_rev" : "1695804584", 
-  "_key" : "1695804584" 
+  "_id" : "edges/1705120325", 
+  "_rev" : "1705120325", 
+  "_key" : "1705120325" 
 }
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/edge/edges/1695804584
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/edge/edges/1705120325
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1695804584"
+etag: "1705120325"
 
 { 
   "name" : "Emil", 
-  "_id" : "edges/1695804584", 
-  "_rev" : "1695804584", 
-  "_key" : "1695804584", 
+  "_id" : "edges/1705120325", 
+  "_rev" : "1705120325", 
+  "_key" : "1705120325", 
   "_from" : "vertices/1", 
   "_to" : "vertices/2" 
 }
