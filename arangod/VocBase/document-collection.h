@@ -931,8 +931,8 @@ struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_coll
 ////////////////////////////////////////////////////////////////////////////////
 
 struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t*,
-                                                               const char*,
-                                                               const bool,
+                                                               char const*,
+                                                               bool,
                                                                int);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,8 +941,8 @@ struct TRI_index_s* TRI_LookupFulltextIndexDocumentCollection (TRI_document_coll
 
 struct TRI_index_s* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t*,
                                                                TRI_idx_iid_t,
-                                                               const char*,
-                                                               const bool,
+                                                               char const*,
+                                                               bool,
                                                                int,
                                                                bool*);
 

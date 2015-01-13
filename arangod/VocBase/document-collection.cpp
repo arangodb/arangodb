@@ -390,14 +390,11 @@ static int CreateHeader (TRI_document_collection_t* document,
                          TRI_doc_document_key_marker_t const* marker,
                          TRI_voc_fid_t fid,
                          TRI_doc_mptr_t** result) {
-  TRI_doc_mptr_t* header;
-  size_t markerSize;
-
-  markerSize = (size_t) marker->base._size;
+  size_t markerSize = (size_t) marker->base._size;
   TRI_ASSERT(markerSize > 0);
 
   // get a new header pointer
-  header = document->_headersPtr->request(markerSize);  // ONLY IN OPENITERATOR
+  TRI_doc_mptr_t* header = document->_headersPtr->request(markerSize);  // ONLY IN OPENITERATOR
 
   if (header == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
@@ -1376,12 +1373,11 @@ static int OpenIteratorAddOperation (open_iterator_state_t* state,
                                      TRI_df_marker_t const* marker,
                                      const TRI_voc_fid_t fid) {
   open_iterator_operation_t operation;
-  int res;
-
   operation._type   = type;
   operation._marker = marker;
   operation._fid    = fid;
 
+  int res;
   if (state->_tid == 0) {
     res = OpenIteratorApplyOperation(state, &operation);
   }
@@ -1491,9 +1487,7 @@ static int OpenIteratorAbortTransaction (open_iterator_state_t* state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenIteratorCommitTransaction (open_iterator_state_t* state) {
-  int res;
-
-  res = TRI_ERROR_NO_ERROR;
+  int res = TRI_ERROR_NO_ERROR;
 
   if (state->_trxCollections <= 1 || state->_trxPrepared) {
     size_t i, n;
@@ -3400,15 +3394,13 @@ static int PidNamesByAttributeNames (TRI_vector_pointer_t const* attributes,
                                      TRI_vector_pointer_t* names,
                                      bool sorted,
                                      bool create) {
-  pid_name_t* pidnames;
-
   // .............................................................................
   // sorted case
   // .............................................................................
 
   if (sorted) {
     // combine name and pid
-    pidnames = static_cast<pid_name_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false));
+    pid_name_t* pidnames = static_cast<pid_name_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pid_name_t) * attributes->_length, false));
 
     if (pidnames == nullptr) {
       LOG_ERROR("out of memory in PidNamesByAttributeNames");
@@ -3498,9 +3490,6 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
                                                            int64_t size,
                                                            TRI_idx_iid_t iid,
                                                            bool* created) {
-  TRI_index_t* idx;
-  int res;
-
   if (created != nullptr) {
     *created = false;
   }
@@ -3518,7 +3507,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
 
   // create a new index
-  idx = TRI_CreateCapConstraint(document, iid, count, size);
+  TRI_index_t* idx = TRI_CreateCapConstraint(document, iid, count, size);
 
   if (idx == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -3527,7 +3516,7 @@ static TRI_index_t* CreateCapConstraintDocumentCollection (TRI_document_collecti
   }
 
   // initialises the index with all existing documents
-  res = FillIndex(document, idx);
+  int res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeCapConstraint(idx);
@@ -3628,8 +3617,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
                                                         size_t count,
                                                         int64_t size,
                                                         bool* created) {
-  TRI_index_t* idx;
-
   // .............................................................................
   // inside write-lock
   // .............................................................................
@@ -3638,7 +3625,7 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
+  TRI_index_t* idx = CreateCapConstraintDocumentCollection(document, count, size, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -3944,21 +3931,17 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     bool geoJson,
                                                     bool unique,
                                                     bool ignoreNull) {
-  TRI_shape_pid_t loc;
-  TRI_shaper_t* shaper;
-  size_t i, n;
+  TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  loc = shaper->lookupAttributePathByName(shaper, location);
+  TRI_shape_pid_t loc = shaper->lookupAttributePathByName(shaper, location);
 
   if (loc == 0) {
     return nullptr;
   }
 
-  n = document->_allIndexes._length;
+  size_t const n = document->_allIndexes._length;
 
-  for (i = 0;  i < n;  ++i) {
+  for (size_t i = 0;  i < n;  ++i) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_type == TRI_IDX_TYPE_GEO1_INDEX) {
@@ -3986,26 +3969,19 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     char const* longitude,
                                                     bool unique,
                                                     bool ignoreNull) {
-  TRI_shape_pid_t lat;
-  TRI_shape_pid_t lon;
-  TRI_shaper_t* shaper;
-  size_t i, n;
+  TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
-  shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-
-  lat = shaper->lookupAttributePathByName(shaper, latitude);
-  lon = shaper->lookupAttributePathByName(shaper, longitude);
+  TRI_shape_pid_t lat = shaper->lookupAttributePathByName(shaper, latitude);
+  TRI_shape_pid_t lon = shaper->lookupAttributePathByName(shaper, longitude);
 
   if (lat == 0 || lon == 0) {
     return nullptr;
   }
 
-  n = document->_allIndexes._length;
+  size_t const n = document->_allIndexes._length;
 
-  for (i = 0;  i < n;  ++i) {
-    TRI_index_t* idx;
-
-    idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+  for (size_t i = 0;  i < n;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
     if (idx->_type == TRI_IDX_TYPE_GEO2_INDEX) {
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
@@ -4036,8 +4012,6 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     bool unique,
                                                     bool ignoreNull,
                                                     bool* created) {
-  TRI_index_t* idx;
-
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4046,7 +4020,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, unique, ignoreNull, iid, created);
+  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, unique, ignoreNull, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4080,8 +4054,6 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     bool unique,
                                                     bool ignoreNull,
                                                     bool* created) {
-  TRI_index_t* idx;
-
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4090,7 +4062,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, unique, ignoreNull, iid, created);
+  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, unique, ignoreNull, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4133,8 +4105,6 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
 
-  TRI_index_t* idx = nullptr;
-
   // determine the sorted shape ids for the attributes
   int res = PidNamesByAttributeNames(attributes,
                                      document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -4157,7 +4127,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, false);
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, false);
 
   if (idx != nullptr) {
     TRI_DestroyVector(&paths);
@@ -4238,24 +4208,22 @@ static int HashIndexFromJson (TRI_document_collection_t* document,
 TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* document,
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique) {
-  TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
-  int res;
 
   // determine the sorted shape ids for the attributes
-  res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-                                 &paths,
-                                 &fields,
-                                 true,
-                                 false);
+  int res = PidNamesByAttributeNames(attributes,
+                                     document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
+                                     &paths,
+                                     &fields,
+                                     true,
+                                     false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, true);
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -4273,8 +4241,6 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
                                                     TRI_vector_pointer_t const* attributes,
                                                     bool unique,
                                                     bool* created) {
-  TRI_index_t* idx;
-
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4284,7 +4250,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   // given the list of attributes (as strings)
-  idx = CreateHashIndexDocumentCollection(document, attributes, iid, unique, created);
+  TRI_index_t* idx = CreateHashIndexDocumentCollection(document, attributes, iid, unique, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4324,17 +4290,15 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
                                                            TRI_idx_iid_t iid,
                                                            bool unique,
                                                            bool* created) {
-  TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
-  int res;
-
-  res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-                                 &paths,
-                                 &fields,
-                                 false,
-                                 true);
+  
+  int res = PidNamesByAttributeNames(attributes,
+                                     document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
+                                     &paths,
+                                     &fields,
+                                     false,
+                                     true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     if (created != nullptr) {
@@ -4350,7 +4314,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, false);
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, false);
 
   if (idx != nullptr) {
     TRI_DestroyVector(&paths);
@@ -4425,24 +4389,22 @@ static int SkiplistIndexFromJson (TRI_document_collection_t* document,
 TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique) {
-  TRI_index_t* idx;
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
-  int res;
 
   // determine the unsorted shape ids for the attributes
-  res = PidNamesByAttributeNames(attributes,
-                                 document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
-                                 &paths,
-                                 &fields,
-                                 false,
-                                 false);
+  int res = PidNamesByAttributeNames(attributes,
+                                     document->getShaper(),  // ONLY IN INDEX, PROTECTED by RUNTIME
+                                     &paths,
+                                     &fields,
+                                     false,
+                                     false);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return nullptr;
   }
 
-  idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, true);
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -4460,8 +4422,6 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
                                                         TRI_vector_pointer_t const* attributes,
                                                         bool unique,
                                                         bool* created) {
-  TRI_index_t* idx;
-
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4470,7 +4430,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, unique, created);
+  TRI_index_t* idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, unique, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4505,11 +4465,9 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
                                                            const char* attributeName,
                                                            const bool indexSubstrings,
                                                            int minWordLength) {
-  size_t i;
+  TRI_ASSERT(attributeName != nullptr);
 
-  TRI_ASSERT(attributeName);
-
-  for (i = 0; i < document->_allIndexes._length; ++i) {
+  for (size_t i = 0; i < document->_allIndexes._length; ++i) {
     TRI_index_t* idx = (TRI_index_t*) document->_allIndexes._buffer[i];
 
     if (idx->_type == TRI_IDX_TYPE_FULLTEXT_INDEX) {
@@ -4531,7 +4489,7 @@ static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collecti
 
       fieldName = (char*) fulltext->base._fields._buffer[0];
 
-      if (fieldName != 0 && TRI_EqualString(fieldName, attributeName)) {
+      if (fieldName != nullptr && TRI_EqualString(fieldName, attributeName)) {
         return idx;
       }
     }
@@ -4550,16 +4508,14 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
                                                            int minWordLength,
                                                            TRI_idx_iid_t iid,
                                                            bool* created) {
-  TRI_index_t* idx;
-  int res;
-
   // ...........................................................................
   // Attempt to find an existing index with the same attribute
   // If a suitable index is found, return that one otherwise we need to create
   // a new one.
   // ...........................................................................
 
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
+  TRI_index_t* idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
+
   if (idx != nullptr) {
     LOG_TRACE("fulltext-index already created");
 
@@ -4578,7 +4534,7 @@ static TRI_index_t* CreateFulltextIndexDocumentCollection (TRI_document_collecti
   }
 
   // initialises the index with all existing documents
-  res = FillIndex(document, idx);
+  int res = FillIndex(document, idx);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeFulltextIndex(idx);
@@ -4610,22 +4566,13 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
                                   TRI_json_t const* definition,
                                   TRI_idx_iid_t iid,
                                   TRI_index_t** dst) {
-  TRI_index_t* idx;
-  TRI_json_t* attribute;
-  TRI_json_t* fld;
-  // TRI_json_t* indexSubstrings;
-  TRI_json_t* minWordLength;
-  char* attributeName;
-  size_t fieldCount;
-  bool doIndexSubstrings;
-  int minWordLengthValue;
-
   if (dst != nullptr) {
     *dst = nullptr;
   }
 
   // extract fields
-  fld = ExtractFields(definition, &fieldCount, iid);
+  size_t fieldCount;
+  TRI_json_t* fld = ExtractFields(definition, &fieldCount, iid);
 
   if (fld == nullptr) {
     return TRI_errno();
@@ -4638,35 +4585,30 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  attribute = static_cast<TRI_json_t*>(TRI_AtVector(&fld->_value._objects, 0));
+  TRI_json_t const* attribute = static_cast<TRI_json_t const*>(TRI_AtVector(&fld->_value._objects, 0));
 
   if (! TRI_IsStringJson(attribute)) {
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  attributeName = attribute->_value._string.data;
+  char* attributeName = attribute->_value._string.data;
 
   // 2013-01-17: deactivated substring indexing
   // indexSubstrings = TRI_LookupObjectJson(definition, "indexSubstrings");
 
-  doIndexSubstrings = false;
-  // if (indexSubstrings != nullptr && indexSubstrings->_type == TRI_JSON_BOOLEAN) {
-  //  doIndexSubstrings = indexSubstrings->_value._boolean;
-  // }
-
-  minWordLength = TRI_LookupObjectJson(definition, "minLength");
-  minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+  int minWordLengthValue = TRI_FULLTEXT_MIN_WORD_LENGTH_DEFAULT;
+  TRI_json_t const* minWordLength = TRI_LookupObjectJson(definition, "minLength");
 
   if (minWordLength != nullptr && minWordLength->_type == TRI_JSON_NUMBER) {
     minWordLengthValue = (int) minWordLength->_value._number;
   }
 
   // create the index
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue);
+  TRI_index_t* idx = LookupFulltextIndexDocumentCollection(document, attributeName, false, minWordLengthValue);
 
   if (idx == nullptr) {
     bool created;
-    idx = CreateFulltextIndexDocumentCollection(document, attributeName, doIndexSubstrings, minWordLengthValue, iid, &created);
+    idx = CreateFulltextIndexDocumentCollection(document, attributeName, false, minWordLengthValue, iid, &created);
   }
 
   if (dst != nullptr) {
@@ -4691,12 +4633,10 @@ static int FulltextIndexFromJson (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                        const char* attributeName,
-                                                        const bool indexSubstrings,
+                                                        char const* attributeName,
+                                                        bool indexSubstrings,
                                                         int minWordLength) {
-  TRI_index_t* idx;
-
-  idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
+  TRI_index_t* idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
 
   return idx;
 }
@@ -4707,12 +4647,10 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
 
 TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_idx_iid_t iid,
-                                                        const char* attributeName,
-                                                        const bool indexSubstrings,
+                                                        char const* attributeName,
+                                                        bool indexSubstrings,
                                                         int minWordLength,
                                                         bool* created) {
-  TRI_index_t* idx;
-
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
   // .............................................................................
@@ -4721,7 +4659,7 @@ TRI_index_t* TRI_EnsureFulltextIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, iid, created);
+  TRI_index_t* idx = CreateFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength, iid, created);
 
   if (idx != nullptr) {
     if (created) {
