@@ -1129,8 +1129,13 @@ var impTodo = [
 testFuncs.importing = function (options) {
   if (options.cluster) {
     print("Skipped because of cluster.");
-    return {"importing": {"status":true, "skipped":true, 
-                          "message": "skipped because of cluster"}};
+    return {"importing": 
+            {
+              "status" : true,
+              "message": "skipped because of cluster",
+              "skipped": true
+            }
+           };
   }
 
   var instanceInfo = startInstance("tcp", options, [ ], "importing");
