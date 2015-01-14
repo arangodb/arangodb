@@ -48,12 +48,11 @@ function Response(res, encoding) {
   }
 }
 
-function parseForm(body) {
-  return qs.parse(body);
-}
-
-function parseFormData(body, headers) {
-  var parts = internal.requestParts({requestBody: body, headers: headers});
+function parseFormData(req) {
+  if (req && !req.requestBody && req.body && typeof req.body === 'object') {
+    req = {requestBody: req.body, headers: req.headers};
+  }
+  var parts = internal.requestParts(req);
   var formData = {};
   parts.forEach(function (part) {
     var headers = part.headers || {};
@@ -86,8 +85,11 @@ function parseFormData(body, headers) {
   return formData;
 }
 
-function parseMultipart(body, headers) {
-  var parts = internal.requestParts({requestBody: body, headers: headers});
+function parseMultipart(req) {
+  if (req && !req.requestBody && req.body && typeof req.body === 'object') {
+    req = {requestBody: req.body, headers: req.headers};
+  }
+  var parts = internal.requestParts(req);
   return parts.map(function (part) {
     return extend({}, part.headers, {body: part.body});
   });
@@ -180,7 +182,6 @@ function request(req) {
 }
 
 request.Response = Response;
-request.parseForm = parseForm;
 request.parseFormData = parseFormData;
 request.parseMultipart = parseMultipart;
 
