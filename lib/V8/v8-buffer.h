@@ -119,19 +119,34 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
     static inline char* data (v8::Handle<v8::Value> val) {
       TRI_ASSERT(val->IsObject());
+      auto o = val->ToObject();
 
-      void* data = val.As<v8::Object>()->GetIndexedPropertiesExternalArrayData();
-      return static_cast<char*>(data);
+      if (o->InternalFieldCount() == 0) {
+        // seems object has become a FastBuffer already
+        if (! o->HasIndexedPropertiesInExternalArrayData()) {
+          // probably not...
+          return nullptr;
+        }
+
+        void* data = o->GetIndexedPropertiesExternalArrayData();
+        return static_cast<char*>(data);
+      }
+
+      V8Buffer* buffer = V8Buffer::unwrap(o);
+      if (buffer == nullptr) {
+        return nullptr; 
+      }
+
+      return buffer->_data;
     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the buffer data
 ////////////////////////////////////////////////////////////////////////////////
 
-    static inline char* data (v8::Isolate *isolate, V8Buffer *b) {
-      auto localData = v8::Local<v8::Object>::New(isolate, b->_handle);
-      
-      return data(localData);
+    static inline char* data (v8::Isolate* isolate, V8Buffer* b) {
+      auto val = v8::Local<v8::Object>::New(isolate, b->_handle);
+      return data(val);
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,18 +155,34 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 
     static inline size_t length (v8::Handle<v8::Value> val) {
       TRI_ASSERT(val->IsObject());
+      auto o = val->ToObject();
 
-      int len = val.As<v8::Object>()->GetIndexedPropertiesExternalArrayDataLength();
-      return static_cast<size_t>(len);
+      if (o->InternalFieldCount() == 0) {
+        // seems object has become a FastBuffer already
+        if (! o->HasIndexedPropertiesInExternalArrayData()) {
+          // probably not...
+          return 0;
+        }
+
+        int len = o->GetIndexedPropertiesExternalArrayDataLength();
+        return static_cast<size_t>(len);
+      }
+
+      V8Buffer* buffer = V8Buffer::unwrap(o);
+      if (buffer == nullptr) {
+        return 0;  
+      }
+
+      return buffer->_length;
     }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief length of the data
 ////////////////////////////////////////////////////////////////////////////////
 
-    static inline size_t length (v8::Isolate *isolate, V8Buffer *b) {
-      auto localData = v8::Local<v8::Object>::New(isolate, b->_handle);
-      return length(localData);
+    static inline size_t length (v8::Isolate* isolate, V8Buffer* b) {
+      auto val = v8::Local<v8::Object>::New(isolate, b->_handle);
+      return length(val);
     }
 
 // -----------------------------------------------------------------------------
@@ -164,7 +195,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
 /// @brief free callback type
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef void (*free_callback_fptr)(char *data, void *hint);
+    typedef void (*free_callback_fptr)(char* data, void* hint);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

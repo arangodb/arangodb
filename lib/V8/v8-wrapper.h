@@ -114,7 +114,7 @@ class V8Wrapper {
         data->SetInternalField(0, v8::Undefined(_isolate));
         _handle.Reset();
 
-        if (_free != 0) {
+        if (_free != nullptr) {
           _free(_object);
         }
       }
@@ -131,6 +131,7 @@ class V8Wrapper {
 ////////////////////////////////////////////////////////////////////////////////
 
     static STRUCT* unwrap (v8::Handle<v8::Object> handle) {
+      TRI_ASSERT(handle->InternalFieldCount() > 0);
       return static_cast<V8Wrapper*>(handle->GetAlignedPointerFromInternalField(0))->_object;
     }
 
@@ -209,6 +210,8 @@ class V8Wrapper {
       auto isolate      = data.GetIsolate();
       auto persistent   = data.GetParameter();
       auto myPointer    = v8::Local<v8::Object>::New(isolate, *persistent);
+
+      TRI_ASSERT(myPointer->InternalFieldCount() > 0);
       auto obj          = static_cast<V8Wrapper*>(myPointer->GetAlignedPointerFromInternalField(0))->_object;
         
       TRI_ASSERT(persistent == &obj->_handle);
