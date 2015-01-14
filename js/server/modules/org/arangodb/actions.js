@@ -1499,8 +1499,15 @@ function resultOk (req, res, httpReturnCode, result, headers) {
     result = {};
   }
 
-  result.error = false;
-  result.code = httpReturnCode;
+  // check the type of the result. 
+  if (typeof result !== "string" && 
+      typeof result !== "number" &&
+      typeof result !== "boolean") {
+    // only modify result properties if none of the above types
+    // otherwise the strict mode will throw
+    result.error = false;
+    result.code = httpReturnCode;
+  }
 
   res.body = JSON.stringify(result);
 
