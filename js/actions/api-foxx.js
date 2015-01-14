@@ -155,7 +155,7 @@ actions.defineHttp({
     body: true,
     callback: function () {
       foxxManager.scanAppDirectory();
-      return true;
+      return { };
     }
   })
 });
