@@ -1,5 +1,5 @@
 /*jslint continue:true */
-/*global require, exports, module */
+/*global require, exports*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx application store
@@ -57,9 +57,9 @@
 /// @brief returns the fishbowl repository
 ////////////////////////////////////////////////////////////////////////////////
 
-function getFishbowlUrl () {
-  return "arangodb/foxx-apps";
-}
+  function getFishbowlUrl () {
+    return "arangodb/foxx-apps";
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the fishbowl collection
@@ -69,22 +69,23 @@ function getFishbowlUrl () {
 /// used in context of the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-var getFishbowlStorage = function() {
+  var getFishbowlStorage = function() {
 
-  var c = db._collection('_fishbowl');
-  if (c ===  null) {
-    c = db._create('_fishbowl', { isSystem : true });
-  }
+    var c = db._collection('_fishbowl');
+    if (c ===  null) {
+      c = db._create('_fishbowl', { isSystem : true });
+    }
 
-  if (c !== null && ! checkedFishBowl) {
-    // ensure indexes
-    c.ensureFulltextIndex("description");
-    c.ensureFulltextIndex("name");
-    checkedFishBowl = true;
-  }
+    if (c !== null && ! checkedFishBowl) {
+      // ensure indexes
+      c.ensureFulltextIndex("description");
+      c.ensureFulltextIndex("name");
+      checkedFishBowl = true;
+    }
 
-  return c;
-};
+    return c;
+  };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for applications
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,106 +106,154 @@ var getFishbowlStorage = function() {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator for versions
+////////////////////////////////////////////////////////////////////////////////
+
+  var compareVersions = function (a, b) {
+    var i;
+
+    if (a === b) {
+      return 0;
+    }
+
+    // error handling
+    if (typeof a !== "string") {
+      return -1;
+    }
+    if (typeof b !== "string") {
+      return 1;
+    }
+
+    var aComponents = a.split(".");
+    var bComponents = b.split(".");
+    var len = Math.min(aComponents.length, bComponents.length);
+
+    // loop while the components are equal
+    for (i = 0; i < len; i++) {
+
+      // A bigger than B
+      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
+        return 1;
+      }
+
+      // B bigger than A
+      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
+        return -1;
+      }
+    }
+
+    // If one's a prefix of the other, the longer one is bigger one.
+    if (aComponents.length > bComponents.length) {
+      return 1;
+    }
+
+    if (aComponents.length < bComponents.length) {
+      return -1;
+    }
+
+    // Otherwise they are the same.
+    return 0;
+  };
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the fishbowl from a zip archive
 ////////////////////////////////////////////////////////////////////////////////
 
-function updateFishbowlFromZip (filename) {
-  var i;
-  var tempPath = fs.getTempPath();
-  var toSave = [ ];
+  var updateFishbowlFromZip = function(filename) {
+    var i;
+    var tempPath = fs.getTempPath();
+    var toSave = [ ];
 
-  try {
-    fs.makeDirectoryRecursive(tempPath);
-    var root = fs.join(tempPath, "foxx-apps-master/applications");
+    try {
+      fs.makeDirectoryRecursive(tempPath);
+      var root = fs.join(tempPath, "foxx-apps-master/applications");
 
-    // remove any previous files in the directory
-    fs.listTree(root).forEach(function (file) {
-      if (file.match(/\.json$/)) {
+      // remove any previous files in the directory
+      fs.listTree(root).forEach(function (file) {
+        if (file.match(/\.json$/)) {
+          try {
+            fs.remove(fs.join(root, file));
+          }
+          catch (ignore) {
+          }
+        }
+      });
+
+      fs.unzipFile(filename, tempPath, false, true);
+
+      if (! fs.exists(root)) {
+        throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
+      }
+
+      var m = fs.listTree(root);
+      var reSub = /(.*)\.json$/;
+      var f, match, app, desc;
+
+      for (i = 0;  i < m.length;  ++i) {
+        f = m[i];
+        match = reSub.exec(f);
+
+        if (match !== null) {
+          continue;
+        }
+
+        app = fs.join(root, f);
+
         try {
-          fs.remove(fs.join(root, file));
+          desc = JSON.parse(fs.read(app));
+        }
+        catch (err1) {
+          arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
+          continue;
+        }
+
+        desc._key = match[1];
+
+        if (! desc.hasOwnProperty("name")) {
+          desc.name = match[1];
+        }
+
+        toSave.push(desc);
+      }
+
+      if (toSave.length > 0) {
+        var fishbowl = getFishbowlStorage();
+
+        db._executeTransaction({
+          collections: {
+            write: fishbowl.name()
+          },
+          action: function (params) {
+            var c = require("internal").db._collection(params.collection);
+            c.truncate();
+
+            params.apps.forEach(function(app) {
+              c.save(app);
+            });
+          },
+          params: {
+            apps: toSave,
+            collection: fishbowl.name()
+          }
+        });
+
+        arangodb.printf("Updated local repository information with %d application(s)\n",
+                        toSave.length);
+      }
+    }
+    catch (err) {
+      if (tempPath !== undefined && tempPath !== "") {
+        try {
+          fs.removeDirectoryRecursive(tempPath);
         }
         catch (ignore) {
         }
       }
-    });
 
-    fs.unzipFile(filename, tempPath, false, true);
-
-    if (! fs.exists(root)) {
-      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
+      throw err;
     }
-
-    var m = fs.listTree(root);
-    var reSub = /(.*)\.json$/;
-    var f, match, app, desc;
-
-    for (i = 0;  i < m.length;  ++i) {
-      f = m[i];
-      match = reSub.exec(f);
-
-      if (match !== null) {
-        continue;
-      }
-
-      app = fs.join(root, f);
-
-      try {
-        desc = JSON.parse(fs.read(app));
-      }
-      catch (err1) {
-        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
-        continue;
-      }
-
-      desc._key = match[1];
-
-      if (! desc.hasOwnProperty("name")) {
-        desc.name = match[1];
-      }
-
-      toSave.push(desc);
-    }
-
-    if (toSave.length > 0) {
-      var fishbowl = getFishbowlStorage();
-
-      db._executeTransaction({
-        collections: {
-          write: fishbowl.name()
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.collection);
-          c.truncate();
-
-          params.apps.forEach(function(app) {
-            c.save(app);
-          });
-        },
-        params: {
-          apps: toSave,
-          collection: fishbowl.name()
-        }
-      });
-
-      arangodb.printf("Updated local repository information with %d application(s)\n",
-                      toSave.length);
-    }
-  }
-  catch (err) {
-    if (tempPath !== undefined && tempPath !== "") {
-      try {
-        fs.removeDirectoryRecursive(tempPath);
-      }
-      catch (ignore) {
-      }
-    }
-
-    throw err;
-  }
-}
-
-
-
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Section public functions
@@ -298,7 +347,7 @@ function availableJson() {
 
     maxVersion = "-";
     versions = Object.keys(doc.versions);
-    versions.sort(module.compareVersions);
+    versions.sort(compareVersions);
     if (versions.length > 0) {
       versions.reverse();
       maxVersion = versions[0];
@@ -423,7 +472,7 @@ function availableJson() {
 
     var header = false;
     var versions = Object.keys(desc.versions);
-    versions.sort(module.compareVersions);
+    versions.sort(compareVersions);
 
     versions.forEach(function (v) {
       var version = desc.versions[v];
@@ -460,6 +509,9 @@ function availableJson() {
   exports.searchJson = searchJson;
   exports.update = update;
   exports.info = info;
+
+  // Temporary export to avoid breaking the client
+  exports.compareVersions = compareVersions;
 
 }());
 

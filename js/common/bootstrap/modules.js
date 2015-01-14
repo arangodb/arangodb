@@ -1334,58 +1334,6 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compareVersions
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.compareVersions = function (a, b) {
-    'use strict';
-
-    var i;
-
-    if (a === b) {
-      return 0;
-    }
-
-    // error handling
-    if (typeof a !== "string") {
-      return -1;
-    }
-    if (typeof b !== "string") {
-      return 1;
-    }
-
-    var aComponents = a.split(".");
-    var bComponents = b.split(".");
-    var len = Math.min(aComponents.length, bComponents.length);
-
-    // loop while the components are equal
-    for (i = 0; i < len; i++) {
-
-      // A bigger than B
-      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
-        return 1;
-      }
-
-      // B bigger than A
-      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
-        return -1;
-      }
-    }
-
-    // If one's a prefix of the other, the longer one is bigger one.
-    if (aComponents.length > bComponents.length) {
-      return 1;
-    }
-
-    if (aComponents.length < bComponents.length) {
-      return -1;
-    }
-
-    // Otherwise they are the same.
-    return 0;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize
 ////////////////////////////////////////////////////////////////////////////////
 
