@@ -31,7 +31,8 @@
 
 var internal = require('internal');
 var Buffer = require('buffer');
-var extend = require('extend');
+var extend = require('underscore').extend;
+var is = require('org/arangodb/is');
 var httpErrors = require('http-errors');
 var mediaTyper = require('media-typer');
 var contentDisposition = require('content-disposition');
@@ -42,7 +43,7 @@ function Response(res, encoding) {
   this.status = this.statusCode = res.code;
   this.message = res.message;
   this.headers = res.headers ? res.headers : {};
-  this.body = res.body;
+  this.body = this.rawBody = res.body;
   if (this.body && encoding !== null) {
     this.body = this.body.toString(encoding || 'utf-8');
   }
@@ -131,7 +132,7 @@ function request(req) {
     contentType = 'application/json';
   } else if (typeof body === 'string') {
     contentType = 'text/plain; charset=utf-8';
-  } else if (body instanceof Buffer) {
+  } else if (typeof body === 'object' && body instanceof Buffer) {
     contentType = 'application/octet-stream';
   } else if (!body) {
     if (req.form) {
@@ -161,14 +162,21 @@ function request(req) {
     );
   }
 
-  var result = internal.download(url, body, {
+  var options = {
+    method: req.method || 'get',
     headers: headers,
-    method: req.method,
-    timeout: req.timeout,
-    followRedirects: req.followRedirect, // [sic] node-request compatibility
-    maxRedirects: req.maxRedirects,
     returnBodyAsBuffer: true
-  });
+  };
+  if (is.existy(req.timeout)) {
+    options.timeout = req.timeout;
+  }
+  if (is.existy(req.followRedirect)) {
+    options.followRedirects = req.followRedirect; // [sic] node-request compatibility
+  }
+  if (is.existy(req.maxRedirects)) {
+    options.maxRedirects = req.maxRedirects;
+  }
+  var result = internal.download(url, body, options);
 
   var res = new Response(result, req.encoding);
   if (res.statusCode >= 400) {
@@ -185,46 +193,17 @@ request.Response = Response;
 request.parseFormData = parseFormData;
 request.parseMultipart = parseMultipart;
 
-request.get = function (req, qs) {
-  if (typeof req === 'string') {
-    req = {url: req};
-  }
-  return request(extend({method: 'GET', qs: qs}, req));
-};
-
-request.head = function (req, qs) {
-  if (typeof req === 'string') {
-    req = {url: req};
-  }
-  return request(extend({method: 'HEAD', qs: qs}, req));
-};
-
-request.delete = function (req, qs) {
-  if (typeof req === 'string') {
-    req = {url: req};
-  }
-  return request(extend({method: 'DELETE', qs: qs}, req));
-};
-
-request.post = function (req, body) {
-  if (typeof req === 'string') {
-    req = {url: req};
-  }
-  return request(extend({method: 'POST', body: body}, req));
-};
-
-request.put = function (req, body) {
-  if (typeof req === 'string') {
-    req = {url: req};
-  }
-  return request(extend({method: 'PUT', body: body}, req));
-};
-
-request.patch = function (req, body) {
-  if (typeof req === 'string') {
-    req = {url: req};
-  }
-  return request(extend({method: 'PATCH', body: body}, req));
-};
+['delete', 'get', 'head', 'patch', 'post', 'put']
+.forEach(function (method) {
+  request[method.toLowerCase()] = function (url, options) {
+    if (typeof url === 'object') {
+      options = url;
+      url = undefined;
+    } else if (typeof url === 'string') {
+      options = extend({}, options, {url: url});
+    }
+    return request(extend({method: method.toUpperCase()}, options));
+  };
+});
 
 module.exports = request;
