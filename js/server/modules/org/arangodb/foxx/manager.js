@@ -46,6 +46,10 @@ var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
 
 var developmentMode = require("internal").developmentMode;
 
+var download = require("internal").download;
+var throwDownloadError = arangodb.throwDownloadError;
+var throwFileNotFound = arangodb.throwFileNotFound;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -1446,9 +1450,155 @@ exports.initializeFoxx = function () {
   }
 };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+
 ////////////////////////////////////////////////////////////////////////////////
-/// SECTION Public functions
+/// @brief Extracts an app from zip and moves it to temporary path
+///
+/// return path to app
 ////////////////////////////////////////////////////////////////////////////////
+
+var extractAppToPath = function (archive, targetPath, noDelete)  {
+  var tempFile = fs.getTempFile("zip", false);
+  fs.makeDirectory(tempFile);
+  fs.unzipFile(archive, tempFile, false, true);
+
+  // .............................................................................
+  // throw away source file
+  // .............................................................................
+  if (!noDelete) {
+    try {
+      fs.remove(archive);
+    }
+    catch (err1) {
+      arangodb.printf("Cannot remove temporary file '%s'\n", archive);
+    }
+  }
+
+  // .............................................................................
+  // locate the manifest file
+  // .............................................................................
+
+  var tree = fs.listTree(tempFile).sort(function(a,b) {
+    return a.length - b.length;
+  });
+  var found;
+  var mf = "manifest.json";
+  var re = /[\/\\\\]manifest\.json$/; // Windows!
+  var tf;
+  var i;
+
+  for (i = 0; i < tree.length && found === undefined;  ++i) {
+    tf = tree[i];
+
+    if (re.test(tf) || tf === mf) {
+      found = tf;
+    }
+  }
+
+  if (found === undefined) {
+    throwFileNotFound("Cannot find manifest file in zip file '" + tempFile + "'");
+  }
+
+  var mp;
+
+  if (found === mf) {
+    mp = ".";
+  }
+  else {
+    mp = found.substr(0, found.length - mf.length - 1);
+  }
+
+  fs.move(fs.join(tempFile, mp), targetPath);
+
+  // .............................................................................
+  // throw away temporary app folder
+  // .............................................................................
+  try {
+    fs.removeDirectoryRecursive(tempFile);
+  }
+  catch (err1) {
+    arangodb.printf("Cannot remove temporary folder '%s'\n", tempFile);
+  }
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds a github repository URL
+////////////////////////////////////////////////////////////////////////////////
+
+var buildGithubUrl = function (appInfo) {
+  var splitted = appInfo.split(":");
+  var repository = splitted[1];
+  var version = splitted[2];
+  if (version === undefined) {
+    version = "master";
+  }
+  return 'https://github.com/' + repository + '/archive/' + version + '.zip';
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Downloads an app from remote zip file and copies it to mount path
+////////////////////////////////////////////////////////////////////////////////
+
+var installAppFromRemote = function(url, targetPath) {
+  var tempFile = fs.getTempFile("downloads", false);
+
+  try {
+    var result = download(url, "", {
+      method: "get",
+      followRedirects: true,
+      timeout: 30
+    }, tempFile);
+
+    if (result.code < 200 || result.code > 299) {
+      throwDownloadError("Could not download from '" + url + "'");
+    }
+  }
+  catch (err) {
+    throwDownloadError("Could not download from '" + url + "': " + String(err));
+  }
+  extractAppToPath(tempFile, targetPath);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Copies an app from local, either zip file or folder, to mount path
+////////////////////////////////////////////////////////////////////////////////
+
+var installAppFromLocal = function(path, targetPath) {
+  if (fs.isDirectory(path)) {
+    var tempFile = fs.getTempFile("downloads", false);
+
+    var tree = fs.listTree(path);
+    var files = [];
+    var i;
+    var filename;
+
+    for (i = 0;  i < tree.length;  ++i) {
+      filename = fs.join(path, tree[i]);
+
+      if (fs.isFile(filename)) {
+        files.push(tree[i]);
+      }
+    }
+
+    if (files.length === 0) {
+      throwFileNotFound("Directory '" + String(path) + "' is empty");
+    }
+    fs.zipFile(tempFile, path, files);
+    extractAppToPath(tempFile, targetPath);
+  } else {
+    extractAppToPath(path, targetPath, true);
+  }
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Installs a new foxx application on the given mount point.
@@ -1457,16 +1607,33 @@ exports.initializeFoxx = function () {
 ////////////////////////////////////////////////////////////////////////////////
 var install = function(appInfo, mount, options) {
 
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+
+  var mountParts = mount.split("/");
+  var pathParts = [module.appPath()].concat(mountParts);
+  var targetPath = fs.join.apply(this, pathParts);
+  if (fs.exists(fs.join(targetPath, "APP"))) {
+    throw "An app is already installed at this location.";
+  }
+  fs.makeDirectoryRecursive(targetPath);
+  targetPath = fs.join(targetPath, "APP");
+
   if (appInfo === "EMPTY") {
     // Make Empty app
+    throw "Not implemented yet";
   } else if (/^GIT:/.test(appInfo)) {
-    // dl from git
+    installAppFromRemote(buildGithubUrl(appInfo), targetPath);
   } else if (/^https?:/.test(appInfo)) {
-    // dl from url
+    installAppFromRemote(appInfo, targetPath);
   } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
-    // on local system
+    installAppFromLocal(appInfo, targetPath);
   } else {
     // try appstore
+    throw "Not implemented yet";
   }
 };
 
@@ -1474,8 +1641,8 @@ var install = function(appInfo, mount, options) {
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.install = install;
 /*
- exports.install = install;
  exports.uninstall = uninstall;
  exports.setup = setup;
  exports.teardown = teardown;
