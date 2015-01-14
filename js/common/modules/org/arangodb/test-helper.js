@@ -70,7 +70,7 @@ exports.Helper = {
       else if (iterations === 400) {
         require("console").log("waited very long for unload of collection " + collection.name());
       }
-      else if (iterations === 800) {
+      else if (iterations === 1600) {
         throw "waited too long for unload of collection " + collection.name();
       }
     }
