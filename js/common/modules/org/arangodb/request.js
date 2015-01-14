@@ -34,6 +34,7 @@ var Buffer = require('buffer');
 var extend = require('extend');
 var httpErrors = require('http-errors');
 var mediaTyper = require('media-typer');
+var contentDisposition = require('content-disposition');
 var querystring = require('querystring');
 var qs = require('qs');
 
@@ -57,21 +58,11 @@ function parseFormData(body, headers) {
   parts.forEach(function (part) {
     var headers = part.headers || {};
     if (!headers['content-disposition']) {
-      return; // TODO?
+      return; // Not form data
     }
-    var disposition = headers['content-disposition'].split(/\s*;\s*/);
-    if (disposition[0] !== 'form-data') {
-      return; // TODO?
-    }
-    var params = {};
-    disposition.slice(1).forEach(function (param) {
-      var kv = param.split('=');
-      if (kv.length === 2) {
-        params[kv[0]] = kv[1];
-      }
-    });
-    if (!params.name) {
-      return;
+    var disposition = contentDisposition.parse(headers['content-disposition']);
+    if (disposition.name !== 'form-data' || !disposition.parameters.name) {
+      return; // Not form data
     }
     var body = part.body;
     var contentType = mediaTyper.parse(headers['content-type'] || 'text/plain');
@@ -82,13 +73,14 @@ function parseFormData(body, headers) {
     } else {
       body = extend({}, part.headers, {body: part.body});
     }
-    if (formData.hasOwnProperty(params.name)) {
-      if (!Array.isArray(formData[params.name])) {
-        formData[params.name] = [formData[params.name]];
+    var name = disposition.parameters.name;
+    if (formData.hasOwnProperty(name)) {
+      if (!Array.isArray(formData[name])) {
+        formData[name] = [formData[name]];
       }
-      formData[params.name].push(body);
+      formData[name].push(body);
     } else {
-      formData[params.name] = body;
+      formData[name] = body;
     }
   });
   return formData;
