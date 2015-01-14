@@ -37,23 +37,68 @@ var mediaTyper = require('media-typer');
 var querystring = require('querystring');
 var qs = require('qs');
 
-function Response(res) {
+function Response(res, encoding) {
   this.status = this.statusCode = res.code;
   this.message = res.message;
-  this.body = this.rawBody = res.body;
-  this.headers = res.headers;
-  if (res.headers['content-type']) {
-    var contentType = mediaTyper.parse(res.headers['content-type']);
-    var types = [contentType.subtype, contentType.suffix];
-    var isJson = types.indexOf('json') !== -1;
-    var isXml = !isJson && types.indexOf('xml') !== -1;
-    if (isJson || isXml || contentType.type === 'text') {
-      this.body = this.rawBody.toString(contentType.parameters.charset || 'utf-8');
-      if (isJson) {
-        this.body = JSON.stringify(this.body);
-      }
-    }
+  this.headers = res.headers ? res.headers : {};
+  this.body = res.body;
+  if (this.body && encoding !== null) {
+    this.body = this.body.toString(encoding || 'utf-8');
   }
+}
+
+function parseForm(body) {
+  return qs.parse(body);
+}
+
+function parseFormData(body, headers) {
+  var parts = internal.requestParts({requestBody: body, headers: headers});
+  var formData = {};
+  parts.forEach(function (part) {
+    var headers = part.headers || {};
+    if (!headers['content-disposition']) {
+      return; // TODO?
+    }
+    var disposition = headers['content-disposition'].split(/\s*;\s*/);
+    if (disposition[0] !== 'form-data') {
+      return; // TODO?
+    }
+    var params = {};
+    disposition.slice(1).forEach(function (param) {
+      var kv = param.split('=');
+      if (kv.length === 2) {
+        params[kv[0]] = kv[1];
+      }
+    });
+    if (!params.name) {
+      return;
+    }
+    var body = part.body;
+    var contentType = mediaTyper.parse(headers['content-type'] || 'text/plain');
+    if (contentType.type === 'text') {
+      body = part.body.toString(contentType.parameters.charset || 'utf-8');
+    } else if (contentType.type === 'multipart' && contentType.subtype === 'mixed') {
+      body = parseMultipart(part.body, part.headers);
+    } else {
+      body = extend({}, part.headers, {body: part.body});
+    }
+    if (formData.hasOwnProperty(params.name)) {
+      if (!Array.isArray(formData[params.name])) {
+        formData[params.name] = [formData[params.name]];
+      }
+      formData[params.name].push(body);
+    } else {
+      formData[params.name] = body;
+    }
+  });
+  return formData;
+}
+
+function parseMultipart(body, headers) {
+  var parts = internal.requestParts({requestBody: body, headers: headers});
+  return parts.map(function (part) {
+    return extend({}, part.headers, {body: part.body});
+  });
 }
 
 function querystringify(query, useQuerystring) {
@@ -80,7 +125,6 @@ function request(req) {
     url += '?' + query;
   }
 
-  var headers = extend({}, headers);
 
   var contentType;
   var body = req.body;
@@ -93,19 +137,20 @@ function request(req) {
     contentType = 'application/json';
   } else if (!body) {
     if (req.form) {
-      body = querystringify(req.form);
       contentType = 'application/x-www-form-urlencoded';
+      body = querystringify(req.form, req.useQuerystring);
     } else if (req.formData) {
-      // body = formData(req.formData);
       // contentType = 'multipart/form-data';
+      // body = formData(req.formData);
       throw new Error('multipart encoding is currently not supported');
     } else if (req.multipart) {
-      // body = multipart(req.multipart);
       // contentType = 'multipart/related';
+      // body = multipart(req.multipart);
       throw new Error('multipart encoding is currently not supported');
     }
   }
-  headers['content-type'] = headers['content-type'] || contentType;
+
+  var headers = extend({'content-type': contentType}, headers);
 
   if (req.auth) {
     headers['authorization'] = (
@@ -124,10 +169,10 @@ function request(req) {
     timeout: req.timeout,
     followRedirects: req.followRedirect, // [sic] node-request compatibility
     maxRedirects: req.maxRedirects,
-    raw: true
+    returnBodyAsBuffer: true
   });
 
-  var res = new Response(result);
+  var res = new Response(result, req.encoding);
   if (res.statusCode >= 400) {
     var status = httpErrors[res.statusCode] ? res.statusCode : 500;
     var err = new httpErrors[status](res.message);
@@ -139,6 +184,9 @@ function request(req) {
 }
 
 request.Response = Response;
+request.parseForm = parseForm;
+request.parseFormData = parseFormData;
+request.parseMultipart = parseMultipart;
 
 request.get = function (req, qs) {
   if (typeof req === 'string') {
