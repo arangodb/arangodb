@@ -140,11 +140,11 @@ function request(req) {
     } else if (req.formData) {
       // contentType = 'multipart/form-data';
       // body = formData(req.formData);
-      throw new Error('multipart encoding is currently not supported');
+      throw new Error('Multipart form encoding is currently not supported.');
     } else if (req.multipart) {
       // contentType = 'multipart/related';
       // body = multipart(req.multipart);
-      throw new Error('multipart encoding is currently not supported');
+      throw new Error('Multipart encoding is currently not supported.');
     }
   }
 
