@@ -3,8 +3,12 @@ v2.5.0 (XXXX-XX-XX)
 
 * RequestContext#bodyParam now accepts arbitrary joi schemas and rejects invalid (but well-formed) request bodies.
 
+
 v2.4.1 (XXXX-XX-XX)
 -------------------
+
+* fixed possible segmentation fault when passing a Buffer object into a V8 function 
+  as a parameter
 
 * updated AQB module to 1.8.0.
 
