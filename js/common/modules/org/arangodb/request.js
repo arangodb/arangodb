@@ -100,7 +100,11 @@ function querystringify(query, useQuerystring) {
   if (typeof query === 'string') {
     return query.charAt(0) === '?' ? query.slice(1) : query;
   }
-  return (useQuerystring ? querystring : qs).stringify(query);
+  return (useQuerystring ? querystring : qs).stringify(query)
+  .replace(/[!'()*]/g, function(c) {
+    // Stricter RFC 3986 compliance
+    return '%' + c.charCodeAt(0).toString(16);
+  });
 }
 
 function request(req) {
