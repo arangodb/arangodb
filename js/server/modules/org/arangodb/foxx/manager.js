@@ -35,6 +35,7 @@ var errors = arangodb.errors;
 var console = require("console");
 var fs = require("fs");
 var utils = require("org/arangodb/foxx/manager-utils");
+var store = require("org/arangodb/foxx/store");
 
 var _ = require("underscore");
 
@@ -1733,22 +1734,6 @@ exports.fetchFromGithub = function (url, name, version) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the repository
-////////////////////////////////////////////////////////////////////////////////
-
-exports.update = utils.updateFishbowl;
-
-////////////////////////////////////////////////////////////////////////////////
-///// @brief returns all available FOXX applications
-////////////////////////////////////////////////////////////////////////////////
-
-exports.availableJson = function () {
-  "use strict";
-
-  return utils.availableJson();
-};
-
-////////////////////////////////////////////////////////////////////////////////
 ///// @brief returns all installed FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1756,16 +1741,6 @@ exports.listJson = function () {
   "use strict";
 
   return utils.listJson();
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the fishbowl collection
-////////////////////////////////////////////////////////////////////////////////
-
-exports.getFishbowlStorage = function () {
-  "use strict";
-
-  return utils.getFishbowlStorage();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1836,6 +1811,19 @@ exports.initializeFoxx = function () {
     });
   }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Exports from foxx store module.
+////////////////////////////////////////////////////////////////////////////////
+
+exports.available = store.available;
+exports.availableJson = store.availableJson;
+exports.getFishbowlStorage = store.getFishbowlStorage;
+exports.search = store.search;
+exports.searchJson = store.searchJson;
+exports.update = store.update;
+exports.info = store.info;
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
