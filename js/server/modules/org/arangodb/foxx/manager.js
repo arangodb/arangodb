@@ -1813,6 +1813,49 @@ exports.initializeFoxx = function () {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// SECTION Public functions
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Installs a new foxx application on the given mount point.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var install = function(appInfo, mount, options) {
+
+  if (appInfo === "EMPTY") {
+    // Make Empty app
+  } else if (/^GIT:/.test(appInfo)) {
+    // dl from git
+  } else if (/^https?:/.test(appInfo)) {
+    // dl from url
+  } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+    // on local system
+  } else {
+    // try appstore
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Exports
+////////////////////////////////////////////////////////////////////////////////
+
+/*
+ exports.install = install;
+ exports.uninstall = uninstall;
+ exports.setup = setup;
+ exports.teardown = teardown;
+ exports.list = list;
+ exports.listJson = listJson;
+ exports.replace = replace;
+ exports.mountedApp = mountedApp;
+ exports.upgrade = upgrade;
+ exports.scanFoxx = scanFoxx;
+ exports.developmentMounts = developmentMounts;
+ exports.developmentMountsJson = developmentMountsJson;
+*/
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx store module.
 ////////////////////////////////////////////////////////////////////////////////
 
