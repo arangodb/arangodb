@@ -126,13 +126,13 @@ function request(req) {
 
   var contentType;
   var body = req.body;
-  if (typeof body === 'string') {
+  if (req.json) {
+    body = JSON.stringify(body);
+    contentType = 'application/json';
+  } else if (typeof body === 'string') {
     contentType = 'text/plain; charset=utf-8';
   } else if (body instanceof Buffer) {
     contentType = 'application/octet-stream';
-  } else if (body && typeof body === 'object') {
-    body = JSON.stringify(body);
-    contentType = 'application/json';
   } else if (!body) {
     if (req.form) {
       contentType = 'application/x-www-form-urlencoded';
