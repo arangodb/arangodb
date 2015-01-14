@@ -98,6 +98,7 @@ var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
 
 var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
+var serverCrashed = false;
 
 var optionsDefaults = { "cluster": false,
                         "valgrind": false,
@@ -394,6 +395,9 @@ function checkInstanceAlive(instanceInfo, options) {
         copy("bin/arangod", storeArangodPath);
       }
     }
+    if (!ret) {
+      serverCrashed = true;
+    }
     return ret;
   }
   var ClusterFit = true;
@@ -419,7 +423,13 @@ function checkInstanceAlive(instanceInfo, options) {
       }
     }
   }
-  return ClusterFit && instanceInfo.kickstarter.isHealthy();
+  if (ClusterFit && instanceInfo.kickstarter.isHealthy()) {
+    return true;
+  }
+  else {
+    serverCrashed = true;
+    return false;
+  }
 }
 
 function shutdownInstance (instanceInfo, options) {
@@ -1485,7 +1495,7 @@ testFuncs.authentication_parameters = function (options) {
   return results;
 };
 
-var internalMembers = ["code", "error", "status", "duration", "failed", "total"];
+var internalMembers = ["code", "error", "status", "duration", "failed", "total", "crashed", "all_ok", "ok"];
 
 function unitTestPrettyPrintResults(r) {
   var testrun;
@@ -1498,13 +1508,13 @@ function unitTestPrettyPrintResults(r) {
 
   try {
     for (testrun in r) {    
-      if (r.hasOwnProperty(testrun) && (testrun !== 'all_ok')) {
+      if (r.hasOwnProperty(testrun) && (internalMembers.indexOf(testrun) === -1)) {
         var isSuccess = true;
         var oneOutput = "";
 
         oneOutput = "Testrun: " + testrun + "\n";
         for (test in  r[testrun]) {
-          if (r[testrun].hasOwnProperty(test) && (test !== 'ok')) {
+          if (r[testrun].hasOwnProperty(test) && (internalMembers.indexOf(test) === -1)) {
             if (r[testrun][test].status) {
               oneOutput += "     [Success] " + test + "\n";
             }
@@ -1599,6 +1609,7 @@ function UnitTest (which, options) {
       results.all_ok = allok;
     }
     results.all_ok = allok;
+    results.crashed = serverCrashed;
     if (allok) {
       cleanupDBDirectories(options);
     }
@@ -1634,6 +1645,7 @@ function UnitTest (which, options) {
     }
     r.ok = ok;
     results.all_ok = ok;
+    results.crashed = serverCrashed;
 
     if (allok) {
       cleanupDBDirectories(options);
@@ -1652,6 +1664,7 @@ function UnitTest (which, options) {
   }
 }
 
+exports.internalMembers = internalMembers;
 exports.testFuncs = testFuncs;
 exports.UnitTest = UnitTest;
 exports.unitTestPrettyPrintResults = unitTestPrettyPrintResults;
