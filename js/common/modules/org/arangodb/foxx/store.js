@@ -193,7 +193,6 @@
       for (i = 0;  i < m.length;  ++i) {
         f = m[i];
         match = reSub.exec(f);
-
         if (match !== null) {
           continue;
         }
