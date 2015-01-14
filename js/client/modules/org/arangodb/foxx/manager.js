@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global require, exports, module */
+/*global require, exports*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB Application Launcher
@@ -187,7 +187,7 @@ function fetchGithubForInstall (name) {
       }
     }
 
-    keys = keys.sort(module.compareVersions);
+    keys = keys.sort(store.compareVersions);
     version = keys[keys.length - 1];
     source = available.versions[version];
   }
@@ -204,7 +204,7 @@ function fetchGithubForInstall (name) {
   while (cursor.hasNext()) {
     doc = cursor.next();
 
-    if (module.compareVersions(version, doc.version) <= 0) {
+    if (store.compareVersions(version, doc.version) <= 0) {
       version = doc.version;
       source = "fetched";
       appId = doc.app;
