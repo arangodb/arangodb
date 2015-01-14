@@ -1,6 +1,8 @@
 v2.4.1 (XXXX-XX-XX)
 -------------------
 
+* fixed invalid result of HTTP REST API method `/_admin/foxx/rescan`
+
 * fixed possible segmentation fault when passing a Buffer object into a V8 function 
   as a parameter
 
