@@ -105,6 +105,26 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get name for a method
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string const getName (MethodType type) {
+          switch (type) {
+            case TYPE_RELOAD_ROUTING:
+              return "reloadRouting";
+            case TYPE_FLUSH_MODULE_CACHE:
+              return "flushModuleCache";
+            case TYPE_RELOAD_AQL:
+              return "reloadAql";
+            case TYPE_BOOTSTRAP_COORDINATOR:
+              return "bootstrapCoordinator";
+            case TYPE_UNKNOWN:
+            default:
+              return "unknown";
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get code for a method
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -311,7 +331,7 @@ namespace triagens {
         void exitContext (V8Context*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a global context functions to be executed asap
+/// @brief adds a global context function to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
         bool addGlobalContextMethod (std::string const&);
