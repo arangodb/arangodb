@@ -1194,6 +1194,14 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 ////////////////////////////////////////////////////////////////////////////////
 
 function reloadRouting () {
+  RoutingCache = {};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief flushes cache and reload routing information for a database
+////////////////////////////////////////////////////////////////////////////////
+
+function reloadRoutingDB () {
   'use strict';
 
   var i;
@@ -1426,7 +1434,7 @@ function firstRouting (type, parts) {
   var url = parts;
 
   if (undefined === RoutingCache[arangodb.db._name()]) {
-    reloadRouting();
+    reloadRoutingDB();
   }
 
   var routingCache = RoutingCache[arangodb.db._name()];
