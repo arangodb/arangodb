@@ -1367,14 +1367,8 @@ function require (path) {
 /// @brief createApp
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (appId, options) {
+  Module.prototype.createApp = function (description, options) {
     'use strict';
-
-    var description = appDescription(appId, options);
-
-    if (description === null) {
-      return description;
-    }
 
     return new ArangoApp(
       description.id,
