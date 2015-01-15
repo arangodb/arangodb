@@ -1372,6 +1372,13 @@ function reloadRoutingDB () {
   // once we're done, we can set the complete routing cache for database
   // doing this here instead of above ensures we don't have a half-updated routing
   // cache if this function fails somewhere in the middle
+
+  // we have to invalidate the routing for other databases however
+  // this is because the reloadRouting() action may be executed only once in the
+  // context of a single database, but not necessarily the database in which the
+  // routes changed that triggered the reloadRouting()
+  RoutingCache = { };
+
   RoutingCache[arangodb.db._name()] = routingCache;
 }
 
