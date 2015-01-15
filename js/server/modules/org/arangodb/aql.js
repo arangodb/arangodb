@@ -523,13 +523,19 @@ function COMPILE_REGEX (regex, modifiers) {
 function FCALL_USER (name, parameters) {
   "use strict";
 
-  var prefix = DB_PREFIX();
+  var prefix = DB_PREFIX(), reloaded = false;
   if (! UserFunctions.hasOwnProperty(prefix)) {
+    reloadUserFunctions();
+    reloaded = true;
+  }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+    // last chance
     reloadUserFunctions();
   }
   
   if (! UserFunctions[prefix].hasOwnProperty(name)) {
-    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
   try {
@@ -551,13 +557,19 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
   name = AQL_TO_STRING(name).toUpperCase();
   if (name.indexOf('::') > 0) {
     // user-defined function
-    var prefix = DB_PREFIX();
+    var prefix = DB_PREFIX(), reloaded = false;
     if (! UserFunctions.hasOwnProperty(prefix)) {
+      reloadUserFunctions();
+      reloaded = true;
+    }
+
+    if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+      // last chance
       reloadUserFunctions();
     }
 
     if (! UserFunctions[prefix].hasOwnProperty(name)) {
-      THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+      THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
     }
 
     toCall = UserFunctions[prefix][name].func;
