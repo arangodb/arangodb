@@ -493,6 +493,9 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   var i;
   var url;
   var r;
+  var serverStates = {};
+  var error = false;
+
   for (i = 0;i < run.endpoints.length;i++) {
     console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
     url = endpointToURL(run.endpoints[i])+"/_admin/shutdown";
@@ -514,13 +517,20 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   for (i = 0;i < run.pids.length;i++) {
     var s = statusExternal(run.pids[i]);
     if (s.status !== "TERMINATED") {
-      console.info("Shutting down %s the hard way...",
-                   JSON.stringify(run.pids[i]));
-      killExternal(run.pids[i]);
-      console.info("done.");
+      if (s.hasOwnProperty('signal')) {
+        error = true;
+        console.info("done - with problems: " + s);
+      }
+      else {
+        console.info("Shutting down %s the hard way...",
+                     JSON.stringify(run.pids[i]));
+        s.killedState = killExternal(run.pids[i]);
+        console.info("done.");
+      }
+      serverStates[run.pids[i]] = s;
     }
   }
-  return {"error": false, "isStartServers": true};
+  return {"error": error, "isStartServers": true, "serverStates" : serverStates};
 };
 
 cleanupActions.startAgent = function (dispatchers, cmd) {
