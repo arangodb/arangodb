@@ -224,16 +224,6 @@ function extendContext (context, app, root) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief converts the mount point into the default prefix
-////////////////////////////////////////////////////////////////////////////////
-
-function prefixFromMount (mount) {
-  "use strict";
-
-  return mount.substr(1).replace(/-/g, "_").replace(/\//g, "_");
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief finds mount document from mount path or identifier
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -484,82 +474,6 @@ function installAssets (app, routes) {
       }
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes an app script
-////////////////////////////////////////////////////////////////////////////////
-
-function executeAppScript (app, name, mount, prefix) {
-  "use strict";
-
-  var desc = app._manifest;
-
-  if (! desc) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: "Invalid application manifest, app " + arangodb.inspect(app)
-    });
-  }
-
-  var root;
-  var devel = false;
-
-  if (app._manifest.isSystem) {
-    root = module.systemAppPath();
-  }
-  else if (app._id.substr(0,4) === "app:") {
-    root = module.appPath();
-  }
-  else if (app._id.substr(0,4) === "dev:") {
-    root = module.devAppPath();
-    devel = true;
-  }
-  else {
-    throw new ArangoError({
-      errorNum: errors.ERROR_CANNOT_EXTRACT_APPLICATION_ROOT.code,
-      errorMessage: "Cannot extract root path for app '" + app._id + "', unknown type"
-    });
-  }
-
-  if (desc.hasOwnProperty(name)) {
-    var appContext = app.createAppContext();
-
-    appContext.mount = mount;
-    appContext.collectionPrefix = prefix;
-    appContext.options = app._options;
-    appContext.configuration = app._options.configuration;
-    appContext.basePath = fs.join(root, app._path);
-    appContext.baseUrl = '/_db/' + encodeURIComponent(arangodb.db._name()) + mount;
-
-    appContext.isDevelopment = devel;
-    appContext.isProduction = ! devel;
-    appContext.manifest = app._manifest;
-
-    extendContext(appContext, app, root);
-
-    app.loadAppScript(appContext, desc[name]);
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up an app
-////////////////////////////////////////////////////////////////////////////////
-
-function setupApp (app, mount, prefix) {
-  "use strict";
-
-  return executeAppScript(app, "setup", mount, prefix);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down an app
-////////////////////////////////////////////////////////////////////////////////
-
-function teardownApp (app, mount, prefix) {
-  "use strict";
-
-  return executeAppScript(app, "teardown", mount, prefix);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1374,22 +1288,45 @@ exports.initializeFoxx = function () {
   }
 };
 
+(function() {
+  "use strict";
 // -----------------------------------------------------------------------------
 // --CHAPTER--                                                         used code
 // -----------------------------------------------------------------------------
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+var appCache = {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup app in cache
+/// Returns either the app or undefined if it is not cached.
+////////////////////////////////////////////////////////////////////////////////
+
+var lookupApp = function(mount) {
+  return appCache[mount];
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts the mount point into the default prefix
+////////////////////////////////////////////////////////////////////////////////
+
+var prefixFromMount = function(mount) {
+  return mount.substr(1).replace(/-/g, "_").replace(/\//g, "_");
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validates a manifest file and returns it.
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateManifestFile(file) {
-  "use strict";
+var validateManifestFile = function(file) {
   var mf;
   if (!fs.exists(file)) {
     return;
@@ -1409,7 +1346,7 @@ function validateManifestFile(file) {
     return;
   }
   return mf;
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the root path for application. Knows about system apps
@@ -1443,6 +1380,67 @@ var computeAppPath = function(mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief executes an app script
+////////////////////////////////////////////////////////////////////////////////
+
+var executeAppScript = function(app, name, mount, prefix) {
+  var desc = app._manifest;
+
+  if (! desc) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+      errorMessage: "Invalid application manifest, app " + arangodb.inspect(app)
+    });
+  }
+
+  var root;
+  var devel = false;
+  root = computeRootAppPath(mount);
+
+  if (desc.hasOwnProperty(name)) {
+    var appContext = app.createAppContext();
+
+    appContext.mount = mount;
+    appContext.collectionPrefix = prefix;
+    appContext.options = app._options;
+    appContext.configuration = app._options.configuration;
+    appContext.basePath = fs.join(root, app._path);
+    appContext.baseUrl = '/_db/' + encodeURIComponent(arangodb.db._name()) + mount;
+
+    appContext.isDevelopment = devel;
+    appContext.isProduction = ! devel;
+    appContext.manifest = app._manifest;
+
+    extendContext(appContext, app, root);
+
+    app.loadAppScript(appContext, desc[name]);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up an app
+////////////////////////////////////////////////////////////////////////////////
+
+function setupApp (app, mount, prefix) {
+  "use strict";
+
+  return executeAppScript(app, "setup", mount, prefix);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down an app
+////////////////////////////////////////////////////////////////////////////////
+
+function teardownApp (app, mount, prefix) {
+  "use strict";
+
+  return executeAppScript(app, "teardown", mount, prefix);
+}
+
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1471,20 +1469,20 @@ var computeAppPath = function(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Creates an app with options and returns it
 /// All errors are handled including app not found. Returns undefined if app is invalid.
+/// If the app is valid it will be added into the local app cache.
 ////////////////////////////////////////////////////////////////////////////////
 
 var createApp = function(mount, options) {
-  "use strict";
-  var app = module.createApp(appId, options || {});
+  var description = appDescription(mount);
+  var app = module.createApp(description, options || {});
   if (app === null) {
     console.errorLines(
-      "Cannot find application '%s'", appId);
+      "Cannot find application '%s'", mount);
     return;
   }
+  appCache[mount] = app;
   return app;
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Extracts an app from zip and moves it to temporary path
@@ -1646,13 +1644,10 @@ var setup = function (mount) {
     [ [ "Mount path", "string" ] ],
     [ mount ] );
 
-  // Load Manifest information
-  // var doc = mountFromId(mount);
-
-  var app = createApp(doc.app);
+  var app = lookupApp(mount);
 
   try {
-    setupApp(app, mount, doc.options.collectionPrefix);
+    setupApp(app, mount, prefixFromMount(mount));
   } catch (err) {
     console.errorLines(
       "Setup not possible for mount '%s': %s", mount, String(err.stack || err));
@@ -1666,7 +1661,8 @@ var setup = function (mount) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 var scanFoxx = function(mount, options) {
-  require("console").warn("Scanning of Foxx App not implemented yet");
+  delete appCache[mount];
+  createApp(mount, options);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1738,7 +1734,7 @@ exports.search = store.search;
 exports.searchJson = store.searchJson;
 exports.update = store.update;
 exports.info = store.info;
-
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
