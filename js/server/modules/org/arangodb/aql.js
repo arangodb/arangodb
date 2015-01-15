@@ -141,18 +141,18 @@ function resetRegexCache () {
 function reloadUserFunctions () {
   "use strict";
 
-  var c;
-
-  c = INTERNAL.db._collection("_aqlfunctions");
+  var prefix = DB_PREFIX();
+  var c = INTERNAL.db._collection("_aqlfunctions");
 
   if (c === null) {
+    // collection not found. now reset all user functions
+    UserFunctions = { };
+    UserFunctions[prefix] = { };
     return;
   }
 
   var foundError = false;
-  var prefix = DB_PREFIX();
-
-  UserFunctions[prefix] = { };
+  var functions = { };
 
   c.toArray().forEach(function (f) {
     var code = "(function() { var callback = " + f.code + "; return callback; })();";
@@ -161,7 +161,7 @@ function reloadUserFunctions () {
     try {
       var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
 
-      UserFunctions[prefix][key.toUpperCase()] = {
+      functions[key.toUpperCase()] = {
         name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
@@ -169,26 +169,23 @@ function reloadUserFunctions () {
 
     }
     catch (err) {
+      // in case a single function is broken, we still continue with the other ones
+      // so that at least some functions remain usable
       foundError = true;
     }
   });
+  
+  // now reset the functions for all databases
+  // this ensures that functions of other databases will be reloaded next 
+  // time (the reload does not necessarily needed to be carried out in the
+  // database in which the function was registered)
+  UserFunctions = { }; 
+  UserFunctions[prefix] = functions;
 
   if (foundError) {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the query engine
-////////////////////////////////////////////////////////////////////////////////
-
-function resetEngine () {
-  "use strict";
-
-  resetRegexCache();
-  reloadUserFunctions();
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
@@ -526,32 +523,22 @@ function COMPILE_REGEX (regex, modifiers) {
 function FCALL_USER (name, parameters) {
   "use strict";
 
-  var reloaded = false;
   var prefix = DB_PREFIX();
   if (! UserFunctions.hasOwnProperty(prefix)) {
     reloadUserFunctions();
-    reloaded = true;
-
-    if (! UserFunctions.hasOwnProperty(prefix)) {
-      THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
-    }
   }
   
-  if (! reloaded && ! UserFunctions[prefix].hasOwnProperty(name)) {
-    reloadUserFunctions();
+  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
   }
 
-  if (UserFunctions[prefix].hasOwnProperty(name)) {
-    try {
-      return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
-    }
-    catch (err) {
-      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
-      return null;
-    }
+  try {
+    return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
   }
-
-  THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+  catch (err) {
+    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
+    return null;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -569,8 +556,7 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
       reloadUserFunctions();
     }
 
-    if (! UserFunctions.hasOwnProperty(prefix) ||
-        ! UserFunctions[prefix].hasOwnProperty(name)) {
+    if (! UserFunctions[prefix].hasOwnProperty(name)) {
       THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
     }
 
@@ -7623,7 +7609,8 @@ exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
 exports.reload = reloadUserFunctions;
 
 // initialise the query engine
-resetEngine();
+resetRegexCache();
+reloadUserFunctions();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
