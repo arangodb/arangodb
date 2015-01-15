@@ -411,7 +411,7 @@ int main (int argc, char* argv[]) {
     // give information about import
     if (ok) {
       cout << "created:          " << ih.getImportedLines() << endl;
-      cout << "errors:           " << ih.getErrorLines() << endl;
+      cout << "warnings/errors:  " << ih.getErrorLines() << endl;
       cout << "total:            " << ih.getReadLines() << endl;
     }
     else {

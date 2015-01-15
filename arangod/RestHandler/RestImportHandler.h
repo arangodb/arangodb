@@ -129,10 +129,18 @@ namespace triagens {
                           std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief construct an error message
+////////////////////////////////////////////////////////////////////////////////
+
+      std::string buildParseError (size_t,
+                                   char const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
       int handleSingleDocument (RestImportTransaction&,
+                                char const*,
                                 TRI_json_t const*,
                                 std::string&,
                                 bool,
