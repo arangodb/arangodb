@@ -78,7 +78,6 @@ namespace triagens {
         enum MethodType {
           TYPE_UNKNOWN = 0,
           TYPE_RELOAD_ROUTING,
-          TYPE_FLUSH_MODULE_CACHE,
           TYPE_RELOAD_AQL,
           TYPE_BOOTSTRAP_COORDINATOR
         };
@@ -90,9 +89,6 @@ namespace triagens {
         static MethodType getType (std::string const& type) {
           if (type == "reloadRouting") {
             return TYPE_RELOAD_ROUTING;
-          }
-          if (type == "flushModuleCache") {
-            return TYPE_FLUSH_MODULE_CACHE;
           }
           if (type == "reloadAql") {
             return TYPE_RELOAD_AQL;
@@ -112,8 +108,6 @@ namespace triagens {
           switch (type) {
             case TYPE_RELOAD_ROUTING:
               return "reloadRouting";
-            case TYPE_FLUSH_MODULE_CACHE:
-              return "flushModuleCache";
             case TYPE_RELOAD_AQL:
               return "reloadAql";
             case TYPE_BOOTSTRAP_COORDINATOR:
@@ -132,8 +126,6 @@ namespace triagens {
           switch (type) {
             case TYPE_RELOAD_ROUTING:
               return CodeReloadRouting;
-            case TYPE_FLUSH_MODULE_CACHE:
-              return CodeFlushModuleCache;
             case TYPE_RELOAD_AQL:
               return CodeReloadAql;
             case TYPE_BOOTSTRAP_COORDINATOR:
@@ -149,7 +141,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string const CodeReloadRouting;
-        static std::string const CodeFlushModuleCache;
         static std::string const CodeReloadAql;
         static std::string const CodeBootstrapCoordinator;
     };

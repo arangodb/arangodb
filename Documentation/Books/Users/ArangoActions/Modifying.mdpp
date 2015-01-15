@@ -117,31 +117,6 @@ arangosh> require("internal").reloadRouting();
 
 in order to rebuild the cache.
 
-!SUBSECTION The Modules Cache
-
-If you use a dynamic action and this action is stored in module, then the
-module functions are also stored in a cache in order to avoid parsing the
-JavaScript code again and again.
-
-Whenever you change the *modules* collections manually, you need to call
-
-```js
-arangosh> require("internal").flushServerModules();
-```
-
-in order to rebuild the cache.
-
-!SUBSECTION Flush Order
-
-If you define a dynamic routing and the controller, then you need to flush the
-caches in a particular order. In order to build the routes, the module
-information must be known. Therefore, you need to flush the modules caches
-first.
-
-```js
-arangosh> require("internal").flushServerModules();
-arangosh> require("internal").reloadRouting();
-```
 
 !SECTION Advanced Usages
 
@@ -258,7 +233,6 @@ After any modification to the routing or actions, it is thus recommended to
 make the changes "live" by calling the following functions from within arangosh:
 
 ```js
-arangosh> require("internal").flushServerModules();
 arangosh> require("internal").reloadRouting();
 ```
 
