@@ -708,10 +708,8 @@ namespace triagens {
           }
         }
 
-        TRI_json_t const* importResult;
-
         // look up the "created" flag. This returns a pointer, not a copy
-        importResult = TRI_LookupObjectJson(json, "created");
+        TRI_json_t const* importResult = TRI_LookupObjectJson(json, "created");
 
         if (TRI_IsNumberJson(importResult)) {
           _numberOk += (size_t) importResult->_value._number;
