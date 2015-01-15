@@ -433,10 +433,23 @@ function checkInstanceAlive(instanceInfo, options) {
 }
 
 function shutdownInstance (instanceInfo, options) {
+  if (!checkInstanceAlive(instanceInfo, options)) {
+      print("Server already dead, doing nothing. This shouldn't happen?");    
+  }
   if (options.cluster) {
-    instanceInfo.kickstarter.shutdown();
+    var rc = instanceInfo.kickstarter.shutdown();
     if (options.cleanup) {
       instanceInfo.kickstarter.cleanup();
+    }
+    if (rc.error) {
+      for (var i in rc.serverStates) {
+        if (rc.serverStates.hasOwnProperty(i)){
+          if (rc.serverStates[i].hasOwnProperty('signal')) {
+            print("Server shut down with : " + rc.serverStates[i] + " marking run as crashy.");
+            serverCrashed = true;
+          }
+        }
+      }
     }
   }
   else {
@@ -444,15 +457,35 @@ function shutdownInstance (instanceInfo, options) {
       download(instanceInfo.url+"/_admin/shutdown","",
                makeAuthorisationHeaders(options));
 
-      if (typeof(options.valgrind) === 'string') {
-        print("Waiting for server shut down");
-        var res = statusExternal(instanceInfo.pid, true);
-        print("Server gone: ");
-        print(res);
-      }
-      else {
-        wait(10);
-        killExternal(instanceInfo.pid);
+      print("Waiting for server shut down");
+      var count = 0;
+      while (1) {
+        instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
+        if (instanceInfo.exitStatus.status === "RUNNING") {
+          count ++;
+          if (typeof(options.valgrind) === 'string') {
+            continue;
+          }
+          if (count > 10) {
+            print("forcefully terminating " + instanceInfo.pid + " after 10 s grace period.");
+            serverCrashed = true;
+            killExternal(instanceInfo.pid);
+            break;
+          }
+          else {
+            wait(1);
+          }
+        }      
+        else if (instanceInfo.exitStatus.status !== "TERMINATED") {
+          if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
+            print("Server shut down with : " + instanceInfo.exitStatus + " marking build as crashy.");
+            serverCrashed = true;
+          }
+        }
+        else {
+          print("Server shutdown: Success.");
+          break; // Success.
+        }
       }
     }
     else {
