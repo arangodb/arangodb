@@ -7,6 +7,8 @@ v2.5.0 (XXXX-XX-XX)
 v2.4.1 (XXXX-XX-XX)
 -------------------
 
+* better diagnostics for arangoimp
+
 * fixed invalid result of HTTP REST API method `/_admin/foxx/rescan`
 
 * fixed possible segmentation fault when passing a Buffer object into a V8 function 
