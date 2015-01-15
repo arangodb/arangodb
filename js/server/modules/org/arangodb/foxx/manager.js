@@ -178,52 +178,6 @@ function checkManifest (filename, mf) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief validates a manifest file and returns it.
-/// All errors are handled including file not found. Returns undefined if manifest is invalid
-////////////////////////////////////////////////////////////////////////////////
-
-function validateManifestFile(file) {
-  "use strict";
-  var mf;
-  if (!fs.exists(file)) {
-    return;
-  }
-  try {
-    mf = JSON.parse(fs.read(file));
-  } catch (err) {
-    console.errorLines(
-      "Cannot parse app manifest '%s': %s", file, String(err));
-    return;
-  }
-  try {
-    checkManifest(file, mf);
-  } catch (err) {
-    require("org/arangodb/foxx/logger")._logMount("ERROR", file, "klaus");
-    console.errorLines(
-      "Manifest file '%s' invalid: %s", file, String(err));
-    return;
-  }
-  return mf;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Creates an app with options and returns it
-/// All errors are handled including app not found. Returns undefined if app is invalid.
-////////////////////////////////////////////////////////////////////////////////
-
-function createApp(appId, options) {
-  "use strict";
-  var app = module.createApp(appId, options || {});
-  if (app === null) {
-    console.errorLines(
-      "Cannot find application '%s'", appId);
-    return;
-  }
-  return app;
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief extend a context with some helper functions
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -998,36 +952,6 @@ exports.mount = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a Foxx application
-///
-/// Input:
-/// * mount: the mount identifier or path
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-
-exports.setup = function (mount) {
-  "use strict";
-
-  checkParameter(
-    "setup(<mount>)",
-    [ [ "Mount identifier", "string" ] ],
-    [ mount ] );
-
-  var doc = mountFromId(mount);
-  var app = createApp(doc.app);
-
-  try {
-    setupApp(app, mount, doc.options.collectionPrefix);
-  } catch (err) {
-    console.errorLines(
-      "Setup not possible for mount '%s': %s", mount, String(err.stack || err));
-    throw err;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief tears down a Foxx application
 ///
 /// Input:
@@ -1451,8 +1375,115 @@ exports.initializeFoxx = function () {
 };
 
 // -----------------------------------------------------------------------------
+// --CHAPTER--                                                         used code
+// -----------------------------------------------------------------------------
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validates a manifest file and returns it.
+/// All errors are handled including file not found. Returns undefined if manifest is invalid
+////////////////////////////////////////////////////////////////////////////////
+
+function validateManifestFile(file) {
+  "use strict";
+  var mf;
+  if (!fs.exists(file)) {
+    return;
+  }
+  try {
+    mf = JSON.parse(fs.read(file));
+  } catch (err) {
+    console.errorLines(
+      "Cannot parse app manifest '%s': %s", file, String(err));
+    return;
+  }
+  try {
+    checkManifest(file, mf);
+  } catch (err) {
+    console.errorLines(
+      "Manifest file '%s' invalid: %s", file, String(err));
+    return;
+  }
+  return mf;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the root path for application. Knows about system apps
+////////////////////////////////////////////////////////////////////////////////
+
+var computeRootAppPath = function(mount) {
+  if (/^\/_/.test(mount)) {
+    // Must be a system app
+    return module.systemAppPath();
+  }
+  // A standard app
+  return module.appPath();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transforms a mount point to a sub-path relative to root
+////////////////////////////////////////////////////////////////////////////////
+
+var transformMountToPath = function(mount) {
+  return fs.join.apply(this, mount.split("/").push("APP"));
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the application path for mount point
+////////////////////////////////////////////////////////////////////////////////
+
+var computeAppPath = function(mount) {
+  var root = computeRootAppPath(mount);
+  var mountPath = transformMountToPath(mount);
+  return fs.join(root, mountPath);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the app path and manifest
+////////////////////////////////////////////////////////////////////////////////
+
+  var appDescription = function (mount, options) {
+
+    var root = computeRootAppPath(mount);
+    var path = transformMountToPath(mount);
+
+    var file = fs.join(root, path, "manifest.json");
+    var manifest = validateManifestFile(file);
+
+    if (manifest === undefined) {
+      //TODO Error Handeling
+      return;
+    }
+
+    return {
+      id: mount,
+      root: root,
+      path: path,
+      manifest: manifest,
+      options: options
+    };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Creates an app with options and returns it
+/// All errors are handled including app not found. Returns undefined if app is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+var createApp = function(mount, options) {
+  "use strict";
+  var app = module.createApp(appId, options || {});
+  if (app === null) {
+    console.errorLines(
+      "Cannot find application '%s'", appId);
+    return;
+  }
+  return app;
+};
+
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1599,6 +1630,44 @@ var installAppFromLocal = function(path, targetPath) {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets up a Foxx application
+///
+/// Input:
+/// * mount: the mount identifier or path
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+var setup = function (mount) {
+  checkParameter(
+    "setup(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+
+  // Load Manifest information
+  // var doc = mountFromId(mount);
+
+  var app = createApp(doc.app);
+
+  try {
+    setupApp(app, mount, doc.options.collectionPrefix);
+  } catch (err) {
+    console.errorLines(
+      "Setup not possible for mount '%s': %s", mount, String(err.stack || err));
+    throw err;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Scans the sources of the given mountpoint and publishes the routes
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var scanFoxx = function(mount, options) {
+  require("console").warn("Scanning of Foxx App not implemented yet");
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Installs a new foxx application on the given mount point.
@@ -1613,14 +1682,14 @@ var install = function(appInfo, mount, options) {
       [ "Mount path", "string" ] ],
     [ appInfo, mount ] );
 
-  var mountParts = mount.split("/");
-  var pathParts = [module.appPath()].concat(mountParts);
-  var targetPath = fs.join.apply(this, pathParts);
-  if (fs.exists(fs.join(targetPath, "APP"))) {
+  var targetPath = computeAppPath(mount, true);
+  if (fs.exists(targetPath)) {
     throw "An app is already installed at this location.";
   }
   fs.makeDirectoryRecursive(targetPath);
-  targetPath = fs.join(targetPath, "APP");
+  // Remove the empty APP folder.
+  // Ohterwise move will fail.
+  fs.removeDirectoryRecursive(targetPath);
 
   if (appInfo === "EMPTY") {
     // Make Empty app
@@ -1635,6 +1704,8 @@ var install = function(appInfo, mount, options) {
     // try appstore
     throw "Not implemented yet";
   }
+  scanFoxx(mount, options);
+  setup(mount);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
