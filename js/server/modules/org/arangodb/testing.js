@@ -1607,7 +1607,7 @@ function unitTestPrettyPrintResults(r) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
     }
     if (r.crashed === true) {
-      print("   We had at least one unclean shutdown of an arangod during the testrun.")
+      print("   We had at least one unclean shutdown of an arangod during the testrun.");
     }
   }
   catch (x) {
