@@ -8,13 +8,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "859446088", 
+          "_rev" : "859886355", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "859249480", 
+          "_rev" : "859689747", 
           "name" : "Charly" 
         } 
       ], 
@@ -22,7 +22,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/charlyAndDiana", 
           "_key" : "charlyAndDiana", 
-          "_rev" : "860232520", 
+          "_rev" : "860672787", 
           "_from" : "male/charly", 
           "_to" : "female/diana", 
           "type" : "married" 
@@ -31,13 +31,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "859446088", 
+        "_rev" : "859886355", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "male/charly", 
         "_key" : "charly", 
-        "_rev" : "859249480", 
+        "_rev" : "859689747", 
         "name" : "Charly" 
       } 
     }, 
@@ -46,19 +46,19 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "859446088", 
+          "_rev" : "859886355", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "859249480", 
+          "_rev" : "859689747", 
           "name" : "Charly" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "858725192", 
+          "_rev" : "859165459", 
           "name" : "Alice" 
         } 
       ], 
@@ -66,7 +66,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/charlyAndDiana", 
           "_key" : "charlyAndDiana", 
-          "_rev" : "860232520", 
+          "_rev" : "860672787", 
           "_from" : "male/charly", 
           "_to" : "female/diana", 
           "type" : "married" 
@@ -74,7 +74,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/aliceAndCharly", 
           "_key" : "aliceAndCharly", 
-          "_rev" : "860035912", 
+          "_rev" : "860476179", 
           "_from" : "female/alice", 
           "_to" : "male/charly", 
           "type" : "friend" 
@@ -83,13 +83,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "859446088", 
+        "_rev" : "859886355", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "858725192", 
+        "_rev" : "859165459", 
         "name" : "Alice" 
       } 
     }, 
@@ -98,13 +98,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "859446088", 
+          "_rev" : "859886355", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "859052872", 
+          "_rev" : "859493139", 
           "name" : "Bob" 
         } 
       ], 
@@ -112,7 +112,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/bobAndDiana", 
           "_key" : "bobAndDiana", 
-          "_rev" : "860429128", 
+          "_rev" : "860869395", 
           "_from" : "male/bob", 
           "_to" : "female/diana", 
           "type" : "friend" 
@@ -121,13 +121,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "859446088", 
+        "_rev" : "859886355", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "male/bob", 
         "_key" : "bob", 
-        "_rev" : "859052872", 
+        "_rev" : "859493139", 
         "name" : "Bob" 
       } 
     }, 
@@ -136,19 +136,19 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "female/diana", 
           "_key" : "diana", 
-          "_rev" : "859446088", 
+          "_rev" : "859886355", 
           "name" : "Diana" 
         }, 
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "859052872", 
+          "_rev" : "859493139", 
           "name" : "Bob" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "858725192", 
+          "_rev" : "859165459", 
           "name" : "Alice" 
         } 
       ], 
@@ -156,7 +156,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/bobAndDiana", 
           "_key" : "bobAndDiana", 
-          "_rev" : "860429128", 
+          "_rev" : "860869395", 
           "_from" : "male/bob", 
           "_to" : "female/diana", 
           "type" : "friend" 
@@ -164,7 +164,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/aliceAndBob", 
           "_key" : "aliceAndBob", 
-          "_rev" : "859773768", 
+          "_rev" : "860214035", 
           "_from" : "female/alice", 
           "_to" : "male/bob", 
           "type" : "married" 
@@ -173,13 +173,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
       "source" : { 
         "_id" : "female/diana", 
         "_key" : "diana", 
-        "_rev" : "859446088", 
+        "_rev" : "859886355", 
         "name" : "Diana" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "858725192", 
+        "_rev" : "859165459", 
         "name" : "Alice" 
       } 
     }, 
@@ -188,13 +188,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "male/bob", 
           "_key" : "bob", 
-          "_rev" : "859052872", 
+          "_rev" : "859493139", 
           "name" : "Bob" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "858725192", 
+          "_rev" : "859165459", 
           "name" : "Alice" 
         } 
       ], 
@@ -202,7 +202,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/aliceAndBob", 
           "_key" : "aliceAndBob", 
-          "_rev" : "859773768", 
+          "_rev" : "860214035", 
           "_from" : "female/alice", 
           "_to" : "male/bob", 
           "type" : "married" 
@@ -211,13 +211,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
       "source" : { 
         "_id" : "male/bob", 
         "_key" : "bob", 
-        "_rev" : "859052872", 
+        "_rev" : "859493139", 
         "name" : "Bob" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "858725192", 
+        "_rev" : "859165459", 
         "name" : "Alice" 
       } 
     }, 
@@ -226,13 +226,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "male/charly", 
           "_key" : "charly", 
-          "_rev" : "859249480", 
+          "_rev" : "859689747", 
           "name" : "Charly" 
         }, 
         { 
           "_id" : "female/alice", 
           "_key" : "alice", 
-          "_rev" : "858725192", 
+          "_rev" : "859165459", 
           "name" : "Alice" 
         } 
       ], 
@@ -240,7 +240,7 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
         { 
           "_id" : "relation/aliceAndCharly", 
           "_key" : "aliceAndCharly", 
-          "_rev" : "860035912", 
+          "_rev" : "860476179", 
           "_from" : "female/alice", 
           "_to" : "male/charly", 
           "type" : "friend" 
@@ -249,13 +249,13 @@ arangosh> g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
       "source" : { 
         "_id" : "male/charly", 
         "_key" : "charly", 
-        "_rev" : "859249480", 
+        "_rev" : "859689747", 
         "name" : "Charly" 
       }, 
       "destination" : { 
         "_id" : "female/alice", 
         "_key" : "alice", 
-        "_rev" : "858725192", 
+        "_rev" : "859165459", 
         "name" : "Alice" 
       } 
     } 

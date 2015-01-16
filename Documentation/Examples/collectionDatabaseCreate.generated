@@ -1,5 +1,5 @@
 arangosh> c = db._create("users");
-[ArangoCollection 742726472, "users" (type document, status loaded)]
+[ArangoCollection 743232275, "users" (type document, status loaded)]
 arangosh> c.properties();
 { 
   "doCompact" : true, 

@@ -1,5 +1,4 @@
-
-v2.3.5 (2015-XX-XX)
+v2.3.5 (2015-01-16)
 -------------------
 
 * fixed intermittent 404 errors in Foxx apps after mounting or unmounting apps

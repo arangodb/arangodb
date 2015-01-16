@@ -4,6 +4,6 @@ arangosh> graph.relation.save("male/bob", "female/alice", {type: "married", _key
 { 
   "error" : false, 
   "_id" : "relation/bobAndAlice", 
-  "_rev" : "1093868360", 
+  "_rev" : "1093980947", 
   "_key" : "bobAndAlice" 
 }

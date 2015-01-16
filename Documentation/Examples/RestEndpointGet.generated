@@ -5,7 +5,7 @@ content-type: application/json; charset=utf-8
 
 [ 
   { 
-    "endpoint" : "tcp://127.0.0.1:34503", 
+    "endpoint" : "tcp://127.0.0.1:34195", 
     "databases" : [ ] 
   }, 
   { 

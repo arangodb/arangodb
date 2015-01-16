@@ -1,25 +1,25 @@
 arangosh> a1 = db.example.save({"a" : 1});
 { 
   "error" : false, 
-  "_id" : "example/551230280", 
-  "_rev" : "551230280", 
-  "_key" : "551230280" 
+  "_id" : "example/551473939", 
+  "_rev" : "551473939", 
+  "_key" : "551473939" 
 }
 arangosh> a2 = db.example.update(a1, {"b" : 2, "c" : 3});
 { 
   "error" : false, 
-  "_id" : "example/551230280", 
-  "_rev" : "551623496", 
-  "_key" : "551230280" 
+  "_id" : "example/551473939", 
+  "_rev" : "551867155", 
+  "_key" : "551473939" 
 }
 arangosh> a3 = db.example.update(a1, {"d" : 4});
 [ArangoError 1200: precondition failed]
 arangosh> a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
 { 
   "error" : false, 
-  "_id" : "example/551230280", 
-  "_rev" : "552278856", 
-  "_key" : "551230280" 
+  "_id" : "example/551473939", 
+  "_rev" : "552522515", 
+  "_key" : "551473939" 
 }
 arangosh> db.example.document(a4);
 { 
@@ -28,16 +28,16 @@ arangosh> db.example.document(a4);
   "c" : 3, 
   "e" : 5, 
   "f" : 6, 
-  "_id" : "example/551230280", 
-  "_rev" : "552278856", 
-  "_key" : "551230280" 
+  "_id" : "example/551473939", 
+  "_rev" : "552522515", 
+  "_key" : "551473939" 
 }
 arangosh> a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
 { 
   "error" : false, 
-  "_id" : "example/551230280", 
-  "_rev" : "552541000", 
-  "_key" : "551230280" 
+  "_id" : "example/551473939", 
+  "_rev" : "552784659", 
+  "_key" : "551473939" 
 }
 arangosh> db.example.document(a5);
 { 
@@ -46,7 +46,7 @@ arangosh> db.example.document(a5);
   "c" : 9, 
   "e" : 42, 
   "f" : 6, 
-  "_id" : "example/551230280", 
-  "_rev" : "552541000", 
-  "_key" : "551230280" 
+  "_id" : "example/551473939", 
+  "_rev" : "552784659", 
+  "_key" : "551473939" 
 }

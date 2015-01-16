@@ -1,14 +1,14 @@
-shell> curl -X PUT --header 'If-Match: "1695619912"' --data-binary @- --dump - http://localhost:8529/_api/document/products/1695292232?policy=last
+shell> curl -X PUT --header 'If-Match: "1651102483"' --data-binary @- --dump - http://localhost:8529/_api/document/products/1650774803?policy=last
 {}
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: "1695882056"
-location: /_db/_system/_api/document/products/1695292232
+etag: "1651364627"
+location: /_db/_system/_api/document/products/1650774803
 
 { 
   "error" : false, 
-  "_id" : "products/1695292232", 
-  "_rev" : "1695882056", 
-  "_key" : "1695292232" 
+  "_id" : "products/1650774803", 
+  "_rev" : "1651364627", 
+  "_key" : "1650774803" 
 }
