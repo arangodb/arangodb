@@ -3,6 +3,16 @@
 require 'rubygems'
 require 'httparty'
 require 'json'
+require 'rspec'
+
+RSpec.configure do |config|
+  config.expect_with :rspec do |c|
+    c.syntax = [ :should, :expect ]
+  end
+  config.mock_with :rspec do |c|
+    c.syntax = [ :should, :expect ]
+  end
+end
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 $user = ENV['ARANGO_USER']
