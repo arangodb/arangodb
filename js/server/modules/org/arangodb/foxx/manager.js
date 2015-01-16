@@ -1773,49 +1773,6 @@ exports.listDevelopment = utils.listDevelopment;
 exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// SECTION Public functions
-////////////////////////////////////////////////////////////////////////////////
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx application on the given mount point.
-///
-/// TODO: Long Documentation!
-////////////////////////////////////////////////////////////////////////////////
-var install = function(appInfo, mount, options) {
-
-  if (appInfo === "EMPTY") {
-    // Make Empty app
-  } else if (/^GIT:/.test(appInfo)) {
-    // dl from git
-  } else if (/^https?:/.test(appInfo)) {
-    // dl from url
-  } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
-    // on local system
-  } else {
-    // try appstore
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Exports
-////////////////////////////////////////////////////////////////////////////////
-
-/*
- exports.install = install;
- exports.uninstall = uninstall;
- exports.teardown = teardown;
- exports.replace = replace;
- exports.upgrade = upgrade;
-
- exports.mountedApp = utils.mountedApp;
-*/
-
-exports.list = utils.list;
-exports.listJson = utils.listJson;
-exports.listDevelopment = utils.listDevelopment;
-exports.listDevelopmentJson = utils.listDevelopmentJson;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx store module.
 ////////////////////////////////////////////////////////////////////////////////
 
