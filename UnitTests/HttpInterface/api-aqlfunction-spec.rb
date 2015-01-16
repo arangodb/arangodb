@@ -233,7 +233,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response.length.should eq(1)
         doc.parsed_response[0]['name'].should eq("UnitTests::mytest1")
-        doc.parsed_response[0]['code'].should eq("( function () { return   3 * 5; } ) ")
+        doc.parsed_response[0]['code'].should eq("( function () { return   3 * 5; } )")
       end
   
     end
