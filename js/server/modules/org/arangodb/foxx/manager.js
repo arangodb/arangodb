@@ -866,40 +866,6 @@ exports.mount = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a Foxx application
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-
-exports.teardown = function (mount) {
-  "use strict";
-
-  checkParameter(
-    "teardown(<mount>)",
-    [ [ "Mount identifier", "string" ] ],
-    [ mount ] );
-
-  var appId;
-
-  try {
-    var doc = mountFromId(mount);
-
-    appId = doc.app;
-    var app = createApp(appId);
-
-    teardownApp(app, mount, doc.options.collectionPrefix);
-  } catch (err) {
-    console.errorLines(
-      "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
-    throw err;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unmounts a Foxx application
 ///
 /// Input:
@@ -1629,7 +1595,7 @@ var installAppFromLocal = function(path, targetPath) {
 /// @brief sets up a Foxx application
 ///
 /// Input:
-/// * mount: the mount identifier or path
+/// * mount: the mount path starting with a "/"
 ///
 /// Output:
 /// -
@@ -1653,6 +1619,32 @@ var setup = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a Foxx application
+///
+/// Input:
+/// * mount: the mount path starting with a "/"
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+var teardown = function (mount) {
+  checkParameter(
+    "teardown(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+
+  var app = lookupApp(mount);
+  try {
+    teardownApp(app, mount, prefixFromMount(mount));
+  } catch (err) {
+    console.errorLines(
+      "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
+    throw err;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Scans the sources of the given mountpoint and publishes the routes
 ///
 /// TODO: Long Documentation!
@@ -1665,18 +1657,10 @@ var scanFoxx = function(mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx application on the given mount point.
-///
-/// TODO: Long Documentation!
+/// @brief Internal install function. Check install.
+/// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
-var install = function(appInfo, mount, options) {
-
-  checkParameter(
-    "mount(<appInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
-    [ appInfo, mount ] );
-
+var _install = function(appInfo, mount, options, runSetup) {
   var targetPath = computeAppPath(mount, true);
   if (fs.exists(targetPath)) {
     throw "An app is already installed at this location.";
@@ -1700,33 +1684,97 @@ var install = function(appInfo, mount, options) {
     throw "Not implemented yet";
   }
   scanFoxx(mount, options);
-  setup(mount);
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Get information for app mounted at mount
-////////////////////////////////////////////////////////////////////////////////
-var mountedApp = function(mount) {
-  var app = lookupApp(mount);
-  if (app === undefined) {
-    throw "No app found for mount " + mount;
+  if (runSetup) {
+    setup(mount);
   }
-  return app;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Installs a new foxx application on the given mount point.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var install = function(appInfo, mount, options) {
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+  _install(appInfo, mount, options, true);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Internal install function. Check install.
+/// Does not check parameters and throws errors.
+////////////////////////////////////////////////////////////////////////////////
+var _uninstall = function(mount) {
+  var targetPath = computeAppPath(mount, true);
+  if (!fs.exists(targetPath)) {
+    throw "No foxx app found at this location.";
+  }
+  teardown(mount);
+  // TODO Delete routing?
+  utils.tmp_getStorage().removeByExample({mount: mount}); 
+  delete appCache[mount];
+  // Remove the APP folder.
+  fs.removeDirectoryRecursive(targetPath, true);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Uninstalls the foxx application on the given mount point.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var uninstall = function(mount) {
+  checkParameter(
+    "mount(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  _uninstall(mount);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Replaces a foxx application on the given mount point by an other one.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var replace = function(appInfo, mount, options) {
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+  _uninstall(mount, true);
+  _install(appInfo, mount, options, true);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Upgrade a foxx application on the given mount point by a new one.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var upgrade = function(appInfo, mount, options) {
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+  _uninstall(mount, false);
+  _install(appInfo, mount, options, false);
+};
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.scanFoxx = scanFoxx;
 exports.install = install;
 exports.setup = setup;
-exports.scanFoxx = scanFoxx;
-/*
- exports.uninstall = uninstall;
- exports.teardown = teardown;
- exports.replace = replace;
- exports.upgrade = upgrade;
+exports.teardown = teardown;
+exports.uninstall = uninstall;
+exports.replace = replace;
+exports.upgrade = upgrade;
 
+/*
  exports.mountedApp = utils.mountedApp;
 */
 
