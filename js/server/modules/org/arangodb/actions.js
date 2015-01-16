@@ -2152,7 +2152,12 @@ exports.errorFunction            = errorFunction;
 exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
-exports.routingCache             = function() { return RoutingCache[arangodb.db._name()]; };
+exports.routingCache             = function() { 
+  if (undefined === RoutingCache[arangodb.db._name()]) {
+    reloadRoutingDB();
+  }
+  return RoutingCache[arangodb.db._name()]; 
+};
 exports.addCookie                = addCookie;
 exports.stringifyRequestAddress  = stringifyRequestAddress;
 
