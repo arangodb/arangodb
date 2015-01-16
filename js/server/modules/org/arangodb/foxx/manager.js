@@ -1803,17 +1803,17 @@ var install = function(appInfo, mount, options) {
 /*
  exports.install = install;
  exports.uninstall = uninstall;
- exports.setup = setup;
  exports.teardown = teardown;
- exports.list = list;
- exports.listJson = listJson;
  exports.replace = replace;
- exports.mountedApp = mountedApp;
  exports.upgrade = upgrade;
- exports.scanFoxx = scanFoxx;
- exports.developmentMounts = developmentMounts;
- exports.developmentMountsJson = developmentMountsJson;
+
+ exports.mountedApp = utils.mountedApp;
 */
+
+exports.list = utils.list;
+exports.listJson = utils.listJson;
+exports.listDevelopment = utils.listDevelopment;
+exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx store module.
