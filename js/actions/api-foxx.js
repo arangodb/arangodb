@@ -44,124 +44,7 @@ var easyPostCallback = actions.easyPostCallback;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fetches a FOXX application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/fetch",
-  prefix : false,
-
-  callback : function (req, res) {
-    'use strict';
-
-    var safe = /^[0-9a-zA-Z_\-\.]+$/;
-
-    if (req.suffix.length !== 0) {
-      actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
-      return;
-    }
-
-    var json = actions.getJsonBody(req, res, actions.HTTP_BAD);
-
-    if (json === undefined) {
-      return;
-    }
-
-    var serverFile = json.filename;
-    var realFile = fs.join(fs.getTempPath(), serverFile);
-
-    if (! fs.isFile(realFile)) {
-      actions.resultNotFound(req, res, arangodb.errors.ERROR_FILE_NOT_FOUND.code);
-      return;
-    }
-
-    try {
-      var name = json.name;
-      var version = json.version;
-
-      if (! safe.test(name)) {
-        fs.remove(realFile);
-        throw "rejecting unsafe name '" + name + "'";
-      }
-
-      if (! safe.test(version)) {
-        fs.remove(realFile);
-        throw "rejecting unsafe version '" + version + "'";
-      }
-
-      var appPath = module.appPath();
-
-      if (typeof appPath === "undefined") {
-        fs.remove(realFile);
-        throw "javascript.app-path not set, rejecting app loading";
-      }
-
-      var path = fs.join(appPath, name + "-" + version);
-
-      if (!fs.exists(path)) {
-        fs.makeDirectoryRecursive(path);
-        fs.unzipFile(realFile, path, false, true);
-
-        foxxManager.scanAppDirectory();
-      }
-      fs.remove(realFile);
-
-      var found = arangodb.db._collection("_aal").firstExample({
-        type: "app",
-        path: name + "-" + version
-      });
-
-      if (found !== null) {
-        found = found.app;
-      }
-
-      actions.resultOk(req, res, actions.HTTP_OK, { path: path, app: found });
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mounts a FOXX application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/mount",
-  prefix : false,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function (body) {
-      var appId = body.appId;
-      var mount = body.mount;
-      var options = body.options || {};
-
-      return foxxManager.mount(appId, mount, options);
-    }
-  })
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rescans the FOXX application directory
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/rescan",
-  prefix : false,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function () {
-      foxxManager.scanAppDirectory();
-      return { };
-    }
-  })
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a FOXX application
+/// @brief sets up a Foxx application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -179,7 +62,7 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a FOXX application
+/// @brief tears down a Foxx application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
@@ -197,11 +80,31 @@ actions.defineHttp({
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unmounts a FOXX application
+/// @brief installs a Foxx application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/unmount",
+  url : "_admin/foxx/install",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var appInfo = body.appInfo;
+      var mount = body.mount;
+      var options = body.options;
+
+      return foxxManager.install(appInfo, mount, options);
+    }
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief uninstalls a Foxx application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/uninstall",
   prefix : false,
 
   callback: easyPostCallback({
@@ -209,83 +112,49 @@ actions.defineHttp({
     callback: function (body) {
       var mount = body.mount;
 
-      return foxxManager.unmount(mount);
+      return foxxManager.uninstall(mount);
     }
   })
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief sets up a FOXX dev application
+/// @brief replaces a Foxx application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/dev-setup",
+  url : "_admin/foxx/replace",
   prefix : false,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body) {
-      var name = body.name;
+      var appInfo = body.appInfo;
+      var mount = body.mount;
+      var options = body.options;
 
-      return foxxManager.devSetup(name);
+      return foxxManager.replace(appInfo, mount, options);
     }
   })
 });
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a FOXX dev application
+/// @brief upgrades a Foxx application
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : "_admin/foxx/dev-teardown",
+  url : "_admin/foxx/upgrade",
   prefix : false,
 
   callback: easyPostCallback({
     body: true,
     callback: function (body) {
-      var name = body.name;
+      var appInfo = body.appInfo;
+      var mount = body.mount;
+      var options = body.options;
 
-      return foxxManager.devTeardown(name);
+      return foxxManager.upgrade(appInfo, mount, options);
     }
   })
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief purges a FOXX application
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/purge",
-  prefix : false,
-
-  callback: easyPostCallback({
-    body: true,
-    callback: function (body) {
-      var name = body.name;
-
-      return foxxManager.purge(name);
-    }
-  })
-});
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns directory information
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_admin/foxx/config",
-  prefix : false,
-
-  callback : function (req, res) {
-    var result = {
-      appPath: module.appPath(),
-      devAppPath: internal.developmentMode ? module.devAppPath() : null,
-      logFilePath: internal.logfilePath,
-      startupPath: module.startupPath()
-    };
-
-    actions.resultOk(req, res, actions.HTTP_OK, { result: result });
-  }
 });
 
 // -----------------------------------------------------------------------------
