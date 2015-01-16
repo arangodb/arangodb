@@ -1367,16 +1367,9 @@ function require (path) {
 /// @brief createApp
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (description, options) {
+  Module.prototype.createApp = function (config) {
     'use strict';
-
-    return new ArangoApp(
-      description.id,
-      description.manifest,
-      description.root,
-      description.path,
-      options
-    );
+    return new ArangoApp(config);
   };
 
 // -----------------------------------------------------------------------------
@@ -1391,16 +1384,18 @@ function require (path) {
 /// @brief ArangoApp constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp = function (id, manifest, root, path, options) {
+  ArangoApp = function (config) {
     'use strict';
-
-    this._id = id;
-    this._manifest = manifest;
-    this._name = manifest.name;
-    this._version = manifest.version;
-    this._root = root;
-    this._path = path;
-    this._options = options;
+    this._id = config.id; // ???
+    this._manifest = config.manifest;
+    this._name = config.manifest.name;
+    this._version = config.manifest.version;
+    this._root = config.root;
+    this._path = config.path;
+    this._options = config.options;
+    this._mount = config.mount;
+    this._isSystem = config.isSystem || false;
+    this._isDevelopment = config.isDevelopment || false;
     this._exports = {};
   };
 
@@ -1428,6 +1423,35 @@ function require (path) {
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a Json representation of itself to be persisted
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.toJSON = function () {
+    var json = {
+      id: this._id,
+      manifest: this._manifest,
+      name: this._name,
+      version: this._version,
+      root: this._root,
+      path: this._path,
+      options: this._options,
+      mount: this._mount,
+      isSystem: this._isSystem,
+      isDevelopment: this._isDevelopment
+    };
+    if (this._manifest.hasOwnProperty("author")) {
+      json.author = this._manifest.author;
+    }
+    if (this._manifest.hasOwnProperty("description")) {
+      json.description = this._manifest.description;
+    }
+    if (this._manifest.hasOwnProperty("thumbnail")) {
+      json.thumbnail = this._manifest.thumbnail;
+    }
+
+    return json;
+  };
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createAppModule
 ////////////////////////////////////////////////////////////////////////////////
