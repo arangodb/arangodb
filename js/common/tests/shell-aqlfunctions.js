@@ -494,6 +494,36 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryStringWithComments : function () {
+      unregister("UnitTests::tryme");
+      aqlfunctions.register("UnitTests::tryme", function (what) { return true; }, true);
+
+      var actual = db._createStatement({ query: "// foo\n /* bar\nbaz\n*/ RETURN UnitTests::tryme(4) // some comment" }).execute().toArray();
+      assertEqual([ true ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function and run a query
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueryFuncWithComments : function () {
+      unregister("UnitTests::tryme");
+      aqlfunctions.register("UnitTests::tryme", function (what) { 
+        // foo 
+        /* bar
+        baz
+        */
+        return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] // some comment
+      }, true);
+
+      var actual = db._createStatement({ query: "RETURN UnitTests::tryme()" }).execute().toArray();
+      assertEqual([ [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] ], actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test for specific problem with docs returned by user functions
 ////////////////////////////////////////////////////////////////////////////////
 
