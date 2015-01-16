@@ -376,12 +376,16 @@ function validateAppName (name) {
   });
 }
 
-
+function mountedApp (mount) {
+  "use strict";
+  return tmp_getStorage().firstExample({mount: mount});
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.mountedApp = mountedApp;
 exports.list = list;
 exports.listJson = listJson;
 exports.listDevelopment = listDevelopment;

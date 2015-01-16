@@ -1774,10 +1774,11 @@ exports.uninstall = uninstall;
 exports.replace = replace;
 exports.upgrade = upgrade;
 
-/*
- exports.mountedApp = utils.mountedApp;
-*/
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Exports from foxx utils module.
+////////////////////////////////////////////////////////////////////////////////
 
+exports.mountedApp = utils.mountedApp;
 exports.list = utils.list;
 exports.listJson = utils.listJson;
 exports.listDevelopment = utils.listDevelopment;
