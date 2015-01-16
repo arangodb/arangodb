@@ -1,5 +1,7 @@
 !CHAPTER Conventions
 
+!SECTION Naming
+
 The *::* symbol is used inside AQL as the namespace separator. Using 
 the namespace separator, users can create a multi-level hierarchy of 
 function groups if required.
@@ -20,23 +22,62 @@ the default namespace to look in if an unqualified function name is
 found. Adding user functions to the *_aql* namespace is disallowed and 
 will fail.
 
+!SECTION Variables and side effects
+
 User functions can take any number of input arguments and should 
 provide one result. They should be kept purely functional and thus free of
-side effects and state. 
+side effects and state, and state modification. 
 
 Modification of global variables is unsupported, as is changing
-the data of a collection from inside an AQL user function. 
+the data of any collection from inside an AQL user function. 
 
 User function code is late-bound, and may thus not rely on any variables
 that existed at the time of declaration. If user function code requires
 access to any external data, it must take care to set up the data by
 itself.
 
+All AQL user function-specific variables should be introduced with the `var`
+keyword in order to not accidently access already defined variables from
+outer scopes. Not using the `var` keyword for own variables may cause side
+effects when executing the function.
+
+Here is an example that may modify outer scope variables `i` and `name`,
+making the function **not** side effects-free:
+``` js
+function (values) {
+  for (i = 0; i < values.length; ++i) {
+    name = values[i];
+    if (name === "foo") {
+      return i;
+    }
+  }
+  return null;
+}
+```
+
+The above function can be made free of side effects by using the `var`
+keyword, so the variables become function-local variables:
+``` js
+function (values) {
+  for (var i = 0; i < values.length; ++i) {
+    var name = values[i];
+    if (name === "foo") {
+      return i;
+    }
+  }
+  return null;
+}
+```
+
+!SECTION Return values
+
 User functions must only return primitive types (i.e. *null*, boolean
 values, numeric values, string values) or aggregate types (lists or
 documents) composed of these types.
 Returning any other Javascript object type from a user function may lead 
 to undefined behavior and should be avoided.
+
+!SECTION Miscellaneous
 
 Internally, user functions are stored in a system collection named
 *_aqlfunctions*. That means that by default they are excluded from dumps
