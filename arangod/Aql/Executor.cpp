@@ -195,7 +195,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s", false, true, false) },
 
   // graph functions
-  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,b", false, true, false) },
+  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", false, true, false) },
   { "GRAPH_PATHS",                 Function("GRAPH_PATHS",                 "AQL_GRAPH_PATHS", "s|a", false, true, false) },
   { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "AQL_SHORTEST_PATH", "h,h,s,s,s|a", false, true, false) },
   { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, true, false) },

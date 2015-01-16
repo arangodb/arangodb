@@ -4528,15 +4528,22 @@ function SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) 
 /// @brief find all paths through a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
+function AQL_PATHS (vertices, edgeCollection, direction, options) {
   "use strict";
-
-  var searchDirection;
 
   direction      = direction || "outbound";
   followCycles   = followCycles || false;
-  minLength      = minLength || 0;
-  maxLength      = maxLength !== undefined ? maxLength : 10;
+
+  if (typeof options === "boolean") {
+    options = { followCycles : options };
+  }
+  else if (typeof options !== "object" || Array.isArray(options)) {
+    options = { };
+  }
+
+  var followCycles   = options.followCycles || false;
+  var minLength      = options.minLength || 0;
+  var maxLength      = options.maxLength || 10;
 
   if (TYPEWEIGHT(vertices) !== TYPEWEIGHT_ARRAY) {
     WARN("PATHS", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
@@ -4544,6 +4551,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength
   }
 
   // validate arguments
+  var searchDirection;
   if (direction === "outbound") {
     searchDirection = 1;
   }
