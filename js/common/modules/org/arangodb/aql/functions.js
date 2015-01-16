@@ -251,11 +251,15 @@ var unregisterFunctionsGroup = function (group) {
 /// `aqlfunctions.register(name, code, isDeterministic)`
 ///
 /// Registers an AQL user function, identified by a fully qualified function
-/// name. The function code in *code* must be specified as a Javascript
-/// function or a string representation of a Javascript function.
+/// name. The function code in *code* must be specified as a JavaScript
+/// function or a string representation of a JavaScript function.
+/// If the function code in *code* is passed as a string, it is required that
+/// the string evaluates to a JavaScript function definition.
 ///
 /// If a function identified by *name* already exists, the previous function
-/// definition will be updated.
+/// definition will be updated. Please also make sure that the function code
+/// does not violate the [Conventions](../AqlExtending/Conventions.md) for AQL 
+/// functions.
 ///
 /// The *isDeterministic* attribute can be used to specify whether the
 /// function results are fully deterministic (i.e. depend solely on the input
