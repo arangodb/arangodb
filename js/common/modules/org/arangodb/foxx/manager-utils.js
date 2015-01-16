@@ -39,6 +39,31 @@ var throwDownloadError = arangodb.throwDownloadError;
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 
+// TODO Only temporary
+var tmp_getStorage = function() {
+  var c = db._tmp_aal;
+  if (c === undefined) {
+    c = db._create("_tmp_aal", {isSystem: true});
+    c.ensureUniqueConstraint("mount");
+  }
+  return c;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator for mount points
+////////////////////////////////////////////////////////////////////////////////
+
+var compareMounts = function(l, r) {
+  var left = l.mount.toLowerCase();
+  var right = r.mount.toLowerCase();
+
+  if (left < right) {
+    return -1;
+  }
+  return 1;
+};
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
@@ -248,31 +273,34 @@ function getStorage () {
 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all installed FOXX applications
+/// @brief returns all running Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function listJson (showPrefix) {
+function listJson (showPrefix, onlyDevelopment) {
   'use strict';
 
-  var aal = getStorage();
-  var cursor = aal.byExample({ type: "mount" });
+  var mounts = tmp_getStorage();
+  var cursor;
+  if (onlyDevelopment) {
+    cursor = mounts.byExample({isDevelopment: true});
+  } else {
+    cursor = mounts.all();
+  }
   var result = [];
+  var doc, res;
 
   while (cursor.hasNext()) {
-    var doc = cursor.next();
+    doc = cursor.next();
 
-    var version = doc.app.replace(/^.+:(\d+(\.\d+)*)$/g, "$1");
-
-    var res = {
+    res = {
       mountId: doc._key,
       mount: doc.mount,
-      appId: doc.app,
       name: doc.name,
-      description: doc.description,
-      author: doc.author,
+      description: doc.manifest.description,
+      author: doc.manifest.author,
       system: doc.isSystem ? "yes" : "no",
-      active: doc.active ? "yes" : "no",
-      version: version
+      development: doc.isDevelopment ? "yes" : "no",
+      version: doc.version
     };
 
     if (showPrefix) {
@@ -284,6 +312,52 @@ function listJson (showPrefix) {
 
   return result;
 }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints all running Foxx applications
+////////////////////////////////////////////////////////////////////////////////
+
+function list(onlyDevelopment) {
+  var apps = listJson(undefined, onlyDevelopment);
+
+  arangodb.printTable(
+    apps.sort(compareMounts),
+    [ "mount", "name", "author", "description", "version", "development" ],
+    {
+      prettyStrings: true,
+      totalString: "%s application(s) found",
+      emptyString: "no applications found",
+      rename: {
+        "mount": "Mount",
+        "name" : "Name",
+        "author" : "Author",
+        "description" : "Description",
+        "version" : "Version",
+        "development" : "Development"
+      }
+    }
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns all running Foxx applications in development mode
+////////////////////////////////////////////////////////////////////////////////
+
+function listDevelopmentJson (showPrefix) {
+  'use strict';
+  return listJson(showPrefix, true);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints all running Foxx applications
+////////////////////////////////////////////////////////////////////////////////
+
+function listDevelopment() {
+  'use strict';
+  return list(true);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate an app name and fail if it is invalid
@@ -308,12 +382,17 @@ function validateAppName (name) {
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.list = list;
 exports.listJson = listJson;
+exports.listDevelopment = listDevelopment;
+exports.listDevelopmentJson = listDevelopmentJson;
 exports.buildGithubUrl = buildGithubUrl;
 exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
 exports.validateAppName = validateAppName;
+
+exports.tmp_getStorage = tmp_getStorage;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
