@@ -48,6 +48,8 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
+  "use strict";
+
   var functions = db._collection("_aqlfunctions");
 
   if (functions === null) {
@@ -66,6 +68,8 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var getFiltered = function (group) {
+  "use strict";
+
   var result = [ ];
 
   if (group !== null && group !== undefined && group.length > 0) {
@@ -93,6 +97,8 @@ var getFiltered = function (group) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (name) {
+  "use strict";
+
   if (typeof name !== 'string' ||
       ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
       name.substr(0, 1) === "_") {
@@ -109,12 +115,14 @@ var validateName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var stringifyFunction = function (code, name) {
+  "use strict";
+
   if (typeof code === 'function') {
-    code = String(code);
+    code = String(code) + "\n";
   }
 
   if (typeof code === 'string') {
-    code = "(" + code + ")";
+    code = "(\n" + code + "\n)";
 
     if (! internal.parse) {
       // no parsing possible. assume always valid
@@ -165,6 +173,8 @@ var stringifyFunction = function (code, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
+  "use strict";
+
   var func = null;
 
   validateName(name);
@@ -211,6 +221,8 @@ var unregisterFunction = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunctionsGroup = function (group) {
+  "use strict";
+
   if (group.length === 0) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
@@ -365,10 +377,12 @@ var registerFunction = function (name, code, isDeterministic) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function (group) {
+  "use strict";
+
   var result = [ ];
 
   getFiltered(group).forEach(function (f) {
-    result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2) });
+    result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2).trim() });
   });
 
   return result;
