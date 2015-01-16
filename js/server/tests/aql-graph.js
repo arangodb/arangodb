@@ -318,8 +318,40 @@ function ahuacatlQueryPathsTestSuite () {
 /// @brief checks an AQL outbound query using _from, path length 1
 ////////////////////////////////////////////////////////////////////////////////
 
+    testFromQueryOutboundMaxLength1 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\", { maxLength: 1 }) FILTER p.edges[0]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(1, actual[0].edges.length);
+
+      assertEqual(docs["John"]._id, actual[0].source._id);
+      assertEqual(docs["Fred"]._id, actual[0].destination._id);
+
+      assertEqual(docs["John"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL outbound query using _from, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
     testFromQueryOutbound2 : function () {
       var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\") FILTER LENGTH(p.edges) == 1 && p.edges[0]._from == \"" + docs["Fred"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(1, actual[0].edges.length);
+
+      assertEqual(docs["Fred"]._id, actual[0].source._id);
+      assertEqual(docs["Jacob"]._id, actual[0].destination._id);
+
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Jacob"]._id, actual[0].edges[0]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL outbound query using _from, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryOutboundMaxLength2 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\", { maxLength: 1 }) FILTER p.edges[0]._from == \"" + docs["Fred"]._id +"\" RETURN p");
       assertEqual(1, actual.length);
       assertEqual(1, actual[0].edges.length);
 
@@ -336,6 +368,22 @@ function ahuacatlQueryPathsTestSuite () {
 
     testFromQueryOutbound3 : function () {
       var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\") FILTER LENGTH(p.edges) == 1 && p.edges[0]._to == \"" + docs["Fred"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(1, actual[0].edges.length);
+
+      assertEqual(docs["John"]._id, actual[0].source._id);
+      assertEqual(docs["Fred"]._id, actual[0].destination._id);
+
+      assertEqual(docs["John"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL outbound query using _to, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryOutboundMaxLength3 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\", { maxLength: 1 }) FILTER p.edges[0]._to == \"" + docs["Fred"]._id +"\" RETURN p");
       assertEqual(1, actual.length);
       assertEqual(1, actual[0].edges.length);
 
@@ -365,11 +413,38 @@ function ahuacatlQueryPathsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL outbound query using _from, path length 2
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryOutboundMaxLength4 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\", { minLength: 2, maxLength: 2 }) FILTER p.edges[0]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(2, actual[0].edges.length);
+
+      assertEqual(docs["John"]._id, actual[0].source._id);
+      assertEqual(docs["Jacob"]._id, actual[0].destination._id);
+
+      assertEqual(docs["John"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._to);
+      assertEqual(docs["Fred"]._id, actual[0].edges[1]._from);
+      assertEqual(docs["Jacob"]._id, actual[0].edges[1]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks an AQL outbound query using _from
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromQueryOutbound5 : function () {
       var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\") FILTER LENGTH(p.edges) == 2 && p.edges[0]._from == \"" + docs["Jacob"]._id +"\" RETURN p");
+      assertEqual(0, actual.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL outbound query using _from
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryOutboundMaxLength5 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\", { maxLength: 2 }) FILTER p.edges[0]._from == \"" + docs["Jacob"]._id +"\" RETURN p");
       assertEqual(0, actual.length);
     },
 
@@ -383,11 +458,36 @@ function ahuacatlQueryPathsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL outbound query using _to
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryOutboundMaxLength6 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"outbound\", { maxLength: 2 }) FILTER p.edges[0]._to == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(0, actual.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks an AQL inbound query using _from, path length 1
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromQueryInbound1 : function () {
       var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\") FILTER LENGTH(p.edges) == 1 && p.edges[0]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(1, actual[0].edges.length);
+
+      assertEqual(docs["Fred"]._id, actual[0].source._id);
+      assertEqual(docs["John"]._id, actual[0].destination._id);
+
+      assertEqual(docs["John"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _from, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMaxLength1 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { maxLength: 1 }) FILTER p.edges[0]._from == \"" + docs["John"]._id +"\" RETURN p");
       assertEqual(1, actual.length);
       assertEqual(1, actual[0].edges.length);
 
@@ -415,11 +515,43 @@ function ahuacatlQueryPathsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _from, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMaxLength2 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { maxLength: 1 }) FILTER p.edges[0]._from == \"" + docs["Fred"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(1, actual[0].edges.length);
+
+      assertEqual(docs["Jacob"]._id, actual[0].source._id);
+      assertEqual(docs["Fred"]._id, actual[0].destination._id);
+
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Jacob"]._id, actual[0].edges[0]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks an AQL inbound query using _to, path length 1
 ////////////////////////////////////////////////////////////////////////////////
 
     testFromQueryInbound3 : function () {
       var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\") FILTER LENGTH(p.edges) == 1 && p.edges[0]._to == \"" + docs["Fred"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(1, actual[0].edges.length);
+
+      assertEqual(docs["Fred"]._id, actual[0].source._id);
+      assertEqual(docs["John"]._id, actual[0].destination._id);
+
+      assertEqual(docs["John"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _to, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMaxLength3 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { maxLength: 1 }) FILTER p.edges[0]._to == \"" + docs["Fred"]._id +"\" RETURN p");
       assertEqual(1, actual.length);
       assertEqual(1, actual[0].edges.length);
 
@@ -447,6 +579,72 @@ function ahuacatlQueryPathsTestSuite () {
 
       assertEqual(docs["John"]._id, actual[0].edges[1]._from);
       assertEqual(docs["Fred"]._id, actual[0].edges[1]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _from, path length 1
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMaxLength4 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { minLength: 2, maxLength: 2 }) FILTER p.edges[LENGTH(p.edges) - 1]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(2, actual[0].edges.length);
+
+      assertEqual(docs["Jacob"]._id, actual[0].source._id);
+      assertEqual(docs["John"]._id, actual[0].destination._id);
+
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Jacob"]._id, actual[0].edges[0]._to);
+
+      assertEqual(docs["John"]._id, actual[0].edges[1]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[1]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _from, path length 2
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMinLength1 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { minLength: 2, maxLength: 2 }) FILTER p.edges[LENGTH(p.edges) - 1]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(2, actual[0].edges.length);
+
+      assertEqual(docs["Jacob"]._id, actual[0].source._id);
+      assertEqual(docs["John"]._id, actual[0].destination._id);
+
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Jacob"]._id, actual[0].edges[0]._to);
+
+      assertEqual(docs["John"]._id, actual[0].edges[1]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[1]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _from, path length 2
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMinLength2 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { minLength: 2 }) FILTER p.edges[LENGTH(p.edges) - 1]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(1, actual.length);
+      assertEqual(2, actual[0].edges.length);
+
+      assertEqual(docs["Jacob"]._id, actual[0].source._id);
+      assertEqual(docs["John"]._id, actual[0].destination._id);
+
+      assertEqual(docs["Fred"]._id, actual[0].edges[0]._from);
+      assertEqual(docs["Jacob"]._id, actual[0].edges[0]._to);
+
+      assertEqual(docs["John"]._id, actual[0].edges[1]._from);
+      assertEqual(docs["Fred"]._id, actual[0].edges[1]._to);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks an AQL inbound query using _from, path length 3
+////////////////////////////////////////////////////////////////////////////////
+
+    testFromQueryInboundMinLength3 : function () {
+      var actual = getQueryResults("FOR p IN PATHS(UnitTestsAhuacatlUsers, UnitTestsAhuacatlUserRelations, \"inbound\", { minLength: 3 }) FILTER p.edges[LENGTH(p.edges) - 1]._from == \"" + docs["John"]._id +"\" RETURN p");
+      assertEqual(0, actual.length);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
