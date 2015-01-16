@@ -224,7 +224,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].should include(doc.parsed_response['status'])
       end
 
       # get
@@ -251,7 +251,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].should include(doc.parsed_response['status'])
       end
 
       # get count
@@ -751,7 +751,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-              [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].should include(doc.parsed_response['status'])
 
         ArangoDB.drop_collection(@cn)
       end
@@ -769,7 +769,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2,4].include?(doc.parsed_response['status']).should be_true
+        [2, 4].should include(doc.parsed_response['status'])
 
         ArangoDB.drop_collection(@cn)
       end
