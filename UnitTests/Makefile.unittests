@@ -144,7 +144,7 @@ start-server:
 	($(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --pid-file $(PIDFILE) --watch-process $(PID) && rm -rf "$(VOCDIR)") &
 
 	@test "$(PROTO)" == "unix" || (rm -f "$(STARTFILE)"; while [ ! -s "$(STARTFILE)" ]; do $(CURL) $(CURL_OPT) --insecure -X GET -s "$(PROTO)://$(VOCHOST):$(VOCPORT)/_api/version" > "$(STARTFILE)" || sleep 2; done)
-	@(test "$(PROTO)" == "unix" && sleep 7) || true
+	@(test "$(PROTO)" == "unix" && sleep 8) || true
 	@rm -f "$(STARTFILE)"
 	@echo "server has been started."
 	@if [ "$(VALGRIND)" != "" ]; then echo "adding valgrind memorial time..."; sleep 75; else sleep 2; fi
