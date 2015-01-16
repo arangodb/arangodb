@@ -1735,7 +1735,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       for (size_t i = 0; i < searchValue._length; ++i) {
         TRI_DestroyShapedJson(shaper->_memoryZone, &searchValue._values[i]);
       }
-      TRI_Free(TRI_CORE_MEM_ZONE, searchValue._values);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, searchValue._values);
     }
     searchValue._values = nullptr;
   };
@@ -1744,7 +1744,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     size_t const n = hashIndex->_paths._length;
     searchValue._length = 0;
     // initialize the whole range of shapes with zeros
-    searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
+    searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
           n * sizeof(TRI_shaped_json_t), true));
 
     if (searchValue._values == nullptr) {
@@ -1752,6 +1752,7 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
     }
     
     searchValue._length = n;
+
 
     for (size_t i = 0; i < n; ++i) {
       TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
