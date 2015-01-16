@@ -260,6 +260,15 @@ function AqlFunctionsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function
+////////////////////////////////////////////////////////////////////////////////
+
+    testRegisterString3 : function () {
+      unregister("UnitTests::tryme::foo");
+      aqlfunctions.register("UnitTests::tryme::foo", "/* this is a function! */ \n function (what) { return what * 2; }", true);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief re-register a function
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -336,6 +345,36 @@ function AqlFunctionsSuite () {
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_QUERY_FUNCTION_INVALID_NAME.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function without surrounding function() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testRegisterNonFunction1 : function () {
+      unregister("UnitTests::tryme");
+      try {
+        aqlfunctions.register("UnitTests::tryme", "1 + 1", true);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_QUERY_FUNCTION_INVALID_CODE.code, err.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a function without surrounding function() 
+////////////////////////////////////////////////////////////////////////////////
+
+    testRegisterNonFunction2 : function () {
+      unregister("UnitTests::tryme");
+      try {
+        aqlfunctions.register("UnitTests::tryme", "name = 'foo'", true);
+        fail();
+      }
+      catch (err) {
+        assertEqual(ERRORS.ERROR_QUERY_FUNCTION_INVALID_CODE.code, err.errorNum);
       }
     },
 

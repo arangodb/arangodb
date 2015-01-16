@@ -3,6 +3,13 @@ v2.5.0 (XXXX-XX-XX)
 
 * RequestContext#bodyParam now accepts arbitrary joi schemas and rejects invalid (but well-formed) request bodies.
 
+* enforce that AQL user functions are wrapped inside JavaScript function () declarations
+
+  AQL user functions were always expected to be wrapped inside a JavaScript function, but previously 
+  this was not enforced when registering a user function. Enforcing the AQL user functions to be contained
+  inside functions prevents functions from doing some unexpected things that may have led to undefined
+  behavior.
+
 
 v2.4.1 (XXXX-XX-XX)
 -------------------

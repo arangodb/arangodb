@@ -283,17 +283,24 @@ var registerFunction = function (name, code, isDeterministic) {
   code = stringifyFunction(code, name);
 
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
+  var err;
 
   try {
     if (internal && internal.hasOwnProperty("executeScript")) {
-      internal.executeScript(testCode, undefined, "(user function " + name + ")");
+      var evalResult = internal.executeScript(testCode, undefined, "(user function " + name + ")");
+      if (typeof evalResult !== "function") {
+        err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
+        err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message + 
+                           ": code must be contained in function";
+        throw err;
+      }
     }
   }
   catch (err1) {
-    var err = new ArangoError();
+    err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
     err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
-
     throw err;
   }
 
