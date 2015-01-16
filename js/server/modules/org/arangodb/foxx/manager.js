@@ -24,7 +24,7 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dr. Frank Celler, Michael Hackstein
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1210,16 +1210,6 @@ exports.fetchFromGithub = function (url, name, version) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief returns all installed FOXX applications
-////////////////////////////////////////////////////////////////////////////////
-
-exports.listJson = function () {
-  "use strict";
-
-  return utils.listJson();
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the Foxx apps
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1294,6 +1284,8 @@ exports.initializeFoxx = function () {
 // --CHAPTER--                                                         used code
 // -----------------------------------------------------------------------------
 
+  var db = require("internal").db;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -1349,15 +1341,21 @@ var validateManifestFile = function(file) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the mountpoint is reserved for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+var isSystemMount = function(mount) {
+  return (/^\/_/).test(mount);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the root path for application. Knows about system apps
 ////////////////////////////////////////////////////////////////////////////////
 
 var computeRootAppPath = function(mount) {
-  if (/^\/_/.test(mount)) {
-    // Must be a system app
+  if (isSystemMount(mount)) {
     return module.systemAppPath();
   }
-  // A standard app
   return module.appPath();
 };
 
@@ -1366,7 +1364,9 @@ var computeRootAppPath = function(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var transformMountToPath = function(mount) {
-  return fs.join.apply(this, mount.split("/").push("APP"));
+  var list = mount.split("/");
+  list.push("APP");
+  return fs.join.apply(this, list);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1415,36 +1415,29 @@ var executeAppScript = function(app, name, mount, prefix) {
 
     app.loadAppScript(appContext, desc[name]);
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function setupApp (app, mount, prefix) {
-  "use strict";
-
-  return executeAppScript(app, "setup", mount, prefix);
-}
+  var setupApp = function (app, mount, prefix) {
+    return executeAppScript(app, "setup", mount, prefix);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tears down an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function teardownApp (app, mount, prefix) {
-  "use strict";
-
-  return executeAppScript(app, "teardown", mount, prefix);
-}
-
-
-
+  var teardownApp = function (app, mount, prefix) {
+    return executeAppScript(app, "teardown", mount, prefix);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  var appDescription = function (mount, options) {
+  var appConfig = function (mount, options) {
 
     var root = computeRootAppPath(mount);
     var path = transformMountToPath(mount);
@@ -1462,7 +1455,10 @@ function teardownApp (app, mount, prefix) {
       root: root,
       path: path,
       manifest: manifest,
-      options: options
+      options: options,
+      mount: mount,
+      isSystem: isSystemMount(mount),
+      isDevelopment: false
     };
   };
 
@@ -1473,8 +1469,9 @@ function teardownApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var createApp = function(mount, options) {
-  var description = appDescription(mount);
-  var app = module.createApp(description, options || {});
+  var config = appConfig(mount);
+  config.options = options || {};
+  var app = module.createApp(config);
   if (app === null) {
     console.errorLines(
       "Cannot find application '%s'", mount);
@@ -1662,7 +1659,9 @@ var setup = function (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 var scanFoxx = function(mount, options) {
   delete appCache[mount];
-  createApp(mount, options);
+  var app = createApp(mount, options);
+  utils.tmp_getStorage().save(app.toJSON());
+  // TODO Routing?
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1685,7 +1684,7 @@ var install = function(appInfo, mount, options) {
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
   // Ohterwise move will fail.
-  fs.removeDirectoryRecursive(targetPath);
+  fs.removeDirectory(targetPath);
 
   if (appInfo === "EMPTY") {
     // Make Empty app
@@ -1705,23 +1704,36 @@ var install = function(appInfo, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Get information for app mounted at mount
+////////////////////////////////////////////////////////////////////////////////
+var mountedApp = function(mount) {
+  var app = lookupApp(mount);
+  if (app === undefined) {
+    throw "No app found for mount " + mount;
+  }
+  return app;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.install = install;
+exports.setup = setup;
+exports.scanFoxx = scanFoxx;
 /*
  exports.uninstall = uninstall;
- exports.setup = setup;
  exports.teardown = teardown;
- exports.list = list;
- exports.listJson = listJson;
  exports.replace = replace;
- exports.mountedApp = mountedApp;
  exports.upgrade = upgrade;
- exports.scanFoxx = scanFoxx;
- exports.developmentMounts = developmentMounts;
- exports.developmentMountsJson = developmentMountsJson;
+
+ exports.mountedApp = utils.mountedApp;
 */
+
+exports.list = utils.list;
+exports.listJson = utils.listJson;
+exports.listDevelopment = utils.listDevelopment;
+exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx store module.
