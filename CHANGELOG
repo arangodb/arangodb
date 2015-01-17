@@ -1,6 +1,8 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* added AQL functions MD5, SHA1, and RANDOM_TOKEN.
+
 * reduced number of string allocations when parsing certain AQL queries
 
   parsing numbers (integers or doubles) does not require a string allocation

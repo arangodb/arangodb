@@ -1733,7 +1733,11 @@ static void JS_RandomNumbers (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   int length = (int) TRI_ObjectToInt64(args[0]);
 
-  string str = JSNumGenerator.random(length);
+  if (length <= 0 || length > 65536) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "<length> must be between 0 and 65536");
+  }
+
+  string&& str = JSNumGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
 }
 
@@ -1754,8 +1758,11 @@ static void JS_RandomAlphaNum (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   int length = (int) TRI_ObjectToInt64(args[0]);
+  if (length <= 0 || length > 65536) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "<length> must be between 0 and 65536");
+  }
 
-  string str = JSAlphaNumGenerator.random(length);
+  string&& str = JSAlphaNumGenerator.random(length);
   TRI_V8_RETURN_STD_STRING(str);
 }
 
