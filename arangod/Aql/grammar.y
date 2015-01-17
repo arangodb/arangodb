@@ -409,7 +409,7 @@ collect_list:
 collect_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeAssign($1, $3);
-      parser->pushArray(node);
+      parser->pushArrayElement(node);
     }
   ;
 
@@ -435,7 +435,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushArray(node);
+      parser->pushArrayElement(node);
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3)) {
@@ -449,7 +449,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushArray(node);
+      parser->pushArrayElement(node);
     }
   ;
 
@@ -483,10 +483,10 @@ sort_statement:
 
 sort_list: 
     sort_element {
-      parser->pushArray($1);
+      parser->pushArrayElement($1);
     }
   | sort_list T_COMMA sort_element {
-      parser->pushArray($3);
+      parser->pushArrayElement($3);
     }
   ;
 
@@ -818,10 +818,10 @@ expression_or_query:
 
 function_arguments_list:
     expression_or_query {
-      parser->pushArray($1);
+      parser->pushArrayElement($1);
     }
   | function_arguments_list T_COMMA expression_or_query {
-      parser->pushArray($3);
+      parser->pushArrayElement($3);
     }
   ;
 
@@ -852,10 +852,10 @@ optional_array_elements:
 
 array_elements_list:
     expression {
-      parser->pushArray($1);
+      parser->pushArrayElement($1);
     }
   | array_elements_list T_COMMA expression {
-      parser->pushArray($3);
+      parser->pushArrayElement($3);
     }
   ;
 
@@ -901,7 +901,7 @@ object_elements_list:
 
 object_element: 
     object_element_name T_COLON expression {
-      parser->pushObject($1, $3);
+      parser->pushObjectElement($1, $3);
     }
   ;
 
