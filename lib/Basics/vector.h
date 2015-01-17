@@ -146,6 +146,15 @@ int TRI_PushBackVector (TRI_vector_t*, void const* element);
 void TRI_RemoveVector (TRI_vector_t*, size_t n);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an element to the vector after borrowing it via 
+/// TRI_NextVector. This will also decrease the vector length by one. 
+/// The caller must ensure that the element has been fetched from the vector
+/// before.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReturnVector (TRI_vector_t*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief increases vector length by one and returns the address of the
 /// (uninitialized) element at the new position
 ////////////////////////////////////////////////////////////////////////////////
