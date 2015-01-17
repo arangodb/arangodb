@@ -637,7 +637,7 @@ namespace triagens {
 /// "and" condition containing an "or" condition, which we must then distribute. 
 ////////////////////////////////////////////////////////////////////////////////
 
-        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>>);
+        IndexOrCondition* cartesian (std::vector<std::vector<RangeInfo>> const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief: subclass for comparing IndexAndConditions in _condition. Similar to

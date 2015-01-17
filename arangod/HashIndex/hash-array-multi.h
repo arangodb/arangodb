@@ -35,6 +35,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/vector.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -121,13 +122,12 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const
                                                     struct TRI_index_search_value_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key and a state
+/// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const*,
-                                                    struct TRI_index_search_value_s const*,
-                                                    struct TRI_hash_index_element_multi_s*&,
-                                                    size_t);
+int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const*,
+                                   struct TRI_index_search_value_s const*,
+                                   std::vector<TRI_doc_mptr_copy_t>&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array

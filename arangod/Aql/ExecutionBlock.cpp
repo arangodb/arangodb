@@ -740,6 +740,7 @@ int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, size_t pos)
 
 AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
                                                  size_t atMost) {
+
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
@@ -1359,7 +1360,7 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexOrCondition* IndexRangeBlock::cartesian (
-    std::vector<std::vector<RangeInfo>> collector) {
+    std::vector<std::vector<RangeInfo>> const& collector) {
   
   std::vector<size_t> indexes;
   indexes.reserve(collector.size());
@@ -1779,26 +1780,18 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
   
   for (size_t i = 0; i < ranges.size(); i++) {
     if (setupSearchValue(i)) {
-      TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
-      destroySearchValue();
-
-      size_t const n = TRI_LengthVectorPointer(&list);
       try {
-        for (size_t i = 0; i < n; ++i) {
-          _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
-        }
-
-        _engine->_stats.scannedIndex += static_cast<int64_t>(n);
-        TRI_DestroyVectorPointer(&list);
+        size_t const n = _documents.size();
+        TRI_LookupHashIndex(idx, &searchValue, _documents);
+        _engine->_stats.scannedIndex += static_cast<int64_t>(_documents.size() - n);
       }
       catch (...) {
-        TRI_DestroyVectorPointer(&list);
+        destroySearchValue();
         throw;
       }
     }
-    else {
-      destroySearchValue();
-    }
+
+    destroySearchValue();
   }
   LEAVE_BLOCK;
 }
