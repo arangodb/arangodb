@@ -238,7 +238,7 @@ sub formatFile ($$$) {
 
     if ($line =~ /^\/\/ outline-regexp:/) {
       if ($isJavaScript == 1) {
-	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
+	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|/// @startDocuBlock\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
       }
     }
 
