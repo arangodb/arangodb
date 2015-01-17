@@ -305,6 +305,27 @@ void TRI_RemoveVector (TRI_vector_t* vector, size_t n) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief increases vector length by one and returns the address of the
+/// uninitialized element at the new position
+////////////////////////////////////////////////////////////////////////////////
+
+void* TRI_NextVector (TRI_vector_t* vector) {
+  // ensure the vector has enough capacity for another element
+  int res = TRI_ReserveVector(vector, 1);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    // out of memory
+    return nullptr;
+  }
+
+  vector->_length++;
+  TRI_ASSERT(vector->_length <= vector->_capacity);
+  TRI_ASSERT(vector->_buffer != nullptr);
+
+  return TRI_AtVector(vector, (vector->_length - 1)); 
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the element at a given position, no bounds checking
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -313,7 +334,7 @@ void* TRI_AddressVector (TRI_vector_t const* vector, size_t pos) {
     return nullptr;
   }
 
-  return (void*) (vector->_buffer + pos * vector->_elementSize);
+  return static_cast<void*>(vector->_buffer + pos * vector->_elementSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,7 +346,7 @@ void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
     return nullptr;
   }
 
-  return (void*) (vector->_buffer + pos * vector->_elementSize);
+  return static_cast<void*>(vector->_buffer + pos * vector->_elementSize);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,8 +354,6 @@ void* TRI_AtVector (TRI_vector_t const* vector, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t n) {
-  char* newBuffer;
-
   // ...........................................................................
   // Check and see if we need to extend the vector
   // ...........................................................................
@@ -348,7 +367,7 @@ int TRI_InsertVector (TRI_vector_t* vector, void const* element, size_t n) {
 
     TRI_ASSERT(newSize > n);
 
-    newBuffer = (char*) TRI_Allocate(vector->_memoryZone, newSize * vector->_elementSize, false);
+    char* newBuffer = (char*) TRI_Allocate(vector->_memoryZone, newSize * vector->_elementSize, false);
 
     if (newBuffer == nullptr) {
       return TRI_ERROR_OUT_OF_MEMORY;

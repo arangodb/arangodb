@@ -283,14 +283,6 @@ void TRI_Insert2ObjectJson (TRI_memory_zone_t*, TRI_json_t* object, char const* 
 void TRI_Insert3ObjectJson (TRI_memory_zone_t*, TRI_json_t* object, char const* name, TRI_json_t* subobject);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new attribute, not copying it but freeing the pointer
-///
-/// the JSON struct created takes ownership of the name* passed
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_Insert4ObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject, bool);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute in a json object
 ////////////////////////////////////////////////////////////////////////////////
 
