@@ -539,7 +539,7 @@ namespace triagens {
 /// @brief clone
 ////////////////////////////////////////////////////////////////////////////////
 
-        RangeInfo clone () {
+        RangeInfo clone () const {
           RangeInfo copy(_var, _attr);
           
           copy._lowConst.assign(_lowConst);
@@ -556,8 +556,6 @@ namespace triagens {
           copy._equality = _equality;
 
           return copy;
-          //FIXME the following should work but doesn't!!
-          //return RangeInfo(this->toJson());
         }
 
 ////////////////////////////////////////////////////////////////////////////////

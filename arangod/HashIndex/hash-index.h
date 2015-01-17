@@ -36,6 +36,7 @@
 #include "HashIndex/hash-array.h"
 #include "HashIndex/hash-array-multi.h"
 #include "VocBase/index.h"
+#include "VocBase/document-collection.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -132,18 +133,12 @@ TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t*,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
-/// this function uses the state passed to it to return a fragment of the
-/// total result - the next call to the function can resume at the state where
-/// it was left off last
-/// note: state is ignored for unique indexes as there will be at most one
-/// item in the result
 /// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t*,
-                                          struct TRI_index_search_value_s*,
-                                          struct TRI_hash_index_element_multi_s*&,
-                                          size_t);
+int TRI_LookupHashIndex (TRI_index_t*,
+                         struct TRI_index_search_value_s*,
+                         std::vector<TRI_doc_mptr_copy_t>&);
 
 #endif
 

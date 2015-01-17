@@ -481,55 +481,39 @@ TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookups an element given a key and a state
+/// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const* array,
-                                                    TRI_index_search_value_t const* key,
-                                                    TRI_hash_index_element_multi_t*& next,
-                                                    size_t batchSize) {
+int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const* array,
+                                   TRI_index_search_value_t const* key,
+                                   std::vector<TRI_doc_mptr_copy_t>& result) {
   TRI_ASSERT_EXPENSIVE(array->_nrUsed < array->_nrAlloc);
-  TRI_ASSERT(batchSize > 0);
 
-  // ...........................................................................
-  // initialise the vector which will hold the result if any
-  // ...........................................................................
+  uint64_t const n = array->_nrAlloc;
+  uint64_t i, k;
 
-  TRI_vector_pointer_t result;
-  TRI_InitVectorPointer(&result, TRI_UNKNOWN_MEM_ZONE);
-
-  if (next == nullptr) {
-    // no previous state. start at the beginning
-    uint64_t const n = array->_nrAlloc;
-    uint64_t i, k;
-
-    i = k = HashKey(array, key) % n;
+  i = k = HashKey(array, key) % n;
   
-    for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
-    if (i == n) {
-      for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
-    }
-
-    TRI_ASSERT_EXPENSIVE(i < n);
-
-    if (array->_table[i]._document != nullptr) {
-      TRI_PushBackVectorPointer(&result, array->_table[i]._document);
-    }
-    next = array->_table[i]._next;
+  for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
   }
-  
-  if (next != nullptr) {
-    // we already had a state
-    size_t total = TRI_LengthVectorPointer(&result);;
 
-    while (next != nullptr && total < batchSize) {
-      TRI_PushBackVectorPointer(&result, next->_document);
-      next = next->_next;
-      ++total;
+  TRI_ASSERT_EXPENSIVE(i < n);
+
+  if (array->_table[i]._document != nullptr) {
+    // add the element itself
+    result.emplace_back(*(array->_table[i]._document));
+
+    // add the overflow elements
+    auto current = array->_table[i]._next;
+    while (current != nullptr) {
+      result.emplace_back(*(current->_document));
+      current = current->_next;
     }
   }
-    
-  return result;
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

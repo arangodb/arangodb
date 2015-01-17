@@ -312,6 +312,29 @@ static TRI_vector_pointer_t HashIndex_find (TRI_hash_index_t* hashIndex,
   return results;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates a key within the hash array part
+////////////////////////////////////////////////////////////////////////////////
+
+static int HashIndex_find (TRI_hash_index_t* hashIndex,
+                           TRI_index_search_value_t* key,
+                           std::vector<TRI_doc_mptr_copy_t>& result) {
+
+  // .............................................................................
+  // A find request means that a set of values for the "key" was sent. We need
+  // to locate the hash array entry by key.
+  // .............................................................................
+
+  TRI_hash_index_element_t* found = TRI_FindByKeyHashArray(&hashIndex->_hashArray, key);
+
+  if (found != nullptr) {
+    // unique hash index: maximum number is 1
+    result.emplace_back(*(found->_document));
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                       multi hash array management
 // -----------------------------------------------------------------------------
@@ -676,25 +699,18 @@ TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t* idx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
-/// this function uses the state passed to it to return a fragment of the
-/// total result - the next call to the function can resume at the state where
-/// it was left off last
-/// note: state is ignored for unique indexes as there will be at most one
-/// item in the result
-/// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t* idx,
-                                          TRI_index_search_value_t* searchValue,
-                                          TRI_hash_index_element_multi_t*& next,
-                                          size_t batchSize) {
+int TRI_LookupHashIndex (TRI_index_t* idx,
+                         TRI_index_search_value_t* searchValue,
+                         std::vector<TRI_doc_mptr_copy_t>& documents) {
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
   if (hashIndex->base._unique) {
-    return HashIndex_find(hashIndex, searchValue);
+    return HashIndex_find(hashIndex, searchValue, documents);
   }
 
-  return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, next, batchSize);
+  return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, documents);
 }
 
 // -----------------------------------------------------------------------------
