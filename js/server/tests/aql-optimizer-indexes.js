@@ -969,6 +969,46 @@ function optimizerIndexesTestSuite () {
       assertEqual([ 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexBecauseOfFunctions : function () {
+      var queries = [
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() >= -1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() >= -1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() != -1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() <= 10 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() < 10 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || PASSTHRU(true) == true RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + PASSTHRU(2) == 3 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + PASSTHRU(2) RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER RAND() != -1 || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER RAND() <= 10 || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER RAND() < 10 || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER PASSTHRU(true) == true RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) == 3 || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) || i.value == 1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER i.value IN [ 1, 2 ] || RAND() >= -1 RETURN i.value",
+         "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value IN [ 1, 2 ] RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(2000, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
     }
 
   };
