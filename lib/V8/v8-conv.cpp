@@ -1756,8 +1756,9 @@ static int ObjectToJson (v8::Isolate* isolate,
   if (parameter->IsString() || parameter->IsStringObject()) {
     v8::Handle<v8::String> stringParameter= parameter->ToString();
     TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, stringParameter);
-    // move the string pointer into the JSON object
+    
     if (*str == nullptr) {
+      TRI_InitNullJson(result);
       return TRI_ERROR_OUT_OF_MEMORY;
     }
 
@@ -1914,6 +1915,7 @@ static int ObjectToJson (v8::Isolate* isolate,
     return TRI_ERROR_NO_ERROR;
   }
 
+  TRI_InitNullJson(result);
   return TRI_ERROR_BAD_PARAMETER;
 }
 
