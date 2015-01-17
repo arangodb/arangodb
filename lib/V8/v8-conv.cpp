@@ -1768,8 +1768,8 @@ static int ObjectToJson (v8::Isolate* isolate,
   }
   
   if (parameter->IsArray()) {
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    uint32_t const n = arrayParameter->Length();
+    v8::Handle<v8::Array> array = v8::Handle<v8::Array>::Cast(parameter);
+    uint32_t const n = array->Length();
 
     // allocate the result array in one go
     TRI_InitArrayJson(TRI_UNKNOWN_MEM_ZONE, result, static_cast<size_t>(n));
@@ -1787,14 +1787,19 @@ static int ObjectToJson (v8::Isolate* isolate,
       // the reserve call above made sure we could not have run out of memory
       TRI_ASSERT_EXPENSIVE(next != nullptr);
 
-      res = ObjectToJson(isolate, next, arrayParameter->Get(i),
+      res = ObjectToJson(isolate, next, array->Get(i),
                          seenHashes, seenObjects);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        // to mimic behavior of previous ArangoDB versions, we need to silently ignore this error
+        // now return the element to the vector 
+        TRI_ReturnVector(&result->_value._objects);
+
+        // a better solution would be:
         // initialize the element at position, otherwise later cleanups may
         // peek into uninitialized memory
-        TRI_InitNullJson(next);
-        return res;
+        // TRI_InitNullJson(next);
+        // return res;
       }
     }
 
@@ -1822,22 +1827,19 @@ static int ObjectToJson (v8::Isolate* isolate,
         v8::Handle<v8::Value> args;
         v8::Handle<v8::Value> converted = toJson->Call(o, 0, &args);
 
-        if (converted.IsEmpty()) {
-          TRI_InitNullJson(result);
-          return TRI_ERROR_BAD_PARAMETER;
-        }
+        if (! converted.IsEmpty()) {
+          // return whatever toJSON returned
+          TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, converted->ToString());
 
-        // return whatever toJSON returned
-        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, converted->ToString());
-
-        if (*str == nullptr) {
-          TRI_InitNullJson(result);
-          return TRI_ERROR_OUT_OF_MEMORY;
-        }
+          if (*str == nullptr) {
+            TRI_InitNullJson(result);
+            return TRI_ERROR_OUT_OF_MEMORY;
+          }
     
-        // this passes ownership for the utf8 string to the JSON object
-        TRI_InitStringJson(result, str.steal(), str.length());
-        return TRI_ERROR_NO_ERROR;
+          // this passes ownership for the utf8 string to the JSON object
+          TRI_InitStringJson(result, str.steal(), str.length());
+          return TRI_ERROR_NO_ERROR;
+        }
       }
 
       // fall-through intentional
@@ -1863,8 +1865,8 @@ static int ObjectToJson (v8::Isolate* isolate,
 
     seenObjects.push_back(o);
 
-    v8::Handle<v8::Array> arrayParameter = v8::Handle<v8::Array>::Cast(parameter);
-    v8::Handle<v8::Array> names = arrayParameter->GetOwnPropertyNames();
+    v8::Handle<v8::Object> object = v8::Handle<v8::Object>::Cast(parameter);
+    v8::Handle<v8::Array> names = object->GetOwnPropertyNames();
     uint32_t const n = names->Length();
 
     // allocate the result object buffer in one go
@@ -1892,21 +1894,29 @@ static int ObjectToJson (v8::Isolate* isolate,
       TRI_ASSERT_EXPENSIVE(next != nullptr);
 
       // this passes ownership for the utf8 string to the JSON object
-      TRI_InitStringJson(next, str.steal(), str.length());
+      char* attributeName = str.steal();
+      TRI_InitStringJson(next, attributeName, str.length());
 
       // process attribute value
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // the reserve call above made sure we could not have run out of memory
       TRI_ASSERT_EXPENSIVE(next != nullptr);
 
-      res = ObjectToJson(isolate, next, arrayParameter->Get(key),
+      res = ObjectToJson(isolate, next, object->Get(key),
                          seenHashes, seenObjects);
 
       if (res != TRI_ERROR_NO_ERROR) {
+        // to mimic behavior of previous ArangoDB versions, we need to silently ignore this error
+        // now free the attributeName string and return the elements to the vector 
+        TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, attributeName);
+        TRI_ReturnVector(&result->_value._objects);
+        TRI_ReturnVector(&result->_value._objects);
+
+        // a better solution would be:
         // initialize the element at position, otherwise later cleanups may
         // peek into uninitialized memory
-        TRI_InitNullJson(next);
-        return res;
+        // TRI_InitNullJson(next);
+        // return res;
       }
     }
 

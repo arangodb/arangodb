@@ -305,6 +305,19 @@ void TRI_RemoveVector (TRI_vector_t* vector, size_t n) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief returns an element to the vector after borrowing it via 
+/// TRI_NextVector. This will also decrease the vector length by one. 
+/// The caller must ensure that the element has been fetched from the vector
+/// before.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_ReturnVector (TRI_vector_t* vector) {
+  TRI_ASSERT(vector->_length > 0);
+
+  vector->_length--;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief increases vector length by one and returns the address of the
 /// uninitialized element at the new position
 ////////////////////////////////////////////////////////////////////////////////
