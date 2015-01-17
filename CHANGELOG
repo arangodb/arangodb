@@ -1,6 +1,11 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* reduced number of string allocations when parsing certain AQL queries
+
+  parsing numbers (integers or doubles) does not require a string allocation
+  per number anymore
+
 * RequestContext#bodyParam now accepts arbitrary joi schemas and rejects invalid (but well-formed) request bodies.
 
 * enforce that AQL user functions are wrapped inside JavaScript function () declarations

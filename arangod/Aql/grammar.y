@@ -149,7 +149,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <strval> T_STRING
 %type <strval> T_QUOTED_STRING
 %type <node> T_INTEGER
-%type <strval> T_DOUBLE
+%type <node> T_DOUBLE
 %type <strval> T_PARAMETER; 
 %type <node> sort_list;
 %type <node> sort_element;
@@ -189,7 +189,6 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
-%type <node> integer_value;
 
 
 /* define start token of language */
@@ -1009,24 +1008,21 @@ atomic_value:
   ;
 
 numeric_value:
-    integer_value {
+    T_INTEGER {
+      if ($1 == nullptr) {
+        ABORT_OOM
+      }
+      
       $$ = $1;
     }
   | T_DOUBLE {
       if ($1 == nullptr) {
         ABORT_OOM
       }
-      
-      double value = TRI_DoubleString($1);
 
-      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
-        $$ = parser->ast()->createNodeValueNull();
-      }
-      else {
-        $$ = parser->ast()->createNodeValueDouble(value); 
-      }
-    };
+      $$ = $1;
+    }
+  ;
   
 value_literal: 
     T_QUOTED_STRING {
@@ -1098,16 +1094,6 @@ object_element_name:
 
 variable_name:
     T_STRING {
-      $$ = $1;
-    }
-  ;
-
-integer_value:
-    T_INTEGER {
-      if ($1 == nullptr) {
-        ABORT_OOM
-      }
-      
       $$ = $1;
     }
   ;
