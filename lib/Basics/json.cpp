@@ -269,6 +269,7 @@ static inline void InitArray (TRI_memory_zone_t* zone,
                               TRI_json_t* result,
                               size_t initialSize) {
   result->_type = TRI_JSON_ARRAY;
+
   if (initialSize == 0) {
     TRI_InitVector(&result->_value._objects, zone, sizeof(TRI_json_t));
   }
@@ -633,10 +634,15 @@ bool TRI_IsBooleanJson (TRI_json_t const* json) {
 void TRI_PushBackArrayJson (TRI_memory_zone_t* zone, TRI_json_t* array, TRI_json_t const* object) {
   TRI_ASSERT(array->_type == TRI_JSON_ARRAY);
 
-  TRI_json_t copy;
-  TRI_CopyToJson(zone, &copy, object);
+  TRI_json_t* dst = static_cast<TRI_json_t*>(TRI_NextVector(&array->_value._objects));
 
-  TRI_PushBackVector(&array->_value._objects, &copy);
+  if (dst == nullptr) {
+    // out of memory
+    return;
+  }
+
+  // directly copy value into the obtained address
+  TRI_CopyToJson(zone, dst, object);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -710,13 +716,18 @@ void TRI_InsertObjectJson (TRI_memory_zone_t* zone,
     return;
   }
 
-  TRI_json_t copy;
-  InitString(&copy, att, length);
-  TRI_PushBackVector(&object->_value._objects, &copy);
+  // create attribute name in place
+  TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&object->_value._objects));
+  // we have made sure above with the reserve that the vector has enough capacity
+  TRI_ASSERT(next != nullptr);
+  InitString(next, att, length);
 
   // attribute value
-  TRI_CopyToJson(zone, &copy, subobject);
-  TRI_PushBackVector(&object->_value._objects, &copy);
+  next = static_cast<TRI_json_t*>(TRI_NextVector(&object->_value._objects));
+  // we have made sure above with the reserve call that the vector has enough capacity
+  TRI_ASSERT(next != nullptr);
+
+  TRI_CopyToJson(zone, next, subobject);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -746,10 +757,11 @@ void TRI_Insert2ObjectJson (TRI_memory_zone_t* zone,
     return;
   }
 
-  // attribute name
-  TRI_json_t copy;
-  InitString(&copy, att, length);
-  TRI_PushBackVector(&object->_value._objects, &copy);
+  // create attribute name in place
+  TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&object->_value._objects));
+  // we have made sure above with the reserve call that the vector has enough capacity
+  TRI_ASSERT(next != nullptr);
+  InitString(next, att, length);
 
   // attribute value
   TRI_PushBackVector(&object->_value._objects, subobject);
@@ -767,33 +779,6 @@ void TRI_Insert3ObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char co
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a new attribute name and value
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_Insert4ObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char* name, size_t nameLength, TRI_json_t* subobject, bool asReference) {
-  TRI_ASSERT(name != nullptr);
-  TRI_json_t copy;
-
-  // attribute name
-  if (asReference) {
-    InitStringReference(&copy, name, nameLength);
-  }
-  else {
-    InitString(&copy, name, nameLength);
-  }
-
-  if (TRI_ReserveVector(&object->_value._objects, 2) != TRI_ERROR_NO_ERROR) {
-    // TODO: signal OOM here
-    return;
-  }
-
-  TRI_PushBackVector(&object->_value._objects, &copy);
-
-  // attribute value
-  TRI_PushBackVector(&object->_value._objects, subobject);
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up an attribute in an json object
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -807,15 +792,38 @@ TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, char const* name) {
 
   size_t const n = object->_value._objects._length;
 
-  for (size_t i = 0;  i < n;  i += 2) {
-    TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+  if (n >= 16) {
+    // if we have many attributes, try an algorithm that compares string length first
 
-    if (! IsString(key)) {
-      continue;
+    // calculate string length once
+    size_t const length = strlen(name) + 1;
+
+    for (size_t i = 0;  i < n;  i += 2) {
+      auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+
+      if (! IsString(key)) {
+        continue;
+      }
+ 
+      // check string length first, and contents only if string lengths are equal
+      if (key->_value._string.length == length && 
+          TRI_EqualString(key->_value._string.data, name)) {
+        return static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i + 1));
+      }
     }
+  }
+  else {
+    // simple case for smaller objects
+    for (size_t i = 0;  i < n;  i += 2) {
+      auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
 
-    if (TRI_EqualString(key->_value._string.data, name)) {
-      return static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i + 1));
+      if (! IsString(key)) {
+        continue;
+      }
+
+      if (TRI_EqualString(key->_value._string.data, name)) {
+        return static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i + 1));
+      }
     }
   }
 
