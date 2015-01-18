@@ -447,6 +447,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-index.js \
                @top_srcdir@/js/common/tests/shell-index-geo.js \
                @top_srcdir@/js/common/tests/shell-cap-constraint.js \
+               @top_srcdir@/js/common/tests/shell-cap-constraint-timecritical.js \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \

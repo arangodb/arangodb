@@ -4,6 +4,7 @@
     ArangoError = require('org/arangodb').ArangoError,
     <%= repository %> = require('<%= repositoryPath %>').Repository,
     <%= model %> = require('<%= modelPath %>').Model,
+    joi = require('joi'),
     _ = require('underscore'),
     controller,
     <%= repositoryInstance %>;
@@ -33,6 +34,18 @@
     var <%= modelInstance %> = req.params('<%= modelInstance %>');
     res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
   }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want to create', <%= model %>);
+
+  /** Reads a <%= model %>
+   *
+   * Reads a <%= model %>-Item.
+   */
+  controller.get('/<%= basePath %>/:id', function (req, res) {
+    var id = req.params('id');
+    res.json(<%= repositoryInstance %>.byId(id).forClient());
+  }).pathParam('id', {
+    description: 'The id of the <%= model %>-Item',
+    type: 'string'
+  });
 
   /** Updates a <%= model %>
    *

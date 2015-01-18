@@ -86,16 +86,16 @@ collection in the default database (*_system*). To specify a different database,
 use the *--server.database* option when invoking _arangoimp_. 
 
 An _arangoimp_ import run will print out the final results on the command line.
-By default, it shows the number of documents created, the number of errors that
+By default, it shows the number of documents created, the number of warnings or errors that
 occurred on the server side, and the total number of input file lines/documents
-that it processed. Additionally, _arangoimp_ will print out details about errors 
+that it processed. Additionally, _arangoimp_ will print out details about warnings and errors 
 that happened on the server-side (if any).
 
 *Examples*
 
 ```js
 created:          2
-errors:           0
+warnings/errors:  0
 total:            2
 ```
 
