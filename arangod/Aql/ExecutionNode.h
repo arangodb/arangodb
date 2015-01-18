@@ -1202,7 +1202,7 @@ namespace triagens {
 /// @brief check whether the pattern matches this node's index
 ////////////////////////////////////////////////////////////////////////////////
 
-        IndexMatch MatchesIndex (IndexMatchVec const& pattern) const;
+        IndexMatch matchesIndex (IndexMatchVec const& pattern) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not a reverse index traversal is used

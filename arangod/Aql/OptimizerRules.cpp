@@ -2072,7 +2072,9 @@ public:
         return std::make_pair(v, rangeInfo); // for now, no mixed support.
       }
     }
+
     // Collect the right data for the sorting:
+    v.reserve(_sortNodeData.size());
     for (size_t j = 0; j < _sortNodeData.size(); j ++) {
       v.push_back(std::make_pair(_sortNodeData[j]->attributevec,
                                  _sortNodeData[j]->ASC));
@@ -2104,7 +2106,6 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
   SortAnalysis*        _sortNode;
   Optimizer::RuleLevel _level;
   bool                 _modified;
-
 
   public:
 
@@ -2168,7 +2169,8 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       auto variableName = node->getVariablesSetHere()[0]->name;
       auto result = _sortNode->getAttrsForVariableName(variableName);
 
-      auto const& match = node->MatchesIndex(result.first);
+      auto const& match = node->matchesIndex(result.first);
+
       if (match.doesMatch) {
         if (match.reverse) {
           node->reverse(true); 
