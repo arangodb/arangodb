@@ -35,6 +35,8 @@
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/voc-shaper.h"
+                         
+struct TRI_hash_index_element_multi_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -711,6 +713,25 @@ int TRI_LookupHashIndex (TRI_index_t* idx,
   }
 
   return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, documents);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LookupHashIndex (TRI_index_t* idx,
+                         TRI_index_search_value_t* searchValue,
+                         std::vector<TRI_doc_mptr_copy_t>& documents,
+                         struct TRI_hash_index_element_multi_s*& next,
+                         size_t batchSize) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    next = nullptr;
+    return HashIndex_find(hashIndex, searchValue, documents);
+  }
+
+  return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, documents, next, batchSize);
 }
 
 // -----------------------------------------------------------------------------

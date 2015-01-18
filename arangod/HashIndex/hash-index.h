@@ -133,12 +133,21 @@ TRI_vector_pointer_t TRI_LookupHashIndex (TRI_index_t*,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates entries in the hash index given shaped json objects
-/// it is the callers responsibility to destroy the result
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_LookupHashIndex (TRI_index_t*,
                          struct TRI_index_search_value_s*,
                          std::vector<TRI_doc_mptr_copy_t>&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief locates entries in the hash index given shaped json objects
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LookupHashIndex (TRI_index_t*,
+                         struct TRI_index_search_value_s*,
+                         std::vector<TRI_doc_mptr_copy_t>&,
+                         struct TRI_hash_index_element_multi_s*&,
+                         size_t);
 
 #endif
 
