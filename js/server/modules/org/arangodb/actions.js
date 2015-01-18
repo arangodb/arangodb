@@ -108,7 +108,7 @@ var ALL_METHODS = [ "DELETE", "GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH" ]
 function notImplementedFunction (route, message) {
   'use strict';
 
-  message += "\nThis error was triggered by the following route " + JSON.stringify(route);
+  message += "\nThis error was triggered by the following route '" + route.name + "'";
 
   console.errorLines("%s", message);
 
@@ -410,7 +410,7 @@ function lookupCallbackAction (route, action, context) {
   // .............................................................................
 
   if (action.hasOwnProperty('callback')) {
-    return lookupCallbackActionCallback(route, action, context.appModule);
+    return lookupCallbackActionCallback(route, action, context.module);
   }
 
   // .............................................................................
@@ -718,7 +718,7 @@ function defineRoutePart (storage, route, parts, pos, constraint, callback) {
     }
 
     if (pos + 1 < parts.length) {
-      console.error("cannot define prefix match within url, ignoring route");
+      console.error("cannot define prefix match within url, ignoring route '%s'", route.name);
     }
     else {
       var subprefix = storage.prefix;
@@ -794,14 +794,14 @@ function installRoute (storage, route, urlPrefix, context) {
   var url = lookupUrl(urlPrefix, route.url);
 
   if (url === null) {
-    console.error("route '%s' has an unkown url, ignoring", JSON.stringify(route));
+    console.error("route '%s' has an unkown url, ignoring '%s'", route.name);
     return;
   }
 
   var callback = lookupCallback(route, context);
 
   if (callback === null) {
-    console.error("route '%s' has an unknown callback, ignoring", JSON.stringify(route));
+    console.error("route '%s' has an unknown callback, ignoring '%s'", route.name);
     return;
   }
 
@@ -812,7 +812,7 @@ function installRoute (storage, route, urlPrefix, context) {
 /// @brief creates additional routing information
 ////////////////////////////////////////////////////////////////////////////////
 
-function analyseRoute (storage, routes) {
+function analyseRoutes (storage, routes) {
   'use strict';
 
   var j;
@@ -820,26 +820,18 @@ function analyseRoute (storage, routes) {
 
   var urlPrefix = routes.urlPrefix || "";
 
-  // create the application context
-  var appModule = module.root;
-
-  var appContext = {
-    collectionPrefix: ""
-  };
+  // use normal root module or app context
+  var appContext;
 
   if (routes.hasOwnProperty('appContext')) {
     appContext = routes.appContext;
-
-    var appId = appContext.appId;
-    var app = module.createApp(appId);
-
-    if (app === null) {
-      throw new Error("unknown application '" + appId + "'");
-    }
-
-    appModule = app.createAppModule(appContext);
   }
-
+  else {
+    appContext = {
+      module: module.root
+    };
+  }
+  
   // install the routes
   var keys = [ 'routes', 'middleware' ];
 
@@ -850,12 +842,10 @@ function analyseRoute (storage, routes) {
       var r = routes[key];
 
       for (i = 0;  i < r.length;  ++i) {
-        var context = { appModule: appModule };
-
         installRoute(storage[key],
                      r[i],
                      urlPrefix,
-                     context);
+                     appContext);
       }
     }
   }
@@ -884,16 +874,14 @@ function routingTree (routes) {
 
     try {
       if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
-        analyseRoute(storage, route);
+        analyseRoutes(storage, route);
       }
       else {
         installRoute(storage.routes, route, "", {});
        }
     }
     catch (err) {
-      console.errorLines("cannot install route '%s': %s",
-                         route.name,
-                         String(err.stack || err));
+      console.errorLines("cannot install route '%s': %s", route.name, String(err.stack || err));
     }
   }
 
