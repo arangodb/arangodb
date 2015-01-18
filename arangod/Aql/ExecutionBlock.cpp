@@ -1245,43 +1245,7 @@ bool IndexRangeBlock::initRanges () {
       return false;
     }
 
-    // sort the conditions! 
-
-    // TODO this should also be done for hash indexes when
-    // they are lazy too, but only if they should be used to produce a sorted result
-
-    size_t const n = _condition->size(); 
-    // first sort by the prefix of the index
-    std::vector<std::vector<size_t>> prefix;
-    prefix.reserve(n);
-
-    if (! _sortCoords.empty()) {
-      _sortCoords.clear();
-      _sortCoords.reserve(n);
-    }
-
-    for (size_t s = 0; s < n; s++) {
-      _sortCoords.push_back(s);
-      std::vector<size_t> next;
-      next.reserve(en->_index->fields.size());
-      prefix.emplace_back(next);
-      // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
-      // field
-      for (size_t t = 0; t < en->_index->fields.size(); t++) {
-        for (size_t u = 0; u < _condition->at(s).size(); u++) {
-          auto ri = _condition->at(s)[u];
-          if (en->_index->fields[t].compare(ri._attr) == 0) {
-            prefix.at(s).insert(prefix.at(s).begin() + t, u);
-            break;
-          }
-        }
-      }
-    }
-
-    SortFunc sortFunc(prefix, _condition, en->_reverse);
-
-    // then sort by the values of the bounds
-    std::sort(_sortCoords.begin(), _sortCoords.end(), sortFunc);
+    sortConditions();
     _posInRanges = 0;
 
     getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
@@ -1290,6 +1254,49 @@ bool IndexRangeBlock::initRanges () {
           
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief: sorts the index range conditions and resets _posInRanges to 0
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::sortConditions () {
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+
+  size_t const n = _condition->size(); 
+  // first sort by the prefix of the index
+  std::vector<std::vector<size_t>> prefix;
+  prefix.reserve(n);
+
+  if (! _sortCoords.empty()) {
+    _sortCoords.clear();
+    _sortCoords.reserve(n);
+  }
+
+  for (size_t s = 0; s < n; s++) {
+    _sortCoords.push_back(s);
+    std::vector<size_t> next;
+    next.reserve(en->_index->fields.size());
+    prefix.emplace_back(next);
+    // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
+    // field
+    for (size_t t = 0; t < en->_index->fields.size(); t++) {
+      for (size_t u = 0; u < _condition->at(s).size(); u++) {
+        auto ri = _condition->at(s)[u];
+        if (en->_index->fields[t].compare(ri._attr) == 0) {
+          prefix.at(s).insert(prefix.at(s).begin() + t, u);
+          break;
+        }
+      }
+    }
+  }
+
+  SortFunc sortFunc(prefix, _condition, en->_reverse);
+
+  // then sort by the values of the bounds
+  std::sort(_sortCoords.begin(), _sortCoords.end(), sortFunc);
+
+  _posInRanges = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
