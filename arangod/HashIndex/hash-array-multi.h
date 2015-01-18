@@ -130,6 +130,16 @@ int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const*,
                                    std::vector<TRI_doc_mptr_copy_t>&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookups an element given a key
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const*,
+                                   struct TRI_index_search_value_s const*,
+                                   std::vector<TRI_doc_mptr_copy_t>&,
+                                   struct TRI_hash_index_element_multi_s*&,
+                                   size_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ////////////////////////////////////////////////////////////////////////////////
 

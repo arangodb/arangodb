@@ -517,6 +517,53 @@ int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const* array,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookups an element given a key and a state
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_LookupByKeyHashArrayMulti (TRI_hash_array_multi_t const* array,
+                                   TRI_index_search_value_t const* key,
+                                   std::vector<TRI_doc_mptr_copy_t>& result,
+                                   TRI_hash_index_element_multi_t*& next,
+                                   size_t batchSize) {
+  size_t const initialSize = result.size();
+  TRI_ASSERT_EXPENSIVE(array->_nrUsed < array->_nrAlloc);
+  TRI_ASSERT(batchSize > 0);
+
+  if (next == nullptr) {
+    // no previous state. start at the beginning
+    uint64_t const n = array->_nrAlloc;
+    uint64_t i, k;
+
+    i = k = HashKey(array, key) % n;
+  
+    for (; i < n && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+    if (i == n) {
+      for (i = 0; i < k && array->_table[i]._document != nullptr && ! IsEqualKeyElement(array, key, &array->_table[i]); ++i);
+    }
+
+    TRI_ASSERT_EXPENSIVE(i < n);
+
+    if (array->_table[i]._document != nullptr) {
+      result.emplace_back(*(array->_table[i]._document));
+    }
+    next = array->_table[i]._next;
+  }
+  
+  if (next != nullptr) {
+    // we already had a state
+    size_t total = result.size() - initialSize;
+
+    while (next != nullptr && total < batchSize) {
+      result.emplace_back(*(next->_document));
+      next = next->_next;
+      ++total;
+    }
+  }
+    
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an element to the array
 ///
 /// This function claims the owenship of the sub-objects in the inserted
