@@ -1,7 +1,9 @@
 /*jshint unused: false */
 /*global require, start_pretty_print */
 
-var internalMembers = ["code", "error", "status", "duration", "failed", "total", "message"];
+var UnitTest = require("org/arangodb/testing");
+
+var internalMembers = UnitTest.internalMembers;
 var fs = require("fs");
 var print = require("internal").print;
 
@@ -46,10 +48,10 @@ function resultsToXml(results, baseName) {
   }
 
   for (var testrun in results) {
-    if ((testrun !== "all_ok") && (results.hasOwnProperty(testrun))) { 
+    if ((internalMembers.indexOf(testrun) === -1) && (results.hasOwnProperty(testrun))) { 
       for (var test in results[testrun]) {
 
-        if ((test !== "ok") && 
+        if ((internalMembers.indexOf(test) === -1) && 
             results[testrun].hasOwnProperty(test) && 
             !results[testrun][test].hasOwnProperty('skipped')) { 
 
@@ -127,7 +129,6 @@ function main (argv) {
     }
   }
   options.jsonReply = true;
-  var UnitTest = require("org/arangodb/testing");
   start_pretty_print();
 
   try {
@@ -139,7 +140,7 @@ function main (argv) {
     print(JSON.stringify(r));
   }
   fs.write("UNITTEST_RESULT.json",JSON.stringify(r));
-  fs.write("UNITTEST_RESULT_SUMMARY.txt",JSON.stringify(r.all_ok));
+  fs.write("UNITTEST_RESULT_SUMMARY.txt",JSON.stringify(!r.crashed));
   try {
     resultsToXml(r, "UNITTEST_RESULT_");
   }

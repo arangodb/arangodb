@@ -24,10 +24,11 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Dr. Frank Celler, Michael Hackstein
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 var arangodb = require("org/arangodb");
 var ArangoError = arangodb.ArangoError;
 var errors = arangodb.errors;
@@ -49,6 +50,7 @@ var developmentMode = require("internal").developmentMode;
 var download = require("internal").download;
 var throwDownloadError = arangodb.throwDownloadError;
 var throwFileNotFound = arangodb.throwFileNotFound;
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -175,52 +177,6 @@ function checkManifest (filename, mf) {
       }
     }
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extend a context with some helper functions
-////////////////////////////////////////////////////////////////////////////////
-
-function extendContext (context, app, root) {
-  "use strict";
-
-  var cp = context.collectionPrefix;
-  var cname = "";
-
-  if (cp === "_") {
-    cname = "_";
-  }
-  else if (cp !== "") {
-    cname = cp + "_";
-  }
-
-  context.collectionName = function (name) {
-    var replaced = cname + name.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
-
-    if (replaced.length === 0) {
-      throw new Error("Cannot derive collection name from '" + name + "'");
-    }
-
-    return replaced;
-  };
-
-  context.collection = function (name) {
-    return arangodb.db._collection(this.collectionName(name));
-  };
-
-  context.path = function (name) {
-    return fs.join(root, app._path, name);
-  };
-
-  context.comments = [];
-
-  context.comment = function (str) {
-    this.comments.push(str);
-  };
-
-  context.clearComments = function () {
-    this.comments = [];
-  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -866,40 +822,6 @@ exports.mount = function (appId, mount, options) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tears down a Foxx application
-///
-/// Input:
-/// * mount: the mount path starting with a "/"
-///
-/// Output:
-/// -
-////////////////////////////////////////////////////////////////////////////////
-
-exports.teardown = function (mount) {
-  "use strict";
-
-  checkParameter(
-    "teardown(<mount>)",
-    [ [ "Mount identifier", "string" ] ],
-    [ mount ] );
-
-  var appId;
-
-  try {
-    var doc = mountFromId(mount);
-
-    appId = doc.app;
-    var app = createApp(appId);
-
-    teardownApp(app, mount, doc.options.collectionPrefix);
-  } catch (err) {
-    console.errorLines(
-      "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
-    throw err;
-  }
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief unmounts a Foxx application
 ///
 /// Input:
@@ -1210,16 +1132,6 @@ exports.fetchFromGithub = function (url, name, version) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-///// @brief returns all installed FOXX applications
-////////////////////////////////////////////////////////////////////////////////
-
-exports.listJson = function () {
-  "use strict";
-
-  return utils.listJson();
-};
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief initializes the Foxx apps
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1287,12 +1199,29 @@ exports.initializeFoxx = function () {
     });
   }
 };
+*/
 
 (function() {
   "use strict";
 // -----------------------------------------------------------------------------
 // --CHAPTER--                                                         used code
 // -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           imports
+// -----------------------------------------------------------------------------
+
+  var fs = require("fs");
+  var utils = require("org/arangodb/foxx/manager-utils");
+  var store = require("org/arangodb/foxx/store");
+  var arangodb = require("org/arangodb");
+  var ArangoError = arangodb.ArangoError;
+  var checkParameter = arangodb.checkParameter;
+  var errors = arangodb.errors;
+  var download = require("internal").download;
+
+  var throwDownloadError = arangodb.throwDownloadError;
+  var throwFileNotFound = arangodb.throwFileNotFound;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -1322,6 +1251,52 @@ var prefixFromMount = function(mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extend a context with some helper functions
+////////////////////////////////////////////////////////////////////////////////
+
+var extendContext = function(context, app, root) {
+  var cp = context.collectionPrefix;
+  var cname = "";
+
+  if (cp === "_") {
+    cname = "_";
+  }
+  else if (cp !== "") {
+    cname = cp + "_";
+  }
+
+  context.collectionName = function (name) {
+    var replaced = cname + name.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
+
+    if (replaced.length === 0) {
+      throw new Error("Cannot derive collection name from '" + name + "'");
+    }
+
+    return replaced;
+  };
+
+  context.collection = function (name) {
+    return arangodb.db._collection(this.collectionName(name));
+  };
+
+  context.path = function (name) {
+    return fs.join(root, app._path, name);
+  };
+
+  context.comments = [];
+
+  context.comment = function (str) {
+    this.comments.push(str);
+  };
+
+  context.clearComments = function () {
+    this.comments = [];
+  };
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief validates a manifest file and returns it.
 /// All errors are handled including file not found. Returns undefined if manifest is invalid
 ////////////////////////////////////////////////////////////////////////////////
@@ -1349,15 +1324,21 @@ var validateManifestFile = function(file) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the mountpoint is reserved for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+var isSystemMount = function(mount) {
+  return (/^\/_/).test(mount);
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the root path for application. Knows about system apps
 ////////////////////////////////////////////////////////////////////////////////
 
 var computeRootAppPath = function(mount) {
-  if (/^\/_/.test(mount)) {
-    // Must be a system app
+  if (isSystemMount(mount)) {
     return module.systemAppPath();
   }
-  // A standard app
   return module.appPath();
 };
 
@@ -1366,7 +1347,9 @@ var computeRootAppPath = function(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var transformMountToPath = function(mount) {
-  return fs.join.apply(this, mount.split("/").push("APP"));
+  var list = mount.split("/");
+  list.push("APP");
+  return fs.join.apply(this, list);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1415,36 +1398,29 @@ var executeAppScript = function(app, name, mount, prefix) {
 
     app.loadAppScript(appContext, desc[name]);
   }
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets up an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function setupApp (app, mount, prefix) {
-  "use strict";
-
-  return executeAppScript(app, "setup", mount, prefix);
-}
+  var setupApp = function (app, mount, prefix) {
+    return executeAppScript(app, "setup", mount, prefix);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tears down an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function teardownApp (app, mount, prefix) {
-  "use strict";
-
-  return executeAppScript(app, "teardown", mount, prefix);
-}
-
-
-
+  var teardownApp = function (app, mount, prefix) {
+    return executeAppScript(app, "teardown", mount, prefix);
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the app path and manifest
 ////////////////////////////////////////////////////////////////////////////////
 
-  var appDescription = function (mount, options) {
+  var appConfig = function (mount, options) {
 
     var root = computeRootAppPath(mount);
     var path = transformMountToPath(mount);
@@ -1462,7 +1438,10 @@ function teardownApp (app, mount, prefix) {
       root: root,
       path: path,
       manifest: manifest,
-      options: options
+      options: options,
+      mount: mount,
+      isSystem: isSystemMount(mount),
+      isDevelopment: false
     };
   };
 
@@ -1473,8 +1452,9 @@ function teardownApp (app, mount, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var createApp = function(mount, options) {
-  var description = appDescription(mount);
-  var app = module.createApp(description, options || {});
+  var config = appConfig(mount);
+  config.options = options || {};
+  var app = module.createApp(config);
   if (app === null) {
     console.errorLines(
       "Cannot find application '%s'", mount);
@@ -1632,7 +1612,7 @@ var installAppFromLocal = function(path, targetPath) {
 /// @brief sets up a Foxx application
 ///
 /// Input:
-/// * mount: the mount identifier or path
+/// * mount: the mount path starting with a "/"
 ///
 /// Output:
 /// -
@@ -1656,28 +1636,48 @@ var setup = function (mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief tears down a Foxx application
+///
+/// Input:
+/// * mount: the mount path starting with a "/"
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+var teardown = function (mount) {
+  checkParameter(
+    "teardown(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+
+  var app = lookupApp(mount);
+  try {
+    teardownApp(app, mount, prefixFromMount(mount));
+  } catch (err) {
+    console.errorLines(
+      "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
+    throw err;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Scans the sources of the given mountpoint and publishes the routes
 ///
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 var scanFoxx = function(mount, options) {
   delete appCache[mount];
-  createApp(mount, options);
+  var app = createApp(mount, options);
+  utils.tmp_getStorage().save(app.toJSON());
+  // TODO Routing?
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Installs a new foxx application on the given mount point.
-///
-/// TODO: Long Documentation!
+/// @brief Internal install function. Check install.
+/// Does not check parameters and throws errors.
 ////////////////////////////////////////////////////////////////////////////////
-var install = function(appInfo, mount, options) {
-
-  checkParameter(
-    "mount(<appInfo>, <mount>, [<options>])",
-    [ [ "Install information", "string" ],
-      [ "Mount path", "string" ] ],
-    [ appInfo, mount ] );
-
+var _install = function(appInfo, mount, options, runSetup) {
   var targetPath = computeAppPath(mount, true);
   if (fs.exists(targetPath)) {
     throw "An app is already installed at this location.";
@@ -1685,7 +1685,7 @@ var install = function(appInfo, mount, options) {
   fs.makeDirectoryRecursive(targetPath);
   // Remove the empty APP folder.
   // Ohterwise move will fail.
-  fs.removeDirectoryRecursive(targetPath);
+  fs.removeDirectory(targetPath);
 
   if (appInfo === "EMPTY") {
     // Make Empty app
@@ -1701,27 +1701,110 @@ var install = function(appInfo, mount, options) {
     throw "Not implemented yet";
   }
   scanFoxx(mount, options);
-  setup(mount);
+  if (runSetup) {
+    setup(mount);
+  }
 };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Installs a new foxx application on the given mount point.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var install = function(appInfo, mount, options) {
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+  _install(appInfo, mount, options, true);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Internal install function. Check install.
+/// Does not check parameters and throws errors.
+////////////////////////////////////////////////////////////////////////////////
+var _uninstall = function(mount) {
+  var targetPath = computeAppPath(mount, true);
+  if (!fs.exists(targetPath)) {
+    throw "No foxx app found at this location.";
+  }
+  teardown(mount);
+  // TODO Delete routing?
+  utils.tmp_getStorage().removeByExample({mount: mount}); 
+  delete appCache[mount];
+  // Remove the APP folder.
+  fs.removeDirectoryRecursive(targetPath, true);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Uninstalls the foxx application on the given mount point.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var uninstall = function(mount) {
+  checkParameter(
+    "mount(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  _uninstall(mount);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Replaces a foxx application on the given mount point by an other one.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var replace = function(appInfo, mount, options) {
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+  _uninstall(mount, true);
+  _install(appInfo, mount, options, true);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Upgrade a foxx application on the given mount point by a new one.
+///
+/// TODO: Long Documentation!
+////////////////////////////////////////////////////////////////////////////////
+var upgrade = function(appInfo, mount, options) {
+  checkParameter(
+    "mount(<appInfo>, <mount>, [<options>])",
+    [ [ "Install information", "string" ],
+      [ "Mount path", "string" ] ],
+    [ appInfo, mount ] );
+  _uninstall(mount, false);
+  _install(appInfo, mount, options, false);
+};
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                           exports
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
+exports.scanFoxx = scanFoxx;
 exports.install = install;
-/*
- exports.uninstall = uninstall;
- exports.setup = setup;
- exports.teardown = teardown;
- exports.list = list;
- exports.listJson = listJson;
- exports.replace = replace;
- exports.mountedApp = mountedApp;
- exports.upgrade = upgrade;
- exports.scanFoxx = scanFoxx;
- exports.developmentMounts = developmentMounts;
- exports.developmentMountsJson = developmentMountsJson;
-*/
+exports.setup = setup;
+exports.teardown = teardown;
+exports.uninstall = uninstall;
+exports.replace = replace;
+exports.upgrade = upgrade;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Exports from foxx utils module.
+////////////////////////////////////////////////////////////////////////////////
+
+exports.mountedApp = utils.mountedApp;
+exports.list = utils.list;
+exports.listJson = utils.listJson;
+exports.listDevelopment = utils.listDevelopment;
+exports.listDevelopmentJson = utils.listDevelopmentJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx store module.
