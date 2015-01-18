@@ -299,8 +299,16 @@ function walSuite () {
 
       internal.wal.flush(true, true);
 
-      // now we should have a tick
-      fig = c.figures();
+      // wait for the logfile manager to write and sync the updated status file
+      var tries = 0; 
+      while (++tries < 20) {
+        fig = c.figures();
+        if (fig.uncollectedLogfileEntries === 0) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+
       assertNotEqual("0", fig.lastTick);
       assertEqual(0, fig.uncollectedLogfileEntries);
     },
