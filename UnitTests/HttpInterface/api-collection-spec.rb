@@ -292,6 +292,7 @@ describe ArangoDB do
       it "extracting the figures for a collection" do
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3
 
         cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
@@ -335,6 +336,7 @@ describe ArangoDB do
 
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
@@ -360,6 +362,7 @@ describe ArangoDB do
         
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3 
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
@@ -385,6 +388,7 @@ describe ArangoDB do
         
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)

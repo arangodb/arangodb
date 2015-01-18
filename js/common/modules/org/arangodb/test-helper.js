@@ -60,7 +60,7 @@ exports.Helper = {
 
     while (collection.status() !== arangodb.ArangoCollection.STATUS_UNLOADED) {
       collection.unload();
-      internal.wait(0.25);
+      internal.wait(0.25, true);
 
       ++iterations;
 
@@ -80,6 +80,7 @@ exports.Helper = {
     var internal = require("internal");
 
     internal.wal.flush(true, true);
+    internal.wait(1, false);
 
     var fig = collection.figures();
     var files = fig.datafiles.count + fig.journals.count;

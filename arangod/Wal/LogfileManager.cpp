@@ -157,6 +157,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _lastCollectedId(0),
     _lastSealedId(0),
     _logfiles(),
+    _fileLock(),
     _transactions(),
     _failedTransactions(),
     _droppedCollections(),
@@ -1412,6 +1413,7 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
   if (! _inRecovery) {
     // to start removal of unneeded datafiles
     _collectorThread->signal();
+    writeShutdownInfo(false);
   }
 }
 
@@ -1621,15 +1623,24 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  // create local copies of the instance variables while holding the read lock
+  Logfile::IdType lastCollectedId;
+  Logfile::IdType lastSealedId;
+  {
+    READ_LOCKER(_logfilesLock);
+    lastCollectedId = _lastCollectedId;
+    lastSealedId = _lastSealedId;
+  }
+
   std::string val;
 
   val = basics::StringUtils::itoa(TRI_CurrentTickServer());
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
-  val = basics::StringUtils::itoa(_lastCollectedId);
+  val = basics::StringUtils::itoa(lastCollectedId);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "lastCollected", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
-  val = basics::StringUtils::itoa(_lastSealedId);
+  val = basics::StringUtils::itoa(lastSealedId);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "lastSealed", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
   if (writeShutdownTime) {
@@ -1637,14 +1648,20 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "shutdownTime", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, t.c_str(), t.size()));
   }
 
-  if (! TRI_SaveJson(filename.c_str(), json, true)) {
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+  bool ok;
+  {
+    MUTEX_LOCKER(_fileLock);
+    ok = TRI_SaveJson(filename.c_str(), json, true);
+  }
+
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+
+  if (! ok) {
     LOG_ERROR("unable to write WAL state file '%s'", filename.c_str());
 
     return TRI_ERROR_CANNOT_WRITE_FILE;
   }
 
-  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
   return TRI_ERROR_NO_ERROR;
 }
 
