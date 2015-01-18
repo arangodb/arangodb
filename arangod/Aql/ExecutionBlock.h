@@ -666,12 +666,12 @@ namespace triagens {
 
         class SortFunc {
           public:
-            SortFunc (std::vector<std::vector<size_t>> prefix, 
+            SortFunc (std::vector<std::vector<size_t>> const& prefix, 
                       IndexOrCondition* condition,
                       bool reverse)
               : _prefix(prefix),
                 _condition(condition), 
-                _reverse(reverse){
+                _reverse(reverse) {
             }
 
             bool operator() (size_t const&,

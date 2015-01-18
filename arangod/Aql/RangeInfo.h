@@ -954,16 +954,16 @@ namespace triagens {
 /// disjoint sets. 
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool areDisjointIndexAndConditions (IndexAndCondition&, 
-                                        IndexAndCondition&);
+    bool areDisjointIndexAndConditions (IndexAndCondition const&, 
+                                        IndexAndCondition const&);
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isContainedIndexAndConditions: returns true if the first argument is
 /// contained in the second, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool isContainedIndexAndConditions (IndexAndCondition&, 
-                                        IndexAndCondition&);
+    bool isContainedIndexAndConditions (IndexAndCondition const&, 
+                                        IndexAndCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceIndexAnd: modifies and1 and and2 in place 
