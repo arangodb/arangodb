@@ -1248,15 +1248,19 @@ bool IndexRangeBlock::initRanges () {
     // sort the conditions! 
 
     // TODO this should also be done for hash indexes when
-    // they are lazy too. 
+    // they are lazy too, but only if they should be used to produce a sorted result
 
-    // first sort by the prefix of the index 
+    size_t const n = _condition->size(); 
+    // first sort by the prefix of the index
     std::vector<std::vector<size_t>> prefix;
+    prefix.reserve(n);
+
     if (! _sortCoords.empty()) {
       _sortCoords.clear();
-      _sortCoords.reserve(_condition->size());
+      _sortCoords.reserve(n);
     }
-    for (size_t s = 0; s < _condition->size(); s++) {
+
+    for (size_t s = 0; s < n; s++) {
       _sortCoords.push_back(s);
       std::vector<size_t> next;
       next.reserve(en->_index->fields.size());
