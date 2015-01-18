@@ -808,8 +808,8 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs,
 /// disjoint sets, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, 
-                                                   IndexAndCondition& and2) {
+bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition const& and1, 
+                                                   IndexAndCondition const& and2) {
   for (auto ri1: and1) {
     for (auto ri2: and2) {
       if (ri2._attr == ri1._attr) {
@@ -828,8 +828,8 @@ bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1,
 /// contained in the second, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, 
-                                                   IndexAndCondition& and2) {
+bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition const& and1, 
+                                                   IndexAndCondition const& and2) {
   for (auto ri1: and1) {
     bool contained = false;
     for (auto ri2: and2) {
@@ -844,7 +844,8 @@ bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1,
     if (! contained) {
       return false;
     }
-  }    
+  }   
+ 
   return true;
 }
 
