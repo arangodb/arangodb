@@ -210,6 +210,7 @@ pack-arm-cmake:
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
+		$(MOREOPTS) \
 		..
 
 	${MAKE} ${BUILT_SOURCES}
@@ -247,6 +248,7 @@ pack-winXX-cmake:
 		-D "USE_MRUBY=OFF" \
 		-D "V8_VERSION=3.31.74.1" \
 		-D "ZLIB_VERSION=1.2.7" \
+		$(MOREOPTS) \
 		..
 
 	cd Build$(BITS) && cmake --build . --config Release
