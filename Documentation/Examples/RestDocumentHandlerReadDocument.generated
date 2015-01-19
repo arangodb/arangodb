@@ -1,12 +1,12 @@
-shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1687687749
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1581064072
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: "1687687749"
+etag: "1581064072"
 
 { 
   "hello" : "world", 
-  "_id" : "products/1687687749", 
-  "_rev" : "1687687749", 
-  "_key" : "1687687749" 
+  "_id" : "products/1581064072", 
+  "_rev" : "1581064072", 
+  "_key" : "1581064072" 
 }
