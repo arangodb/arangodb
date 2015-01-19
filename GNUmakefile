@@ -232,10 +232,22 @@ pack-win32:
 pack-win64:
 	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
 
+pack-win32-relative:
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON"'
+
+pack-win64-relative:
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+
+
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+
+pack-winXX-MOREOPTS:
+	rm -rf Build$(BITS) && mkdir Build$(BITS)
+
+	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
 
 pack-winXX-cmake:
 	cd Build$(BITS) && cmake \
