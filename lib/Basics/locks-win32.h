@@ -43,7 +43,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_mutex_s {
+#if TRI_WINDOWS_VISTA_LOCKS
   HANDLE _mutex;
+#else
+  SRWLOCK _mutex;
+#endif
 }
 TRI_mutex_t;
 
