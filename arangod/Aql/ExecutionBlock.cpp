@@ -5504,9 +5504,9 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   else {
     body("pos", Json(static_cast<double>(pos)))
-      ("items", items->toJson(_engine->getQuery()->trx()))
-      ("exhausted", Json(false))
-      ("error", Json(false));
+        ("items", items->toJson(_engine->getQuery()->trx()))
+        ("exhausted", Json(false))
+        ("error", Json(false));
   }
 
   std::string bodyString(body.toString());
