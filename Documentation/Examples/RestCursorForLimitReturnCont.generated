@@ -1,7 +1,7 @@
 shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
 {"query":"FOR p IN products LIMIT 5 RETURN p","count":true,"batchSize":2}
 
-shell> curl -X PUT --dump - http://localhost:8529/_api/cursor/1214059077
+shell> curl -X PUT --dump - http://localhost:8529/_api/cursor/1138040712
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
@@ -9,20 +9,20 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1212879429", 
-      "_key" : "1212879429", 
-      "_rev" : "1212879429", 
+      "_id" : "products/1136861064", 
+      "_key" : "1136861064", 
+      "_rev" : "1136861064", 
       "hello2" : "world1" 
     }, 
     { 
-      "_id" : "products/1213207109", 
-      "_key" : "1213207109", 
-      "_rev" : "1213207109", 
-      "hello3" : "world1" 
+      "_id" : "products/1137844104", 
+      "_key" : "1137844104", 
+      "_rev" : "1137844104", 
+      "hello5" : "world1" 
     } 
   ], 
   "hasMore" : true, 
-  "id" : "1214059077", 
+  "id" : "1138040712", 
   "count" : 5, 
   "extra" : { 
     "stats" : { 

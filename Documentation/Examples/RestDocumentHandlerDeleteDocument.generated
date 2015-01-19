@@ -1,11 +1,11 @@
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/document/products/1700926021
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/document/products/1594302344
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
   "error" : false, 
-  "_id" : "products/1700926021", 
-  "_rev" : "1700926021", 
-  "_key" : "1700926021" 
+  "_id" : "products/1594302344", 
+  "_rev" : "1594302344", 
+  "_key" : "1594302344" 
 }
