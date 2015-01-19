@@ -44,10 +44,11 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitMutex (TRI_mutex_t* mutex) {
+  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
-  mutex->_mutex = CreateMutex(NULL, FALSE, NULL);
+  mutex->_mutex = CreateMutex(nullptr, FALSE, nullptr);
 
-  if (mutex->_mutex == NULL) {
+  if (mutex->_mutex == nullptr) {
     LOG_FATAL_AND_EXIT("cannot create the mutex");
   }
 #else
@@ -61,6 +62,7 @@ int TRI_InitMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DestroyMutex (TRI_mutex_t* mutex) {
+  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   if (CloseHandle(mutex->_mutex) == 0) {
     DWORD result = GetLastError();
@@ -81,6 +83,7 @@ int TRI_DestroyMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockMutex (TRI_mutex_t* mutex) {
+  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   DWORD result = WaitForSingleObject(mutex->_mutex, INFINITE);
 
@@ -113,6 +116,7 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockMutex (TRI_mutex_t* mutex) {
+  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   BOOL ok = ReleaseMutex(mutex->_mutex);
 
