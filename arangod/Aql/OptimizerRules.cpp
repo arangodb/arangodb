@@ -1522,8 +1522,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         }
  
         // distribute AND into OR
-        return andCombineRangeInfoMapVecs(buildRangeInfo(node->getMember(0), enumCollVar, attr, node->type),
-                                          buildRangeInfo(node->getMember(1), enumCollVar, attr, node->type));
+        return andCombineRangeInfoMapVecs(lhs, rhs);
       }
 
       if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
