@@ -160,6 +160,9 @@ function reloadUserFunctions () {
 
     try {
       var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
+      if (typeof res !== "function") {
+        foundError = true;
+      }
 
       functions[key.toUpperCase()] = {
         name: key,
@@ -177,8 +180,8 @@ function reloadUserFunctions () {
   
   // now reset the functions for all databases
   // this ensures that functions of other databases will be reloaded next 
-  // time (the reload does not necessarily needed to be carried out in the
-  // database in which the function was registered)
+  // time (the reload does not necessarily need to be carried out in the
+  // database in which the function is registered)
   UserFunctions = { }; 
   UserFunctions[prefix] = functions;
 
