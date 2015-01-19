@@ -1055,7 +1055,7 @@ function buildRouting (dbname) {
   routing = null;
 
   // install the foxx routes
-  // TODO routes = routes.concat(foxxManager.appRoutes());
+  routes = routes.concat(foxxManager.appRoutes());
 
   // build the routing tree
   RoutingTree[dbname] = routingTree(routes);
