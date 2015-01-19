@@ -2365,6 +2365,7 @@ int main (int argc, char* args[]) {
 
   v8::Platform* platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(platform);
+  v8::V8::Initialize();
 
   BufferAllocator bufferAllocator;
   v8::V8::SetArrayBufferAllocator(&bufferAllocator);

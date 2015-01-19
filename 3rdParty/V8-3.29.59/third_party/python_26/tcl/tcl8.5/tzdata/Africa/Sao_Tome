@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Sao_Tome) {
-    {-9223372036854775808 1616 0 LMT}
-    {-2713912016 -2192 0 LMT}
-    {-1830381808 0 0 GMT}
-}

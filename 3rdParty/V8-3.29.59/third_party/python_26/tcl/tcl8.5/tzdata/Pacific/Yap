@@ -1,5 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-if {![info exists TZData(Pacific/Truk)]} {
-    LoadTimeZoneFile Pacific/Truk
-}
-set TZData(:Pacific/Yap) $TZData(:Pacific/Truk)

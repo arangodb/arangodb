@@ -1,6 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Blantyre) {
-    {-9223372036854775808 8400 0 LMT}
-    {-2109291600 7200 0 CAT}
-}
