@@ -44,12 +44,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitMutex (TRI_mutex_t* mutex) {
+#if TRI_WINDOWS_VISTA_LOCKS
   mutex->_mutex = CreateMutex(NULL, FALSE, NULL);
 
   if (mutex->_mutex == NULL) {
     LOG_FATAL_AND_EXIT("cannot create the mutex");
   }
-
+#else
+  InitializeSRWLock(&mutex->_mutex);
+#endif
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -58,12 +61,14 @@ int TRI_InitMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_DestroyMutex (TRI_mutex_t* mutex) {
+#if TRI_WINDOWS_VISTA_LOCKS
   if (CloseHandle(mutex->_mutex) == 0) {
     DWORD result = GetLastError();
 
     LOG_FATAL_AND_EXIT("locks-win32.c:TRI_DestroyMutex:could not destroy the mutex -->%d",result);
   }
-
+#else
+#endif
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -76,6 +81,7 @@ int TRI_DestroyMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_LockMutex (TRI_mutex_t* mutex) {
+#if TRI_WINDOWS_VISTA_LOCKS
   DWORD result = WaitForSingleObject(mutex->_mutex, INFINITE);
 
   switch (result) {
@@ -97,7 +103,9 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
       LOG_FATAL_AND_EXIT("locks-win32.c:TRI_LockMutex:could not lock the condition --> WAIT_FAILED - reason -->%d",result);
     }
   }
-
+#else
+  AcquireSRWLockExclusive(&mutex->_mutex);
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,11 +113,15 @@ void TRI_LockMutex (TRI_mutex_t* mutex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_UnlockMutex (TRI_mutex_t* mutex) {
+#if TRI_WINDOWS_VISTA_LOCKS
   BOOL ok = ReleaseMutex(mutex->_mutex);
 
   if (! ok) {
     LOG_FATAL_AND_EXIT("could not unlock the mutex");
   }
+#else
+  ReleaseSRWLockExclusive(&mutex->_mutex);
+#endif
 }
 
 // -----------------------------------------------------------------------------
