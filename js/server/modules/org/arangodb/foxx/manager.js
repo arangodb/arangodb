@@ -61,6 +61,13 @@
   // -----------------------------------------------------------------------------
 
   var appCache = {};
+  var usedSystemMountPoints = [
+    "/_admin/aardvark", // Admin interface.
+    "/_system/cerberus", // Password recovery.
+    "/_api/gharial", // General_Graph API.
+    "/_system/sessions", // Sessions.
+    "/_system/simple-auth" // Authentication.
+  ];
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private functions
@@ -84,6 +91,21 @@
       }
     }
     return routes;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Makes sure all system apps are mounted.
+  ////////////////////////////////////////////////////////////////////////////////
+  var checkMountedSystemApps = function() {
+    var i, mount;
+    for (i = 0; i < usedSystemMountPoints.length; ++i) {
+      mount = usedSystemMountPoints[i];
+      if (!appCache[mount]) {
+        // System app not written to collection
+        _scanFoxx(mount, {});
+        setup(mount);
+      }
+    }
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -537,14 +559,28 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Internal scanFoxx function. Check scanFoxx.
+  /// Does not check parameters and throws errors.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var _scanFoxx = function(mount, options) {
+    delete appCache[mount];
+    var app = createApp(mount, options);
+    utils.tmp_getStorage().save(app.toJSON());
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Scans the sources of the given mountpoint and publishes the routes
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
   var scanFoxx = function(mount, options) {
-    delete appCache[mount];
-    var app = createApp(mount, options);
-    utils.tmp_getStorage().save(app.toJSON());
+    checkParameter(
+      "mount(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    _scanFoxx(mount, options);
+    executeGlobalContextFunction("reloadRouting");
   };
 
 
@@ -576,7 +612,7 @@
       // try appstore
       throw "Not implemented yet";
     }
-    scanFoxx(mount, options);
+    _scanFoxx(mount, options);
     if (runSetup) {
       setup(mount);
     }
@@ -665,7 +701,8 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var initializeFoxx = function() {
-    return refillCaches(false);
+    refillCaches(false);
+    checkMountedSystemApps();
   };
 
   var appRoutes = function() {
