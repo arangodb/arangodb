@@ -39,6 +39,7 @@
   var fs = require("fs");
   var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
+  var setFoxxRouting = require("org/arangodb/actions").setFoxxRouting;
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private functions
@@ -297,7 +298,7 @@
     var i;
     var mount = app._mount;
 
-    var defaultDocument = app._manifest.defaultDocument; // TODO by default "index.html"
+    var defaultDocument = app._manifest.defaultDocument;
 
     // setup the routes
     var routes = {
@@ -364,11 +365,9 @@
         if (controllers.hasOwnProperty(i)) {
           file = controllers[i];
 
-          // TODO ????
           // set up a context for the application start function
           tmpContext = {
             prefix: arangodb.normalizeURL("/" + i), // app mount
-            routingInfo: {},
             foxxes: []
           };
 
@@ -423,6 +422,7 @@
       // install all files and assets
       installAssets(app, routes);
       
+      setFoxxRouting(app._mount, routes);
       // and return all routes
       return routes;
     }
