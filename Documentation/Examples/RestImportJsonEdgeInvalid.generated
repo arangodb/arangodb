@@ -10,6 +10,6 @@ content-type: application/json; charset=utf-8
   "errors" : 1, 
   "empty" : 0, 
   "details" : [ 
-    "at position 1: missing '_from' or '_to' attribute" 
+    "at position 1: missing '_from' or '_to' attribute, offending document: {\"name\":\"some name\"}" 
   ] 
 }
