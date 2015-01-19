@@ -1202,6 +1202,7 @@ exports.initializeFoxx = function () {
   var fs = require("fs");
   var utils = require("org/arangodb/foxx/manager-utils");
   var store = require("org/arangodb/foxx/store");
+  var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
   var checkParameter = arangodb.checkParameter;
@@ -1229,60 +1230,6 @@ var appCache = {};
 var lookupApp = function(mount) {
   return appCache[mount];
 };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts the mount point into the default prefix
-////////////////////////////////////////////////////////////////////////////////
-
-var prefixFromMount = function(mount) {
-  return mount.substr(1).replace(/-/g, "_").replace(/\//g, "_");
-};
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extend a context with some helper functions
-////////////////////////////////////////////////////////////////////////////////
-
-var extendContext = function(context, app, root) {
-  var cp = context.collectionPrefix;
-  var cname = "";
-
-  if (cp === "_") {
-    cname = "_";
-  }
-  else if (cp !== "") {
-    cname = cp + "_";
-  }
-
-  context.collectionName = function (name) {
-    var replaced = cname + name.replace(/[^a-zA-Z0-9]/g, '_').replace(/(^_+|_+$)/g, '').substr(0, 64);
-
-    if (replaced.length === 0) {
-      throw new Error("Cannot derive collection name from '" + name + "'");
-    }
-
-    return replaced;
-  };
-
-  context.collection = function (name) {
-    return arangodb.db._collection(this.collectionName(name));
-  };
-
-  context.path = function (name) {
-    return fs.join(root, app._path, name);
-  };
-
-  context.comments = [];
-
-  context.comment = function (str) {
-    this.comments.push(str);
-  };
-
-  context.clearComments = function () {
-    this.comments = [];
-  };
-}
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validates a manifest file and returns it.
@@ -1384,7 +1331,7 @@ var executeAppScript = function(app, name, mount, prefix) {
 
     extendContext(appContext, app, root);
 
-    app.loadAppScript(appContext, desc[name]);
+    app.loadAppScript(desc[name]);
   }
 };
 
@@ -1415,6 +1362,7 @@ var executeAppScript = function(app, name, mount, prefix) {
 
     var file = fs.join(root, path, "manifest.json");
     var manifest = validateManifestFile(file);
+    var collectionPrefix = 
 
     if (manifest === undefined) {
       //TODO Error Handeling
@@ -1442,7 +1390,7 @@ var executeAppScript = function(app, name, mount, prefix) {
 var createApp = function(mount, options) {
   var config = appConfig(mount);
   config.options = options || {};
-  var app = module.createApp(config);
+  var app = new ArangoApp(config);
   if (app === null) {
     console.errorLines(
       "Cannot find application '%s'", mount);
@@ -1724,7 +1672,7 @@ function routingAalApp (app) {
         appContext = _.extend({}, appContextTempl);
         appContext.prefix = "/";
 
-        app.loadAppScript(appContext, file, { context: context });
+        app.loadAppScript(file, { context: context });
 
         app._exports[i] = result;
       }
@@ -1746,7 +1694,7 @@ function routingAalApp (app) {
         appContext.routingInfo = {};
         appContext.foxxes = [];
 
-        app.loadAppScript(appContext, file, { transform: transformScript(file) });
+        app.loadAppScript(file, { transform: transformScript(file) });
 
         // .............................................................................
         // routingInfo
