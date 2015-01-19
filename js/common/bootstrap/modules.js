@@ -151,18 +151,6 @@ function require (path) {
   var Module;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoApp constructor declaration
-////////////////////////////////////////////////////////////////////////////////
-
-  var ArangoApp;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appDescription declaration
-////////////////////////////////////////////////////////////////////////////////
-
-  var appDescription;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief in-flight modules
 ///
 /// These modules are currently loading and must be cleanup when a cancellation
@@ -1364,224 +1352,30 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief createApp
+/// @brief createAppModule, is used to create foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (config) {
+  Module.prototype.createAppModule = function (app) {
     'use strict';
-    return new ArangoApp(config);
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         ArangoApp
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoApp constructor
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp = function (config) {
-    'use strict';
-    this._id = config.id; // ???
-    this._manifest = config.manifest;
-    this._name = config.manifest.name;
-    this._version = config.manifest.version;
-    this._root = config.root;
-    this._path = config.path;
-    this._options = config.options;
-    this._mount = config.mount;
-    this._isSystem = config.isSystem || false;
-    this._isDevelopment = config.isDevelopment || false;
-    this._exports = {};
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a package
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype._PRINT = function (context) {
-    'use strict';
-
-    var parent = "";
-
-    if (this._parent !== undefined) {
-      parent = ', parent "' + this._package._parent.id + '"';
+    var libpath = fs.join(this._root, this._path);
+    if (this._manifest.hasOwnProperty("lib")) {
+      libpath = fs.join(libpath, app._manifest.lib);
     }
-
-    context.output += '[app "' + this._name + '" (' + this._version + ')]';
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates a Json representation of itself to be persisted
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.toJSON = function () {
-    var json = {
-      id: this._id,
-      manifest: this._manifest,
-      name: this._name,
-      version: this._version,
-      root: this._root,
-      path: this._path,
-      options: this._options,
-      mount: this._mount,
-      isSystem: this._isSystem,
-      isDevelopment: this._isDevelopment
-    };
-    if (this._manifest.hasOwnProperty("author")) {
-      json.author = this._manifest.author;
-    }
-    if (this._manifest.hasOwnProperty("description")) {
-      json.description = this._manifest.description;
-    }
-    if (this._manifest.hasOwnProperty("thumbnail")) {
-      json.thumbnail = this._manifest.thumbnail;
-    }
-
-    return json;
-  };
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createAppModule
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.createAppModule = function (appContext, type) {
-    'use strict';
-
-    if (type === undefined) {
-      type = 'lib';
-    }
-
-    var libpath;
-
-    if (this._manifest.hasOwnProperty(type)) {
-      libpath = fs.join(this._root, this._path, this._manifest[type]);
-    }
-    else {
-      libpath = fs.join(this._root, this._path);
-    }
-
     var pkg = new Package("application-package",
-                          {name: "application '" + this._name + "'"},
+                          {name: "application '" + app._name + "'"},
                           undefined,
                           path2FileUri(libpath),
                           false);
 
     return new Module("/application-module",
                       pkg,
-                      appContext,
+                      app._context,
                       "/",
                       path2FileUri(libpath),
                       false);
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createAppContext
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.createAppContext = function () {
-    'use strict';
-
-    var context = {};
-
-    context.name = this._name;
-    context.version = this._version;
-    context.appId = this._id;
-    context.appModule = this.createAppModule(context);
-
-    var prefix = fs.safeJoin(this._root, this._path);
-
-    context.foxxFilename = function (path) {
-      return fs.safeJoin(prefix, path);
-    };
-
-    return context;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loadAppScript
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.loadAppScript = function (appContext, filename, options) {
-    'use strict';
-
-    options = options || {};
-
-    var full = fs.join(this._root, this._path, filename);
-    var fileContent = fs.read(full);
-
-    if (options.hasOwnProperty('transform')) {
-      fileContent = options.transform(fileContent);
-    }
-    else if (/\.coffee$/.test(filename)) {
-      var cs = require("coffee-script");
-
-      fileContent = cs.compile(fileContent, {bare: true});
-    }
-
-    var sandbox = {};
-    var key;
-
-    if (options.hasOwnProperty('context')) {
-      var context = options.context;
-
-      for (key in context) {
-        if (context.hasOwnProperty(key) && key !== "__myenv__") {
-          sandbox[key] = context[key];
-        }
-      }
-    }
-
-    sandbox.__filename = full;
-    sandbox.__dirname = normalizeModuleName(full + "/..");
-    sandbox.module = appContext.appModule;
-    sandbox.applicationContext = appContext;
-
-    sandbox.require = function (path) {
-      return appContext.appModule.require(path);
-    };
-
-    var content = "(function (__myenv__) {";
-
-    for (key in sandbox) {
-      if (sandbox.hasOwnProperty(key)) {
-        // using `key` like below is not safe (imagine a key named `foo bar`!)
-        // TODO: fix this
-        content += "var " + key + " = __myenv__[" + JSON.stringify(key) + "];";
-      }
-    }
-
-    content += "delete __myenv__;"
-             + "(function () {"
-             + fileContent
-             + "\n}());"
-             + "});";
-    // note: at least one newline character must be used here, otherwise
-    // a script ending with a single-line comment (two forward slashes)
-    // would render the function tail invalid
-    // adding a newline at the end will create stack traces with a line number
-    // one higher than the last line in the script file
-
-    var fun = internal.executeScript(content, undefined, full);
-
-    if (fun === undefined) {
-      throw new Error("cannot create application script: " + content);
-    }
-
-    fun(sandbox);
-  };
-
+  Module.prototype.normalizeModuleName = normalizeModuleName;
 }());
 
 // -----------------------------------------------------------------------------
