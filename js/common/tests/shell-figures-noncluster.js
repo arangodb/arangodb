@@ -262,7 +262,7 @@ function FiguresSuite () {
       tries = 0;
       while (++tries < 20) {
         figures = collection.figures();
-        if (figures.dead.count === 3) {
+        if (figures.dead.count === 3 && figures.alive.count === 1) {
           break;
         }
         internal.wait(1, false);
