@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Gaborone) {
-    {-9223372036854775808 6220 0 LMT}
-    {-2682294220 7200 0 CAT}
-    {-829526400 10800 1 CAST}
-    {-813805200 7200 0 CAT}
-}

@@ -1,5 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-if {![info exists TZData(America/St_Thomas)]} {
-    LoadTimeZoneFile America/St_Thomas
-}
-set TZData(:America/Virgin) $TZData(:America/St_Thomas)

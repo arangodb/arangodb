@@ -216,8 +216,10 @@ dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 
-V8_VERSION="3.29.59"
-V8_CPPFLAGS="-I${srcdir}/3rdParty/V8-3.29.59/include -DTRI_V8_VERSION='\"${V8_VERSION}\"'"
+V8_VERSION="3.31.74.1"
+V8_DIR=V8-${V8_VERSION}
+
+V8_CPPFLAGS="-I${srcdir}/3rdParty/${V8_DIR}/include -DTRI_V8_VERSION='\"${V8_VERSION}\"'"
 V8_LDFLAGS=""
 V8_TARGET="native"
 
@@ -238,7 +240,7 @@ if test x$tr_ARM == xyes;  then
     V8_TARGET="arm.release"
   fi
 
-  v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/tools/gyp"
+  v8_lib_dir="${srcdir}/3rdParty/${V8_DIR}/out/$V8_TARGET/obj.target/tools/gyp"
 
 elif test x$tr_DARWIN == xyes;  then
   if test "x$tr_BITS" == x64;  then
@@ -255,7 +257,7 @@ elif test x$tr_DARWIN == xyes;  then
     fi
   fi
 
-  v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET"
+  v8_lib_dir="${srcdir}/3rdParty/${V8_DIR}/out/$V8_TARGET"
 
 else
   if test "x$tr_BITS" == x64;  then
@@ -272,7 +274,7 @@ else
     fi
   fi
 
-  v8_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/tools/gyp"
+  v8_lib_dir="${srcdir}/3rdParty/${V8_DIR}/out/$V8_TARGET/obj.target/tools/gyp"
 fi
 
 V8_LIBS="${v8_lib_dir}/libv8_base.a ${v8_lib_dir}/libv8_libbase.a ${v8_lib_dir}/libv8_libplatform.a ${v8_lib_dir}/libv8_nosnapshot.a"
@@ -282,6 +284,7 @@ if test "x$tr_FREEBSD" == xyes;  then
 fi
 
 AC_SUBST(V8_VERSION)
+AC_SUBST(V8_DIR)
 AC_SUBST(V8_CPPFLAGS)
 AC_SUBST(V8_LDFLAGS)
 AC_SUBST(V8_LIBS)
@@ -303,13 +306,13 @@ dnl ICU
 dnl ----------------------------------------------------------------------------
 
 ICU_VERSION="52.2"
-ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/common -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/i18n -I${srcdir}/3rdParty/V8-3.29.59/third_party/icu/source/io"
+ICU_CPPFLAGS="-D_REENTRANT -I${srcdir}/3rdParty/${V8_DIR}/third_party/icu/source/common -I${srcdir}/3rdParty/${V8_DIR}/third_party/icu/source/i18n -I${srcdir}/3rdParty/${V8_DIR}/third_party/icu/source/io"
 ICU_LDFLAGS=""
 
 if test "x$tr_DARWIN" = xyes; then
-  icu_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET"
+  icu_lib_dir="${srcdir}/3rdParty/${V8_DIR}/out/$V8_TARGET"
 else
-  icu_lib_dir="${srcdir}/3rdParty/V8-3.29.59/out/$V8_TARGET/obj.target/third_party/icu"
+  icu_lib_dir="${srcdir}/3rdParty/${V8_DIR}/out/$V8_TARGET/obj.target/third_party/icu"
 fi
 
 ICU_LIBS="-ldl -lm ${icu_lib_dir}/libicui18n.a ${icu_lib_dir}/libicuuc.a ${icu_lib_dir}/libicudata.a -ldl -lm"

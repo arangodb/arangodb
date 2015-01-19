@@ -1,8 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Asmara) {
-    {-9223372036854775808 9332 0 LMT}
-    {-3155682932 9332 0 AMT}
-    {-2524530932 9320 0 ADMT}
-    {-1062210920 10800 0 EAT}
-}

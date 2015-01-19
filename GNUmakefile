@@ -245,7 +245,7 @@ pack-winXX-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=4.11" \
 		-D "USE_MRUBY=OFF" \
-		-D "V8_VERSION=3.29.59" \
+		-D "V8_VERSION=3.31.74.1" \
 		-D "ZLIB_VERSION=1.2.7" \
 		..
 
@@ -254,43 +254,6 @@ pack-winXX-cmake:
 	cd Build$(BITS) && cpack -G NSIS
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
-
-################################################################################
-### @brief Windows Vista 64-bit bundle
-################################################################################
-
-.PHONY: pack-vista32 pack-vistaXX pack-vistaXX-cmake
-
-pack-vista32:
-	$(MAKE) pack-vistaXX BITS=32 TARGET="Visual Studio 12"
-
-pack-vista64:
-	$(MAKE) pack-vistaXX BITS=64 TARGET="Visual Studio 12 Win64"
-
-pack-vistaXX:
-	rm -rf Build$(BITS) && mkdir Build$(BITS)
-
-	${MAKE} pack-vistaXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
-
-pack-vistaXX-cmake:
-	cd Build$(BITS) && cmake \
-		-G "$(TARGET)" \
-		-D "ARANGODB_VERSION=${VERSION}" \
-		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
-		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
-		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
-		-D "LIBEV_VERSION=4.11" \
-		-D "USE_MRUBY=OFF" \
-		-D "USE_VISTA_LOCKS=ON" \
-		-D "V8_VERSION=3.29.59" \
-		-D "ZLIB_VERSION=1.2.7" \
-		..
-
-	cd Build$(BITS) && cmake --build . --config Release
-
-	cd Build$(BITS) && cpack -G NSIS
-
-	./installer-generator.sh $(BITS) 
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
