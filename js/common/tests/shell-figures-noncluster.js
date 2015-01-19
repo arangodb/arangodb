@@ -100,7 +100,14 @@ function FiguresSuite () {
       var d2 = c1.save({ hello : 2 });
 
       internal.wal.flush(true, true);
-      f = c1.figures();
+      tries = 0;
+      while (++tries < 20) {
+        f = c1.figures();
+        if (f.alive.count === 2) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.datafiles.fileSize);
@@ -116,7 +123,14 @@ function FiguresSuite () {
       c1.remove(d1);
 
       internal.wal.flush(true, true);
-      f = c1.figures();
+      tries = 0;
+      while (++tries < 20) {
+        f = c1.figures();
+        if (f.alive.count === 1 && f.dead.deletion === 1) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.datafiles.fileSize);
@@ -131,7 +145,14 @@ function FiguresSuite () {
       c1.remove(d2);
 
       internal.wal.flush(true, true);
-      f = c1.figures();
+      tries = 0;
+      while (++tries < 20) {
+        f = c1.figures();
+        if (f.alive.count === 0 && f.dead.deletion === 2) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.datafiles.fileSize);
@@ -149,7 +170,14 @@ function FiguresSuite () {
       c1.save({ b0rk : "abc" });
 
       internal.wal.flush(true, true);
-      f = c1.figures();
+      tries = 0;
+      while (++tries < 20) {
+        f = c1.figures();
+        if (f.shapes.count === shapes + 1) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(attributes + 1, f.attributes.count);
       assertEqual(shapes + 1, f.shapes.count);
@@ -175,7 +203,14 @@ function FiguresSuite () {
       collection.save({ _key : "a3" });
 
       internal.wal.flush(true, true);
-      figures = collection.figures();
+      var tries = 0;
+      while (++tries < 20) {
+        figures = collection.figures();
+        if (figures.alive.count === 3) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(3, figures.alive.count);
       assertEqual(0, figures.dead.count);
@@ -208,7 +243,14 @@ function FiguresSuite () {
 
       // we should see two live docs less
       internal.wal.flush(true, true);
-      figures = collection.figures();
+      tries = 0;
+      while (++tries < 20) {
+        figures = collection.figures();
+        if (figures.alive.count === 1) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(1, figures.alive.count);
       assertEqual(2, figures.dead.count);
@@ -217,7 +259,14 @@ function FiguresSuite () {
       collection.replace("a1", { });
       
       internal.wal.flush(true, true);
-      figures = collection.figures();
+      tries = 0;
+      while (++tries < 20) {
+        figures = collection.figures();
+        if (figures.dead.count === 3) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(1, figures.alive.count);
       assertEqual(3, figures.dead.count);
