@@ -1160,6 +1160,296 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function to find variable and attribute names from a node (if any)
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+static void FindVarAndAttr (ExecutionPlan const* plan,
+                            AstNode const* node, 
+                            Variable const*& enumCollVar,
+                            std::string& attr) {
+  if (node->type == NODE_TYPE_REFERENCE) {
+    auto x = static_cast<Variable*>(node->getData());
+    auto setter = plan->getVarSetBy(x->id);
+    if (setter != nullptr && 
+        setter->getType() == EN::ENUMERATE_COLLECTION) {
+      enumCollVar = x;
+    }
+    return;
+  }
+  
+  if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+    FindVarAndAttr(plan, node->getMember(0), enumCollVar, attr);
+
+    if (enumCollVar != nullptr) {
+      char const* attributeName = node->getStringValue();
+      attr.append(attributeName);
+      attr.push_back('.');
+    }
+    return;
+  }
+
+  attr.clear();
+  enumCollVar = nullptr;
+  return;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds a range info from the expression node
+////////////////////////////////////////////////////////////////////////////////
+    
+static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
+                                        AstNode const* node, 
+                                        Variable const*& enumCollVar,
+                                        std::string& attr,
+                                        bool& mustNotUseRanges,
+                                        AstNodeType combineType = NODE_TYPE_OPERATOR_BINARY_AND) {
+  TRI_ASSERT(combineType == NODE_TYPE_OPERATOR_BINARY_AND ||
+             combineType == NODE_TYPE_OPERATOR_BINARY_OR);
+
+  bool foundSomething = false;
+
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+    std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
+
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
+      FindVarAndAttr(plan, rhs, enumCollVar, attr);
+      if (enumCollVar != nullptr) {
+        foundSomething = true;
+
+        std::unordered_set<Variable*> varsUsed 
+          = Ast::getReferencedVariables(lhs);
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+            == varsUsed.end()) {
+          // Found a multiple attribute access of a variable and an
+          // expression which does not involve that variable:
+          
+          rim->insert(enumCollVar->name, 
+                      attr.substr(0, attr.size() - 1), 
+                      RangeInfoBound(lhs, true), 
+                      RangeInfoBound(lhs, true), 
+                      true);
+
+          enumCollVar = nullptr;
+          attr.clear();
+        }
+      }
+    }
+
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      FindVarAndAttr(plan, lhs, enumCollVar, attr);
+      if (enumCollVar != nullptr) {
+        foundSomething = true;
+
+        std::unordered_set<Variable*> varsUsed 
+          = Ast::getReferencedVariables(rhs);
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+            == varsUsed.end()) {
+          // Found a multiple attribute access of a variable and an
+          // expression which does not involve that variable:
+          rim->insert(enumCollVar->name, 
+                      attr.substr(0, attr.size() - 1), 
+                      RangeInfoBound(rhs, true), 
+                      RangeInfoBound(rhs, true), 
+                      true);
+          enumCollVar = nullptr;
+          attr.clear();
+        }
+      }
+    }
+
+    if (combineType == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
+      // disable the use of the range because we may have found something like this,
+      // which makes using an index for a.x invalid:
+      // a.x == 1 || RAND() > 0 
+      mustNotUseRanges = true;
+    }
+
+    return new RangeInfoMapVec(rim.release());
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
+      node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
+      node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+      node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
+  
+    std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
+    bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
+                    node->type == NODE_TYPE_OPERATOR_BINARY_GE);
+    
+    auto lhs = node->getMember(0);
+    auto rhs = node->getMember(1);
+
+    if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // Attribute access on the right:
+      // First find out whether there is a multiple attribute access
+      // of a variable on the right:
+      FindVarAndAttr(plan, rhs, enumCollVar, attr);
+
+      if (enumCollVar != nullptr) {
+        foundSomething = true;
+        RangeInfoBound low;
+        RangeInfoBound high;
+      
+        // Constant value on the left, so insert a constant condition:
+        if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+            node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+          high.assign(lhs, include);
+        } 
+        else {
+          low.assign(lhs, include);
+        }
+        
+        rim->insert(enumCollVar->name, 
+                    attr.substr(0, attr.size() - 1), 
+                    low,
+                    high,
+                    false);
+
+        enumCollVar = nullptr;
+        attr.clear();
+      }
+    }
+
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // Attribute access on the left:
+      // First find out whether there is a multiple attribute access
+      // of a variable on the left:
+      FindVarAndAttr(plan, lhs, enumCollVar, attr);
+
+      if (enumCollVar != nullptr) {
+        foundSomething = true;
+        RangeInfoBound low;
+        RangeInfoBound high;
+      
+        // Constant value on the right, so insert a constant condition:
+        if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
+            node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
+          low.assign(rhs, include);
+        } 
+        else {
+          high.assign(rhs, include);
+        }
+
+        rim->insert(enumCollVar->name, 
+                    attr.substr(0, attr.size() - 1), 
+                    low,
+                    high,
+                    false);
+
+        enumCollVar = nullptr;
+        attr.clear();
+      }
+    }
+
+    if (combineType == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
+      // disable the use of the range because we may have found something like this,
+      // which makes using an index for a.x invalid:
+      // a.x == 1 || RAND() > 0 
+      mustNotUseRanges = true;
+    }
+
+    return new RangeInfoMapVec(rim.release());
+  }
+  
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+    auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type);
+    auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type);
+
+    if ((lhs == nullptr || lhs->empty()) && rhs != nullptr) {
+      delete lhs;
+      return rhs;
+    }
+    else if (lhs != nullptr && (rhs == nullptr || rhs->empty())) {
+      delete rhs;
+      return lhs;
+    }
+
+    // distribute AND into OR
+    return andCombineRangeInfoMapVecs(lhs, rhs);
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
+    auto lhs = node->getMember(0); // enumCollVar
+    auto rhs = node->getMember(1); // value
+
+    std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec());
+
+    if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      FindVarAndAttr(plan, lhs, enumCollVar, attr);
+
+      if (enumCollVar != nullptr) {
+        foundSomething = true;
+
+        std::unordered_set<Variable*> varsUsed 
+          = Ast::getReferencedVariables(rhs);
+        if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
+            == varsUsed.end()) {
+          // Found a multiple attribute access of a variable and an
+          // expression which does not involve that variable:
+          if (rhs->type == NODE_TYPE_ARRAY) {
+            for (size_t i = 0; i < rhs->numMembers(); i++) {
+              RangeInfo ri(enumCollVar->name, 
+                           attr.substr(0, attr.size() - 1), 
+                           RangeInfoBound(rhs->getMember(i), true),
+                           RangeInfoBound(rhs->getMember(i), true), 
+                           true);
+              rimv->differenceRangeInfo(ri);
+              if (ri.isValid()) { 
+                rimv->emplace_back(new RangeInfoMap(ri));
+              }
+            }
+          } 
+          else { 
+            RangeInfo ri(enumCollVar->name, 
+                         attr.substr(0, attr.size() - 1), 
+                         RangeInfoBound(rhs, true),
+                         RangeInfoBound(rhs, true), 
+                         true);
+            rimv->differenceRangeInfo(ri);
+            if (ri.isValid()) { 
+              rimv->emplace_back(new RangeInfoMap(ri));
+            }
+          }
+          enumCollVar = nullptr;
+          attr.clear();
+        }
+      }
+    }
+
+    if (combineType == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
+      // disable the use of the range because we may have found something like this,
+      // which makes using an index for a.x invalid:
+      // a.x == 1 || RAND() > 0 
+      mustNotUseRanges = true;
+    }
+
+    return rimv.release();
+  }
+
+  if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
+    return orCombineRangeInfoMapVecs(
+      BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type),
+      BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type)
+    );
+  }
+    
+  if (combineType == NODE_TYPE_OPERATOR_BINARY_AND) {
+    attr.clear();
+    enumCollVar = nullptr;
+    return nullptr;
+  }
+
+  // default case
+  mustNotUseRanges = true;
+  attr.clear();
+  enumCollVar = nullptr;
+  return nullptr;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prefer IndexRange nodes over EnumerateCollection nodes
 ////////////////////////////////////////////////////////////////////////////////
@@ -1221,13 +1511,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             auto node = static_cast<CalculationNode*>(en);
             std::string attr;
             Variable const* enumCollVar = nullptr;
+            auto expression = node->expression()->node();
             // there is an implicit AND between FILTER statements
             if (_rangeInfoMapVec == nullptr) {
-              _rangeInfoMapVec = buildRangeInfo(node->expression()->node(), enumCollVar, attr, NODE_TYPE_OPERATOR_BINARY_AND);
+              // don't yet have anything to AND-combine
+              _rangeInfoMapVec = BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges);
             } 
             else {
-              _rangeInfoMapVec = andCombineRangeInfoMapVecs(_rangeInfoMapVec,
-                  buildRangeInfo(node->expression()->node(), enumCollVar, attr, NODE_TYPE_OPERATOR_BINARY_AND));
+              // AND-combine with previous ranges
+              _rangeInfoMapVec = andCombineRangeInfoMapVecs(
+                _rangeInfoMapVec,
+                BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges)
+              );
             }
 
             if (_rangeInfoMapVec != nullptr && _mustNotUseRanges) {
@@ -1531,282 +1826,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
       }
 
       return false;
-    }
-
-//////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void findVarAndAttr (AstNode const* node, 
-                         Variable const*& enumCollVar,
-                         std::string& attr) {
-      if (node->type == NODE_TYPE_REFERENCE) {
-        auto x = static_cast<Variable*>(node->getData());
-        auto setter = _plan->getVarSetBy(x->id);
-        if (setter != nullptr && 
-            setter->getType() == EN::ENUMERATE_COLLECTION) {
-          enumCollVar = x;
-        }
-        return;
-      }
-      
-      if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        findVarAndAttr(node->getMember(0), enumCollVar, attr);
-
-        if (enumCollVar != nullptr) {
-          char const* attributeName = node->getStringValue();
-          attr.append(attributeName);
-          attr.push_back('.');
-        }
-        return;
-      }
-
-      attr.clear();
-      enumCollVar = nullptr;
-      return;
-    }
-
-    RangeInfoMapVec* buildRangeInfo (AstNode const* node, 
-                                     Variable const*& enumCollVar,
-                                     std::string& attr,
-                                     AstNodeType previousNode) {
-      bool foundSomething = false;
-
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-        auto lhs = node->getMember(0);
-        auto rhs = node->getMember(1);
-        std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
-
-        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) { 
-          findVarAndAttr(rhs, enumCollVar, attr);
-          if (enumCollVar != nullptr) {
-            foundSomething = true;
-
-            std::unordered_set<Variable*> varsUsed 
-              = Ast::getReferencedVariables(lhs);
-            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-                == varsUsed.end()) {
-              // Found a multiple attribute access of a variable and an
-              // expression which does not involve that variable:
-              
-              rim->insert(enumCollVar->name, 
-                          attr.substr(0, attr.size() - 1), 
-                          RangeInfoBound(lhs, true), 
-                          RangeInfoBound(lhs, true), 
-                          true);
-
-              enumCollVar = nullptr;
-              attr.clear();
-            }
-          }
-        }
-
-        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          findVarAndAttr(lhs, enumCollVar, attr);
-          if (enumCollVar != nullptr) {
-            foundSomething = true;
-
-            std::unordered_set<Variable*> varsUsed 
-              = Ast::getReferencedVariables(rhs);
-            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-                == varsUsed.end()) {
-              // Found a multiple attribute access of a variable and an
-              // expression which does not involve that variable:
-              rim->insert(enumCollVar->name, 
-                          attr.substr(0, attr.size() - 1), 
-                          RangeInfoBound(rhs, true), 
-                          RangeInfoBound(rhs, true), 
-                          true);
-              enumCollVar = nullptr;
-              attr.clear();
-            }
-          }
-        }
-
-        if (previousNode == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
-          // disable the use of the range because we may have found something like this,
-          // which makes using an index for a.x invalid:
-          // a.x == 1 || RAND() > 0 
-          _mustNotUseRanges = true;
-        }
-
-        return new RangeInfoMapVec(rim.release());
-      }
-
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_LT || 
-          node->type == NODE_TYPE_OPERATOR_BINARY_GT ||
-          node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-          node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-      
-        std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
-        bool include = (node->type == NODE_TYPE_OPERATOR_BINARY_LE ||
-                        node->type == NODE_TYPE_OPERATOR_BINARY_GE);
-        
-        auto lhs = node->getMember(0);
-        auto rhs = node->getMember(1);
-
-        if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          // Attribute access on the right:
-          // First find out whether there is a multiple attribute access
-          // of a variable on the right:
-          findVarAndAttr(rhs, enumCollVar, attr);
-
-          if (enumCollVar != nullptr) {
-            foundSomething = true;
-            RangeInfoBound low;
-            RangeInfoBound high;
-          
-            // Constant value on the left, so insert a constant condition:
-            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-              high.assign(lhs, include);
-            } 
-            else {
-              low.assign(lhs, include);
-            }
-            
-            rim->insert(enumCollVar->name, 
-                        attr.substr(0, attr.size() - 1), 
-                        low,
-                        high,
-                        false);
-
-            enumCollVar = nullptr;
-            attr.clear();
-          }
-        }
-
-        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          // Attribute access on the left:
-          // First find out whether there is a multiple attribute access
-          // of a variable on the left:
-          findVarAndAttr(lhs, enumCollVar, attr);
-
-          if (enumCollVar != nullptr) {
-            foundSomething = true;
-            RangeInfoBound low;
-            RangeInfoBound high;
-          
-            // Constant value on the right, so insert a constant condition:
-            if (node->type == NODE_TYPE_OPERATOR_BINARY_GE ||
-                node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-              low.assign(rhs, include);
-            } 
-            else {
-              high.assign(rhs, include);
-            }
-
-            rim->insert(enumCollVar->name, 
-                        attr.substr(0, attr.size() - 1), 
-                        low,
-                        high,
-                        false);
-
-            enumCollVar = nullptr;
-            attr.clear();
-          }
-        }
-
-        if (previousNode == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
-          // disable the use of the range because we may have found something like this,
-          // which makes using an index for a.x invalid:
-          // a.x == 1 || RAND() > 0 
-          _mustNotUseRanges = true;
-        }
-
-        return new RangeInfoMapVec(rim.release());
-      }
-      
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
-        auto lhs = buildRangeInfo(node->getMember(0), enumCollVar, attr, node->type);
-        auto rhs = buildRangeInfo(node->getMember(1), enumCollVar, attr, node->type);
-
-        if ((lhs == nullptr || lhs->empty()) && rhs != nullptr) {
-          delete lhs;
-          return rhs;
-        }
-        else if (lhs != nullptr && (rhs == nullptr || rhs->empty())) {
-          delete rhs;
-          return lhs;
-        }
- 
-        // distribute AND into OR
-        return andCombineRangeInfoMapVecs(buildRangeInfo(node->getMember(0), enumCollVar, attr, node->type),
-                                          buildRangeInfo(node->getMember(1), enumCollVar, attr, node->type));
-      }
-
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
-        auto lhs = node->getMember(0); // enumCollVar
-        auto rhs = node->getMember(1); // value
-
-        std::unique_ptr<RangeInfoMapVec> rimv(new RangeInfoMapVec());
-
-        if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-          findVarAndAttr(lhs, enumCollVar, attr);
-
-          if (enumCollVar != nullptr) {
-            foundSomething = true;
- 
-            std::unordered_set<Variable*> varsUsed 
-              = Ast::getReferencedVariables(rhs);
-            if (varsUsed.find(const_cast<Variable*>(enumCollVar)) 
-                == varsUsed.end()) {
-              // Found a multiple attribute access of a variable and an
-              // expression which does not involve that variable:
-              if (rhs->type == NODE_TYPE_ARRAY) {
-                for (size_t i = 0; i < rhs->numMembers(); i++) {
-                  RangeInfo ri(enumCollVar->name, 
-                               attr.substr(0, attr.size() - 1), 
-                               RangeInfoBound(rhs->getMember(i), true),
-                               RangeInfoBound(rhs->getMember(i), true), 
-                               true);
-                  rimv->differenceRangeInfo(ri);
-                  if (ri.isValid()) { 
-                    rimv->emplace_back(new RangeInfoMap(ri));
-                  }
-                }
-              } 
-              else { 
-                RangeInfo ri(enumCollVar->name, 
-                             attr.substr(0, attr.size() - 1), 
-                             RangeInfoBound(rhs, true),
-                             RangeInfoBound(rhs, true), 
-                             true);
-                rimv->differenceRangeInfo(ri);
-                if (ri.isValid()) { 
-                  rimv->emplace_back(new RangeInfoMap(ri));
-                }
-              }
-              enumCollVar = nullptr;
-              attr.clear();
-            }
-          }
-        }
-
-        if (previousNode == NODE_TYPE_OPERATOR_BINARY_OR && ! foundSomething) {
-          // disable the use of the range because we may have found something like this,
-          // which makes using an index for a.x invalid:
-          // a.x == 1 || RAND() > 0 
-          _mustNotUseRanges = true;
-        }
-
-        return rimv.release();
-      }
-
-      if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-        return orCombineRangeInfoMapVecs(buildRangeInfo(node->getMember(0), enumCollVar, attr, node->type),
-                                         buildRangeInfo(node->getMember(1), enumCollVar, attr, node->type));
-      }
-        
-      if (previousNode == NODE_TYPE_OPERATOR_BINARY_AND) {
-        attr.clear();
-        enumCollVar = nullptr;
-        return nullptr;
-      }
-
-      // default case
-      _mustNotUseRanges = true;
-      attr.clear();
-      enumCollVar = nullptr;
-      return nullptr;
     }
 
     bool enterSubquery (ExecutionNode* super, ExecutionNode* sub) final {

@@ -526,7 +526,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_RANGE:
     case NODE_TYPE_NOP:
       break;
-    }
+  }
 
   Json subNodes = json.get("subNodes");
   if (subNodes.isArray()) {

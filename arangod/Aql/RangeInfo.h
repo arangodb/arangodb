@@ -587,7 +587,7 @@ namespace triagens {
         
       public:
         
-        RangeInfoMap (const RangeInfoMap& copy) = delete;
+        RangeInfoMap (RangeInfoMap const& copy) = delete;
         RangeInfoMap& operator= (RangeInfoMap const& copy) = delete;
         
 ////////////////////////////////////////////////////////////////////////////////
@@ -742,9 +742,11 @@ namespace triagens {
 
        void attributes (std::unordered_set<std::string>& set, std::string const& var);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the names of variables contained in the RangeInfoMap
+////////////////////////////////////////////////////////////////////////////////
 
-       //TODO write @brief
-       std::unordered_set<std::string> variables();
+       std::unordered_set<std::string> variables() const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
@@ -766,7 +768,7 @@ namespace triagens {
         
       public:
         
-        RangeInfoMapVec (const RangeInfoMapVec& copy) = delete;
+        RangeInfoMapVec (RangeInfoMapVec const& copy) = delete;
         RangeInfoMapVec& operator= (RangeInfoMapVec const& copy) = delete;
         
 ////////////////////////////////////////////////////////////////////////////////
@@ -888,6 +890,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
       private: 
+
         std::vector<RangeInfoMap*> _rangeInfoMapVec; 
     };
 
