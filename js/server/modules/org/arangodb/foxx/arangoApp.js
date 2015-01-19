@@ -55,7 +55,6 @@
     this.comments = [];
     this.name = app._name;
     this.version = app._version;
-    this.appId = app._id;
     this.mount = app._mount;
     this.collectionPrefix = app._collectionPrefix;
     this.options = app._options;
@@ -108,7 +107,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var ArangoApp = function (config) {
-    this._id = config.id; // ???
     this._manifest = config.manifest;
     this._name = config.manifest.name;
     this._version = config.manifest.version;
@@ -121,6 +119,10 @@ var ArangoApp = function (config) {
     this._exports = {};
     this._collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
     this._context = new AppContext(this);
+
+    if (this._manifest.hasOwnProperty("defaultDocument")) {
+      this._manifest.defaultDocument = "index.html";
+    }
   };
 
 // -----------------------------------------------------------------------------
@@ -145,7 +147,6 @@ var ArangoApp = function (config) {
 
   ArangoApp.prototype.toJSON = function () {
     var json = {
-      id: this._id,
       manifest: this._manifest,
       name: this._name,
       version: this._version,
