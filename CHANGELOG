@@ -1,6 +1,8 @@
 v2.4.1 (XXXX-XX-XX)
 -------------------
 
+* fixed certain OR optimizations in AQL optimizer
+
 * better diagnostics for arangoimp
 
 * fixed invalid result of HTTP REST API method `/_admin/foxx/rescan`
