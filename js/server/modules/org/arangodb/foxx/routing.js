@@ -272,7 +272,7 @@
   /// @brief returns the transform script
   ////////////////////////////////////////////////////////////////////////////////
 
-  function transformScript (file) {
+  var transformScript = function (file) {
     "use strict";
 
     if (/\.coffee$/.test(file)) {
@@ -282,7 +282,7 @@
     }
 
     return preprocess;
-  }
+  };
 
 
   // -----------------------------------------------------------------------------
