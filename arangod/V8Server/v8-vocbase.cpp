@@ -505,6 +505,11 @@ static v8::Handle<v8::Value> JS_FlushWal (v8::Arguments const& argv) {
     waitForCollector = TRI_ObjectToBoolean(argv[1]);
   }
 
+  bool writeShutdownFile = false;
+  if (argv.Length() > 2) {
+    writeShutdownFile = TRI_ObjectToBoolean(argv[2]);
+  }
+
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
@@ -515,7 +520,7 @@ static v8::Handle<v8::Value> JS_FlushWal (v8::Arguments const& argv) {
     return scope.Close(v8::True());
   }
 
-  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
+  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_EXCEPTION(scope, res);

@@ -1338,7 +1338,7 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
-
+  
     // find the first logfile that can be safely removed
     if (logfile != nullptr && logfile->id() <= minId && logfile->canBeRemoved()) {
       if (first == nullptr) {
@@ -1510,7 +1510,7 @@ int LogfileManager::runRecovery () {
     return TRI_ERROR_NO_ERROR;
   }
     
-  LOG_INFO("running WAL recovery");
+  LOG_INFO("running WAL recovery (%d logfiles)", (int) _recoverState->logfilesToProcess.size());
   
   // now iterate over all logfiles that we found during recovery
   // we can afford to iterate the files without _logfilesLock
@@ -1621,15 +1621,23 @@ int LogfileManager::writeShutdownInfo (bool writeShutdownTime) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
+  Logfile::IdType lastCollectedId;
+  Logfile::IdType lastSealedId;
+  {
+    READ_LOCKER(_logfilesLock);
+    lastCollectedId = _lastCollectedId;
+    lastSealedId = _lastSealedId;
+  }
+
   std::string val;
 
   val = basics::StringUtils::itoa(TRI_CurrentTickServer());
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "tick", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
-  val = basics::StringUtils::itoa(_lastCollectedId);
+  val = basics::StringUtils::itoa(lastCollectedId);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "lastCollected", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
-  val = basics::StringUtils::itoa(_lastSealedId);
+  val = basics::StringUtils::itoa(lastSealedId);
   TRI_Insert3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, "lastSealed", TRI_CreateString2CopyJson(TRI_UNKNOWN_MEM_ZONE, val.c_str(), val.size()));
 
   if (writeShutdownTime) {
