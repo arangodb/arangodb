@@ -59,6 +59,61 @@ function ahuacatlSubqueryTestSuite () {
 /// @brief test subquery evaluation
 ////////////////////////////////////////////////////////////////////////////////
 
+    testSubqueryReference1 : function () {
+      var expected = [ [ [ 1 ], [ 1 ] ] ];
+      var actual = getQueryResults("LET a = (RETURN 1) LET b = a RETURN [ a, b ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryReference2 : function () {
+      var expected = [ [ [ 1 ], [ 1 ], [ 1 ] ] ];
+      var actual = getQueryResults("LET a = (RETURN 1) LET b = a LET c = b RETURN [ a, b, c ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryReference3 : function () {
+      var expected = [ [ [ 1 ], [ 1 ], [ 1 ] ] ];
+      var actual = getQueryResults("LET a = (RETURN 1) LET b = a LET c = a RETURN [ a, b, c ]");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryReferences1 : function () {
+      var expected = [ [ 1 ] ];
+      var actual = getQueryResults("LET a = true ? (RETURN 1) : (RETURN 0) RETURN a");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery evaluation
+////////////////////////////////////////////////////////////////////////////////
+
+    testSubqueryReferences2 : function () {
+      var expected = [ [ 1 ] ];
+      var actual = getQueryResults("LET a = true ? (RETURN 1) : (RETURN 0) LET b = a RETURN b");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery evaluation
+////////////////////////////////////////////////////////////////////////////////
+
     testSubqueryDependent1 : function () {
       var expected = [ 2, 4, 6 ];
       var actual = getQueryResults("FOR i IN [ 1, 2, 3 ] LET s = (FOR j IN [ 1, 2, 3 ] RETURN i * 2) RETURN s[i - 1]");
