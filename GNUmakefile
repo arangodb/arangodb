@@ -237,6 +237,11 @@ pack-winXX:
 
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
 
+pack-winXX-MOREOPTS:
+	rm -rf Build$(BITS) && mkdir Build$(BITS)
+
+	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
+
 pack-winXX-cmake:
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
