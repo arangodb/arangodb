@@ -232,6 +232,13 @@ pack-win32:
 pack-win64:
 	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64"
 
+pack-win32-relative:
+	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON"'
+
+pack-win64-relative:
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
+
+
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
