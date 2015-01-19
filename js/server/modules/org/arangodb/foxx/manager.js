@@ -1211,6 +1211,7 @@ exports.initializeFoxx = function () {
   var checkParameter = arangodb.checkParameter;
   var errors = arangodb.errors;
   var download = require("internal").download;
+  var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
 
   var throwDownloadError = arangodb.throwDownloadError;
   var throwFileNotFound = arangodb.throwFileNotFound;
@@ -1224,6 +1225,26 @@ exports.initializeFoxx = function () {
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private functions
   // -----------------------------------------------------------------------------
+
+  var refillCaches = function(computeRoutes) {
+    appCache = {};
+    var cursor = utils.tmp_getStorage().all();
+    var config, app, route;
+    var routes = [];
+
+    while (cursor.hasNext()) {
+      config = cursor.next();
+      app = new ArangoApp(config);
+      appCache[app._mount] = app;
+      if (computeRoutes) {
+        route = routeApp(app);
+        if (route) {
+          routes.push(route);
+        }
+      }
+    }
+    return routes;
+  };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup app in cache
@@ -1684,9 +1705,6 @@ exports.initializeFoxx = function () {
     delete appCache[mount];
     var app = createApp(mount, options);
     utils.tmp_getStorage().save(app.toJSON());
-    var routes = routeApp(app);
-    require("console").log("Routes", Object.keys(routes));
-    // TODO Routing weiter?
   };
 
 
@@ -1736,6 +1754,7 @@ exports.initializeFoxx = function () {
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     _install(appInfo, mount, options, true);
+    executeGlobalContextFunction("reloadRouting");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1766,6 +1785,7 @@ exports.initializeFoxx = function () {
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _uninstall(mount);
+    executeGlobalContextFunction("reloadRouting");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1781,6 +1801,7 @@ exports.initializeFoxx = function () {
       [ appInfo, mount ] );
     _uninstall(mount, true);
     _install(appInfo, mount, options, true);
+    executeGlobalContextFunction("reloadRouting");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1796,6 +1817,7 @@ exports.initializeFoxx = function () {
       [ appInfo, mount ] );
     _uninstall(mount, false);
     _install(appInfo, mount, options, false);
+    executeGlobalContextFunction("reloadRouting");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1803,20 +1825,12 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var initializeFoxx = function() {
-    appCache = {};
-    var cursor = utils.tmp_getStorage().all();
-    var config, app;
-
-    while (cursor.hasNext()) {
-      config = cursor.next();
-      app = new ArangoApp(config);
-      appCache[app._mount] = app;
-      var routes = routeApp(app);
-      require("console").log("Routes", Object.keys(routes));
-      // TODO Routing weiter?
-    }
+    return refillCaches(false);
   };
 
+  var appRoutes = function() {
+    return refillCaches(true);
+  };
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           exports
   // -----------------------------------------------------------------------------
@@ -1832,6 +1846,7 @@ exports.initializeFoxx = function () {
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
+  exports.appRoutes = appRoutes;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Exports from foxx utils module.
