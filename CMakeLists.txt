@@ -167,97 +167,192 @@ if (USE_VISTA_LOCKS)
   add_definitions("-DTRI_WINDOWS_VISTA_LOCKS=1")
 endif ()
 
-################################################################################
-### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
-################################################################################
-
-set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
-
-if (ETCDIR STREQUAL "")
-  set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
-  set(ETCDIR_INSTALL "etc/arangodb")
-else ()
-  set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
-  set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
-endif ()
-
-file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
-STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
-
-add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
-
-################################################################################
-### @brief DATA DIRECTORY (/var)
-################################################################################
-
-set(VARDIR "" CACHE path "System configuration directory (defaults to prefix/var/arangodb)")
-
-if (VARDIR STREQUAL "")
-  set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
-  set(VARDIR_INSTALL "var")
-else ()
-  set(VARDIR_NATIVE "${VARDIR}")
-  set(VARDIR_INSTALL "${VARDIR}")
-endif ()
-
-file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       DIRECTORIES
 ## -----------------------------------------------------------------------------
 
-################################################################################
-### @brief database directory
-################################################################################
-
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
 
 ################################################################################
-### @brief apps directory
+### @brief Enable Relative
 ################################################################################
 
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+option(USE_RELATIVE "Do you want to have all path are relative to the binary" OFF)
 
-################################################################################
-### @brief log directory
-################################################################################
+if (USE_RELATIVE)
+  ################################################################################
+  ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
+  ################################################################################
 
-FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+  set(ETCDIR_NATIVE "./etc/relative")
+  set(ETCDIR_INSTALL "etc/relative")
 
-################################################################################
-### @brief TRI_PKGDATADIR
-################################################################################
+  file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
 
-set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+  add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
 
-################################################################################
-### @brief TRI_RESOURCEDIR
-################################################################################
+  ################################################################################
+  ### @brief DATA DIRECTORY (/var)
+  ################################################################################
 
-set(TRI_RESOURCEDIR "resources")
+  set(VARDIR "" CACHE path "System configuration directory (defaults to prefix/var/arangodb)")
 
-################################################################################
-### @brief TRI_BINDIR
-################################################################################
+  if (VARDIR STREQUAL "")
+    set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
+    set(VARDIR_INSTALL "var")
+  else ()
+    set(VARDIR_NATIVE "${VARDIR}")
+    set(VARDIR_INSTALL "${VARDIR}")
+  endif ()
 
-if (MSVC)
-  set(TRI_BINDIR_INSTALL "bin")
-  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-else ()
-  set(TRI_BINDIR_INSTALL "bin")
-  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-endif ()
+  file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
 
-################################################################################
-### @brief TRI_SBINDIR
-################################################################################
 
-if (MSVC)
-  set(TRI_SBINDIR_INSTALL "bin")
-  set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-else ()
-  set(TRI_SBINDIR_INSTALL "sbin")
-  set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
+  ################################################################################
+  ### @brief database directory
+  ################################################################################
+
+  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+
+  ################################################################################
+  ### @brief apps directory
+  ################################################################################
+
+  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+
+  ################################################################################
+  ### @brief log directory
+  ################################################################################
+
+  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+
+  ################################################################################
+  ### @brief TRI_PKGDATADIR
+  ################################################################################
+
+  set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+
+  ################################################################################
+  ### @brief TRI_RESOURCEDIR
+  ################################################################################
+
+  set(TRI_RESOURCEDIR "resources")
+
+  ################################################################################
+  ### @brief TRI_BINDIR
+  ################################################################################
+
+  if (MSVC)
+    set(TRI_BINDIR_INSTALL "bin")
+    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+  else ()
+    set(TRI_BINDIR_INSTALL "bin")
+    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+  endif ()
+
+  ################################################################################
+  ### @brief TRI_SBINDIR
+  ################################################################################
+
+  if (MSVC)
+    set(TRI_SBINDIR_INSTALL "bin")
+    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+  else ()
+    set(TRI_SBINDIR_INSTALL "sbin")
+    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
+  endif ()
+
+else()
+  ################################################################################
+  ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
+  ################################################################################
+
+  set(ETCDIR "" CACHE path "System configuration directory (defaults to prefix/etc)")
+
+  if (ETCDIR STREQUAL "")
+    set(ETCDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/etc/arangodb")
+    set(ETCDIR_INSTALL "etc/arangodb")
+  else ()
+    set(ETCDIR_NATIVE "${ETCDIR}/arangodb")
+    set(ETCDIR_INSTALL "${ETCDIR}/arangodb")
+  endif ()
+
+  file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
+
+  add_definitions("-D_SYSCONFDIR_=\"${ETCDIR_ESCAPED}\"")
+
+  ################################################################################
+  ### @brief DATA DIRECTORY (/var)
+  ################################################################################
+
+  set(VARDIR "" CACHE path "System configuration directory (defaults to prefix/var/arangodb)")
+
+  if (VARDIR STREQUAL "")
+    set(VARDIR_NATIVE "${CMAKE_INSTALL_PREFIX}/var")
+    set(VARDIR_INSTALL "var")
+  else ()
+    set(VARDIR_NATIVE "${VARDIR}")
+    set(VARDIR_INSTALL "${VARDIR}")
+  endif ()
+
+  file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
+
+
+  ################################################################################
+  ### @brief database directory
+  ################################################################################
+
+  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb")
+
+  ################################################################################
+  ### @brief apps directory
+  ################################################################################
+
+  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/lib/arangodb-apps")
+
+  ################################################################################
+  ### @brief log directory
+  ################################################################################
+
+  FILE(MAKE_DIRECTORY "${PROJECT_BINARY_DIR}/var/log/arangodb")
+
+  ################################################################################
+  ### @brief TRI_PKGDATADIR
+  ################################################################################
+
+  set(TRI_PKGDATADIR "${CMAKE_INSTALL_PREFIX}/share/arangodb")
+
+  ################################################################################
+  ### @brief TRI_RESOURCEDIR
+  ################################################################################
+
+  set(TRI_RESOURCEDIR "resources")
+
+  ################################################################################
+  ### @brief TRI_BINDIR
+  ################################################################################
+
+  if (MSVC)
+    set(TRI_BINDIR_INSTALL "bin")
+    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+  else ()
+    set(TRI_BINDIR_INSTALL "bin")
+    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+  endif ()
+
+  ################################################################################
+  ### @brief TRI_SBINDIR
+  ################################################################################
+
+  if (MSVC)
+    set(TRI_SBINDIR_INSTALL "bin")
+    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/bin")
+  else ()
+    set(TRI_SBINDIR_INSTALL "sbin")
+    set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
+  endif ()
+
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -454,9 +549,13 @@ if (MSVC)
   add_definitions("-DU_STATIC_IMPLEMENTATION=1")
 elseif (RASPBIAN)
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
+elseif (DARWIN)
+  set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/third_party/icu/source/io CACHE path "ICU include path")
+  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/out/x64.release CACHE path "ICU library path")
+  set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
   set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/third_party/icu/source/io CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "ICU library path")
+  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.31.74.1/out/x64.release/obj.target/tools/gyp/ CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
 
