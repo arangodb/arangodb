@@ -6,10 +6,10 @@ var jsunity = require("jsunity");
 
 function runSetup () {
   internal.debugClearFailAt();
-
+  
   db._drop("test");
   db._create("test");
-  
+
   var i;
   for (i = 0; i < 5; ++i) {
     db._useDatabase("_system");
@@ -26,9 +26,13 @@ function runSetup () {
     db._create("test");
     db.test.save({ value: i });
   }
-
-  db._useDatabase("_system");
     
+  db._useDatabase("_system");
+
+  for (i = 0; i < 5; ++i) {
+    db._dropDatabase("UnitTestsRecovery" + i);
+  }
+
   db.test.save({ _key: "crashme" }, true);
 
   internal.debugSegfault("crashing server");
@@ -51,13 +55,16 @@ function recoverySuite () {
 /// @brief test whether we the data are correct after restart
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCreateDatabases : function () {
+    testCreateAndDropDatabases : function () {
       var i;
       for (i = 0; i < 5; ++i) {
-        db._useDatabase("UnitTestsRecovery" + i);
-        var docs = db.test.toArray();
-        assertEqual(1, docs.length);
-        assertEqual(i, docs[0].value);
+        try {
+          db._useDatabase("UnitTestsRecovery" + i);
+          fail();
+        }
+        catch (err) {
+          assertEqual(internal.errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code, err.errorNum);
+        }
       }
     }
         

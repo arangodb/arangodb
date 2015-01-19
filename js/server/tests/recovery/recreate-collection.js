@@ -6,30 +6,22 @@ var jsunity = require("jsunity");
 
 function runSetup () {
   internal.debugClearFailAt();
+  
+  var c;
+  db._drop("footest");
+  c = db._create("footest", { id: 99999999 });
+  c.save({ foo: "bar" });
+  c.save({ foo: "bart" });
+  db._drop("footest");
+
+  internal.wait(2);
+
+  c = db._create("footest", { id: 99999999 });
+  c.save({ foo: "baz" });
 
   db._drop("test");
-  db._create("test");
-  
-  var i;
-  for (i = 0; i < 5; ++i) {
-    db._useDatabase("_system");
-
-    try {
-      db._dropDatabase("UnitTestsRecovery" + i);
-    } 
-    catch (err) {
-      // ignore this error
-    }
-
-    db._createDatabase("UnitTestsRecovery" + i);
-    db._useDatabase("UnitTestsRecovery" + i);
-    db._create("test");
-    db.test.save({ value: i });
-  }
-
-  db._useDatabase("_system");
-    
-  db.test.save({ _key: "crashme" }, true);
+  c = db._create("test");
+  c.save({ _key: "crashme" }, true);
 
   internal.debugSegfault("crashing server");
 }
@@ -48,19 +40,15 @@ function recoverySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test whether we the data are correct after restart
+/// @brief test whether we can restore the trx data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCreateDatabases : function () {
-      var i;
-      for (i = 0; i < 5; ++i) {
-        db._useDatabase("UnitTestsRecovery" + i);
-        var docs = db.test.toArray();
-        assertEqual(1, docs.length);
-        assertEqual(i, docs[0].value);
-      }
+    testCreateDatabase : function () {
+      var c = db._collection("footest");
+      assertEqual(1, c.count());
+      assertEqual("baz", c.toArray()[0].foo);
     }
-        
+  
   };
 }
 

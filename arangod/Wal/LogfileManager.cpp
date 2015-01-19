@@ -1339,7 +1339,7 @@ Logfile* LogfileManager::getRemovableLogfile () {
 
   for (auto it = _logfiles.begin(); it != _logfiles.end(); ++it) {
     Logfile* logfile = (*it).second;
-
+  
     // find the first logfile that can be safely removed
     if (logfile != nullptr && logfile->id() <= minId && logfile->canBeRemoved()) {
       if (first == nullptr) {
@@ -1512,7 +1512,7 @@ int LogfileManager::runRecovery () {
     return TRI_ERROR_NO_ERROR;
   }
     
-  LOG_INFO("running WAL recovery");
+  LOG_INFO("running WAL recovery (%d logfiles)", (int) _recoverState->logfilesToProcess.size());
   
   // now iterate over all logfiles that we found during recovery
   // we can afford to iterate the files without _logfilesLock
