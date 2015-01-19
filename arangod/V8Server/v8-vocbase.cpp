@@ -527,6 +527,11 @@ static void JS_FlushWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
     waitForCollector = TRI_ObjectToBoolean(args[1]);
   }
 
+  bool writeShutdownFile = false;
+  if (args.Length() > 2) {
+    writeShutdownFile = TRI_ObjectToBoolean(args[2]);
+  }
+
   int res;
 
   if (ServerState::instance()->isCoordinator()) {
@@ -537,7 +542,7 @@ static void JS_FlushWal (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_RETURN_TRUE();
   }
 
-  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, false);
+  res = triagens::wal::LogfileManager::instance()->flush(waitForSync, waitForCollector, writeShutdownFile);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
