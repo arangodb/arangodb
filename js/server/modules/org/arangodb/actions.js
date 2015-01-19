@@ -2292,9 +2292,17 @@ function stringifyRequestAddress (req) {
   return out;
 }
 
+function setFoxxRouting(mount, routes) {
+
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
+
+// Insert the routing information for one foxx application
+
+exports.setFoxxRouting = setFoxxRouting;
 
 // load all actions from the actions directory
 exports.startup                  = startup;
