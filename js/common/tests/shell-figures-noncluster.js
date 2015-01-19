@@ -74,7 +74,15 @@ function FiguresSuite () {
       var d1 = c1.save({ hello : 1 });
 
       internal.wal.flush(true, true);
-      f = c1.figures();
+
+      var tries = 0;
+      while (++tries < 20) {
+        f = c1.figures();
+        if (f.alive.count === 1) {
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(0, f.datafiles.count);
       assertEqual(0, f.datafiles.fileSize);
@@ -148,6 +156,7 @@ function FiguresSuite () {
 
       db._drop(collection);
     },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check figures
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,7 +164,7 @@ function FiguresSuite () {
     testFiguresAfterOperations : function () {
       var cnName = "example";
 
-      db._drop(collection);
+      db._drop(cnName);
       var collection = db._create(cnName);
 
       collection.load();
