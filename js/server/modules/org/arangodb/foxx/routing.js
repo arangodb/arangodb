@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global module, require, exports */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx routing
@@ -27,381 +27,419 @@
 /// @author Dr. Frank Celler
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+(function() {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                           Imports
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief development mounts
-////////////////////////////////////////////////////////////////////////////////
+  var arangodb = require("org/arangodb");
+  var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
+  var _ = require("underscore");
+  var fs = require("fs");
+  var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
+  var console = require("console");
 
-var DEVELOPMENTMOUNTS = null;
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                 private functions
+  // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief mounted apps
-////////////////////////////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief excludes certain files
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var excludeFile = function (name) {
+    var parts = name.split('/');
 
-var MOUNTED_APPS = {};
+    if (parts.length > 0) {
+      var last = parts[parts.length - 1];
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the routes of an app
-////////////////////////////////////////////////////////////////////////////////
-
-function routingAalApp (app, mount, options) {
-  "use strict";
-
-  MOUNTED_APPS[mount] = app;
-
-  var i, prefix;
-
-  if (mount === "") {
-    mount = "/";
-  }
-  else {
-    mount = arangodb.normalizeURL(mount);
-  }
-  if (mount[0] !== "/") {
-    console.errorLines(
-      "Cannot mount Foxx application: '%s'. Mount '%s' has to be absolute", app._name, mount);
-    return;
-  }
-
-  // compute the collection prefix
-  if (options.collectionPrefix === undefined) {
-    prefix = prefixFromMount(mount);
-  }
-  else {
-    prefix = options.collectionPrefix;
-  }
-
-  var defaultDocument = "index.html";
-
-  if (app._manifest.hasOwnProperty("defaultDocument")) {
-    defaultDocument = app._manifest.defaultDocument;
-  }
-
-
-  // setup the routes
-  var routes = {
-    urlPrefix: mount,
-    routes: [],
-    middleware: [],
-    context: {},
-    models: {},
-
-    foxx: true,
-
-    appContext: {
-      name: app._name,         // app name
-      version: app._version,   // app version
-      appId: app._id,          // app identifier
-      mount: mount,            // global mount
-      options: options,        // options
-      collectionPrefix: prefix // collection prefix
+      // exclude all files starting with .
+      if (last[0] === '.') {
+        return true;
+      }
     }
+
+    return false;
   };
 
-  var p = mount;
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief builds one asset of an app
+  ////////////////////////////////////////////////////////////////////////////////
 
-  if (p !== "/") {
-    p = mount + "/";
-  }
+  var buildAssetContent = function(app, assets, basePath) {
+    var i, j, m;
 
-  if ((p + defaultDocument) !== p) {
-    // only add redirection if src and target are not the same
-    routes.routes.push({
-      "url" : { match: "/" },
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : (app._id.substr(0,4) !== 'dev'),
-          "destination" : defaultDocument,
-          "relative" : true
+    var reSub = /(.*)\/\*\*$/;
+    var reAll = /(.*)\/\*$/;
+
+    var files = [];
+
+    for (j = 0; j < assets.length; ++j) {
+      var asset = assets[j];
+      var match = reSub.exec(asset);
+
+      if (match !== null) {
+        m = fs.listTree(fs.join(basePath, match[1]));
+
+        // files are sorted in file-system order.
+        // this makes the order non-portable
+        // we'll be sorting the files now using JS sort
+        // so the order is more consistent across multiple platforms
+        m.sort();
+
+        for (i = 0; i < m.length; ++i) {
+          var filename = fs.join(basePath, match[1], m[i]);
+
+          if (! excludeFile(m[i])) {
+            if (fs.isFile(filename)) {
+              files.push(filename);
+            }
+          }
         }
       }
-    });
-  }
+      else {
+        match = reAll.exec(asset);
 
-  // template for app context
-  var devel = false;
-  var root;
-
-  if (app._manifest.isSystem) {
-    root = module.systemAppPath();
-  }
-  else if (app._id.substr(0,4) === "dev:") {
-    devel = true;
-    root = module.devAppPath();
-  }
-  else {
-    root = module.appPath();
-  }
-
-  var appContextTempl = app.createAppContext();
-
-  appContextTempl.mount = mount; // global mount
-  appContextTempl.options = options;
-  appContextTempl.configuration = app._options.configuration;
-  appContextTempl.collectionPrefix = prefix; // collection prefix
-  appContextTempl.basePath = fs.join(root, app._path);
-  appContextTempl.baseUrl = '/_db/' + encodeURIComponent(arangodb.db._name()) + mount;
-
-  appContextTempl.isDevelopment = devel;
-  appContextTempl.isProduction = ! devel;
-
-  appContextTempl.manifest = app._manifest;
-  extendContext(appContextTempl, app, root);
-
-  var appContext;
-  var file;
-
-  // mount all exports
-  if (app._manifest.hasOwnProperty("exports")) {
-    var exps = app._manifest.exports;
-    var result, context;
-
-    for (i in exps) {
-      if (exps.hasOwnProperty(i)) {
-        file = exps[i];
-        result = {};
-        context = { exports: result };
-
-        appContext = _.extend({}, appContextTempl);
-        appContext.prefix = "/";
-
-        app.loadAppScript(appContext, file, { context: context });
-
-        app._exports[i] = result;
-      }
-    }
-  }
-
-  // mount all controllers
-  var controllers = app._manifest.controllers;
-
-  try {
-    for (i in controllers) {
-      if (controllers.hasOwnProperty(i)) {
-        file = controllers[i];
-
-        // set up a context for the application start function
-        appContext = _.extend({}, appContextTempl);
-        appContext.prefix = arangodb.normalizeURL("/" + i); // app mount
-        appContext.routingInfo = {};
-        appContext.foxxes = [];
-
-        app.loadAppScript(appContext, file, { transform: transformScript(file) });
-
-        // .............................................................................
-        // routingInfo
-        // .............................................................................
-
-        var foxxes = appContext.foxxes;
-        var u;
-
-        for (u = 0;  u < foxxes.length;  ++u) {
-          var foxx = foxxes[u];
-          var ri = foxx.routingInfo;
-          var rm = [ "routes", "middleware" ];
-
-          var route;
-          var j;
-          var k;
-
-          _.extend(routes.models, foxx.models);
-
-          p = ri.urlPrefix;
-
-          for (k = 0;  k < rm.length;  ++k) {
-            var key = rm[k];
-
-            if (ri.hasOwnProperty(key)) {
-              var rt = ri[key];
-
-              for (j = 0;  j < rt.length;  ++j) {
-                route = rt[j];
-
-                if (route.hasOwnProperty("url")) {
-                  route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
-                }
-
-                route.context = i;
-
-                routes[key].push(route);
-              }
-            }
+        if (match !== null) {
+          throw new Error("Not implemented");
+        }
+        else {
+          if (! excludeFile(asset)) {
+            files.push(fs.join(basePath, asset));
           }
         }
       }
     }
 
-    // install all files and assets
-    installAssets(app, routes);
+    var content = "";
 
-    // remember mount point
-    MOUNTED_APPS[mount] = app;
-
-    // and return all routes
-    return routes;
-  }
-  catch (err) {
-    delete MOUNTED_APPS[mount];
-
-    console.errorLines(
-      "Cannot compute Foxx application routes: %s", String(err.stack || err));
-    throw err;
-  }
-
-  return null;
-}
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the app routes
-////////////////////////////////////////////////////////////////////////////////
-
-exports.appRoutes = function () {
-  "use strict";
-
-  var aal = getStorage();
-  var find = aal.byExample({ type: "mount", active: true });
-
-  var routes = [];
-  // Variables needed in loop
-  var doc, appId, mount, options, app, r;
-
-  while (find.hasNext()) {
-    doc = find.next();
-    appId = doc.app;
-    mount = doc.mount;
-    options = doc.options || {};
-
-    app = createApp(appId, options);
-    if (app !== undefined) {
+    for (i = 0; i < files.length; ++i) {
       try {
+        var c = fs.read(files[i]);
 
-        r = routingAalApp(app, mount, options);
-
-        if (r === null) {
-          throw new Error("Cannot compute the routing table for Foxx application '"
-                          + app._id + "', check the log file for errors!");
-        }
-
-        routes.push(r);
-
-        if (! developmentMode) {
-          console.debug("Mounted Foxx application '%s' on '%s'", appId, mount);
-        }
+        content += c + "\n";
       }
       catch (err) {
-        console.error("Cannot mount Foxx application '%s': %s", appId, String(err.stack || err));
+        console.error("Cannot read asset '%s'", files[i]);
       }
     }
-  }
 
-  return routes;
-};
+    return content;
+  };
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief installs an asset for an app
+  ////////////////////////////////////////////////////////////////////////////////
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the development routes
-////////////////////////////////////////////////////////////////////////////////
+  var buildFileAsset = function(app, path, basePath, asset) {
+    var content = buildAssetContent(app, asset.files, basePath);
+    var type;
 
-exports.developmentRoutes = function () {
-  "use strict";
+    // .............................................................................
+    // content-type detection
+    // .............................................................................
 
-  var mounts = [];
-  var routes = [];
+    // contentType explicitly specified for asset
+    if (asset.hasOwnProperty("contentType") && asset.contentType !== '') {
+      type = asset.contentType;
+    }
 
-  var root = module.devAppPath();
-  var files = fs.list(root);
-  var j;
+    // path contains a dot, derive content type from path
+    else if (path.match(/\.[a-zA-Z0-9]+$/)) {
+      type = arangodb.guessContentType(path);
+    }
 
-  // Variables required in loop
-  var m, mf, appId, mount, options, app, r;
+    // path does not contain a dot,
+    // derive content type from included asset names
+    else if (asset.files.length > 0) {
+      type = arangodb.guessContentType(asset.files[0]);
+    }
 
-  for (j = 0;  j < files.length;  ++j) {
-    m = fs.join(root, files[j], "manifest.json");
-    mf = validateManifestFile(m);
-    if (mf !== undefined) {
+    // use built-in defaulti content-type
+    else {
+      type = arangodb.guessContentType("");
+    }
 
-      appId = "dev:" + mf.name + ":" + files[j];
-      mount = "/dev/" + files[j];
-      options = {
-        collectionPrefix : prefixFromMount(mount)
+    // .............................................................................
+    // return content
+    // .............................................................................
+
+    return { contentType: type, body: content };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief generates development asset action
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var buildDevelopmentAssetRoute = function(app, path, basePath, asset) {
+    return {
+      url: { match: path },
+      action: {
+        callback: function (req, res) {
+          var c = buildFileAsset(app, path, basePath, asset);
+
+          res.contentType = c.contentType;
+          res.body = c.body;
+        }
+      }
+    };
+  };
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief generates asset action
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var buildAssetRoute = function (app, path, basePath, asset) {
+    var c = buildFileAsset(app, path, basePath, asset);
+
+    return {
+      url: { match: path },
+      content: { contentType: c.contentType, body: c.body }
+    };
+  };
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief installs the assets of an app
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var installAssets = function (app, routes) {
+    var path;
+
+    var desc = app._manifest;
+
+    if (! desc) {
+      throw new Error("Invalid application manifest");
+    }
+
+    var normalized;
+    var route;
+
+    if (desc.hasOwnProperty('assets')) {
+      for (path in desc.assets) {
+        if (desc.assets.hasOwnProperty(path)) {
+          var asset = desc.assets[path];
+          var basePath = fs.join(app._root, app._path);
+
+          if (asset.hasOwnProperty('basePath')) {
+            basePath = asset.basePath;
+          }
+
+          normalized = arangodb.normalizeURL("/" + path);
+
+          if (asset.hasOwnProperty('files')) {
+            if (frontendDevelopmentMode) {
+              route = buildDevelopmentAssetRoute(app, normalized, basePath, asset);
+            }
+            else {
+              route = buildAssetRoute(app, normalized, basePath, asset);
+            }
+
+            routes.routes.push(route);
+          }
+        }
+      }
+    }
+
+    if (desc.hasOwnProperty('files')) {
+      for (path in desc.files) {
+        if (desc.files.hasOwnProperty(path)) {
+          var directory = desc.files[path];
+
+          normalized = arangodb.normalizeURL("/" + path);
+
+          route = {
+            url: { match: normalized + "/*" },
+            action: {
+              "do": "org/arangodb/actions/pathHandler",
+              "options": {
+                root: app._root,
+                path: fs.join(app._path, directory)
+              }
+            }
+          };
+
+          routes.routes.push(route);
+        }
+      }
+    }
+  };
+
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns the transform script
+  ////////////////////////////////////////////////////////////////////////////////
+
+  function transformScript (file) {
+    "use strict";
+
+    if (/\.coffee$/.test(file)) {
+      return function (content) {
+        return preprocess(content, "coffee");
       };
-      app = createApp(appId, options, mf.name, m);
-      if (app !== undefined) {
-        try {
-          setupApp(app, mount, options.collectionPrefix);
-        } catch (err) {
-          console.errorLines(
-            "Setup of App '%s' with manifest '%s' failed: %s", mf.name, m, String(err));
-          continue;
-        }
+    }
 
-        try {
-          r = routingAalApp(app, mount, options);
-        } catch (err) {
-          console.errorLines(
-            "Unable to properly route the App '%s': %s", mf.name, String(err.stack || err)
-          );
-          continue;
+    return preprocess;
+  }
+
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                  public functions
+  // -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief computes the routes of an app
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var routeApp = function (app) {
+    var i;
+    var mount = app._mount;
+
+    var defaultDocument = app._manifest.defaultDocument; // TODO by default "index.html"
+
+    // setup the routes
+    var routes = {
+      urlPrefix: mount,
+      routes: [],
+      middleware: [],
+      context: {},
+      models: {},
+
+      foxx: true,
+
+      appContext: {
+        app: app,
+        module: app._module // TODO
+      }
+    };
+
+    var p = mount;
+    var devel = app._isDevelopment;
+
+    if ((p + defaultDocument) !== p) {
+      // only add redirection if src and target are not the same
+      routes.routes.push({
+        "url" : { match: "/" },
+        "action" : {
+          "do" : "org/arangodb/actions/redirectRequest",
+          "options" : {
+            "permanently" : ! devel,
+            "destination" : defaultDocument,
+            "relative" : true
+          }
         }
-        if (r === null) {
-          console.errorLines("Cannot compute the routing table for Foxx application '%s'" , app._id);
-          continue;
+      });
+    }
+
+    var tmpContext, file;
+    var result, context;
+    // mount all exports
+    if (app._manifest.hasOwnProperty("exports")) {
+      var exps = app._manifest.exports;
+
+      for (i in exps) {
+        if (exps.hasOwnProperty(i)) {
+          file = exps[i];
+          result = {};
+
+          // TODO ?
+          context = { exports: result };
+
+          tmpContext = {prefix: "/"};
+
+          app.loadAppScript(file, { context: context, appContext: tmpContext });
+
+          app._exports[i] = result;
         }
-        routes.push(r);
-        var desc =  {
-          _id: "dev/" + app._id,
-          _key: app._id,
-          type: "mount",
-          app: app._id,
-          name: app._name,
-          description: app._manifest.description,
-          repository: app._manifest.repository,
-          license: app._manifest.license,
-          author: app._manifest.author,
-          mount: mount,
-          active: true,
-          collectionPrefix: options.collectionPrefix,
-          isSystem: app._manifest.isSystem || false,
-          options: options
-        };
-        mounts.push(desc);
       }
     }
-  }
 
-  DEVELOPMENTMOUNTS = mounts;
+    // mount all controllers
+    var controllers = app._manifest.controllers;
 
-  return routes;
-};
+    try {
+      for (i in controllers) {
+        if (controllers.hasOwnProperty(i)) {
+          file = controllers[i];
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the development mounts
-///
-/// Must be called after developmentRoutes.
-////////////////////////////////////////////////////////////////////////////////
+          // TODO ????
+          // set up a context for the application start function
+          tmpContext = {
+            prefix: arangodb.normalizeURL("/" + i), // app mount
+            routingInfo: {},
+            foxxes: []
+          };
 
-exports.developmentMounts = function () {
-  "use strict";
+          app.loadAppScript(file, {
+            transform: transformScript(file),
+            appContext: tmpContext
+          });
 
-  if (DEVELOPMENTMOUNTS === null) {
-    exports.developmentRoutes();
-  }
+          // .............................................................................
+          // routingInfo
+          // .............................................................................
 
-  return DEVELOPMENTMOUNTS;
-};
+          var foxxes = tmpContext.foxxes;
+          var u;
 
+          for (u = 0;  u < foxxes.length;  ++u) {
+            var foxx = foxxes[u];
+            var ri = foxx.routingInfo;
+            var rm = [ "routes", "middleware" ];
+
+            var route;
+            var j;
+            var k;
+
+            _.extend(routes.models, foxx.models);
+
+            p = ri.urlPrefix;
+
+            for (k = 0;  k < rm.length;  ++k) {
+              var key = rm[k];
+
+              if (ri.hasOwnProperty(key)) {
+                var rt = ri[key];
+
+                for (j = 0;  j < rt.length;  ++j) {
+                  route = rt[j];
+
+                  if (route.hasOwnProperty("url")) {
+                    route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
+                  }
+
+                  route.context = i;
+
+                  routes[key].push(route);
+                }
+              }
+            }
+          }
+        }
+      }
+
+      // install all files and assets
+      installAssets(app, routes);
+      
+      // and return all routes
+      return routes;
+    }
+    catch (err) {
+      console.errorLines(
+        "Cannot compute Foxx application routes: %s", String(err.stack || err));
+      throw err;
+    }
+    return null;
+  };
+
+  // -----------------------------------------------------------------------------
+  // --SECTION--                                                           Exports
+  // -----------------------------------------------------------------------------
+
+  exports.routeApp = routeApp;
+}());
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

@@ -1357,8 +1357,8 @@ function require (path) {
 
   Module.prototype.createAppModule = function (app) {
     'use strict';
-    var libpath = fs.join(this._root, this._path);
-    if (this._manifest.hasOwnProperty("lib")) {
+    var libpath = fs.join(app._root, app._path);
+    if (app._manifest.hasOwnProperty("lib")) {
       libpath = fs.join(libpath, app._manifest.lib);
     }
     var pkg = new Package("application-package",

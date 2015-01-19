@@ -108,7 +108,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var ArangoApp = function (config) {
-    var collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
     this._id = config.id; // ???
     this._manifest = config.manifest;
     this._name = config.manifest.name;
@@ -120,11 +119,7 @@ var ArangoApp = function (config) {
     this._isSystem = config.isSystem || false;
     this._isDevelopment = config.isDevelopment || false;
     this._exports = {};
-
-    // converts the mount point into the default prefix
-
-    this._collectionPrefix = collectionPrefix; 
-
+    this._collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
     this._context = new AppContext(this);
   };
 
@@ -188,7 +183,12 @@ var ArangoApp = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoApp.prototype.loadAppScript = function (filename, options) {
-    var appContext = _.merge(options.context || {}, this._context);
+    var appContext;
+    if (options !== undefined && options.hasOwnProperty("appContext")) {
+      appContext = _.extend(options.appContext, this._context);
+    } else {
+      appContext = _.extend({}, this._context);
+    }
 
     options = options || {};
 
