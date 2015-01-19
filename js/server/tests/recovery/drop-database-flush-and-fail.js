@@ -6,29 +6,20 @@ var jsunity = require("jsunity");
 
 function runSetup () {
   internal.debugClearFailAt();
+  
+  internal.wal.flush();
 
   db._drop("test");
   db._create("test");
-  
-  var i;
-  for (i = 0; i < 5; ++i) {
-    db._useDatabase("_system");
 
-    try {
-      db._dropDatabase("UnitTestsRecovery" + i);
-    } 
-    catch (err) {
-      // ignore this error
-    }
+  db._createDatabase("UnitTestsRecovery");
+  internal.wal.flush(true, true, true);
 
-    db._createDatabase("UnitTestsRecovery" + i);
-    db._useDatabase("UnitTestsRecovery" + i);
-    db._create("test");
-    db.test.save({ value: i });
-  }
-
+  db._dropDatabase("UnitTestsRecovery");
   db._useDatabase("_system");
-    
+
+  internal.wait(3, true);
+
   db.test.save({ _key: "crashme" }, true);
 
   internal.debugSegfault("crashing server");
@@ -51,13 +42,13 @@ function recoverySuite () {
 /// @brief test whether we the data are correct after restart
 ////////////////////////////////////////////////////////////////////////////////
     
-    testCreateDatabases : function () {
-      var i;
-      for (i = 0; i < 5; ++i) {
-        db._useDatabase("UnitTestsRecovery" + i);
-        var docs = db.test.toArray();
-        assertEqual(1, docs.length);
-        assertEqual(i, docs[0].value);
+    testDropDatabaseFlushAndFail : function () {
+      try {
+        db._useDatabase("UnitTestsRecovery");
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code, err.errorNum);
       }
     }
         
