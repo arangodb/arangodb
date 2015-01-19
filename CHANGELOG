@@ -23,6 +23,8 @@ v2.5.0 (XXXX-XX-XX)
 v2.4.1 (XXXX-XX-XX)
 -------------------
 
+* improved WAL recovery output
+
 * fixed certain OR optimizations in AQL optimizer
 
 * better diagnostics for arangoimp

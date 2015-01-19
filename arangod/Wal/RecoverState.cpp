@@ -467,7 +467,7 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
   TRI_vocbase_t* vocbase = useDatabase(databaseId);
 
   if (vocbase == nullptr) {
-    LOG_WARNING("database %llu not found", (unsigned long long) databaseId);
+    LOG_TRACE("database %llu not found", (unsigned long long) databaseId);
     return TRI_ERROR_ARANGO_DATABASE_NOT_FOUND;
   }
 
@@ -1515,8 +1515,12 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 /// @brief replay a single logfile
 ////////////////////////////////////////////////////////////////////////////////
     
-int RecoverState::replayLogfile (Logfile* logfile) {
-  LOG_INFO("replaying WAL logfile '%s'", logfile->filename().c_str());
+int RecoverState::replayLogfile (Logfile* logfile, 
+                                 int number) {
+  int const n = static_cast<int>(logfilesToProcess.size());
+
+  LOG_INFO("replaying WAL logfile '%s' (%d of %d)", 
+           logfile->filename().c_str(), number + 1, n);
 
   if (! TRI_IterateDatafile(logfile->df(), &RecoverState::ReplayMarker, static_cast<void*>(this))) {
     LOG_WARNING("WAL inspection failed when scanning logfile '%s'", logfile->filename().c_str());
@@ -1534,9 +1538,10 @@ int RecoverState::replayLogfiles () {
   droppedCollections.clear();
   droppedDatabases.clear();
 
+  int i = 0;
   for (auto& it : logfilesToProcess) {
     TRI_ASSERT(it != nullptr);
-    int res = replayLogfile(it);
+    int res = replayLogfile(it, i++);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;
