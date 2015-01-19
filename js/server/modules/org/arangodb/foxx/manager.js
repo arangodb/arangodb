@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/*jshint strict: false*/
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -24,7 +24,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler, Michael Hackstein
+/// @author Dr. Frank Celler
+/// @author Michael Hackstein
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1202,7 +1203,9 @@ exports.initializeFoxx = function () {
   var fs = require("fs");
   var utils = require("org/arangodb/foxx/manager-utils");
   var store = require("org/arangodb/foxx/store");
+  var console = require("console");
   var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
+  var routeApp = require("org/arangodb/foxx/routing").routeApp;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
   var checkParameter = arangodb.checkParameter;
@@ -1228,8 +1231,110 @@ var appCache = {};
 ////////////////////////////////////////////////////////////////////////////////
 
 var lookupApp = function(mount) {
+  if (!appCache.hasOwnProperty(mount)) {
+    throw "App not found";
+  }
   return appCache[mount];
 };
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check a manifest for completeness
+///
+/// this implements issue #590: Manifest Lint
+////////////////////////////////////////////////////////////////////////////////
+
+var checkManifest = function(filename, mf) {
+  // add some default attributes
+  if (! mf.hasOwnProperty("author")) {
+    // add a default (empty) author
+    mf.author = "";
+  }
+
+  if (! mf.hasOwnProperty("description")) {
+    // add a default (empty) description
+    mf.description = "";
+  }
+
+  // Validate all attributes specified in the manifest
+  // the following attributes are allowed with these types...
+  var expected = {
+    "assets":             [ false, "object" ],
+    "author":             [ false, "string" ],
+    "configuration":      [ false, "object" ],
+    "contributors":       [ false, "array" ],
+    "controllers":        [ false, "object" ],
+    "defaultDocument":    [ false, "string" ],
+    "description":        [ true, "string" ],
+    "engines":            [ false, "object" ],
+    "files":              [ false, "object" ],
+    "isSystem":           [ false, "boolean" ],
+    "keywords":           [ false, "array" ],
+    "lib":                [ false, "string" ],
+    "license":            [ false, "string" ],
+    "name":               [ true, "string" ],
+    "repository":         [ false, "object" ],
+    "setup":              [ false, "string" ],
+    "teardown":           [ false, "string" ],
+    "thumbnail":          [ false, "string" ],
+    "version":            [ true, "string" ],
+    "rootElement":        [ false, "boolean" ],
+    "exports":            [ false, "object" ]
+  };
+
+  var att, failed = false;
+  var expectedType, actualType;
+
+  for (att in expected) {
+    if (expected.hasOwnProperty(att)) {
+      if (mf.hasOwnProperty(att)) {
+        // attribute is present in manifest, now check data type
+        expectedType = expected[att][1];
+        actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
+
+        if (actualType !== expectedType) {
+          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
+                        filename,
+                        actualType,
+                        expectedType,
+                        att);
+          failed = true;
+        }
+      }
+      else {
+        // attribute not present in manifest
+        if (expected[att][0]) {
+          // required attribute
+          console.error("Manifest '%s' does not provide required attribute '%s'",
+                        filename,
+                        att);
+
+          failed = true;
+        }
+      }
+    }
+  }
+
+  if (failed) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code,
+      errorMessage: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.message
+    });
+  }
+
+  // additionally check if there are superfluous attributes in the manifest
+  for (att in mf) {
+    if (mf.hasOwnProperty(att)) {
+      if (! expected.hasOwnProperty(att)) {
+        console.warn("Manifest '%s' contains an unknown attribute '%s'",
+                      filename,
+                      att);
+      }
+    }
+  }
+};
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validates a manifest file and returns it.
@@ -1301,36 +1406,9 @@ var computeAppPath = function(mount) {
 /// @brief executes an app script
 ////////////////////////////////////////////////////////////////////////////////
 
-var executeAppScript = function(app, name, mount, prefix) {
+var executeAppScript = function(app, name) {
   var desc = app._manifest;
-
-  if (! desc) {
-    throw new ArangoError({
-      errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-      errorMessage: "Invalid application manifest, app " + arangodb.inspect(app)
-    });
-  }
-
-  var root;
-  var devel = false;
-  root = computeRootAppPath(mount);
-
   if (desc.hasOwnProperty(name)) {
-    var appContext = app.createAppContext();
-
-    appContext.mount = mount;
-    appContext.collectionPrefix = prefix;
-    appContext.options = app._options;
-    appContext.configuration = app._options.configuration;
-    appContext.basePath = fs.join(root, app._path);
-    appContext.baseUrl = '/_db/' + encodeURIComponent(arangodb.db._name()) + mount;
-
-    appContext.isDevelopment = devel;
-    appContext.isProduction = ! devel;
-    appContext.manifest = app._manifest;
-
-    extendContext(appContext, app, root);
-
     app.loadAppScript(desc[name]);
   }
 };
@@ -1339,16 +1417,16 @@ var executeAppScript = function(app, name, mount, prefix) {
 /// @brief sets up an app
 ////////////////////////////////////////////////////////////////////////////////
 
-  var setupApp = function (app, mount, prefix) {
-    return executeAppScript(app, "setup", mount, prefix);
+  var setupApp = function (app) {
+    return executeAppScript(app, "setup");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tears down an app
 ////////////////////////////////////////////////////////////////////////////////
 
-  var teardownApp = function (app, mount, prefix) {
-    return executeAppScript(app, "teardown", mount, prefix);
+  var teardownApp = function (app) {
+    return executeAppScript(app, "teardown");
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1362,7 +1440,6 @@ var executeAppScript = function(app, name, mount, prefix) {
 
     var file = fs.join(root, path, "manifest.json");
     var manifest = validateManifestFile(file);
-    var collectionPrefix = 
 
     if (manifest === undefined) {
       //TODO Error Handeling
@@ -1378,6 +1455,7 @@ var executeAppScript = function(app, name, mount, prefix) {
       mount: mount,
       isSystem: isSystemMount(mount),
       isDevelopment: false
+
     };
   };
 
@@ -1563,7 +1641,7 @@ var setup = function (mount) {
   var app = lookupApp(mount);
 
   try {
-    setupApp(app, mount, prefixFromMount(mount));
+    setupApp(app);
   } catch (err) {
     console.errorLines(
       "Setup not possible for mount '%s': %s", mount, String(err.stack || err));
@@ -1589,7 +1667,7 @@ var teardown = function (mount) {
 
   var app = lookupApp(mount);
   try {
-    teardownApp(app, mount, prefixFromMount(mount));
+    teardownApp(app);
   } catch (err) {
     console.errorLines(
       "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
@@ -1606,153 +1684,12 @@ var scanFoxx = function(mount, options) {
   delete appCache[mount];
   var app = createApp(mount, options);
   utils.tmp_getStorage().save(app.toJSON());
+  var routes = routeApp(app);
+  require("console").log("Routes", Object.keys(routes));
   // TODO Routing?
 };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief computes the routes of an app
-////////////////////////////////////////////////////////////////////////////////
 
-function routingAalApp (app) {
-  "use strict";
-
-  var i;
-
-  var prefix = app.collectionPrefix; // TODO
-  var defaultDocument = app._manifest.defaultDocument; // TODO by default "index.html"
-
-  // setup the routes
-  var routes = {
-    urlPrefix: mount,
-    routes: [],
-    middleware: [],
-    context: {},
-    models: {},
-
-    foxx: true,
-
-    appContext: {
-      app: app,
-      module: app._module // TODO
-    }
-  };
-
-  var p = mount;
-  var devel = app._isDevelopment;
-
-  if ((p + defaultDocument) !== p) {
-    // only add redirection if src and target are not the same
-    routes.routes.push({
-      "url" : { match: "/" },
-      "action" : {
-        "do" : "org/arangodb/actions/redirectRequest",
-        "options" : {
-          "permanently" : ! devel,
-          "destination" : defaultDocument,
-          "relative" : true
-        }
-      }
-    });
-  }
-
-  // mount all exports
-  if (app._manifest.hasOwnProperty("exports")) {
-    var exps = app._manifest.exports;
-    var result, context;
-
-    for (i in exps) {
-      if (exps.hasOwnProperty(i)) {
-        file = exps[i];
-        result = {};
-
-        // TODO ?
-        context = { exports: result };
-
-        // TODO 
-        appContext = _.extend({}, appContextTempl);
-        appContext.prefix = "/";
-
-        app.loadAppScript(file, { context: context });
-
-        app._exports[i] = result;
-      }
-    }
-  }
-
-  // mount all controllers
-  var controllers = app._manifest.controllers;
-
-  try {
-    for (i in controllers) {
-      if (controllers.hasOwnProperty(i)) {
-        file = controllers[i];
-
-        // TODO ????
-        // set up a context for the application start function
-        appContext = _.extend({}, appContextTempl);
-        appContext.prefix = arangodb.normalizeURL("/" + i); // app mount
-        appContext.routingInfo = {};
-        appContext.foxxes = [];
-
-        app.loadAppScript(file, { transform: transformScript(file) });
-
-        // .............................................................................
-        // routingInfo
-        // .............................................................................
-
-        var foxxes = appContext.foxxes;
-        var u;
-
-        for (u = 0;  u < foxxes.length;  ++u) {
-          var foxx = foxxes[u];
-          var ri = foxx.routingInfo;
-          var rm = [ "routes", "middleware" ];
-
-          var route;
-          var j;
-          var k;
-
-          _.extend(routes.models, foxx.models);
-
-          p = ri.urlPrefix;
-
-          for (k = 0;  k < rm.length;  ++k) {
-            var key = rm[k];
-
-            if (ri.hasOwnProperty(key)) {
-              var rt = ri[key];
-
-              for (j = 0;  j < rt.length;  ++j) {
-                route = rt[j];
-
-                if (route.hasOwnProperty("url")) {
-                  route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
-                }
-
-                route.context = i;
-
-                routes[key].push(route);
-              }
-            }
-          }
-        }
-      }
-    }
-
-    // install all files and assets
-    installAssets(app, routes);
-
-    // and return all routes
-    return routes;
-  }
-  catch (err) {
-    console.errorLines(
-      "Cannot compute Foxx application routes: %s", String(err.stack || err));
-    throw err;
-  }
-
-  return null;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Internal install function. Check install.
@@ -1898,6 +1835,10 @@ exports.search = store.search;
 exports.searchJson = store.searchJson;
 exports.update = store.update;
 exports.info = store.info;
+
+// TODO implement!!
+exports.initializeFoxx = function () {};
+
 }());
 
 // -----------------------------------------------------------------------------
