@@ -1,6 +1,8 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* use exclusive native SRWLocks on Windows instead of native mutexes
+
 * added AQL functions MD5, SHA1, and RANDOM_TOKEN.
 
 * reduced number of string allocations when parsing certain AQL queries

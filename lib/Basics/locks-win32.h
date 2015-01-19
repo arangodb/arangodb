@@ -43,6 +43,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_mutex_s {
+  // as of VS2013, exclusive SRWLocks tend to be faster than native mutexes
 #if TRI_WINDOWS_VISTA_LOCKS
   HANDLE _mutex;
 #else
