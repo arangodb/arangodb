@@ -253,7 +253,15 @@ v2.4.0-beta1 (2014-12-26)
   possible
 
 
-v2.3.5 (2015-XX-XX)
+v2.3.6 (2015-XX-XX)
+-------------------
+
+* fixed AQL subquery optimization that produced wrong result when multiple subqueries 
+  directly followed each other and and a directly following `LET` statement did refer
+  to any but the first subquery.
+
+
+v2.3.5 (2015-01-16)
 -------------------
 
 * fixed intermittent 404 errors in Foxx apps after mounting or unmounting apps
