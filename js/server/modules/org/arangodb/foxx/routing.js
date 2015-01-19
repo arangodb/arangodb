@@ -312,7 +312,7 @@
 
       appContext: {
         app: app,
-        module: app._module // TODO
+        module: app._context.appModule
       }
     };
 
@@ -422,8 +422,7 @@
       // install all files and assets
       installAssets(app, routes);
       
-      setFoxxRouting(app._mount, routes);
-      // and return all routes
+      // Trigger the setFoxxRouting in actions
       return routes;
     }
     catch (err) {
