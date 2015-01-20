@@ -150,7 +150,7 @@ function request(req) {
   } else if (!body) {
     if (req.form) {
       contentType = 'application/x-www-form-urlencoded';
-      body = querystringify(req.form, req.useQuerystring);
+      body = typeof req.form === 'string' ? req.form : querystringify(req.form, req.useQuerystring);
     } else if (req.formData) {
       // contentType = 'multipart/form-data';
       // body = formData(req.formData);
