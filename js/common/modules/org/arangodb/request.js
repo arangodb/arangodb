@@ -201,13 +201,15 @@ function request(req) {
   return new Response(result, req.encoding);
 }
 
-request.Response = Response;
-request.parseFormData = parseFormData;
-request.parseMultipart = parseMultipart;
+exports = request;
+exports.request = request;
+exports.Response = Response;
+exports.parseFormData = parseFormData;
+exports.parseMultipart = parseMultipart;
 
 ['delete', 'get', 'head', 'patch', 'post', 'put']
 .forEach(function (method) {
-  request[method.toLowerCase()] = function (url, options) {
+  exports[method.toLowerCase()] = function (url, options) {
     if (typeof url === 'object') {
       options = url;
       url = undefined;
@@ -218,4 +220,4 @@ request.parseMultipart = parseMultipart;
   };
 });
 
-module.exports = request;
+module.exports = exports;
