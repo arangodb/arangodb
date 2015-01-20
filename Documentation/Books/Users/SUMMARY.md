@@ -201,6 +201,7 @@
     * [Graph Constructors](ModuleGraph/GraphConstructor.md)
     * [Vertex Methods](ModuleGraph/VertexMethods.md)
     * [Edge Methods](ModuleGraph/EdgeMethods.md)
+  * ["request"](ModuleRequest/README.md)
   * ["actions"](ModuleActions/README.md)
   * ["planner"](ModulePlanner/README.md)
   * [Write-ahead log](ModuleWal/README.md)
