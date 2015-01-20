@@ -182,7 +182,7 @@ function request(req) {
   }
 
   var options = {
-    method: req.method || 'get',
+    method: (req.method || 'get').toUpperCase(),
     headers: headers,
     returnBodyAsBuffer: true
   };
