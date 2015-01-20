@@ -1,22 +1,59 @@
+/*global require, module, exports*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Foxx tempalte engine
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2013 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Lucas Dohmen
+/// @author Michael Hackstein
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
 (function() {
   "use strict";
 
   var fs = require("fs"),
     _ = require("underscore"),
     i = require('i')(),
+    templatePath = fs.join(
+      module.startupPath(),
+      "server",
+      "modules",
+      "org",
+      "arangodb",
+      "foxx",
+      "templates"
+    ),
     Engine;
 
   Engine = function(opts) {
-    this.applicationContext = opts.applicationContext;
-    this.path = opts.path;
+    this._path = templatePath;
+    this.folder = opts.path;
     this.name = opts.name;
     this.authenticated = opts.authenticated;
     this.author = opts.author;
     this.description = opts.description;
     this.license = opts.license;
     this.determineFromCollectionNames(opts.collectionNames);
-    this._path = this.applicationContext.foxxFilename("templates");
-    this.folder = fs.join(this.path, this.name);
   };
 
   _.extend(Engine.prototype, {
