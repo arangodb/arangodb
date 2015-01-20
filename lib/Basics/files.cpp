@@ -2182,7 +2182,11 @@ char* TRI_LocateConfigDirectory () {
   v = TRI_LocateInstallDirectory();
 
   if (v != NULL) {
+#if defined(_SYSCONFDIR_)
+    TRI_AppendString(&v, _SYSCONFDIR_);
+#else
     TRI_AppendString(&v, "etc\\arangodb\\");
+#fi
   }
 
   return v;
