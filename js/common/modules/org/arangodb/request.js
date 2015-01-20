@@ -33,7 +33,6 @@ var internal = require('internal');
 var Buffer = require('buffer').Buffer;
 var extend = require('underscore').extend;
 var is = require('org/arangodb/is');
-var httpErrors = require('http-errors');
 var mediaTyper = require('media-typer');
 var contentDisposition = require('content-disposition');
 var querystring = require('querystring');
@@ -197,18 +196,9 @@ function request(req) {
   } else {
     options.maxRedirects = 10;
   }
-  var result = internal.download(url, body, options);
+  var result = internal.download(path, body, options);
 
-  var res = new Response(result, req.encoding);
-  if (res.statusCode >= 400) {
-    var status = httpErrors[res.statusCode] ? res.statusCode : 500;
-    var err = new httpErrors[status](res.message);
-    err.request = extend({}, req, {headers: headers, body: body, url: url});
-    delete err.request.uri;
-    err.response = res;
-    throw err;
-  }
-  return res;
+  return new Response(result, req.encoding);
 }
 
 request.Response = Response;
