@@ -35,9 +35,9 @@
 
         ]);
         cp.getCoordinator();
-        expect(cp._coord).toEqual("http://abcd.de");
+        expect(cp._coord).toEqual(["http://abcd.de"]);
         cp.getCoordinator();
-        expect(cp._coord).toEqual("http://abcd.de");
+        expect(cp._coord).toEqual(["http://abcd.de"]);
     });
 
       it("should getCoordinator with emoty runinfo", function() {
