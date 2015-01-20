@@ -181,7 +181,8 @@ function request(req) {
   if (res.statusCode >= 400) {
     var status = httpErrors[res.statusCode] ? res.statusCode : 500;
     var err = new httpErrors[status](res.message);
-    err.request = extend({}, req, {headers: headers, body: body});
+    err.request = extend({}, req, {headers: headers, body: body, url: url});
+    delete err.request.uri;
     err.response = res;
     throw err;
   }
