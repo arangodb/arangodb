@@ -18,13 +18,92 @@
           );
         });
 
-        it("comparator", function () {
-            var a = {
-                get: function () {
-                    return "ABCDE";
-                }
+        describe("comparator", function() {
+          var a, b, c, first, second, third;
+
+          beforeEach(function() {
+            first = {value: ""};
+            second = {value: ""};
+            third = {value: ""};
+            a = {
+              get: function() { return first.value;}
             };
-            expect(col.comparator(a)).toEqual("abcde");
+            b = {
+              get: function() { return second.value;}
+            };
+            c = {
+              get: function() { return third.value;}
+            };
+          });
+
+          afterEach(function() {
+            col.sortOptions.desc = false;
+          });
+
+          it("should check for name", function() {
+            spyOn(a, "get").andCallThrough();
+            spyOn(b, "get").andCallThrough();
+            col.comparator(a, b);
+            expect(a.get).toHaveBeenCalledWith("name");
+            expect(b.get).toHaveBeenCalledWith("name");
+          });
+
+          it("should sort alphabetically", function() {
+            col.sortOptions.desc = false;
+            first.value = "aaa";
+            second.value = "bbb";
+            third.value = "_zzz";
+
+            expect(col.comparator(a, a)).toEqual(0);
+            expect(col.comparator(b, b)).toEqual(0);
+            expect(col.comparator(c, c)).toEqual(0);
+
+            expect(col.comparator(a, b)).toEqual(-1);
+            expect(col.comparator(b, a)).toEqual(1);
+
+            expect(col.comparator(a, c)).toEqual(1);
+            expect(col.comparator(c, a)).toEqual(-1);
+
+            expect(col.comparator(b, c)).toEqual(1);
+            expect(col.comparator(c, b)).toEqual(-1);
+          });
+
+          it("should sort case independently", function() {
+            col.sortOptions.desc = false;
+            first.value = "aaa";
+            second.value = "BBB";
+            expect(col.comparator(a,b)).toEqual(-1);
+            expect(col.comparator(b,a)).toEqual(1);
+          });
+
+          it("should allow to reverse order ignoring case", function() {
+            col.sortOptions.desc = true;
+            first.value = "aaa";
+            second.value = "bbb";
+            third.value = "_zzz";
+
+            expect(col.comparator(a, a)).toEqual(0);
+            expect(col.comparator(b, b)).toEqual(0);
+            expect(col.comparator(c, c)).toEqual(0);
+
+            expect(col.comparator(a, b)).toEqual(1);
+            expect(col.comparator(b, a)).toEqual(-1);
+
+            expect(col.comparator(a, c)).toEqual(-1);
+            expect(col.comparator(c, a)).toEqual(1);
+
+            expect(col.comparator(b, c)).toEqual(-1);
+            expect(col.comparator(c, b)).toEqual(1);
+          });
+
+          it("should allow to reverse to counter alphabetical ordering", function() {
+            col.sortOptions.desc = true;
+            first.value = "aaa";
+            second.value = "BBB";
+            expect(col.comparator(a,b)).toEqual(1);
+            expect(col.comparator(b,a)).toEqual(-1);
+          });
+
         });
 
         it("sync", function () {

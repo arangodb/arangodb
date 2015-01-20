@@ -31,9 +31,9 @@
     it("verifies defaults", function() {
       var myFoxx = new window.Foxx();
       expect(myFoxx.get('title')).toEqual('');
-      expect(myFoxx.get('version')).toEqual('');
+      expect(myFoxx.get('version')).toEqual('Unknown Version');
       expect(myFoxx.get('mount')).toEqual('');
-      expect(myFoxx.get('description')).toEqual('');
+      expect(myFoxx.get('description')).toEqual('No description');
       expect(myFoxx.get('git')).toEqual('');
       expect(myFoxx.get('isSystem')).toBeFalsy();
       expect(myFoxx.get('development')).toBeFalsy();
