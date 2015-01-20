@@ -38,6 +38,7 @@ var mediaTyper = require('media-typer');
 var contentDisposition = require('content-disposition');
 var querystring = require('querystring');
 var qs = require('qs');
+var url = require('url');
 
 function Response(res, encoding) {
   this.status = this.statusCode = res.code;
@@ -115,14 +116,27 @@ function request(req) {
     req = {url: req, method: 'GET'};
   }
 
-  var url = req.url || req.uri;
-  if (!url) {
+  var path = req.url || req.uri;
+  if (!path) {
     throw new Error('Request URL must not be empty.');
   }
-  var query = querystringify(req.qs, req.useQuerystring);
-  if (query) {
-    url += '?' + query;
+
+  var pathObj = typeof path === 'string' ? url.parse(path) : path;
+  if (pathObj.auth) {
+    var auth = pathObj.auth.split(':');
+    req = extend({
+      auth: {
+        username: decodeURIComponent(auth[0]),
+        password: decodeURIComponent(auth[1])
+      }
+    }, req);
+    delete pathObj.auth;
   }
+  var query = typeof req.qs === 'string' ? req.qs : querystringify(req.qs, req.useQuerystring);
+  if (query) {
+    pathObj.search = query;
+  }
+  path = url.format(pathObj);
 
   var contentType;
   var body = req.body;

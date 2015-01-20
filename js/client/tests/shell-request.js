@@ -31,6 +31,7 @@ var jsunity = require('jsunity');
 var expect = require('expect.js');
 var arangodb = require('org/arangodb');
 var request = require('org/arangodb/request');
+var url = require('url');
 var qs = require('qs');
 
 // -----------------------------------------------------------------------------
