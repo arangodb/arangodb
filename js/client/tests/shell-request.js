@@ -32,6 +32,7 @@ var expect = require('expect.js');
 var arangodb = require('org/arangodb');
 var request = require('org/arangodb/request');
 var url = require('url');
+var querystring = require('querystring');
 var qs = require('qs');
 
 // -----------------------------------------------------------------------------
@@ -59,7 +60,7 @@ function RequestSuite () {
 /// @brief test http DELETE
 ////////////////////////////////////////////////////////////////////////////////
 
-    testDeleteWithDefaults: function () {
+    testDeleteMethod: function () {
       var path = '/lol';
       var res = request.delete(buildUrl(path));
       expect(res).to.be.a(request.Response);
@@ -73,7 +74,7 @@ function RequestSuite () {
 /// @brief test http GET
 ////////////////////////////////////////////////////////////////////////////////
 
-    testGetWithDefaults: function () {
+    testGetMethod: function () {
       var path = '/lol';
       var res = request.get(buildUrl(path));
       expect(res).to.be.a(request.Response);
@@ -87,7 +88,7 @@ function RequestSuite () {
 /// @brief test http HEAD
 ////////////////////////////////////////////////////////////////////////////////
 
-    testHeadWithDefaults: function () {
+    testHeadMethod: function () {
       var path = '/lol';
       var res = request.head(buildUrl(path));
       expect(res).to.be.a(request.Response);
@@ -98,7 +99,7 @@ function RequestSuite () {
 /// @brief test http POST
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPostWithDefaults: function () {
+    testPostMethod: function () {
       var path = '/lol';
       var res = request.post(buildUrl(path));
       expect(res).to.be.a(request.Response);
@@ -112,7 +113,7 @@ function RequestSuite () {
 /// @brief test http PATCH
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPatchWithDefaults: function () {
+    testPatchMethod: function () {
       var path = '/lol';
       var body = {hello: 'world'};
       var res = request.post(buildUrl(path), {body: body, json: true});
@@ -129,7 +130,7 @@ function RequestSuite () {
 /// @brief test http PUT
 ////////////////////////////////////////////////////////////////////////////////
 
-    testPutWithDefaults: function () {
+    testPutMethod: function () {
       var path = '/lol';
       var body = {hello: 'world'};
       var res = request.put(buildUrl(path), {body: body, json: true});
@@ -161,6 +162,48 @@ function RequestSuite () {
       Object.keys(headers).forEach(function (name) {
         expect(obj.headers[name]).to.equal(headers[name]);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test querystrings
+////////////////////////////////////////////////////////////////////////////////
+
+    testQuerystring: function () {
+      var path = '/lol';
+      var qstring = {
+        hovercraft: ['full', 'of', 'eels']
+      };
+      var res = request.post(buildUrl(path), {qs: qstring});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      var urlObj = url.parse(obj.url);
+      var query = qs.parse(urlObj.query);
+      expect(query).to.eql(qstring);
+    },
+
+    testQuerystringWithUseQuerystring: function () {
+      var path = '/lol';
+      var qstring = {
+        hovercraft: ['full', 'of', 'eels']
+      };
+      var res = request.post(buildUrl(path), {qs: qstring, useQuerystring: true});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      var urlObj = url.parse(obj.url);
+      var query = querystring.parse(urlObj.query);
+      expect(query).to.eql(qstring);
+    },
+
+    testQuerystringAsString: function () {
+      var path = '/lol';
+      var qstring = qs.stringify({
+        hovercraft: ['full', 'of', 'eels']
+      });
+      var res = request.post(buildUrl(path), {qs: qstring});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      var urlObj = url.parse(obj.url);
+      expect(urlObj.query).to.eql(qstring);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -274,6 +317,36 @@ function RequestSuite () {
     },
 
     testFormBody: function () {
+      var path = '/lol';
+      var reqBody = {
+        hello: 'world',
+        answer: '42',
+        hovercraft: ['full', 'of', 'eels']
+      };
+      var res = request.post(buildUrl(path), {form: reqBody});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      expect(obj.path).to.equal(path);
+      expect(obj).to.have.property('requestBody');
+      expect(qs.parse(obj.requestBody)).to.eql(reqBody);
+    },
+
+    testFormBodyWithQuerystring: function () {
+      var path = '/lol';
+      var reqBody = {
+        hello: 'world',
+        answer: '42',
+        hovercraft: ['full', 'of', 'eels']
+      };
+      var res = request.post(buildUrl(path), {form: reqBody, useQuerystring: true});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      expect(obj.path).to.equal(path);
+      expect(obj).to.have.property('requestBody');
+      expect(querystring.parse(obj.requestBody)).to.eql(reqBody);
+    },
+
+    testFormBodyAsString: function () {
       var path = '/lol';
       var reqBody = {
         hello: 'world',
