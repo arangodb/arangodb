@@ -194,6 +194,8 @@ function request(req) {
   }
   if (is.existy(req.maxRedirects)) {
     options.maxRedirects = req.maxRedirects;
+  } else {
+    options.maxRedirects = 10;
   }
   var result = internal.download(url, body, options);
 
