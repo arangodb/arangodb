@@ -253,7 +253,7 @@
           # Don't warn about the "struct foo f = {0};" initialization pattern.
           '-Wno-missing-field-initializers',
         ],
-        'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-std=gnu++0x' ],
+        'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-std=gnu++11' ],
         'ldflags': [ '-pthread', ],
         'conditions': [
           [ 'visibility=="hidden" and v8_enable_backtrace==0', {
@@ -278,7 +278,7 @@
           # Don't warn about the "struct foo f = {0};" initialization pattern.
           '-Wno-missing-field-initializers',
         ],
-        'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-std=gnu++0x' ],
+        'cflags_cc': [ '-Wnon-virtual-dtor', '-fno-rtti', '-std=gnu++11' ],
         'conditions': [
           [ 'visibility=="hidden"', {
             'cflags': [ '-fvisibility=hidden' ],
@@ -430,7 +430,8 @@
           ['clang==1', {
             'xcode_settings': {
               'GCC_VERSION': 'com.apple.compilers.llvm.clang.1_0',
-              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++0x',  # -std=gnu++0x
+              'CLANG_CXX_LANGUAGE_STANDARD': 'gnu++11',  # -std=gnu++11
+              'CLANG_CXX_LIBRARY': 'libc++'
             },
           }],
         ],
