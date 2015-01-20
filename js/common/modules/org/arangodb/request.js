@@ -30,7 +30,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require('internal');
-var Buffer = require('buffer');
+var Buffer = require('buffer').Buffer;
 var extend = require('underscore').extend;
 var is = require('org/arangodb/is');
 var httpErrors = require('http-errors');
@@ -124,7 +124,6 @@ function request(req) {
     url += '?' + query;
   }
 
-
   var contentType;
   var body = req.body;
   if (req.json) {
@@ -149,7 +148,7 @@ function request(req) {
     }
   }
 
-  var headers = extend({'content-type': contentType}, headers);
+  var headers = extend({'content-type': contentType}, req.headers);
 
   if (req.auth) {
     headers['authorization'] = (
