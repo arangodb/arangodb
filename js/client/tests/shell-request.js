@@ -117,9 +117,9 @@ function RequestSuite () {
       var body = {hello: 'world'};
       var res = request.post(buildUrl(path), {body: body, json: true});
       expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      var obj = JSON.parse(res.body);
+      expect(res.body).to.be.an('object');
+      var obj = res.body;
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
       expect(JSON.parse(obj.requestBody)).to.eql(body);
@@ -134,9 +134,9 @@ function RequestSuite () {
       var body = {hello: 'world'};
       var res = request.put(buildUrl(path), {body: body, json: true});
       expect(res).to.be.a(request.Response);
-      expect(res.body).to.be.a('string');
       expect(Number(res.headers['content-length'])).to.equal(res.rawBody.length);
-      var obj = JSON.parse(res.body);
+      expect(res.body).to.be.an('object');
+      var obj = res.body;
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
       expect(JSON.parse(obj.requestBody)).to.eql(body);
@@ -164,24 +164,39 @@ function RequestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test http url object
+////////////////////////////////////////////////////////////////////////////////
+
+    testUrlObject: function () {
+      var path = url.parse(buildUrl('/lol'));
+      var res = request.post({url: path});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      expect(obj.url).to.equal(path.pathname);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test 404
 ////////////////////////////////////////////////////////////////////////////////
 
-    testError404: function () {
+    test404: function () {
       var url = buildUrlBroken('/lol');
-      expect(function () {
-        request.get(url);
-      }).to.throwException(function (err) {
-        expect(err).to.have.property('message', 'Not Found');
-        expect(err).to.have.property('statusCode', 404);
-        expect(err).to.have.property('status', 404);
-        expect(err).to.have.property('request');
-        expect(err).to.have.property('response');
-        expect(err.response).to.be.a(request.Response);
-        expect(err.response).to.have.property('statusCode', 404);
-        expect(err.response).to.have.property('status', 404);
-        expect(err.request).to.have.property('url', url);
-      });
+      var res = request.get(url);
+      expect(res).to.be.a(request.Response);
+      expect(res).to.have.property('message', 'Not Found');
+      expect(res).to.have.property('statusCode', 404);
+      expect(res).to.have.property('status', 404);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bad json
+////////////////////////////////////////////////////////////////////////////////
+
+    testBadJson: function () {
+      var url = buildUrl('/_admin/aardvark/standalone.html', false);
+      var res = request.get(url, {json: true});
+      expect(res).to.be.a(request.Response);
+      expect(res.body).to.be.a('string');
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,6 +210,25 @@ function RequestSuite () {
         password: 'bionicman'
       };
       var res = request.post(buildUrl(path), {auth: auth});
+      expect(res).to.be.a(request.Response);
+      var obj = JSON.parse(res.body);
+      expect(obj.path).to.equal(path);
+      expect(obj).to.have.property('headers');
+      expect(obj.headers).to.have.property('authorization');
+      expect(obj.headers.authorization).to.equal(
+        'Basic ' + new Buffer(auth.username + ':' + auth.password).toString('base64')
+      );
+    },
+
+    testBasicAuthViaUrl: function () {
+      var path = '/lol';
+      var auth = {
+        username: 'jcd',
+        password: 'bionicman'
+      };
+      var res = request.post(buildUrl(path).replace(/^(https?:\/\/)/, function (m) {
+        return m + encodeURIComponent(auth.username) + ':' + encodeURIComponent(auth.password) + '@';
+      }));
       expect(res).to.be.a(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.path).to.equal(path);
@@ -232,7 +266,8 @@ function RequestSuite () {
       };
       var res = request.post(buildUrl(path), {body: reqBody, json: true});
       expect(res).to.be.a(request.Response);
-      var obj = JSON.parse(res.body);
+      expect(res.body).to.be.an('object');
+      var obj = res.body;
       expect(obj.path).to.equal(path);
       expect(obj).to.have.property('requestBody');
       expect(JSON.parse(obj.requestBody)).to.eql(reqBody);
@@ -283,12 +318,12 @@ function RequestSuite () {
       expect(res.body).to.be.a(Buffer);
     }
 
+  };
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main
 // -----------------------------------------------------------------------------
-
-  };
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
