@@ -56,53 +56,6 @@ function Response(res, encoding, json) {
   }
 }
 
-function parseFormData(req) {
-  if (req && !req.requestBody && req.body && typeof req.body === 'object') {
-    req = {requestBody: req.body, headers: req.headers};
-  }
-  var parts = internal.requestParts(req);
-  var formData = {};
-  parts.forEach(function (part) {
-    var headers = part.headers || {};
-    if (!headers['content-disposition']) {
-      return; // Not form data
-    }
-    var disposition = contentDisposition.parse(headers['content-disposition']);
-    if (disposition.name !== 'form-data' || !disposition.parameters.name) {
-      return; // Not form data
-    }
-    var body = part.body;
-    var contentType = mediaTyper.parse(headers['content-type'] || 'text/plain');
-    if (contentType.type === 'text') {
-      body = part.body.toString(contentType.parameters.charset || 'utf-8');
-    } else if (contentType.type === 'multipart' && contentType.subtype === 'mixed') {
-      body = parseMultipart(part.body, part.headers);
-    } else {
-      body = extend({}, part.headers, {body: part.body});
-    }
-    var name = disposition.parameters.name;
-    if (formData.hasOwnProperty(name)) {
-      if (!Array.isArray(formData[name])) {
-        formData[name] = [formData[name]];
-      }
-      formData[name].push(body);
-    } else {
-      formData[name] = body;
-    }
-  });
-  return formData;
-}
-
-function parseMultipart(req) {
-  if (req && !req.requestBody && req.body && typeof req.body === 'object') {
-    req = {requestBody: req.body, headers: req.headers};
-  }
-  var parts = internal.requestParts(req);
-  return parts.map(function (part) {
-    return extend({}, part.headers, {body: part.body});
-  });
-}
-
 function querystringify(query, useQuerystring) {
   if (!query) {
     return '';
@@ -211,8 +164,6 @@ function request(req) {
 exports = request;
 exports.request = request;
 exports.Response = Response;
-exports.parseFormData = parseFormData;
-exports.parseMultipart = parseMultipart;
 
 ['delete', 'get', 'head', 'patch', 'post', 'put']
 .forEach(function (method) {
