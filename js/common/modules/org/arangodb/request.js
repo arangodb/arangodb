@@ -162,7 +162,13 @@ function request(req) {
     }
   }
 
-  var headers = extend({'content-type': contentType}, req.headers);
+  var headers = {'content-type': contentType};
+
+  if (req.headers) {
+    Object.keys(req.headers).forEach(function (name) {
+      headers[name.toLowerCase()] = req.headers[name];
+    });
+  }
 
   if (req.auth) {
     headers['authorization'] = (
