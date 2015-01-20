@@ -1383,7 +1383,7 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
   }
 }
 
-ExecutionNode::IndexMatch IndexRangeNode::MatchesIndex (IndexMatchVec const& pattern) const {
+ExecutionNode::IndexMatch IndexRangeNode::matchesIndex (IndexMatchVec const& pattern) const {
   return CompareIndex(_index, pattern);
 }
 

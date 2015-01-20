@@ -24,7 +24,7 @@
           delete window.App;
         });
 
-        it("comparator", function () {
+        it("checking defaults", function () {
             expect(col.model).toEqual(window.Users);
             expect(col.activeUser).toEqual('');
             expect(col.activeUserSettings).toEqual({
@@ -33,10 +33,97 @@
                 "testing": true
             });
             expect(col.url).toEqual("/_api/user");
-            expect(col.comparator({get: function (val) {
-                return "Herbert";
-            }})).toEqual("herbert");
         });
+
+        describe("comparator", function() {
+          var a, b, c, first, second, third;
+
+          beforeEach(function() {
+            first = {value: ""};
+            second = {value: ""};
+            third = {value: ""};
+            a = {
+              get: function() { return first.value;}
+            };
+            b = {
+              get: function() { return second.value;}
+            };
+            c = {
+              get: function() { return third.value;}
+            };
+          });
+
+          afterEach(function() {
+            col.sortOptions.desc = false;
+          });
+
+          it("should check for user", function() {
+            spyOn(a, "get").andCallThrough();
+            spyOn(b, "get").andCallThrough();
+            col.comparator(a, b);
+            expect(a.get).toHaveBeenCalledWith("user");
+            expect(b.get).toHaveBeenCalledWith("user");
+          });
+
+          it("should sort alphabetically", function() {
+            col.sortOptions.desc = false;
+            first.value = "aaa";
+            second.value = "bbb";
+            third.value = "_zzz";
+
+            expect(col.comparator(a, a)).toEqual(0);
+            expect(col.comparator(b, b)).toEqual(0);
+            expect(col.comparator(c, c)).toEqual(0);
+
+            expect(col.comparator(a, b)).toEqual(-1);
+            expect(col.comparator(b, a)).toEqual(1);
+
+            expect(col.comparator(a, c)).toEqual(1);
+            expect(col.comparator(c, a)).toEqual(-1);
+
+            expect(col.comparator(b, c)).toEqual(1);
+            expect(col.comparator(c, b)).toEqual(-1);
+          });
+
+          it("should sort case independently", function() {
+            col.sortOptions.desc = false;
+            first.value = "aaa";
+            second.value = "BBB";
+            expect(col.comparator(a,b)).toEqual(-1);
+            expect(col.comparator(b,a)).toEqual(1);
+          });
+
+          it("should allow to reverse order ignoring case", function() {
+            col.sortOptions.desc = true;
+            first.value = "aaa";
+            second.value = "bbb";
+            third.value = "_zzz";
+
+            expect(col.comparator(a, a)).toEqual(0);
+            expect(col.comparator(b, b)).toEqual(0);
+            expect(col.comparator(c, c)).toEqual(0);
+
+            expect(col.comparator(a, b)).toEqual(1);
+            expect(col.comparator(b, a)).toEqual(-1);
+
+            expect(col.comparator(a, c)).toEqual(-1);
+            expect(col.comparator(c, a)).toEqual(1);
+
+            expect(col.comparator(b, c)).toEqual(-1);
+            expect(col.comparator(c, b)).toEqual(1);
+          });
+
+          it("should allow to reverse to counter alphabetical ordering", function() {
+            col.sortOptions.desc = true;
+            first.value = "aaa";
+            second.value = "BBB";
+            expect(col.comparator(a,b)).toEqual(1);
+            expect(col.comparator(b,a)).toEqual(-1);
+          });
+
+        });
+
+
 
         it("login", function () {
             col.login("user", "pw");

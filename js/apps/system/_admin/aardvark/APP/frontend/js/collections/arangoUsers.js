@@ -23,14 +23,11 @@ window.ArangoUsers = Backbone.Collection.extend({
   //},
 
   comparator: function(item, item2) {
-    var a, b;
+    var a = item.get('user').toLowerCase();
+    var b = item2.get('user').toLowerCase();
     if (this.sortOptions.desc === true) {
-      a = item.get('user');
-      b = item2.get('user');
       return a < b ? 1 : a > b ? -1 : 0;
     }
-    a = item.get('user');
-    b = item2.get('user');
     return a > b ? 1 : a < b ? -1 : 0;
   },
 

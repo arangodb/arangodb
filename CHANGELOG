@@ -1,11 +1,31 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* use exclusive native SRWLocks on Windows instead of native mutexes
+
+* added AQL functions MD5, SHA1, and RANDOM_TOKEN.
+
+* reduced number of string allocations when parsing certain AQL queries
+
+  parsing numbers (integers or doubles) does not require a string allocation
+  per number anymore
+
 * RequestContext#bodyParam now accepts arbitrary joi schemas and rejects invalid (but well-formed) request bodies.
+
+* enforce that AQL user functions are wrapped inside JavaScript function () declarations
+
+  AQL user functions were always expected to be wrapped inside a JavaScript function, but previously 
+  this was not enforced when registering a user function. Enforcing the AQL user functions to be contained
+  inside functions prevents functions from doing some unexpected things that may have led to undefined
+  behavior.
 
 
 v2.4.1 (XXXX-XX-XX)
 -------------------
+
+* improved WAL recovery output
+
+* fixed certain OR optimizations in AQL optimizer
 
 * better diagnostics for arangoimp
 
@@ -259,8 +279,18 @@ v2.4.0-beta1 (2014-12-26)
   possible
 
 
-v2.3.5 (2015-XX-XX)
+v2.3.6 (2015-XX-XX)
 -------------------
+
+* fixed AQL subquery optimization that produced wrong result when multiple subqueries 
+  directly followed each other and and a directly following `LET` statement did refer
+  to any but the first subquery.
+
+
+v2.3.5 (2015-01-16)
+-------------------
+
+* fixed intermittent 404 errors in Foxx apps after mounting or unmounting apps
 
 * fixed issue #1200: Expansion operator results in "Cannot call method 'forEach' of null"
 

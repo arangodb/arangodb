@@ -58,9 +58,9 @@ ExecutionPlan::ExecutionPlan (Ast* ast)
     _varUsageComputed(false),
     _nextId(0),
     _ast(ast),
-    _lastLimitNode(nullptr) {
+    _lastLimitNode(nullptr),
+    _subQueries() {
 
-  _lastSubqueryNodeId = (size_t) -1;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -437,15 +437,33 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
     }
 
     en = registerNode(new SubqueryNode(this, nextId(), subquery, v));
-    _lastSubqueryNodeId = en->id();
+    _subQueries[static_cast<SubqueryNode*>(en)->outVariable()->id] = en;
   }
   else {
-    if ((expression->type == NODE_TYPE_REFERENCE) &&
-        (_lastSubqueryNodeId == _nextId)) {
-      auto sn = static_cast<SubqueryNode*>(getNodeById(_lastSubqueryNodeId));
-      sn->replaceOutVariable(v);
-      return sn;
+    if (expression->type == NODE_TYPE_REFERENCE) {
+      // the right hand side of the LET is just a reference to an existing variable
+      auto referencedVariable = static_cast<Variable const*>(expression->getData());
+
+      TRI_ASSERT(referencedVariable != nullptr);
+
+      if (! referencedVariable->isUserDefined()) {
+        // if the variable on the right is an internal variable, check if we can get
+        // away without the LET
+        auto it = _subQueries.find(referencedVariable->id);
+        if (it != _subQueries.end()) {
+          // optimization: if the LET a = ... references a variable created by a subquery,
+          // change the output variable of the (anonymous) subquery to be the outvariable of
+          // the LET. and don't create the LET
+
+          auto sn = static_cast<SubqueryNode*>((*it).second);
+          sn->replaceOutVariable(v);
+          return sn;
+        }
+      }
+
+      // otherwise fall-through to normal behavior
     }
+
     // operand is some misc expression, including references to other variables
     auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 

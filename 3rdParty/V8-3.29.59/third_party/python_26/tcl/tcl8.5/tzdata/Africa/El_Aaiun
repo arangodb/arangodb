@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/El_Aaiun) {
-    {-9223372036854775808 -3168 0 LMT}
-    {-1136070432 -3600 0 WAT}
-    {198291600 0 0 WET}
-}

@@ -539,7 +539,7 @@ namespace triagens {
 /// @brief clone
 ////////////////////////////////////////////////////////////////////////////////
 
-        RangeInfo clone () {
+        RangeInfo clone () const {
           RangeInfo copy(_var, _attr);
           
           copy._lowConst.assign(_lowConst);
@@ -556,8 +556,6 @@ namespace triagens {
           copy._equality = _equality;
 
           return copy;
-          //FIXME the following should work but doesn't!!
-          //return RangeInfo(this->toJson());
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -589,7 +587,7 @@ namespace triagens {
         
       public:
         
-        RangeInfoMap (const RangeInfoMap& copy) = delete;
+        RangeInfoMap (RangeInfoMap const& copy) = delete;
         RangeInfoMap& operator= (RangeInfoMap const& copy) = delete;
         
 ////////////////////////////////////////////////////////////////////////////////
@@ -744,9 +742,11 @@ namespace triagens {
 
        void attributes (std::unordered_set<std::string>& set, std::string const& var);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the names of variables contained in the RangeInfoMap
+////////////////////////////////////////////////////////////////////////////////
 
-       //TODO write @brief
-       std::unordered_set<std::string> variables();
+       std::unordered_set<std::string> variables() const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
@@ -768,7 +768,7 @@ namespace triagens {
         
       public:
         
-        RangeInfoMapVec (const RangeInfoMapVec& copy) = delete;
+        RangeInfoMapVec (RangeInfoMapVec const& copy) = delete;
         RangeInfoMapVec& operator= (RangeInfoMapVec const& copy) = delete;
         
 ////////////////////////////////////////////////////////////////////////////////
@@ -890,6 +890,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
     
       private: 
+
         std::vector<RangeInfoMap*> _rangeInfoMapVec; 
     };
 
@@ -956,16 +957,16 @@ namespace triagens {
 /// disjoint sets. 
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool areDisjointIndexAndConditions (IndexAndCondition&, 
-                                        IndexAndCondition&);
+    bool areDisjointIndexAndConditions (IndexAndCondition const&, 
+                                        IndexAndCondition const&);
     
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isContainedIndexAndConditions: returns true if the first argument is
 /// contained in the second, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-    bool isContainedIndexAndConditions (IndexAndCondition&, 
-                                        IndexAndCondition&);
+    bool isContainedIndexAndConditions (IndexAndCondition const&, 
+                                        IndexAndCondition const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceIndexAnd: modifies and1 and and2 in place 

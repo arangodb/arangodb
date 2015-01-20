@@ -169,27 +169,3 @@ attribute must contain the JavaScript code of the module. This string is
 executed in a new module context and the value of *exports* object is
 returned. This value is also stored in the module cache.
 
-!SUBSECTION Modules Cache
-
-As *require* uses a module cache to store the exports objects of the required
-modules, changing the design documents for the modules in the *_modules* collection
-might have no effect at all.
-
-You need to clear the cache, when manually changing documents in the *_modules*
-collection.
-
-```js
-arangosh> require("internal").flushServerModules()
-```
-
-This initiate a flush of the modules in the ArangoDB *server* process.
-
-Please note, that the ArangoDB JavaScript shell uses the same mechanism as the
-server to locate JavaScript modules. But the do not share the same module cache.
-If you flush the server cache, this will not flush the shell cache - and vice
-versa.
-
-In order to flush the modules cache of the JavaScript shell, you should use
-```js
-arangosh> require("internal").flushModuleCache()
-```

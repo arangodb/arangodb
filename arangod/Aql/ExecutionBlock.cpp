@@ -740,6 +740,7 @@ int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, size_t pos)
 
 AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
                                                  size_t atMost) {
+
   // Invariants:
   //   As soon as we notice that _totalCount == 0, we set _done = true.
   //   Otherwise, outside of this method (or skipSome), _documents is
@@ -885,6 +886,8 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _anyBoundVariable(false),
     _skiplistIterator(nullptr),
+    _hashIndexSearchValue({ 0, nullptr }),
+    _hashNextElement(nullptr),
     _condition(new IndexOrCondition()),
     _posInRanges(0),
     _sortCoords(),
@@ -1222,62 +1225,78 @@ bool IndexRangeBlock::initRanges () {
     removeOverlapsIndexOr(*_condition);
   }
    
-  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX ||
+      en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     return true; //no initialization here!
   }
-  else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    return true; //no initialization here!
+      
+  if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
+    if (_condition->empty()) {
+      return false;
+    }
+
+    _posInRanges = 0;
+    getHashIndexIterator(_condition->at(_posInRanges));
+    return (_hashIndexSearchValue._values != nullptr); 
   }
   
   if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
-    if (! _condition->empty()) {
-      // sort the conditions! 
-
-      // TODO this should also be done for hash indexes when
-      // they are lazy too. 
-
-      // first sort by the prefix of the index 
-      std::vector<std::vector<size_t>> prefix;
-      if (! _sortCoords.empty()) {
-        _sortCoords.clear();
-        _sortCoords.reserve(_condition->size());
-      }
-      for (size_t s = 0; s < _condition->size(); s++) {
-        _sortCoords.push_back(s);
-        std::vector<size_t> next;
-        next.reserve(en->_index->fields.size());
-        prefix.emplace_back(next);
-        // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
-        // field
-        for (size_t t = 0; t < en->_index->fields.size(); t++) {
-          for (size_t u = 0; u < _condition->at(s).size(); u++) {
-            auto ri = _condition->at(s)[u];
-            if (en->_index->fields[t].compare(ri._attr) == 0) {
-              prefix.at(s).insert(prefix.at(s).begin() + t, u);
-              break;
-            }
-          }
-        }
-      }
-
-      SortFunc sortFunc(prefix, _condition, en->_reverse);
-
-      // then sort by the values of the bounds
-      std::sort(_sortCoords.begin(), _sortCoords.end(), sortFunc);
-      _posInRanges = 0;
-      getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
-      return (_skiplistIterator != nullptr);
-    } 
-    else {
+    if (_condition->empty()) {
       return false;
     }
-  }
-  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
-    return true; //no initialization here!
+
+    sortConditions();
+    _posInRanges = 0;
+
+    getSkiplistIterator(_condition->at(_sortCoords[_posInRanges]));
+    return (_skiplistIterator != nullptr);
   }
           
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected index type"); 
   LEAVE_BLOCK;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// @brief: sorts the index range conditions and resets _posInRanges to 0
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::sortConditions () {
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+
+  size_t const n = _condition->size(); 
+  // first sort by the prefix of the index
+  std::vector<std::vector<size_t>> prefix;
+  prefix.reserve(n);
+
+  if (! _sortCoords.empty()) {
+    _sortCoords.clear();
+    _sortCoords.reserve(n);
+  }
+
+  for (size_t s = 0; s < n; s++) {
+    _sortCoords.push_back(s);
+    std::vector<size_t> next;
+    next.reserve(en->_index->fields.size());
+    prefix.emplace_back(next);
+    // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
+    // field
+    for (size_t t = 0; t < en->_index->fields.size(); t++) {
+      for (size_t u = 0; u < _condition->at(s).size(); u++) {
+        auto ri = _condition->at(s)[u];
+        if (en->_index->fields[t].compare(ri._attr) == 0) {
+          prefix.at(s).insert(prefix.at(s).begin() + t, u);
+          break;
+        }
+      }
+    }
+  }
+
+  SortFunc sortFunc(prefix, _condition, en->_reverse);
+
+  // then sort by the values of the bounds
+  std::sort(_sortCoords.begin(), _sortCoords.end(), sortFunc);
+
+  _posInRanges = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1359,7 +1378,7 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
 ////////////////////////////////////////////////////////////////////////////////
 
 IndexOrCondition* IndexRangeBlock::cartesian (
-    std::vector<std::vector<RangeInfo>> collector) {
+    std::vector<std::vector<RangeInfo>> const& collector) {
   
   std::vector<size_t> indexes;
   indexes.reserve(collector.size());
@@ -1430,9 +1449,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
     }
   }
   else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
-    if (_flag) {
-      readHashIndex(*_condition);
-    }
+    readHashIndex(atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(atMost);
@@ -1715,94 +1732,6 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents using a hash index
-////////////////////////////////////////////////////////////////////////////////
-
-void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
-  ENTER_BLOCK;
-  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
-  TRI_ASSERT(idx != nullptr);
-  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
-
-  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
-  TRI_ASSERT(shaper != nullptr);
-  
-  TRI_index_search_value_t searchValue;
-  
-  auto destroySearchValue = [&]() {
-    if (searchValue._values != nullptr) {
-      for (size_t i = 0; i < searchValue._length; ++i) {
-        TRI_DestroyShapedJson(shaper->_memoryZone, &searchValue._values[i]);
-      }
-      TRI_Free(TRI_CORE_MEM_ZONE, searchValue._values);
-    }
-    searchValue._values = nullptr;
-  };
-
-  auto setupSearchValue = [&](size_t pos) -> bool {
-    size_t const n = hashIndex->_paths._length;
-    searchValue._length = 0;
-    // initialize the whole range of shapes with zeros
-    searchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, 
-          n * sizeof(TRI_shaped_json_t), true));
-
-    if (searchValue._values == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-    
-    searchValue._length = n;
-
-    for (size_t i = 0; i < n; ++i) {
-      TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
-      TRI_ASSERT(pid != 0);
-   
-      char const* name = TRI_AttributeNameShapePid(shaper, pid);
-      std::string const lookFor = std::string(name);
-
-      for (auto x : ranges[pos]) {
-        if (x._attr == lookFor) {    //found attribute
-          auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
-          // here x->_low->_bound = x->_high->_bound 
-          if (shaped == nullptr) {
-            return false;
-          }
-          searchValue._values[i] = *shaped;
-          TRI_Free(shaper->_memoryZone, shaped);
-          break; 
-        }
-      }
-    }
-    return true;
-  };
-  
-  for (size_t i = 0; i < ranges.size(); i++) {
-    if (setupSearchValue(i)) {
-      TRI_vector_pointer_t list = TRI_LookupHashIndex(idx, &searchValue);
-      destroySearchValue();
-
-      size_t const n = TRI_LengthVectorPointer(&list);
-      try {
-        for (size_t i = 0; i < n; ++i) {
-          _documents.emplace_back(* (static_cast<TRI_doc_mptr_t*>(TRI_AtVectorPointer(&list, i))));
-        }
-
-        _engine->_stats.scannedIndex += static_cast<int64_t>(n);
-        TRI_DestroyVectorPointer(&list);
-      }
-      catch (...) {
-        TRI_DestroyVectorPointer(&list);
-        throw;
-      }
-    }
-    else {
-      destroySearchValue();
-    }
-  }
-  LEAVE_BLOCK;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief read documents using the edges index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1853,6 +1782,119 @@ void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
         }
     
         _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
+      }
+    }
+  }
+  LEAVE_BLOCK;
+}
+
+void IndexRangeBlock::destroyHashIndexSearchValues () {
+  if (_hashIndexSearchValue._values != nullptr) {
+    TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+
+    for (size_t i = 0; i < _hashIndexSearchValue._length; ++i) {
+      TRI_DestroyShapedJson(shaper->_memoryZone, &_hashIndexSearchValue._values[i]);
+    }
+
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, _hashIndexSearchValue._values);
+    _hashIndexSearchValue._values = nullptr;
+  }
+}
+
+bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range) { 
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  TRI_index_t* idx = en->_index->data;
+  TRI_ASSERT(idx != nullptr);
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
+
+  size_t const n = hashIndex->_paths._length;
+
+  _hashIndexSearchValue._length = 0;
+    // initialize the whole range of shapes with zeros
+  _hashIndexSearchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
+      n * sizeof(TRI_shaped_json_t), true));
+
+  if (_hashIndexSearchValue._values == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+    
+  _hashIndexSearchValue._length = n;
+
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_shape_pid_t pid = *(static_cast<TRI_shape_pid_t*>(TRI_AtVector(&hashIndex->_paths, i)));
+    TRI_ASSERT(pid != 0);
+   
+    char const* name = TRI_AttributeNameShapePid(shaper, pid);
+    std::string const lookFor = std::string(name);
+
+    for (auto x : range) {
+      if (x._attr == lookFor) {    //found attribute
+        auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
+        // here x->_low->_bound = x->_high->_bound 
+        if (shaped == nullptr) {
+          return false;
+        }
+
+        _hashIndexSearchValue._values[i] = *shaped;
+        TRI_Free(shaper->_memoryZone, shaped);
+        break; 
+      }
+    }
+  }
+
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build search values for hash index lookup
+////////////////////////////////////////////////////////////////////////////////
+
+void IndexRangeBlock::getHashIndexIterator (IndexAndCondition const& ranges) {
+  ENTER_BLOCK;
+  
+  _hashNextElement = nullptr;
+ 
+  destroyHashIndexSearchValues();
+  if (! setupHashIndexSearchValue(ranges)) {
+    destroyHashIndexSearchValues();
+  }
+
+  LEAVE_BLOCK;
+}
+
+void IndexRangeBlock::readHashIndex (size_t atMost) {
+  ENTER_BLOCK;
+
+  if (_hashIndexSearchValue._values == nullptr) {
+    return;
+  }
+
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  TRI_index_t* idx = en->_index->data;
+  TRI_ASSERT(idx != nullptr);
+  
+  size_t nrSent = 0;
+  while (nrSent < atMost) { 
+    size_t const n = _documents.size();
+
+    TRI_LookupHashIndex(idx, &_hashIndexSearchValue, _documents, _hashNextElement, atMost);
+    size_t const numRead = _documents.size() - n;
+
+    _engine->_stats.scannedIndex += static_cast<int64_t>(numRead);
+    nrSent += numRead;
+
+    if (_hashNextElement == nullptr) {
+      destroyHashIndexSearchValues();
+
+      if (++_posInRanges < _condition->size()) {
+        getHashIndexIterator(_condition->at(_posInRanges));
+      }
+      if (_hashIndexSearchValue._values == nullptr) {
+        _hashNextElement = nullptr;
+        break;
       }
     }
   }
@@ -5462,9 +5504,9 @@ int RemoteBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   }
   else {
     body("pos", Json(static_cast<double>(pos)))
-      ("items", items->toJson(_engine->getQuery()->trx()))
-      ("exhausted", Json(false))
-      ("error", Json(false));
+        ("items", items->toJson(_engine->getQuery()->trx()))
+        ("exhausted", Json(false))
+        ("error", Json(false));
   }
 
   std::string bodyString(body.toString());

@@ -141,18 +141,18 @@ function resetRegexCache () {
 function reloadUserFunctions () {
   "use strict";
 
-  var c;
-
-  c = INTERNAL.db._collection("_aqlfunctions");
+  var prefix = DB_PREFIX();
+  var c = INTERNAL.db._collection("_aqlfunctions");
 
   if (c === null) {
+    // collection not found. now reset all user functions
+    UserFunctions = { };
+    UserFunctions[prefix] = { };
     return;
   }
 
   var foundError = false;
-  var prefix = DB_PREFIX();
-
-  UserFunctions[prefix] = { };
+  var functions = { };
 
   c.toArray().forEach(function (f) {
     var code = "(function() { var callback = " + f.code + "; return callback; })();";
@@ -160,8 +160,11 @@ function reloadUserFunctions () {
 
     try {
       var res = INTERNAL.executeScript(code, undefined, "(user function " + key + ")");
+      if (typeof res !== "function") {
+        foundError = true;
+      }
 
-      UserFunctions[prefix][key.toUpperCase()] = {
+      functions[key.toUpperCase()] = {
         name: key,
         func: res,
         isDeterministic: f.isDeterministic || false
@@ -169,26 +172,23 @@ function reloadUserFunctions () {
 
     }
     catch (err) {
+      // in case a single function is broken, we still continue with the other ones
+      // so that at least some functions remain usable
       foundError = true;
     }
   });
+  
+  // now reset the functions for all databases
+  // this ensures that functions of other databases will be reloaded next 
+  // time (the reload does not necessarily need to be carried out in the
+  // database in which the function is registered)
+  UserFunctions = { }; 
+  UserFunctions[prefix] = functions;
 
   if (foundError) {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_INVALID_CODE);
   }
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief reset the query engine
-////////////////////////////////////////////////////////////////////////////////
-
-function resetEngine () {
-  "use strict";
-
-  resetRegexCache();
-  reloadUserFunctions();
-}
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
@@ -526,32 +526,28 @@ function COMPILE_REGEX (regex, modifiers) {
 function FCALL_USER (name, parameters) {
   "use strict";
 
-  var reloaded = false;
-  var prefix = DB_PREFIX();
+  var prefix = DB_PREFIX(), reloaded = false;
   if (! UserFunctions.hasOwnProperty(prefix)) {
     reloadUserFunctions();
     reloaded = true;
-
-    if (! UserFunctions.hasOwnProperty(prefix)) {
-      THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
-    }
   }
   
-  if (! reloaded && ! UserFunctions[prefix].hasOwnProperty(name)) {
+  if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+    // last chance
     reloadUserFunctions();
   }
-
-  if (UserFunctions[prefix].hasOwnProperty(name)) {
-    try {
-      return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
-    }
-    catch (err) {
-      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
-      return null;
-    }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(name)) {
+    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
   }
 
-  THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+  try {
+    return FIX_VALUE(UserFunctions[prefix][name].func.apply(null, parameters));
+  }
+  catch (err) {
+    WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
+    return null;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -564,14 +560,19 @@ function FCALL_DYNAMIC (func, applyDirect, values, name, args) {
   name = AQL_TO_STRING(name).toUpperCase();
   if (name.indexOf('::') > 0) {
     // user-defined function
-    var prefix = DB_PREFIX();
+    var prefix = DB_PREFIX(), reloaded = false;
     if (! UserFunctions.hasOwnProperty(prefix)) {
+      reloadUserFunctions();
+      reloaded = true;
+    }
+
+    if (! UserFunctions[prefix].hasOwnProperty(name) && ! reloaded) {
+      // last chance
       reloadUserFunctions();
     }
 
-    if (! UserFunctions.hasOwnProperty(prefix) ||
-        ! UserFunctions[prefix].hasOwnProperty(name)) {
-      THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, NORMALIZE_FNAME(name));
+    if (! UserFunctions[prefix].hasOwnProperty(name)) {
+      THROW(func, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
     }
 
     toCall = UserFunctions[prefix][name].func;
@@ -1988,6 +1989,42 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     }
     return match;
   });
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates the MD5 value for a string
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_MD5 (value) {
+  "use strict";
+
+  return INTERNAL.md5(AQL_TO_STRING(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates the SHA1 value for a string
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_SHA1 (value) {
+  "use strict";
+
+  return INTERNAL.sha1(AQL_TO_STRING(value));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generates a random token of the specified length
+////////////////////////////////////////////////////////////////////////////////
+
+function AQL_RANDOM_TOKEN (length) {
+  "use strict";
+
+  length = AQL_TO_NUMBER(length);
+
+  if (length <= 0 || length > 65536) {
+    THROW("RANDOM_TOKEN", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, "RANDOM_TOKEN");
+  }
+
+  return INTERNAL.genRandomAlphaNumbers(AQL_TO_NUMBER(length));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -4525,15 +4562,22 @@ function SUBNODES (searchAttributes, vertexId, visited, edges, vertices, level) 
 /// @brief find all paths through a graph
 ////////////////////////////////////////////////////////////////////////////////
 
-function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength, maxLength) {
+function AQL_PATHS (vertices, edgeCollection, direction, options) {
   "use strict";
-
-  var searchDirection;
 
   direction      = direction || "outbound";
   followCycles   = followCycles || false;
-  minLength      = minLength || 0;
-  maxLength      = maxLength !== undefined ? maxLength : 10;
+
+  if (typeof options === "boolean") {
+    options = { followCycles : options };
+  }
+  else if (typeof options !== "object" || Array.isArray(options)) {
+    options = { };
+  }
+
+  var followCycles   = options.followCycles || false;
+  var minLength      = options.minLength || 0;
+  var maxLength      = options.maxLength || 10;
 
   if (TYPEWEIGHT(vertices) !== TYPEWEIGHT_ARRAY) {
     WARN("PATHS", INTERNAL.errors.ERROR_QUERY_ARRAY_EXPECTED);
@@ -4541,6 +4585,7 @@ function AQL_PATHS (vertices, edgeCollection, direction, followCycles, minLength
   }
 
   // validate arguments
+  var searchDirection;
   if (direction === "outbound") {
     searchDirection = 1;
   }
@@ -7499,6 +7544,9 @@ exports.AQL_LTRIM = AQL_LTRIM;
 exports.AQL_RTRIM = AQL_RTRIM;
 exports.AQL_SPLIT = AQL_SPLIT;
 exports.AQL_SUBSTITUTE = AQL_SUBSTITUTE;
+exports.AQL_MD5 = AQL_MD5;
+exports.AQL_SHA1 = AQL_SHA1;
+exports.AQL_RANDOM_TOKEN = AQL_RANDOM_TOKEN;
 exports.AQL_FIND_FIRST = AQL_FIND_FIRST;
 exports.AQL_FIND_LAST = AQL_FIND_LAST;
 exports.AQL_TO_BOOL = AQL_TO_BOOL;
@@ -7618,7 +7666,8 @@ exports.AQL_DATE_MILLISECOND = AQL_DATE_MILLISECOND;
 exports.reload = reloadUserFunctions;
 
 // initialise the query engine
-resetEngine();
+resetRegexCache();
+reloadUserFunctions();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

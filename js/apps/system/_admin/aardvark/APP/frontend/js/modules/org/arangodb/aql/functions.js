@@ -48,6 +48,8 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
+  "use strict";
+
   var functions = db._collection("_aqlfunctions");
 
   if (functions === null) {
@@ -66,6 +68,8 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var getFiltered = function (group) {
+  "use strict";
+
   var result = [ ];
 
   if (group !== null && group !== undefined && group.length > 0) {
@@ -93,6 +97,8 @@ var getFiltered = function (group) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (name) {
+  "use strict";
+
   if (typeof name !== 'string' ||
       ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
       name.substr(0, 1) === "_") {
@@ -109,12 +115,14 @@ var validateName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var stringifyFunction = function (code, name) {
+  "use strict";
+
   if (typeof code === 'function') {
-    code = String(code);
+    code = String(code) + "\n";
   }
 
   if (typeof code === 'string') {
-    code = "(" + code + ")";
+    code = "(\n" + code + "\n)";
 
     if (! internal.parse) {
       // no parsing possible. assume always valid
@@ -165,6 +173,8 @@ var stringifyFunction = function (code, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
+  "use strict";
+
   var func = null;
 
   validateName(name);
@@ -211,6 +221,8 @@ var unregisterFunction = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunctionsGroup = function (group) {
+  "use strict";
+
   if (group.length === 0) {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_BAD_PARAMETER.code;
@@ -240,11 +252,15 @@ var unregisterFunctionsGroup = function (group) {
 /// `aqlfunctions.register(name, code, isDeterministic)`
 ///
 /// Registers an AQL user function, identified by a fully qualified function
-/// name. The function code in *code* must be specified as a Javascript
-/// function or a string representation of a Javascript function.
+/// name. The function code in *code* must be specified as a JavaScript
+/// function or a string representation of a JavaScript function.
+/// If the function code in *code* is passed as a string, it is required that
+/// the string evaluates to a JavaScript function definition.
 ///
 /// If a function identified by *name* already exists, the previous function
-/// definition will be updated.
+/// definition will be updated. Please also make sure that the function code
+/// does not violate the [Conventions](../AqlExtending/Conventions.md) for AQL 
+/// functions.
 ///
 /// The *isDeterministic* attribute can be used to specify whether the
 /// function results are fully deterministic (i.e. depend solely on the input
@@ -272,17 +288,24 @@ var registerFunction = function (name, code, isDeterministic) {
   code = stringifyFunction(code, name);
 
   var testCode = "(function() { var callback = " + code + "; return callback; })()";
+  var err;
 
   try {
     if (internal && internal.hasOwnProperty("executeScript")) {
-      internal.executeScript(testCode, undefined, "(user function " + name + ")");
+      var evalResult = internal.executeScript(testCode, undefined, "(user function " + name + ")");
+      if (typeof evalResult !== "function") {
+        err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
+        err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message + 
+                           ": code must be contained in function";
+        throw err;
+      }
     }
   }
   catch (err1) {
-    var err = new ArangoError();
+    err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.code;
     err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
-
     throw err;
   }
 
@@ -365,10 +388,12 @@ var registerFunction = function (name, code, isDeterministic) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function (group) {
+  "use strict";
+
   var result = [ ];
 
   getFiltered(group).forEach(function (f) {
-    result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2) });
+    result.push({ name: f.name, code: f.code.substr(1, f.code.length - 2).trim() });
   });
 
   return result;

@@ -2109,19 +2109,16 @@ void TRI_JsonError (const char* msg) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a list
+/// @brief parses an array
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  bool comma;
-  int c;
-
   TRI_InitArrayJson(yyextra._memoryZone, result);
 
-  c = tri_jsp_lex(scanner);
-  comma = false;
+  int c = tri_jsp_lex(scanner);
+  bool comma = false;
 
   while (c != END_OF_FILE) {
     if (c == CLOSE_BRACKET) {
@@ -2141,13 +2138,21 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
     }
 
     {
-      TRI_json_t sub;
+      // optimization: get the address of the next element in the array
+      // so we can create the upcoming element in place
+      TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
 
-      if (! ParseValue(scanner, &sub, c)) {
+      if (next == nullptr) {
+        yyextra._message = "out-of-memory";
         return false;
       }
 
-      TRI_PushBack2ArrayJson(result, &sub);
+      if (! ParseValue(scanner, next, c)) {
+        // be paranoid 
+        TRI_InitNullJson(next);
+
+        return false;
+      }
     }
 
     c = tri_jsp_lex(scanner);
@@ -2159,21 +2164,16 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief parse an array
+/// @brief parse an object
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
   struct yyguts_t * yyg = (struct yyguts_t*) scanner;
 
-  bool comma;
-  char* name;
-  size_t nameLen;
-  int c;
-
-  comma = false;
+  bool comma = false;
   TRI_InitObjectJson(yyextra._memoryZone, result);
 
-  c = tri_jsp_lex(scanner);
+  int c = tri_jsp_lex(scanner);
 
   while (c != END_OF_FILE) {
     if (c == CLOSE_BRACE) {
@@ -2191,6 +2191,9 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
     else {
       comma = true;
     }
+
+    char* name;
+    size_t nameLen;
 
     // attribute name
     if (c == STRING_CONSTANT) {
@@ -2232,15 +2235,33 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
     // followed by an object
     c = tri_jsp_lex(scanner);
 
-    { 
-      TRI_json_t sub;
+    {
+      // optimization: we allocate room for two elements at once
+      int res = TRI_ReserveVector(&result->_value._objects, 2);
 
-      if (! ParseValue(scanner, &sub, c)) {
-        TRI_FreeString(yyextra._memoryZone, name);
+      if (res != TRI_ERROR_NO_ERROR) {
+        yyextra._message = "out-of-memory";
+        return false;
+      } 
+ 
+      // get the address of the next element so we can create the attribute name in place
+      TRI_json_t* next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
+      // we made sure with the reserve call that we haven't run out of memory
+      TRI_ASSERT_EXPENSIVE(next != nullptr);
+
+      // store attribute name
+      TRI_InitStringJson(next, name, nameLen);
+
+      // now process the value
+      next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
+      // we made sure with the reserve call that we haven't run out of memory
+      TRI_ASSERT_EXPENSIVE(next != nullptr);
+
+      if (! ParseValue(scanner, next, c)) {
+        // be paranoid
+        TRI_InitNullJson(next);
         return false;
       }
-
-      TRI_Insert4ObjectJson(yyextra._memoryZone, result, name, nameLen, &sub, false);
     }
 
     c = tri_jsp_lex(scanner);

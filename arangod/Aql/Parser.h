@@ -249,14 +249,14 @@ namespace triagens {
 /// @brief push an AstNode into the array element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-        void pushArray (AstNode*);
+        void pushArrayElement (AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief push an AstNode into the object element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-        void pushObject (char const*,
-                         AstNode*);
+        void pushObjectElement (char const*,
+                                AstNode*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief push a temporary value on the parser's stack

@@ -78,7 +78,6 @@ namespace triagens {
         enum MethodType {
           TYPE_UNKNOWN = 0,
           TYPE_RELOAD_ROUTING,
-          TYPE_FLUSH_MODULE_CACHE,
           TYPE_RELOAD_AQL,
           TYPE_BOOTSTRAP_COORDINATOR
         };
@@ -91,9 +90,6 @@ namespace triagens {
           if (type == "reloadRouting") {
             return TYPE_RELOAD_ROUTING;
           }
-          if (type == "flushModuleCache") {
-            return TYPE_FLUSH_MODULE_CACHE;
-          }
           if (type == "reloadAql") {
             return TYPE_RELOAD_AQL;
           }
@@ -105,6 +101,24 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get name for a method
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string const getName (MethodType type) {
+          switch (type) {
+            case TYPE_RELOAD_ROUTING:
+              return "reloadRouting";
+            case TYPE_RELOAD_AQL:
+              return "reloadAql";
+            case TYPE_BOOTSTRAP_COORDINATOR:
+              return "bootstrapCoordinator";
+            case TYPE_UNKNOWN:
+            default:
+              return "unknown";
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get code for a method
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -112,8 +126,6 @@ namespace triagens {
           switch (type) {
             case TYPE_RELOAD_ROUTING:
               return CodeReloadRouting;
-            case TYPE_FLUSH_MODULE_CACHE:
-              return CodeFlushModuleCache;
             case TYPE_RELOAD_AQL:
               return CodeReloadAql;
             case TYPE_BOOTSTRAP_COORDINATOR:
@@ -129,7 +141,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static std::string const CodeReloadRouting;
-        static std::string const CodeFlushModuleCache;
         static std::string const CodeReloadAql;
         static std::string const CodeBootstrapCoordinator;
     };
@@ -312,7 +323,7 @@ namespace triagens {
         void exitContext (V8Context*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a global context functions to be executed asap
+/// @brief adds a global context function to be executed asap
 ////////////////////////////////////////////////////////////////////////////////
 
         bool addGlobalContextMethod (std::string const&);

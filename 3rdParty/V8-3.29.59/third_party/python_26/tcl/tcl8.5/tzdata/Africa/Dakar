@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Dakar) {
-    {-9223372036854775808 -4184 0 LMT}
-    {-1830379816 -3600 0 WAT}
-    {-902098800 0 0 GMT}
-}

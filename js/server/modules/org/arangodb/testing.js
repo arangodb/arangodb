@@ -92,6 +92,7 @@ var killExternal = require("internal").killExternal;
 var statusExternal = require("internal").statusExternal;
 var executeExternalAndWait = require("internal").executeExternalAndWait;
 var base64Encode = require("internal").base64Encode;
+var yaml = require("js-yaml");
 
 var PortFinder = require("org/arangodb/cluster").PortFinder;
 var Planner = require("org/arangodb/cluster").Planner;
@@ -445,7 +446,7 @@ function shutdownInstance (instanceInfo, options) {
       for (var i in rc.serverStates) {
         if (rc.serverStates.hasOwnProperty(i)){
           if (rc.serverStates[i].hasOwnProperty('signal')) {
-            print("Server shut down with : " + rc.serverStates[i] + " marking run as crashy.");
+            print("Server shut down with : " + yaml.safeDump(rc.serverStates[i]) + " marking run as crashy.");
             serverCrashed = true;
           }
         }
@@ -459,6 +460,7 @@ function shutdownInstance (instanceInfo, options) {
 
       print("Waiting for server shut down");
       var count = 0;
+      var bar = "[";
       while (1) {
         instanceInfo.exitStatus = statusExternal(instanceInfo.pid, false);
         if (instanceInfo.exitStatus.status === "RUNNING") {
@@ -466,8 +468,11 @@ function shutdownInstance (instanceInfo, options) {
           if (typeof(options.valgrind) === 'string') {
             continue;
           }
-          if (count > 10) {
-            print("forcefully terminating " + instanceInfo.pid + " after 10 s grace period.");
+          if (count % 10 ===0) {
+            bar = bar + "#";
+          }
+          if (count > 600) {
+            print("forcefully terminating " + yaml.safeDump(instanceInfo.pid) + " after 600 s grace period.");
             serverCrashed = true;
             killExternal(instanceInfo.pid);
             break;
@@ -478,7 +483,7 @@ function shutdownInstance (instanceInfo, options) {
         }      
         else if (instanceInfo.exitStatus.status !== "TERMINATED") {
           if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
-            print("Server shut down with : " + instanceInfo.exitStatus + " marking build as crashy.");
+            print("Server shut down with : " + yaml.safeDump(instanceInfo.exitStatus) + " marking build as crashy.");
             serverCrashed = true;
           }
         }
@@ -487,6 +492,9 @@ function shutdownInstance (instanceInfo, options) {
           break; // Success.
         }
       }
+      if (count > 10) {
+        print("long Server shutdown: " + bar + ']');
+      }
     }
     else {
       print("Server already dead, doing nothing.");
@@ -494,6 +502,13 @@ function shutdownInstance (instanceInfo, options) {
     
   }
   cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
+}
+
+function checkBodyForJsonToParse(request) {
+  if (request.hasOwnProperty('body')) {
+    var parsedBody = JSON.parse(request.hasOwnProperty('body'));
+    request.body = parsedBody;
+  }
 }
 
 function cleanupDBDirectories(options) {
@@ -1210,7 +1225,7 @@ testFuncs.importing = function (options) {
     result.teardown = r;
   }
   catch (banana) {
-    print("A banana of the following form was caught:",JSON.stringify(banana));
+    print("A banana of the following form was caught:",yaml.safeDump(banana));
   }
 
   print("Shutting down...");
@@ -1433,9 +1448,10 @@ testFuncs.authentication_parameters = function (options) {
       results.auth_full[urlsTodo[i]] = { status: true, message: ""};
     }
     else {
+      checkBodyForJsonToParse(r);
       results.auth_full[urlsTodo[i]] = { 
         status: false,
-        message: "we expected " + expectAuthFullRC[i] + " and we got " + r.code + " Full Status: " + JSON.stringify(r)
+        message: "we expected " + expectAuthFullRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
       };
       all_ok = false;
     }
@@ -1472,9 +1488,10 @@ testFuncs.authentication_parameters = function (options) {
       results.auth_system[urlsTodo[i]] = { status: true, message: ""};
     }
     else {
+      checkBodyForJsonToParse(r);
       results.auth_system[urlsTodo[i]] = { 
         status: false,
-        message: "we expected " + expectAuthSystemRC[i] + " and we got " + r.code + " Full Status: " + JSON.stringify(r)
+        message: "we expected " + expectAuthSystemRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
       };
       all_ok = false;
     }
@@ -1512,9 +1529,10 @@ testFuncs.authentication_parameters = function (options) {
       results.auth_none[urlsTodo[i]] = { status: true, message: ""};
     }
     else {
+      checkBodyForJsonToParse(r);
       results.auth_none[urlsTodo[i]] = { 
         status: false,
-        message: "we expected " + expectAuthNoneRC[i] + " and we got " + r.code + " Full Status: " + JSON.stringify(r)
+        message: "we expected " + expectAuthNoneRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
       };
       all_ok = false;
     }
@@ -1598,6 +1616,9 @@ function unitTestPrettyPrintResults(r) {
     print("Overall state: " + ((r.all_ok === true) ? "Success" : "Fail"));
     if (r.all_ok !== true) {
       print("   Suites failed: " + testSuiteFail + " Tests Failed: " + testFail);
+    }
+    if (r.crashed === true) {
+      print("   We had at least one unclean shutdown of an arangod during the testrun.");
     }
   }
   catch (x) {

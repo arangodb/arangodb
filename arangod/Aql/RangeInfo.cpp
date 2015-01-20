@@ -130,7 +130,10 @@ AstNode const* RangeInfoBound::getExpressionAst (Ast* ast) const {
   if (_isConstant) {
     return nullptr;
   }
+
+  // TODO: check who is going to free this node... 
   _expressionAst = new AstNode(ast, _bound);
+
   return _expressionAst;
 }
 
@@ -408,6 +411,7 @@ bool RangeInfoMap::isValid (std::string const& var) {
 void RangeInfoMap::attributes (std::unordered_set<std::string>& set, 
                                std::string const& var) {
   std::unordered_map<std::string, RangeInfo>* map = find(var);
+
   if (map != nullptr) {
     for(auto x: *map) {
       set.insert(x.first);
@@ -415,11 +419,17 @@ void RangeInfoMap::attributes (std::unordered_set<std::string>& set,
   }
 }
 
-std::unordered_set<std::string> RangeInfoMap::variables () {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the names of variables contained in the RangeInfoMap
+////////////////////////////////////////////////////////////////////////////////
+
+std::unordered_set<std::string> RangeInfoMap::variables () const {
   std::unordered_set<std::string> vars;
+
   for(auto x: _ranges) {
     vars.insert(x.first);
   }
+
   return vars;
 }
 
@@ -432,8 +442,8 @@ std::unordered_set<std::string> RangeInfoMap::variables () {
 /// RangeInfoMap containing a single RangeInfo.
 ////////////////////////////////////////////////////////////////////////////////
 
-RangeInfoMapVec::RangeInfoMapVec (RangeInfoMap* rim) :
-  _rangeInfoMapVec() {
+RangeInfoMapVec::RangeInfoMapVec (RangeInfoMap* rim)
+  : _rangeInfoMapVec() {
   
   _rangeInfoMapVec.emplace_back(rim);
 }
@@ -808,8 +818,8 @@ void triagens::aql::differenceRangeInfos (RangeInfo& lhs,
 /// disjoint sets, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1, 
-                                                   IndexAndCondition& and2) {
+bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition const& and1, 
+                                                   IndexAndCondition const& and2) {
   for (auto ri1: and1) {
     for (auto ri2: and2) {
       if (ri2._attr == ri1._attr) {
@@ -828,8 +838,8 @@ bool triagens::aql::areDisjointIndexAndConditions (IndexAndCondition& and1,
 /// contained in the second, and false otherwise.
 ////////////////////////////////////////////////////////////////////////////////
 
-bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1, 
-                                                   IndexAndCondition& and2) {
+bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition const& and1, 
+                                                   IndexAndCondition const& and2) {
   for (auto ri1: and1) {
     bool contained = false;
     for (auto ri2: and2) {
@@ -844,7 +854,8 @@ bool triagens::aql::isContainedIndexAndConditions (IndexAndCondition& and1,
     if (! contained) {
       return false;
     }
-  }    
+  }   
+ 
   return true;
 }
 

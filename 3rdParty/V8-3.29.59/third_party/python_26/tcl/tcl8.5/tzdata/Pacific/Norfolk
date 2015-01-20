@@ -1,7 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Pacific/Norfolk) {
-    {-9223372036854775808 40312 0 LMT}
-    {-2177493112 40320 0 NMT}
-    {-599656320 41400 0 NFT}
-}

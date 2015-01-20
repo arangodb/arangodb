@@ -46,21 +46,14 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pushes the names of an associative char* array into a V8 array
-////////////////////////////////////////////////////////////////////////////////
-
-v8::Handle<v8::Array> TRI_ArrayAssociativePointer (v8::Isolate* isolate,
-                                                   TRI_associative_pointer_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the keys of a TRI_json_t* array into a V8 list
+/// @brief returns the keys of a TRI_json_t* object into a V8 array
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_KeysJson (v8::Isolate* isolate,
                                     TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the values of a TRI_json_t* array into a V8 list
+/// @brief returns the values of a TRI_json_t* object into a V8 array
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> TRI_ValuesJson (v8::Isolate* isolate,

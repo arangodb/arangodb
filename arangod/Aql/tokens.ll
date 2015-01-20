@@ -380,13 +380,26 @@ namespace triagens {
 
   yylval->node = node;
 
-  // yylval->node = yyextra->query()->registerString(yytext, yyleng, false); 
   return T_INTEGER;
 }
 
 (0|[1-9][0-9]*)((\.[0-9]+)?([eE][\-\+]?[0-9]+)?) { 
   /* a numeric double value */
-  yylval->strval = yyextra->query()->registerString(yytext, yyleng, false); 
+      
+  triagens::aql::AstNode* node = nullptr;
+  auto parser = yyextra;
+  double value = TRI_DoubleString(yytext);
+
+  if (TRI_errno() != TRI_ERROR_NO_ERROR) {
+    parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc->first_line, yylloc->first_column);
+    node = parser->ast()->createNodeValueNull();
+  }
+  else {
+    node = parser->ast()->createNodeValueDouble(value); 
+  }
+
+  yylval->node = node;
+  
   return T_DOUBLE;
 }
 

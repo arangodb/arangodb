@@ -5,7 +5,7 @@ AQL has the following functions to traverse graphs:
 If you have created a graph in the general-graph module you may want to use
 [Graph operations](../Aql/GraphOperations.md) instead.
 
-- *PATHS(vertexcollection, edgecollection, direction, followcycles)*: 
+- *PATHS(vertexcollection, edgecollection, direction, options)*: 
   returns an array of paths through the graph defined by the nodes in the collection 
   *vertexcollection* and edges in the collection *edgecollection*. For each vertex
   in *vertexcollection*, it will determine the paths through the graph depending on the
@@ -14,8 +14,11 @@ If you have created a graph in the general-graph module you may want to use
   - *"inbound"*: Follow all paths that lead from another vertex to the current vertex
   - *"any"*: Combination of *"outbound"* and *"inbound"*
   The default value for *direction* is *"outbound"*.
-  If *followcycles* is true, cyclic paths will be followed as well. This is turned off by
-  default.
+  If specified, *options* must be a JavaScript object with the following optional attributes:
+  - *minLength*: specifies the minimum length of the paths to be returned. The default is 0.
+  - *maxLength*: specifies the maximum length of the paths to be returned. The default is 10.
+  - *followcycles*: if true, cyclic paths will be followed as well. This is turned off by
+    default.
 
   The result of the function is an array of paths. Paths of length 0 will also be returned. Each 
   path is a document consisting of the following attributes:
@@ -26,10 +29,10 @@ If you have created a graph in the general-graph module you may want to use
 
 *Examples*
 
-      PATHS(friends, friendrelations, "outbound", false)
+      PATHS(friends, friendrelations, "outbound")
 
-      FOR p IN PATHS(friends, friendrelations, "outbound") 
-        FILTER p.source._id == "123456/123456" && LENGTH(p.edges) == 2
+      FOR p IN PATHS(friends, friendrelations, "outbound", { minLength: 2, maxLength: 2 }) 
+        FILTER p.source._id == "users/123456"
         RETURN p.vertices[*].name
 
 If you have created a graph in the general-graph module you may want to use
