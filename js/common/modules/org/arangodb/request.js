@@ -39,13 +39,20 @@ var querystring = require('querystring');
 var qs = require('qs');
 var url = require('url');
 
-function Response(res, encoding) {
+function Response(res, encoding, json) {
   this.status = this.statusCode = res.code;
   this.message = res.message;
   this.headers = res.headers ? res.headers : {};
   this.body = this.rawBody = res.body;
   if (this.body && encoding !== null) {
     this.body = this.body.toString(encoding || 'utf-8');
+    if (json) {
+      try {
+        this.body = JSON.parse(this.body);
+      } catch (e) {
+        // Do nothing.
+      }
+    }
   }
 }
 
@@ -198,7 +205,7 @@ function request(req) {
   }
   var result = internal.download(path, body, options);
 
-  return new Response(result, req.encoding);
+  return new Response(result, req.encoding, req.json);
 }
 
 exports = request;
