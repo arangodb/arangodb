@@ -1,4 +1,3 @@
-/*jshint strict: false*/
 /*global module, require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +44,7 @@
   var store = require("org/arangodb/foxx/store");
   var console = require("console");
   var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
+  var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
   var routeApp = require("org/arangodb/foxx/routing").routeApp;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
@@ -362,6 +362,47 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Generates an App with the given options into the targetPath
+  ////////////////////////////////////////////////////////////////////////////////
+  var installAppFromGenerator = function(targetPath, options) {
+    // TODO validate options
+    var invalidOptions = [];
+    // Set default values:
+    options.name = options.name || "MyApp";
+    options.author = options.author || "Author";
+    options.description = options.description || "";
+    options.license = options.license || "Apache 2";
+    options.authenticated = options.authenticated || false;
+    options.collectionNames = options.collectionNames || [];
+    if (typeof options.name !== "string") {
+      invalidOptions.push("options.name has to be a string.");
+    }
+    if (typeof options.author !== "string") {
+      invalidOptions.push("options.author has to be a string.");
+    }
+    if (typeof options.description !== "string") {
+      invalidOptions.push("options.description has to be a string.");
+    }
+    if (typeof options.license !== "string") {
+      invalidOptions.push("options.license has to be a string.");
+    }
+    if (typeof options.authenticated !== "boolean") {
+      invalidOptions.push("options.authenticated has to be a boolean.");
+    }
+    if (!Array.isArray(options.collectionNames)) {
+      invalidOptions.push("options.array has to be an array.");
+    }
+    if (invalidOptions.length > 0) {
+      // TODO Pretty print
+      console.log(invalidOptions);
+      throw "Invalid options";
+    }
+    options.path = targetPath;
+    var engine = new TemplateEngine(options);
+    engine.write();
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts an app from zip and moves it to temporary path
   ///
   /// return path to app
@@ -601,7 +642,7 @@
 
     if (appInfo === "EMPTY") {
       // Make Empty app
-      throw "Not implemented yet";
+      installAppFromGenerator(targetPath, options || {});
     } else if (/^GIT:/.test(appInfo)) {
       installAppFromRemote(buildGithubUrl(appInfo), targetPath);
     } else if (/^https?:/.test(appInfo)) {
@@ -625,7 +666,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   var install = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "install(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
