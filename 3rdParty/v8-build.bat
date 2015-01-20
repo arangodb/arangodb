@@ -42,7 +42,7 @@ echo %CMD%
 
 cd V8-%V8_VERSION%
 
-third_party\python_26\python build\gyp_v8 %CMD%
+python build\gyp_v8 %CMD%
 
 cd build
 
