@@ -746,9 +746,49 @@
     checkMountedSystemApps();
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief compute all app routes
+  ////////////////////////////////////////////////////////////////////////////////
+  
   var appRoutes = function() {
     return refillCaches(true);
   };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief toggles development mode of app and reloads routing
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var _toggleDevelopment = function(mount, activate) {
+    var app = lookupApp(mount);
+    app.setDevelopment(activate);
+    utils.updateApp(mount, app.toJSON());
+    executeGlobalContextFunction("reloadRouting");
+  };
+  
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief activate development mode
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var setDevelopment = function(mount) {
+    checkParameter(
+      "mount(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    _toggleDevelopment(mount, true);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief activate production mode
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var setProduction = function(mount) {
+    checkParameter(
+      "mount(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    _toggleDevelopment(mount, false);
+  };
+
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           exports
   // -----------------------------------------------------------------------------
@@ -765,6 +805,8 @@
   exports.replace = replace;
   exports.upgrade = upgrade;
   exports.appRoutes = appRoutes;
+  exports.development = setDevelopment;
+  exports.production = setProduction;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Exports from foxx utils module.
