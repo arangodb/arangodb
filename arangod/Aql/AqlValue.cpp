@@ -115,7 +115,7 @@ void AqlValue::destroy () {
 std::string AqlValue::getTypeString () const {
   switch (_type) {
     case JSON: 
-      return std::string("json (") + std::string(TRI_GetTypeString(_json->json())) + std::string(")");
+      return std::string("json (") + std::string(TRI_GetTypeStringJson(_json->json())) + std::string(")");
     case SHAPED: 
       return "shaped";
     case DOCVEC: 

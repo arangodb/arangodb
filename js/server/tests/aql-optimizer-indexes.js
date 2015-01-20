@@ -679,6 +679,45 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testPrimaryIndexDynamic : function () {
+      var queries = [
+        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a ] RETURN i.value", [ 35 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN [ PASSTHRU('test35') ] RETURN i.value", [ 35 ] ],
+        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, a, a ] RETURN i.value", [ 35 ] ],
+        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ 'test35', 'test36' ] RETURN i.value", [ 35, 36 ] ], 
+        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test-9') FOR i IN " + c.name() + " FILTER i._key IN [ b, b, a, b, c ] RETURN i.value", [ 35, 36 ] ], 
+        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37') FOR i IN " + c.name() + " FILTER i._key IN [ a ] || i._key IN [ b, c ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37'), d = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key IN [ a, b, c, d ] || i._key IN [ a, b, c, d ] RETURN i.value", [ 35, 36, 37 ] ], 
+        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key == a RETURN i.value", [ 35 ] ],
+        [ "LET a = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == a RETURN i.value", [ 35 ] ],
+        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b RETURN i.value", [ 35, 36 ] ], 
+        [ "LET a = PASSTHRU('test35'), b = PASSTHRU('test36'), c = PASSTHRU('test37'), d = PASSTHRU('test35') FOR i IN " + c.name() + " FILTER i._key == a || i._key == b || i._key == c || i._key == d RETURN i.value", [ 35, 36, 37 ] ] 
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query[0]).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        // ensure the index is used
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query[0]);
+        results.json.forEach(function(value) {
+          assertNotEqual(-1, query[1].indexOf(value), query);
+        });
+    
+        assertTrue(results.stats.scannedIndex < 10);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testIndexOrHash : function () {
       c.ensureHashIndex("value");
       var query = "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value == 9 RETURN i.value";
@@ -969,7 +1008,301 @@ function optimizerIndexesTestSuite () {
       assertEqual([ 1 ], results.json, query);
       assertEqual(0, results.stats.scannedFull);
       assertTrue(results.stats.scannedIndex > 0);
-    }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndDespiteFunctions : function () {
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() >= -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() >= -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() != -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() <= 10 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && RAND() < 10 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && PASSTHRU(true) == true RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && 1 + PASSTHRU(2) == 3 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && 1 + PASSTHRU(2) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() >= -1 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() >= -1 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() != -1 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() <= 10 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() < 10 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) == 3 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value IN [ 1 ] && RAND() >= -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() >= -1 && i.value IN [ 1 ] RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndDespiteReferences : function () {
+      var queries = [
+        "LET a = 1 FOR i IN " + c.name() + " FILTER i.value == 1 && a == 1 RETURN i.value",
+        "LET a = 1 FOR i IN " + c.name() + " FILTER a == 1 && i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a == 1 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a == 1 && i.value == 1 RETURN i.value",
+        "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER i.value == 1 && a.value == 1 RETURN i.value",
+        "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER a.value == 1 && i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 && a.value == 1 RETURN i.value",
+        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 && i.value == 1 RETURN i.value",
+        "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER i.value == 1 && (1 IN sub) RETURN i.value",
+        "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER (1 IN sub) && i.value == 1 RETURN i.value",
+        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value == 1 && j == 1 RETURN i.value",
+        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER j == 1 && i.value == 1 RETURN i.value",
+        "FOR j IN [ { value: 1 } ] FOR i IN " + c.name() + " FILTER i.value == 1 && j.value == 1 RETURN i.value",
+        "FOR j IN [ { value: 1 } ] FOR i IN " + c.name() + " FILTER j.value == 1 && i.value == 1 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndDespiteOtherCollection : function () {
+      var queries = [
+        "FOR j IN " + c.name() + " FOR i IN " + c.name() + " FILTER i.value == 1 && j.value == 1 LIMIT 2000 RETURN i.value",
+        "FOR j IN " + c.name() + " FOR i IN " + c.name() + " FILTER j.value == 1 && i.value == 1 LIMIT 2000 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndDespiteOperators : function () {
+      var queries = [
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a != 2 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 2 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value != 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value != 2 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value - 1 == 0 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value - 1 == 0 && i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a + 1 == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 && i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a IN [ 0, 1 ] RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] && i.value == 1 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndDespiteOperatorsEmpty : function () {
+      var queries = [
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 && a != 1 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 1 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value != 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value != 1 && i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 && i.value - 1 == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value - 1 == 1 && i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a + 1 == 0 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 0 && i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 && a IN [ 1 ] RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 1 ] && i.value == 1 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(0, results.json.length); 
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexBecauseOfFunctions : function () {
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() >= -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() >= -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() != -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() <= 10 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || RAND() < 10 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || PASSTHRU(true) == true RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + PASSTHRU(2) == 3 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || 1 + PASSTHRU(2) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() != -1 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() <= 10 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() < 10 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) == 3 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 1 + PASSTHRU(2) || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value IN [ 1, 2 ] || RAND() >= -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER RAND() >= -1 || i.value IN [ 1, 2 ] RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(2000, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexBecauseOfReferences : function () {
+      var queries = [
+        "LET a = 1 FOR i IN " + c.name() + " FILTER i.value == 1 || a == 1 RETURN i.value",
+        "LET a = 1 FOR i IN " + c.name() + " FILTER a == 1 || i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 || a == 1 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a == 1 || i.value == 1 RETURN i.value",
+        "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER i.value == 1 || a.value == 1 RETURN i.value",
+        "LET a = { value: 1 } FOR i IN " + c.name() + " FILTER a.value == 1 || i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER i.value == 1 || a.value == 1 RETURN i.value",
+        "LET a = PASSTHRU({ value: 1 }) FOR i IN " + c.name() + " FILTER a.value == 1 || i.value == 1 RETURN i.value",
+        "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER i.value == 1 || 1 IN sub RETURN i.value",
+        "LET sub = (FOR x IN [ 1, 2, 3 ] RETURN x) FOR i IN " + c.name() + " FILTER 1 IN sub || i.value == 1 RETURN i.value",
+        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value == 1 || j == 1 RETURN i.value",
+        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER j == 1 || i.value == 1 RETURN i.value",
+        "FOR j IN [ { value: 1 } ] FOR i IN " + c.name() + " FILTER i.value == 1 || j.value == 1 RETURN i.value",
+        "FOR j IN [ { value: 1 } ] FOR i IN " + c.name() + " FILTER j.value == 1 || i.value == 1 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(2000, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexBecauseOfOtherCollection : function () {
+      var queries = [
+        "FOR j IN " + c.name() + " FOR i IN " + c.name() + " FILTER i.value == 1 || j.value == 1 LIMIT 2000 RETURN i.value",
+        "FOR j IN " + c.name() + " FOR i IN " + c.name() + " FILTER j.value == 1 || i.value == 1 LIMIT 2000 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(2000, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexOrNoIndexBecauseOfOperators : function () {
+      var queries = [
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER i.value == 1 || a != 2 RETURN i.value",
+        "LET a = PASSTHRU(1) FOR i IN " + c.name() + " FILTER a != 2 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value != -1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value != -1 || i.value == 1 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 1 || i.value - 1 != 0 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value - 1 != 0 || i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 || a + 1 == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a + 1 == 1 || i.value == 1 RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER i.value == 1 || a IN [ 0, 1 ] RETURN i.value",
+        "LET a = PASSTHRU(0) FOR i IN " + c.name() + " FILTER a IN [ 0, 1 ] || i.value == 1 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(2000, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
 
   };
 }
@@ -1165,11 +1498,11 @@ function optimizerIndexesInOrTestSuite () {
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(-9) FOR i IN " + c.name() + " FILTER i.value1 IN [ b, b, a, b, c ] RETURN i.value1", [ 35, 36 ] ], 
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c ] RETURN i.value1", [ 35, 36, 37 ] ], 
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 IN [ a ] || i.value1 IN [ b, c ] RETURN i.value1", [ 35, 36, 37 ] ], 
-        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c ] || i.value1 IN [ a, b, c ] RETURN i.value1", [ 35, 36, 37 ] ], 
+        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37), d = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c, d ] || i.value1 IN [ a, b, c, d ] RETURN i.value1", [ 35, 36, 37 ] ], 
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 == a RETURN i.value1", [ 35 ] ],
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == a RETURN i.value1", [ 35 ] ],
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b RETURN i.value1", [ 35, 36 ] ], 
-        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b || i.value1 == c RETURN i.value1", [ 35, 36, 37 ] ] 
+        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37), d = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b || i.value1 == c || i.value1 == d RETURN i.value1", [ 35, 36, 37 ] ] 
       ];
 
       queries.forEach(function(query) {
@@ -1249,7 +1582,7 @@ function optimizerIndexesInOrTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query);
      
-        assertTrue(results.stats.scannedIndex > 0);
+        assertTrue(results.stats.scannedIndex < 10);
         assertEqual(0, results.stats.scannedFull);
       });
     },
@@ -1280,7 +1613,7 @@ function optimizerIndexesInOrTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length, query);
      
-        assertTrue(results.stats.scannedIndex > 0);
+        assertTrue(results.stats.scannedIndex < 10);
         assertEqual(0, results.stats.scannedFull);
       });
     },
@@ -1338,10 +1671,12 @@ function optimizerIndexesInOrTestSuite () {
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c ] RETURN i.value1", [ 35, 36, 37 ] ], 
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 IN [ a ] || i.value1 IN [ b, c ] RETURN i.value1", [ 35, 36, 37 ] ], 
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c ] || i.value1 IN [ a, b, c ] RETURN i.value1", [ 35, 36, 37 ] ], 
+        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37), d = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 IN [ a, b, c, d ] || i.value1 IN [ a, b, c, d ] RETURN i.value1", [ 35, 36, 37 ] ], 
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 == a RETURN i.value1", [ 35 ] ],
         [ "LET a = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == a RETURN i.value1", [ 35 ] ],
         [ "LET a = PASSTHRU(35), b = PASSTHRU(36) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b RETURN i.value1", [ 35, 36 ] ], 
-        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b || i.value1 == c RETURN i.value1", [ 35, 36, 37 ] ] 
+        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b || i.value1 == c RETURN i.value1", [ 35, 36, 37 ] ], 
+        [ "LET a = PASSTHRU(35), b = PASSTHRU(36), c = PASSTHRU(37), d = PASSTHRU(35) FOR i IN " + c.name() + " FILTER i.value1 == a || i.value1 == b || i.value1 == c || i.value1 == d RETURN i.value1", [ 35, 36, 37 ] ] 
       ];
 
       queries.forEach(function(query) {
@@ -1357,7 +1692,7 @@ function optimizerIndexesInOrTestSuite () {
         results.json.forEach(function(value) {
           assertNotEqual(-1, query[1].indexOf(value));
         });
-     
+    
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });

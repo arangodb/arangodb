@@ -282,7 +282,7 @@ void Parser::registerWarning (int errorCode,
 /// @brief push an AstNode into the array element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushArray (AstNode* node) {
+void Parser::pushArrayElement (AstNode* node) {
   auto array = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(array->type == NODE_TYPE_ARRAY);
   array->addMember(node);
@@ -292,8 +292,8 @@ void Parser::pushArray (AstNode* node) {
 /// @brief push an AstNode into the object element on top of the stack
 ////////////////////////////////////////////////////////////////////////////////
 
-void Parser::pushObject (char const* attributeName,
-                         AstNode* node) {
+void Parser::pushObjectElement (char const* attributeName,
+                                AstNode* node) {
   auto object = static_cast<AstNode*>(peekStack());
   TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
   auto element = _ast->createNodeObjectElement(attributeName, node);

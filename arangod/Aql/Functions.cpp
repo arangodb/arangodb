@@ -105,8 +105,8 @@ AqlValue Functions::IsObject (triagens::arango::AqlTransaction* trx,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Functions::Length (triagens::arango::AqlTransaction* trx,
-                                TRI_document_collection_t const* collection,
-                                AqlValue const parameters) {
+                            TRI_document_collection_t const* collection,
+                            AqlValue const parameters) {
   Json j(parameters.extractListMember(trx, collection, 0, false));
 
   TRI_json_t const* json = j.json();

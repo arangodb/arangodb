@@ -16,14 +16,11 @@
     shouldFetchUser: false,
 
     comparator: function(item, item2) {
-      var a, b;
+      var a = item.get('name').toLowerCase();
+      var b = item2.get('name').toLowerCase();
       if (this.sortOptions.desc === true) {
-        a = item.get('name');
-        b = item2.get('name');
         return a < b ? 1 : a > b ? -1 : 0;
       }
-      a = item.get('name');
-      b = item2.get('name');
       return a > b ? 1 : a < b ? -1 : 0;
     },
 

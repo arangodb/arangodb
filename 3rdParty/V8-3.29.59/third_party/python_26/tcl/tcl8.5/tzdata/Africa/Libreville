@@ -1,6 +1,0 @@
-# created by tools/tclZIC.tcl - do not edit
-
-set TZData(:Africa/Libreville) {
-    {-9223372036854775808 2268 0 LMT}
-    {-1830386268 3600 0 WAT}
-}

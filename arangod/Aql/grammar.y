@@ -149,7 +149,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <strval> T_STRING
 %type <strval> T_QUOTED_STRING
 %type <node> T_INTEGER
-%type <strval> T_DOUBLE
+%type <node> T_DOUBLE
 %type <strval> T_PARAMETER; 
 %type <node> sort_list;
 %type <node> sort_element;
@@ -189,7 +189,6 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
-%type <node> integer_value;
 
 
 /* define start token of language */
@@ -410,7 +409,7 @@ collect_list:
 collect_element:
     variable_name T_ASSIGN expression {
       auto node = parser->ast()->createNodeAssign($1, $3);
-      parser->pushArray(node);
+      parser->pushArrayElement(node);
     }
   ;
 
@@ -436,7 +435,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushArray(node);
+      parser->pushArrayElement(node);
     }
   | variable_list T_COMMA variable_name {
       if (! parser->ast()->scopes()->existsVariable($3)) {
@@ -450,7 +449,7 @@ variable_list:
 
       // indicate the this node is a reference to the variable name, not the variable value
       node->setFlag(FLAG_KEEP_VARIABLENAME);
-      parser->pushArray(node);
+      parser->pushArrayElement(node);
     }
   ;
 
@@ -484,10 +483,10 @@ sort_statement:
 
 sort_list: 
     sort_element {
-      parser->pushArray($1);
+      parser->pushArrayElement($1);
     }
   | sort_list T_COMMA sort_element {
-      parser->pushArray($3);
+      parser->pushArrayElement($3);
     }
   ;
 
@@ -819,10 +818,10 @@ expression_or_query:
 
 function_arguments_list:
     expression_or_query {
-      parser->pushArray($1);
+      parser->pushArrayElement($1);
     }
   | function_arguments_list T_COMMA expression_or_query {
-      parser->pushArray($3);
+      parser->pushArrayElement($3);
     }
   ;
 
@@ -853,10 +852,10 @@ optional_array_elements:
 
 array_elements_list:
     expression {
-      parser->pushArray($1);
+      parser->pushArrayElement($1);
     }
   | array_elements_list T_COMMA expression {
-      parser->pushArray($3);
+      parser->pushArrayElement($3);
     }
   ;
 
@@ -902,7 +901,7 @@ object_elements_list:
 
 object_element: 
     object_element_name T_COLON expression {
-      parser->pushObject($1, $3);
+      parser->pushObjectElement($1, $3);
     }
   ;
 
@@ -1009,24 +1008,21 @@ atomic_value:
   ;
 
 numeric_value:
-    integer_value {
+    T_INTEGER {
+      if ($1 == nullptr) {
+        ABORT_OOM
+      }
+      
       $$ = $1;
     }
   | T_DOUBLE {
       if ($1 == nullptr) {
         ABORT_OOM
       }
-      
-      double value = TRI_DoubleString($1);
 
-      if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-        parser->registerWarning(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE, TRI_errno_string(TRI_ERROR_QUERY_NUMBER_OUT_OF_RANGE), yylloc.first_line, yylloc.first_column);
-        $$ = parser->ast()->createNodeValueNull();
-      }
-      else {
-        $$ = parser->ast()->createNodeValueDouble(value); 
-      }
-    };
+      $$ = $1;
+    }
+  ;
   
 value_literal: 
     T_QUOTED_STRING {
@@ -1098,16 +1094,6 @@ object_element_name:
 
 variable_name:
     T_STRING {
-      $$ = $1;
-    }
-  ;
-
-integer_value:
-    T_INTEGER {
-      if ($1 == nullptr) {
-        ABORT_OOM
-      }
-      
       $$ = $1;
     }
   ;

@@ -127,6 +127,9 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "FIND_LAST",                   Function("FIND_LAST",                   "AQL_FIND_LAST", "s,s|zn,zn", true, false, true) },
   { "SPLIT",                       Function("SPLIT",                       "AQL_SPLIT", "s|sl,n", true, false, true) },
   { "SUBSTITUTE",                  Function("SUBSTITUTE",                  "AQL_SUBSTITUTE", "s,las|lsn,n", true, false, true) },
+  { "MD5",                         Function("MD5",                         "AQL_MD5", "s", true, false, true) },
+  { "SHA1",                        Function("SHA1",                        "AQL_SHA1", "s", true, false, true) },
+  { "RANDOM_TOKEN",                Function("RANDOM_TOKEN",                "AQL_RANDOM_TOKEN", "n", false, true, true) },
 
   // numeric functions
   { "FLOOR",                       Function("FLOOR",                       "AQL_FLOOR", "n", true, false, true) },
@@ -195,7 +198,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "FULLTEXT",                    Function("FULLTEXT",                    "AQL_FULLTEXT", "h,s,s", false, true, false) },
 
   // graph functions
-  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,b", false, true, false) },
+  { "PATHS",                       Function("PATHS",                       "AQL_PATHS", "c,h|s,ba", false, true, false) },
   { "GRAPH_PATHS",                 Function("GRAPH_PATHS",                 "AQL_GRAPH_PATHS", "s|a", false, true, false) },
   { "SHORTEST_PATH",               Function("SHORTEST_PATH",               "AQL_SHORTEST_PATH", "h,h,s,s,s|a", false, true, false) },
   { "GRAPH_SHORTEST_PATH",         Function("GRAPH_SHORTEST_PATH",         "AQL_GRAPH_SHORTEST_PATH", "s,als,als|a", false, true, false) },

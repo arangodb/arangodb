@@ -140,3 +140,15 @@ For string processing, AQL offers the following functions:
 
   The value for *search* cannot be a variable or a document attribute. The actual 
   value must be present at query parse time already.
+
+- *MD5(text)*: calculates the MD5 checksum for *text* and returns it in a 
+  hexadecimal string representation.
+
+- *SHA1(text)*: calculates the SHA1 checksum for *text* and returns it in a 
+  hexadecimal string representation.
+
+- *RANDOM_TOKEN(length)*: generates a pseudo-random token string with the 
+  specified length. *length* must be greater than zero and at most 65536. The
+  generated token may consist of lower and uppercase letters and numbers. The
+  algorithm for token generation should be treated as opaque.
+

@@ -224,7 +224,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
+        [2, 4].should include(doc.parsed_response['status'])
       end
 
       # get
@@ -251,7 +251,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(@cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
+        [2, 4].should include(doc.parsed_response['status'])
       end
 
       # get count
@@ -292,6 +292,7 @@ describe ArangoDB do
       it "extracting the figures for a collection" do
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3
 
         cmd = api + "/" + @cn + "/figures"
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
@@ -335,6 +336,7 @@ describe ArangoDB do
 
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
@@ -360,6 +362,7 @@ describe ArangoDB do
         
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3 
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
@@ -385,6 +388,7 @@ describe ArangoDB do
         
         # flush wal
         ArangoDB.put("/_admin/wal/flush?waitForSync=true&waitForCollector=true", { })
+        sleep 3
         
         doc = ArangoDB.log_get("#{prefix}-get-collection-figures", cmd)
         doc.code.should eq(200)
@@ -751,7 +755,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
+        [2, 4].should include(doc.parsed_response['status'])
 
         ArangoDB.drop_collection(@cn)
       end
@@ -769,7 +773,7 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(200)
         doc.parsed_response['id'].should eq(cid)
         doc.parsed_response['name'].should eq(@cn)
-        [2, 4].include?(doc.parsed_response['status'].to_i).should eq(true)
+        [2, 4].should include(doc.parsed_response['status'])
 
         ArangoDB.drop_collection(@cn)
       end

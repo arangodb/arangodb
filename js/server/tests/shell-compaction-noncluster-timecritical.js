@@ -92,7 +92,7 @@ function CompactionSuite () {
         cn.remove("test" + i);
       }
 
-      internal.wait(7);
+      internal.wait(7, false);
 
       assertEqual(1000, cn.count());
 
@@ -154,7 +154,8 @@ function CompactionSuite () {
       // make sure compaction moves the shapes
       testHelper.rotate(c1);
       c1.truncate(); 
-      internal.wait(5); 
+
+      internal.wait(5, false); 
       
       for (i = 0; i < 100; ++i) { 
         var doc = { _key: "test" + i }; 
@@ -329,6 +330,15 @@ function CompactionSuite () {
       c1.save({ "foo": "bar" });
       internal.wal.flush(true, true);
 
+      var tries = 0;
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === 1) { 
+          break;
+        }
+        internal.wait(1, false);
+      }
+
       fig = c1.figures();
       assertEqual(1, c1.count());
       assertEqual(1, fig["alive"]["count"]);
@@ -356,7 +366,17 @@ function CompactionSuite () {
       c1.save({ "bar": "baz" });
 
       internal.wal.flush(true, true);
-      fig = c1.figures();
+
+      var tries = 0;
+      while (++tries < 20) {
+        fig = c1.figures();
+      
+        if (fig["alive"]["count"] === 2) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+
       var alive = fig["alive"]["size"];
       assertEqual(2, c1.count());
       assertEqual(2, fig["alive"]["count"]);
@@ -404,7 +424,6 @@ function CompactionSuite () {
 
     testFiguresTruncate : function () {
       var maxWait;
-      var waited;
       var cn = "example";
       var n = 400;
       var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.";
@@ -459,16 +478,15 @@ function CompactionSuite () {
         maxWait = 90;
       }
 
-      waited = 0;
-
-      while (waited < maxWait) {
-        internal.wait(2);
-        waited += 2;
-      
+      var tries = 0;
+      while (++tries < maxWait) {
         fig = c1.figures();
+
         if (fig["dead"]["deletion"] == 0 && fig["dead"]["count"] == 0) {
           break;
         }
+
+        internal.wait(1, false); 
       }
             
       fig = c1.figures();
@@ -539,10 +557,15 @@ function CompactionSuite () {
         maxWait = 15;
       }
 
-      internal.wait(maxWait);
-
+      var tries = 0;
+      while (++tries < maxWait) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === 0) {
+          break;
+        }
+        internal.wait(1, false);
+      }
             
-      fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
@@ -691,7 +714,6 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCompactAfterTruncate : function () {
-      var maxWait;
       var waited;
       var cn = "example";
       var n = 400;
@@ -709,7 +731,15 @@ function CompactionSuite () {
       }
 
       internal.wal.flush(true, true);
-      var fig = c1.figures();
+
+      var tries = 0, fig;
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === n) { 
+          break;
+        }
+        internal.wait(1, false);
+      }
 
       assertEqual(n, c1.count());
       assertEqual(n, fig["alive"]["count"]);
@@ -725,7 +755,17 @@ function CompactionSuite () {
       c1.truncate();
         
       internal.wal.flush(true, true);
-      fig = c1.figures();
+
+      var tries = 0;
+      while (++tries < 20) {
+        fig = c1.figures();
+      
+        if (fig["alive"]["count"] === 0 && fig["dead"]["deletion"] === n) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(n, fig["dead"]["deletion"]);
@@ -741,16 +781,15 @@ function CompactionSuite () {
         maxWait = 90;
       }
 
-      waited = 0;
-
-      while (waited < maxWait) {
-        internal.wait(2);
-        waited += 2;
-      
+      tries = 0;
+      while (++tries < maxWait) {
         fig = c1.figures();
+
         if (fig["dead"]["count"] == 0) {
           break;
         }
+
+        internal.wait(1, false);
       }
             
       assertEqual(0, c1.count());

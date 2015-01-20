@@ -1,8 +1,0 @@
-# Index created by AutoSplit for ../../lib/DynaLoader.pm
-#    (file acts as timestamp)
-package DynaLoader;
-sub dl_findfile  ;
-sub dl_expandspec  ;
-sub dl_find_symbol_anywhere 
-;
-1;
