@@ -393,6 +393,17 @@ function updateApp (mount, update) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief define regex for parameter types
+////////////////////////////////////////////////////////////////////////////////
+var typeToRegex = {
+  "int": /[0-9]+/,
+  "integer": /[0-9]+/,
+  "boolean": /(true)|(false)/,
+  "bool": /(true)|(false)/,
+  "string": /[\w\W]*/
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -407,6 +418,7 @@ exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
 exports.validateAppName = validateAppName;
+exports.typeToRegex = typeToRegex;
 
 exports.tmp_getStorage = tmp_getStorage;
 
