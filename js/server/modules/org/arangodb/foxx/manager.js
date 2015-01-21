@@ -31,9 +31,6 @@
 
 (function() {
   "use strict";
-  // -----------------------------------------------------------------------------
-  // --CHAPTER--                                                         used code
-  // -----------------------------------------------------------------------------
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           imports
@@ -618,7 +615,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   var scanFoxx = function(mount, options) {
     checkParameter(
-      "mount(<mount>)",
+      "scanFoxx(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _scanFoxx(mount, options);
@@ -649,8 +646,7 @@
     } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
       installAppFromLocal(appInfo, targetPath);
     } else {
-      // try appstore
-      throw "Not implemented yet";
+      installAppFromRemote(store.buildUrl(appInfo), targetPath);
     }
     _scanFoxx(mount, options);
     if (runSetup) {
@@ -697,7 +693,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   var uninstall = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "uninstall(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _uninstall(mount);
@@ -711,7 +707,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   var replace = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "replace(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -727,7 +723,7 @@
   ////////////////////////////////////////////////////////////////////////////////
   var upgrade = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "upgrade(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -770,7 +766,7 @@
 
   var setDevelopment = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "setDevelopment(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _toggleDevelopment(mount, true);
@@ -782,7 +778,7 @@
 
   var setProduction = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "setProduction(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _toggleDevelopment(mount, false);
@@ -790,7 +786,7 @@
 
   var configure = function(mount, options) {
     checkParameter(
-      "mount(<mount>)",
+      "configure(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = lookupApp(mount);
@@ -804,7 +800,7 @@
 
   var configuration = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "configuration(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = lookupApp(mount);
