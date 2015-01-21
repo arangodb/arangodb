@@ -1733,6 +1733,7 @@ function require (path) {
     sandbox.__filename = full;
     sandbox.__dirname = normalizeModuleName(full + "/..");
     sandbox.module = appContext.appModule;
+    sandbox.console = require("org/arangodb/foxx/logging/console").for(appContext.mount);
     sandbox.applicationContext = appContext;
 
     sandbox.require = function (path) {
