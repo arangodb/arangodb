@@ -794,14 +794,14 @@ function installRoute (storage, route, urlPrefix, context) {
   var url = lookupUrl(urlPrefix, route.url);
 
   if (url === null) {
-    console.error("route '%s' has an unkown url, ignoring '%s'", route.name);
+    console.error("route has an unkown url, ignoring '%s'", route.name);
     return;
   }
 
   var callback = lookupCallback(route, context);
 
   if (callback === null) {
-    console.error("route '%s' has an unknown callback, ignoring '%s'", route.name);
+    console.error("route has an unknown callback, ignoring '%s'", route.name);
     return;
   }
 
@@ -855,7 +855,7 @@ function analyseRoutes (storage, routes) {
 /// @brief builds a routing tree
 ////////////////////////////////////////////////////////////////////////////////
 
-function routingTree (routes) {
+function buildRoutingTree (routes) {
   'use strict';
 
   var j;
@@ -1030,6 +1030,14 @@ function flattenRoutingTree (tree) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates the foxx routing actions
+////////////////////////////////////////////////////////////////////////////////
+
+function foxxRouting (req, res, options, next) {
+  routeRequest(req, res, options.routing);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief flushes cache and reload routing information
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1046,7 +1054,7 @@ function buildRouting (dbname) {
     var n = i.next();
     var c = n._shallowCopy;
     
-    c.name = "_routing.document(" + n._key + ")";
+    c.name = '_routing.document("' + n._key + '")';
 
     routes.push(c);
   }
@@ -1055,10 +1063,23 @@ function buildRouting (dbname) {
   routing = null;
 
   // install the foxx routes
-  routes = routes.concat(foxxManager.appRoutes());
+  var foxxes = foxxManager.appRoutes();
+
+  for (i in foxxes) {
+    if (foxxes.hasOwnProperty(i)) {
+      var foxx = foxxes[i];
+      var list = flattenRoutingTree(buildRoutingTree([foxx]));
+
+      routes.push({
+        name: foxx.name,
+        url: { match: i + "/*" },
+        action: { callback: foxxRouting, options: { routing: list } }
+      });
+    }
+  }
 
   // build the routing tree
-  RoutingTree[dbname] = routingTree(routes);
+  RoutingTree[dbname] = buildRoutingTree(routes);
 
   // compute the flat routes
   RoutingList[dbname] = flattenRoutingTree(RoutingTree[dbname]);
@@ -1083,7 +1104,6 @@ function nextRouting (state) {
 
     if (route.regexp.test(state.url)) {
       state.position = i;
-
       state.route = route;
 
       if (route.prefix) {
@@ -1121,17 +1141,10 @@ function nextRouting (state) {
 /// @brief finds the first routing
 ////////////////////////////////////////////////////////////////////////////////
 
-function firstRouting (type, parts) {
+function firstRouting (type, parts, routes) {
   'use strict';
 
-  var dbname = arangodb.db._name();
   var url = parts;
-
-  if (undefined === RoutingList[dbname]) {
-    buildRouting(dbname);
-  }
-
-  var routes = RoutingList[dbname];
 
   if (typeof url === 'string') {
     parts = url.split("/");
@@ -1166,14 +1179,23 @@ function firstRouting (type, parts) {
 /// @brief routing function
 ////////////////////////////////////////////////////////////////////////////////
 
-function routeRequest (req, res) {
-  var path = req.suffix.join("/");
-  var action = firstRouting(req.requestType, req.suffix);
+function routeRequest (req, res, routes) {
+  if (routes === undefined) {
+    var dbname = arangodb.db._name();
+
+    if (undefined === RoutingList[dbname]) {
+      buildRouting(dbname);
+    }
+
+    routes = RoutingList[dbname];
+  }
+
+  var action = firstRouting(req.requestType, req.suffix, routes);
 
   function execute () {
     if (action.route === undefined) {
       resultNotFound(req, res, arangodb.ERROR_HTTP_NOT_FOUND,
-        "unknown path '" + path + "'");
+        "unknown path '" + req.url + "'");
       return;
     }
 
@@ -2292,23 +2314,27 @@ function stringifyRequestAddress (req) {
   return out;
 }
 
-function setFoxxRouting(mount, routes) {
+////////////////////////////////////////////////////////////////////////////////
+/// @brief updates the routing for one app
+////////////////////////////////////////////////////////////////////////////////
 
+function setFoxxRouting (mount, routes) {
 }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
-// Insert the routing information for one foxx application
-
-exports.setFoxxRouting = setFoxxRouting;
-
 // load all actions from the actions directory
 exports.startup                  = startup;
 
+// updates the routing information for one foxx application
+exports.setFoxxRouting = setFoxxRouting;
+
 // only for debugging
 exports.buildRouting             = buildRouting;
+exports.buildRoutingTree         = buildRoutingTree;
+exports.flattenRoutingTree       = flattenRoutingTree;
 exports.routingTree              = function() { return RoutingTree; };
 exports.routingList              = function() { return RoutingList; };
 
