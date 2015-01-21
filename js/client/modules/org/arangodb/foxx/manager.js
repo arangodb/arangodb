@@ -124,7 +124,7 @@
     var fm = "foxx-manager";
 
     printf("Example usage:\n");
-    printf(" %s install <foxx> <mount-point> option1=value1\n", fm);
+    printf(" %s install <app-info> <mount-point> option1=value1\n", fm);
     printf(" %s uninstall <mount-point>\n\n", fm);
 
     printf("Further help:\n");
@@ -201,7 +201,7 @@
 ////////////////////////////////////////////////////////////////////////////////
   var setup = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "setup(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var res;
@@ -225,7 +225,7 @@
 
   var teardown = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "teardown(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var res;
@@ -245,7 +245,7 @@
 
   var install = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "install(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -269,7 +269,7 @@
 
   var uninstall = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "uninstall(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var res;
@@ -289,7 +289,7 @@
 
   var replace = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "replace(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -312,7 +312,7 @@
 
   var upgrade = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "upgrade(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -356,7 +356,7 @@
           options = extractOptions(args);
           res = install(args[1], args[2], options);
           printf("Application %s installed successfully at mount point %s\n",
-               res.appId,
+               res.name,
                res.mount);
           printf("options used: %s\n", JSON.stringify(options));
           break;
@@ -364,21 +364,21 @@
           options = extractOptions(args);
           res = replace(args[1], args[2], options);
           printf("Application %s replaced successfully at mount point %s\n",
-             res.appId,
+             res.name,
              res.mount);
           break;
         case "upgrade":
           options = extractOptions(args);
           res = upgrade(args[1], args[2], options);
           printf("Application %s upgraded successfully at mount point %s\n",
-             res.appId,
+             res.name,
              res.mount);
           break;
         case "uninstall":
           res = uninstall(args[1]);
 
           printf("Application %s uninstalled successfully from mount point %s\n",
-             res.appId,
+             res.name,
              res.mount);
           break;
         case "list":
