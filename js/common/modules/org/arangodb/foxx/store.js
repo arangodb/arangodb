@@ -331,6 +331,21 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief extracts the highest version number from the document
+////////////////////////////////////////////////////////////////////////////////
+
+function extractMaxVersion (versionDoc) {
+  var maxVersion = "-";
+  var versions = Object.keys(versionDoc);
+  versions.sort(compareVersions);
+  if (versions.length > 0) {
+    versions.reverse();
+    maxVersion = versions[0];
+  }
+  return maxVersion;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -338,18 +353,11 @@ function availableJson() {
   var fishbowl = getFishbowlStorage();
   var cursor = fishbowl.all();
   var result = [];
-  var doc, maxVersion, versions, res;
+  var doc, maxVersion, res;
 
   while (cursor.hasNext()) {
     doc = cursor.next();
-
-    maxVersion = "-";
-    versions = Object.keys(doc.versions);
-    versions.sort(compareVersions);
-    if (versions.length > 0) {
-      versions.reverse();
-      maxVersion = versions[0];
-    }
+    maxVersion = extractMaxVersion(doc.versions);
 
     res = {
       name: doc.name,
@@ -432,29 +440,63 @@ function availableJson() {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief info for an available FOXX application
+/// @brief gets json-info for an available FOXX application
+////////////////////////////////////////////////////////////////////////////////
+
+var infoJson = function (name) {
+  utils.validateAppName(name);
+
+  var fishbowl = getFishbowlStorage();
+
+  if (fishbowl.count() === 0) {
+    arangodb.print("Repository is empty, please use 'update'");
+    return;
+  }
+
+  var desc;
+
+  try {
+    desc = fishbowl.document(name);
+    return desc;
+  }
+  catch (err) {
+    arangodb.print("No application '" + name + "' available, please try 'search'");
+    return;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a download URL for the given app information
+////////////////////////////////////////////////////////////////////////////////
+
+  var buildUrl = function(appInfo) {
+    // TODO Validate
+    var infoSplit = appInfo.split(":");
+    var name = infoSplit[0];
+    var version = infoSplit[1];
+    var storeInfo = infoJson(name);
+    if (storeInfo === undefined) {
+      throw "Application not found";
+    }
+    var versions = storeInfo.versions;
+    var versionInfo;
+    if (version === undefined) {
+      versionInfo = versions[extractMaxVersion(versions)];
+    } else {
+      if (!versions.hasOwnProperty(version)) {
+        throw "Unknown version";
+      }
+      versionInfo = versions[version];
+    }
+    return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints info for an available FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
   var info = function (name) {
-    utils.validateAppName(name);
-
-    var fishbowl = getFishbowlStorage();
-
-    if (fishbowl.count() === 0) {
-      arangodb.print("Repository is empty, please use 'update'");
-      return;
-    }
-
-    var desc;
-
-    try {
-      desc = fishbowl.document(name);
-    }
-    catch (err) {
-      arangodb.print("No application '" + name + "' available, please try 'search'");
-      return;
-    }
-
+    var desc = infoJson(name);
     arangodb.printf("Name:        %s\n", desc.name);
 
     if (desc.hasOwnProperty('author')) {
@@ -502,11 +544,12 @@ function availableJson() {
 
   exports.available = available;
   exports.availableJson = availableJson;
+  exports.buildUrl = buildUrl;
   exports.getFishbowlStorage = getFishbowlStorage;
+  exports.info = info;
   exports.search = search;
   exports.searchJson = searchJson;
   exports.update = update;
-  exports.info = info;
 
   // Temporary export to avoid breaking the client
   exports.compareVersions = compareVersions;

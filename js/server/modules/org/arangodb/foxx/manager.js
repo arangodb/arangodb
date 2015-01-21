@@ -1191,9 +1191,6 @@ exports.initializeFoxx = function () {
 
 (function() {
   "use strict";
-  // -----------------------------------------------------------------------------
-  // --CHAPTER--                                                         used code
-  // -----------------------------------------------------------------------------
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           imports
@@ -1778,7 +1775,7 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
   var scanFoxx = function(mount, options) {
     checkParameter(
-      "mount(<mount>)",
+      "scanFoxx(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _scanFoxx(mount, options);
@@ -1809,8 +1806,7 @@ exports.initializeFoxx = function () {
     } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
       installAppFromLocal(appInfo, targetPath);
     } else {
-      // try appstore
-      throw "Not implemented yet";
+      installAppFromRemote(store.buildUrl(appInfo), targetPath);
     }
     _scanFoxx(mount, options);
     if (runSetup) {
@@ -1857,7 +1853,7 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
   var uninstall = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "uninstall(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _uninstall(mount);
@@ -1871,7 +1867,7 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
   var replace = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "replace(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -1887,7 +1883,7 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
   var upgrade = function(appInfo, mount, options) {
     checkParameter(
-      "mount(<appInfo>, <mount>, [<options>])",
+      "upgrade(<appInfo>, <mount>, [<options>])",
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
@@ -1930,7 +1926,7 @@ exports.initializeFoxx = function () {
 
   var setDevelopment = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "setDevelopment(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _toggleDevelopment(mount, true);
@@ -1942,7 +1938,7 @@ exports.initializeFoxx = function () {
 
   var setProduction = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "setProduction(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     _toggleDevelopment(mount, false);
@@ -1950,7 +1946,7 @@ exports.initializeFoxx = function () {
 
   var configure = function(mount, options) {
     checkParameter(
-      "mount(<mount>)",
+      "configure(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = lookupApp(mount);
@@ -1964,7 +1960,7 @@ exports.initializeFoxx = function () {
 
   var configuration = function(mount) {
     checkParameter(
-      "mount(<mount>)",
+      "configuration(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = lookupApp(mount);
