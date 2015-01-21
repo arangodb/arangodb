@@ -242,6 +242,10 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "malformed manifest file");
+  REG_ERROR(ERROR_INVALID_APPLICATION_MANIFEST, "manifest file is invalid");
+  REG_ERROR(ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING, "missing manifest attribute");
+  REG_ERROR(ERROR_CANNOT_EXTRACT_APPLICATION_ROOT, "unable to extract app root path");
   REG_ERROR(RESULT_KEY_EXISTS, "element not inserted into structure, because key already exists");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
