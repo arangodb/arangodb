@@ -194,7 +194,7 @@
         f = m[i];
         match = reSub.exec(f);
 
-        if (match !== null) {
+        if (match === null) {
           continue;
         }
 
