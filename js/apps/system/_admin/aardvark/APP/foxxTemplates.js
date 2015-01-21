@@ -26,65 +26,34 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+(function() {
+  "use strict";
 
-"use strict";
+  var FoxxController = require("org/arangodb/foxx").Controller,
+      Configuration = require("models/configuration").Model,
+      controller = new FoxxController(applicationContext),
+      FoxxManager = require("org/arangodb/foxx/manager");
 
-var FoxxController = require("org/arangodb/foxx").Controller,
-  Configuration = require("models/configuration").Model,
-  controller = new FoxxController(applicationContext),
-  internal = require("internal"),
-  TemplateEngine = require("lib/foxxTemplateEngine").Engine,
-  FoxxManager = require("org/arangodb/foxx/manager"),
-  FoxxManagerUtils = require("org/arangodb/foxx/manager-utils"),
-  fs = require("fs"),
-  isDevMode = function() {
-    return internal.developmentMode;
-  };
+  controller.get("/devMode", function(req, res) {
+    res.json(false);
+  });
 
-controller.get("/devMode", function(req, res) {
-  res.json(isDevMode());
-});
+  controller.post("/generate", function(req, res) {
+    var conf = req.params("configuration");
+    res.json(FoxxManager.install("EMPTY", "/todo", conf));
+  }).bodyParam("configuration", {
+    description: "The configuration for the template.",
+    type: Configuration
+  });
 
-controller.post("/generate", function(req, res) {
-  var path,
-    templateEngine;
-
-  if (isDevMode()) {
-    path = module.devAppPath();
-  } else {
-    path = fs.getTempPath();
-  }
-
-  var conf = req.params("configuration");
-  conf.set("applicationContext", applicationContext);
-  conf.set("path", path);
-  templateEngine = new TemplateEngine(conf.forDB());
-  templateEngine.write();
-  var location = fs.join(path, conf.get("name"));
-
-  if (isDevMode()) {
-    FoxxManager.devSetup(conf.get("name"));
-    internal.executeGlobalContextFunction("reloadRouting");
-    res.json({
-      appPath: location
-    });
-  } else {
-    var zipPath = FoxxManagerUtils.processDirectory({
-      location: location
-    });
-    res.json({
-      file: zipPath.split(fs.pathSeparator).pop()
-    });
-  }
-}).bodyParam("configuration", {
-  description: "The configuration for the template.",
-  type: Configuration
-});
-
-controller.get("/download/:file", function(req, res) {
-  var fileName = req.params("file"),
-    path = fs.join(fs.getTempPath(), "downloads", fileName);
-  res.set("Content-Type", "application/octet-stream");
-  res.set("Content-Disposition", "attachment; filename=app.zip");
-  res.body = fs.readFileSync(path);
-});
+  controller.get("/download/:file", function(req, res) {
+    res.json(false);
+    /*
+    var fileName = req.params("file"),
+        path = fs.join(fs.getTempPath(), "downloads", fileName);
+    res.set("Content-Type", "application/octet-stream");
+    res.set("Content-Disposition", "attachment; filename=app.zip");
+    res.body = fs.readFileSync(path);
+    */
+  });
+}());
