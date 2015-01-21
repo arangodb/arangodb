@@ -1281,19 +1281,21 @@ function startup () {
   }
 
   var actionPath = fs.join(internal.startupPath, "actions");
-  var actions = fs.list(actionPath);
+  var actions = fs.listTree(actionPath);
   var i;
 
   for (i = 0;  i < actions.length;  ++i) {
     var file = actions[i];
+    var full = fs.join(actionPath, file);
 
-    if (file.match(/api-.*\.js$/)) {
-      var full = fs.join(actionPath, file);
-      var content = fs.read(full);
+    if (full !== '' && fs.isFile(full)) {
+      if (file.match(/.*\.js$/)) {
+        var content = fs.read(full);
 
-      content = "(function () {\n" + content + "\n}());";
+        content = "(function () {\n" + content + "\n}());";
 
-      internal.executeScript(content, undefined, full);
+        internal.executeScript(content, undefined, full);
+      }
     }
   }
 }
