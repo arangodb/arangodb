@@ -109,7 +109,9 @@ TRI_voc_cid_t Collection::getPlanId () const {
   auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
 
   if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
+                                  "collection not found '%s' -> '%s'",
+                                  vocbase->_name, name.c_str());
   }
 
   return collectionInfo.get()->id();
@@ -123,7 +125,9 @@ std::vector<std::string> Collection::shardIds () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
   if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
+                                  "collection not found '%s' -> '%s'",
+                                  vocbase->_name, name.c_str());
   }
 
   std::vector<std::string> ids;
@@ -141,7 +145,9 @@ std::vector<std::string> Collection::shardKeys () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
   auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
   if (collectionInfo.get() == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+    THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
+                                  "collection not found '%s' -> '%s'",
+                                  vocbase->_name, name.c_str());
   }
 
   std::vector<std::string> keys;
@@ -215,7 +221,9 @@ void Collection::fillIndexes () const {
     auto clusterInfo = triagens::arango::ClusterInfo::instance();
     auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
     if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL,
+                                    "collection not found '%s' -> '%s'",
+                                    vocbase->_name, name.c_str());
     }
 
     TRI_json_t const* json = (*collectionInfo).getIndexes();
@@ -240,7 +248,9 @@ void Collection::fillIndexes () const {
     auto clusterInfo = triagens::arango::ClusterInfo::instance();
     auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), triagens::basics::StringUtils::itoa(document->_info._planId));
     if (collectionInfo.get() == nullptr || (*collectionInfo).empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "collection not found");
+      THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
+                                    "collection not found '%s' -> '%s'",
+                                    vocbase->_name, name.c_str());
     }
 
     TRI_json_t const* json = (*collectionInfo).getIndexes();
