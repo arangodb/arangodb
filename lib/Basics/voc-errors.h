@@ -578,6 +578,14 @@
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
+/// - 3000: @LIT{malformed manifest file}
+///   The manifest file is malformed. It is not in a valid JSON format.
+/// - 3001: @LIT{manifest file is invalid}
+///   The manifest file of this application is invalid.
+/// - 3002: @LIT{missing manifest attribute}
+///   The manifest file is incomplete. A required attribute is missing.
+/// - 3003: @LIT{unable to extract app root path}
+///   The root path of the application could not be found.
 /// - 10000: @LIT{element not inserted into structure, because key already exists}
 ///   Will be returned if the element was not insert because the key already
 ///   exists.
@@ -3059,6 +3067,46 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE
+///
+/// malformed manifest file
+///
+/// The manifest file is malformed. It is not in a valid JSON format.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MALFORMED_MANIFEST_FILE                                 (3000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3001: ERROR_INVALID_APPLICATION_MANIFEST
+///
+/// manifest file is invalid
+///
+/// The manifest file of this application is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_INVALID_APPLICATION_MANIFEST                            (3001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3002: ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING
+///
+/// missing manifest attribute
+///
+/// The manifest file is incomplete. A required attribute is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING                         (3002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3003: ERROR_CANNOT_EXTRACT_APPLICATION_ROOT
+///
+/// unable to extract app root path
+///
+/// The root path of the application could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_EXTRACT_APPLICATION_ROOT                         (3003)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_KEY_EXISTS
