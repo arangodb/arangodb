@@ -40,6 +40,8 @@
   var internal = require("internal");
   var db = internal.db;
   var _= require("underscore");
+  var utils = require("org/arangodb/foxx/manager-utils");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -187,6 +189,56 @@ var ArangoApp = function (config) {
     return this._appContext;
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set app configuration
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.configure = function(config) {
+    var expected = this._manifest.configuration;
+    var attr;
+    var type;
+    var invalid = [];
+    this._options.configuration = this._options.configuration || {};
+    for (attr in config) {
+      if (config.hasOwnProperty(attr)) {
+        if (!expected.hasOwnProperty(attr)) {
+          invalid.push("Unexpected Attribute " + attr);
+        } else {
+          type = expected[attr].type;
+          if (!(utils.typeToRegex[type]).test(config[attr])) {
+            invalid.push("Attribute " + attr + " has wrong type, expected: " + type);
+          } else {
+            this._options.configuration[attr] = config[attr];
+          }
+        }
+      }
+    }
+    return invalid;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get app configuration
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.getConfiguration = function() {
+    if (!this._manifest.hasOwnProperty("configuration")) {
+      return {};
+    }
+    // Make sure originial is unmodified
+    var config = JSON.parse(JSON.stringify(this._manifest.configuration));
+    var setting = this._options.configuration || {};
+    var attr;
+    for (attr in config) {
+      if (config.hasOwnProperty(attr)) {
+        if (setting.hasOwnProperty(attr)) {
+          config[attr].current = setting[attr];
+        } else if (config[attr].hasOwnProperty("default")) {
+          config[attr].current = config[attr].default;
+        }
+      }
+    }
+    return config;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loadAppScript
