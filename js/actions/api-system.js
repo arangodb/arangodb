@@ -373,7 +373,7 @@ actions.defineHttp({
   prefix : false,
 
   callback : function (req, res) {
-    actions.resultOk(req, res, actions.HTTP_OK, actions.routingCache());
+    actions.resultOk(req, res, actions.HTTP_OK, actions.routingTree());
   }
 });
 
