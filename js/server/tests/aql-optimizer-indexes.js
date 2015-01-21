@@ -1265,6 +1265,171 @@ function optimizerIndexesTestSuite () {
       });
     },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndSkiplistIndexedNonIndexed : function () {
+      // value2 is not indexed
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 2 FILTER i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value == 2 && i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FILTER i.value == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value == 2 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertEqual(2, results.json[0].value);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndHashIndexedNonIndexed : function () {
+      // drop the skiplist index
+      c.dropIndex(c.getIndexes()[1]);
+      c.ensureHashIndex("value");
+      // value2 is not indexed
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 2 FILTER i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value == 2 && i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FILTER i.value == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value == 2 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertEqual(2, results.json[0].value);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndAlternativeHashAndSkiplistIndexedNonIndexed : function () {
+      // create a competitor index
+      c.ensureHashIndex("value");
+
+      // value2 is not indexed
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 2 FILTER i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value == 2 && i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FILTER i.value == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value == 2 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertEqual(2, results.json[0].value);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndSkiplistPartialIndexedNonIndexed : function () {
+      // drop the skiplist index
+      c.dropIndex(c.getIndexes()[1]);
+
+      // create an alternative index
+      c.ensureSkiplist("value", "value3");
+
+      // value2 is not indexed
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 2 FILTER i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value == 2 && i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FILTER i.value == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value == 2 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertEqual(2, results.json[0].value);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexAndAlternativeSkiplistPartialIndexedNonIndexed : function () {
+      // create a competitor index
+      c.ensureSkiplist("value", "value3");
+
+      // value2 is not indexed
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value == 2 FILTER i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value == 2 && i.value2 == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FILTER i.value == 2 RETURN i",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value == 2 RETURN i"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length); 
+        assertEqual(2, results.json[0].value);
+        assertTrue(results.stats.scannedIndex > 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    }
+
   };
 }
 
