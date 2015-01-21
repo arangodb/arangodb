@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2004-2013 triAGENS GmbH, Cologne, Germany
+/// Copyright 2004-2015 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,8 +21,8 @@
 ///
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler, Alan Plum
+/// @author Copyright 2010-2015, triAGENS GmbH, Cologne, Germany
 ///
 /// Parts of the code are based on:
 ///
@@ -55,12 +55,22 @@
 var console = require('console');
 var Buffer = require('buffer').Buffer;
 
+function arangoPrint(obj) {
+  var ctx = {output: ''};
+  obj._PRINT(ctx);
+  return ctx.output;
+}
+
 var formatRegExp = /%[sdj%]/g;
 exports.format = function(f) {
   if (!isString(f)) {
     var objects = [];
     for (var i = 0; i < arguments.length; i++) {
-      objects.push(inspect(arguments[i]));
+      if (arguments[i] && typeof arguments[i]._PRINT === 'function') {
+        objects.push(arangoPrint(arguments[i]));
+      } else {
+        objects.push(inspect(arguments[i]));
+      }
     }
     return objects.join(' ');
   }
@@ -88,7 +98,11 @@ exports.format = function(f) {
     if (isNull(x) || !isObject(x)) {
       str += ' ' + x;
     } else {
-      str += ' ' + inspect(x);
+      if (x && typeof x._PRINT === 'function') {
+        str += ' ' + arangoPrint(x);
+      } else {
+        str += ' ' + inspect(x);
+      }
     }
   }
   return str;
@@ -226,6 +240,16 @@ function formatValue(ctx, value, recurseTimes) {
     keys = Object.getOwnPropertyNames(value);
   }
 
+  if (typeof Object.getOwnPropertySymbols === 'function') {
+    var symbols = Object.getOwnPropertySymbols(value);
+    keys = keys.concat(symbols);
+    symbols.forEach(function (symbol) {
+      if (Object.getOwnPropertyDescriptor(value, symbol).enumerable) {
+        visibleKeys[symbol] = true;
+      }
+    });
+  }
+
   // This could be a boxed primitive (new String(), etc.), check valueOf()
   // NOTE: Avoid calling `valueOf` on `Date` instance because it will return
   // a number which, when object has some additional user-stored `keys`,
@@ -325,6 +349,10 @@ function formatValue(ctx, value, recurseTimes) {
     base = ' ' + '[Boolean: ' + formatted + ']';
   }
 
+  if (!base && typeof value._PRINT === 'function') {
+    base = ' ' + arangoPrint(value);
+  }
+
   if (keys.length === 0 && (!array || value.length === 0)) {
     return braces[0] + base + braces[1];
   }
@@ -358,9 +386,7 @@ function formatPrimitive(ctx, value) {
   if (isUndefined(value))
     return ctx.stylize('undefined', 'undefined');
   if (isString(value)) {
-    var simple = '\'' + JSON.stringify(value).replace(/^"|"$/g, '')
-                                             .replace(/'/g, "\\'")
-                                             .replace(/\\"/g, '"') + '\'';
+    var simple = JSON.stringify(value);
     return ctx.stylize(simple, 'string');
   }
   if (isNumber(value)) {
@@ -455,19 +481,19 @@ function formatProperty(ctx, value, recurseTimes, visibleKeys, key, array) {
     }
   }
   if (isUndefined(name)) {
-    if (array && key.match(/^\d+$/)) {
-      return str;
-    }
-    name = JSON.stringify('' + key);
-    if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
-      name = name.substr(1, name.length - 2);
-      name = ctx.stylize(name, 'name');
+    if (isSymbol(key)) {
+      name = ctx.stylize(key.toString(), 'name');
     } else {
-      name = name.replace(/'/g, "\\'")
-                 .replace(/\\"/g, '"')
-                 .replace(/(^"|"$)/g, "'")
-                 .replace(/\\\\/g, '\\');
-      name = ctx.stylize(name, 'string');
+      if (array && key.match(/^\d+$/)) {
+        return str;
+      }
+      name = JSON.stringify('' + key);
+      if (name.match(/^"([a-zA-Z_][a-zA-Z_0-9]*)"$/)) {
+        name = name.substr(1, name.length - 2);
+        name = ctx.stylize(name, 'name');
+      } else {
+        name = ctx.stylize(name, 'string');
+      }
     }
   }
 
