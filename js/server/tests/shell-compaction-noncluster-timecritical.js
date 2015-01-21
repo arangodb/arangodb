@@ -618,8 +618,17 @@ function CompactionSuite () {
       var doc = c1.document("test1"); 
 
       c1.rotate();
-      
-      var fig = c1.figures();
+
+      var tries = 0, fig;
+
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === n / 2 && fig["dead"]["count"] === 0) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+
       assertEqual(n / 2, c1.count());
       assertEqual(n / 2, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);
