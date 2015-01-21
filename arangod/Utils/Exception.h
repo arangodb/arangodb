@@ -54,6 +54,21 @@
 #define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                               \
   throw triagens::arango::Exception(code, triagens::arango::Exception::FillExceptionString(code, __VA_ARGS__), __FILE__, __LINE__)
 
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an arango exception with an error code and arbitrary 
+/// arguments (to be inserted in printf-style manner)
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                 \
+  throw triagens::arango::Exception(code,                               \
+                                    triagens::arango::Exception::FillFormatExceptionString( \
+                                                                                           "%s: " format,\
+                                                                                           TRI_errno_string(code), \
+                                                                                           __VA_ARGS__),\
+                                    __FILE__, __LINE__)
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief throws an arango exception with an error code and an already-built
 /// error message
@@ -105,6 +120,8 @@ namespace triagens {
         }
 
         static std::string FillExceptionString (int, ...);
+        static std::string FillFormatExceptionString (char const * format,
+                                                      ...);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief controls whether a backtrace is created for each exception
