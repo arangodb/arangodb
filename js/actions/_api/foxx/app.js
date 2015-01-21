@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, module */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief foxx administration actions
@@ -29,11 +29,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var internal = require("internal");
-
-var fs = require("fs");
-
-var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var foxxManager = require("org/arangodb/foxx/manager");
 
@@ -163,5 +158,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|/// @startDocuBlock\\|// --SECTION--\\|/// @\\}"
 // End:
