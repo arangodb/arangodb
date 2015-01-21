@@ -1274,6 +1274,7 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var lookupApp = function(mount) {
+    require("console").log(Object.keys(appCache));
     if (!appCache.hasOwnProperty(mount)) {
       throw "App not found";
     }
@@ -1784,8 +1785,6 @@ exports.initializeFoxx = function () {
     executeGlobalContextFunction("reloadRouting");
   };
 
-
-
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
@@ -1949,6 +1948,29 @@ exports.initializeFoxx = function () {
     _toggleDevelopment(mount, false);
   };
 
+  var configure = function(mount, options) {
+    checkParameter(
+      "mount(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    var app = lookupApp(mount);
+    var invalid = app.configure(options);
+    if (invalid.length > 0) {
+      require("console").log(invalid);
+    }
+    utils.updateApp(mount, app.toJSON());
+    executeGlobalContextFunction("reloadRouting");
+  };
+
+  var configuration = function(mount) {
+    checkParameter(
+      "mount(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    var app = lookupApp(mount);
+    return app.getConfiguration();
+  };
+
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           exports
   // -----------------------------------------------------------------------------
@@ -1967,6 +1989,8 @@ exports.initializeFoxx = function () {
   exports.appRoutes = appRoutes;
   exports.development = setDevelopment;
   exports.production = setProduction;
+  exports.configure = configure;
+  exports.configuration = configuration;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Exports from foxx utils module.
