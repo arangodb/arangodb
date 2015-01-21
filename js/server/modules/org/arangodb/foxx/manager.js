@@ -1230,29 +1230,38 @@ exports.initializeFoxx = function () {
   // --SECTION--                                                 private functions
   // -----------------------------------------------------------------------------
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief refills the routing cache
+  ////////////////////////////////////////////////////////////////////////////////
+
   var refillCaches = function(computeRoutes) {
     appCache = {};
+
     var cursor = utils.tmp_getStorage().all();
     var config, app, route;
-    var routes = [];
+    var routes = {};
 
     while (cursor.hasNext()) {
       config = cursor.next();
       app = new ArangoApp(config);
       appCache[app._mount] = app;
+
       if (computeRoutes) {
         route = routeApp(app);
+
         if (route) {
-          routes.push(route);
+          routes[app._mount] = route;
         }
       }
     }
+
     return routes;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Makes sure all system apps are mounted.
   ////////////////////////////////////////////////////////////////////////////////
+
   var checkMountedSystemApps = function() {
     var i, mount;
     for (i = 0; i < usedSystemMountPoints.length; ++i) {
@@ -1773,6 +1782,7 @@ exports.initializeFoxx = function () {
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var scanFoxx = function(mount, options) {
     checkParameter(
       "scanFoxx(<mount>)",
@@ -1786,6 +1796,7 @@ exports.initializeFoxx = function () {
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
+
   var _install = function(appInfo, mount, options, runSetup) {
     var targetPath = computeAppPath(mount, true);
     if (fs.exists(targetPath)) {
@@ -1819,6 +1830,7 @@ exports.initializeFoxx = function () {
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var install = function(appInfo, mount, options) {
     checkParameter(
       "install(<appInfo>, <mount>, [<options>])",
@@ -1833,6 +1845,7 @@ exports.initializeFoxx = function () {
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
+
   var _uninstall = function(mount) {
     var targetPath = computeAppPath(mount, true);
     if (!fs.exists(targetPath)) {
@@ -1851,6 +1864,7 @@ exports.initializeFoxx = function () {
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var uninstall = function(mount) {
     checkParameter(
       "uninstall(<mount>)",
@@ -1865,6 +1879,7 @@ exports.initializeFoxx = function () {
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var replace = function(appInfo, mount, options) {
     checkParameter(
       "replace(<appInfo>, <mount>, [<options>])",
@@ -1881,6 +1896,7 @@ exports.initializeFoxx = function () {
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var upgrade = function(appInfo, mount, options) {
     checkParameter(
       "upgrade(<appInfo>, <mount>, [<options>])",
