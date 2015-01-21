@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, ArangoServerState */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief administration actions
@@ -29,13 +29,9 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var internal = require("internal");
-var console = require("console");
 var users = require("org/arangodb/users");
-
-var targetDatabaseVersion = require("org/arangodb/database-version").CURRENT_VERSION;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
