@@ -353,8 +353,10 @@ void RestReplicationHandler::insertClient (TRI_voc_tick_t lastServedTick) {
     TRI_server_id_t serverId = (TRI_server_id_t) StringUtils::uint64(value);
 
     if (serverId > 0) {
-      // TODO: FIXME!!
-//      TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
+      // TODO: there is no replication logger anymore since 2.2
+      // either re-implement tracking of clients else or remove exposing the
+      // "clients" attribute altogether
+      // TRI_UpdateClientReplicationLogger(_vocbase->_replicationLogger, serverId, lastServedTick);
     }
   }
 }
@@ -419,6 +421,12 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///   - *version*: the logger server's version
 ///
 ///   - *serverId*: the logger server's id
+///
+/// - *clients*: this attribute was used in ArangoDB versions prior to 2.1 for 
+///   returning which replication applier clients connected to the logger. Each
+///   client was returned with its date/time of last connect. Since there is no
+///   replication-logger in ArangoDB where the client connection data could be kept,
+///   this attribute currently always is an empty array.
 ///
 /// @RESTRETURNCODES
 ///
