@@ -1234,28 +1234,29 @@ exports.initializeFoxx = function () {
   /// @brief refills the routing cache
   ////////////////////////////////////////////////////////////////////////////////
 
-  var refillCaches = function(computeRoutes) {
+  var refillCaches = function() {
     appCache = {};
 
     var cursor = utils.tmp_getStorage().all();
-    var config, app, route;
-    var routes = {};
+    var config, app;
+    var routes = [];
 
     while (cursor.hasNext()) {
       config = cursor.next();
       app = new ArangoApp(config);
       appCache[app._mount] = app;
-
-      if (computeRoutes) {
-        route = routeApp(app);
-
-        if (route) {
-          routes[app._mount] = route;
-        }
-      }
+      routes.push(app._mount);
     }
 
     return routes;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief routes of an foxx
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var routes = function(mount) {
+    return routeApp(lookupApp(mount));
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1280,7 +1281,6 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var lookupApp = function(mount) {
-    require("console").log(Object.keys(appCache));
     if (!appCache.hasOwnProperty(mount)) {
       throw "App not found";
     }
@@ -1484,7 +1484,6 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var appConfig = function (mount, options) {
-
     var root = computeRootAppPath(mount);
     var path = transformMountToPath(mount);
 
@@ -1505,7 +1504,6 @@ exports.initializeFoxx = function () {
       mount: mount,
       isSystem: isSystemMount(mount),
       isDevelopment: false
-
     };
   };
 
@@ -1793,6 +1791,25 @@ exports.initializeFoxx = function () {
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Scans the sources of the given mountpoint and publishes the routes
+  ///
+  /// TODO: Long Documentation!
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var rescanFoxx = function(mount) {
+    checkParameter(
+      "scanFoxx(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+
+    var old = lookupApp(mount);
+
+    utils.tmp_getStorage().removeByExample({mount: mount});
+
+    _scanFoxx(mount, old._options);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
@@ -1913,7 +1930,7 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var initializeFoxx = function() {
-    refillCaches(false);
+    refillCaches();
     checkMountedSystemApps();
   };
 
@@ -1921,8 +1938,8 @@ exports.initializeFoxx = function () {
   /// @brief compute all app routes
   ////////////////////////////////////////////////////////////////////////////////
   
-  var appRoutes = function() {
-    return refillCaches(true);
+  var mountPoints = function() {
+    return refillCaches();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1931,7 +1948,7 @@ exports.initializeFoxx = function () {
   
   var _toggleDevelopment = function(mount, activate) {
     var app = lookupApp(mount);
-    app.setDevelopment(activate);
+    app.development(activate);
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
   };
@@ -1998,11 +2015,14 @@ exports.initializeFoxx = function () {
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
-  exports.appRoutes = appRoutes;
+  exports.mountPoints = mountPoints;
   exports.development = setDevelopment;
   exports.production = setProduction;
   exports.configure = configure;
   exports.configuration = configuration;
+  exports.routes = routes;
+  exports.rescanFoxx = rescanFoxx;
+  exports.lookupApp = lookupApp;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Exports from foxx utils module.
