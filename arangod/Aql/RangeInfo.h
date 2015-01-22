@@ -921,6 +921,13 @@ namespace triagens {
     RangeInfoMapVec* andCombineRangeInfoMapVecs (RangeInfoMapVec*, RangeInfoMapVec*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoMapVecs: same as before, but will return the
+/// mapvec even if one side is a nullptr
+////////////////////////////////////////////////////////////////////////////////
+
+    RangeInfoMapVec* andCombineRangeInfoMapVecsIgnoreEmpty (RangeInfoMapVec*, RangeInfoMapVec*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief IndexOrCondition, type for vector of vector of RangeInfo. The meaning
 /// is: the outer vector means an implicit "OR" between the entries. Each
 /// entry is a vector whose entries correspond to the attributes of the
