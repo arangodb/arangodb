@@ -1392,23 +1392,25 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var validateManifestFile = function(file) {
-    var mf;
+    var mf, msg;
     if (!fs.exists(file)) {
-      return;
+      msg = "Cannot find manifest file '" + file + "'";
+      console.errorLines(msg);
+      throwFileNotFound(msg);
     }
     try {
       mf = JSON.parse(fs.read(file));
     } catch (err) {
-      console.errorLines(
-        "Cannot parse app manifest '%s': %s", file, String(err));
-      return;
+      msg = "Cannot parse app manifest '" + file + "': " + String(err);
+      console.errorLines(msg);
+      throw msg;
     }
     try {
       checkManifest(file, mf);
     } catch (err) {
-      console.errorLines(
-        "Manifest file '%s' invalid: %s", file, String(err));
-      return;
+      msg = "Manifest file'" + file + "' is invalid: " + String(err);
+      console.errorLines(msg);
+      throw msg;
     }
     return mf;
   };
@@ -1483,28 +1485,27 @@ exports.initializeFoxx = function () {
   /// @brief returns the app path and manifest
   ////////////////////////////////////////////////////////////////////////////////
 
-  var appConfig = function (mount, options) {
+  var appConfig = function (mount, options, activateDevelopment) {
     var root = computeRootAppPath(mount);
     var path = transformMountToPath(mount);
 
     var file = fs.join(root, path, "manifest.json");
-    var manifest = validateManifestFile(file);
-
-    if (manifest === undefined) {
-      //TODO Error Handeling
-      return;
-    }
-
-    return {
+    var result = {
       id: mount,
       root: root,
       path: path,
-      manifest: manifest,
-      options: options,
+      options: options || {},
       mount: mount,
       isSystem: isSystemMount(mount),
-      isDevelopment: false
+      isDevelopment: activateDevelopment || false
     };
+    try {
+      result.manifest = validateManifestFile(file);
+    } catch(err) {
+      result.error = err;
+      require("console").log("Setting err");
+    }
+    return result;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1513,15 +1514,9 @@ exports.initializeFoxx = function () {
   /// If the app is valid it will be added into the local app cache.
   ////////////////////////////////////////////////////////////////////////////////
 
-  var createApp = function(mount, options) {
-    var config = appConfig(mount);
-    config.options = options || {};
+  var createApp = function(mount, options, activateDevelopment) {
+    var config = appConfig(mount, options, activateDevelopment);
     var app = new ArangoApp(config);
-    if (app === null) {
-      console.errorLines(
-        "Cannot find application '%s'", mount);
-      return;
-    }
     appCache[mount] = app;
     return app;
   };
@@ -1771,9 +1766,9 @@ exports.initializeFoxx = function () {
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
 
-  var _scanFoxx = function(mount, options) {
+  var _scanFoxx = function(mount, options, activateDevelopment) {
     delete appCache[mount];
-    var app = createApp(mount, options);
+    var app = createApp(mount, options, activateDevelopment);
     utils.tmp_getStorage().save(app.toJSON());
     return app;
   };
@@ -1810,7 +1805,7 @@ exports.initializeFoxx = function () {
 
     utils.tmp_getStorage().removeByExample({mount: mount});
 
-    _scanFoxx(mount, old._options);
+    _scanFoxx(mount, old._options, old._isDevelopment);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
