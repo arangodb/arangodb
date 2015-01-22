@@ -1369,7 +1369,7 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
     }
 
     // distribute AND into OR
-    return andCombineRangeInfoMapVecs(lhs, rhs);
+    return andCombineRangeInfoMapVecsIgnoreEmpty(lhs, rhs);
   }
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -1512,6 +1512,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::string attr;
             Variable const* enumCollVar = nullptr;
             auto expression = node->expression()->node();
+
             // there is an implicit AND between FILTER statements
             if (_rangeInfoMapVec == nullptr) {
               // don't yet have anything to AND-combine
@@ -1519,7 +1520,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             } 
             else {
               // AND-combine with previous ranges
-              _rangeInfoMapVec = andCombineRangeInfoMapVecs(
+              _rangeInfoMapVec = andCombineRangeInfoMapVecsIgnoreEmpty(
                 _rangeInfoMapVec,
                 BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges)
               );
