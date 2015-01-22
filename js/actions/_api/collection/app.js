@@ -33,8 +33,6 @@ var arangodb = require("org/arangodb");
 var actions = require("org/arangodb/actions");
 var cluster = require("org/arangodb/cluster");
 
-var API = "_api/collection";
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -336,7 +334,7 @@ function post_api_collection (req, res) {
     }
 
     var headers = {
-      location: databasePrefix(req, "/" + API + "/" + result.name)
+      location: databasePrefix(req, "/_api/collection/" + result.name)
     };
 
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
@@ -904,7 +902,7 @@ function get_api_collection (req, res) {
   if (req.suffix.length === 1) {
     result = collectionRepresentation(collection, false, false, false);
     headers = {
-      location : databasePrefix(req, "/" + API + "/" + collection.name())
+      location : databasePrefix(req, "/_api/collection/" + collection.name())
     };
     actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     return;
@@ -949,7 +947,7 @@ function get_api_collection (req, res) {
     else if (sub === "figures") {
       result = collectionRepresentation(collection, true, true, true);
       headers = {
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/figures")
+        location : databasePrefix(req, "/_api/collection/" + collection.name() + "/figures")
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -961,7 +959,7 @@ function get_api_collection (req, res) {
     else if (sub === "count") {
       result = collectionRepresentation(collection, true, true, false);
       headers = {
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/count")
+        location : databasePrefix(req, "/_api/collection/" + collection.name() + "/count")
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -973,7 +971,7 @@ function get_api_collection (req, res) {
     else if (sub === "properties") {
       result = collectionRepresentation(collection, true, false, false);
       headers = {
-        location : databasePrefix(req, "/" + API + "/" + collection.name() + "/properties")
+        location : databasePrefix(req, "/_api/collection/" + collection.name() + "/properties")
       };
       actions.resultOk(req, res, actions.HTTP_OK, result, headers);
     }
@@ -996,7 +994,7 @@ function get_api_collection (req, res) {
   }
   else {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expect GET /" + API + "/<collection-name>/<method>");
+                      "expect GET /_api/collection/<collection-name>/<method>");
   }
 }
 
@@ -1465,7 +1463,7 @@ function put_api_collection_rotate (req, res, collection) {
 function put_api_collection (req, res) {
   if (req.suffix.length !== 2) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expected PUT /" + API + "/<collection-name>/<action>");
+                      "expected PUT /_api/collection/<collection-name>/<action>");
     return;
   }
 
@@ -1572,7 +1570,7 @@ function put_api_collection (req, res) {
 function delete_api_collection (req, res) {
   if (req.suffix.length !== 1) {
     actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER,
-                      "expected DELETE /" + API + "/<collection-name>");
+                      "expected DELETE /_api/collection/<collection-name>");
   }
   else {
     var name = decodeURIComponent(req.suffix[0]);
@@ -1603,7 +1601,7 @@ function delete_api_collection (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 actions.defineHttp({
-  url : API,
+  url : "_api/collection",
 
   callback : function (req, res) {
     try {
@@ -1635,5 +1633,5 @@ actions.defineHttp({
 
 // Local Variables:
 // mode: outline-minor
-// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
+// outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|/// @startDocuBlock\\|// --SECTION--\\|/// @\\}"
 // End:

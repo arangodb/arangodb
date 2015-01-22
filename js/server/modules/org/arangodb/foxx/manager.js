@@ -70,29 +70,39 @@
   // --SECTION--                                                 private functions
   // -----------------------------------------------------------------------------
 
-  var refillCaches = function(computeRoutes) {
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief refills the routing cache
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var refillCaches = function() {
     appCache = {};
+
     var cursor = utils.tmp_getStorage().all();
-    var config, app, route;
+    var config, app;
     var routes = [];
 
     while (cursor.hasNext()) {
       config = cursor.next();
       app = new ArangoApp(config);
       appCache[app._mount] = app;
-      if (computeRoutes) {
-        route = routeApp(app);
-        if (route) {
-          routes.push(route);
-        }
-      }
+      routes.push(app._mount);
     }
+
     return routes;
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief routes of an foxx
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var routes = function(mount) {
+    return routeApp(lookupApp(mount));
   };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Makes sure all system apps are mounted.
   ////////////////////////////////////////////////////////////////////////////////
+
   var checkMountedSystemApps = function() {
     var i, mount;
     for (i = 0; i < usedSystemMountPoints.length; ++i) {
@@ -314,7 +324,6 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var appConfig = function (mount, options) {
-
     var root = computeRootAppPath(mount);
     var path = transformMountToPath(mount);
 
@@ -335,7 +344,6 @@
       mount: mount,
       isSystem: isSystemMount(mount),
       isDevelopment: false
-
     };
   };
 
@@ -615,6 +623,7 @@
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var scanFoxx = function(mount, options) {
     checkParameter(
       "scanFoxx(<mount>)",
@@ -626,9 +635,29 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Scans the sources of the given mountpoint and publishes the routes
+  ///
+  /// TODO: Long Documentation!
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var rescanFoxx = function(mount) {
+    checkParameter(
+      "scanFoxx(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+
+    var old = lookupApp(mount);
+
+    utils.tmp_getStorage().removeByExample({mount: mount});
+
+    _scanFoxx(mount, old._options);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
+
   var _install = function(appInfo, mount, options, runSetup) {
     var targetPath = computeAppPath(mount, true);
     if (fs.exists(targetPath)) {
@@ -663,6 +692,7 @@
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var install = function(appInfo, mount, options) {
     checkParameter(
       "install(<appInfo>, <mount>, [<options>])",
@@ -678,6 +708,7 @@
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
+
   var _uninstall = function(mount) {
     var app = lookupApp(mount);
     var targetPath = computeAppPath(mount, true);
@@ -697,6 +728,7 @@
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var uninstall = function(mount) {
     checkParameter(
       "uninstall(<mount>)",
@@ -712,6 +744,7 @@
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var replace = function(appInfo, mount, options) {
     checkParameter(
       "replace(<appInfo>, <mount>, [<options>])",
@@ -729,6 +762,7 @@
   ///
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
+
   var upgrade = function(appInfo, mount, options) {
     checkParameter(
       "upgrade(<appInfo>, <mount>, [<options>])",
@@ -746,7 +780,7 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var initializeFoxx = function() {
-    refillCaches(false);
+    refillCaches();
     checkMountedSystemApps();
   };
 
@@ -754,8 +788,8 @@
   /// @brief compute all app routes
   ////////////////////////////////////////////////////////////////////////////////
   
-  var appRoutes = function() {
-    return refillCaches(true);
+  var mountPoints = function() {
+    return refillCaches();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -764,7 +798,7 @@
   
   var _toggleDevelopment = function(mount, activate) {
     var app = lookupApp(mount);
-    app.setDevelopment(activate);
+    app.development(activate);
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
     return app;
@@ -835,11 +869,14 @@
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
-  exports.appRoutes = appRoutes;
+  exports.mountPoints = mountPoints;
   exports.development = setDevelopment;
   exports.production = setProduction;
   exports.configure = configure;
   exports.configuration = configuration;
+  exports.routes = routes;
+  exports.rescanFoxx = rescanFoxx;
+  exports.lookupApp = lookupApp;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Exports from foxx utils module.
