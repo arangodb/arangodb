@@ -553,7 +553,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
   internal.printBrowser = function () {
     internal.printShell.apply(internal.printShell, arguments);
 
-    jqconsole.Write('==> ' + internal.browserOutputBuffer + '\n', 'jssuccess');
+    jqconsole.Write('==> ' + internal.browserOutputBuffer, 'jssuccess');
     internal.browserOutputBuffer = "";
   };
 

@@ -27,6 +27,7 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql/explainer.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/replication.js \
