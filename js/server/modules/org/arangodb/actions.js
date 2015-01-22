@@ -1045,6 +1045,7 @@ function foxxRouting (req, res, options, next) {
 
       if (devel) {
         foxxManager.rescanFoxx(mount); // TODO can move this to somewhere else?
+        app = foxxManager.lookupApp(mount);
       }
 
       if (app._isBroken) {
