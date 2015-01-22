@@ -247,6 +247,20 @@ static inline void SetRevision (TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief ensures that an error code is set in all required places
+////////////////////////////////////////////////////////////////////////////////
+
+static void EnsureErrorCode (int code) {
+  if (code == TRI_ERROR_NO_ERROR) {
+    // must have an error code
+    code = TRI_ERROR_INTERNAL;
+  }
+
+  TRI_set_errno(code);
+  errno = code;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new entry in the primary index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2399,7 +2413,9 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
       // simulate disk full
       TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
       document->_lastError = TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY_MMAP);
-      errno = ENOSPC;
+
+      EnsureErrorCode(ENOSPC);
+
       return nullptr;
     }
 
@@ -2421,6 +2437,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
     else {
       document->_lastError = TRI_set_errno(TRI_ERROR_ARANGO_NO_JOURNAL);
     }
+    
+    EnsureErrorCode(document->_lastError);  
 
     return nullptr;
   }
@@ -2451,6 +2469,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
     TRI_CloseDatafile(journal);
     TRI_UnlinkFile(journal->getName(journal));
     TRI_FreeDatafile(journal);
+    
+    EnsureErrorCode(res);  
 
     return nullptr;
   }
@@ -2475,6 +2495,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
     TRI_CloseDatafile(journal);
     TRI_UnlinkFile(journal->getName(journal));
     TRI_FreeDatafile(journal);
+    
+    EnsureErrorCode(document->_lastError);  
 
     return nullptr;
   }
@@ -2502,6 +2524,8 @@ TRI_datafile_t* TRI_CreateDatafileDocumentCollection (TRI_document_collection_t*
         TRI_UnlinkFile(journal->getName(journal));
         TRI_FreeDatafile(journal);
         TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    
+        EnsureErrorCode(document->_lastError);  
 
         return nullptr;
       }

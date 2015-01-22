@@ -15,9 +15,9 @@ must be specified when a collection is created and cannot be changed afterwards.
 
 !SECTION Working with Edges
 
-!SUBSECTION Save
+!SUBSECTION Insert
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock SaveEdgeCol
+@startDocuBlock InsertEdgeCol
 
 !SUBSECTION Edges
 <!-- arangod/V8Server/v8-query.cpp -->
