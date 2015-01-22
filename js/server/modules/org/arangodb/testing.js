@@ -1706,7 +1706,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
-    print("Testresult:", r);
+    print("Testresult:", yaml.safeDump(r));
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&
