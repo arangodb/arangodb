@@ -50,7 +50,7 @@ namespace triagens {
 /// @brief type for node flags
 ////////////////////////////////////////////////////////////////////////////////
 
-    typedef uint8_t AstNodeFlagsType;
+    typedef uint32_t AstNodeFlagsType;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief different flags for nodes
@@ -58,14 +58,22 @@ namespace triagens {
 /// (e.g. is the node value constant, sorted etc.)
 ////////////////////////////////////////////////////////////////////////////////
 
-    enum AstNodeFlagType : uint8_t {
-      FLAG_SORTED            = 1,   // node is a list and its members are sorted asc.
-      FLAG_CONSTANT          = 2,   // node value is constant (i.e. not dynamic)
-      FLAG_DYNAMIC           = 4,   // node value is dynamic (i.e. not constant)
-      FLAG_SIMPLE            = 8,   // node value is simple (i.e. for use in a simple expression)
-      FLAG_THROWS            = 16,  // node can throws an exception
-      FLAG_NONDETERMINISTIC  = 32,  // node produces non-deterministic result (e.g. function call nodes)
-      FLAG_KEEP_VARIABLENAME = 64   // node is a reference to a variable name, not the variable value (used in KEEP nodes)
+    enum AstNodeFlagType : AstNodeFlagsType {
+      DETERMINED_SORTED           = 1,       // node is a list and its members are sorted asc.
+      DETERMINED_CONSTANT         = 2,       // node value is constant (i.e. not dynamic)
+      DETERMINED_SIMPLE           = 4,       // node value is simple (i.e. for use in a simple expression)
+      DETERMINED_THROWS           = 8,       // node can throw an exception
+      DETERMINED_NONDETERMINISTIC = 16,      // node produces non-deterministic result (e.g. function call nodes)
+      DETERMINED_RUNONDBSERVER    = 32,      // node can run on the DB server in a cluster setup
+
+      VALUE_SORTED                 = 64,     // node is a list and its members are sorted asc.
+      VALUE_CONSTANT               = 128,    // node value is constant (i.e. not dynamic)
+      VALUE_SIMPLE                 = 256,    // node value is simple (i.e. for use in a simple expression)
+      VALUE_THROWS                 = 512,    // node can throw an exception
+      VALUE_NONDETERMINISTIC       = 1024,   // node produces non-deterministic result (e.g. function call nodes)
+      VALUE_RUNONDBSERVER          = 2048,   // node can run on the DB server in a cluster setup
+
+      FLAG_KEEP_VARIABLENAME       = 4096    // node is a reference to a variable name, not the variable value (used in KEEP nodes)
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -106,7 +114,7 @@ namespace triagens {
 /// @brief enumeration of AST node types
 ////////////////////////////////////////////////////////////////////////////////
 
-    enum AstNodeType {
+    enum AstNodeType : uint32_t {
       NODE_TYPE_ROOT                          =  0,
       NODE_TYPE_FOR                           =  1,
       NODE_TYPE_LET                           =  2,
@@ -339,11 +347,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
   
         inline void setFlag (AstNodeFlagType flag) const {
-          // ensure that CONSTANT and DYNAMIC flag are mutually exclusive
-          TRI_ASSERT(flag != FLAG_DYNAMIC || (flags & static_cast<decltype(flags)>(FLAG_CONSTANT)) == 0);
-          TRI_ASSERT(flag != FLAG_CONSTANT || (flags & static_cast<decltype(flags)>(FLAG_DYNAMIC)) == 0);
-
           flags |= static_cast<decltype(flags)>(flag);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set two flags for the node
+////////////////////////////////////////////////////////////////////////////////
+  
+        inline void setFlag (AstNodeFlagType typeFlag, 
+                             AstNodeFlagType valueFlag) const {
+          flags |= static_cast<decltype(flags)>(typeFlag | valueFlag);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +376,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         inline bool isSorted () const {
-          return ((flags & static_cast<decltype(flags)>(FLAG_SORTED)) != 0);
+          return ((flags & static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED)) == 
+                  static_cast<decltype(flags)>(DETERMINED_SORTED | VALUE_SORTED));
         }
 
 ////////////////////////////////////////////////////////////////////////////////

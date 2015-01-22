@@ -44,6 +44,8 @@ namespace triagens {
   namespace aql {
 
     class Query;
+        
+    typedef std::unordered_map<Variable const*, std::unordered_set<std::string>> TopLevelAttributes;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         class Ast
@@ -517,6 +519,12 @@ namespace triagens {
 
         static std::unordered_set<Variable*> getReferencedVariables (AstNode const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines the top-level attributes in an expression, grouped by
+/// variable
+////////////////////////////////////////////////////////////////////////////////
+
+        static TopLevelAttributes getReferencedAttributes (AstNode const*, bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recursively clone a node
@@ -640,27 +648,37 @@ namespace triagens {
 /// @brief traverse the AST, using pre- and post-order visitors
 ////////////////////////////////////////////////////////////////////////////////
 
-        static AstNode* traverse (AstNode*,
-                                  std::function<void(AstNode const*, void*)>,
-                                  std::function<AstNode*(AstNode*, void*)>,
-                                  std::function<void(AstNode const*, void*)>,
-                                  void*);
+        static AstNode* traverseAndModify (AstNode*,
+                                           std::function<void(AstNode const*, void*)>,
+                                           std::function<AstNode*(AstNode*, void*)>,
+                                           std::function<void(AstNode const*, void*)>,
+                                           void*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse the AST using a visitor
+/// @brief traverse the AST using a depth-first visitor
 ////////////////////////////////////////////////////////////////////////////////
 
-        static AstNode* traverse (AstNode*,
-                                  std::function<AstNode*(AstNode*, void*)>,
-                                  void*);
+        static AstNode* traverseAndModify (AstNode*,
+                                           std::function<AstNode*(AstNode*, void*)>,
+                                           void*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse the AST using a visitor, with const nodes
+/// @brief traverse the AST, using pre- and post-order visitors
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void traverse (AstNode const*,
-                              std::function<void(AstNode const*, void*)>,
-                              void*);
+        static void traverseReadOnly (AstNode const*,
+                                      std::function<void(AstNode const*, void*)>,
+                                      std::function<void(AstNode const*, void*)>,
+                                      std::function<void(AstNode const*, void*)>,
+                                      void*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse the AST using a depth-first visitor, with const nodes
+////////////////////////////////////////////////////////////////////////////////
+
+        static void traverseReadOnly (AstNode const*,
+                                      std::function<void(AstNode const*, void*)>,
+                                      void*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize a function name

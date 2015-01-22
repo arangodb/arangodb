@@ -47,7 +47,8 @@ using namespace triagens::aql;
 V8Expression::V8Expression (v8::Isolate* isolate,
                             v8::Handle<v8::Function> func)
   : isolate(isolate),
-  _func() {
+    _func() {
+
   _func.Reset(isolate, func);
 }
 
@@ -70,22 +71,41 @@ V8Expression::~V8Expression () {
 AqlValue V8Expression::execute (v8::Isolate* isolate,
                                 Query* query,
                                 triagens::arango::AqlTransaction* trx,
+                                std::unordered_map<Variable const*, std::unordered_set<std::string>> const& attributes,
                                 std::vector<TRI_document_collection_t const*>& docColls,
                                 std::vector<AqlValue>& argv,
                                 size_t startPos,
                                 std::vector<Variable*> const& vars,
                                 std::vector<RegisterId> const& regs) {
   size_t const n = vars.size();
-  TRI_ASSERT(regs.size() == n); // assert same vector length
+  TRI_ASSERT_EXPESNIVE(regs.size() == n); // assert same vector length
+
+  bool const attributesPresent = ! attributes.empty();
 
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
   for (size_t i = 0; i < n; ++i) {
-    auto varname = vars[i]->name;
+    auto const varname = vars[i]->name;
     auto reg = regs[i];
 
     TRI_ASSERT(! argv[reg].isEmpty());
 
+    auto type = argv[startPos + reg]._type;
+
+    if (attributesPresent && argv[startPos + reg]._type == AqlValue::JSON) { 
+      // check if we can get away with constructing a partial JSON object
+      auto it = attributes.find(vars[i]);
+
+      if (it != attributes.end()) {
+        // build a partial object
+        values->ForceSet(TRI_V8_STD_STRING(varname), argv[startPos + reg].toV8Partial(isolate, trx, (*it).second, docColls[reg]));
+        continue;
+      }
+    }
+
+    // fallthrough to building the complete object
+
+    // build the regular object
     values->ForceSet(TRI_V8_STD_STRING(varname), argv[startPos + reg].toV8(isolate, trx, docColls[reg]));
   }
 

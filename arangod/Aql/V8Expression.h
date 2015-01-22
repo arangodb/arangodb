@@ -75,6 +75,7 @@ namespace triagens {
       AqlValue execute (v8::Isolate* isolate,
                         Query* query,
                         triagens::arango::AqlTransaction*,
+                        std::unordered_map<Variable const*, std::unordered_set<std::string>> const&,
                         std::vector<TRI_document_collection_t const*>&,
                         std::vector<AqlValue>&,
                         size_t,

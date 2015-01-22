@@ -404,6 +404,66 @@ char const* AqlValue::toChar () const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct a V8 value as input for the expression execution in V8
+/// only construct those attributes that are needed in the expression
+////////////////////////////////////////////////////////////////////////////////
+
+v8::Handle<v8::Value> AqlValue::toV8Partial (v8::Isolate* isolate,
+                                             triagens::arango::AqlTransaction* trx, 
+                                             std::unordered_set<std::string> const& attributes,
+                                             TRI_document_collection_t const* document) const {
+  TRI_ASSERT_EXPENSIVE(_type == JSON);
+
+  TRI_json_t const* json = _json->json();
+
+  if (TRI_IsObjectJson(json)) {
+    size_t const n = json->_value._objects._length;
+
+    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+
+    // only construct those attributes needed
+    size_t left = attributes.size();
+
+    // we can only have got here if we had attributes
+    TRI_ASSERT(left > 0);
+
+    // iterate over all the object's attributes
+    for (size_t i = 0; i < n; i += 2) {
+      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+
+      if (! TRI_IsStringJson(key)) { 
+        continue;
+      }
+   
+      // check if we need to render this attribute
+      auto it = attributes.find(std::string(key->_value._string.data, key->_value._string.length - 1));
+
+      if (it == attributes.end()) {
+        // we can skip the attribute
+        continue;
+      }
+
+      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, (i + 1)));
+
+      if (value != nullptr) {
+        result->ForceSet(TRI_V8_STD_STRING((*it)), TRI_ObjectJson(isolate, value));
+      }
+
+      if (--left == 0) {
+        // we have rendered all required attributes
+        break;
+      }
+    }
+
+    // return partial object
+    return result;
+  }
+
+  // fallback    
+  return TRI_ObjectJson(isolate, json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a V8 value as input for the expression execution in V8
 ////////////////////////////////////////////////////////////////////////////////
 
 v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
