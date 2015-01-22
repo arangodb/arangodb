@@ -1,5 +1,5 @@
 /*jshint -W051: true */
-/*global require, SYS_GETLINE, SYS_LOG, jqconsole */
+/*global require, SYS_GETLINE, SYS_LOG, jqconsole, Symbol */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -53,7 +53,13 @@
 /// @brief timers
 ////////////////////////////////////////////////////////////////////////////////
 
-  var timers = { };
+  var timers;
+  try {
+    timers = Object.create(null);
+  }
+  catch (err) {
+    timers = {};
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -374,7 +380,9 @@
       throw new Error('label must be a string');
     }
 
-    timers[label] = Date.now();
+    var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
+
+    timers[symbol] = Date.now();
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +392,8 @@
   exports.timeEnd = function(label) {
     'use strict';
 
-    var time = timers[label];
+    var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
+    var time = timers[symbol];
 
     if (! time) {
       throw new Error('No such label: ' + label);
@@ -392,7 +401,7 @@
 
     var duration = Date.now() - time;
 
-    delete timers[label];
+    delete timers[symbol];
 
     logGroup("info", sprintf('%s: %dms', label, duration));
 };

@@ -1,7 +1,11 @@
 !CHAPTER ArangoDB Shell Configuration
 
 _arangosh_ will look for a user-defined startup script named *.arangosh.rc* in the
-user's home directory on startup. If the file is present _arangosh_ will execute
+user's home directory on startup. The home directory will likely be `/home/<username>/`
+on Unix/Linux, and is determined on Windows by peeking into the environment variables
+`%HOMEDRIVE%` and `%HOMEPATH%`. 
+
+If the file *.arangosh.rc* is present in the home directory, _arangosh_ will execute
 the contents of this file inside the global scope.
 
 You can use this to define your own extra variables and functions that you need often.
