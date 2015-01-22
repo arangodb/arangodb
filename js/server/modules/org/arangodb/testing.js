@@ -466,6 +466,7 @@ function shutdownInstance (instanceInfo, options) {
         if (instanceInfo.exitStatus.status === "RUNNING") {
           count ++;
           if (typeof(options.valgrind) === 'string') {
+            wait(1);
             continue;
           }
           if (count % 10 ===0) {
@@ -1705,7 +1706,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
-    print("Testresult:", r);
+    print("Testresult:", yaml.safeDump(r));
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&

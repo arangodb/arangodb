@@ -1209,7 +1209,6 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 
   bool foundSomething = false;
 
-
   if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
     auto lhs = node->getMember(0);
     auto rhs = node->getMember(1);
@@ -1358,18 +1357,11 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
     auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type);
     auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type);
-
-    if ((lhs == nullptr || lhs->empty()) && rhs != nullptr) {
-      delete lhs;
-      return rhs;
-    }
-    else if (lhs != nullptr && (rhs == nullptr || rhs->empty())) {
-      delete rhs;
-      return lhs;
-    }
+    
+    mustNotUseRanges = false;
 
     // distribute AND into OR
-    return andCombineRangeInfoMapVecs(lhs, rhs);
+    return andCombineRangeInfoMapVecsIgnoreEmpty(lhs, rhs);
   }
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -1431,10 +1423,17 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
   }
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    return orCombineRangeInfoMapVecs(
-      BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type),
-      BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type)
-    );
+    bool lhsMustNotUseRange = false;
+    bool rhsMustNotUseRange = false;
+
+    auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, lhsMustNotUseRange, node->type);
+    auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, rhsMustNotUseRange, node->type);
+    
+    if (lhsMustNotUseRange || rhsMustNotUseRange) {
+      mustNotUseRanges = true;
+    }
+
+    return orCombineRangeInfoMapVecs(lhs, rhs);
   }
     
   if (combineType == NODE_TYPE_OPERATOR_BINARY_AND) {
@@ -1460,7 +1459,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   std::unordered_set<VariableId> _varIds;
   bool _modified;
   bool _canThrow; 
-  bool _mustNotUseRanges;
   // The following maps ids of EnumerateCollectionNodes in the original
   // plan to an index in the (outer vector) of the _changes container.
   std::unordered_map<size_t, size_t>& _changesPlaces;
@@ -1481,7 +1479,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _varIds(),
         _modified(false),
         _canThrow(false),
-        _mustNotUseRanges(false),
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
@@ -1512,20 +1509,32 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::string attr;
             Variable const* enumCollVar = nullptr;
             auto expression = node->expression()->node();
+            bool mustNotUseRanges = false;
+
             // there is an implicit AND between FILTER statements
             if (_rangeInfoMapVec == nullptr) {
               // don't yet have anything to AND-combine
-              _rangeInfoMapVec = BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges);
+              _rangeInfoMapVec = BuildRangeInfo(_plan, expression, enumCollVar, attr, mustNotUseRanges);
             } 
             else {
               // AND-combine with previous ranges
-              _rangeInfoMapVec = andCombineRangeInfoMapVecs(
-                _rangeInfoMapVec,
-                BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges)
-              );
+              auto other = BuildRangeInfo(_plan, expression, enumCollVar, attr, mustNotUseRanges);
+
+              if (mustNotUseRanges) {
+                mustNotUseRanges = false;
+
+                if (other != nullptr) {
+                  delete other;
+                }
+                // keep existing _rangeInfoMapVec
+              }
+              else {
+                // AND-combine ranges in FILTER found with previous ranges
+                _rangeInfoMapVec = andCombineRangeInfoMapVecsIgnoreEmpty(_rangeInfoMapVec, other);
+              }
             }
 
-            if (_rangeInfoMapVec != nullptr && _mustNotUseRanges) {
+            if (_rangeInfoMapVec != nullptr && mustNotUseRanges) {
               // it is unsafe to use the ranges found. throw them away immediately
               delete _rangeInfoMapVec;
               _rangeInfoMapVec = nullptr;

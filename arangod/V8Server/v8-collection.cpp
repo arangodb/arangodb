@@ -1504,7 +1504,7 @@ static void RemoveVocbaseCol (bool useCollection,
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionName}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "2873916"});
+/// ~ var myid = db.example.insert({_key: "2873916"});
 ///   db.example.document("example/2873916");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1513,7 +1513,7 @@ static void RemoveVocbaseCol (bool useCollection,
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "2873916"});
+/// ~ var myid = db.example.insert({_key: "2873916"});
 ///   db.example.document("example/4472917");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2341,7 +2341,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemove}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   db.example.document(a1);
 ///   db.example.remove(a1);
 ///   db.example.document(a1);
@@ -2352,7 +2352,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentRemoveConflict}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db.example.replace(a1, { a : 2 });
 ///   db.example.remove(a1);
 ///   db.example.remove(a1, true);
@@ -2496,7 +2496,7 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplace}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db.example.replace(a1, { a : 2 });
 ///   a3 = db.example.replace(a1, { a : 3 });
 /// ~ db._drop("example");
@@ -2506,8 +2506,8 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceHandle}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "3903044"});
-///   a1 = db.example.save({ a : 1 });
+/// ~ var myid = db.example.insert({_key: "3903044"});
+///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db.example.replace("example/3903044", { a : 2 });
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2706,7 +2706,7 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdate}
 /// ~ db._create("example");
-///   a1 = db.example.save({"a" : 1});
+///   a1 = db.example.insert({"a" : 1});
 ///   a2 = db.example.update(a1, {"b" : 2, "c" : 3});
 ///   a3 = db.example.update(a1, {"d" : 4});
 ///   a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
@@ -2720,8 +2720,8 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandle}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "18612115"});
-///   a1 = db.example.save({"a" : 1});
+/// ~ var myid = db.example.insert({_key: "18612115"});
+///   a1 = db.example.insert({"a" : 1});
 ///   a2 = db.example.update("example/18612115", { "x" : 1, "y" : 2 });
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -2730,8 +2730,8 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleKeepNull}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "19988371"});
-///   db.example.save({"a" : 1});
+/// ~ var myid = db.example.insert({_key: "19988371"});
+///   db.example.insert({"a" : 1});
 ///   db.example.update("example/19988371", { "b" : null, "c" : null, "d" : 3 });
 ///   db.example.document("example/19988371");
 ///   db.example.update("example/19988371", { "a" : null }, false, false);
@@ -2745,8 +2745,8 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateHandleArray}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "20774803"});
-///   db.example.save({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
+/// ~ var myid = db.example.insert({_key: "20774803"});
+///   db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
 ///   db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
 ///   db.example.document("example/20774803");
 ///   db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null }, false, false);
@@ -2884,13 +2884,13 @@ static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief saves a new edge document
-/// @startDocuBlock SaveEdgeCol
-/// `edge-collection.save(from, to, document)`
+/// @startDocuBlock InsertEdgeCol
+/// `edge-collection.insert(from, to, document)`
 ///
 /// Saves a new edge and returns the document-handle. *from* and *to*
 /// must be documents or document references.
 ///
-/// `edge-collection.save(from, to, document, waitForSync)`
+/// `edge-collection.insert(from, to, document, waitForSync)`
 ///
 /// The optional *waitForSync* parameter can be used to force
 /// synchronization of the document creation operation to disk even in case
@@ -2907,9 +2907,9 @@ static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which)
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{SaveEdgeCol}
 /// ~ db._create("vertex");
-///   v1 = db.vertex.save({ name : "vertex 1" });
-///   v2 = db.vertex.save({ name : "vertex 2" });
-///   e1 = db.relation.save(v1, v2, { label : "knows" });
+///   v1 = db.vertex.insert({ name : "vertex 1" });
+///   v2 = db.vertex.insert({ name : "vertex 2" });
+///   e1 = db.relation.insert(v1, v2, { label : "knows" });
 ///   db._document(e1);
 /// ~ db._drop("vertex");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -3137,19 +3137,19 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief saves a new document
-/// @startDocuBlock documentsCollectionSave
-/// `collection.save(data)`
+/// @brief insert a new document
+/// @startDocuBlock documentsCollectionInsert
+/// `collection.insert(data)`
 ///
 /// Creates a new document in the *collection* from the given *data*. The
-/// *data* must be a hash array. It must not contain attributes starting
+/// *data* must be an object. It must not contain attributes starting
 /// with *_*.
 ///
 /// The method returns a document with the attributes *_id* and *_rev*.
 /// The attribute *_id* contains the document handle of the newly created
 /// document, the attribute *_rev* contains the document revision.
 ///
-/// `collection.save(data, waitForSync)`
+/// `collection.insert(data, waitForSync)`
 ///
 /// Creates a new document in the *collection* from the given *data* as
 /// above. The optional *waitForSync* parameter can be used to force
@@ -3167,10 +3167,10 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionSave}
+/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionInsert}
 /// ~ db._create("example");
-///   db.example.save({ Hello : "World" });
-///   db.example.save({ Hello : "World" }, true);
+///   db.example.insert({ Hello : "World" });
+///   db.example.insert({ Hello : "World" }, true);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3850,7 +3850,7 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemove}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   db._remove(a1);
 ///   db._remove(a1);
 ///   db._remove(a1, true);
@@ -3861,7 +3861,7 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveConflict}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db._replace(a1, { a : 2 });
 ///   db._remove(a1);
 ///   db._remove(a1, true);
@@ -3873,7 +3873,7 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveSignature}
 /// ~ db._create("example");
-///   db.example.save({ a:  1 } );
+///   db.example.insert({ a:  1 } );
 ///   db.example.remove("example/11265325374", {overwrite: true, waitForSync: false})
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -3914,7 +3914,7 @@ static void JS_RemoveVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentName}
 /// ~ db._create("example");
-/// ~ var myid = db.example.save({_key: "12345"});
+/// ~ var myid = db.example.insert({_key: "12345"});
 ///   db._document("example/12345");
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -3994,7 +3994,7 @@ static void JS_ExistsVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsDocumentReplace}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db._replace(a1, { a : 2 });
 ///   a3 = db._replace(a1, { a : 3 });
 /// ~ db._drop("example");
@@ -4058,7 +4058,7 @@ static void JS_ReplaceVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) 
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentDocumentUpdate}
 /// ~ db._create("example");
-///   a1 = db.example.save({ a : 1 });
+///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db._update(a1, { b : 2 });
 ///   a3 = db._update(a1, { c : 3 });
 /// ~ db._drop("example");

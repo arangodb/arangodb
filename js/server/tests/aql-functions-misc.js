@@ -449,10 +449,8 @@ function ahuacatlMiscFunctionsTestSuite () {
 
       assertEqual([ 1 ], actual);
 
-      // allow some tolerance for the time diff
-      // TODO: we're currently sleeping twice because we're testing
-      // old AQL against new AQL. when we're done comparing, remove the 2 *
-      assertTrue(diff >= 1.8 && diff <= 2.5, "SLEEP(2) did not take between 1.8 and 2.5 seconds");
+      // allow some tolerance for the time diff (because of busy servers and Valgrind)
+      assertTrue(diff >= 1.8 && diff <= 20, "SLEEP(2) did not take between 1.8 and 20 seconds");
     }
   
   };

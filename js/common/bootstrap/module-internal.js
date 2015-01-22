@@ -1214,10 +1214,10 @@
 
               if (m !== null) {
                 if (m[1] === undefined) {
-                  context.output += 'function {native code}';
+                  context.output += 'function { [native code] }';
                 }
                 else {
-                  context.output += 'function ' + m[1] + ' {native code}';
+                  context.output += 'function ' + m[1] + ' { [native code] }';
                 }
               }
               else {
