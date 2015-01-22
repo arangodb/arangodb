@@ -40,9 +40,9 @@
 <!-- arangod/V8Server/v8-vocbase.cpp -->
 @startDocuBlock documentsCollectionExists
 
-!SUBSECTION Save
+!SUBSECTION Insert
 <!-- arangod/V8Server/v8-vocbase.cpp -->
-@startDocuBlock documentsCollectionSave
+@startDocuBlock documentsCollectionInsert
 
 !SUBSECTION Replace
 <!-- arangod/V8Server/v8-vocbase.cpp -->
