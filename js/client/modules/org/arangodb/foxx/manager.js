@@ -211,6 +211,11 @@
 
     res = arango.POST("/_admin/foxx/setup", JSON.stringify(req));
     arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -235,6 +240,11 @@
 
     res = arango.POST("/_admin/foxx/teardown", JSON.stringify(req));
     arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,6 +269,11 @@
 
     res = arango.POST("/_admin/foxx/install", JSON.stringify(req));
     arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -279,6 +294,11 @@
 
     res = arango.POST("/_admin/foxx/uninstall", JSON.stringify(req));
     arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -302,6 +322,11 @@
 
     res = arango.POST("/_admin/foxx/replace", JSON.stringify(req));
     arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -325,6 +350,11 @@
 
     res = arango.POST("/_admin/foxx/upgrade", JSON.stringify(req));
     arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,30 +385,34 @@
         case "install":
           options = extractOptions(args);
           res = install(args[1], args[2], options);
-          printf("Application %s installed successfully at mount point %s\n",
+          printf("Application %s version %s installed successfully at mount point %s\n",
                res.name,
+               res.version,
                res.mount);
           printf("options used: %s\n", JSON.stringify(options));
           break;
         case "replace":
           options = extractOptions(args);
           res = replace(args[1], args[2], options);
-          printf("Application %s replaced successfully at mount point %s\n",
+          printf("Application %s version %s replaced successfully at mount point %s\n",
              res.name,
+             res.version,
              res.mount);
           break;
         case "upgrade":
           options = extractOptions(args);
           res = upgrade(args[1], args[2], options);
-          printf("Application %s upgraded successfully at mount point %s\n",
+          printf("Application %s version %s upgraded successfully at mount point %s\n",
              res.name,
+             res.version,
              res.mount);
           break;
         case "uninstall":
           res = uninstall(args[1]);
 
-          printf("Application %s uninstalled successfully from mount point %s\n",
+          printf("Application %s version %s uninstalled successfully from mount point %s\n",
              res.name,
+             res.version,
              res.mount);
           break;
         case "list":

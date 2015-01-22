@@ -1736,6 +1736,7 @@ exports.initializeFoxx = function () {
         "Setup not possible for mount '%s': %s", mount, String(err.stack || err));
       throw err;
     }
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1762,6 +1763,7 @@ exports.initializeFoxx = function () {
         "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
       throw err;
     }
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1773,6 +1775,7 @@ exports.initializeFoxx = function () {
     delete appCache[mount];
     var app = createApp(mount, options);
     utils.tmp_getStorage().save(app.toJSON());
+    return app;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1786,8 +1789,9 @@ exports.initializeFoxx = function () {
       "scanFoxx(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _scanFoxx(mount, options);
+    var app = _scanFoxx(mount, options);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1836,10 +1840,11 @@ exports.initializeFoxx = function () {
     } else {
       installAppFromRemote(store.buildUrl(appInfo), targetPath);
     }
-    _scanFoxx(mount, options);
+    var app = _scanFoxx(mount, options);
     if (runSetup) {
       setup(mount);
     }
+    return app;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1854,8 +1859,9 @@ exports.initializeFoxx = function () {
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
-    _install(appInfo, mount, options, true);
+    var app = _install(appInfo, mount, options, true);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1864,16 +1870,17 @@ exports.initializeFoxx = function () {
   ////////////////////////////////////////////////////////////////////////////////
 
   var _uninstall = function(mount) {
+    var app = lookupApp(mount);
     var targetPath = computeAppPath(mount, true);
     if (!fs.exists(targetPath)) {
       throw "No foxx app found at this location.";
     }
     teardown(mount);
-    // TODO Delete routing?
     utils.tmp_getStorage().removeByExample({mount: mount}); 
     delete appCache[mount];
     // Remove the APP folder.
     fs.removeDirectoryRecursive(targetPath, true);
+    return app;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1887,8 +1894,9 @@ exports.initializeFoxx = function () {
       "uninstall(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _uninstall(mount);
+    var app = _uninstall(mount);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1904,8 +1912,9 @@ exports.initializeFoxx = function () {
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     _uninstall(mount, true);
-    _install(appInfo, mount, options, true);
+    var app = _install(appInfo, mount, options, true);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1921,8 +1930,9 @@ exports.initializeFoxx = function () {
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     _uninstall(mount, false);
-    _install(appInfo, mount, options, false);
+    var app = _install(appInfo, mount, options, false);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1951,6 +1961,7 @@ exports.initializeFoxx = function () {
     app.development(activate);
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
+    return app;
   };
   
   ////////////////////////////////////////////////////////////////////////////////
@@ -1962,7 +1973,8 @@ exports.initializeFoxx = function () {
       "setDevelopment(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _toggleDevelopment(mount, true);
+    var app = _toggleDevelopment(mount, true);
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -1974,7 +1986,8 @@ exports.initializeFoxx = function () {
       "setProduction(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _toggleDevelopment(mount, false);
+    var app = _toggleDevelopment(mount, false);
+    return app.simpleJSON();
   };
 
   var configure = function(mount, options) {
@@ -1989,6 +2002,7 @@ exports.initializeFoxx = function () {
     }
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   var configuration = function(mount) {
