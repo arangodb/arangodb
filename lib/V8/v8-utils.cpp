@@ -2100,7 +2100,10 @@ static void JS_Read (const v8::FunctionCallbackInfo<v8::Value>& args) {
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
 
   if (content == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+    std::string msg = TRI_last_error();
+    msg += ": while reading ";
+    msg += *name;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), msg);
   }
 
   auto result = TRI_V8_PAIR_STRING(content, length);
@@ -2109,6 +2112,7 @@ static void JS_Read (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_V8_RETURN(result);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
