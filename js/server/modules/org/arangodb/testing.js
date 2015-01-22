@@ -466,6 +466,7 @@ function shutdownInstance (instanceInfo, options) {
         if (instanceInfo.exitStatus.status === "RUNNING") {
           count ++;
           if (typeof(options.valgrind) === 'string') {
+            wait(1);
             continue;
           }
           if (count % 10 ===0) {
