@@ -445,12 +445,10 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestReplicationLoggerStateActive}
 ///     var re = require("org/arangodb/replication");
-///     re.logger.start();
 ///
 ///     var url = "/_api/replication/logger-state";
 ///
 ///     var response = logCurlRequest('GET', url);
-///     re.logger.stop();
 ///
 ///     assert(response.code === 200);
 ///
