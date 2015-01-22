@@ -393,7 +393,7 @@ sub formatFile ($$$) {
   print $out "\n";
   print $out "// Local Variables:\n";
   print $out "// mode: outline-minor\n";
-  print $out "// outline-regexp: \"/// \@brief\\\\|/// {\@inheritDoc}\\\\|/// \@page\\\\|// --SECTION--\\\\|/// \@\\\\}\"\n";
+  print $out "// outline-regexp: \"/// \@brief\\\\|/// {\@inheritDoc}\\\\|/// \@page\\\\|/// \@startDocuBlock\\\\|// --SECTION--\\\\|/// \@\\\\}\"\n";
   print $out "// End:\n";
 
   if (! $dryRun) {

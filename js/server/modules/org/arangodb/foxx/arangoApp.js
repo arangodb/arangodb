@@ -122,7 +122,7 @@ var ArangoApp = function (config) {
     this._collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
     this._context = new AppContext(this);
 
-    if (this._manifest.hasOwnProperty("defaultDocument")) {
+    if (! this._manifest.hasOwnProperty("defaultDocument")) {
       this._manifest.defaultDocument = "index.html";
     }
   };
