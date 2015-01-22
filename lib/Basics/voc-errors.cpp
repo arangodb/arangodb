@@ -72,7 +72,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_ARANGO_DOCUMENT_HANDLE_BAD, "illegal document handle");
   REG_ERROR(ERROR_ARANGO_MAXIMAL_SIZE_TOO_SMALL, "maximal size of journal too small");
   REG_ERROR(ERROR_ARANGO_DUPLICATE_NAME, "duplicate name");
-  REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name");
+  REG_ERROR(ERROR_ARANGO_ILLEGAL_NAME, "illegal name '%s'");
   REG_ERROR(ERROR_ARANGO_NO_INDEX, "no suitable index known");
   REG_ERROR(ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED, "unique constraint violated");
   REG_ERROR(ERROR_ARANGO_GEO_INDEX_VIOLATED, "geo index violated");
