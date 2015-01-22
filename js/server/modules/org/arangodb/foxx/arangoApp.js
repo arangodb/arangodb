@@ -108,10 +108,22 @@
 /// @brief ArangoApp constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-var ArangoApp = function (config) {
-    this._manifest = config.manifest;
-    this._name = config.manifest.name;
-    this._version = config.manifest.version;
+  var ArangoApp = function (config) {
+    if (config.hasOwnProperty("error")) {
+      this._error = config.error;
+      this._isBroken = true;
+    }
+    if (!config.hasOwnProperty("manifest")) {
+      // Parse Error in manifest.
+      this._manifest = {
+        name: "unknown",
+        version: "error"
+      };
+    } else {
+      this._manifest = config.manifest;
+    }
+    this._name = this._manifest.name;
+    this._version = this._manifest.version;
     this._root = config.root;
     this._path = config.path;
     this._options = config.options;
@@ -159,6 +171,9 @@ var ArangoApp = function (config) {
       isSystem: this._isSystem,
       isDevelopment: this._isDevelopment
     };
+    if (this.hasOwnProperty("_error")) {
+      json.error = this._error;
+    }
     if (this._manifest.hasOwnProperty("author")) {
       json.author = this._manifest.author;
     }
@@ -207,6 +222,9 @@ var ArangoApp = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
   ArangoApp.prototype.configure = function(config) {
+    if (!this._manifest.hasOwnProperty("configuration")) {
+      return [];
+    }
     var expected = this._manifest.configuration;
     var attr;
     var type;
