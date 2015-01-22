@@ -1210,7 +1210,6 @@ int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* docume
 int CollectorThread::syncDatafileCollection (TRI_document_collection_t* document) {
   TRI_collection_t* collection = document;
   int res = TRI_ERROR_NO_ERROR;
-      
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
   // note: only journals need to be handled here as the journal is the
@@ -1239,6 +1238,11 @@ int CollectorThread::syncDatafileCollection (TRI_document_collection_t* document
       }
       else {
         res = TRI_errno();
+        if (res == TRI_ERROR_NO_ERROR) {
+          // oops, error code got lost
+          res = TRI_ERROR_INTERNAL;
+        }
+
         LOG_ERROR("msync failed with: %s", TRI_last_error());
         datafile->_state = TRI_DF_STATE_WRITE_ERROR;
         break;
@@ -1312,6 +1316,13 @@ char* CollectorThread::nextFreeMarkerPosition (TRI_document_collection_t* docume
       int res = TRI_errno();
       // could not create a datafile, this is a serious error
       TRI_UNLOCK_JOURNAL_ENTRIES_DOC_COLLECTION(document);
+
+      if (res == TRI_ERROR_NO_ERROR) {
+        // oops, error code got lost
+        res = TRI_ERROR_INTERNAL;
+      }
+
+      TRI_ASSERT(res != TRI_ERROR_NO_ERROR);
 
       THROW_ARANGO_EXCEPTION(res);
     }
