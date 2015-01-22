@@ -1269,12 +1269,46 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 double EnumerateListNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = 100*incoming;
-  return depCost + 100.0 * incoming; 
+
   // Well, what can we say? The length of the list can in general
   // only be determined at runtime... If we were to know that this
   // list is constant, then we could maybe multiply by the length
   // here... For the time being, we assume 100
+  size_t length = 100;
+ 
+  auto setter = _plan->getVarSetBy(_inVariable->id);
+
+  if (setter != nullptr &&
+      setter->getType() == ExecutionNode::CALCULATION) {
+    // list variable introduced by a calculation
+    auto expression = static_cast<CalculationNode*>(setter)->expression();
+
+    if (expression != nullptr) {
+      auto node = expression->node();
+
+      if (node->type == NODE_TYPE_ARRAY) {
+        // this one is easy
+        length = node->numMembers();
+      }
+      if (node->type == NODE_TYPE_RANGE) {
+        auto low = node->getMember(0); 
+        auto high = node->getMember(1); 
+
+        if (low->isConstant() && 
+            high->isConstant() &&
+            (low->isValueType(VALUE_TYPE_INT) || low->isValueType(VALUE_TYPE_DOUBLE)) &&
+            (high->isValueType(VALUE_TYPE_INT) || high->isValueType(VALUE_TYPE_DOUBLE))) {
+          // create a temporary range to determine the size
+          Range range(low->getIntValue(), high->getIntValue());
+
+          length = range.size();
+        }
+      }
+    }
+  }
+
+  nrItems = length * incoming;
+  return depCost + static_cast<double>(length) * incoming; 
 }
 
 // -----------------------------------------------------------------------------
