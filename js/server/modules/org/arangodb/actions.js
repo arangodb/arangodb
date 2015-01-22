@@ -1034,7 +1034,61 @@ function flattenRoutingTree (tree) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function foxxRouting (req, res, options, next) {
-  routeRequest(req, res, options.routing);
+  var mount = options.mount;
+
+  try {
+    var app = foxxManager.lookupApp(mount);
+    var devel = app._isDevelopment;
+
+    if (devel || ! options.hasOwnProperty('routing')) {
+      delete options.error;
+
+      if (devel) {
+        foxxManager.rescanFoxx(mount); // TODO can move this to somewhere else?
+      }
+
+      if (app._isBroken) {
+        throw app._error;
+      }
+
+      options.routing = flattenRoutingTree(buildRoutingTree([foxxManager.routes(mount)]));
+    }
+  }
+  catch (err1) {
+    options.error = {
+      code: exports.HTTP_SERVER_ERROR,
+      num: arangodb.ERROR_HTTP_SERVER_ERROR,
+      msg: "failed to load foxx mounted at '" + mount + "'",
+      info: { exception: String(err1) }
+    };
+
+    if (err1.stack) {
+      options.error.info.stacktrace = String(err1.stack).split("\n");
+    }
+  }
+
+  if (options.hasOwnProperty('error')) {
+    exports.resultError(req,
+                        res,
+                        options.error.code,
+                        options.error.num,
+                        options.error.msg,
+                        {},
+                        options.error.info);
+  }
+  else {
+    try {
+      routeRequest(req, res, options.routing);
+    }
+    catch (err2) {
+      resultException(
+        req,
+        res,
+        err2,
+        {},
+        "failed to execute foxx mounted at '" + mount + "'");
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1063,19 +1117,16 @@ function buildRouting (dbname) {
   routing = null;
 
   // install the foxx routes
-  var foxxes = foxxManager.appRoutes();
+  var foxxes = foxxManager.mountPoints();
 
-  for (i in foxxes) {
-    if (foxxes.hasOwnProperty(i)) {
-      var foxx = foxxes[i];
-      var list = flattenRoutingTree(buildRoutingTree([foxx]));
+  for (i = 0;  i < foxxes.length;  ++i) {
+    var foxx = foxxes[i];
 
-      routes.push({
-        name: foxx.name,
-        url: { match: i + "/*" },
-        action: { callback: foxxRouting, options: { routing: list } }
-      });
-    }
+    routes.push({
+      name: "foxx app mounted at '" + foxx + "'",
+      url: { match: foxx + "/*" },
+      action: { callback: foxxRouting, options: { mount: foxx } }
+    });
   }
 
   // build the routing tree
@@ -1917,7 +1968,9 @@ function indexNotFound (req, res, collection, index, headers) {
 ///
 /// The function generates an error response. If @FA{verbose} is set to
 /// *true* or not specified (the default), then the error stack trace will
-/// be included in the error message if available.
+/// be included in the error message if available. If @FA{verbose} is a string
+/// it will be prepended before the error message and the stacktrace will also
+/// be included.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1928,12 +1981,27 @@ function resultException (req, res, err, headers, verbose) {
   var msg;
   var num;
 
-  if (verbose || verbose === undefined) {
-    msg = String(err.stack || err);
-    verbose = true;
+  var info = {};
+  var showTrace = false;
+
+  if (typeof verbose === 'string') {
+    msg = verbose;
+    info.exception = String(err);
+    showTrace = true;
+  }
+  else if (verbose || verbose === undefined) {
+    msg = "An error has occurred during execution";
+    info.exception = String(err);
+    showTrace = true;
   }
   else {
     msg = String(err);
+  }
+
+  if (showTrace) {
+    if (err.stack) {
+      info.stacktrace = String(err.stack).split("\n");
+    }
   }
 
   if (err instanceof internal.ArangoError) {
@@ -1944,8 +2012,13 @@ function resultException (req, res, err, headers, verbose) {
       num = arangodb.ERROR_INTERNAL;
     }
 
-    if (err.errorMessage !== "" && ! verbose) {
-      msg = err.errorMessage;
+    if (err.errorMessage !== "") {
+      if (typeof verbose === 'string') {
+        info.message = err.errorMessage;
+      }
+      else {
+        msg = err.errorMessage;
+      }
     }
 
     switch (num) {
@@ -1995,7 +2068,7 @@ function resultException (req, res, err, headers, verbose) {
     code = exports.HTTP_SERVER_ERROR;
   }
 
-  resultError(req, res, code, num, msg, headers);
+  resultError(req, res, code, num, msg, headers, info);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2168,22 +2241,12 @@ function stringifyRequestAddress (req) {
   return out;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the routing for one app
-////////////////////////////////////////////////////////////////////////////////
-
-function setFoxxRouting (mount, routes) {
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
 // -----------------------------------------------------------------------------
 
 // load all actions from the actions directory
 exports.startup                  = startup;
-
-// updates the routing information for one foxx application
-exports.setFoxxRouting = setFoxxRouting;
 
 // only for debugging
 exports.buildRouting             = buildRouting;
