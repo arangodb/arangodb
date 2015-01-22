@@ -78,7 +78,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
                                 std::vector<Variable*> const& vars,
                                 std::vector<RegisterId> const& regs) {
   size_t const n = vars.size();
-  TRI_ASSERT_EXPESNIVE(regs.size() == n); // assert same vector length
+  TRI_ASSERT_EXPENSIVE(regs.size() == n); // assert same vector length
 
   bool const attributesPresent = ! attributes.empty();
 
@@ -88,9 +88,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     auto const varname = vars[i]->name;
     auto reg = regs[i];
 
-    TRI_ASSERT(! argv[reg].isEmpty());
-
-    auto type = argv[startPos + reg]._type;
+    TRI_ASSERT_EXPENSIVE(! argv[reg].isEmpty());
 
     if (attributesPresent && argv[startPos + reg]._type == AqlValue::JSON) { 
       // check if we can get away with constructing a partial JSON object
