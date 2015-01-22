@@ -111,7 +111,6 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var lookupApp = function(mount) {
-    require("console").log(Object.keys(appCache));
     if (!appCache.hasOwnProperty(mount)) {
       throw "App not found";
     }
@@ -569,6 +568,7 @@
         "Setup not possible for mount '%s': %s", mount, String(err.stack || err));
       throw err;
     }
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -595,6 +595,7 @@
         "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
       throw err;
     }
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -606,6 +607,7 @@
     delete appCache[mount];
     var app = createApp(mount, options);
     utils.tmp_getStorage().save(app.toJSON());
+    return app;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -618,8 +620,9 @@
       "scanFoxx(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _scanFoxx(mount, options);
+    var app = _scanFoxx(mount, options);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -648,10 +651,11 @@
     } else {
       installAppFromRemote(store.buildUrl(appInfo), targetPath);
     }
-    _scanFoxx(mount, options);
+    var app = _scanFoxx(mount, options);
     if (runSetup) {
       setup(mount);
     }
+    return app;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -665,8 +669,9 @@
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
-    _install(appInfo, mount, options, true);
+    var app = _install(appInfo, mount, options, true);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -674,16 +679,17 @@
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
   var _uninstall = function(mount) {
+    var app = lookupApp(mount);
     var targetPath = computeAppPath(mount, true);
     if (!fs.exists(targetPath)) {
       throw "No foxx app found at this location.";
     }
     teardown(mount);
-    // TODO Delete routing?
     utils.tmp_getStorage().removeByExample({mount: mount}); 
     delete appCache[mount];
     // Remove the APP folder.
     fs.removeDirectoryRecursive(targetPath, true);
+    return app;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -696,8 +702,9 @@
       "uninstall(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _uninstall(mount);
+    var app = _uninstall(mount);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -712,8 +719,9 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     _uninstall(mount, true);
-    _install(appInfo, mount, options, true);
+    var app = _install(appInfo, mount, options, true);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -728,8 +736,9 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     _uninstall(mount, false);
-    _install(appInfo, mount, options, false);
+    var app = _install(appInfo, mount, options, false);
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -758,6 +767,7 @@
     app.setDevelopment(activate);
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
+    return app;
   };
   
   ////////////////////////////////////////////////////////////////////////////////
@@ -769,7 +779,8 @@
       "setDevelopment(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _toggleDevelopment(mount, true);
+    var app = _toggleDevelopment(mount, true);
+    return app.simpleJSON();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -781,7 +792,8 @@
       "setProduction(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    _toggleDevelopment(mount, false);
+    var app = _toggleDevelopment(mount, false);
+    return app.simpleJSON();
   };
 
   var configure = function(mount, options) {
@@ -796,6 +808,7 @@
     }
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
+    return app.simpleJSON();
   };
 
   var configuration = function(mount) {
