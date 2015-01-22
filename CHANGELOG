@@ -25,6 +25,10 @@ v2.5.0 (XXXX-XX-XX)
 v2.4.2 (2015-XX-XX)
 -------------------
 
+* added AQL explain helper:
+
+      require("org/arangodb/aql/explainer").explain(query);
+
 * enable use of indexes for certain AQL conditions with non-equality predicates, in 
   case the condition(s) also refer to indexed attributes
 

@@ -1,3 +1,4 @@
+module.define("org/arangodb/aql/explainer", function(exports, module) {
 /*jshint strict: false, maxlen: 300 */
 /*global require, exports */
 
@@ -562,3 +563,4 @@ function explain (data, options) {
 
 exports.explain = explain;
 
+});
