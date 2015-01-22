@@ -4,7 +4,7 @@ set -e
 echo
 echo '$0: loading precompiled libraries'
 
-wget -q -O - "https://www.arangodb.com/support-files/travisCI/precompiled-libraries.tar.gz" | tar xzf - 
+wget -q -O - "https://www.arangodb.com/support-files/travisCI/precompiled-libraries.tar.gz" | tar xzvf - 
 
 echo
 echo '$0: setup make-system'
@@ -18,7 +18,7 @@ echo "$0: configuring ArangoDB"
 echo
 echo "$0: compiling ArangoDB"
 
-travis_wait make -j2
+make -j2
 
 echo
 echo "$0: done"
