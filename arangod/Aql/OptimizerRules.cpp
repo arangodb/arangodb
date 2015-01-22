@@ -721,6 +721,110 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief move calculations down in the plan
+/// this rule modifies the plan in place
+/// it aims to move calculations as far down in the plan as possible, beyond 
+/// FILTER and LIMIT operations
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::moveCalculationsDownRule (Optimizer* opt, 
+                                             ExecutionPlan* plan, 
+                                             Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::CALCULATION, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+    if (nn->expression()->canThrow() || 
+        ! nn->expression()->isDeterministic()) {
+      // we will only move expressions down that cannot throw and that are deterministic
+      continue;
+    }
+
+    // this is the variable that the calculation will set
+    auto variable = nn->outVariable();
+
+    std::vector<ExecutionNode*> stack;
+    for (auto p : n->getParents()) {
+      stack.push_back(p);
+    }
+      
+    bool shouldMove = false;
+    ExecutionNode* lastNode = nullptr;
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      lastNode = current;
+      bool done = false;
+
+      auto&& varsUsed = current->getVariablesUsedHere();
+
+      for (auto v : varsUsed) {
+        if (v == variable) {
+          // the node we're looking at needs the variable we're setting. 
+          // can't push further!
+          done = true;
+          break;
+        }
+      }
+
+      if (done) {
+        // done with optimizing this calculation node
+        break;
+      }
+
+      auto const currentType = current->getType();
+
+      if (currentType == EN::FILTER ||
+          currentType == EN::SORT || 
+          currentType == EN::LIMIT ||
+          currentType == EN::SUBQUERY) {
+        // we found something interesting that justifies moving our node down
+        shouldMove = true;
+      } 
+      else if (currentType == EN::INDEX_RANGE ||
+               currentType == EN::ENUMERATE_COLLECTION ||
+               currentType == EN::ENUMERATE_LIST ||
+               currentType == EN::AGGREGATE ||
+               currentType == EN::NORESULTS) {
+        // we will not push further down than such nodes
+        shouldMove = false;
+        break;
+      }
+        
+      auto parents = current->getParents();
+      if (parents.size() != 1) {
+        break;
+      }
+      
+      for (auto p : parents) {
+        stack.push_back(p);
+      }
+    }
+
+    if (shouldMove && lastNode != nullptr) {
+      // first, unlink the calculation from the plan
+      plan->unlinkNode(n);
+
+      // and re-insert into before the current node
+      plan->insertDependency(lastNode, n);
+      modified = true;
+    }
+
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief split and-combined filters and break them into smaller parts
 ////////////////////////////////////////////////////////////////////////////////
 
