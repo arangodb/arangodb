@@ -61,6 +61,7 @@ Expression::Expression (Ast* ast,
     _canThrow(true),
     _canRunOnDBServer(false),
     _isDeterministic(false),
+    _hasDeterminedAttributes(false),
     _built(false) {
 
   TRI_ASSERT(_ast != nullptr);
@@ -141,7 +142,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         ISOLATE;
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(isolate, _ast->query(), trx, _attributes, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
@@ -283,26 +284,41 @@ void Expression::analyzeExpression () {
 
   if (_node->isConstant()) {
     // expression is a constant value
-    _type = JSON;
-    _canThrow = false;
+    _type             = JSON;
+    _canThrow         = false;
     _canRunOnDBServer = true;
-    _isDeterministic = true;
-    _data = nullptr;
+    _isDeterministic  = true;
+    _data             = nullptr;
   }
   else if (_node->isSimple()) {
     // expression is a simple expression
-    _type = SIMPLE;
-    _canThrow = _node->canThrow();
+    _type             = SIMPLE;
+    _canThrow         = _node->canThrow();
     _canRunOnDBServer = _node->canRunOnDBServer();
-    _isDeterministic = _node->isDeterministic();
+    _isDeterministic  = _node->isDeterministic();
   }
   else {
     // expression is a V8 expression
-    _type = V8;
-    _canThrow = _node->canThrow();
+    _type             = V8;
+    _canThrow         = _node->canThrow();
     _canRunOnDBServer = _node->canRunOnDBServer();
-    _isDeterministic = _node->isDeterministic();
-    _func = nullptr;
+    _isDeterministic  = _node->isDeterministic();
+    _func             = nullptr;
+
+    if (! _hasDeterminedAttributes) {
+      // determine all top-level attributes used in expression only once
+      // as this might be expensive
+      _hasDeterminedAttributes = true;
+
+      bool isSafeForOptimization;
+      _attributes = std::move(Ast::getReferencedAttributes(_node, isSafeForOptimization));
+
+      if (! isSafeForOptimization) {
+        // unfortunately there are not only top-level attribute accesses but
+        // also other accesses, e.g. the index values or the whole value
+        _attributes.clear();
+      }
+    }
   }
 }
 
