@@ -517,6 +517,15 @@ void Optimizer::setupRules () {
                useIndexForSortRule_pass6,
                true);
 
+//////////////////////////////////////////////////////////////////////////////
+/// Pass 9: push down calculations beyond FILTERs and LIMITs
+//////////////////////////////////////////////////////////////////////////////
+  
+  // finally, push calculations as far down as possible
+  registerRule("move-calculations-down",
+               moveCalculationsDownRule,
+               moveCalculationsDownRule_pass9,
+               true);
 
   if (ExecutionEngine::isCoordinator()) {
     // distribute operations in cluster
