@@ -41,7 +41,6 @@
   var fs = require("fs");
   var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
-  var setFoxxRouting = require("org/arangodb/actions").setFoxxRouting;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -361,6 +360,7 @@
     // mount all controllers
     var controllers = app._manifest.controllers;
 
+// TODO better error handling, mark foxx as failed!
     try {
       for (i in controllers) {
         if (controllers.hasOwnProperty(i)) {
@@ -424,7 +424,7 @@
       // install all files and assets
       installAssets(app, routes);
       
-      // Trigger the setFoxxRouting in actions
+      // return the new routes
       return routes;
     }
     catch (err) {
