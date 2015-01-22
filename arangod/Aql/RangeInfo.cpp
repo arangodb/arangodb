@@ -660,6 +660,37 @@ RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecs (RangeInfoMapVec* lhs
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief andCombineRangeInfoMapVecs: same as before, but will return the
+/// mapvec even if one side is a nullptr
+////////////////////////////////////////////////////////////////////////////////
+
+RangeInfoMapVec* triagens::aql::andCombineRangeInfoMapVecsIgnoreEmpty (RangeInfoMapVec* lhs, 
+                                                                       RangeInfoMapVec* rhs) {
+  if (lhs == nullptr && rhs == nullptr) {
+    return nullptr;
+  }
+
+  if ((lhs == nullptr || lhs->empty()) && rhs != nullptr) {
+    if (lhs != nullptr) {
+      delete lhs;
+    }
+    return rhs;
+  }
+
+  if (lhs != nullptr && (rhs == nullptr || rhs->empty())) {
+    if (rhs != nullptr) {
+      delete rhs;
+    }
+    return lhs;
+  }
+
+  TRI_ASSERT(lhs != nullptr);
+  TRI_ASSERT(rhs != nullptr);
+        
+  return andCombineRangeInfoMapVecs(lhs, rhs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief comparison of range infos
 ////////////////////////////////////////////////////////////////////////////////
 
