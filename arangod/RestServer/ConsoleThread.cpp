@@ -151,7 +151,7 @@ void ConsoleThread::inner () {
 
     while (! _userAborted) {
       if (nrCommands >= gcInterval) {
-        TRI_RunGarbageCollectionV8(isolate, 1.0);
+        TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
       }
 

@@ -3954,9 +3954,8 @@ void TRI_CreateErrorObject (v8::Isolate *isolate,
 
     TRI_V8_RETURN(TRI_V8_STRING_UTF16( (const uint16_t*) result.getBuffer(), result.length()));
   }
-  else {
-    TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
-  }
+    
+  TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3983,6 +3982,16 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a single garbage collection run
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_SingleRunGarbageCollectionV8 (v8::Isolate* isolate,
+                                       int idleTimeInMs) {
+  isolate->LowMemoryNotification();
+  return isolate->IdleNotification(idleTimeInMs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief run the V8 garbage collection for at most a specifiable amount of 
 /// time
 ////////////////////////////////////////////////////////////////////////////////
@@ -3993,6 +4002,9 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
 
   if (availableTime >= 5.0) {
     idleTimeInMs = 10000;
+  }
+  if (availableTime >= 10.0) {
+    idleTimeInMs = 100000;
   }
     
   double const until = TRI_microtime() + availableTime;
@@ -4007,10 +4019,8 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
 
   int gcTries = 0;
 
-  isolate->LowMemoryNotification();
   while (++gcTries <= gcAttempts) {
-    if (isolate->IdleNotification(idleTimeInMs)) {
-      // we're done
+    if (TRI_SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
       return;
     }
   }
@@ -4019,14 +4029,10 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
   while (TRI_microtime() < until) {
     if (++i % 1000 == 0) {
       // garbage collection only every x iterations, otherwise we'll use too much CPU
-      isolate->LowMemoryNotification();
-      // todo 1000 was the old V8-default, is this really good?
-      while (++gcTries <= gcAttempts) {
-        if (isolate->IdleNotification(idleTimeInMs)) {
-          // we're done
-          return;
-        }
-      }
+      if (++gcTries > gcAttempts ||
+          TRI_SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+        return;  
+      } 
     }
 
     usleep(100);
