@@ -343,7 +343,6 @@
       result.manifest = validateManifestFile(file);
     } catch(err) {
       result.error = err;
-      require("console").log("Setting err");
     }
     return result;
   };
