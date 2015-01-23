@@ -1,4 +1,4 @@
-/*global require, applicationContext*/
+/*global require, applicationContext, module*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to generate new FoxxApps
@@ -52,14 +52,18 @@ controller.post("/generate", function(req, res) {
   if (isDevMode()) {
     path = module.devAppPath();
   } else {
-    path = fs.getTempPath();
+    path = fs.getTempFile("zip", false);
+    fs.makeDirectory(path);
   }
-
   var conf = req.params("configuration");
   conf.set("applicationContext", applicationContext);
   conf.set("path", path);
   templateEngine = new TemplateEngine(conf.forDB());
-  templateEngine.write();
+  try {
+    templateEngine.write();
+  } catch (err) {
+    throw new Error("development app with this name already exists.");
+  }
   var location = fs.join(path, conf.get("name"));
 
   if (isDevMode()) {
@@ -79,7 +83,7 @@ controller.post("/generate", function(req, res) {
 }).bodyParam("configuration", {
   description: "The configuration for the template.",
   type: Configuration
-});
+}).errorResponse(Error, 409, "development app with this name already exists.");
 
 controller.get("/download/:file", function(req, res) {
   var fileName = req.params("file"),
