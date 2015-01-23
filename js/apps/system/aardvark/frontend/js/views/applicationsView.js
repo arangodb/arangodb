@@ -124,10 +124,11 @@
         $.ajax({
           type: "POST",
           async: false,
-          url: '/_api/upload',
+          url: '/_api/upload?multipart=true',
+          contentType: "multipart/form-data",
           data: self.file,
           processData: false,
-          contentType: 'application/octet-stream',
+          cache: false,
           complete: function(res) {
             if (res.readyState === 4) {
               if (res.status === 201) {
@@ -737,7 +738,7 @@
         width: "336px"
       });
       $("#upload-foxx-zip").uploadFile({
-        url: "/_api/upload",
+        url: "/_api/upload?multipart=true",
         allowedTypes: "zip",
         onSuccess: this.installFoxxFromZip.bind(this)
       });
