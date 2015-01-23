@@ -1,0 +1,55 @@
+{
+  "name": "uri-path",
+  "version": "0.0.2",
+  "description": "Convert relative file system paths into safe URI paths",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/UltCombo/uri-path.git"
+  },
+  "keywords": [
+    "uri",
+    "url",
+    "relative",
+    "file system",
+    "fs",
+    "path",
+    "convert"
+  ],
+  "author": {
+    "name": "Ult Combo",
+    "email": "ultcombo@gmail.com"
+  },
+  "engines": {
+    "node": ">= 0.10"
+  },
+  "license": "WTFPL",
+  "bugs": {
+    "url": "https://github.com/UltCombo/uri-path/issues"
+  },
+  "homepage": "https://github.com/UltCombo/uri-path",
+  "devDependencies": {
+    "mocha": "^1.20.1",
+    "should": "^4.0.4"
+  },
+  "_id": "uri-path@0.0.2",
+  "dist": {
+    "shasum": "803eb01f2feb17927dcce0f6187e72b75f53f554",
+    "tarball": "http://registry.npmjs.org/uri-path/-/uri-path-0.0.2.tgz"
+  },
+  "_from": "uri-path@0.0.2",
+  "_npmVersion": "1.4.6",
+  "_npmUser": {
+    "name": "ult_combo",
+    "email": "ult_combo@hotmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "ult_combo",
+      "email": "ult_combo@hotmail.com"
+    }
+  ],
+  "directories": {},
+  "_shasum": "803eb01f2feb17927dcce0f6187e72b75f53f554",
+  "_resolved": "https://registry.npmjs.org/uri-path/-/uri-path-0.0.2.tgz"
+}
