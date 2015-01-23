@@ -526,9 +526,7 @@ void ApplicationV8::exitContext (V8Context* context) {
         TRI_ASSERT(context->_locker->IsLocked(isolate));
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
-        isolate->LowMemoryNotification();
-        while (! isolate->IdleNotification(1000)) {
-        }
+        TRI_RunGarbageCollectionV8(isolate, 1.0);
 
         localContext->Exit();
       }
@@ -644,10 +642,7 @@ void ApplicationV8::collectGarbage () {
         TRI_ASSERT(context->_locker->IsLocked(isolate));
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
-        isolate->LowMemoryNotification();
-        // todo 1000 was the old V8-default, is this really good?
-        while(! isolate->IdleNotification(1000)) {
-        }
+        TRI_RunGarbageCollectionV8(isolate, 1.0);
 
         localContext->Exit();
       }
@@ -1445,9 +1440,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     localContext->Enter();
     v8::Context::Scope contextScope(localContext);
 
-    isolate->LowMemoryNotification();
-    while (! isolate->IdleNotification(1000)) {
-    }
+    TRI_RunGarbageCollectionV8(isolate, 60.0);
 
     TRI_GET_GLOBALS();
     if (v8g != nullptr) {

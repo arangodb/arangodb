@@ -1113,10 +1113,9 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
           LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
         }
       }
-
-      isolate->LowMemoryNotification();
-      while (! isolate->IdleNotification(1000)) {
-      }
+ 
+      // run the garbage collection for at most 30 seconds
+      TRI_RunGarbageCollectionV8(isolate, 30.0);
 
       // parameter array
       v8::Handle<v8::Array> params = v8::Array::New(isolate);

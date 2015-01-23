@@ -2809,7 +2809,6 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   double n = TRI_ObjectToDouble(args[0]);
-  double until = TRI_microtime() + n;
 
   bool gc = true; // default is to trigger the gc
   if (args.Length() > 1) {
@@ -2817,31 +2816,15 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   if (gc) {
-    // wait with gc
-    isolate->LowMemoryNotification();
-    // todo 1000 was the old V8-default, is this really good?
-    while (! isolate->IdleNotification(1000)) {
-    }
-
-    size_t i = 0;
-    while (TRI_microtime() < until) {
-      if (++i % 1000 == 0) {
-        // garbage collection only every x iterations, otherwise we'll use too much CPU
-        isolate->LowMemoryNotification();
-        // todo 1000 was the old V8-default, is this really good?
-        while(! isolate->IdleNotification(1000)) {
-        }
-      }
-
-      usleep(100);
-    }
+    TRI_RunGarbageCollectionV8(isolate, n);
   }
-  else {
-    // wait without gc
-    while (TRI_microtime() < until) {
-      usleep(100);
-    }
+    
+  // wait without gc
+  double until = TRI_microtime() + n;
+  while (TRI_microtime() < until) {
+    usleep(100);
   }
+
   TRI_V8_RETURN_UNDEFINED();
 }
 
@@ -3997,6 +3980,57 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
   }
 
   return scope.Escape<v8::Array>(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the V8 garbage collection for at most a specifiable amount of 
+/// time
+////////////////////////////////////////////////////////////////////////////////
+   
+void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
+                                 double availableTime) { 
+  int idleTimeInMs = 1000;
+
+  if (availableTime >= 5.0) {
+    idleTimeInMs = 10000;
+  }
+    
+  double const until = TRI_microtime() + availableTime;
+
+  int totalGcTimeInMs = static_cast<int>(availableTime) * 1000;
+  int gcAttempts = totalGcTimeInMs / idleTimeInMs;
+
+  if (gcAttempts <= 0) {
+    // minimum is to run the GC once
+    gcAttempts = 1;
+  }
+
+  int gcTries = 0;
+
+  isolate->LowMemoryNotification();
+  while (++gcTries <= gcAttempts) {
+    if (isolate->IdleNotification(idleTimeInMs)) {
+      // we're done
+      return;
+    }
+  }
+
+  size_t i = 0;
+  while (TRI_microtime() < until) {
+    if (++i % 1000 == 0) {
+      // garbage collection only every x iterations, otherwise we'll use too much CPU
+      isolate->LowMemoryNotification();
+      // todo 1000 was the old V8-default, is this really good?
+      while (++gcTries <= gcAttempts) {
+        if (isolate->IdleNotification(idleTimeInMs)) {
+          // we're done
+          return;
+        }
+      }
+    }
+
+    usleep(100);
+  }
 }
 
 // -----------------------------------------------------------------------------
