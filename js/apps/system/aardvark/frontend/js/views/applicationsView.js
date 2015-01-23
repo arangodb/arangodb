@@ -602,7 +602,8 @@
           self.showFoxxDevappPath(a.appPath);
           return;
         }
-        //TODO Error Handling
+      }).fail(function(a) {
+        alert( "A development app with this name already exists" );
       });
     },
 
