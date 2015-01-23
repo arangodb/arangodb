@@ -24,4 +24,8 @@ Start ArangoDB shell client:
 
 Start ArangoDB service:
   > /etc/init.d/arangodb start
+
+Remote access to the ArangoDB server is disabled for security reasons. 
+In order to enable it, please change the server endpoint from '127.0.0.1' 
+to '0.0.0.0' in ArangoDB's configuration file '/etc/init.d/arangod.conf'.
 "
