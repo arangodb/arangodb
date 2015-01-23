@@ -392,7 +392,7 @@ function processQuery (query, plan) {
         index.ranges = node.ranges.map(buildRanges).join(" || ");
         index.collection = node.collection;
         indexes.push(index);
-        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* index scan using " + node.index.type + " index") + annotation("*/");
+        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + "index scan using " + node.index.type + " index") + annotation("*/");
       case "CalculationNode":
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression);
       case "FilterNode":
