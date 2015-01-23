@@ -1440,7 +1440,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     localContext->Enter();
     v8::Context::Scope contextScope(localContext);
 
-    TRI_RunGarbageCollectionV8(isolate, 60.0);
+    TRI_RunGarbageCollectionV8(isolate, 5.0);
 
     TRI_GET_GLOBALS();
     if (v8g != nullptr) {
