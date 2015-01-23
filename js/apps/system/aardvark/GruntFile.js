@@ -163,6 +163,12 @@
             'clusterFrontend/scss/{,*/}*.{scss,sass}', 
           ],
           tasks: ['sass:dev']
+        },
+        concat_in_order: {
+          files: [
+            'frontend/js/{,*/}*.js'
+          ],
+          tasks: ['concat_in_order:default']
         }
       }
     });
@@ -172,8 +178,13 @@
     grunt.registerTask('default', [
       'sass:dev',
       'concat_in_order:default',
+      'watch'
+    ]);
+
+    grunt.registerTask('deploy', [
+      'sass:dist',
+      'concat_in_order:default',
       'uglify:dist'
-//      'watch'
     ]);
 
   };
