@@ -2187,6 +2187,7 @@ char* TRI_LocateConfigDirectory () {
 #else
     TRI_AppendString(&v, "etc\\arangodb\\");
 #endif
+    return v;
   }
 #ifdef _SYSCONFDIR_
   else {
