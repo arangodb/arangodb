@@ -40,7 +40,7 @@
 // --SECTION--                                                 private constants
 // -----------------------------------------------------------------------------
 
-#define ABC_C "ABC_constDEFGHIJKLMNOP"
+#define ABC_C "ABCDEFGHIJKLMNOP"
 #define AEP_C "AEPDEFGHIJKLMNOP"
 #define REP_C "REPDEFGHIJKLMNOP"
 #define STR_C "The quick brown fox jumped over the laxy dog"
@@ -292,7 +292,7 @@ BOOST_AUTO_TEST_CASE (tst_erase_frnt2) {
 
   TRI_string_buffer_t sb;
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
-  TRI_AppendStringStringBuffer(&sb, "ABC_constdef");
+  TRI_AppendStringStringBuffer(&sb, "abcdef");
   TRI_EraseFrontStringBuffer(&sb, 5);
 
   l = STRLEN(sb._buffer);
