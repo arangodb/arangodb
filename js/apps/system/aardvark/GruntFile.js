@@ -7,12 +7,92 @@
       pkg: grunt.file.readJSON('package.json'),
 
       project: {
+        shared: {
+          js: [
+
+          ],
+          lib: [
+            "frontend/js/lib/jquery-2.1.0.min.js",
+            "frontend/js/lib/underscore.js",
+            "frontend/js/lib/backbone.js",
+            "frontend/js/lib/bootstrap.js"
+          ]
+        },
         standalone: {
           css: [
             "frontend/scss/style.scss"
           ],
+          lib: [
+            "frontend/js/lib/jquery-ui-1.9.2.custom.js",
+            "frontend/js/lib/jquery.snippet.js",
+            "frontend/js/lib/jquery.slideto.min.js",
+            "frontend/js/lib/jquery.wiggle.min.js",
+            "frontend/js/lib/jquery.contextmenu.js",
+            "frontend/js/lib/jquery.hotkeys.js",
+            "frontend/js/lib/jquery.form.js",
+            "frontend/js/lib/jquery.uploadfile.js",
+            "frontend/js/lib/select2.min.js",
+            "frontend/js/lib/handlebars-1.0.rc.1.js",
+            "frontend/js/lib/underscore.js",
+            "frontend/js/lib/backbone.js",
+            "frontend/js/lib/jsoneditor-min.js",
+            "frontend/js/lib/d3.v3.min.js",
+            "frontend/js/lib/nv.d3.js",
+            "frontend/js/lib/strftime-min.js",
+            "frontend/js/lib/dygraph-combined.js",
+            "frontend/js/lib/d3.fisheye.js",
+            "frontend/js/lib/bootstrap-pagination.js",
+            "frontend/js/lib/jqconsole.min.js",
+            "frontend/js/lib/swagger.js",
+            "frontend/js/lib/swagger-ui.js",
+            "frontend/js/lib/highlight.7.3.pack.js",
+            "frontend/js/lib/joi.browser.js",
+            "frontend/js/lib/md5.js",
+            "frontend/src/ace.js"
+          ],
           js: [
-            "frontend/js/*"
+            "frontend/js/graphViewer/graph/*",
+            "frontend/js/graphViewer/ui/*",
+            "frontend/js/graphViewer/graphViewer.js",
+            "frontend/js/arango/templateEngine.js",
+            "frontend/js/shell/browser.js",
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/modules/underscore.js",
+            "frontend/js/modules/org/arangodb/aql/functions.js",
+            "frontend/js/modules/org/arangodb/graph/traversal.js",
+            "frontend/js/modules/org/arangodb/.js",
+            "frontend/js/modules/org/arangodb/arango-collection-common.js",
+            "frontend/js/modules/org/arangodb/arango-collection.js",
+            "frontend/js/modules/org/arangodb/arango-database.js",
+            "frontend/js/modules/org/arangodb/arango-query-cursor.js",
+            "frontend/js/modules/org/arangodb/arango-statement-common.js",
+            "frontend/js/modules/org/arangodb/arango-statement.js",
+            "frontend/js/modules/org/arangodb/arangosh.js",
+            "frontend/js/modules/org/arangodb/general-graph.js",
+            "frontend/js/modules/org/arangodb/graph-blueprint.js",
+            "frontend/js/modules/org/arangodb/graph-common.js",
+            "frontend/js/modules/org/arangodb/graph.js",
+            "frontend/js/modules/org/arangodb/is.js",
+            "frontend/js/modules/org/arangodb/mimetypes.js",
+            "frontend/js/modules/org/arangodb/replication.js",
+            "frontend/js/modules/org/arangodb/simple-query-common.js",
+            "frontend/js/modules/org/arangodb/simple-query.js",
+            "frontend/js/modules/org/arangodb/tutorial.js",
+            "frontend/js/modules/org/arangodb-common.js",
+            "frontend/js/modules/org/arangodb.js",
+            "frontend/js/bootstrap/errors.js",
+            "frontend/js/bootstrap/monkeypatches.js",
+            "frontend/js/bootstrap/module-internal.js",
+            "frontend/js/client/bootstrap/module-internal.js",
+            "frontend/js/client/client.js",
+            "frontend/js/bootstrap/module-console.js",
+            "frontend/js/arango/arango.js",
+            "frontend/js/models/*",
+            "frontend/js/collections/*",
+            "frontend/js/views/*",
+            "frontend/js/routers/router.js",
+            "frontend/js/routers/versionCheck.js",
+            "frontend/js/routers/startApp.js"
           ]
         },
         cluster: {
@@ -46,6 +126,36 @@
         }
       },
 
+      
+      concat_in_order: {
+        default: {
+          files: {
+            'frontend/build/app.js': [
+              '<%=project.shared.lib %>',
+              '<%=project.standalone.lib %>',
+
+              '<%=project.standalone.js %>'
+            ]
+          },
+          options: {
+            extractRequired: function () {
+              return [];
+            },
+            extractDeclared: function () {
+              return [];
+            }
+          }
+        }
+      },
+      
+      uglify: {
+        dist: {
+          files: {
+            'frontend/build/app.min.js': 'frontend/build/app.js'
+          }
+        }
+      },
+
       watch: {
         sass: {
           files: [
@@ -61,7 +171,9 @@
 
     grunt.registerTask('default', [
       'sass:dev',
-      'watch'
+      'concat_in_order:default',
+      'uglify:dist'
+//      'watch'
     ]);
 
   };
