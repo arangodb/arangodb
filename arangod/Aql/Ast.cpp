@@ -515,7 +515,7 @@ AstNode* Ast::createNodeCollection (char const* name) {
   }
 
   if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
-    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return nullptr;
   }
 
