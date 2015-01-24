@@ -459,7 +459,7 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
       for (size_t row = 0; row < n; ++row) {
         for (RegisterId col = 0; col < nrRegs; ++col) {
           // copy over value
-          if (! (*it)->getValue(row, col).isEmpty()) {
+          if (! (*it)->getValueReference(row, col).isEmpty()) {
             res->setValue(pos + row, col, (*it)->getValue(row, col));
           }
         }
