@@ -1982,7 +1982,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
-      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i)))); 
+      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)))); 
     }
 
     return node;
@@ -1993,11 +1993,11 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
+      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i + 1));
 
       if (! TRI_IsStringJson(key) || value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in array node");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in object node");
       }
 
       char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);
