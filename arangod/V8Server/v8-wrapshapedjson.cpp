@@ -291,7 +291,7 @@ v8::Handle<v8::Value> TRI_WrapShapedJson (v8::Isolate* isolate,
     TRI_shape_t const* shape = shaper->lookupShapeId(shaper, json._sid);
 
     if (shape == nullptr) {
-      return v8::Object::New(isolate);
+      return scope.Escape<v8::Value>(v8::Object::New(isolate));
     }
 
     v8::Handle<v8::Object> result = SetBasicDocumentAttributesJs(isolate, resolver, v8g, cid, marker);
