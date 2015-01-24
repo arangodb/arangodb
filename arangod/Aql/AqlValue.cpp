@@ -428,7 +428,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial (v8::Isolate* isolate,
 
     // iterate over all the object's attributes
     for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
 
       if (! TRI_IsStringJson(key)) { 
         continue;
@@ -442,7 +442,7 @@ v8::Handle<v8::Value> AqlValue::toV8Partial (v8::Isolate* isolate,
         continue;
       }
 
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, (i + 1)));
+      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, (i + 1)));
 
       if (value != nullptr) {
         result->ForceSet(TRI_V8_STD_STRING((*it)), TRI_ObjectJson(isolate, value));
