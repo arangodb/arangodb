@@ -1050,7 +1050,7 @@ bool IndexRangeBlock::initRanges () {
         
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
+        if (ExecutionEngine::isRunningInCluster()) {
           for (auto e : _allVariableBoundExpressions) {
             e->invalidate();
           }
@@ -1684,8 +1684,8 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
           int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
-            bool const isCluster = (ExecutionEngine::isCoordinator() ||
-                ExecutionEngine::isDBServer());
+            bool const isCluster = ExecutionEngine::isRunningInCluster();
+
             if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
               // only continue lookup if the id value is syntactically correct and
               // refers to "our" collection, using local collection id
@@ -2434,7 +2434,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       [&]() -> void { 
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
+        if (ExecutionEngine::isRunningInCluster()) {
           _expression->invalidate();
         }
         engine->getQuery()->exitContext(); 
@@ -5431,8 +5431,8 @@ RemoteBlock::RemoteBlock (ExecutionEngine* engine,
     _queryId(queryId) {
 
   TRI_ASSERT(! queryId.empty());
-  TRI_ASSERT((ExecutionEngine::isCoordinator() && ownName.empty()) ||
-             (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
+  TRI_ASSERT_EXPENSIVE((ExecutionEngine::isCoordinator() && ownName.empty()) ||
+                       (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
 }
 
 RemoteBlock::~RemoteBlock () {
