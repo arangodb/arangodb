@@ -335,7 +335,12 @@
       //if input-field is available -> autofocus first one
       var focus = $('#modal-dialog').find('input');
       if (focus) {
-        setTimeout(function() {$(focus[0]).focus();}, 800);
+        setTimeout(function() {
+          var focus = $('#modal-dialog').find('input');
+          if (focus) {
+            $(focus[0]).focus();
+          }
+        }, 800);
       }
 
     },
