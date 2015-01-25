@@ -1604,19 +1604,18 @@
               fnAddData: function () {
               },
               snippet: function () {
+              },
+              each: function (list, callback) {
+                var callBackWraper = function (a, b) {
+                  callback(b, a);
+                };
+                list.forEach(callBackWraper);
               }
-
             };
             spyOn(jQueryDummy, "dataTable").andCallThrough();
             spyOn(jQueryDummy, "fnAddData");
             spyOn(jQueryDummy, "snippet");
             spyOn(window, "$").andReturn(jQueryDummy);
-            $.each = function (list, callback) {
-              var callBackWraper = function (a, b) {
-                callback(b, a);
-              };
-              list.forEach(callBackWraper);
-            };
 
             var arangoDocsStoreDummy = {
               models: [
@@ -2706,6 +2705,12 @@
           it("getIndex", function () {
             jQueryDummy = {
               append: function () {
+              },
+              each: function (list, callback) {
+                var callBackWraper = function (a, b) {
+                  callback(b, a);
+                };
+                list.forEach(callBackWraper);
               }
             };
             spyOn(jQueryDummy, "append");
@@ -2732,12 +2737,6 @@
               }
             );
             view.collectionsStore = new window.arangoCollections();
-            $.each = function (list, callback) {
-              var callBackWraper = function (a, b) {
-                callback(b, a);
-              };
-              list.forEach(callBackWraper);
-            };
             view.collection = {
               collectionID: "coll"
             };
@@ -2783,6 +2782,12 @@
           it("getIndex with no result", function () {
             jQueryDummy = {
               append: function () {
+              },
+              each: function (list, callback) {
+                var callBackWraper = function (a, b) {
+                  callback(b, a);
+                };
+                list.forEach(callBackWraper);
               }
             };
             spyOn(jQueryDummy, "append");
@@ -2799,12 +2804,6 @@
             spyOn(window, "arangoCollections").andReturn(arangoCollectionsDummy);
             spyOn(arangoCollectionsDummy, "getIndex").andReturn(undefined);
             view.collectionsStore = new window.arangoCollections();
-            $.each = function (list, callback) {
-              var callBackWraper = function (a, b) {
-                callback(b, a);
-              };
-              list.forEach(callBackWraper);
-            };
 
             view.collection = {
               collectionID: "coll"
