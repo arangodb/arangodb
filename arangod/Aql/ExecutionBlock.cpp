@@ -2124,7 +2124,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
 
     // get the thing we are looping over
-    AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+    AqlValue inVarReg = cur->getValueReference(_pos, _inVarRegId);
     size_t sizeInVar = 0; // to shut up compiler
 
     // get the size of the thing we are looping over
@@ -2132,7 +2132,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     switch (inVarReg._type) {
       case AqlValue::JSON: {
         if (! inVarReg._json->isArray()) {
-          throwListExpectedException();
+          throwArrayExpectedException();
         }
         sizeInVar = inVarReg._json->size();
         break;
@@ -2160,11 +2160,11 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       }
 
       case AqlValue::SHAPED: {
-        throwListExpectedException();
+        throwArrayExpectedException();
       }
 
       case AqlValue::EMPTY: {
-        throwListExpectedException();
+        throwArrayExpectedException();
       }
     }
 
@@ -2253,7 +2253,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
     switch (inVarReg._type) {
       case AqlValue::JSON: {
         if (! inVarReg._json->isArray()) {
-          throwListExpectedException();
+          throwArrayExpectedException();
         }
         sizeInVar = inVarReg._json->size();
         break;
@@ -2278,7 +2278,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
       case AqlValue::SHAPED: 
       case AqlValue::EMPTY: {
-        throwListExpectedException();
+        throwArrayExpectedException();
       }
     }
 
@@ -2305,7 +2305,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 /// @brief create an AqlValue from the inVariable using the current _index
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
+AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
   switch (inVarReg._type) {
     case AqlValue::JSON: {
       // FIXME: is this correct? What if the copy works, but the
@@ -2333,14 +2333,14 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
     }
   }
 
-  throwListExpectedException();
+  throwArrayExpectedException();
   TRI_ASSERT(false);
 
   // cannot be reached. function call above will always throw an exception
   return AqlValue();
 }
           
-void EnumerateListBlock::throwListExpectedException () {
+void EnumerateListBlock::throwArrayExpectedException () {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_ARRAY_EXPECTED, 
                                  TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
                                  std::string(" as operand to FOR loop"));
@@ -2359,6 +2359,8 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     _outReg(ExecutionNode::MaxRegisterId) {
 
   std::unordered_set<Variable*> inVars = _expression->variables();
+  _inVars.reserve(inVars.size());
+  _inRegs.reserve(inVars.size());
 
   for (auto it = inVars.begin(); it != inVars.end(); ++it) {
     _inVars.push_back(*it);
@@ -2381,6 +2383,13 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
   TRI_ASSERT(it3 != en->getRegisterPlan()->varInfo.end());
   _outReg = it3->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
+  
+  if (en->_conditionVariable != nullptr) {
+    auto it = en->getRegisterPlan()->varInfo.find(en->_conditionVariable->id);
+    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+    _conditionReg = it->second.registerId;
+    TRI_ASSERT(_conditionReg < ExecutionNode::MaxRegisterId);
+  }
 }
 
 CalculationBlock::~CalculationBlock () {
@@ -2391,45 +2400,93 @@ int CalculationBlock::initialize () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fill the target register in the item block with a reference to 
+/// another variable
+////////////////////////////////////////////////////////////////////////////////
+
+void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
+  result->setDocumentCollection(_outReg, result->getDocumentCollection(_inRegs[0]));
+
+  size_t const n = result->size();
+  for (size_t i = 0; i < n; i++) {
+    // need not clone to avoid a copy, the AqlItemBlock's hash takes
+    // care of correct freeing:
+    AqlValue a = result->getValueReference(i, _inRegs[0]);
+    try {
+      result->setValue(i, _outReg, a);
+    }
+    catch (...) {
+      a.destroy();
+      throw;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shared code for executing a simple or a V8 expression
+////////////////////////////////////////////////////////////////////////////////
+
+void CalculationBlock::executeExpression (AqlItemBlock* result) {
+  std::vector<AqlValue>& data(result->getData());
+  std::vector<TRI_document_collection_t const*> docColls(result->getDocumentCollections());
+
+  RegisterId nrRegs = result->getNrRegs();
+  result->setDocumentCollection(_outReg, nullptr);
+
+  bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
+
+  size_t const n = result->size();
+  for (size_t i = 0; i < n; i++) {
+    // check the condition variable (if any)
+    if (hasCondition) {
+      AqlValue conditionResult = result->getValueReference(i, _conditionReg);
+
+      if (! conditionResult.isTrue()) {
+        result->setValue(i, _outReg, AqlValue(new Json(Json::Null)));
+        continue;
+      }
+    }
+
+    // execute the expression
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
+    try {
+      result->setValue(i, _outReg, a);
+    }
+    catch (...) {
+      a.destroy();
+      throw;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief doEvaluation, private helper to do the work
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::doEvaluation (AqlItemBlock* result) {
   TRI_ASSERT(result != nullptr);
 
-  size_t const n = result->size();
   if (_isReference) {
-    // the expression is a reference to a variable only.
+    // the calculation is a reference to a variable only.
     // no need to execute the expression at all
-    result->setDocumentCollection(_outReg, result->getDocumentCollection(_inRegs[0]));
+    fillBlockWithReference(result);
+    return;
+  }
 
-    for (size_t i = 0; i < n; i++) {
-      // need not clone to avoid a copy, the AqlItemBlock's hash takes
-      // care of correct freeing:
-      AqlValue a = result->getValue(i, _inRegs[0]);
-      try {
-        result->setValue(i, _outReg, a);
-      }
-      catch (...) {
-        a.destroy();
-        throw;
-      }
-    }
+  // non-reference expression
+
+  TRI_ASSERT(_expression != nullptr);
+
+  if (! _expression->isV8()) {
+    // an expression that does not require V8
+    executeExpression(result);
   }
   else {
-    vector<AqlValue>& data(result->getData());
-    vector<TRI_document_collection_t const*> docColls(result->getDocumentCollections());
-
-    RegisterId nrRegs = result->getNrRegs();
-    result->setDocumentCollection(_outReg, nullptr);
-
-    TRI_ASSERT(_expression != nullptr);
-
     // must have a V8 context here to protect Expression::execute()
-    auto engine = _engine;
     triagens::basics::ScopeGuard guard{
-      [&engine]() -> void { 
-        engine->getQuery()->enterContext(); 
+      [&]() -> void {
+        _engine->getQuery()->enterContext(); 
       },
       [&]() -> void { 
         // must invalidate the expression now as we might be called from
@@ -2437,24 +2494,17 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
         if (ExecutionEngine::isRunningInCluster()) {
           _expression->invalidate();
         }
-        engine->getQuery()->exitContext(); 
+        _engine->getQuery()->exitContext(); 
       }
     };
+
     ISOLATE;
     v8::HandleScope scope(isolate); // do not delete this!
 
-    for (size_t i = 0; i < n; i++) {
-      // need to execute the expression
-      TRI_document_collection_t const* myCollection = nullptr;
-      AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
-      try {
-        result->setValue(i, _outReg, a);
-      }
-      catch (...) {
-        a.destroy();
-        throw;
-      }
-    }
+    // do not merge the following function call with the same function call above!
+    // the V8 expression execution must happen in the scope that contains
+    // the V8 handle scope and the scope guard
+    executeExpression(result);
   }
 }
 

@@ -142,7 +142,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         ISOLATE;
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(isolate, _ast->query(), trx, _attributes, docColls, argv, startPos, vars, regs);
+        return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
@@ -314,9 +314,10 @@ void Expression::analyzeExpression () {
       _attributes = std::move(Ast::getReferencedAttributes(_node, isSafeForOptimization));
 
       if (! isSafeForOptimization) {
-        // unfortunately there are not only top-level attribute accesses but
-        // also other accesses, e.g. the index values or the whole value
         _attributes.clear();
+        // unfortunately there are not only top-level attribute accesses but
+        // also other accesses, e.g. the index values or accesses of the whole value.
+        // for example, we cannot optimize LET x = a +1 or LET x = a[0], but LET x = a._key 
       }
     }
   }
@@ -345,6 +346,12 @@ void Expression::buildExpression () {
   else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
+  
+    // optimizations for the generated function 
+    if (_func != nullptr && ! _attributes.empty()) {
+      // pass which variables do not need to be fully constructed
+      _func->setAttributeRestrictions(_attributes);
+    }
   }
 
   _built = true;
