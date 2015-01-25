@@ -419,10 +419,21 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
 
   AstNode const* variable = node->getMember(0);
   AstNode const* expression = node->getMember(1);
+
+  Variable const* conditionVariable = nullptr;
+
+  if (node->numMembers() > 2) {
+    // a LET with an IF condition
+    auto condition = createTemporaryCalculation(node->getMember(2));
+    condition->addDependency(previous);
+    previous = condition;
+
+    conditionVariable = condition->outVariable();
+  }
 
   auto v = static_cast<Variable*>(variable->getData());
   
@@ -464,11 +475,11 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
       // otherwise fall-through to normal behavior
     }
 
-    // operand is some misc expression, including references to other variables
+    // operand is some misc expression, potentially including references to other variables
     auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 
     try {
-      en = registerNode(new CalculationNode(this, nextId(), expr, v));
+      en = registerNode(new CalculationNode(this, nextId(), expr, conditionVariable, v));
     }
     catch (...) {
       // prevent memleak

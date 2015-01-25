@@ -1645,6 +1645,7 @@ double LimitNode::estimateCost (size_t& nrItems) const {
 CalculationNode::CalculationNode (ExecutionPlan* plan,
                                   triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
+    _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable")),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
     _expression(new Expression(plan->getAst(), base)) {
 }
@@ -1666,6 +1667,10 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
       ("outVariable", _outVariable->toJson())
       ("canThrow", triagens::basics::Json(_expression->canThrow()));
 
+  if (_conditionVariable != nullptr) {
+    json("conditionVariable", _conditionVariable->toJson());
+  }
+
   // And add it:
   nodes(json);
 }
@@ -1673,13 +1678,17 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
 ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
+  auto conditionVariable = _conditionVariable;
   auto outVariable = _outVariable;
 
   if (withProperties) {
+    if (_conditionVariable != nullptr) {
+      conditionVariable = plan->getAst()->variables()->createVariable(conditionVariable);
+    }
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new CalculationNode(plan, _id, _expression->clone(),
-                               outVariable);
+
+  auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 

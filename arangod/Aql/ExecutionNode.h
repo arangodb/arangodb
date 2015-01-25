@@ -1398,13 +1398,26 @@ namespace triagens {
         CalculationNode (ExecutionPlan* plan,
                          size_t id,
                          Expression* expr, 
+                         Variable const* conditionVariable,
                          Variable const* outVariable)
           : ExecutionNode(plan, id), 
+            _conditionVariable(conditionVariable),
             _outVariable(outVariable),
             _expression(expr) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        CalculationNode (ExecutionPlan* plan,
+                         size_t id,
+                         Expression* expr, 
+                         Variable const* outVariable)
+          : CalculationNode(plan, id, expr, nullptr, outVariable) { 
         }
 
         CalculationNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -1477,6 +1490,11 @@ namespace triagens {
           for (auto vv : vars) {
             v.emplace_back(vv);
           }
+
+          if (_conditionVariable != nullptr) {
+            v.emplace_back(_conditionVariable);
+          }
+
           return v;
         }
 
@@ -1503,6 +1521,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an optional condition variable for the calculation
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _conditionVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable to write to

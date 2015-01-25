@@ -59,7 +59,7 @@ namespace triagens {
 
     class Expression {
 
-      enum ExpressionType {
+      enum ExpressionType : uint32_t {
         UNPROCESSED,
         JSON,
         V8,
@@ -173,11 +173,33 @@ namespace triagens {
 /// @brief check whether this is a simple expression
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isSimple () {
+        inline bool isSimple () {
           if (_type == UNPROCESSED) {
             analyzeExpression();
           }
           return _type == SIMPLE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a JSON expression
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isJson () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
+          return _type == JSON;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a V8 expression
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool isV8 () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
+          return _type == V8;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -353,4 +375,3 @@ namespace triagens {
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
 // End:
-
