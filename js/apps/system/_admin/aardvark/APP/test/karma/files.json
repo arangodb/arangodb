@@ -88,9 +88,6 @@
     "test/specs/views/userManagementViewSpec.js",
 
     "test/specs/router/routerSpec.js",
-    "test/specs/router/clusterRouterSpec.js",
-
-    "test/specs/router/routerSpec.js",
 
     "test/specs/router/versionCheckSpec.js"
   ]
