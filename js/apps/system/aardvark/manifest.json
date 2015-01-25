@@ -105,7 +105,7 @@
 
     "app.js": {
       "files": [
-        "frontend/build/app.min.js"
+        "frontend/build/app.js"
       ]
     },
 

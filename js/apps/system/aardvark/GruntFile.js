@@ -33,8 +33,6 @@
             "frontend/js/lib/jquery.uploadfile.js",
             "frontend/js/lib/select2.min.js",
             "frontend/js/lib/handlebars-1.0.rc.1.js",
-            "frontend/js/lib/underscore.js",
-            "frontend/js/lib/backbone.js",
             "frontend/js/lib/jsoneditor-min.js",
             "frontend/js/lib/d3.v3.min.js",
             "frontend/js/lib/nv.d3.js",
@@ -50,17 +48,19 @@
             "frontend/js/lib/md5.js",
             "frontend/src/ace.js"
           ],
-          js: [
+          graphViewer: [
             "frontend/js/graphViewer/graph/*",
             "frontend/js/graphViewer/ui/*",
-            "frontend/js/graphViewer/graphViewer.js",
+            "frontend/js/graphViewer/graphViewer.js"
+          ],
+          modules: [
+            "frontend/js/arango/arango.js",
             "frontend/js/arango/templateEngine.js",
             "frontend/js/shell/browser.js",
             "frontend/js/config/dygraphConfig.js",
             "frontend/js/modules/underscore.js",
             "frontend/js/modules/org/arangodb/aql/functions.js",
             "frontend/js/modules/org/arangodb/graph/traversal.js",
-            "frontend/js/modules/org/arangodb/.js",
             "frontend/js/modules/org/arangodb/arango-collection-common.js",
             "frontend/js/modules/org/arangodb/arango-collection.js",
             "frontend/js/modules/org/arangodb/arango-database.js",
@@ -85,8 +85,9 @@
             "frontend/js/bootstrap/module-internal.js",
             "frontend/js/client/bootstrap/module-internal.js",
             "frontend/js/client/client.js",
-            "frontend/js/bootstrap/module-console.js",
-            "frontend/js/arango/arango.js",
+            "frontend/js/bootstrap/module-console.js"
+          ],
+          js: [
             "frontend/js/models/*",
             "frontend/js/collections/*",
             "frontend/js/views/*",
@@ -133,7 +134,8 @@
             'frontend/build/app.js': [
               '<%=project.shared.lib %>',
               '<%=project.standalone.lib %>',
-
+              '<%=project.standalone.graphViewer %>',
+              '<%=project.standalone.modules %>',
               '<%=project.standalone.js %>'
             ]
           },
@@ -146,6 +148,15 @@
             }
           }
         }
+      },
+
+      jshint: {
+        options: {
+          laxbreak: true
+        },
+        default: [
+          '<%=project.standalone.js %>'
+        ]
       },
       
       uglify: {
