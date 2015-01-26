@@ -89,3 +89,4 @@ gtags.files
 turbo*.cfg
 turbo*.dot
 turbo*.json
+out
