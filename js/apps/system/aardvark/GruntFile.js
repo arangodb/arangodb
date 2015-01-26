@@ -147,6 +147,27 @@
               return [];
             }
           }
+        },
+        coverage: {
+          files: {
+            'frontend/build/lib.test.js': [
+              '<%=project.shared.lib %>',
+              '<%=project.standalone.lib %>',
+              '<%=project.standalone.modules %>'
+            ],
+            'frontend/build/app.test.js': [
+              '<%=project.standalone.graphViewer %>',
+              '<%=project.standalone.js %>'
+            ]
+          },
+          options: {
+            extractRequired: function () {
+              return [];
+            },
+            extractDeclared: function () {
+              return [];
+            }
+          }
         }
       },
 
@@ -196,6 +217,10 @@
       'sass:dist',
       'concat_in_order:default',
       'uglify:dist'
+    ]);
+
+    grunt.registerTask('coverage', [
+      'concat_in_order:coverage'
     ]);
 
   };
