@@ -1592,15 +1592,7 @@ function resultError (req, res, httpReturnCode, errorNum, errorMessage, headers,
 /// @brief function that's returned for actions that produce an error
 ////////////////////////////////////////////////////////////////////////////////
 
-function reloadRouting () {
-  RoutingCache = {};
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief flushes cache and reload routing information for a database
-////////////////////////////////////////////////////////////////////////////////
-
-function reloadRoutingDB () {
+function errorFunction (route, message) {
   'use strict';
 
   message += "\nThis error was triggered by the following route " + JSON.stringify(route);
@@ -1612,146 +1604,6 @@ function reloadRoutingDB () {
     res.contentType = "text/plain";
     res.body = message;
   };
-
-  // .............................................................................
-  // loop over the routes or routes bundle
-  // .............................................................................
-
-  for (j = 0;  j < routes.length;  ++j) {
-
-    // clone the route object so the barrier for the collection can be removed soon
-    var route = routes[j];
-
-    try {
-      if (route.hasOwnProperty('routes') || route.hasOwnProperty('middleware')) {
-        analyseRoute(route);
-      }
-      else {
-        installRoute(routingCache.routes, "", "", {}, route);
-      }
-    }
-    catch (err) {
-      console.error("cannot install route '%s': %s",
-                    route.toString(),
-                    String(err.stack || err));
-    }
-  }
-
-  // .............................................................................
-  // compute the flat routes
-  // .............................................................................
-
-  routingCache.flat = {};
-
-  for (i = 0;  i < ALL_METHODS.length;  ++i) {
-    var a;
-    var b;
-
-    method = ALL_METHODS[i];
-
-    a = flattenRouting(routingCache.routes[method], "", {}, 0, false);
-    b = flattenRouting(routingCache.middleware[method], "", {}, 0, false).reverse();
-
-    routingCache.flat[method] = b.concat(a);
-  }
-
-  // once we're done, we can set the complete routing cache for database
-  // doing this here instead of above ensures we don't have a half-updated routing
-  // cache if this function fails somewhere in the middle
-  RoutingCache[arangodb.db._name()] = routingCache;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds the next routing
-////////////////////////////////////////////////////////////////////////////////
-
-function nextRouting (state) {
-  'use strict';
-
-  var i;
-  var k;
-
-  for (i = state.position + 1;  i < state.routing.length;  ++i) {
-    var route = state.routing[i];
-
-    if (route.regexp.test(state.url)) {
-      state.position = i;
-
-      state.route = route;
-
-      if (route.prefix) {
-        state.prefix = "/" + state.parts.slice(0, route.depth - 1).join("/");
-        state.suffix = state.parts.slice(route.depth - 1, state.parts.length);
-      }
-      else {
-        delete state.prefix;
-        delete state.suffix;
-      }
-
-      state.urlParameters = {};
-
-      if (route.urlParameters) {
-        for (k in route.urlParameters) {
-          if (route.urlParameters.hasOwnProperty(k)) {
-            state.urlParameters[k] = state.parts[route.urlParameters[k]];
-          }
-        }
-      }
-
-      return state;
-    }
-  }
-
-  delete state.route;
-  delete state.prefix;
-  delete state.suffix;
-  state.urlParameters = {};
-
-  return state;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief finds the first routing
-////////////////////////////////////////////////////////////////////////////////
-
-function firstRouting (type, parts) {
-  'use strict';
-
-  var url = parts;
-
-  if (undefined === RoutingCache[arangodb.db._name()]) {
-    reloadRoutingDB();
-  }
-
-  var routingCache = RoutingCache[arangodb.db._name()];
-
-  if (typeof url === 'string') {
-    parts = url.split("/");
-
-    if (parts[0] === '') {
-      parts.shift();
-    }
-  }
-  else {
-    url = "/" + parts.join("/");
-  }
-
-  if (! routingCache.flat || ! routingCache.flat.hasOwnProperty(type)) {
-    return {
-      parts: parts,
-      position: -1,
-      url: url,
-      urlParameters: {}
-    };
-  }
-
-  return nextRouting({
-    routing: routingCache.flat[type],
-    parts: parts,
-    position: -1,
-    url: url,
-    urlParameters: {}
-  });
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2413,12 +2265,6 @@ exports.errorFunction            = errorFunction;
 exports.reloadRouting            = reloadRouting;
 exports.firstRouting             = firstRouting;
 exports.nextRouting              = nextRouting;
-exports.routingCache             = function() { 
-  if (undefined === RoutingCache[arangodb.db._name()]) {
-    reloadRoutingDB();
-  }
-  return RoutingCache[arangodb.db._name()]; 
-};
 exports.addCookie                = addCookie;
 exports.stringifyRequestAddress  = stringifyRequestAddress;
 
