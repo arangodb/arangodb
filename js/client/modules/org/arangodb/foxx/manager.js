@@ -39,9 +39,14 @@
 
   var arangodb = require("org/arangodb");
   var arangosh = require("org/arangodb/arangosh");
+  var errors = arangodb.errors;
   var ArangoError = arangodb.ArangoError;
   var checkParameter = arangodb.checkParameter;
   var arango = require("internal").arango;
+  var fs = require("fs");
+
+  var throwFileNotFound = arangodb.throwFileNotFound;
+  var throwBadParameter = arangodb.throwBadParameter;
 
   var utils = require("org/arangodb/foxx/manager-utils");
   var store = require("org/arangodb/foxx/store");
@@ -248,6 +253,42 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Zips and copies a local app to the server.
+///
+////////////////////////////////////////////////////////////////////////////////
+
+  var moveAppToServer = function(appInfo) {
+    if (!fs.exists(appInfo)) {
+      throwFileNotFound("Cannot find file: " + appInfo + ".");
+    }
+    var filePath;
+    if (fs.isDirectory(appInfo)) {
+      filePath = utils.zipDirectory(appInfo);
+    }
+    if (fs.isFile(appInfo)) {
+      filePath = appInfo;
+    }
+    if (!filePath) {
+      throwBadParameter("Invalid file: " + appInfo + ". Has to be a direcotry or zip archive");
+    }
+    var response = arango.SEND_FILE("/_api/upload", filePath);
+    try {
+      fs.remove(filePath);
+    }
+    catch (err2) {
+      arangodb.printf("Cannot remove temporary file '%s'\n", filePath);
+    }
+    if (! response.filename) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_APPLICATION_UPLOAD_FAILED.code,
+        errorMessage: errors.ERROR_APPLICATION_UPLOAD_FAILED.message
+                    + ": " + String(response.errorMessage)
+      });
+    }
+    return response.filename;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Installs a new foxx application on the given mount point.
 ///
 /// TODO: Long Documentation!
@@ -260,6 +301,10 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
 
+
+    if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+      appInfo = moveAppToServer(appInfo);
+    }
     var res;
     var req = {
       appInfo: appInfo,
@@ -434,7 +479,7 @@
           store.search(args[1]);
           break;
         case "update":
-          store.available();
+          store.update();
           break;
         case "help":
           help();

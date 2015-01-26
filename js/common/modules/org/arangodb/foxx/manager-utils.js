@@ -403,6 +403,35 @@ var typeToRegex = {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a zip archive of a foxx app. Returns the absolute path
+////////////////////////////////////////////////////////////////////////////////
+var zipDirectory = function(directory) {
+  "use strict";
+  if (!fs.isDirectory(directory)) {
+    throw directory + " is not a directory.";
+  }
+  var tempFile = fs.getTempFile("zip", false);
+
+  var tree = fs.listTree(directory);
+  var files = [];
+  var i;
+  var filename;
+
+  for (i = 0;  i < tree.length;  ++i) {
+    filename = fs.join(directory, tree[i]);
+
+    if (fs.isFile(filename)) {
+      files.push(tree[i]);
+    }
+  }
+
+  if (files.length === 0) {
+    throwFileNotFound("Directory '" + String(directory) + "' is empty");
+  }
+  fs.zipFile(tempFile, directory, files);
+  return tempFile;
+};
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -418,6 +447,7 @@ exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
 exports.validateAppName = validateAppName;
 exports.typeToRegex = typeToRegex;
+exports.zipDirectory = zipDirectory;
 
 exports.tmp_getStorage = tmp_getStorage;
 

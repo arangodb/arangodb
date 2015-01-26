@@ -515,26 +515,7 @@
 
   var installAppFromLocal = function(path, targetPath) {
     if (fs.isDirectory(path)) {
-      var tempFile = fs.getTempFile("downloads", false);
-
-      var tree = fs.listTree(path);
-      var files = [];
-      var i;
-      var filename;
-
-      for (i = 0;  i < tree.length;  ++i) {
-        filename = fs.join(path, tree[i]);
-
-        if (fs.isFile(filename)) {
-          files.push(tree[i]);
-        }
-      }
-
-      if (files.length === 0) {
-        throwFileNotFound("Directory '" + String(path) + "' is empty");
-      }
-      fs.zipFile(tempFile, path, files);
-      extractAppToPath(tempFile, targetPath);
+      extractAppToPath(utils.zipDirectory(path), targetPath);
     } else {
       extractAppToPath(path, targetPath, true);
     }
