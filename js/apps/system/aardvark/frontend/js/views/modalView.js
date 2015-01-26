@@ -336,9 +336,12 @@
       var focus = $('#modal-dialog').find('input');
       if (focus) {
         setTimeout(function() {
-          var focus = $('#modal-dialog').find('input');
-          if (focus) {
-            $(focus[0]).focus();
+          var focus = $('#modal-dialog');
+          if (focus.length > 0) {
+            focus = focus.find('input'); 
+              if (focus.length > 0) {
+                $(focus[0]).focus();
+              }
           }
         }, 800);
       }
