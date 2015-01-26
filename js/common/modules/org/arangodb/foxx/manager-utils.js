@@ -384,7 +384,7 @@ function mountedApp (mount) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the app mounted at this mount point
+/// @brief Update the app mounted at this mountpoint with the new app
 ////////////////////////////////////////////////////////////////////////////////
 function updateApp (mount, update) {
   "use strict";
@@ -424,13 +424,13 @@ var zipDirectory = function(directory) {
       files.push(tree[i]);
     }
   }
-
   if (files.length === 0) {
     throwFileNotFound("Directory '" + String(directory) + "' is empty");
   }
   fs.zipFile(tempFile, directory, files);
   return tempFile;
 };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////

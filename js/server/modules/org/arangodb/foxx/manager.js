@@ -468,7 +468,6 @@
     catch (err1) {
       arangodb.printf("Cannot remove temporary folder '%s'\n", tempFile);
     }
-
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -804,6 +803,10 @@
     return app.simpleJSON();
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Configure the app at the mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
   var configure = function(mount, options) {
     checkParameter(
       "configure(<mount>)",
@@ -819,6 +822,10 @@
     return app.simpleJSON();
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the configuration for the app at the given mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
   var configuration = function(mount) {
     checkParameter(
       "configuration(<mount>)",
@@ -827,6 +834,7 @@
     var app = lookupApp(mount);
     return app.getConfiguration();
   };
+
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           exports
