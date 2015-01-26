@@ -213,7 +213,6 @@
     var req = {
       mount: mount,
     };
-
     res = arango.POST("/_admin/foxx/setup", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return {
@@ -501,8 +500,6 @@
       return 1;
     }
   };
-
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           exports
