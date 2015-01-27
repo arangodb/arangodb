@@ -409,9 +409,15 @@ function CompactionSuite () {
 
       c1.truncate();
       testHelper.rotate(c1);
-      internal.wait(10);
+        
+      tries = 0;
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === 0) {
+          break;
+        }
+      }
      
-      fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
