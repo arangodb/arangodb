@@ -409,6 +409,7 @@ function CompactionSuite () {
 
       c1.truncate();
       testHelper.rotate(c1);
+      internal.wait(10);
      
       fig = c1.figures();
       assertEqual(0, c1.count());
