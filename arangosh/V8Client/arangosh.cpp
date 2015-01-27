@@ -2349,9 +2349,9 @@ int main (int argc, char* args[]) {
   // set-up V8 objects
   // .............................................................................
 
-  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("en")) {
-        BaseClient.printErrLine("cannot initialize ICU; please make shure ICU*dat is available.");
-        return -1;
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("en")) {
+    BaseClient.printErrLine("cannot initialize ICU; please make sure ICU*dat is available.");
+    return -1;
   }    
   v8::V8::InitializeICU();
 
