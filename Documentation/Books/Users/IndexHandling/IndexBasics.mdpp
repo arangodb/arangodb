@@ -10,7 +10,7 @@ can be created by specifying the names of the attributes which should be indexed
 Some index types allow indexing just one attribute (e.g. fulltext index) whereas 
 other index types allow indexing multiple attributes at the same time.
 
-The system attributes `_id`, `_key`, `_from` and `-to` are automatically indexed
+The system attributes `_id`, `_key`, `_from` and `_to` are automatically indexed
 by ArangoDB, without the user being required to create extra indexes for them.
 
 Therefore, indexing `_id`, `_key`, `_rev`, `_from`, and `_to` in a user-defined 
