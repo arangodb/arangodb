@@ -110,7 +110,7 @@ int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uin
   return _coll->compare((const UChar*) left, (int32_t) leftLength, (const UChar*) right, (int32_t) rightLength);
 }
 
-void Utf8Helper::setCollatorLanguage (std::string const& lang) {
+bool Utf8Helper::setCollatorLanguage (std::string const& lang) {
 #ifdef _WIN32
   TRI_FixIcuDataEnv();
 #endif
@@ -123,10 +123,10 @@ void Utf8Helper::setCollatorLanguage (std::string const& lang) {
 
     if(U_FAILURE(status)) {
       LOG_ERROR("error in Collator::getLocale(...): %s", u_errorName(status));
-      return;
+      return false;
     }
     if (lang == locale.getName()) {
-      return;
+      return true;
     }
   }
 
@@ -145,7 +145,7 @@ void Utf8Helper::setCollatorLanguage (std::string const& lang) {
     if (coll) {
       delete coll;
     }
-    return;
+    return false;
   }
 
   // set the default attributes for sorting:
@@ -156,7 +156,7 @@ void Utf8Helper::setCollatorLanguage (std::string const& lang) {
   if(U_FAILURE(status)) {
     LOG_ERROR("error in Collator::setAttribute(...): %s", u_errorName(status));
     delete coll;
-    return;
+    return false;
   }
 
   if (_coll) {
@@ -164,6 +164,7 @@ void Utf8Helper::setCollatorLanguage (std::string const& lang) {
   }
 
   _coll = coll;
+  return true;
 }
 
 std::string Utf8Helper::getCollatorLanguage () {
