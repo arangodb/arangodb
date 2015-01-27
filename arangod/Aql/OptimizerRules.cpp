@@ -56,7 +56,7 @@ using EN   = triagens::aql::ExecutionNode;
 
 int triagens::aql::removeRedundantSortsRule (Optimizer* opt, 
                                              ExecutionPlan* plan,
-                                             Optimizer::Rule const* rule) { 
+                                             Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::SORT, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
@@ -2041,6 +2041,39 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
                        // cleanupChanges does not touch it
         }
       }
+#if 0
+      else if (j < i && v.size() > 1) {
+        // if we have more than one candidate index, use index selectivity (if available)
+        double lastSelectivity = -1.0;
+        size_t choice = 0;
+        bool hasFound = false;
+        for (size_t k = 0; k < v.size(); k++) {
+          auto n = static_cast<IndexRangeNode*>(v[k]);
+          auto const* idx = n->getIndex();
+          if (idx->hasSelectivityEstimate()) {
+            double selectivity = idx->selectivityEstimate();
+            if (selectivity > lastSelectivity) {
+              choice = k;
+            }
+          }
+
+          if (hasFound) {
+            size_t id = changes[j].first;
+            plan->registerNode(v[choice]);
+            plan->replaceNode(plan->getNodeById(id), v[choice]);
+            modified = true;
+            // Free the other nodes, if they are there:
+            for (size_t k = 0; k < v.size(); k++) {
+              if (k != choice) {
+                delete v[k];
+              }
+            }
+            v.clear();   // take the new node away from changes such that 
+                         // cleanupChanges does not touch it
+          }
+        }
+      }
+#endif
     }
   }
   catch (...) {

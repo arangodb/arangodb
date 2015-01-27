@@ -2436,13 +2436,14 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
 
   size_t const n = result->size();
+
   for (size_t i = 0; i < n; i++) {
     // check the condition variable (if any)
     if (hasCondition) {
       AqlValue conditionResult = result->getValueReference(i, _conditionReg);
 
       if (! conditionResult.isTrue()) {
-        result->setValue(i, _outReg, AqlValue(new Json(Json::Null)));
+        result->setValue(i, _outReg, AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &Expression::NullJson, Json::NOFREE)));
         continue;
       }
     }
@@ -2574,32 +2575,36 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     return nullptr;
   }
 
+  // TODO: constant and deterministic subqueries only need to be executed once
+  bool const subqueryIsConst = false; // TODO 
+
+  std::vector<AqlItemBlock*>* subqueryResults = nullptr;
+
   for (size_t i = 0; i < res->size(); i++) {
     int ret = _subquery->initializeCursor(res.get(), i);
+
     if (ret != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(ret);
     }
 
-    auto results = new std::vector<AqlItemBlock*>;
-    try {
-      do {
-        unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
-        if (tmp.get() == nullptr) {
-          break;
-        }
-        results->push_back(tmp.get());
-        tmp.release();
-      }
-      while(true);
-      res->setValue(i, _outReg, AqlValue(results));
+    if (i > 0 && subqueryIsConst) {
+      // re-use already calculated subquery result
+      TRI_ASSERT(subqueryResults != nullptr);
+      res->setValue(i, _outReg, AqlValue(subqueryResults));
     }
-    catch (...) {
-      for (auto x : *results) {
-        delete x;
+    else {
+      // initial subquery execution or subquery is not constant
+      subqueryResults = executeSubquery(); 
+      TRI_ASSERT(subqueryResults != nullptr);
+      try {
+        res->setValue(i, _outReg, AqlValue(subqueryResults));
       }
-      delete results;
-      throw;
-    }
+      catch (...) {
+        destroySubqueryResults(subqueryResults);
+        throw;
+      }
+    } 
+
   }
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
@@ -2617,6 +2622,41 @@ int SubqueryBlock::shutdown (int errorCode) {
   }
 
   return getSubquery()->shutdown(errorCode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the subquery and return its results
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
+  auto results = new std::vector<AqlItemBlock*>;
+  try {
+    do {
+      unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+      if (tmp.get() == nullptr) {
+        break;
+      }
+      results->push_back(tmp.get());
+      tmp.release();
+    }
+    while (true);
+    return results;
+  }
+  catch (...) {
+    destroySubqueryResults(results);
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the results of a subquery
+////////////////////////////////////////////////////////////////////////////////
+
+void SubqueryBlock::destroySubqueryResults (std::vector<AqlItemBlock*>* results) {
+  for (auto x : *results) {
+    delete x;
+  }
+  delete results;
 }
 
 // -----------------------------------------------------------------------------

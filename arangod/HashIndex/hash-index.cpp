@@ -734,6 +734,19 @@ int TRI_LookupHashIndex (TRI_index_t* idx,
   return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, documents, next, batchSize);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a selectivity estimate for the index
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_SelectivityHashIndex (TRI_index_t* idx) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    return 1.0; 
+  }
+  return TRI_SelectivityHashArrayMulti(&hashIndex->_hashArrayMulti);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

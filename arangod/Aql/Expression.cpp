@@ -45,6 +45,31 @@ using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             public static members
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for NULL which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const Expression::NullJson  = { TRI_JSON_NULL, false };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for TRUE which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const Expression::TrueJson  = { TRI_JSON_BOOLEAN, true };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for FALSE which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const Expression::FalseJson = { TRI_JSON_BOOLEAN, false };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -450,7 +475,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
     result.destroy();
       
-    return AqlValue(new Json(Json::Null));
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &NullJson, Json::NOFREE));
   }
   
   else if (node->type == NODE_TYPE_ARRAY) {
@@ -585,7 +610,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     
     bool const operandIsTrue = operand.isTrue();
     operand.destroy();
-    return AqlValue(new triagens::basics::Json(! operandIsTrue));
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, operandIsTrue ? &FalseJson : &TrueJson, Json::NOFREE));
   }
   
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
@@ -642,7 +667,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         left.destroy();
         right.destroy();
         // do not throw, but return "false" instead
-        return AqlValue(new triagens::basics::Json(false));
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
       }
    
       bool result = findInList(left, right, leftCollection, rightCollection, trx, node); 
@@ -664,22 +689,22 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     right.destroy();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      return AqlValue(new triagens::basics::Json(compareResult == 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult == 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
-      return AqlValue(new triagens::basics::Json(compareResult != 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult != 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-    return AqlValue(new triagens::basics::Json(compareResult < 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult < 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE) {
-      return AqlValue(new triagens::basics::Json(compareResult <= 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult <= 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-      return AqlValue(new triagens::basics::Json(compareResult > 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult > 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-      return AqlValue(new triagens::basics::Json(compareResult >= 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult >= 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     // fall-through intentional
   }
