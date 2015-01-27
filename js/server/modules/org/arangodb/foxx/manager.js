@@ -1626,10 +1626,11 @@ exports.developmentRoutes = function () {
 /// Must be called after developmentRoutes.
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.developmentMounts = function () {
+exports.developmentMounts = function (force) {
   "use strict";
 
-  if (DEVELOPMENTMOUNTS === null) {
+  if (DEVELOPMENTMOUNTS === null || force) {
+    DEVELOPMENTMOUNTS = null;
     exports.developmentRoutes();
   }
 

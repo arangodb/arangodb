@@ -95,7 +95,7 @@ exports.Foxxes = function () {
 
   // Define the functionality to display all foxxes
   this.viewAll = function () {
-    var result = aal.toArray().concat(foxxmanager.developmentMounts());
+    var result = aal.toArray().concat(foxxmanager.developmentMounts(true));
 
     result.forEach(function(r, i) {
       // inject development flag
