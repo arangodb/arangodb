@@ -29,17 +29,108 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+var R = require('ramda');
+var qb = require('aqb');
 var util = require('util');
 var extend = require('underscore').extend;
 var AssertionError = require('assert').AssertionError;
+var exists = require('org/arangodb/is').existy;
 var db = require('org/arangodb').db;
 
-var Console = function (mount, tracing) {
+function ConsoleLogs(console) {
+  this._console = console;
+  this._defaultMaxAge = 2 * 60 * 60 * 1000;
+}
+
+extend(ConsoleLogs.prototype, {
+  _query: function (cfg) {
+    if (!db._foxxlog) {
+      return [];
+    }
+
+    if (!cfg.opts) {
+      cfg.opts = {};
+    }
+
+    var query = qb.for('entry').in('_foxxlog');
+
+    query = query.filter(qb.eq('entry.mount', qb.str(this._console._mount)));
+
+    query = query.filter(qb.gte(
+      'entry.time',
+      exists(cfg.opts.startTime)
+      ? qb.num(cfg.opts.startTime)
+      : Date.now() - this._defaultMaxAge
+    ));
+
+    if (exists(cfg.opts.endTime)) {
+      query = query.filter(qb.lte('entry.time', qb.num(cfg.opts.endTime)));
+    }
+
+    if (exists(cfg.opts.level)) {
+      query = query.filter(
+        typeof cfg.opts.level === 'number'
+        ? qb.eq('entry.levelNum', qb.num(cfg.opts.level))
+        : qb.eq('entry.level', qb.str(cfg.opts.level))
+      );
+    }
+
+    if (exists(cfg.opts.minLevel)) {
+      var levelNum = cfg.opts.minLevel;
+      if (typeof levelNum !== 'number') {
+        if (!this._console._logLevels.hasOwnProperty(levelNum)) {
+          throw new Error('Unknown log level: ' + levelNum);
+        }
+        levelNum = this._console._logLevels[levelNum];
+      }
+      query = query.filter(qb.gte('entry.levelNum', qb.num(levelNum)));
+    }
+
+    if (exists(cfg.fileName)) {
+      query = query.filter(qb.LIKE('entry.stack[*].fileName', qb.str('%' + cfg.fileName + '%'), true));
+    }
+
+    if (exists(cfg.message)) {
+      query = query.filter(qb.LIKE('entry.message', qb.str('%' + cfg.fileName + '%'), true));
+    }
+
+    query = query.sort('entry.time', 'DESC');
+
+    if (exists(cfg.opts.limit)) {
+      query = query.limit(cfg.opts.limit);
+    }
+
+    query = query.return('entry');
+
+    var result = db._query(query).toArray();
+
+    if (cfg.opts.sort && cfg.opts.sort.toUpperCase() === 'DESC') {
+      return result;
+    }
+
+    return result.reverse();
+  },
+  list: function (opts) {
+    return this._query({opts: opts});
+  },
+  searchByMessage: function (message, opts) {
+    return this._query({message: message, opts: opts});
+  },
+  searchByFileName: function (fileName, opts) {
+    if (!this._console._tracing) {
+      throw new Error('Tracing must be enabled in order to search by filename.');
+    }
+    return this._query({fileName: fileName, opts: opts});
+  }
+});
+
+function Console(mount, tracing) {
   this._mount = mount;
   this._timers = Object.create(null);
   this._tracing = Boolean(tracing);
   this._logLevel = -999;
   this._logLevels = {TRACE: -2};
+  this.logs = new ConsoleLogs(this);
 
   Object.keys(Console.prototype).forEach(function (name) {
     if (typeof this[name] === 'function') {
@@ -47,17 +138,17 @@ var Console = function (mount, tracing) {
     }
   }.bind(this));
 
-  this.debug = this._withLevel('DEBUG', -1);
-  this.info = this._withLevel('INFO', 0);
-  this.warn = this._withLevel('WARN', 1);
-  this.error = this._withLevel('ERROR', 2);
+  this.debug = this.custom('DEBUG', -1);
+  this.info = this.custom('INFO', 0);
+  this.warn = this.custom('WARN', 1);
+  this.error = this.custom('ERROR', 2);
 
   this.assert._level = 'ERROR';
   this.dir._level = 'INFO';
   this.log._level = 'INFO';
   this.time._level = 'INFO';
   this.trace._level = 'TRACE';
-};
+}
 
 extend(Console.prototype, {
   _log: function (level, message, callee) {
@@ -74,7 +165,7 @@ extend(Console.prototype, {
       mount: this._mount,
       level: level,
       levelNum: this._logLevels[level],
-      created: Date.now(),
+      time: Date.now(),
       message: message
     };
 
@@ -90,15 +181,14 @@ extend(Console.prototype, {
           columnNumber: Number(tokens[tokens.length - 1])
         };
       });
+      doc.files = R.uniq(R.pluck('fileName', doc.stack));
     }
 
     if (!db._foxxlog) {
       db._create('_foxxlog', {isSystem: true});
+      db._foxxlog.ensureSkiplist('mount');
       db._foxxlog.ensureSkiplist('mount', 'created');
-      db._foxxlog.ensureSkiplist('level', 'created');
-      db._foxxlog.ensureSkiplist('levelNum', 'created');
-      db._foxxlog.ensureSkiplist('stack[0].fileName');
-      db._foxxlog.ensureFulltextIndex('message');
+      db._foxxlog.ensureSkiplist('mount', 'created', 'levelNum');
     }
 
     db._foxxlog.save(doc);
@@ -148,7 +238,7 @@ extend(Console.prototype, {
     this._log(this.trace._level, trace.stack);
   },
 
-  _withLevel: function (level, weight) {
+  custom: function (level, weight) {
     level = String(level);
     weight = Number(weight);
     weight = weight === weight ? weight : 999;
@@ -159,7 +249,7 @@ extend(Console.prototype, {
     return logWithLevel;
   },
 
-  _setLogLevel: function (level) {
+  setLogLevel: function (level) {
     if (typeof level === 'string') {
       if (!this._logLevels.hasOwnProperty(level)) {
         throw new Error('Unknown log level: ' + level);
@@ -170,7 +260,7 @@ extend(Console.prototype, {
     return this._logLevel;
   },
 
-  _setTracing: function (tracing) {
+  setTracing: function (tracing) {
     this._tracing = Boolean(tracing);
     return this._tracing;
   }
