@@ -100,9 +100,9 @@ v8::Handle<v8::Value> JSLoader::executeGlobalScript (v8::Isolate* isolate,
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-bool JSLoader::loadScript (v8::Isolate* isolate,
-                           v8::Handle<v8::Context>& context,
-                           string const& name) {
+JSLoader::eState JSLoader::loadScript(v8::Isolate* isolate,
+                                      v8::Handle<v8::Context>& context,
+                                      string const& name) {
   v8::TryCatch tryCatch;
   v8::HandleScope scope(isolate);
 
@@ -113,7 +113,7 @@ bool JSLoader::loadScript (v8::Isolate* isolate,
   if (i == _scripts.end()) {
     // correct the path/name
     LOG_ERROR("unknown script '%s'", StringUtils::correctPath(name).c_str());
-    return false;
+    return eFailLoad;
   }
 
   // Enter the newly created execution environment.
@@ -128,17 +128,17 @@ bool JSLoader::loadScript (v8::Isolate* isolate,
   if (tryCatch.HasCaught()) {
     if (tryCatch.CanContinue()) {
       TRI_LogV8Exception(isolate, &tryCatch);
-      return false;
+      return eFailExecute;
     }
     else {
       TRI_GET_GLOBALS();
 
       v8g->_canceled = true;
-      return false;
+      return eFailExecute;
     }
   }
 
-  return true;
+  return eSuccess;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

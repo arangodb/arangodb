@@ -1356,10 +1356,16 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
     // load all init files
     for (size_t j = 0;  j < files.size();  ++j) {
-      bool ok = _startupLoader.loadScript(isolate, localContext, files[j]);
-
-      if (! ok) {
-        LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", files[j].c_str());
+      switch (_startupLoader.loadScript(isolate, localContext, files[j])) {
+      case JSLoader::eSuccess:
+        LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
+        break;
+      case JSLoader::eFailLoad:
+        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
+        break;
+      case JSLoader::eFailExecute:
+        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[i].c_str());
+        break;
       }
     }
 
@@ -1403,10 +1409,16 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
     v8::Context::Scope contextScope(localContext);
 
     // load server startup file
-    bool ok = _startupLoader.loadScript(isolate, localContext, startupFile);
-
-    if (! ok) {
+    switch (_startupLoader.loadScript(isolate, localContext, startupFile)) {
+    case JSLoader::eSuccess:
+      LOG_TRACE("loaded JavaScript file '%s'", startupFile.c_str());
+      break;
+    case JSLoader::eFailLoad:
       LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", startupFile.c_str());
+      break;
+    case JSLoader::eFailExecute:
+      LOG_FATAL_AND_EXIT("error during execution of JavaScript utilities from file '%s'", startupFile.c_str());
+      break;
     }
 
     // and return from the context

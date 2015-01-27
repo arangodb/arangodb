@@ -2214,13 +2214,16 @@ int warmupEnvironment (v8::Isolate *isolate,
   files.push_back("client/client.js"); // needs internal
 
   for (size_t i = 0;  i < files.size();  ++i) {
-    bool ok = StartupLoader.loadScript(isolate, context, files[i]);
-
-    if (ok) {
+    switch (StartupLoader.loadScript(isolate, context, files[i])) {
+    case JSLoader::eSuccess:
       LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
-    }
-    else {
+      break;
+    case JSLoader::eFailLoad:
       LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
+      break;
+    case JSLoader::eFailExecute:
+      LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[i].c_str());
+      break;
     }
   }
 
