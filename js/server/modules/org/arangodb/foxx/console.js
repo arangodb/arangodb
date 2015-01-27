@@ -29,7 +29,6 @@
 /// @author Copyright 2015, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var R = require('ramda');
 var qb = require('aqb');
 var util = require('util');
 var extend = require('underscore').extend;
@@ -39,7 +38,7 @@ var db = require('org/arangodb').db;
 
 function ConsoleLogs(console) {
   this._console = console;
-  this._defaultMaxAge = 2 * 60 * 60 * 1000;
+  this.defaultMaxAge = 2 * 60 * 60 * 1000;
 }
 
 extend(ConsoleLogs.prototype, {
@@ -60,7 +59,7 @@ extend(ConsoleLogs.prototype, {
       'entry.time',
       exists(cfg.opts.startTime)
       ? qb.num(cfg.opts.startTime)
-      : Date.now() - this._defaultMaxAge
+      : Date.now() - this.defaultMaxAge
     ));
 
     if (exists(cfg.opts.endTime)) {
@@ -94,17 +93,21 @@ extend(ConsoleLogs.prototype, {
       query = query.filter(qb.LIKE('entry.message', qb.str('%' + cfg.fileName + '%'), true));
     }
 
-    query = query.sort('entry.time', 'DESC');
+    query = query.sort('entry.time', 'ASC');
 
     if (exists(cfg.opts.limit)) {
-      query = query.limit(cfg.opts.limit);
+      if (exists(cfg.opts.offset)) {
+        query = query.limit(cfg.opts.offset, cfg.opts.limit);
+      } else {
+        query = query.limit(cfg.opts.limit);
+      }
     }
 
     query = query.return('entry');
 
     var result = db._query(query).toArray();
 
-    if (cfg.opts.sort && cfg.opts.sort.toUpperCase() === 'DESC') {
+    if (cfg.opts.sort && cfg.opts.sort.toUpperCase() === 'ASC') {
       return result;
     }
 
@@ -130,6 +133,7 @@ function Console(mount, tracing) {
   this._tracing = Boolean(tracing);
   this._logLevel = -999;
   this._logLevels = {TRACE: -2};
+  this._assertThrows = false;
   this.logs = new ConsoleLogs(this);
 
   Object.keys(Console.prototype).forEach(function (name) {
@@ -181,7 +185,6 @@ extend(Console.prototype, {
           columnNumber: Number(tokens[tokens.length - 1])
         };
       });
-      doc.files = R.uniq(R.pluck('fileName', doc.stack));
     }
 
     if (!db._foxxlog) {
@@ -196,14 +199,17 @@ extend(Console.prototype, {
 
   assert: function (condition, message) {
     if (!condition) {
-      this._log(this.assert._level, new AssertionError({
+      var err = new AssertionError({
         message: message,
         actual: condition,
         expected: true,
         operator: '==',
         stackStartFunction: this.assert
-      }).stack,
-      this.assert);
+      });
+      this._log(this.assert._level, err.stack, this.assert);
+      if (this._assertThrows) {
+        throw err;
+      }
     }
   },
 
@@ -263,6 +269,11 @@ extend(Console.prototype, {
   setTracing: function (tracing) {
     this._tracing = Boolean(tracing);
     return this._tracing;
+  },
+
+  setAssertThrows: function (assertThrows) {
+    this._assertThrows = Boolean(assertThrows);
+    return this._assertThrows;
   }
 });
 
