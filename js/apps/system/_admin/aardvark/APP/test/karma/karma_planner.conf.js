@@ -163,7 +163,6 @@ module.exports = function(karma) {
       'frontend/js/views/applicationsView.js',
       'frontend/js/views/foxxActiveView.js',
       'frontend/js/views/foxxActiveListView.js',
-      'frontend/js/views/foxxInstalledView.js',
       'frontend/js/views/foxxInstalledListView.js',
       'frontend/js/views/foxxEditView.js',
       'frontend/js/views/foxxMountView.js',
