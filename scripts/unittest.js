@@ -7,6 +7,11 @@ var internalMembers = UnitTest.internalMembers;
 var fs = require("fs");
 var print = require("internal").print;
 
+function makePathGeneric (path) {
+  return path.split(fs.pathSeparator);
+}
+
+
 function resultsToXml(results, baseName) {
   "use strict";
   function xmlEscape(s) {
@@ -103,7 +108,7 @@ function resultsToXml(results, baseName) {
 
           xml.elem("/testsuite");
 
-          var fn = baseName + testrun.replace(/\//g, '_') + '_' + test.replace(/\//g, '_') + ".xml";
+          var fn = makePathGeneric(baseName + testrun + '_' + test + ".xml").join('_');
           fs.write(fn, xml.join(""));
         }
       }
