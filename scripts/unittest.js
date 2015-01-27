@@ -8,9 +8,9 @@ var fs = require("fs");
 var print = require("internal").print;
 
 function makePathGeneric (path) {
+  "use strict";
   return path.split(fs.pathSeparator);
 }
-
 
 function resultsToXml(results, baseName) {
   "use strict";
