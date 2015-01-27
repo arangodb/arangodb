@@ -41,6 +41,7 @@ var checkParameter = arangodb.checkParameter;
 var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
 
 var developmentMode = require("internal").developmentMode;
+var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -681,6 +682,44 @@ function mountAalApp (app, mount, options) {
 /// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
+function routingBrokenApp (mount, err) {
+ "use strict";
+  if (mount === "") {
+    mount = "/";
+  }
+  else {
+    mount = arangodb.normalizeURL(mount);
+  }
+
+  if (mount[0] !== "/") {
+    throw new Error("Mount point must be absolute");
+  }
+
+  // setup the routes
+  var routes = {
+    urlPrefix: mount,
+    routes: [],
+    foxx: true
+  };
+  routes.routes.push({
+    "url" : {
+      match: "/*",
+      methods: actions.ALL_METHODS
+    },
+    "action": {
+      "callback": function(req, res) {
+         actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, undefined, err);
+         return;
+      }
+    }
+  });
+  return routes;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the routes of an app
+////////////////////////////////////////////////////////////////////////////////
+
 function routingAalApp (app, mount, options) {
   "use strict";
 
@@ -877,9 +916,7 @@ function routingAalApp (app, mount, options) {
   }
   catch (err) {
     delete MOUNTED_APPS[mount];
-
-    console.errorLines(
-      "Cannot compute Foxx application routes: %s", String(err.stack || err));
+    throw err;
   }
 
   return null;
@@ -1536,7 +1573,8 @@ exports.appRoutes = function () {
       }
     }
     catch (err) {
-      console.error("Cannot mount Foxx application '%s': %s", appId, String(err.stack || err));
+      routes.push(routingBrokenApp(mount, err));
+      console.errorLines("Cannot mount Foxx application '%s': \n %s", appId, String(err.stack || err));
     }
   }
 
@@ -1561,13 +1599,19 @@ exports.developmentRoutes = function () {
     var m = fs.join(root, files[j], "manifest.json");
 
     if (fs.exists(m)) {
+      var mf, mount;
       try {
-        var mf = JSON.parse(fs.read(m));
-
+        mount = "/dev/" + files[j];
+        mf = JSON.parse(fs.read(m));
+      } catch (err) {
+        routes.push(routingBrokenApp(mount, new Error("Cannot parse manifest: " + err.message )));
+        console.errorLines(
+          "Cannot parse app manifest '%s': %s", m, String(err.stack || err));
+      }
+      try {
         checkManifest(m, mf);
 
         var appId = "dev:" + mf.name + ":" + files[j];
-        var mount = "/dev/" + files[j];
         var options = {
           collectionPrefix : prefixFromMount(mount)
         };
@@ -1607,10 +1651,10 @@ exports.developmentRoutes = function () {
         };
 
         mounts.push(desc);
-      }
-      catch (err) {
+      } catch (err) {
+        routes.push(routingBrokenApp(mount, err));
         console.errorLines(
-          "Cannot read app manifest '%s': %s", m, String(err.stack || err));
+          "App with manifest '%s' contains errors:\n%s", m, String(err.stack || err));
       }
     }
   }
