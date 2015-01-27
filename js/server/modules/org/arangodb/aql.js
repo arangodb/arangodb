@@ -191,6 +191,80 @@ function reloadUserFunctions () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get a user-function by name
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_USERFUNCTION (name) { 
+  var prefix = DB_PREFIX(), reloaded = false;
+  var key = name.toUpperCase();
+
+  if (! UserFunctions.hasOwnProperty(prefix)) {
+    reloadUserFunctions();
+    reloaded = true;
+  }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(key) && ! reloaded) {
+    // last chance
+    reloadUserFunctions();
+  }
+  
+  if (! UserFunctions[prefix].hasOwnProperty(key)) {
+    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+  }
+
+  var func = UserFunctions[prefix][key].func;
+
+  if (typeof func !== "function") {
+    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+  }
+
+  return func;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a user-defined visitor from a function name
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_VISITOR (name) {
+  var func = GET_USERFUNCTION(name);
+
+  return function (config, result, vertex, path) {
+    try {
+      if (config.visitorReturnsResults) {
+        var r = func.apply(null, arguments);
+        if (r !== undefined && r !== null) {
+          result.push(CLONE(FIX_VALUE(r)));
+        }
+      }
+      else {
+        func.apply(null, arguments);
+      }
+    }
+    catch (err) {
+      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a user-defined filter from a function name
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_FILTER (name) {
+  var func = GET_USERFUNCTION(name);
+
+  return function (config, vertex, path) {
+    try {
+      var filterResult = func.apply(null, arguments);
+      return FIX_VALUE(filterResult);
+    }
+    catch (err) {
+      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -4871,7 +4945,7 @@ function TRAVERSAL_VERTEX_FILTER (config, vertex, path) {
   }
   if (config.filterVertexCollections
     && config.filterVertexCollections.indexOf(vertex._id.split("/")[0]) === -1
-  ){
+  ) {
     return ["exclude"];
   }
 }
@@ -4971,6 +5045,7 @@ function TRAVERSAL_FUNC (func,
     datasource: datasource,
     trackPaths: params.paths || false,
     visitor: params.visitor,
+    visitorReturnsResults: params.visitorReturnsResults || false,
     maxDepth: params.maxDepth,
     minDepth: params.minDepth,
     maxIterations: params.maxIterations,
@@ -4986,6 +5061,10 @@ function TRAVERSAL_FUNC (func,
     defaultWeight : params.defaultWeight,
     prefill : params.prefill
   };
+
+  if (typeof params.filter === "function") {
+    config.filter = params.filter;
+  } 
 
   if (params.followEdges) {
     if (typeof params.followEdges === 'string') {
@@ -5374,7 +5453,19 @@ function SHORTEST_PATH_PARAMS (params) {
 
   params.strategy = "dijkstra";
   params.itemorder = "forward";
-  params.visitor = TRAVERSAL_VISITOR;
+
+  // add user-defined visitor, if specified
+  if (typeof params.visitor === "string") {
+    params.visitor = GET_VISITOR(params.visitor);
+  }
+  else {
+    params.visitor = TRAVERSAL_VISITOR;
+  }
+
+  // add user-defined filter, if specified
+  if (typeof params.filter === "string") {
+    params.filter = GET_FILTER(params.filter);
+  }
 
   if (typeof params.distance === "string") {
     var name = params.distance.toUpperCase();
@@ -5593,7 +5684,19 @@ function TRAVERSAL_PARAMS (params) {
     params = { };
   }
 
-  params.visitor = TRAVERSAL_VISITOR;
+  // add user-defined visitor, if specified
+  if (typeof params.visitor === "string") {
+    params.visitor = GET_VISITOR(params.visitor);
+  }
+  else {
+    params.visitor = TRAVERSAL_VISITOR;
+  }
+
+  // add user-defined filter, if specified
+  if (typeof params.filter === "string") {
+    params.filter = GET_FILTER(params.filter);
+  }
+
   return params;
 }
 
@@ -5940,7 +6043,19 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
     params = { };
   }
 
-  params.visitor  = TRAVERSAL_TREE_VISITOR;
+  // add user-defined visitor, if specified
+  if (typeof params.visitor === "string") {
+    params.visitor = GET_VISITOR(params.visitor);
+  }
+  else {
+    params.visitor = TRAVERSAL_TREE_VISITOR;
+  }
+  
+  // add user-defined filter, if specified
+  if (typeof params.filter === "string") {
+    params.filter = GET_FILTER(params.filter);
+  }
+
   params.connect  = AQL_TO_STRING(connectName);
 
   if (params.connect === "") {

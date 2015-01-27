@@ -1,42 +1,50 @@
 !CHAPTER Graph functions
 
-AQL has the following functions to traverse graphs:
+AQL has the following functions to traverse loosely-structured graphs consisting of 
+an edge collection and plus the vertices connected by it. If you have created a graph 
+using the general-graph module you may want to use its more specific [Graph operations](../Aql/GraphOperations.md) 
+instead.
 
-If you have created a graph in the general-graph module you may want to use
-[Graph operations](../Aql/GraphOperations.md) instead.
 
-- *PATHS(vertexcollection, edgecollection, direction, options)*: 
-  returns an array of paths through the graph defined by the nodes in the collection 
-  *vertexcollection* and edges in the collection *edgecollection*. For each vertex
-  in *vertexcollection*, it will determine the paths through the graph depending on the
-  value of *direction*:
-  - *"outbound"*: Follow all paths that start at the current vertex and lead to another vertex
-  - *"inbound"*: Follow all paths that lead from another vertex to the current vertex
-  - *"any"*: Combination of *"outbound"* and *"inbound"*
-  The default value for *direction* is *"outbound"*.
-  If specified, *options* must be a JavaScript object with the following optional attributes:
-  - *minLength*: specifies the minimum length of the paths to be returned. The default is 0.
-  - *maxLength*: specifies the maximum length of the paths to be returned. The default is 10.
-  - *followcycles*: if true, cyclic paths will be followed as well. This is turned off by
-    default.
+!SECTION Determining direct connections
 
-  The result of the function is an array of paths. Paths of length 0 will also be returned. Each 
-  path is a document consisting of the following attributes:
-  - *vertices*: array of vertices visited along the path
-  - *edges*: array of edges visited along the path (may be empty)
-  - *source*: start vertex of path
-  - *destination*: destination vertex of path
+- *EDGES(edgecollection, startvertex, direction, edgeexamples)*:
+  Return all edges connected to the vertex *startvertex* as an array. The possible values for
+  *direction* are:
+  - *outbound*: Return all outbound edges
+  - *inbound*: Return all inbound edges
+  - *any*: Return outbound and inbound edges
+  
+  The *edgeexamples* parameter can optionally be used to restrict the results to specific
+  edge connections only. The matching is then done via the *MATCHES* function.
+  To not restrict the result to specific connections, *edgeexamples* should be left
+  unspecified. 
+
+*Examples*
+ 
+      EDGES(friendrelations, "friends/john", "outbound")
+      EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
+
+
+- *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples)*:
+  Return all neighbors that are directly connected to the vertex *startvertex* as an array. 
+  The possible values for *direction* are:
+  - *outbound*: Return all outbound edges
+  - *inbound*: Return all inbound edges
+  - *any*: Return outbound and inbound edges
+
+  The *edgeexamples* parameter can optionally be used to restrict the results to specific
+  edge connections only. The matching is then done via the *MATCHES* function.
+  To not restrict the result to specific connections, *edgeexamples* should be left
+  unspecified.
 
 *Examples*
 
-      PATHS(friends, friendrelations, "outbound")
+      NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
+      NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
 
-      FOR p IN PATHS(friends, friendrelations, "outbound", { minLength: 2, maxLength: 2 }) 
-        FILTER p.source._id == "users/123456"
-        RETURN p.vertices[*].name
 
-If you have created a graph in the general-graph module you may want to use
-[Graph operations](../Aql/GraphOperations.md) instead.
+!SECTION General-purpose traversals
 
 - *TRAVERSAL(vertexcollection, edgecollection, startVertex, direction, options)*: 
   Traverses the graph described by *vertexcollection* and *edgecollection*, 
@@ -50,8 +58,8 @@ If you have created a graph in the general-graph module you may want to use
   Additional options for the traversal can be provided via the *options* document:
   - *strategy*: Defines the traversal strategy. Possible values are *depthfirst* 
     and *breadthfirst*. Defaults to *depthfirst*
-  - *order*: Defines the traversal order: Possible values are *preorder* and
-    *postorder*. Defaults to *preorder*
+  - *order*: Defines the traversal order: Possible values are *preorder*, *postorder*,
+    and *preorder-expander*. Defaults to *preorder*
   - *itemOrder*: Defines the level item order. Can be *forward* or 
     *backward*. Defaults to *forward*
   - *minDepth*: Minimum path depths for vertices to be included. This can be used to
@@ -60,7 +68,7 @@ If you have created a graph in the general-graph module you may want to use
   - *maxIterations*: Maximum number of iterations in each traversal. This number can be
     set to prevent endless loops in traversal of cyclic graphs. When a traversal performs
     as many iterations as the *maxIterations* value, the traversal will abort with an
-    error. If *maxIterations* is not set, a server-defined value may be used
+    error. If *maxIterations* is not set, a server-defined value will be used
   - *maxDepth*: Maximum path depth for sub-edges expansion. This can be used to 
     limit the depth of the traversal to a sensible amount. This should especially be used
     for big graphs to limit the traversal to some sensible amount, and for graphs 
@@ -99,12 +107,14 @@ If you have created a graph in the general-graph module you may want to use
     treat specially. If no examples are given, the traversal will handle all encountered
     vertices equally. If one or many vertex examples are given, the traversal will exclude
     any non-matching vertex from the result and/or not descend into it. Optionally,
-    *filterVertices* can contain the name of a user-defined AQL function that should be responsible
-    for filtering. If so, the AQL function is expected to have the following signature:
+    *filterVertices* can contain a string containing the name of a user-defined AQL function 
+    that should be responsible for filtering. If so, the AQL function is expected to have the 
+    following signature:
 
         function (config, vertex, path)
 
-    If a custom AQL function is used, it is expected to return one of the following values:
+    If a custom AQL function is used for *filterVertices*, it is expected to return one of 
+    the following values:
     - *[ ]*: Include the vertex in the result and descend into its connected edges
     - *[ "prune" ]*: Will include the vertex in the result but not descend into its connected edges
     - *[ "exclude" ]*: Will not include the vertex in the result but descend into its connected edges
@@ -115,14 +125,41 @@ If you have created a graph in the general-graph module you may want to use
     the examples in *filterVertices*:
     - *[ "prune" ]*: Will include non-matching vertices in the result but not descend into them
     - *[ "exclude" ]*: Will not include non-matching vertices in the result but descend into them
-    - *[ "prune", "exclude" ]*: Will neither include non-matching vertices in the result nor descend into them
+    - *[ "prune", "exclude" ]*: Will completely ignore the vertex and its connected edges
 
-  The result of the TRAVERSAL function is a array of traversed points. Each point is a 
-  document consisting of the following attributes:
+  - *visitor*: If specified, must be a string containing the name of a custom AQL function that
+    will be called whenever the traversal visits a vertex. The custom AQL function is expected 
+    to have the following signature:
+
+        function (config, result, vertex, path, connections)
+
+    There are two modes for custom AQL visitor functions, depending on the value of the option
+    *visitorReturnsResults*. If it is set to *true*, then any value returned by the visitor will
+    be appended to the list of results of the TRAVERSAL function. If *visitorReturnsResults* is
+    set to *false*, then any value returned by the custom visitor function will be ignored.
+    Instead, the visitor function is allowed to modify its *result* function parameter value 
+    in-place. The contents of this variable at the end of the traversal will then be the
+    results of the TRAVERSAL function.
+
+    Note: The *connections* function parameter value will contain the edges connected to the 
+    vertex only if *order* was set to *preorder-expander*. Otherwise, the value of this parameter 
+    will be *undefined*.
+  
+  - *visitorReturnsResults*: only useful in combination with a custom AQL visitor function. If
+    set to *true*, the data returned by the visitor will be appended to the result. If set to
+    *false*, any return value of the visitor function will be ignored. Instead, the visitor 
+    function can modify its *result* parameter value in-place. At the end of the traversal,
+    *result* is expected to be an array.
+
+  By default, the result of the TRAVERSAL function is an array of traversed points. Each point 
+  is an object consisting of the following attributes:
   - *vertex*: The vertex at the traversal point
   - *path*: The path history for the traversal point. The path is a document with the
     attributes *vertices* and *edges*, which are both arrays. Note that *path* is only present
     in the result if the *paths* attribute is set in the *options*
+
+  When using a custom AQL function as a visitor, the result may have a different structure.
+
 
 *Examples*
 
@@ -175,8 +212,42 @@ If you have created a graph in the general-graph module you may want to use
       }, false);
 
 
-If you have created a graph in the general-graph module you may want to use
-[Graph operations](../Aql/GraphOperations.md) instead.
+      // using a custom visitor to return only leaf-nodes
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        visitor: "myfunctions::leafnodevisitor",
+        visitorReturnsResults: true,
+        order: "preorder-expander"
+      })
+
+      // registering the custom leaf node visitor function
+      aqlfunctions.register("myfunctions::leafnodevisitor", function (config, vertex, edge, path, connections) { 
+        if (connected && connected.length === 0) {
+          // will put the vertex into the result if it does not have any further connections
+          return vertex;
+        }
+      }, false);
+
+
+      // using a custom visitor to only count leaf-nodes
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        visitor: "myfunctions::countingleafnodevisitor",
+        visitorReturnsResults: false,
+        order: "preorder-expander"
+      })
+
+      // registering the custom counting leaf node visitor function
+      aqlfunctions.register("myfunctions::countingleafnodevisitor", function (config, vertex, edge, path, connections) { 
+        if (result.length === 0) {
+          // first call, push 0 into the result
+          result.push(0);
+        }
+
+        if (connected && connected.length === 0) {
+          // found a leaf node. now increase our counter
+          result[0]++;
+        }
+      }, false);
+
 
 - *TRAVERSAL_TREE(vertexcollection, edgecollection, startVertex, direction, connectName, options)*: 
   Traverses the graph described by *vertexcollection* and *edgecollection*, 
@@ -195,16 +266,6 @@ If you have created a graph in the general-graph module you may want to use
         itemOrder: "forward"
       })
 
-When using one of AQL's graph functions please make sure that the graph does not contain cycles,
-or that you at least specify some maximum depth or uniqueness criteria for a traversal. 
-
-If no bounds are set, a traversal may run into an endless loop in a cyclic graph or sub-graph,
-and even in a non-cyclic graph, traversing far into the graph may consume a lot of processing
-time and memory for the result set.
-
-
-If you have created a graph in the general-graph module you may want to use
-[Graph operations](../Aql/GraphOperations.md) instead.
 
 - *SHORTEST_PATH(vertexcollection, edgecollection, startVertex, endVertex, direction, options)*: 
   Determines the first shortest path from the *startVertex* to the *endVertex*.
@@ -218,7 +279,7 @@ If you have created a graph in the general-graph module you may want to use
   The search is aborted when a shortest path is found. Only the first shortest path will be
   returned. Any vertex will be visited at most once by the search.
 
-  Additional options for the traversal can be provided via the *options* document:
+  Additional options for the shortest path can be provided via the *options* document:
   - *maxIterations*: Maximum number of iterations in the search. This number can be
     set to bound long-running searches. When a search performs as many iterations as the 
     *maxIterations* value, the search will abort with an error. If *maxIterations* is not 
@@ -256,8 +317,8 @@ If you have created a graph in the general-graph module you may want to use
     treat specially. If no examples are given, the search will handle all encountered
     vertices equally. If one or many vertex examples are given, the search will exclude
     the vertex from the result and/or not descend into it. Optionally, *filterVertices* can 
-    contain the name of a user-defined AQL function that should be responsible for filtering.
-    If so, the AQL function is expected to have the following signature:
+    be a string containing the name of a user-defined AQL function that should be responsible 
+    for filtering. If so, the custom AQL function is expected to have the following signature:
 
         function (config, vertex, path)
 
@@ -266,13 +327,41 @@ If you have created a graph in the general-graph module you may want to use
     - *[ "prune" ]*: Will include the vertex in the result but not descend into its connected edges
     - *[ "exclude" ]*: Will not include the vertex in the result but descend into its connected edges
     - *[ "prune", "exclude" ]*: Will completely ignore the vertex and its connected edges
+  
+  - *visitor*: If specified, must be a string containing the name of a custom AQL function that
+    will be called whenever the traversal visits a vertex. The custom AQL function is expected 
+    to have the following signature:
 
-  The result of the SHORTEST_PATH function is an array with the components of the shortest
-  path. Each component is a document consisting of the following attributes:
+        function (config, result, vertex, path, connections)
+
+    There are two modes for custom AQL visitor functions, depending on the value of the option
+    *visitorReturnsResults*. If it is set to *true*, then any value returned by the visitor will
+    be appended to the list of results of the TRAVERSAL function. If *visitorReturnsResults* is
+    set to *false*, then any value returned by the custom visitor function will be ignored.
+    Instead, the visitor function is allowed to modify its *result* function parameter value 
+    in-place. The contents of this variable at the end of the traversal will then be the
+    results of the TRAVERSAL function.
+
+    Note: The *connections* function parameter value will contain the edges connected to the 
+    vertex only if *order* was set to *preorder-expander*. Otherwise, the value of this parameter 
+    will be *undefined*.
+
+  - *visitorReturnsResults*: only useful in combination with a custom AQL visitor function. If
+    set to *true*, the data returned by the visitor will be appended to the result. If set to
+    *false*, any return value of the visitor function will be ignored. Instead, the visitor 
+    function can modify its *result* parameter value in-place. At the end of the traversal,
+    *result* is expected to be an array.
+
+
+  By default, the result of the SHORTEST_PATH function is an array with the components of the 
+  shortest path. Each component is a document consisting of the following attributes:
   - *vertex*: The vertex at the traversal point
   - *path*: The path history for the traversal point. The path is a document with the
     attributes *vertices* and *edges*, which are both arrays. Note that *path* is only present
-    in the result if the *paths* attribute is set in the *options*. 
+    in the result if the *paths* attribute is set in the *options*.
+
+  When using a custom AQL function as a visitor, the result may have a different structure.
+ 
 
 *Examples*
 
@@ -306,40 +395,54 @@ If you have created a graph in the general-graph module you may want to use
         return (edge.underConstruction === false); // don't follow these edges
       }, false);
 
-- *EDGES(edgecollection, startvertex, direction, edgeexamples)*:
-  Return all edges connected to the vertex *startvertex* as an array. The possible values for
-  *direction* are:
-  - *outbound*: Return all outbound edges
-  - *inbound*: Return all inbound edges
-  - *any*: Return outbound and inbound edges
-  
-  The *edgeexamples* parameter can optionally be used to restrict the results to specific
-  edge connections only. The matching is then done via the *MATCHES* function.
-  To not restrict the result to specific connections, *edgeexamples* should be left
-  unspecified. 
-
-*Examples*
  
-      EDGES(friendrelations, "friends/john", "outbound")
-      EDGES(friendrelations, "friends/john", "any", [ { "$label": "knows" } ])
+!SECTION Other functions
 
+- *PATHS(vertexcollection, edgecollection, direction, options)*: 
+  returns an array of paths through the graph defined by the nodes in the collection 
+  *vertexcollection* and edges in the collection *edgecollection*. For each vertex
+  in *vertexcollection*, it will determine the paths through the graph depending on the
+  value of *direction*:
+  - *"outbound"*: Follow all paths that start at the current vertex and lead to another vertex
+  - *"inbound"*: Follow all paths that lead from another vertex to the current vertex
+  - *"any"*: Combination of *"outbound"* and *"inbound"*
+  The default value for *direction* is *"outbound"*.
+  If specified, *options* must be a JavaScript object with the following optional attributes:
+  - *minLength*: specifies the minimum length of the paths to be returned. The default is 0.
+  - *maxLength*: specifies the maximum length of the paths to be returned. The default is 10.
+  - *followcycles*: if true, cyclic paths will be followed as well. This is turned off by
+    default.
 
-If you have created a graph in the general-graph module you may want to use
-[Graph operations](../Aql/GraphOperations.md) instead.
-
-- *NEIGHBORS(vertexcollection, edgecollection, startvertex, direction, edgeexamples)*:
-  Return all neighbors that are directly connected to the vertex *startvertex* as an array. 
-  The possible values for *direction* are:
-  - *outbound*: Return all outbound edges
-  - *inbound*: Return all inbound edges
-  - *any*: Return outbound and inbound edges
-
-  The *edgeexamples* parameter can optionally be used to restrict the results to specific
-  edge connections only. The matching is then done via the *MATCHES* function.
-  To not restrict the result to specific connections, *edgeexamples* should be left
-  unspecified.
+  The result of the function is an array of paths. Paths of length 0 will also be returned. Each 
+  path is a document consisting of the following attributes:
+  - *vertices*: array of vertices visited along the path
+  - *edges*: array of edges visited along the path (may be empty)
+  - *source*: start vertex of path
+  - *destination*: destination vertex of path
 
 *Examples*
 
-      NEIGHBORS(friends, friendrelations, "friends/john", "outbound")
-      NEIGHBORS(users, usersrelations, "users/john", "any", [ { "$label": "recommends" } ] )
+      PATHS(friends, friendrelations, "outbound")
+
+      FOR p IN PATHS(friends, friendrelations, "outbound", { minLength: 2, maxLength: 2 }) 
+        FILTER p.source._id == "users/123456"
+        RETURN p.vertices[*].name
+
+
+!SECTION Performance notes 
+
+When using any of AQL's general purpose traversal functions, please make sure that the graph 
+does not contain cycles, or that you at least specify some maximum depth or uniqueness 
+criteria for a traversal. 
+
+If no bounds are set, a traversal may run into an endless loop in a cyclic graph or sub-graph.
+Even in a non-cyclic graph, traversing far into the graph may consume a lot of processing
+time and memory to create the result set.
+
+By default, traversals are restricted to process a limited amount of vertices only and then
+abort. This is to protect the user from unintentionally running a traversal that will not 
+abort or consume lots of resources. The maximum number of vertices that a traversal will
+process is specified by the optional *maxIterations* configuration value. If the number of
+vertices processed in a traversal reaches this cap will, the traversal will abort and throw
+a *too many iterations* exception.
+
