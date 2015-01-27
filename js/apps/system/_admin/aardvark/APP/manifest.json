@@ -179,7 +179,6 @@
         "frontend/js/views/footerView.js",
         "frontend/js/views/foxxActiveListView.js",
         "frontend/js/views/foxxActiveView.js",
-        "frontend/js/views/foxxInstalledView.js",
         "frontend/js/views/graphManagementView.js",
         "frontend/js/views/loginView.js",
         "frontend/js/views/modalView.js",
