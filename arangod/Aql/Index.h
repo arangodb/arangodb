@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "HashIndex/hash-index.h"
 #include "VocBase/index.h"
 
 namespace triagens {
@@ -110,6 +111,28 @@ namespace triagens {
 
         json("fields", f);
         return json;
+      }
+
+      bool hasSelectivityEstimate () const {
+        if (type == TRI_IDX_TYPE_PRIMARY_INDEX ||
+            type == TRI_IDX_TYPE_HASH_INDEX) {
+          return true;
+        }
+
+        return false;
+      }
+
+      double selectivityEstimate () const {
+        TRI_ASSERT_EXPENSIVE(hasSelectivityEstimate());
+
+        if (type == TRI_IDX_TYPE_PRIMARY_INDEX) {
+          return 1.0;
+        }
+        if (type == TRI_IDX_TYPE_HASH_INDEX) {
+          return TRI_SelectivityHashIndex(data); 
+        }
+
+        TRI_ASSERT(false);
       }
 
 // -----------------------------------------------------------------------------

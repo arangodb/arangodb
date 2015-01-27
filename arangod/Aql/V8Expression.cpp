@@ -137,7 +137,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   else {
     // expression had a result. convert it to JSON
     json = TRI_ObjectToJson(isolate, result);
-    // json = TRI_SimplifiedObjectToJson(isolate, result);
+    // TODO: json = TRI_SimplifiedObjectToJson(isolate, result);
   }
 
   if (json == nullptr) {

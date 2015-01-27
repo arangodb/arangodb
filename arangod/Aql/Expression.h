@@ -364,6 +364,32 @@ namespace triagens {
 
         std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                             public static members
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for NULL which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+        static TRI_json_t const NullJson; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for TRUE which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+        static TRI_json_t const TrueJson;  
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for FALSE which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+        static TRI_json_t const FalseJson;  
     };
 
   }  // namespace triagens::aql

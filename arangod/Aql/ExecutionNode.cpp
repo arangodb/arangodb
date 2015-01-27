@@ -1645,7 +1645,7 @@ double LimitNode::estimateCost (size_t& nrItems) const {
 CalculationNode::CalculationNode (ExecutionPlan* plan,
                                   triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
-    _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable")),
+    _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable", true)),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
     _expression(new Expression(plan->getAst(), base)) {
 }
