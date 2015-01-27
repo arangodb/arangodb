@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo "$0: printing ulimit"
+ulimit -a
+
 echo "$0: checking for core file"
 COREFILE=$(find . -maxdepth 1 -name "core*" | head -n 1)
 

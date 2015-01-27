@@ -1858,8 +1858,26 @@ TRI_vocbase_col_t* TRI_LookupCollectionByIdVocBase (TRI_vocbase_t* vocbase,
 TRI_vocbase_col_t* TRI_FindCollectionByNameOrCreateVocBase (TRI_vocbase_t* vocbase,
                                                             char const* name,
                                                             const TRI_col_type_t type) {
+  if (name == nullptr) {
+    return nullptr;
+  }
+  
+  TRI_vocbase_col_t* found = nullptr;
+
   TRI_READ_LOCK_COLLECTIONS_VOCBASE(vocbase);
-  TRI_vocbase_col_t* found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
+  if (name[0] >= '0' && name[0] <= '9') {
+    // support lookup by id, too
+    try {
+      TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(name, strlen(name));
+      found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsById, &id));
+    }
+    catch (...) {
+      // no need to throw here... found will still be a nullptr
+    }
+  }
+  else {
+    found = static_cast<TRI_vocbase_col_t*>(TRI_LookupByKeyAssociativePointer(&vocbase->_collectionsByName, name));
+  }
   TRI_READ_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
   if (found != nullptr) {
