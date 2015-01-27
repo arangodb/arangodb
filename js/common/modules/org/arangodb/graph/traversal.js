@@ -557,6 +557,14 @@ function countingVisitor (config, result, vertex, path) {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a visitor that does nothing - can be used to quickly traverse a
+/// graph, e.g. for performance comparisons etc.
+////////////////////////////////////////////////////////////////////////////////
+
+function doNothingVisitor () {
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           filters
 // -----------------------------------------------------------------------------
@@ -746,7 +754,8 @@ function checkReverse (config) {
       result = true;
     }
   }
-  else if (config.order === ArangoTraverser.PRE_ORDER) {
+  else if (config.order === ArangoTraverser.PRE_ORDER ||
+           config.order === ArangoTraverser.PRE_ORDER_EXPANDER) {
     // pre order
     if (config.itemOrder === ArangoTraverser.BACKWARD &&
         config.strategy === ArangoTraverser.BREADTH_FIRST) {
@@ -850,7 +859,6 @@ function breadthFirstSearch () {
           }
 
           var filterResult = parseFilterResult(config.filter(config, vertex, path));
-
           if (config.order === ArangoTraverser.PRE_ORDER && filterResult.visit) {
             // preorder
             config.visitor(config, result, vertex, path);
@@ -862,16 +870,23 @@ function breadthFirstSearch () {
 
           if (filterResult.expand) {
             var connected = config.expander(config, vertex, path), i;
-            if (connected.length > 0) {
-              if (reverse) {
-                connected.reverse();
-              }
-              for (i = 0; i < connected.length; ++i) {
-                connected[i].parentIndex = index;
-                toVisit.push(connected[i]);
-              }
+
+            if (reverse) {
+              connected.reverse();
+            }
+
+            if (config.order === ArangoTraverser.PRE_ORDER_EXPANDER && filterResult.visit) { 
+              config.visitor(config, result, vertex, path, connected);
+            }
+
+            for (i = 0; i < connected.length; ++i) {
+              connected[i].parentIndex = index;
+              toVisit.push(connected[i]);
             }
           }
+          else if (config.order === ArangoTraverser.PRE_ORDER_EXPANDER && filterResult.visit) {
+            config.visitor(config, result, vertex, path, [ ]);
+          } 
 
           if (config.order === ArangoTraverser.POST_ORDER) {
             if (index < toVisit.length - 1) {
@@ -976,16 +991,23 @@ function depthFirstSearch () {
           // expand the element's children?
           if (filterResult.expand) {
             var connected = config.expander(config, vertex, path), i;
-            if (connected.length > 0) {
-              if (reverse) {
-                connected.reverse();
-              }
-              for (i = 0; i < connected.length; ++i) {
-                connected[i].visit = null;
-                toVisit.push(connected[i]);
-              }
+              
+            if (reverse) {
+              connected.reverse();
+            }
+          
+            if (config.order === ArangoTraverser.PRE_ORDER_EXPANDER && filterResult.visit) { 
+              config.visitor(config, result, vertex, path, connected);
+            }
+
+            for (i = 0; i < connected.length; ++i) {
+              connected[i].visit = null;
+              toVisit.push(connected[i]);
             }
           }
+          else if (config.order === ArangoTraverser.PRE_ORDER_EXPANDER && filterResult.visit) {
+            config.visitor(config, result, vertex, path, [ ]);
+          } 
         }
         else {
           // we have already seen this element
@@ -1364,14 +1386,14 @@ ArangoTraverser = function (config) {
 
   config.order = validate(config.order, {
     preorder: ArangoTraverser.PRE_ORDER,
-    postorder: ArangoTraverser.POST_ORDER
+    postorder: ArangoTraverser.POST_ORDER,
+    preorderexpander: ArangoTraverser.PRE_ORDER_EXPANDER
   }, "order");
 
   config.itemOrder = validate(config.itemOrder, {
     forward: ArangoTraverser.FORWARD,
     backward: ArangoTraverser.BACKWARD
   }, "itemOrder");
-
 
   if (typeof config.visitor !== "function") {
     err = new ArangoError();
@@ -1557,7 +1579,7 @@ ArangoTraverser.ASTAR_SEARCH         = 2;
 ArangoTraverser.DIJKSTRA_SEARCH      = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pre-order traversal
+/// @brief pre-order traversal, visitor called before expander
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTraverser.PRE_ORDER            = 0;
@@ -1567,6 +1589,12 @@ ArangoTraverser.PRE_ORDER            = 0;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTraverser.POST_ORDER           = 1;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pre-order traversal, visitor called at expander
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.PRE_ORDER_EXPANDER   = 2;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forward item processing order
@@ -1609,6 +1637,7 @@ exports.expandEdgesWithLabels           = expandEdgesWithLabels;
 
 exports.trackingVisitor                 = trackingVisitor;
 exports.countingVisitor                 = countingVisitor;
+exports.doNothingVisitor                = doNothingVisitor;
 
 exports.visitAllFilter                  = visitAllFilter;
 exports.maxDepthFilter                  = maxDepthFilter;
