@@ -270,7 +270,7 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
   }
 
   // additional log file in case of tty
-  if (! backgrounded && isatty(STDOUT_FILENO) != 0 && ! _logTty.empty()) {
+  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
     bool regularOut = (_logFile == "+" || _logFile == "-");
     bool ttyOut = (_logTty == "+" || _logTty == "-");
 
