@@ -37,6 +37,7 @@
 
 using namespace std;
 using namespace triagens::arango;
+using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ServerState
@@ -61,7 +62,8 @@ ServerState::ServerState ()
     _lock(),
     _role(ROLE_UNDEFINED),
     _state(STATE_UNDEFINED),
-    _initialised(false) {
+    _initialised(false),
+    _clusterEnabled(false) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -111,6 +113,8 @@ std::string ServerState::roleToString (RoleEnum role) {
   switch (role) {
     case ROLE_UNDEFINED:
       return "UNDEFINED";
+    case ROLE_SINGLE:
+      return "SINGLE";
     case ROLE_PRIMARY:
       return "PRIMARY";
     case ROLE_SECONDARY:
@@ -128,7 +132,10 @@ std::string ServerState::roleToString (RoleEnum role) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState::RoleEnum ServerState::stringToRole (std::string const& value) {
-  if (value == "PRIMARY") {
+  if (value == "SINGLE") {
+    return ROLE_SINGLE;
+  }
+  else if (value == "PRIMARY") {
     return ROLE_PRIMARY;
   }
   else if (value == "SECONDARY") {
@@ -221,7 +228,7 @@ void ServerState::flush () {
   }
 
   _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
-  _role = determineRole(_id);
+  _role = determineRole(_localInfo, _id);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,18 +268,45 @@ bool ServerState::isRunningInCluster () {
 
 ServerState::RoleEnum ServerState::getRole () {
   std::string id;
+  std::string info;
 
   {
     READ_LOCKER(_lock);
-    if (_role != ServerState::ROLE_UNDEFINED) {
+    if (_role != ServerState::ROLE_UNDEFINED ||
+        ! _clusterEnabled) {
       return _role;
     }
 
+    info = _localInfo;
     id = _id;
   }
 
+  if (id.empty()) {
+    // We need to announce ourselves in the agency to get a role configured:
+    LOG_DEBUG("Announcing our birth in Current/NewServers to the agency...");
+    AgencyComm comm;
+    AgencyCommResult result;
+    Json json(Json::Object, 1);
+    json("endpoint", Json(TRI_UNKNOWN_MEM_ZONE, getAddress()));
+    std::string description = getDescription();
+    if (! description.empty()) {
+      json("Description", Json(TRI_UNKNOWN_MEM_ZONE, description));
+    }
+    result = comm.setValue("Current/NewServers/"+_localInfo, json.json(), 0.0);
+    if (! result.successful()) {
+      LOG_ERROR("Could not talk to agency!");
+      return ROLE_UNDEFINED;
+    }
+    std::string jsonst = json.toString();
+    LOG_DEBUG("Have stored %s under Current/NewServers/%s in agency.",
+              jsonst.c_str(), _localInfo.c_str());
+  }
+
   // role not yet set
-  RoleEnum role = determineRole(id);
+  RoleEnum role = determineRole(info, id);
+  std::string roleSt = roleToString(role);
+
+  LOG_DEBUG("Found my role: %s", roleSt.c_str());
 
   {
     WRITE_LOCKER(_lock);
@@ -289,6 +323,28 @@ ServerState::RoleEnum ServerState::getRole () {
 void ServerState::setRole (RoleEnum role) {
   WRITE_LOCKER(_lock);
   _role = role;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server local info
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::getLocalInfo () {
+  READ_LOCKER(_lock);
+  return _localInfo;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server local info
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setLocalInfo (std::string const& localInfo) {
+  if (localInfo.empty()) {
+    return;
+  }
+
+  WRITE_LOCKER(_lock);
+  _localInfo = localInfo;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -311,6 +367,28 @@ void ServerState::setId (std::string const& id) {
 
   WRITE_LOCKER(_lock);
   _id = id;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server description
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ServerState::getDescription () {
+  READ_LOCKER(_lock);
+  return _description;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the server description
+////////////////////////////////////////////////////////////////////////////////
+
+void ServerState::setDescription (std::string const& description) {
+  if (description.empty()) {
+    return;
+  }
+
+  WRITE_LOCKER(_lock);
+  _description = description;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -577,9 +655,17 @@ void ServerState::setDisableDispatcherKickstarter (bool value) {
 /// Note: this method must be called under the _lock
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::RoleEnum ServerState::determineRole (std::string const& id) {
+ServerState::RoleEnum ServerState::determineRole (std::string const& info,
+                                                  std::string& id) {
   if (id.empty()) {
-    return ServerState::ROLE_UNDEFINED;
+    int res = lookupLocalInfoToId(info, id);
+    if (res != TRI_ERROR_NO_ERROR) {
+      LOG_ERROR("Could not lookupLocalInfoToId");
+      return ServerState::ROLE_UNDEFINED;
+    }
+    // When we get here, we have have successfully looked up our id
+    LOG_DEBUG("Learned my own Id: %s", id.c_str());
+    setId(id);
   }
 
   ServerState::RoleEnum role  = checkServersList(id);
@@ -740,6 +826,65 @@ ServerState::RoleEnum ServerState::checkCoordinatorsList (std::string const& id)
   }
 
   return ServerState::ROLE_UNDEFINED;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookup the server id by using the local info
+////////////////////////////////////////////////////////////////////////////////
+
+int ServerState::lookupLocalInfoToId (std::string const& localInfo,
+                                      std::string& id) {
+  // fetch value at Plan/DBServers
+  // we need to do this to determine the server's role
+
+  const std::string key = "Target/MapLocalToID";
+
+  int count = 0;
+  while (++count <= 600) {
+    AgencyComm comm;
+    AgencyCommResult result;
+
+    {
+      AgencyCommLocker locker("Target", "READ");
+
+      if (locker.successful()) {
+        result = comm.getValues(key, true);
+      }
+    }
+
+    if (! result.successful()) {
+      const std::string endpoints = AgencyComm::getEndpointsString();
+
+      LOG_DEBUG("Could not fetch configuration from agency endpoints (%s): "
+                "got status code %d, message: %s, key: %s",
+                endpoints.c_str(),
+                result._statusCode,
+                result.errorMessage().c_str(),
+                key.c_str());
+    }
+    else {
+      result.parse("Target/MapLocalToID/", false);
+      std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.find(localInfo);
+
+      if (it != result._values.end()) {
+        TRI_json_t const* json = it->second._json;
+        Json j(TRI_UNKNOWN_MEM_ZONE, json, Json::NOFREE);
+        id = triagens::basics::JsonHelper::getStringValue(json, "ID", "");
+        if (id.empty()) {
+          LOG_ERROR("ID not set!");
+          return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
+        }
+        std::string description
+          = triagens::basics::JsonHelper::getStringValue(json, "Description", "");
+        if (! description.empty()) {
+          setDescription(description);
+        }
+        return TRI_ERROR_NO_ERROR;
+      }
+    }
+    sleep(1);
+  };
+  return TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
