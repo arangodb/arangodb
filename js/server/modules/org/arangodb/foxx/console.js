@@ -90,7 +90,7 @@ extend(ConsoleLogs.prototype, {
     }
 
     if (exists(cfg.message)) {
-      query = query.filter(qb.LIKE('entry.message', qb.str('%' + cfg.fileName + '%'), true));
+      query = query.filter(qb.LIKE('entry.message', qb.str('%' + cfg.message + '%'), true));
     }
 
     query = query.sort('entry.time', 'ASC');
@@ -107,11 +107,11 @@ extend(ConsoleLogs.prototype, {
 
     var result = db._query(query).toArray();
 
-    if (cfg.opts.sort && cfg.opts.sort.toUpperCase() === 'ASC') {
-      return result;
+    if (cfg.opts.sort && cfg.opts.sort.toUpperCase() === 'DESC') {
+      return result.reverse();
     }
 
-    return result.reverse();
+    return result;
   },
   list: function (opts) {
     return this._query({opts: opts});
@@ -147,11 +147,11 @@ function Console(mount, tracing) {
   this.warn = this.custom('WARN', 1);
   this.error = this.custom('ERROR', 2);
 
-  this.assert._level = 'ERROR';
-  this.dir._level = 'INFO';
-  this.log._level = 'INFO';
-  this.time._level = 'INFO';
-  this.trace._level = 'TRACE';
+  this.assert.level = 'ERROR';
+  this.dir.level = 'INFO';
+  this.log.level = 'INFO';
+  this.time.level = 'INFO';
+  this.trace.level = 'TRACE';
 }
 
 extend(Console.prototype, {
@@ -206,7 +206,7 @@ extend(Console.prototype, {
         operator: '==',
         stackStartFunction: this.assert
       });
-      this._log(this.assert._level, err.stack, this.assert);
+      this._log(this.assert.level, err.stack, this.assert);
       if (this._assertThrows) {
         throw err;
       }
@@ -214,11 +214,11 @@ extend(Console.prototype, {
   },
 
   dir: function (obj) {
-    this._log(this.dir._level, util.inspect(obj));
+    this._log(this.dir.level, util.inspect(obj));
   },
 
   log: function () {
-    this._log(this.log._level, util.format.apply(null, arguments));
+    this._log(this.log.level, util.format.apply(null, arguments));
   },
 
   time: function (label) {
@@ -226,11 +226,11 @@ extend(Console.prototype, {
   },
 
   timeEnd: function (label) {
-    if (!this._timers.hasOwnProperty(label)) {
+    if (!Object.prototype.hasOwnProperty.call(this._timers, label)) {
       throw new Error('No such label: ' + label);
     }
     this._log(
-      this.time._level,
+      this.time.level,
       util.format('%s: %dms', label, Date.now() - this._timers[label]),
       this.time
     );
@@ -241,7 +241,7 @@ extend(Console.prototype, {
     var trace = new Error(message);
     trace.name = 'Trace';
     Error.captureStackTrace(trace, this.trace);
-    this._log(this.trace._level, trace.stack);
+    this._log(this.trace.level, trace.stack);
   },
 
   custom: function (level, weight) {
