@@ -422,7 +422,7 @@ uint64_t RestReplicationHandler::determineChunkSize () const {
 ///
 ///   - *serverId*: the logger server's id
 ///
-/// - *clients*: this attribute was used in ArangoDB versions prior to 2.1 for 
+/// - *clients*: this attribute was used in ArangoDB versions prior to 2.1 for
 ///   returning which replication applier clients connected to the logger. Each
 ///   client was returned with its date/time of last connect. Since there is no
 ///   replication-logger in ArangoDB where the client connection data could be kept,
@@ -465,7 +465,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
     return;
   }
 
-  // "state" part 
+  // "state" part
   TRI_json_t* state = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (state == nullptr) {
@@ -473,7 +473,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
     return;
   }
-  
+
   triagens::wal::LogfileManagerState const&& s = triagens::wal::LogfileManager::instance()->state();
   std::string const lastTickString(StringUtils::itoa(s.lastTick));
 
@@ -497,7 +497,7 @@ void RestReplicationHandler::handleCommandLoggerState () {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, server, "serverId", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, serverIdString, strlen(serverIdString)));
   TRI_FreeString(TRI_CORE_MEM_ZONE, serverIdString);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "server", server);
- 
+
   // clients
   TRI_json_t* clients = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
   if (clients != nullptr) {
@@ -1013,7 +1013,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
                   "invalid from/to values");
     return;
   }
-  
+
   bool includeSystem = true;
   value = _request->value("includeSystem", found);
 
@@ -1059,7 +1059,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
                            StringUtils::itoa(state.lastTick));
 
       _response->setHeader(TRI_REPLICATION_HEADER_ACTIVE,
-                           strlen(TRI_REPLICATION_HEADER_ACTIVE), 
+                           strlen(TRI_REPLICATION_HEADER_ACTIVE),
                            "true");
 
       if (length > 0) {
@@ -1943,7 +1943,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
     // we don't care about deleted collections
     return TRI_ERROR_NO_ERROR;
   }
-    
+
   TRI_ReadLockReadWriteLock(&_vocbase->_inventoryLock);
 
   // look up the collection
@@ -1952,7 +1952,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
 
     TRI_document_collection_t* document = guard.collection()->_collection;
 
-    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info._cid); 
+    SingleCollectionWriteTransaction<UINT64_MAX> trx(new StandaloneTransactionContext(), _vocbase, document->_info._cid);
 
     int res = trx.begin();
 
@@ -1960,7 +1960,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
       errorMsg = "unable to start transaction: " + string(TRI_errno_string(res));
       THROW_ARANGO_EXCEPTION(res);
     }
- 
+
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* idxDef = static_cast<TRI_json_t const*>(TRI_AtVector(&indexes->_value._objects, i));
       TRI_index_t* idx = nullptr;
@@ -2085,7 +2085,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
                                                        TRI_json_t const* json,
                                                        string& errorMsg) {
 
-  if (type == REPLICATION_MARKER_DOCUMENT || 
+  if (type == REPLICATION_MARKER_DOCUMENT ||
       type == REPLICATION_MARKER_EDGE) {
     // {"type":2400,"key":"230274209405676","data":{"_key":"230274209405676","_rev":"230274209405676","foo":"bar"}}
 
@@ -2094,7 +2094,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
     TRI_document_collection_t* document = trxCollection->_collection->_collection;
     TRI_memory_zone_t* zone = document->getShaper()->_memoryZone;  // PROTECTED by trx in trxCollection
     TRI_shaped_json_t* shaped = TRI_ShapedJsonJson(document->getShaper(), json, true);  // PROTECTED by trx in trxCollection
-    
+
     if (shaped == nullptr) {
       errorMsg = TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY);
 
@@ -2771,7 +2771,12 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// is returned if the request was executed successfully.
+/// is returned if the request was executed successfully and data was returned. The header
+/// `x-arango-replication-lastincluded` is set to the tick of the last document returned.
+///
+/// @RESTRETURNCODE{204}
+/// is returned if the request was executed successfully, but there was no content available.
+/// The header `x-arango-replication-lastincluded` is `0` in this case.
 ///
 /// @RESTRETURNCODE{400}
 /// is returned if either the *from* or *to* values are invalid.
@@ -2843,8 +2848,8 @@ void RestReplicationHandler::handleCommandDump () {
 
   bool found;
   char const* value;
- 
-  // determine flush WAL value 
+
+  // determine flush WAL value
   value = _request->value("flush", found);
 
   if (found) {
@@ -2871,7 +2876,7 @@ void RestReplicationHandler::handleCommandDump () {
                   "invalid from/to values");
     return;
   }
-  
+
   bool includeSystem = true;
 
   value = _request->value("includeSystem", found);
@@ -2914,7 +2919,7 @@ void RestReplicationHandler::handleCommandDump () {
 
     TRI_vocbase_col_t* col = guard.collection();
     TRI_ASSERT(col != nullptr);
-  
+
     // initialise the dump container
     TRI_replication_dump_t dump(_vocbase, (size_t) determineChunkSize(), includeSystem);
 
@@ -2957,7 +2962,7 @@ void RestReplicationHandler::handleCommandDump () {
   catch (...) {
     res = TRI_ERROR_INTERNAL;
   }
-    
+
   if (res != TRI_ERROR_NO_ERROR) {
     generateError(HttpResponse::SERVER_ERROR, res);
   }
@@ -2974,14 +2979,14 @@ void RestReplicationHandler::handleCommandDump () {
 /// Starts a full data synchronization from a remote endpoint into the local
 /// ArangoDB database.
 ///
-/// The *sync* method can be used by replication clients to connect an ArangoDB database 
+/// The *sync* method can be used by replication clients to connect an ArangoDB database
 /// to a remote endpoint, fetch the remote list of collections and indexes, and collection
-/// data. It will thus create a local backup of the state of data at the remote ArangoDB 
-/// database. *sync* works on a per-database level. 
+/// data. It will thus create a local backup of the state of data at the remote ArangoDB
+/// database. *sync* works on a per-database level.
 ///
 /// *sync* will first fetch the list of collections and indexes from the remote endpoint.
 /// It does so by calling the *inventory* API of the remote database. It will then purge
-/// data in the local ArangoDB database, and after start will transfer collection data 
+/// data in the local ArangoDB database, and after start will transfer collection data
 /// from the remote database to the local ArangoDB database. It will extract data from the
 /// remote database by calling the remote database's *dump* API until all data are fetched.
 ///
@@ -3062,7 +3067,7 @@ void RestReplicationHandler::handleCommandSync () {
     generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "<endpoint> must be a valid endpoint");
     return;
   }
-  
+
   bool includeSystem = JsonHelper::getBooleanValue(json, "includeSystem", true);
 
   std::unordered_map<string, bool> restrictCollections;
