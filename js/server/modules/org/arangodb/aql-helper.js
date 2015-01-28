@@ -352,7 +352,11 @@ function getCompactPlan (explainResult) {
 
 function findExecutionNodes(plan, nodetype) {
   var matches = [];
-  plan.plan.nodes.forEach(function(node) {
+  var what = plan;
+  if (plan.hasOwnProperty("plan")) {
+    what = plan.plan;
+  }
+  what.nodes.forEach(function(node) {
     if (node.type === nodetype) {
 
       matches.push(node);
