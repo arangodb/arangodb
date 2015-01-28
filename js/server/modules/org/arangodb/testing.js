@@ -1454,7 +1454,14 @@ testFuncs.authentication_parameters = function (options) {
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
   var all_ok = true;
   var continueTesting = true;
+  var downloadOptions = {
+    followRedirects:false,
+    returnBodyOnError:true
+  };
 
+  if (typeof(options.valgrind) === 'string') {
+    downloadOptions.timeout = 300;
+  }
   print("Starting Full test");
   results.auth_full = {};
   for (i = 0; i < urlsTodo.length; i++) {
@@ -1467,7 +1474,7 @@ testFuncs.authentication_parameters = function (options) {
       continue;
     }
 
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
+    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
     if (r.code === expectAuthFullRC[i]) {
       results.auth_full[urlsTodo[i]] = { status: true, message: ""};
     }
@@ -1507,7 +1514,7 @@ testFuncs.authentication_parameters = function (options) {
       all_ok = false;
       continue;
     }
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
+    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
     if (r.code === expectAuthSystemRC[i]) {
       results.auth_system[urlsTodo[i]] = { status: true, message: ""};
     }
@@ -1548,7 +1555,7 @@ testFuncs.authentication_parameters = function (options) {
       continue;
     }
 
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
+    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
     if (r.code === expectAuthNoneRC[i]) {
       results.auth_none[urlsTodo[i]] = { status: true, message: ""};
     }
