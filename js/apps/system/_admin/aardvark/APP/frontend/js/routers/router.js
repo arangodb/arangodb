@@ -19,8 +19,8 @@
       "api": "api",
       "databases": "databases",
       "applications": "applications",
-      "applications/:key": "applicationDetail",
-      "application/documentation/:key": "appDocumentation",
+      "applications/:mount": "applicationDetail",
+      "application/documentation/:mount": "appDocumentation",
       "graph": "graphManagement",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
@@ -108,7 +108,7 @@
       return true;
     },
 
-    applicationDetail: function (key) {
+    applicationDetail: function (mount) {
       this.naviView.selectMenuItem('applications-menu');
 
       if (this.foxxList.length === 0) {
@@ -116,11 +116,11 @@
       }
       if (!this.hasOwnProperty('applicationDetailView')) {
         this.applicationDetailView = new window.ApplicationDetailView({
-          model: this.foxxList.get(key)
+          model: this.foxxList.get(decodeURIComponent(mount))
         });
       }
 
-      this.applicationDetailView.model = this.foxxList.get(key);
+      this.applicationDetailView.model = this.foxxList.get(decodeURIComponent(mount));
       this.applicationDetailView.render();
     },
 
@@ -259,8 +259,8 @@
         this.naviView.selectMenuItem('applications-menu');
       },
 
-      appDocumentation: function (key) {
-        var docuView = new window.AppDocumentationView({key: key});
+      appDocumentation: function (mount) {
+        var docuView = new window.AppDocumentationView({mount: mount});
         docuView.render();
         this.naviView.selectMenuItem('applications-menu');
       },

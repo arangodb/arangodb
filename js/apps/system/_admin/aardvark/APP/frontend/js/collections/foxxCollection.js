@@ -28,110 +28,53 @@
       this.sortOptions.desc = val;
     },
 
-    installFoxxFromGithub: function (url, name, version) {
-
-      var result, options = {
-        url: url,
-        name: name,
-        version: version
-      };
-
+    // Install Foxx from github repo
+    // info is expected to contain: "url" and "version"
+    installFromGithub: function (info, mount, callback) {
       $.ajax({
         cache: false,
+        type: "PUT",
+        url: "/_admin/aardvark/foxxes/" + mount + "/git",
+        data: JSON.stringify(info),
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          callback(data);
+        },
+        error: function(err) {
+          callback(err);
+        }
+      });
+    },
+
+    installFromZip: function(files, data, callback) {
+      var self = this;
+      $.ajax({
         type: "POST",
-        async: false, // sequential calls!
-        url: "/_admin/aardvark/foxxes/gitinstall",
-        data: JSON.stringify(options),
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          result = data;
-        },
-        error: function(data) {
-          result = {
-            error: true 
-          };
-        }
-      });
-      return result;
-    },
-
-    mountInfo: function (key) {
-      var result;
-      $.ajax({
-        cache: false,
-        type: "GET",
-        async: false, // sequential calls!
-        url: "/_admin/aardvark/foxxes/mountinfo/"+key,
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          result = data;
-        },
-        error: function(data) {
-          result = data;
-        }
-      });
-
-      return result;
-    },
-
-    gitInfo: function (key) {
-      var result;
-      $.ajax({
-        cache: false,
-        type: "GET",
-        async: false, // sequential calls!
-        url: "/_admin/aardvark/foxxes/gitinfo/"+key,
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          result = data;
-        },
-        error: function(data) {
-          result = data;
-        }
-      });
-
-      return result;
-    },
-
-    purgeFoxx: function (key) {
-      var msg, url = "/_admin/aardvark/foxxes/purge/"+key;
-      $.ajax({
         async: false,
-        type: "DELETE",
-        url: url,
-        contentType: "application/json",
-        dataType: "json",
-        processData: false,
-        success: function(data) {
-          msg = true;
-        },
-        error: function(data) {
-          msg = false;
-        }
+        url: "/_admin/aardvark/foxxes/inspect",
+        data: JSON.stringify(data),
+        contentType: "application/json"
+      }).done(function(res) {
+        $.ajax({
+          type: "POST",
+          async: false,
+          url: '/_admin/foxx/fetch',
+          data: JSON.stringify({
+            name: res.name,
+            version: res.version,
+            filename: res.filename
+          }),
+          processData: false
+        }).done(function (result) {
+          callback(result);
+        }).fail(function (err) {
+          callback(err);
+        });
+      }).fail(function(err) {
+        callback(err);
       });
-      return msg;
-    },
-
-    purgeAllFoxxes: function (key) {
-      var msg, url = "/_admin/aardvark/foxxes/purgeall/"+key;
-      $.ajax({
-        async: false,
-        type: "DELETE",
-        url: url,
-        contentType: "application/json",
-        dataType: "json",
-        processData: false,
-        success: function(data) {
-          msg = true;
-        },
-        error: function(data) {
-          msg = false;
-        }
-      });
-      return msg;
+      self.hideImportModal();
     }
 
   });

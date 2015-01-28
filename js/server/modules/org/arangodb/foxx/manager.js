@@ -35,6 +35,7 @@
   // --SECTION--                                                           imports
   // -----------------------------------------------------------------------------
 
+  var db = require("internal").db;
   var fs = require("fs");
   var utils = require("org/arangodb/foxx/manager-utils");
   var store = require("org/arangodb/foxx/store");
@@ -68,6 +69,19 @@
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private functions
   // -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief lookup app in cache
+  /// Returns either the app or undefined if it is not cached.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var lookupApp = function(mount) {
+    if (!appCache.hasOwnProperty(mount)) {
+      throw "App not found";
+    }
+    return appCache[mount];
+  };
+
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief refills the routing cache
@@ -113,19 +127,6 @@
       }
     }
   };
-
-  ////////////////////////////////////////////////////////////////////////////////
-  /// @brief lookup app in cache
-  /// Returns either the app or undefined if it is not cached.
-  ////////////////////////////////////////////////////////////////////////////////
-
-  var lookupApp = function(mount) {
-    if (!appCache.hasOwnProperty(mount)) {
-      throw "App not found";
-    }
-    return appCache[mount];
-  };
-
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief check a manifest for completeness
@@ -620,10 +621,17 @@
       [ mount ] );
 
     var old = lookupApp(mount);
-
-    utils.tmp_getStorage().removeByExample({mount: mount});
-
-    _scanFoxx(mount, old._options, old._isDevelopment);
+    var collection = utils.tmp_getStorage();
+    db._executeTransaction({
+      collections: {
+        write: collection.name()
+      },
+      action: function() {
+        var definition = collection.firstExample({mount: mount});
+        collection.remove(definition._key);
+        _scanFoxx(mount, old._options, old._isDevelopment);
+      }
+    });
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -633,30 +641,39 @@
 
   var _install = function(appInfo, mount, options, runSetup) {
     var targetPath = computeAppPath(mount, true);
-    if (fs.exists(targetPath)) {
-      throw "An app is already installed at this location.";
-    }
-    fs.makeDirectoryRecursive(targetPath);
-    // Remove the empty APP folder.
-    // Ohterwise move will fail.
-    fs.removeDirectory(targetPath);
+    var app;
+    var collection = utils.tmp_getStorage();
+    db._executeTransaction({
+      collections: {
+        write: collection.name()
+      },
+      action: function() {
+        if (fs.exists(targetPath)) {
+          throw "An app is already installed at this location.";
+        }
+        fs.makeDirectoryRecursive(targetPath);
+        // Remove the empty APP folder.
+        // Ohterwise move will fail.
+        fs.removeDirectory(targetPath);
 
-    if (appInfo === "EMPTY") {
-      // Make Empty app
-      installAppFromGenerator(targetPath, options || {});
-    } else if (/^GIT:/.test(appInfo)) {
-      installAppFromRemote(buildGithubUrl(appInfo), targetPath);
-    } else if (/^https?:/.test(appInfo)) {
-      installAppFromRemote(appInfo, targetPath);
-    } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
-      installAppFromLocal(appInfo, targetPath);
-    } else {
-      installAppFromRemote(store.buildUrl(appInfo), targetPath);
-    }
-    var app = _scanFoxx(mount, options);
-    if (runSetup) {
-      setup(mount);
-    }
+        if (appInfo === "EMPTY") {
+          // Make Empty app
+          installAppFromGenerator(targetPath, options || {});
+        } else if (/^GIT:/.test(appInfo)) {
+          installAppFromRemote(buildGithubUrl(appInfo), targetPath);
+        } else if (/^https?:/.test(appInfo)) {
+          installAppFromRemote(appInfo, targetPath);
+        } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+          installAppFromLocal(appInfo, targetPath);
+        } else {
+          installAppFromRemote(store.buildUrl(appInfo), targetPath);
+        }
+        app = _scanFoxx(mount, options);
+        if (runSetup) {
+          setup(mount);
+        }
+      }
+    });
     return app;
   };
 
@@ -684,15 +701,23 @@
 
   var _uninstall = function(mount) {
     var app = lookupApp(mount);
-    var targetPath = computeAppPath(mount, true);
-    if (!fs.exists(targetPath)) {
-      throw "No foxx app found at this location.";
-    }
-    teardown(mount);
-    utils.tmp_getStorage().removeByExample({mount: mount}); 
-    delete appCache[mount];
-    // Remove the APP folder.
-    fs.removeDirectoryRecursive(targetPath, true);
+    var collection = utils.tmp_getStorage();
+    db._executeTransaction({
+      collections: {
+        write: collection.name()
+      },
+      action: function() {
+        var targetPath = computeAppPath(mount, true);
+        if (!fs.exists(targetPath)) {
+          throw "No foxx app found at this location.";
+        }
+        teardown(mount);
+        utils.tmp_getStorage().removeByExample({mount: mount}); 
+        delete appCache[mount];
+        // Remove the APP folder.
+        fs.removeDirectoryRecursive(targetPath, true);
+      }
+    });
     return app;
   };
 

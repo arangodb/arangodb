@@ -29,7 +29,6 @@
 
 "use strict";
 
-// Initialise a new FoxxController called controller under the urlPrefix: "foxxes".
 var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   ArangoError = require("org/arangodb").ArangoError,
@@ -73,22 +72,6 @@ var sortVersions = function(a, b) {
   return -1;
 };
 
-var installFromGithub = function(res, url, name, version) {
-  try {
-    var appID = FoxxManager.fetchFromGithub(url, name, version);
-    var app = db._aal.firstExample({"app": appID});
-    res.json({
-      error: false,
-      configuration: app.manifest.configuration || {},
-      app: appID,
-      name: app.name,
-      version: app.version
-    });
-  } catch (e) {
-    e.error = true;
-    res.json(e);
-  }
-};
 
 controller.get("/whoAmI", function(req, res) {
   res.json({
@@ -150,55 +133,10 @@ controller.put("/foxxes/install", function (req, res) {
 }).summary("Installs a new foxx")
 .notes("This function is used to install a new foxx.");
 
-/** Install a Foxx from fishbowl
- *
- * Downloads a Foxx from the fishbowl and returns the required configuration for this foxx.
- */
-controller.post("/foxxes/fishbowlinstall", function (req, res) {
-  var content = JSON.parse(req.requestBody),
-    name = content.name,
-    version = content.version,
-    url,
-    appInfo = FoxxManager.getFishbowlStorage().firstExample({
-      name: name
-    });
-  if (version !== undefined) {
-    if (appInfo.versions.hasOwnProperty(version)) {
-      url = appInfo.versions[version].location;
-    } else {
-      res.json({
-        error: true,
-        errorMessage: "Internal Error in ArangoDB Store. Please report this alongside with the app you tried to install to arangodb@googlegroups.com."
-      });
-      return;
-    }
-  } else {
-    var keys = Object.keys(appInfo.versions);
-    if (keys.length > 1) {
-      keys = keys.sort(sortVersions);
-    }
-    url = appInfo.versions[keys[0]].location;
-  }
-  installFromGithub(res, url, name, "v" + version);
-});
-
-/** Install a Foxx from Github
- *
- * Install a Foxx with URL and .....
- */
-controller.post("/foxxes/gitinstall", function (req, res) {
-  var content = JSON.parse(req.requestBody),
-  name = content.name,
-  url = content.url,
-  version = content.version;
-  installFromGithub(res, url, name, version);
-});
-
 /** Remove an uninstalled Foxx
  *
  * Remove the Foxx with the given key.
  */
-
 controller.del("/foxxes/purge/:key", function (req, res) {
   res.json(FoxxManager.purge(req.params("key")));
 }).pathParam("key", {
@@ -239,7 +177,6 @@ controller.del("/foxxes/purgeall/:key", function (req, res) {
  *
  * Returns github information of Foxx
  */
-
 controller.get("/foxxes/gitinfo/:key", function (req, res) {
   res.json(FoxxManager.gitinfo(req.params("key")));
 }).pathParam("key", {
@@ -276,18 +213,6 @@ controller.get("/foxxes/mountinfo/", function (req, res) {
 .notes("This function is used to display all available mount points of all foxxes");
 
 
-/** Uninstall a Foxx
- *
- * Uninstall the Foxx with the given key.
- */
-
-controller.del("/foxxes/:key", function (req, res) {
-  res.json(foxxes.uninstall(req.params("key")));
-}).pathParam("key", {
-  type: foxxInstallKey,
-  allowMultiple: false
-}).summary("Uninstall a Foxx.")
-.notes("This function is used to uninstall a foxx.");
 
 
 /** Update a Foxx
@@ -310,50 +235,6 @@ controller.put("/foxxes/:key", function (req, res) {
 }).summary("Update a foxx.")
   .notes("Used to either activate/deactivate a foxx, or change the mount point.");
 
-/** Get the thubmail of a Foxx
- *
- * Request the Thumbnail stored for a Foxx
- */
-
-controller.get("/foxxes/thumbnail/:app", function (req, res) {
-  res.transformations = [ "base64decode" ];
-  res.body = foxxes.thumbnail(req.params("app"));
-
-  // evil mimetype detection attempt...
-  var start = require("internal").base64Decode(res.body.substr(0, 8));
-  if (start.indexOf("PNG") !== -1) {
-    res.contentType = "image/png";
-  }
-}).pathParam("app", {
-  type: appname.description(
-    "The appname which is used to identify the foxx in the list of available foxxes."
-  ),
-  allowMultiple: false
-}).summary("Get the thumbnail of a foxx.")
-  .notes("Used to request the thumbnail of the given Foxx in order to display it on the screen.");
-
-
-/** List all Foxxes
- *
- * Get a List of all Foxxes available and running
- *
- */
-controller.get('/foxxes', function (req, res) {
-  res.json(foxxes.viewAll());
-}).summary("List of all foxxes.")
-  .notes("This function simply returns the list of all running foxxes");
-
-/** List all Foxxes in Fishbowl
- * 
- * Get the information for all Apps availbale in the Fishbowl and ready for download
- *
- */
-controller.get('/foxxes/fishbowl', function (req, res) {
-  FoxxManager.update();
-  res.json(FoxxManager.availableJson());
-}).summary("List of all foxx apps submitted to the fishbowl store.")
-.notes("This function contacts the fishbowl and reports which apps are available for install")
-.errorResponse(ArangoError, 503, "Could not connect to store.");
 
 /** List available Documentation
  *
@@ -383,7 +264,6 @@ controller.get("/docu/:key",function (req, res) {
  /** Subroutes for API Documentation
   *
   * Get the Elements of the API Documentation subroutes
-  *
   */
 controller.get('/docu/:key/*', function(req, res) {
   var mountPoint = "";
@@ -395,27 +275,6 @@ controller.get('/docu/:key/*', function(req, res) {
   .notes("This function lists the API of the foxx"
        + " running under the given mount point");
  
-/** Subroutes for API Documentation
-  *
-  * Get the Elements of the API Documentation subroutes
-  *
-  */
-controller.get('/swagger/:mount', function(req, res) {
-  var subPath = req.path.substr(0, req.path.lastIndexOf("[") - 1),
-    mount = decodeURIComponent(req.params("mount")),
-    path = req.protocol + "://" + req.headers.host + 
-           "/_db/" + encodeURIComponent(req.database) + subPath + "/" + encodeURIComponent(mount) + "/",
-    candidate = db._aal.firstExample({ mount: mount });
-
-  if (candidate === null) {
-    throw "no entry found for mount";
-  }
-  res.json(docus.show(mount));
-//  res.json(docus.listOneForMount(path, mount));
-}).summary("Returns the generated Swagger JSON description for one foxx")
-  .notes("This function returns the Swagger JSON API description of the foxx"
-       + " running under the given mount point");
-
 /** Move Foxx to other Mount
  *
  * Move a running Foxx from one mount point to another
@@ -436,8 +295,8 @@ controller.put('/foxx/move/:key', function(req, res) {
   res.json(result);
 })
 .summary("Move one foxx to another moint point")
-  .notes ("This function moves one installed foxx"
-    + " to a given mount point.");
+.notes ("This function moves one installed foxx"
+  + " to a given mount point.");
 
 /** Download stored queries
  *
