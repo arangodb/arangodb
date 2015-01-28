@@ -538,16 +538,16 @@
 
 
       it("should navigate to the appDocumentation", function () {
-        var key = 5;
+        var mount = encodeURIComponent("/_admin/aardvark");
         simpleNavigationCheck(
           {
-            url: "application/documentation/:key",
-            params: [key]
+            url: "application/documentation/:mount",
+            params: [mount]
           },
           "AppDocumentationView",
           "applications-menu",
           {
-            key: 5
+            mount: mount
           },
           {
           },
@@ -556,25 +556,6 @@
         );
       });
 
-
-      it("should navigate to the appDocumentation", function () {
-        var key = 5;
-        simpleNavigationCheck(
-          {
-            url: "application/documentation/:key",
-            params: [key]
-          },
-          "AppDocumentationView",
-          "applications-menu",
-          {
-            key: 5
-          },
-          {
-          },
-          false,
-          true
-        );
-      });
 
       it("should call handleSelectDatabase in naviview", function () {
         spyOn(naviDummy, "handleSelectDatabase");

@@ -7,46 +7,34 @@
   "use strict";
 
   describe("foxx Model", function() {
-    it("verifies url without _key", function() {
-      var myFoxx = new window.Foxx();
-      expect(myFoxx.url())
-        .toEqual("/_admin/aardvark/foxxes/install");
-    });
-  });
 
-  describe("foxx Model", function() {
-    it("verifies url with _key", function() {
-      var key = 'key',
-        myFoxx = new window.Foxx(
-        {
-          _key: key
-        }
-      );
-      expect(myFoxx.url())
-        .toEqual("/_admin/aardvark/foxxes/" + key);
+    it("is sorted by mount", function() {
+      expect(window.Foxx.prototype.idAttribute).toEqual("mount");
     });
-  });
 
-  describe("foxx Model", function() {
+    it("can return it's mount url-encoded", function() {
+      var testMount = "/this/is_/a/test/mount";
+      var expected = encodeURIComponent(testMount);
+      var myFoxx = new window.Foxx({
+        mount: testMount
+      });
+      expect(myFoxx.encodedMount()).toEqual(expected);
+    });
+
     it("verifies defaults", function() {
       var myFoxx = new window.Foxx();
       expect(myFoxx.get('title')).toEqual('');
       expect(myFoxx.get('version')).toEqual('Unknown Version');
-      expect(myFoxx.get('mount')).toEqual('');
       expect(myFoxx.get('description')).toEqual('No description');
       expect(myFoxx.get('git')).toEqual('');
       expect(myFoxx.get('isSystem')).toBeFalsy();
       expect(myFoxx.get('development')).toBeFalsy();
     });
-  });
 
-  describe("foxx Model", function() {
-    it("verifies isNew", function() {
+    it("is always considered newNew", function() {
       var myFoxx = new window.Foxx();
       expect(myFoxx.isNew()).toBeFalsy();
     });
   });
-
-
 
 }());
