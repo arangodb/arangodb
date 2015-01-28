@@ -348,6 +348,9 @@
 ///   Will be raised when a document with a given identifier or handle is
 ///   unknown, or if the sharding attributes have been changed in a REPLACE
 ///   operation in the cluster.
+/// - 1476: @LIT{could not determine my ID from my local info}
+///   Will be raised if a cluster server at startup could not determine its own
+///   ID from the local info provided.
 /// - 1500: @LIT{query killed}
 ///   Will be raised when a running query is killed by an explicit admin
 ///   command.
@@ -2033,6 +2036,17 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED (1475)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1476: ERROR_CLUSTER_COULD_NOT_DETERMINE_ID
+///
+/// could not determine my ID from my local info
+///
+/// Will be raised if a cluster server at startup could not determine its own
+/// ID from the local info provided.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CLUSTER_COULD_NOT_DETERMINE_ID                          (1476)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1500: ERROR_QUERY_KILLED
