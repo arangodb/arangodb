@@ -271,6 +271,24 @@ pack-winXX-build:
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 
+################################################################################
+### @brief generates a tar archive
+################################################################################
+
+.PHONY: pack-tar pack-tar-config
+
+pack-tar-config:
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-mruby
+
+pack-tar:
+	rm -rf /tmp/pack-arangodb
+	make install-strip DESTDIR=/tmp/pack-arangodb
+	tar -c -v -z -f arangodb-$(VERSION).tar.gz -C /tmp/pack-arangodb .
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
