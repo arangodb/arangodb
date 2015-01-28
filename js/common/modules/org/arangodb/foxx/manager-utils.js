@@ -297,8 +297,8 @@ function listJson (showPrefix, onlyDevelopment) {
       name: doc.name,
       description: doc.manifest.description,
       author: doc.manifest.author,
-      system: doc.isSystem ? "yes" : "no",
-      development: doc.isDevelopment ? "yes" : "no",
+      system: doc.isSystem || false,
+      development: doc.isDevelopment || false,
       version: doc.version
     };
 
@@ -318,6 +318,7 @@ function listJson (showPrefix, onlyDevelopment) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function list(onlyDevelopment) {
+  "use strict";
   var apps = listJson(undefined, onlyDevelopment);
 
   arangodb.printTable(

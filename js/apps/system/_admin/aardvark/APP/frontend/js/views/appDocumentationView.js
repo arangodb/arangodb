@@ -13,7 +13,7 @@
 
     initialize: function() {
       var internal = require("internal");
-      var url = internal.arango.databasePrefix("/_admin/aardvark/docu/" + this.options.key);
+      var url = internal.arango.databasePrefix("/_admin/aardvark/foxxes/" + this.options.mount + "/docu");
       this.swaggerUi = new SwaggerUi({
           discoveryUrl: url,
           apiKey: false,
@@ -34,7 +34,7 @@
             div.appendChild(document.createTextNode(JSON.stringify(data)));
             $("#swagger-ui-container").append(div);
           },
-          docExpansion: "none"
+          docExpansion: "list"
       });
     },
 

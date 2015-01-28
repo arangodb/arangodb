@@ -16,7 +16,7 @@
     },
 
     openAppDetailView: function() {
-      window.App.navigate('applications/' + encodeURIComponent(this.model.get('_key')), { trigger: true });
+      window.App.navigate('applications/' + encodeURIComponent(this.model.get('mount')), { trigger: true });
     },
 
     toggle: function(type, shouldShow) {
@@ -27,12 +27,12 @@
           }
           break;
         case "production":
-          if (this.model.get("development") === false && this.model.get("isSystem") === false) {
+          if (this.model.get("development") === false && this.model.get("system") === false) {
             this._show = shouldShow;
           }
           break;
         case "system":
-          if (this.model.get("isSystem") === true) {
+          if (this.model.get("system") === true) {
             this._show = shouldShow;
           }
           break;
@@ -46,7 +46,9 @@
     },
 
     render: function(){
-      $(this.el).html(this.template.render(this.model));
+      $(this.el).html(this.template.render({
+        model: this.model
+      }));
       return $(this.el);
     }
   });

@@ -41,6 +41,7 @@
   var db = internal.db;
   var _= require("underscore");
   var utils = require("org/arangodb/foxx/manager-utils");
+  var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -137,6 +138,15 @@
     if (! this._manifest.hasOwnProperty("defaultDocument")) {
       this._manifest.defaultDocument = "index.html";
     }
+    if (this._manifest.hasOwnProperty("thumbnail")) {
+      var thumbfile = fs.join(this._root, this._path, this._manifest.thumbnail);
+      try {
+        this._thumbnail = fs.read64(thumbfile);
+      } catch (err) {
+        console.warnLines(
+          "Cannot read thumbnail '%s' : %s", thumbfile, err);
+      }
+    }
   };
 
 // -----------------------------------------------------------------------------
@@ -180,8 +190,8 @@
     if (this._manifest.hasOwnProperty("description")) {
       json.description = this._manifest.description;
     }
-    if (this._manifest.hasOwnProperty("thumbnail")) {
-      json.thumbnail = this._manifest.thumbnail;
+    if (this.hasOwnProperty("_thumbnail")) {
+      json.thumbnail = this._thumbnail;
     }
 
     return json;

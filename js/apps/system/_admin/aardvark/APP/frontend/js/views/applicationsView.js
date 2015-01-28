@@ -1,5 +1,4 @@
 /*jshint browser: true */
-/*jshint strict: false, unused: false */
 /*global require, Backbone, $, window, arangoHelper, templateEngine, Joi, alert, _*/
 (function() {
   "use strict";
@@ -22,12 +21,6 @@
 
     events: {
       "click #addApp"                : "createInstallModal",
-      "click #importFoxxToggle"      : "slideToggleImport",
-      "change #importFoxx"           : "uploadSetup",
-      "click #confirmFoxxImport"     : "importFoxx",
-      "click #installFoxxFromGithub" : "createGithubModal",
-      "change #appsDesc"             : "sorting",
-
       "click #foxxToggle"            : "slideToggle",
       "click #checkDevel"            : "toggleDevel",
       "click #checkProduction"       : "toggleProduction",
@@ -42,139 +35,6 @@
       $('#'+clicked).click();
     },
 
-    sorting: function() {
-      if ($('#appsDesc').is(":checked")) {
-        this.collection.setSortingDesc(true);
-      }
-      else {
-        this.collection.setSortingDesc(false);
-      }
-
-      this.render();
-    },
-
-    createGithubModal: function() {
-      var buttons = [], tableContent = [];
-      tableContent.push(
-        window.modalView.createTextEntry(
-          'github-url',
-          'Github information',
-          '',
-          'Your Github link comes here: username/application-name',
-          "username/application-name",
-          false,
-          [
-            {
-              rule: Joi.string().regex(/^[a-zA-Z0-9]+[\/]/),
-              msg: "No valid Github link given."
-            },
-            {
-              rule: Joi.string().required(),
-              msg: "No Github link given."
-            }
-          ]
-      ));
-      tableContent.push(
-        window.modalView.createTextEntry(
-          'github-version',
-          'Version (optional)',
-          '',
-          'Example: v1.1.2 for version 1.1.2 - if no version is commited, master is used',
-          'master',
-          false,
-          /[<>&'"]/
-      ));
-      buttons.push(
-        window.modalView.createSuccessButton('Install', this.submitGithubFoxx.bind(this))
-      );
-      window.modalView.show(
-        'modalTable.ejs', 'Install Foxx from Github', buttons, tableContent, undefined, undefined
-      );
-    },
-
-    closeGithubModal: function() {
-      window.modalView.hide();
-    },
-
-    submitGithubFoxx: function() {
-      var name, url, version, result;
-
-      //fetch needed information, need client side verification
-      //remove name handling on server side because not needed
-      name = "";
-      url = window.arangoHelper.escapeHtml($('#repository').val());
-      version = window.arangoHelper.escapeHtml($('#tag').val());
-
-      if (version === '') {
-        version = "master";
-      }
-
-      //send server req through collection
-      result = this.collection.installFoxxFromGithub(url, name, version);
-      if (result === true) {
-        window.modalView.hide();
-        this.reload();
-      }
-    },
-
-    importFoxx: function() {
-      var self = this;
-      if (this.allowUpload) {
-        this.showSpinner();
-        $.ajax({
-          type: "POST",
-          async: false,
-          url: '/_api/upload?multipart=true',
-          contentType: "multipart/form-data",
-          data: self.file,
-          processData: false,
-          cache: false,
-          complete: function(res) {
-            if (res.readyState === 4) {
-              if (res.status === 201) {
-                $.ajax({
-                  type: "POST",
-                  async: false,
-                  url: "/_admin/aardvark/foxxes/inspect",
-                  data: res.responseText,
-                  contentType: "application/json"
-                }).done(function(res) {
-                  $.ajax({
-                    type: "POST",
-                    async: false,
-                    url: '/_admin/foxx/fetch',
-                    data: JSON.stringify({
-                      name: res.name,
-                      version: res.version,
-                      filename: res.filename
-                    }),
-                    processData: false
-                  }).done(function () {
-                    self.reload();
-                  }).fail(function (err) {
-                    self.hideSpinner();
-                    var error = JSON.parse(err.responseText);
-                    arangoHelper.arangoError("Error: " + error.errorMessage);
-                  });
-                }).fail(function(err) {
-                  self.hideSpinner();
-                  var error = JSON.parse(err.responseText);
-                  arangoHelper.arangoError("Error: " + error.error);
-                });
-                delete self.file;
-                self.allowUpload = false;
-                self.hideSpinner();
-                self.hideImportModal();
-                return;
-              }
-            }
-            self.hideSpinner();
-            arangoHelper.arangoError("Upload error");
-          }
-        });
-      }
-    },
-
     showSpinner: function() {
       $('#uploadIndicator').show();
     },
@@ -182,6 +42,8 @@
     hideSpinner: function() {
       $('#uploadIndicator').hide();
     },
+
+    ///// NEW CODE 
 
     toggleDevel: function() {
       var self = this;
@@ -207,21 +69,6 @@
       });
     },
 
-    hideImportModal: function() {
-      $('#foxxDropdownImport').hide();
-    },
-
-    hideSettingsModal: function() {
-      $('#foxxDropdownOut').hide();
-    },
-
-    slideToggleImport: function() {
-      $('#foxxToggle').removeClass('activated');
-      $('#importFoxxToggle').toggleClass('activated');
-      $('#foxxDropdownImport').slideToggle(200);
-      this.hideSettingsModal();
-    },
-
     reload: function() {
       var self = this;
 
@@ -243,14 +90,11 @@
       this._installedSubViews = { };
 
       self.collection.each(function (foxx) {
-        var subView;
-        if (foxx.get("type") === "mount") {
-          subView = new window.FoxxActiveView({
-            model: foxx,
-            appsView: self
-          });
-          self._installedSubViews[foxx.get('_id')] = subView;
-        }
+        var subView = new window.FoxxActiveView({
+          model: foxx,
+          appsView: self
+        });
+        self._installedSubViews[foxx.get('mount')] = subView;
       });
     },
 
@@ -262,77 +106,9 @@
       this.reload();
     },
 
-    render: function() {
-      this.collection.sort();
-
-      $(this.el).html(this.template.render({}));
-      this.renderSubViews();
-      this.delegateEvents();
-      $('#checkDevel').attr('checked', this._showDevel);
-      $('#checkProduction').attr('checked', this._showProd);
-      $('#checkSystem').attr('checked', this._showSystem);
-      
-      var self = this;
-      _.each(this._installedSubViews, function(v) {
-        v.toggle("devel", self._showDevel);
-        v.toggle("system", self._showSystem);
-      });
-
-      arangoHelper.fixTooltips("icon_arangodb", "left");
-      return this;
-    },
-
-    renderSubViews: function () {
-      _.each(this._installedSubViews, function (v) {
-        $("#installedList").append(v.render());
-      });
-    },
-
-    ///// NEW CODE 
-
     slideToggle: function() {
-      //apply sorting to checkboxes
-      $('#appsDesc').attr('checked', this.collection.sortOptions.desc);
-
-      $('#importFoxxToggle').removeClass('activated');
       $('#foxxToggle').toggleClass('activated');
       $('#foxxDropdownOut').slideToggle(200);
-      this.hideImportModal();
-    },
-
-    installFoxxFromZip: function(files, data) {
-      var self = this;
-      $.ajax({
-        type: "POST",
-        async: false,
-        url: "/_admin/aardvark/foxxes/inspect",
-        data: JSON.stringify(data),
-        contentType: "application/json"
-      }).done(function(res) {
-        $.ajax({
-          type: "POST",
-          async: false,
-          url: '/_admin/foxx/fetch',
-          data: JSON.stringify({
-            name: res.name,
-            version: res.version,
-            filename: res.filename
-          }),
-          processData: false
-        }).done(function (result) {
-          if (result.error === false) {
-            window.modalView.hide();
-            self.showConfigureDialog(res.configuration, res.name, res.version);
-          }
-        }).fail(function (err) {
-          var error = JSON.parse(err.responseText);
-          arangoHelper.arangoError("Error: " + error.errorMessage);
-        });
-      }).fail(function(err) {
-        var error = JSON.parse(err.responseText);
-        arangoHelper.arangoError("Error: " + error.error);
-      });
-      self.hideImportModal();
     },
 
     installFoxxFromStore: function(e) {
@@ -352,28 +128,14 @@
       });
     },
 
-    installFoxxFromGithub: function() {
-      var name, url, version, result;
+    installFoxxFromZip: function(files, data) {
+      this.collection.installFromZip(files, data, this.installCallback.bind(this));
+    },
 
-      //fetch needed information, need client side verification
-      //remove name handling on server side because not needed
-      name = "";
-      url = window.arangoHelper.escapeHtml($('#repository').val());
-      version = window.arangoHelper.escapeHtml($('#tag').val());
-
-      if (version === '') {
-        version = "master";
-      }
-
-      try {
-        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
-      } catch (e) {
-        return;
-      }
-      //send server req through collection
-      result = this.collection.installFoxxFromGithub(url, name, version);
+    installCallback: function(result) {
       if (result.error === false) {
         window.modalView.hide();
+        // TODO has to be moved!
         this.showConfigureDialog(result.configuration, result.name, result.version);
       } else {
         switch(result.errorNum) {
@@ -384,6 +146,33 @@
             alert("Error: " + result.errorNum + ". " + result.errorMessage);
         }
       }
+    },
+
+    installFoxxFromGithub: function() {
+      var mount = "TODO";
+
+      var url, version;
+
+      //fetch needed information, need client side verification
+      //remove name handling on server side because not needed
+      url = window.arangoHelper.escapeHtml($('#repository').val());
+      version = window.arangoHelper.escapeHtml($('#tag').val());
+
+      if (version === '') {
+        version = "master";
+      }
+      var info = {
+        url: window.arangoHelper.escapeHtml($('#repository').val()),
+        version: window.arangoHelper.escapeHtml($('#tag').val())
+      };
+
+      try {
+        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
+      } catch (e) {
+        return;
+      }
+      //send server req through collection
+      this.collection.installFromGithub(info, mount, this.installCallback.bind(this));
     },
 
     showConfigureDialog: function(config, name, version) {
@@ -616,7 +405,7 @@
           this.installFoxxFromGithub();
           break;
         case "zip":
-          this.installFoxxFromZip();
+          // this.installFoxxFromZip();
           break;
         default:
       }
@@ -753,6 +542,28 @@
         table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
       });
       this.setNewAppValidators();
+    },
+
+    render: function() {
+      this.collection.sort();
+
+      $(this.el).html(this.template.render({}));
+      _.each(this._installedSubViews, function (v) {
+        $("#installedList").append(v.render());
+      });
+      this.delegateEvents();
+      $('#checkDevel').attr('checked', this._showDevel);
+      $('#checkProduction').attr('checked', this._showProd);
+      $('#checkSystem').attr('checked', this._showSystem);
+      
+      var self = this;
+      _.each(this._installedSubViews, function(v) {
+        v.toggle("devel", self._showDevel);
+        v.toggle("system", self._showSystem);
+      });
+
+      arangoHelper.fixTooltips("icon_arangodb", "left");
+      return this;
     }
 
   });
