@@ -589,6 +589,7 @@ Planner.prototype.makePlan = function() {
                      "Coordinators"     : {},
                      "Databases"        : {"_system":{ "name": '"name"', "id": '"1"' }},
                      "Collections"      : {"_system":{}},
+                     "NewServers"       : {},
                      "ServersRegistered": {"Version":'"1"'},
                      "ShardsCopied"     : {} };
 
