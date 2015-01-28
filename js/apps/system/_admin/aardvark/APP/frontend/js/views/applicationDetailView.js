@@ -12,10 +12,6 @@ window.ApplicationDetailView = Backbone.View.extend({
     'click .delete': 'deleteApp'
   },
 
-  initialize: function() {
-    console.log(this.model);
-  },
-
   render: function() {
     $(this.el).html(this.template.render({
       app: this.model,
