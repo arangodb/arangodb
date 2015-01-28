@@ -457,12 +457,28 @@ void ArangoServer::buildApplicationServer () {
     ("check-version", "checks the versions of the database and exit")
   ;
 
-  // other options
+  // .............................................................................
+  // set language of default collator
+  // .............................................................................
+
   additional[ApplicationServer::OPTIONS_SERVER]
     ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
+  string languageName;
 
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+    LOG_FATAL_AND_EXIT("failed to initialise ICU");
+  }
+
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  }
+  else {
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  }
+
+  // other options
   additional[ApplicationServer::OPTIONS_HIDDEN]
     ("no-upgrade", "skip a database upgrade")
     ("start-service", "used to start as windows service")
@@ -606,21 +622,6 @@ void ArangoServer::buildApplicationServer () {
   // configure v8 w/ development-mode
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
-  }
-
-  // .............................................................................
-  // set language of default collator
-  // .............................................................................
-
-  string languageName;
-
-  Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
-
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  }
-  else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
   // .............................................................................
