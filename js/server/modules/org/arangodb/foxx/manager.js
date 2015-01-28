@@ -679,10 +679,40 @@ function mountAalApp (app, mount, options) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief escapes all html reserved characters that are not allowed in <pre>
+////////////////////////////////////////////////////////////////////////////////
+function escapeHTML (string) {
+  var list = string.split("");
+  var i = 0;
+  for (i = 0; i < list.length; ++i) {
+    switch (list[i]) {
+      case "'":
+        list[i] = "&apos;";
+        break;
+      case '"':
+        list[i] = "&quot;";
+        break;
+      case "&":
+        list[i] = "&amp;";
+        break;
+      case "<":
+        list[i] = "&lt;";
+        break;
+      case ">":
+        list[i] = "&gt;";
+        break;
+      default:
+    }
+  }
+  return list.join("");
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function routingBrokenApp (mount, err) {
+function routingBrokenApp (mount, err, isDevelopment) {
  "use strict";
   if (mount === "") {
     mount = "/";
@@ -701,18 +731,39 @@ function routingBrokenApp (mount, err) {
     routes: [],
     foxx: true
   };
-  routes.routes.push({
-    "url" : {
-      match: "/*",
-      methods: actions.ALL_METHODS
-    },
-    "action": {
-      "callback": function(req, res) {
-         actions.resultError(req, res, actions.HTTP_SERVICE_UNAVAILABLE, undefined, err);
-         return;
+  if(isDevelopment) {
+    routes.routes.push({
+      "url" : {
+        match: "/*",
+        methods: actions.ALL_METHODS
+      },
+      "action": {
+        "callback": function(req, res) {
+           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
+           res.contentType = "text/html; charset=utf-8";
+           res.body = "<html><head><title>" + escapeHTML(String(err)) +
+                      "</title></head><body><pre>" + escapeHTML(String(err.stack)) + "</pre></body></html>";
+           return;
+        }
       }
-    }
-  });
+    });
+  } else {
+    routes.routes.push({
+      "url" : {
+        match: "/*",
+        methods: actions.ALL_METHODS
+      },
+      "action": {
+        "callback": function(req, res) {
+           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
+           res.contentType = "text/html; charset=utf-8";
+           res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
+             "This service is temporarily not available. Please check the log file for errors.</p></body></html>";
+           return;
+        }
+      }
+    });
+  }
   return routes;
 }
 
@@ -1573,7 +1624,7 @@ exports.appRoutes = function () {
       }
     }
     catch (err) {
-      routes.push(routingBrokenApp(mount, err));
+      routes.push(routingBrokenApp(mount, err, false));
       console.errorLines("Cannot mount Foxx application '%s': \n %s", appId, String(err.stack || err));
     }
   }
@@ -1604,7 +1655,7 @@ exports.developmentRoutes = function () {
         mount = "/dev/" + files[j];
         mf = JSON.parse(fs.read(m));
       } catch (err) {
-        routes.push(routingBrokenApp(mount, new Error("Cannot parse manifest: " + err.message )));
+        routes.push(routingBrokenApp(mount, new Error("Cannot parse manifest: " + err.message), true));
         console.errorLines(
           "Cannot parse app manifest '%s': %s", m, String(err.stack || err));
       }
@@ -1652,7 +1703,7 @@ exports.developmentRoutes = function () {
 
         mounts.push(desc);
       } catch (err) {
-        routes.push(routingBrokenApp(mount, err));
+        routes.push(routingBrokenApp(mount, err, true));
         console.errorLines(
           "App with manifest '%s' contains errors:\n%s", m, String(err.stack || err));
       }
