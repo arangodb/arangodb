@@ -1665,6 +1665,10 @@ function require (path) {
                           path2FileUri(libpath),
                           false);
 
+    pkg._environment = {
+      console: require("org/arangodb/foxx/console")(appContext.mount)
+    };
+
     return new Module("/application-module",
                       pkg,
                       appContext,
@@ -1733,7 +1737,6 @@ function require (path) {
     sandbox.__filename = full;
     sandbox.__dirname = normalizeModuleName(full + "/..");
     sandbox.module = appContext.appModule;
-    sandbox.console = require("org/arangodb/foxx/console")(appContext.mount);
     sandbox.applicationContext = appContext;
 
     sandbox.require = function (path) {
