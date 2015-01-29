@@ -331,7 +331,7 @@ int AnyServer::startupSupervisor () {
 
   CheckPidFile(_pidFile);
 
-  _applicationServer->setupLogging(false, true, true);
+  _applicationServer->setupLogging(false, true, false);
 
   string current;
   int result = forkProcess(_workingDirectory, current);
@@ -361,6 +361,7 @@ int AnyServer::startupSupervisor () {
       if (0 < pid) {
         _applicationServer->setupLogging(false, true, true);
         TRI_SetProcessTitle("arangodb [supervisor]");
+        LOG_DEBUG("supervisor mode: within parent");
 
         int status;
         waitpid(pid, &status, 0);
@@ -431,6 +432,7 @@ int AnyServer::startupSupervisor () {
       // child
       else {
         _applicationServer->setupLogging(true, false, true);
+        LOG_DEBUG("supervisor mode: within child");
 
         // write the pid file
         WritePidFile(_pidFile, TRI_CurrentProcessId());
@@ -467,7 +469,7 @@ int AnyServer::startupDaemon () {
 
   CheckPidFile(_pidFile);
 
-  _applicationServer->setupLogging(false, true, true);
+  _applicationServer->setupLogging(false, true, false);
 
   string current;
   int result = forkProcess(_workingDirectory, current);
@@ -484,6 +486,7 @@ int AnyServer::startupDaemon () {
   // child process
   else {
     _applicationServer->setupLogging(true, false, true);
+    LOG_DEBUG("daemon mode: within child");
 
     // and startup server
     prepareServer();
