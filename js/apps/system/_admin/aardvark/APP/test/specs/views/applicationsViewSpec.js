@@ -120,6 +120,7 @@
           $("#new-app-description").val(desc);
           $("#new-app-license").val(license);
           expect($(generateButton).prop("disabled")).toBeFalsy();
+          spyOn(view, "reload");
           $(generateButton).click();
         });
 
@@ -128,6 +129,7 @@
         }, "The Add App dialog should be hidden.", 750);
 
         runs(function() {
+          expect(view.reload).toHaveBeenCalled();
           expect(listDummy.generate).toHaveBeenCalledWith(
             expectedInfo, mount, jasmine.any(Function)
           );
@@ -152,6 +154,7 @@
           expect($("#appstore-content").children().length).toEqual(2);
           button = $("#appstore-content .install-app[appId='" + storeApp + "']");
           expect(button.length).toEqual(1);
+          spyOn(view, "reload");
           button.click();
         });
 
@@ -160,6 +163,7 @@
         }, "The Add App dialog should be hidden.", 750);
 
         runs(function() {
+          expect(view.reload).toHaveBeenCalled();
           expect(listDummy.installFromStore).toHaveBeenCalledWith(
             {name: storeApp, version: storeAppVersion}, mount, jasmine.any(Function)
           );
@@ -187,6 +191,7 @@
           $("#repository").val(repository);
           $("#tag").val(version);
           expect($(generateButton).prop("disabled")).toBeFalsy();
+          spyOn(view, "reload");
           $(generateButton).click();
         });
 
@@ -195,6 +200,7 @@
         }, "The Add App dialog should be hidden.", 750);
 
         runs(function() {
+          expect(view.reload).toHaveBeenCalled();
           expect(listDummy.installFromGithub).toHaveBeenCalledWith(
             expectedInfo, mount, jasmine.any(Function)
           );
@@ -214,6 +220,7 @@
             });
           });
           $("#new-app-mount").val(mount);
+          spyOn(view, "reload");
           uploadCallback(["app.zip"], {filename: fileName});
         });
 
@@ -222,6 +229,7 @@
         }, "The Add App dialog should be hidden.", 750);
 
         runs(function() {
+          expect(view.reload).toHaveBeenCalled();
           expect(listDummy.installFromZip).toHaveBeenCalledWith(
             fileName, mount, jasmine.any(Function)
           );
