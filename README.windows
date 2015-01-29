@@ -128,7 +128,7 @@ If you have any questions regarding the installation or other matters please use
 
 For bug reports please use
 
-    https://github.com/triAGENS/ArangoDB/issues
+    https://github.com/arangodb/arangodb/issues
 
 To obtain the version of the currently installed ArangoDB instance, execute the
 following on a Command Prompt:
