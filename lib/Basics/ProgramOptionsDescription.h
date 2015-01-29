@@ -62,19 +62,19 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription (std::string const& name);
+        ProgramOptionsDescription (const std::string& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copy constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription (ProgramOptionsDescription const&);
+        ProgramOptionsDescription (const ProgramOptionsDescription&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief assignment constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator= (ProgramOptionsDescription const&);
+        ProgramOptionsDescription& operator= (const ProgramOptionsDescription&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -86,7 +86,7 @@ namespace triagens {
 /// @brief changes the name
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setName (std::string const& name);
+        void setName (const std::string& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a new visible or hidden section
@@ -98,92 +98,92 @@ namespace triagens {
 /// @brief adds a new flag
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a string argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::string* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::string* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a string vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::vector<std::string>* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::vector<std::string>* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an int32_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, int32_t* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, int32_t* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an int32_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::vector<int32_t>* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::vector<int32_t>* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an int64_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, int64_t* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, int64_t* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an int64_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::vector<int64_t>* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::vector<int64_t>* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an uint32_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, uint32_t* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, uint32_t* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an uint32_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::vector<uint32_t>* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::vector<uint32_t>* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an uint64_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, uint64_t* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, uint64_t* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds an uint64_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::vector<uint64_t>* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::vector<uint64_t>* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a double argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, double* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, double* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a double vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, std::vector<double>* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, std::vector<double>* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a boolean argument
 ////////////////////////////////////////////////////////////////////////////////
 
-        ProgramOptionsDescription& operator() (std::string const& name, bool* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, bool* value, const std::string& text);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a time_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
 #if __WORDSIZE == 32
-        ProgramOptionsDescription& operator() (std::string const& name, time_t* value, std::string const& text);
+        ProgramOptionsDescription& operator() (const std::string& name, time_t* value, const std::string& text);
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,10 +199,10 @@ namespace triagens {
         std::string usage () const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the usage message
+/// @brief returns the usage message for given sections
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string usage (std::set<std::string> const& help, bool addHelpOptions = true) const;
+        std::string usage (std::set<std::string> help) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns a list of help options
@@ -245,16 +245,38 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes all names
+////////////////////////////////////////////////////////////////////////////////
+
+        void fillAllNames (const std::set<std::string>& help,
+                           std::map<std::string, std::string>& names) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the usage message for given sections
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string usageString (const std::set<std::string>& help,
+                                 const std::map<std::string, std::string>& names,
+                                 size_t oWidth) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs the usage string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string usageString (const std::map<std::string, std::string>& names,
+                                 size_t oWidth) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the name is an option, defines short/long mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string check (std::string const& name);
+        std::string check (const std::string& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the name is an option, defines short/long mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string check (std::string const& name, void* value);
+        std::string check (const std::string& name, void* value);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -309,6 +331,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::map<std::string, std::string> _helpTexts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default of an option
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map<std::string, std::string> _defaultTexts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief current text of an option
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map<std::string, std::function<std::string (void*)>> _currentTexts;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief value of an option
+////////////////////////////////////////////////////////////////////////////////
+
+        std::map<std::string, void*> _values;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief all string options
