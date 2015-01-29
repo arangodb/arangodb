@@ -486,6 +486,7 @@ function shutdownInstance (instanceInfo, options) {
           if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
             print("Server shut down with : " + yaml.safeDump(instanceInfo.exitStatus) + " marking build as crashy.");
             serverCrashed = true;
+            break;
           }
         }
         else {
