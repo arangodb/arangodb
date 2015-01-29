@@ -34,6 +34,7 @@ var generalGraph = require("org/arangodb/general-graph");
 var arangodb = require("org/arangodb");
 var BinaryHeap = require("org/arangodb/heap").BinaryHeap;
 var ArangoError = arangodb.ArangoError;
+var ShapedJson = require("internal").ShapedJson; // this may be undefined/null on the client
 
 var db = arangodb.db;
 
@@ -52,26 +53,23 @@ function clone (obj) {
     return obj;
   }
 
-  var copy, i;
-
+  var copy;
   if (Array.isArray(obj)) {
     copy = [ ];
-
-    for (i = 0; i < obj.length; ++i) {
-      copy[i] = clone(obj[i]);
-    }
+    obj.forEach(function (i) {
+      copy.push(clone(i));
+    });
   }
   else if (obj instanceof Object) {
-    copy = { };
-
-    if (obj.hasOwnProperty) {
-      for (i in obj) {
-        if (obj.hasOwnProperty(i)) {
-          copy[i] = clone(obj[i]);
-        }
-      }
+    if (ShapedJson && obj instanceof ShapedJson) {
+      return obj;
     }
+    copy = { };
+    Object.keys(obj).forEach(function(k) {
+      copy[k] = clone(obj[k]);
+    });
   }
+
   return copy;
 }
 

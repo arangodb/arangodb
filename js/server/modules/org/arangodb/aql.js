@@ -438,7 +438,7 @@ function TO_LIST (param, isStringHash) {
 function CLONE (obj) {
   "use strict";
 
-  if (obj === null || typeof(obj) !== "object") {
+  if (obj === null || typeof(obj) !== "object" || obj instanceof ShapedJson) {
     return obj;
   }
 
