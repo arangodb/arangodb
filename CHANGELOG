@@ -29,7 +29,7 @@ v2.5.0 (XXXX-XX-XX)
 v2.4.2 (2015-XX-XX)
 -------------------
 
-* improved number of results estimation for nodes of type EnumerateListNode and SubqueryNode
+* improved number of results estimated for nodes of type EnumerateListNode and SubqueryNode
   in AQL explain output
 
 * added AQL explain helper:
@@ -49,6 +49,29 @@ v2.4.2 (2015-XX-XX)
       FILTER a.indexed == ... && ! (a.nonIndexed != ...)
       FILTER (a.indexed == ... && a.nonIndexed == ...) || (a.indexed == ... && a.nonIndexed == ...)
       FILTER (a.indexed == ... && a.nonIndexed != ...) || (a.indexed == ... && a.nonIndexed != ...)
+
+* Fixed spuriously occurring "collection not found" errors when running queries on local
+  collections on a cluster DB server
+
+* Fixed upload of Foxx applications to the server for apps exceeding approx. 1 MB zipped.
+
+* Malformed Foxx applications will now return a more useful error when any route is requested.
+
+  In Production a Foxx app mounted on /app will display an html page on /app/* stating a 503 Service temporarily not available.
+  It will not state any information about your Application.
+  Before it was a 404 Not Found without any information and not distinguishable from a correct not found on your route.
+
+  In Development Mode the html page also contains information about the error occured.
+
+* Unhandled errors thrown in Foxx routes are now handled by the Foxx framework itself.
+  
+  In Production the route will return a status 500 with a body {error: "Error statement"}.
+  In Development the route will return a status 500 with a body {error: "Error statement", stack: "..."}
+
+  Before, it was status 500 with a plain text stack including ArangoDB internal routing information.
+  
+* The Applications tab in web interface will now request development apps more often. 
+  So if you have a fixed a syntax error in your app it should always be visible after reload.
 
 
 v2.4.1 (2015-01-19)
