@@ -686,8 +686,9 @@ unittests-shell-client-readonly:
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-download.js \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
+	       @top_srcdir@/js/client/tests/shell-client.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
-	       @top_srcdir@/js/client/tests/shell-client.js
+	       @top_srcdir@/js/client/tests/shell-request.js 
 
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 
