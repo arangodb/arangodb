@@ -13,7 +13,9 @@
 
     initialize: function() {
       var internal = require("internal");
-      var url = internal.arango.databasePrefix("/_admin/aardvark/foxxes/" + this.options.mount + "/docu");
+      // var url = "foxxes/docu?mount=" + this.options.mount;
+      var url = internal.arango.databasePrefix("/_admin/aardvark/foxxes/docu/"
+        + encodeURIComponent(this.options.mount));
       this.swaggerUi = new SwaggerUi({
           discoveryUrl: url,
           apiKey: false,

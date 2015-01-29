@@ -3,14 +3,6 @@
 (function() {
   "use strict";
 
-  var splitSnakeCase = function(snakeCase) {
-    var str = snakeCase.replace(/([a-z])([A-Z])/g, "$1 $2");
-    str = str.replace(/([a-z])([0-9])/gi, "$1 $2");
-    str = str.replace(/_+/, " ");
-    return _.map(str.split(/\s+/), function(s) {
-      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-    }).join(" ");
-  };
   var errors = require("internal").errors;
 
   window.ApplicationsView = Backbone.View.extend({
@@ -125,7 +117,6 @@
       if (result.error === false) {
         window.modalView.hide();
         this.reload();
-        // this.showConfigureDialog(result.configuration, result.name, result.version);
       } else {
         // TODO Error handling properly!
         switch(result.errorNum) {
@@ -164,162 +155,17 @@
       this.collection.installFromGithub(info, mount, this.installCallback.bind(this));
     },
 
-    showConfigureDialog: function(config, name, version) {
-      var buttons = [],
-          tableContent = [],
-          entry;
-      tableContent.push(
-        window.modalView.createTextEntry(
-          "mount-point",
-          "Mount",
-          "",
-          "The path the app will be mounted. Has to start with /. Is not allowed to start with /_",
-          "/my/app",
-          true,
-          [
-            {
-              rule: Joi.string().required(),
-              msg: "No mountpoint given."
-            },
-            {
-              rule: Joi.string().regex(/^\/[^_]/),
-              msg: "Mountpoints with _ are reserved for internal use."
-            },
-            {
-              rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-              msg: "Mountpoints have to start with / and can only contain [a-zA-Z0-9_-%]"
-            }
-          ]
-        )
-      );
-      _.each(config, function(obj, name) {
-        var def;
-        var check;
-        switch (obj.type) {
-          case "boolean":
-          case "bool":
-            def = obj.default || false;
-            entry = window.modalView.createCheckboxEntry(
-              "app_config_" + name,
-              name,
-              def,
-              obj.description,
-              def
-            );
-            break;
-          case "integer":
-            check = [{
-              rule: Joi.number().integer(),
-              msg: "Has to be an integer."
-            }];
-            /* falls through */
-          default:
-            if (check === undefined) {
-              check = [{
-                rule: Joi.string(),
-                msg: "Has to be non-empty."
-              }];
-            }
-            if (obj.default === undefined) {
-              def = "";
-            } else {
-              def = String(obj.default);
-            }
-            entry = window.modalView.createTextEntry(
-              "app_config_" + name,
-              name,
-              def,
-              obj.description,
-              def,
-              true,
-              check
-            );
-        }
-        tableContent.push(entry);
-      });
-      buttons.push(
-        window.modalView.createSuccessButton("Configure", this.mountFoxx.bind(this, config, name, version))
-      );
-      window.modalView.show(
-        "modalTable.ejs", "Configure application", buttons, tableContent
-      );
-
-    },
-
-    mountFoxx: function(config, name, version) {
-      var cfg = {};
-      try {
-        _.each(config, function(opt, key) {
-          var $el = $("#app_config_" + key);
-          var val = window.arangoHelper.escapeHtml($el.val());
-          if (opt.type === "boolean") {
-            cfg[key] = $el.is(":checked");
-            return;
-          }
-          if (val === "" && !opt.hasOwnProperty("default")) {
-            throw new SyntaxError(
-              "Must specify value for field \"" +
-                (opt.label || splitSnakeCase(key)) +
-                "\"!"
-            );
-          }
-          if (opt.type === "number") {
-            cfg[key] = parseFloat(val);
-          } else if (opt.type === "integer") {
-            cfg[key] = parseInt(val, 10);
-          } else {
-            cfg[key] = val;
-            return;
-          }
-          if (_.isNaN(cfg[key])) {
-            throw new SyntaxError(
-              "Invalid value for field \"" +
-                (opt.label || splitSnakeCase(key)) +
-                "\"!"
-            );
-          }
-          if (opt.type === "integer" && cfg[key] !== Math.floor(parseFloat(val))) {
-            throw new SyntaxError(
-              "Expected non-decimal value in field \"" +
-                (opt.label || splitSnakeCase(key)) +
-                "\"!"
-            );
-          }
-        });
-      } catch (err) {
-        if (err instanceof SyntaxError) {
-          alert(err.message);
-          return false;
-        }
-        throw err;
-      }
-      var self = this;
-      this.collection.create({
-        mount: window.arangoHelper.escapeHtml($("#mount-point").val()),
-        name: name,
-        version: version,
-        options: {
-          configuration: cfg
-        }
-      },
-      {
-        success: function() {
-          window.modalView.hide();
-          self.reload();
-        },
-        error: function(e, info) {
-          if (info.responseText.indexOf("already used by") > -1) {
-            alert("Mount path already in use.");
-          } else if (info.responseText.indexOf("app is not defined") > -1) {
-            //temp ignore this message, fix needs to be server-side
-            window.modalView.hide();
-            self.reload();
-          } else {
-            alert(info.statusText);
-          }
-        }
-      });
-    },
+    /* potential error handling
+    if (info.responseText.indexOf("already used by") > -1) {
+      alert("Mount path already in use.");
+    } else if (info.responseText.indexOf("app is not defined") > -1) {
+      //temp ignore this message, fix needs to be server-side
+      window.modalView.hide();
+      self.reload();
+    } else {
+      alert(info.statusText);
+    }
+    */
 
 
     /// NEW CODE
@@ -547,4 +393,30 @@
 
   });
 
+  /* Info for mountpoint
+   *
+   *
+      window.modalView.createTextEntry(
+        "mount-point",
+        "Mount",
+        "",
+        "The path the app will be mounted. Has to start with /. Is not allowed to start with /_",
+        "/my/app",
+        true,
+        [
+          {
+            rule: Joi.string().required(),
+            msg: "No mountpoint given."
+          },
+          {
+            rule: Joi.string().regex(/^\/[^_]/),
+            msg: "Mountpoints with _ are reserved for internal use."
+          },
+          {
+            rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
+            msg: "Mountpoints have to start with / and can only contain [a-zA-Z0-9_-%]"
+          }
+        ]
+      )
+   */
 }());

@@ -41,6 +41,11 @@
       "The mount point of the app. Has to be url-encoded."
     )
   };
+  var mountPointDoubleEncoded = {
+    type: joi.string().required().description(
+      "The mount point of the app. Has to be url-encoded twice. Swagger does not allow query parameters in baseURL"
+    )
+  };
   var fs = require("fs");
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
 
@@ -156,7 +161,7 @@ controller.get('/', function (req, res) {
   res.json(FoxxManager.listJson());
 });
 
-/** Get the thubmail of a Foxx
+/** Get the thumbnail of a Foxx
  *
  * Used to request the thumbnail of the given Foxx in order to display it on the screen.
  */
@@ -174,6 +179,26 @@ controller.get("/thumbnail", function (req, res) {
   if (start.indexOf("PNG") !== -1) {
     res.contentType = "image/png";
   }
+}).queryParam("mount", mountPoint);
+
+/** Get the configuration for an app
+ *
+ * Used to request the configuration options for apps
+ */
+controller.get("/config", function(req, res) {
+  var mount = validateMount(req);
+  res.json(FoxxManager.configuration(mount));
+}).queryParam("mount", mountPoint);
+
+/** Set the configuration for an app
+ *
+ * Used to overwrite the configuration options for apps
+ */
+controller.patch("/config", function(req, res) {
+  var mount = validateMount(req);
+  var data = req.body();
+  require("console").log(data, typeof data);
+  res.json(FoxxManager.configure(mount, data));
 }).queryParam("mount", mountPoint);
 
 // ------------------------------------------------------------
@@ -203,10 +228,10 @@ controller.get('/fishbowl', function (req, res) {
  * This function returns the Swagger JSON API description of the foxx
  * installed under the given mount point.
  */
-controller.get('/docu', function(req, res) {
-  var mount = validateMount(req);
+controller.get('/docu/:mount', function(req, res) {
+  var mount = decodeURIComponent(decodeURIComponent(req.params("mount")));
   res.json(docus.show(mount));
-}).queryParam("mount", mountPoint);
+}).pathParam("mount", mountPointDoubleEncoded);
 
 
 }());

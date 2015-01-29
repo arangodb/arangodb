@@ -8,9 +8,12 @@
 
   describe("Application Details View", function() {
 
-    var div, view, appDummy, deleteButton, openButton, modalDiv, getDummy;
+    var div, view, appDummy, deleteButton, openButton, modalDiv, getDummy, config;
 
     beforeEach(function() {
+      config = {
+        data: {}
+      };
       getDummy = {
         success: function(callback) {
           callback();
@@ -35,6 +38,9 @@
         "git": "",
         "system": false,
         "development": false
+      });
+      spyOn(appDummy, "getConfiguration").andCallFake(function(callback) {
+        callback(config.data);
       });
       view = new window.ApplicationDetailView({
         model: appDummy
@@ -96,8 +102,21 @@
         // App url is reachable.
         callback();
       };
+      var focusDummy = {
+        focus: function() {
+          throw new Error();
+        }
+      };
       view.render();
       expect($("input.open").prop("disabled")).toBeFalsy();
+      spyOn(window, "open").andReturn(focusDummy);
+      spyOn(focusDummy, "focus");
+      $("input.open").click();
+      expect(window.open).toHaveBeenCalledWith(
+        view.appUrl(),
+        appDummy.get('title')
+      );
+      expect(focusDummy.focus).toHaveBeenCalled();
     });
 
     it("should be disable open if the main route does not exists", function() {
@@ -109,6 +128,88 @@
       expect($("input.open").prop("disabled")).toBeTruthy();
     });
 
+    describe("configure the app", function() {
+
+      var buttonId;
+
+      beforeEach(function() {
+        buttonId = "#configure-app";
+      });
+
+      describe("if required", function() {
+
+        beforeEach(function() {
+          config.data = {
+            opt1: {
+              type: "string",
+              description: "Option description",
+              default: "empty",
+              current: "empty"
+            }
+          };
+          view.render();
+          expect(view._appConfig).toEqual(config.data);
+          expect(appDummy.getConfiguration).toHaveBeenCalled();
+        });
+
+        it("the button should be enabled", function() {
+          expect($(buttonId).prop("disabled")).toEqual(false);
+        });
+
+        it("should utilize a modal dialog", function() {
+          var value;
+
+          runs(function() {
+            value = "Option1";
+            $(buttonId).click();
+          });
+
+          waitsFor(function () {
+            return $("#modal-dialog").css("display") === "block";
+          }, "The configure App dialog should be shown", 750);
+
+          runs(function() {
+            $("#app_config_opt1").val(value);
+            spyOn(appDummy, "setConfiguration").andCallFake(function(data, callback) {
+              callback({
+                error: false
+              });
+            });
+            $("#modalButton1").click();
+          });
+
+          waitsFor(function () {
+            return $("#modal-dialog").css("display") === "none";
+          }, "The configure App dialog should be hidden.", 750);
+
+          runs(function() {
+            expect(appDummy.setConfiguration).toHaveBeenCalledWith(
+              {
+                opt1: value
+              },
+              jasmine.any(Function)
+            );
+          });
+
+        });
+
+      });
+
+      describe("if not required", function() {
+
+        beforeEach(function() {
+          config.data = {};
+          view.render();
+          expect(view._appConfig).toEqual(config.data);
+          expect(appDummy.getConfiguration).toHaveBeenCalled();
+        });
+
+        it("the button should be disabled", function() {
+          expect($(buttonId).prop("disabled")).toEqual(true);
+        });
+
+      });
+    });
 
     /*
     describe("edit a foxx", function() {

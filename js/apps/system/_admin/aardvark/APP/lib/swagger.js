@@ -1,4 +1,4 @@
-/*global exports, appCollection*/
+/*global exports, appCollection, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to expose API documentation for Foxx apps
@@ -32,7 +32,6 @@ exports.Swagger = function () {
 
   var db = require("internal").db,
     _aal = db._collection("_aal"),
-    _ = require("underscore"),
     foxx_manager = require("org/arangodb/foxx/manager");
 
 
@@ -83,44 +82,36 @@ exports.Swagger = function () {
 
   // Get details of one specific installed foxx.
   this.show = function(mount) {
-      var result = {},
+    var result = {},
       apis = [],
       pathes,
       regex = /(:)([^\/]*)/g,
       i,
       url,
       api,
-      ops,
-      app,
-      list = foxx_manager.appRoutes().concat(foxx_manager.developmentRoutes());
+      ops;
+    var routes = foxx_manager.routes(mount);
 
-      _.each(list, function(r) {
-        var ac = r.appContext;
-        if (ac.mount === mount) {
-          app = r;
-          return;
-        }
-      });
+    result.swaggerVersion = "1.1";
+    result.basePath = mount;
+    result.apis = apis;
+    result.models = routes.models;
+    pathes = routes.routes;
 
-      result.swaggerVersion = "1.1";
-      result.basePath = app.urlPrefix;
-      result.apis = apis;
-      result.models = app.models;
-      pathes = app.routes;
-
-      for (i in pathes) {
-        if (pathes[i].url.methods !== undefined) {
-          url = pathes[i].url.match;
-          api = {};
-          ops = [];
-          url = url.replace(regex, "{$2}");
-          api.path = url;
-          ops.push(pathes[i].docs);
-          api.operations = ops;
-          apis.push(api);
-        }
+    for (i in pathes) {
+      if (pathes[i].url.methods !== undefined) {
+        url = pathes[i].url.match;
+        api = {};
+        ops = [];
+        url = url.replace(regex, "{$2}");
+        api.path = url;
+        ops.push(pathes[i].docs);
+        api.operations = ops;
+        apis.push(api);
       }
-
-      return result;
     }
+    require("console").log(result);
+
+    return result;
+  }
 };
