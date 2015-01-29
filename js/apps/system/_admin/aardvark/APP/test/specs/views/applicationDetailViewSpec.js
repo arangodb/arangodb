@@ -8,9 +8,14 @@
 
   describe("Application Details View", function() {
 
-    var div, view, appDummy, deleteButton, openButton, modalDiv;
+    var div, view, appDummy, deleteButton, openButton, modalDiv, getDummy;
 
     beforeEach(function() {
+      getDummy = {
+        success: function(callback) {
+          callback();
+        }
+      };
       spyOn(arangoHelper, "currentDatabase").andReturn("_system");
       modalDiv = document.createElement("div");
       modalDiv.id = "modalPlaceholder";
@@ -33,6 +38,10 @@
       });
       view = new window.ApplicationDetailView({
         model: appDummy
+      });
+      spyOn($, "get").andCallFake(function(url) {
+        expect(url).toEqual(view.appUrl());
+        return getDummy;
       });
       view.render();
       deleteButton = $("input.delete");
@@ -83,12 +92,23 @@
     });
 
     it("should be able to open the main route if exists", function() {
-      expect(true).toBeFalsy();
+      getDummy.success = function(callback) {
+        // App url is reachable.
+        callback();
+      };
+      view.render();
+      expect($("input.open").prop("disabled")).toBeFalsy();
     });
 
     it("should be disable open if the main route does not exists", function() {
-      expect(true).toBeFalsy();
+      getDummy.success = function() {
+        // App url is not reachable.
+        return;
+      };
+      view.render();
+      expect($("input.open").prop("disabled")).toBeTruthy();
     });
+
 
     /*
     describe("edit a foxx", function() {
