@@ -52,6 +52,46 @@ var RegexCache = { };
 var UserFunctions = { };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief prefab traversal visitors
+////////////////////////////////////////////////////////////////////////////////
+
+var DefaultVisitors = {
+  "_AQL::PROJECTINGVISITOR" : {
+    visitorReturnsResults: true,
+    func: function (config, result, vertex) {
+      var values = { };
+      if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+        config.data.attributes.forEach(function (attribute) {
+          values[attribute] = vertex[attribute];
+        });
+      }
+      return values;
+    }
+  },
+  "_AQL::IDVISITOR" : {
+    visitorReturnsResults: true,
+    func:  function (config, result, vertex) {
+      return vertex._id;
+    }
+  },
+  "_AQL::KEYVISITOR" : {
+    visitorReturnsResults: true,
+    func:  function (config, result, vertex) {
+      return vertex._key;
+    }
+  },
+  "_AQL::COUNTINGVISITOR" : {
+    visitorReturnsResults: false,
+    func: function (config, result) {
+      if (result.length === 0) {
+        result.push(0);
+      }
+      result[0]++;
+    }
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief type weight used for sorting and comparing
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,25 +234,34 @@ function reloadUserFunctions () {
 /// @brief get a user-function by name
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_USERFUNCTION (name) { 
+function GET_USERFUNCTION (name, config) { 
   var prefix = DB_PREFIX(), reloaded = false;
   var key = name.toUpperCase();
 
-  if (! UserFunctions.hasOwnProperty(prefix)) {
-    reloadUserFunctions();
-    reloaded = true;
-  }
-  
-  if (! UserFunctions[prefix].hasOwnProperty(key) && ! reloaded) {
-    // last chance
-    reloadUserFunctions();
-  }
-  
-  if (! UserFunctions[prefix].hasOwnProperty(key)) {
-    THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
-  }
+  var func;
 
-  var func = UserFunctions[prefix][key].func;
+  if (DefaultVisitors.hasOwnProperty(key)) {
+    var visitor = DefaultVisitors[key];
+    func = visitor.func;
+    config.visitorReturnsResults = visitor.visitorReturnsResults;
+  }
+  else {
+    if (! UserFunctions.hasOwnProperty(prefix)) {
+      reloadUserFunctions();
+      reloaded = true;
+    }
+  
+    if (! UserFunctions[prefix].hasOwnProperty(key) && ! reloaded) {
+      // last chance
+      reloadUserFunctions();
+    }
+   
+    if (! UserFunctions[prefix].hasOwnProperty(key)) {
+      THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
+    }
+
+    func = UserFunctions[prefix][key].func;
+  }
 
   if (typeof func !== "function") {
     THROW(null, INTERNAL.errors.ERROR_QUERY_FUNCTION_NOT_FOUND, name);
@@ -225,8 +274,8 @@ function GET_USERFUNCTION (name) {
 /// @brief create a user-defined visitor from a function name
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_VISITOR (name) {
-  var func = GET_USERFUNCTION(name);
+function GET_VISITOR (name, config) {
+  var func = GET_USERFUNCTION(name, config);
 
   return function (config, result, vertex, path) {
     try {
@@ -250,8 +299,8 @@ function GET_VISITOR (name) {
 /// @brief create a user-defined filter from a function name
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_FILTER (name) {
-  var func = GET_USERFUNCTION(name);
+function GET_FILTER (name, config) {
+  var func = GET_USERFUNCTION(name, config);
 
   return function (config, vertex, path) {
     try {
@@ -5059,7 +5108,8 @@ function TRAVERSAL_FUNC (func,
     endVertex : endVertex,
     weight : params.weight,
     defaultWeight : params.defaultWeight,
-    prefill : params.prefill
+    prefill : params.prefill,
+    data: params.data  
   };
 
   if (typeof params.filter === "function") {
@@ -5456,7 +5506,7 @@ function SHORTEST_PATH_PARAMS (params) {
 
   // add user-defined visitor, if specified
   if (typeof params.visitor === "string") {
-    params.visitor = GET_VISITOR(params.visitor);
+    params.visitor = GET_VISITOR(params.visitor, params);
   }
   else {
     params.visitor = TRAVERSAL_VISITOR;
@@ -5464,7 +5514,7 @@ function SHORTEST_PATH_PARAMS (params) {
 
   // add user-defined filter, if specified
   if (typeof params.filter === "string") {
-    params.filter = GET_FILTER(params.filter);
+    params.filter = GET_FILTER(params.filter, params);
   }
 
   if (typeof params.distance === "string") {
@@ -5686,7 +5736,7 @@ function TRAVERSAL_PARAMS (params) {
 
   // add user-defined visitor, if specified
   if (typeof params.visitor === "string") {
-    params.visitor = GET_VISITOR(params.visitor);
+    params.visitor = GET_VISITOR(params.visitor, params);
   }
   else {
     params.visitor = TRAVERSAL_VISITOR;
@@ -5694,7 +5744,7 @@ function TRAVERSAL_PARAMS (params) {
 
   // add user-defined filter, if specified
   if (typeof params.filter === "string") {
-    params.filter = GET_FILTER(params.filter);
+    params.filter = GET_FILTER(params.filter, params);
   }
 
   return params;
@@ -6045,7 +6095,7 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
 
   // add user-defined visitor, if specified
   if (typeof params.visitor === "string") {
-    params.visitor = GET_VISITOR(params.visitor);
+    params.visitor = GET_VISITOR(params.visitor, params);
   }
   else {
     params.visitor = TRAVERSAL_TREE_VISITOR;
@@ -6053,7 +6103,7 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
   
   // add user-defined filter, if specified
   if (typeof params.filter === "string") {
-    params.filter = GET_FILTER(params.filter);
+    params.filter = GET_FILTER(params.filter, params);
   }
 
   params.connect  = AQL_TO_STRING(connectName);
