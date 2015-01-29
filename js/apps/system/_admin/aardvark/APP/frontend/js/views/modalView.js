@@ -233,9 +233,10 @@
     },
 
     show: function(templateName, title, buttons, tableContent, advancedContent,
-        events) {
+        events, ignoreConfirm) {
       var self = this, lastBtn, closeButtonFound = false;
       buttons = buttons || [];
+      ignoreConfirm = ignoreConfirm || false;
       this.clearValidators();
       // Insert close as second from right
       if (buttons.length > 0) {
@@ -261,7 +262,7 @@
         if (b.disabled || !b.callback) {
           return;
         }
-        if (b.type === self.buttons.DELETE) {
+        if (b.type === self.buttons.DELETE && !ignoreConfirm) {
           $("#modalButton" + i).bind("click", function() {
             $(self.confirm.yes).unbind("click");
             $(self.confirm.yes).bind("click", b.callback);

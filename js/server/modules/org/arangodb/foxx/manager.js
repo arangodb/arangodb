@@ -76,6 +76,9 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var lookupApp = function(mount) {
+    if (Object.keys(appCache).length === 0) {
+      refillCaches();
+    }
     if (!appCache.hasOwnProperty(mount)) {
       throw "App not found";
     }
@@ -553,6 +556,17 @@
     return app.simpleJSON();
   };
 
+  var _teardown = function (app) {
+    try {
+      teardownApp(app);
+    } catch (err) {
+      console.errorLines(
+        "Teardown not possible for mount '%s': %s", app._mount, String(err.stack || err));
+      throw err;
+    }
+    return app.simpleJSON();
+
+  };
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief tears down a Foxx application
   ///
@@ -570,14 +584,7 @@
       [ mount ] );
 
     var app = lookupApp(mount);
-    try {
-      teardownApp(app);
-    } catch (err) {
-      console.errorLines(
-        "Teardown not possible for mount '%s': %s", mount, String(err.stack || err));
-      throw err;
-    }
-    return app.simpleJSON();
+    return _teardown(app);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -643,37 +650,37 @@
     var targetPath = computeAppPath(mount, true);
     var app;
     var collection = utils.tmp_getStorage();
+    if (fs.exists(targetPath)) {
+      throw "An app is already installed at this location.";
+    }
+    fs.makeDirectoryRecursive(targetPath);
+    // Remove the empty APP folder.
+    // Ohterwise move will fail.
+    fs.removeDirectory(targetPath);
+
+    if (appInfo === "EMPTY") {
+      // Make Empty app
+      installAppFromGenerator(targetPath, options || {});
+    } else if (/^GIT:/i.test(appInfo)) {
+      installAppFromRemote(buildGithubUrl(appInfo), targetPath);
+    } else if (/^https?:/.test(appInfo)) {
+      installAppFromRemote(appInfo, targetPath);
+    } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+      installAppFromLocal(appInfo, targetPath);
+    } else {
+      installAppFromRemote(store.buildUrl(appInfo), targetPath);
+    }
     db._executeTransaction({
       collections: {
         write: collection.name()
       },
       action: function() {
-        if (fs.exists(targetPath)) {
-          throw "An app is already installed at this location.";
-        }
-        fs.makeDirectoryRecursive(targetPath);
-        // Remove the empty APP folder.
-        // Ohterwise move will fail.
-        fs.removeDirectory(targetPath);
-
-        if (appInfo === "EMPTY") {
-          // Make Empty app
-          installAppFromGenerator(targetPath, options || {});
-        } else if (/^GIT:/.test(appInfo)) {
-          installAppFromRemote(buildGithubUrl(appInfo), targetPath);
-        } else if (/^https?:/.test(appInfo)) {
-          installAppFromRemote(appInfo, targetPath);
-        } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
-          installAppFromLocal(appInfo, targetPath);
-        } else {
-          installAppFromRemote(store.buildUrl(appInfo), targetPath);
-        }
         app = _scanFoxx(mount, options);
-        if (runSetup) {
-          setup(mount);
-        }
       }
     });
+    if (runSetup) {
+      setup(mount);
+    }
     return app;
   };
 
@@ -702,22 +709,22 @@
   var _uninstall = function(mount) {
     var app = lookupApp(mount);
     var collection = utils.tmp_getStorage();
+    var targetPath = computeAppPath(mount, true);
+    if (!fs.exists(targetPath)) {
+      throw "No foxx app found at this location.";
+    }
+    delete appCache[mount];
     db._executeTransaction({
       collections: {
         write: collection.name()
       },
       action: function() {
-        var targetPath = computeAppPath(mount, true);
-        if (!fs.exists(targetPath)) {
-          throw "No foxx app found at this location.";
-        }
-        teardown(mount);
-        utils.tmp_getStorage().removeByExample({mount: mount}); 
-        delete appCache[mount];
-        // Remove the APP folder.
-        fs.removeDirectoryRecursive(targetPath, true);
+        var definition = collection.firstExample({mount: mount});
+        collection.remove(definition._key);
       }
     });
+    _teardown(app);
+    fs.removeDirectoryRecursive(targetPath, true);
     return app;
   };
 

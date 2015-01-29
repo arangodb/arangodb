@@ -33,6 +33,7 @@
   var controller = new FoxxController(applicationContext);
   var ArangoError = require("org/arangodb").ArangoError;
   var FoxxManager = require("org/arangodb/foxx/manager");
+  var actions = require("org/arangodb/actions");
   var joi = require("joi");
   var docus = new (require("lib/swagger").Swagger)();
   var mountPoint = {
@@ -117,7 +118,6 @@
       file = content.zipFile,
       mount = validateMount(req),
       path = fs.join(fs.getTempPath(), file);
-    require("console").log(path);
     installApp(res, path, mount);
   }).queryParam("mount", mountPoint);
 
@@ -126,8 +126,22 @@
  * Uninstall the Foxx at the given mount-point.
  */
 controller.del("/", function (req, res) {
-  var mount = validateMount(mount);
-  res.json(FoxxManager.uninstall(mount));
+  var mount = validateMount(req);
+  try {
+    var app = FoxxManager.uninstall(mount);
+    res.json({
+      error: false,
+      name: app.name,
+      version: app.version
+    });
+  } catch (e) {
+    res.json({
+      error: true,
+      message: e.message || String(e)
+    });
+    res.json(e);
+    res.status = actions.HTTP_SERVER_ERROR;
+  }
 }).queryParam("mount", mountPoint);
 
 // ------------------------------------------------------------
