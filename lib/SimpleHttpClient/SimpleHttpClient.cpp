@@ -288,7 +288,11 @@ namespace triagens {
         TRI_ASSERT(_connection != nullptr);
 
         if (! _connection->connect()) {
-          setErrorMessage("Could not connect to '" +  _connection->getEndpoint()->getSpecification() + "'", errno);
+          setErrorMessage("Could not connect to '" +
+                          _connection->getEndpoint()->getSpecification() +
+                          "' '" +
+                          _connection->getErrorDetails() +
+                          "' '");
           _state = DEAD;
         }
         else {
@@ -348,7 +352,9 @@ namespace triagens {
         case IN_CONNECT:
         default: {
           _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
-          setErrorMessage("Could not connect");
+          if (!haveErrorMessage()) {
+            setErrorMessage("Could not connect");
+          }
           break;
         }
       }
