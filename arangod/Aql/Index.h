@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
+#include "Utils/Exception.h"
 #include "VocBase/index.h"
 
 namespace triagens {
@@ -55,7 +56,7 @@ namespace triagens {
           type(idx->_type),
           unique(idx->_unique),
           fields(),
-          data(idx) {
+          internals(idx) {
 
         size_t const n = idx->_fields._length;
         fields.reserve(n);
@@ -65,7 +66,7 @@ namespace triagens {
           fields.emplace_back(std::string(field));
         }
         
-        TRI_ASSERT(data != nullptr);
+        TRI_ASSERT(internals != nullptr);
       }
       
       Index (TRI_json_t const* json)
@@ -73,7 +74,7 @@ namespace triagens {
           type(TRI_TypeIndex(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
           unique(triagens::basics::JsonHelper::checkAndGetBooleanValue(json, "unique")),
           fields(),
-          data(nullptr) {
+          internals(nullptr) {
 
         TRI_json_t const* f = TRI_LookupObjectJson(json, "fields");
 
@@ -112,6 +113,18 @@ namespace triagens {
         return json;
       }
 
+      TRI_index_t* getInternals () const {
+        if (internals == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "accessing undefined index internals");
+        }
+        return internals; 
+      }
+      
+      void setInternals (TRI_index_t* idx) {
+        TRI_ASSERT(internals == nullptr);
+        internals = idx;
+      }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
@@ -120,7 +133,10 @@ namespace triagens {
       TRI_idx_type_e const       type;
       bool const                 unique;
       std::vector<std::string>   fields;
-      TRI_index_t*               data;
+
+      private:
+
+        TRI_index_t*               internals;
 
     };
 
