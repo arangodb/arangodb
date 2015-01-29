@@ -293,7 +293,8 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _definedBooleans(),
     _definedDoubles(),
     _startupFile("server/server.js"),
-    _gcFinished(false) {
+    _gcFinished(false),
+    _platform(nullptr) {
 
   TRI_ASSERT(_server != nullptr);
 
