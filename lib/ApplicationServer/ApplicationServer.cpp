@@ -228,11 +228,33 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
                                                                     0,
                                                                     TRI_LOG_SEVERITY_USAGE,
-                                                                    true);
+                                                                    true,
+                                                                    false);
 
     // the user specified a requests log file to use but it could not be created. bail out
     if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create requests logfile '%s'. Please check the path and permissions.", filename.c_str());
+    }
+  }
+
+  // additional log file in case of tty
+  bool ttyLogger = false;
+
+  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
+    bool regularOut = (_logFile == "+" || _logFile == "-");
+    bool ttyOut = (_logTty == "+" || _logTty == "-");
+
+    if (! regularOut || ! ttyOut) {
+      struct TRI_log_appender_s* appender
+        = TRI_CreateLogAppenderFile(_logTty.c_str(),
+                                    contentFilter,
+                                    TRI_LOG_SEVERITY_UNKNOWN,
+                                    false,
+                                    true);
+
+      if (appender) {
+        ttyLogger = true;
+      }
     }
   }
 
@@ -244,27 +266,16 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
       filename = filename + ".daemon";
     }
 
-    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
-                                                                    contentFilter,
-                                                                    TRI_LOG_SEVERITY_UNKNOWN,
-                                                                    false);
+    struct TRI_log_appender_s* appender
+      = TRI_CreateLogAppenderFile(filename.c_str(),
+                                  contentFilter,
+                                  TRI_LOG_SEVERITY_UNKNOWN,
+                                  false,
+                                  ! ttyLogger);
 
     // the user specified a log file to use but it could not be created. bail out
     if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
-    }
-  }
-
-  // additional log file in case of tty
-  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
-    bool regularOut = (_logFile == "+" || _logFile == "-");
-    bool ttyOut = (_logTty == "+" || _logTty == "-");
-
-    if (! regularOut || ! ttyOut) {
-      TRI_CreateLogAppenderFile(_logTty.c_str(),
-                                contentFilter,
-                                TRI_LOG_SEVERITY_UNKNOWN,
-                                false);
     }
   }
 
