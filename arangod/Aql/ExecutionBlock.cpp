@@ -1761,7 +1761,14 @@ void IndexRangeBlock::readHashIndex (IndexOrCondition const& ranges) {
       std::string const lookFor = std::string(name);
 
       for (auto x : ranges[pos]) {
-        if (x._attr == lookFor) {    //found attribute
+        if (x._attr == lookFor) {    // found attribute
+
+          if (x._lowConst.bound().json() == nullptr) {
+            // attribute is empty. this may be case if a function expression is used as a 
+            // comparison value, and the function returns an empty list, e.g. x.a IN PASSTHRU([])
+            return false;
+          }
+
           auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
           // here x->_low->_bound = x->_high->_bound 
           if (shaped == nullptr) {
@@ -1912,7 +1919,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   size_t i = 0;
   for (; i < ranges.size(); i++) {
     auto const& range = ranges[i];
-    TRI_ASSERT(range.isConstant());
+    // TRI_ASSERT(range.isConstant());
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
       parameters(range._lowConst.bound().copy());
     } 
