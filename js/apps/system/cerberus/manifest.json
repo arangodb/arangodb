@@ -8,7 +8,7 @@
 
   "repository": {
     "type": "git",
-    "url": "https://github.com/triAGENS/ArangoDB.git"
+    "url": "https://github.com/arangodb/arangodb.git"
   },
 
   "contributors": [
