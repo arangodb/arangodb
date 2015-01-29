@@ -1393,6 +1393,7 @@ typedef struct log_appender_file_s {
 
   char* _filename;
   int _fd;
+  bool _fatal2stderr;
 
   TRI_spin_t _lock;
 }
@@ -1454,7 +1455,7 @@ static void LogAppenderFile_Log (TRI_log_appender_t* appender,
     return;
   }
 
-  if (level == TRI_LOG_LEVEL_FATAL) {
+  if (level == TRI_LOG_LEVEL_FATAL && self->_fatal2stderr) {
     // a fatal error. always print this on stderr, too.
     size_t i;
 
@@ -1599,7 +1600,8 @@ static char* LogAppenderFile_Details (TRI_log_appender_t* appender) {
 TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
                                                char const* contentFilter,
                                                TRI_log_severity_e severityFilter,
-                                               bool consume) {
+                                               bool consume,
+                                               bool fatal2stderr) {
   // no logging
   if (filename == nullptr || *filename == '\0') {
     return nullptr;
@@ -1627,6 +1629,9 @@ TRI_log_appender_t* TRI_CreateLogAppenderFile (char const* filename,
       return nullptr;
     }
   }
+
+  // print fatal messages on stderr
+  appender->_fatal2stderr = fatal2stderr;
 
   // logging to stdout
   if (TRI_EqualString(filename, "+")) {

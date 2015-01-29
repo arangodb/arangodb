@@ -220,21 +220,14 @@ static bool BytecodeShapeAccessor (TRI_shaper_t* shaper, TRI_shape_access_t* acc
       }
 
       LOG_TRACE("unknown attribute id '%ld'", (unsigned long) *paids);
-
-      TRI_DestroyVectorPointer(&ops);
-
-      accessor->_resultSid = TRI_SHAPE_ILLEGAL;
-      accessor->_code = nullptr;
-      return true;
     }
-    else {
-      TRI_DestroyVectorPointer(&ops);
 
-      accessor->_resultSid = TRI_SHAPE_ILLEGAL;
-      accessor->_code = nullptr;
+    TRI_DestroyVectorPointer(&ops);
 
-      return true;
-    }
+    accessor->_resultSid = TRI_SHAPE_ILLEGAL;
+    accessor->_code = nullptr;
+
+    return true;
   }
 
   // travel attribute path to the end

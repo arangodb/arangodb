@@ -2146,10 +2146,12 @@ static bool ParseArray (yyscan_t scanner, TRI_json_t* result) {
         yyextra._message = "out-of-memory";
         return false;
       }
+      
+      // be paranoid and initialize the memory  
+      TRI_InitNullJson(next);
 
       if (! ParseValue(scanner, next, c)) {
         // be paranoid 
-        TRI_InitNullJson(next);
 
         return false;
       }
@@ -2256,10 +2258,12 @@ static bool ParseObject (yyscan_t scanner, TRI_json_t* result) {
       next = static_cast<TRI_json_t*>(TRI_NextVector(&result->_value._objects));
       // we made sure with the reserve call that we haven't run out of memory
       TRI_ASSERT_EXPENSIVE(next != nullptr);
+      
+      // be paranoid and initialize the memory  
+      TRI_InitNullJson(next);
 
       if (! ParseValue(scanner, next, c)) {
         // be paranoid
-        TRI_InitNullJson(next);
         return false;
       }
     }

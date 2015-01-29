@@ -41,7 +41,7 @@
 #endif
 
 #include "Basics/logging.h"
-
+#include "Basics/threads.h"
 #include "Basics/InitialiseBasics.h"
 #include "Rest/HttpResponse.h"
 #include "Rest/Version.h"
@@ -51,16 +51,14 @@
 // OPEN SSL support
 // -----------------------------------------------------------------------------
 
-#ifdef TRI_HAVE_POSIX_THREADS
-
 namespace {
   long* opensslLockCount;
-  pthread_mutex_t* opensslLocks;
+  TRI_mutex_t* opensslLocks;
 
 #if OPENSSL_VERSION_NUMBER < 0x01000000L
 
   unsigned long opensslThreadId () {
-    return (unsigned long) pthread_self();
+    return (unsigned long) TRI_CurrentThreadId();
   }
 
 #else
@@ -76,7 +74,7 @@ namespace {
   }
 
   static void arango_threadid_func (CRYPTO_THREADID *id) {
-    auto self = pthread_self();
+    auto self = TRI_CurrentThreadId();
 
     setter<decltype(self)>(id, self);
   }
@@ -85,22 +83,22 @@ namespace {
 
   void opensslLockingCallback (int mode, int type, char const* /* file */, int /* line */) {
     if (mode & CRYPTO_LOCK) {
-      pthread_mutex_lock(&(opensslLocks[type]));
+      TRI_LockMutex(&(opensslLocks[type]));
       opensslLockCount[type]++;
     }
     else {
-      pthread_mutex_unlock(&(opensslLocks[type]));
+      TRI_UnlockMutex(&(opensslLocks[type]));
     }
 
   }
 
   void opensslSetup () {
     opensslLockCount = (long*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(long));
-    opensslLocks = (pthread_mutex_t*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
+    opensslLocks = (TRI_mutex_t*) OPENSSL_malloc(CRYPTO_num_locks() * sizeof(TRI_mutex_t));
 
     for (long i = 0;  i < CRYPTO_num_locks();  ++i) {
       opensslLockCount[i] = 0;
-      pthread_mutex_init(&(opensslLocks[i]), 0);
+      TRI_InitMutex(&(opensslLocks[i]));
     }
 
 #if OPENSSL_VERSION_NUMBER < 0x01000000L
@@ -122,15 +120,13 @@ namespace {
 #endif
 
     for (long i = 0;  i < CRYPTO_num_locks();  ++i) {
-      pthread_mutex_destroy(&(opensslLocks[i]));
+      TRI_DestroyMutex(&(opensslLocks[i]));
     }
 
     OPENSSL_free(opensslLocks);
     OPENSSL_free(opensslLockCount);
   }
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // initialisation
@@ -148,9 +144,7 @@ namespace triagens {
       OpenSSL_add_all_algorithms();
       ERR_load_crypto_strings();
 
-#ifdef TRI_HAVE_POSIX_THREADS
       opensslSetup();
-#endif
 
       Version::initialise();
     }
@@ -158,9 +152,7 @@ namespace triagens {
 
 
     void ShutdownRest () {
-#ifdef TRI_HAVE_POSIX_THREADS
-        opensslCleanup();
-#endif
+      opensslCleanup();
 
       TRI_ShutdownStatistics();
 

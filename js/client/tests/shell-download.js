@@ -137,8 +137,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorNoReturn : function () {
-      var response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { }, tempName );
-
+      var response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { timeout: 300 }, tempName );
       assertEqual(404, response.code);
 
       assertFalse(fs.exists(tempName));
@@ -149,7 +148,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorDirect : function () {
-      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true });
+      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { timeout: 300, returnBodyOnError: true });
 
       assertEqual(404, response.code);
      
@@ -163,7 +162,7 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorSave : function () {
-      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true }, tempName);
+      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { timeout: 300, returnBodyOnError: true }, tempName);
 
       assertEqual(404, response.code);
       

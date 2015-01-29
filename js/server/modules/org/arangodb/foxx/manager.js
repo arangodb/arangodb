@@ -813,9 +813,8 @@ function routingAalApp (app, mount, options) {
     root = module.appPath();
   }
 
-  var appContextTempl = app.createAppContext();
+  var appContextTempl = app.createAppContext(mount);
 
-  appContextTempl.mount = mount; // global mount
   appContextTempl.options = options;
   appContextTempl.configuration = app._options.configuration;
   appContextTempl.collectionPrefix = prefix; // collection prefix

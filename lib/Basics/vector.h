@@ -165,7 +165,9 @@ void* TRI_NextVector (TRI_vector_t*);
 /// @brief returns the element at a given position, no bounds checking
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_AddressVector (TRI_vector_t const*, size_t);
+static inline void* TRI_AddressVector (TRI_vector_t const* vector, size_t pos) {
+  return static_cast<void*>(vector->_buffer + pos * vector->_elementSize);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the element at a given position

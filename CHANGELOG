@@ -1,6 +1,12 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1226: arangod log issues
+
+* added additional logger if arangod is started in foreground mode on a tty
+
+* added AQL optimizer rule "move-calculations-down"
+
 * use exclusive native SRWLocks on Windows instead of native mutexes
 
 * added AQL functions MD5, SHA1, and RANDOM_TOKEN.
@@ -20,7 +26,32 @@ v2.5.0 (XXXX-XX-XX)
   behavior.
 
 
-v2.4.1 (XXXX-XX-XX)
+v2.4.2 (2015-XX-XX)
+-------------------
+
+* improved number of results estimation for nodes of type EnumerateListNode and SubqueryNode
+  in AQL explain output
+
+* added AQL explain helper:
+
+      require("org/arangodb/aql/explainer").explain(query);
+
+* enable use of indexes for certain AQL conditions with non-equality predicates, in 
+  case the condition(s) also refer to indexed attributes
+
+  The following queries will now be able to use indexes:
+
+      FILTER a.indexed == ... && a.indexed != ...
+      FILTER a.indexed == ... && a.nonIndexed != ...
+      FILTER a.indexed == ... && ! (a.indexed == ...)
+      FILTER a.indexed == ... && ! (a.nonIndexed == ...)
+      FILTER a.indexed == ... && ! (a.indexed != ...)
+      FILTER a.indexed == ... && ! (a.nonIndexed != ...)
+      FILTER (a.indexed == ... && a.nonIndexed == ...) || (a.indexed == ... && a.nonIndexed == ...)
+      FILTER (a.indexed == ... && a.nonIndexed != ...) || (a.indexed == ... && a.nonIndexed != ...)
+
+
+v2.4.1 (2015-01-19)
 -------------------
 
 * improved WAL recovery output

@@ -37,6 +37,22 @@ var Vertex = graph.Vertex;
 // --SECTION--                             module "org/arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 
+function unite (l, r) {
+  return r.concat(l.filter(function (element) {
+    return (r.indexOf(element) === -1);
+  }));
+}
+  
+function intersect (l, r) {
+  return l.filter(function (element) {
+    return (r.indexOf(element) > -1);
+  });
+}
+
+function removeLastOccurrenceOf (l, element) {
+  return l.splice(l.lastIndexOf(element), 1);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            VERTEX
 // -----------------------------------------------------------------------------
@@ -73,13 +89,13 @@ Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   neighbor_set_one = this.getNeighbors(options).map(id_only);
   neighbor_set_two = target_vertex.getNeighbors(options).map(id_only);
 
-  common_neighbors = neighbor_set_one.intersect(neighbor_set_two);
+  common_neighbors = intersect(neighbor_set_one, neighbor_set_two);
 
   if ((options.listed !== undefined) && (options.listed === true)) {
     return_value = common_neighbors;
   }
   else if ((options.normalized !== undefined) && (options.normalized === true)) {
-    all_neighbors = neighbor_set_one.unite(neighbor_set_two);
+    all_neighbors = unite(neighbor_set_one, neighbor_set_two);
     return_value = (common_neighbors.length / all_neighbors.length);
   }
   else {
@@ -104,7 +120,7 @@ Vertex.prototype.commonPropertiesWith = function (other_vertex, options) {
 
   options = options || {};
 
-  property_names = this_vertex.getPropertyKeys().unite(other_vertex.getPropertyKeys());
+  property_names = unite(this_vertex.getPropertyKeys(), other_vertex.getPropertyKeys());
 
   property_names.forEach(function (property) {
     if (this_vertex.getProperty(property) === other_vertex.getProperty(property)) {
@@ -195,10 +211,10 @@ Vertex.prototype.determinePredecessors = function (source, options) {
         return_value = predecessors;
         break;
       } else {
-        todo_list.removeLastOccurrenceOf(current_vertex_id);
+        removeLastOccurrenceOf(todo_list, current_vertex_id);
         determined_list.push(current_vertex_id);
 
-        todo_list = todo_list.unite(current_vertex._processNeighbors(
+        todo_list = unite(todo_list, current_vertex._processNeighbors(
           determined_list,
           distances,
           predecessors,

@@ -561,11 +561,13 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-costs.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-down.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-filters-up.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-remove-collect-into.js \
@@ -1101,7 +1103,7 @@ unittests-authentication-parameters:
 
 cppcheck:
 	@rm -f cppcheck.log cppcheck.log && echo -n "" > cppcheck.tmp
-	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:lib/JsonParser/json-parser.c" --suppress="*:lib/V8/v8-json.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
+	for platform in unix32 unix64; do cppcheck -j4 --std=c++11 --enable=style --force --platform=$$platform --suppress="*:lib/JsonParser/json-parser.cpp" --suppress="*:lib/V8/v8-json.cpp" --suppress="*:arangod/Aql/grammar.cpp" --suppress="*:arangod/Aql/tokens.cpp" arangod/ lib/ 1> /dev/null 2>> cppcheck.tmp; done
 	@sort cppcheck.tmp | uniq > cppcheck.log
 	@rm cppcheck.tmp
 	@cat cppcheck.log

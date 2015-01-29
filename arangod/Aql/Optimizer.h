@@ -54,7 +54,8 @@ namespace triagens {
         int64_t plansCreated  = 1; // 1 for the initial plan
 
         TRI_json_t* toJson (TRI_memory_zone_t* zone) const {
-          TRI_json_t* stats = TRI_CreateObjectJson(zone);
+          TRI_json_t* stats = TRI_CreateObjectJson(zone, 3);
+
           if (stats == nullptr) {
             return nullptr;
           }
@@ -180,6 +181,12 @@ namespace triagens {
   
         // try to find sort blocks which are superseeded by indexes
         useIndexForSortRule_pass6                  = 850,
+
+//////////////////////////////////////////////////////////////////////////////
+/// Pass 9: push down calculations beyond FILTERs and LIMITs
+//////////////////////////////////////////////////////////////////////////////
+
+        moveCalculationsDownRule_pass9             = 900,
 
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 10": final transformations for the cluster

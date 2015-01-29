@@ -32,7 +32,7 @@
 #include "arangod/VocBase/voc-shaper.h"
 #include "arangod/Wal/Marker.h"
 
-template<typename T, typename U> constexpr size_t offsetOf (U T::*member) {
+template<typename T, typename U> size_t offsetOf (U T::*member) {
   return (char*) &((T*)nullptr->*member) - (char*) nullptr;
 }
 

@@ -69,6 +69,18 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets attribute restrictions. these prevent input variables to be
+/// fully constructed as V8 objects (which can be very expensive), but limits
+/// the objects to the actually used attributes only.
+/// For example, the expression LET x = a.value + 1 will not build the full
+/// object for "a", but only its "value" attribute
+////////////////////////////////////////////////////////////////////////////////
+    
+      void setAttributeRestrictions (std::unordered_map<Variable const*, std::unordered_set<std::string>> const& attributeRestrictions) {
+        _attributeRestrictions = attributeRestrictions;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief execute the expression
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -96,6 +108,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
        v8::Persistent<v8::Function> _func;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restrictions for creating the input values
+////////////////////////////////////////////////////////////////////////////////
+      
+       std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributeRestrictions;
 
     };
 

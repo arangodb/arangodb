@@ -189,7 +189,7 @@ AstNode* Ast::createNodeFor (char const* variableName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST let node
+/// @brief create an AST let node, without an IF condition
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeLet (char const* variableName,
@@ -204,6 +204,27 @@ AstNode* Ast::createNodeLet (char const* variableName,
   AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST let node, with an IF condition
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeLet (char const* variableName,
+                             AstNode const* expression,
+                             AstNode const* condition) {
+  if (variableName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_LET);
+
+  AstNode* variable = createNodeVariable(variableName, true);
+  node->addMember(variable);
+  node->addMember(expression);
+  node->addMember(condition);
 
   return node;
 }
@@ -515,7 +536,7 @@ AstNode* Ast::createNodeCollection (char const* name) {
   }
 
   if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
-    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
+    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME);
     return nullptr;
   }
 
@@ -796,7 +817,7 @@ AstNode* Ast::createNodeValueString (char const* value) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST list node
+/// @brief create an AST array node
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeArray () {
@@ -806,7 +827,7 @@ AstNode* Ast::createNodeArray () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST array node
+/// @brief create an AST object node
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeObject () {
@@ -814,7 +835,7 @@ AstNode* Ast::createNodeObject () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST array element node
+/// @brief create an AST object element node
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeObjectElement (char const* attributeName,
@@ -972,7 +993,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
     return node;
   };
 
-  _root = traverse(_root, func, &p); 
+  _root = traverseAndModify(_root, func, &p); 
   
   if (_writeCollection != nullptr &&
       _writeCollection->type == NODE_TYPE_COLLECTION) {
@@ -1001,6 +1022,7 @@ AstNode* Ast::replaceVariables (AstNode* node,
     // reference to a variable
     if (node->type == NODE_TYPE_REFERENCE) {
       auto variable = static_cast<Variable*>(node->getData());
+
       if (variable != nullptr) {
         auto it = replacements.find(variable->id);
         if (it != replacements.end()) {
@@ -1014,7 +1036,7 @@ AstNode* Ast::replaceVariables (AstNode* node,
     return node;
   };
 
-  return traverse(node, visitor, nullptr);
+  return traverseAndModify(node, visitor, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1113,7 +1135,7 @@ void Ast::optimize () {
 
   // run the optimizations
   TraversalContext context;
-  this->_root = traverse(this->_root, preVisitor, visitor, postVisitor, &context);
+  this->_root = traverseAndModify(this->_root, preVisitor, visitor, postVisitor, &context);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1142,7 +1164,73 @@ std::unordered_set<Variable*> Ast::getReferencedVariables (AstNode const* node) 
   };
 
   std::unordered_set<Variable*> result;  
-  traverse(node, visitor, &result); 
+  traverseReadOnly(node, visitor, &result); 
+
+  return result;
+}
+    
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determines the top-level attributes referenced in an expression,
+/// grouped by variable name
+////////////////////////////////////////////////////////////////////////////////
+
+TopLevelAttributes Ast::getReferencedAttributes (AstNode const* node,
+                                                 bool& isSafeForOptimization) {
+  TopLevelAttributes result;
+
+  auto doNothingVisitor = [](AstNode const* node, void* data) -> void { };
+  
+  // traversal state
+  char const* attributeName = nullptr;
+  isSafeForOptimization = true;
+ 
+  auto visitor = [&](AstNode const* node, void* data) -> void {
+    if (node == nullptr) {
+      return;
+    }
+
+    if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      attributeName = node->getStringValue();
+      return;
+    }
+
+    if (node->type == NODE_TYPE_REFERENCE) {
+      // reference to a variable
+      if (attributeName == nullptr) {
+        // we haven't seen an attribute access directly before...
+        // this may have been an access to an indexed property, e.g value[0] or a 
+        // reference to the complete value, e.g. FUNC(value)
+        // note that this is unsafe to optimize this away
+        isSafeForOptimization = false;
+        return;
+      }
+
+      TRI_ASSERT(attributeName != nullptr);
+   
+      auto variable = static_cast<Variable const*>(node->getData());
+
+      if (variable == nullptr) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+      }
+
+      auto it = result.find(variable);
+
+      if (it == result.end()) { 
+        // insert variable and attributeName
+        result.emplace(std::make_pair(variable, std::unordered_set<std::string>({ std::string(attributeName) })));
+      }
+      else {
+        // insert attributeName only
+        (*it).second.emplace(std::string(attributeName));
+      }
+
+      // fall-through
+    }
+      
+    attributeName = nullptr;
+  };
+
+  traverseReadOnly(node, visitor, doNothingVisitor, doNothingVisitor, nullptr); 
 
   return result;
 }
@@ -1815,15 +1903,17 @@ AstNode* Ast::optimizeReference (AstNode* node) {
 AstNode* Ast::optimizeLet (AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
 
   AstNode* variable = node->getMember(0);
   AstNode* expression = node->getMember(1);
+
+  bool const hasCondition = (node->numMembers() > 2);
     
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);
 
-  if (expression->isConstant()) {
+  if (! hasCondition && expression->isConstant()) {
     // if the expression assigned to the LET variable is constant, we'll store
     // a pointer to the const value in the variable
     // further optimizations can then use this pointer and optimize further, e.g.
@@ -1915,7 +2005,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
-      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i)))); 
+      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)))); 
     }
 
     return node;
@@ -1926,11 +2016,11 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
+      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i + 1));
 
       if (! TRI_IsStringJson(key) || value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in array node");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in object node");
       }
 
       char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);
@@ -1948,11 +2038,11 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
 /// @brief traverse the AST, using pre- and post-order visitors
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::traverse (AstNode* node, 
-                        std::function<void(AstNode const*, void*)> preVisitor,
-                        std::function<AstNode*(AstNode*, void*)> visitor,
-                        std::function<void(AstNode const*, void*)> postVisitor,
-                        void* data) {
+AstNode* Ast::traverseAndModify (AstNode* node, 
+                                 std::function<void(AstNode const*, void*)> preVisitor,
+                                 std::function<AstNode*(AstNode*, void*)> visitor,
+                                 std::function<void(AstNode const*, void*)> postVisitor,
+                                 void* data) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -1964,9 +2054,10 @@ AstNode* Ast::traverse (AstNode* node,
     auto member = node->getMember(i);
 
     if (member != nullptr) {
-      AstNode* result = traverse(member, preVisitor, visitor, postVisitor, data);
+      AstNode* result = traverseAndModify(member, preVisitor, visitor, postVisitor, data);
 
       if (result != node) {
+        TRI_ASSERT_EXPENSIVE(node != nullptr);
         node->changeMember(i, result);
       }
     }
@@ -1978,12 +2069,12 @@ AstNode* Ast::traverse (AstNode* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse the AST, using a visitor
+/// @brief traverse the AST, using a depth-first visitor
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::traverse (AstNode* node, 
-                        std::function<AstNode*(AstNode*, void*)> visitor,
-                        void* data) {
+AstNode* Ast::traverseAndModify (AstNode* node, 
+                                 std::function<AstNode*(AstNode*, void*)> visitor,
+                                 void* data) {
   if (node == nullptr) {
     return nullptr;
   }
@@ -1994,7 +2085,7 @@ AstNode* Ast::traverse (AstNode* node,
     auto member = node->getMember(i);
 
     if (member != nullptr) {
-      AstNode* result = traverse(member, visitor, data);
+      AstNode* result = traverseAndModify(member, visitor, data);
 
       if (result != node) {
         node->changeMember(i, result);
@@ -2006,12 +2097,40 @@ AstNode* Ast::traverse (AstNode* node,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse the AST using a visitor, with const nodes
+/// @brief traverse the AST, using pre- and post-order visitors
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ast::traverse (AstNode const* node, 
-                    std::function<void(AstNode const*, void*)> visitor,
-                    void* data) {
+void Ast::traverseReadOnly (AstNode const* node, 
+                            std::function<void(AstNode const*, void*)> preVisitor,
+                            std::function<void(AstNode const*, void*)> visitor,
+                            std::function<void(AstNode const*, void*)> postVisitor,
+                            void* data) {
+  if (node == nullptr) {
+    return;
+  }
+ 
+  preVisitor(node, data);
+  size_t const n = node->numMembers();
+
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member != nullptr) {
+      traverseReadOnly(member, preVisitor, visitor, postVisitor, data);
+    }
+  }
+
+  visitor(node, data);
+  postVisitor(node, data);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse the AST using a visitor depth-first, with const nodes
+////////////////////////////////////////////////////////////////////////////////
+
+void Ast::traverseReadOnly (AstNode const* node, 
+                            std::function<void(AstNode const*, void*)> visitor,
+                            void* data) {
   if (node == nullptr) {
     return;
   }
@@ -2022,7 +2141,7 @@ void Ast::traverse (AstNode const* node,
     auto member = node->getMember(i);
 
     if (member != nullptr) {
-      traverse(const_cast<AstNode const*>(member), visitor, data);
+      traverseReadOnly(const_cast<AstNode const*>(member), visitor, data);
     }
   }
 

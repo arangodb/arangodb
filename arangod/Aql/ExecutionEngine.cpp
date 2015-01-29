@@ -203,6 +203,14 @@ bool ExecutionEngine::isDBServer () {
   return triagens::arango::ServerState::instance()->isDBserver();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// @brief whether or not we are a running in a cluster
+////////////////////////////////////////////////////////////////////////////////
+       
+bool ExecutionEngine::isRunningInCluster () {
+  return triagens::arango::ServerState::instance()->isRunningInCluster();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------

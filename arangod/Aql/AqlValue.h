@@ -222,6 +222,16 @@ namespace triagens {
                                   TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief construct a V8 value as input for the expression execution in V8
+/// only construct those attributes that are needed in the expression
+////////////////////////////////////////////////////////////////////////////////
+
+      v8::Handle<v8::Value> toV8Partial (v8::Isolate* isolate,
+                                         triagens::arango::AqlTransaction*, 
+                                         std::unordered_set<std::string> const&,
+                                         TRI_document_collection_t const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief toJson method
 ////////////////////////////////////////////////////////////////////////////////
       

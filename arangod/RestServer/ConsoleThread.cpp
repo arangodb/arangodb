@@ -151,10 +151,7 @@ void ConsoleThread::inner () {
 
     while (! _userAborted) {
       if (nrCommands >= gcInterval) {
-        isolate->LowMemoryNotification();
-        while (! isolate->IdleNotification(1000)) {
-        }
-
+        TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
       }
 
