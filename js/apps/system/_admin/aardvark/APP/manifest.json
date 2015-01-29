@@ -69,6 +69,7 @@
         "frontend/js/templates/modalBase.ejs",
         "frontend/js/templates/modalApplicationMount.ejs",
         "frontend/js/templates/modalCollectionInfo.ejs",
+        "frontend/js/templates/modalDeleteConfirmation.ejs",
         "frontend/js/templates/modalDownloadFoxx.ejs",
         "frontend/js/templates/modalFoxxDevPath.ejs",
         "frontend/js/templates/modalGraph.ejs",
