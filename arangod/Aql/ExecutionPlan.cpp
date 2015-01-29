@@ -110,12 +110,12 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::getCollectionsFromJson (Ast *ast, 
+void ExecutionPlan::getCollectionsFromJson (Ast* ast, 
                                             triagens::basics::Json const& json) {
   Json jsonCollectionList = json.get("collections");
 
   if (! jsonCollectionList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not a list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not an array");
   }
 
   auto const size = jsonCollectionList.size();
@@ -125,9 +125,10 @@ void ExecutionPlan::getCollectionsFromJson (Ast *ast,
     auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
       
     ast->query()->collections()->add(
-                                     triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
-                                     TRI_GetTransactionTypeFromStr(triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str()));
- }
+      triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
+      TRI_GetTransactionTypeFromStr(triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str())
+    );
+  }
 }
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
