@@ -124,9 +124,10 @@
     installCallback: function(result) {
       if (result.error === false) {
         window.modalView.hide();
-        // TODO has to be moved!
+        this.reload();
         // this.showConfigureDialog(result.configuration, result.name, result.version);
       } else {
+        // TODO Error handling properly!
         switch(result.errorNum) {
           case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
             alert("Unable to download application from the given repository.");
