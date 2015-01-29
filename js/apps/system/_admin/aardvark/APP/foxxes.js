@@ -40,6 +40,7 @@
       "The mount point of the app. Has to be url-encoded."
     )
   };
+  var fs = require("fs");
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
 
   // TODO replace
@@ -113,10 +114,11 @@
    */
   controller.put("/zip", function (req, res) {
     var content = JSON.parse(req.requestBody),
-      path = content.zipFile,
-      info = content.info,
-      mount = validateMount(req);
-    installApp(res, path, mount, info);
+      file = content.zipFile,
+      mount = validateMount(req),
+      path = fs.join(fs.getTempPath(), file);
+    require("console").log(path);
+    installApp(res, path, mount);
   }).queryParam("mount", mountPoint);
 
 /** Uninstall a Foxx

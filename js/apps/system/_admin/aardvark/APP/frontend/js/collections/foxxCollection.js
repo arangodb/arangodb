@@ -34,7 +34,7 @@
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/" + mount + "/git",
+        url: "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount),
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,
@@ -47,34 +47,57 @@
       });
     },
 
-    installFromZip: function(files, data, callback) {
-      var self = this;
+    // Install Foxx from arango store
+    // info is expected to contain: "name" and "version"
+    installFromStore: function (info, mount, callback) {
       $.ajax({
-        type: "POST",
-        async: false,
-        url: "/_admin/aardvark/foxxes/inspect",
-        data: JSON.stringify(data),
-        contentType: "application/json"
-      }).done(function(res) {
-        $.ajax({
-          type: "POST",
-          async: false,
-          url: '/_admin/foxx/fetch',
-          data: JSON.stringify({
-            name: res.name,
-            version: res.version,
-            filename: res.filename
-          }),
-          processData: false
-        }).done(function (result) {
-          callback(result);
-        }).fail(function (err) {
+        cache: false,
+        type: "PUT",
+        url: "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount),
+        data: JSON.stringify(info),
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          callback(data);
+        },
+        error: function(err) {
           callback(err);
-        });
-      }).fail(function(err) {
-        callback(err);
+        }
       });
-      self.hideImportModal();
+    },
+
+    installFromZip: function(fileName, mount, callback) {
+      $.ajax({
+        cache: false,
+        type: "PUT",
+        url: "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount),
+        data: JSON.stringify({zipFile: fileName}),
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          callback(data);
+        },
+        error: function(err) {
+          callback(err);
+        }
+      });
+    },
+
+    generate: function (info, mount, callback) {
+      $.ajax({
+        cache: false,
+        type: "PUT",
+        url: "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount),
+        data: JSON.stringify(info),
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          callback(data);
+        },
+        error: function(err) {
+          callback(err);
+        }
+      });
     }
 
   });
