@@ -1803,7 +1803,7 @@ void IndexRangeBlock::destroyHashIndexSearchValues () {
 
 bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range) { 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
+  TRI_index_t* idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
@@ -1873,7 +1873,7 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
+  TRI_index_t* idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
   
   size_t nrSent = 0;
@@ -1942,7 +1942,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   TRI_ASSERT(_skiplistIterator == nullptr);
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
+  TRI_index_t* idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
