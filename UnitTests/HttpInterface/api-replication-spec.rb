@@ -113,7 +113,7 @@ describe ArangoDB do
 
         cid = ArangoDB.create_collection("UnitTestsReplication")
 
-        sleep 1
+        sleep 2
         cmd = api + "/logger-follow?from=" + fromTick
         doc = ArangoDB.log_get("#{prefix}-follow-create-collection", cmd, :body => "", :format => :plain)
         doc.code.should eq(200)
