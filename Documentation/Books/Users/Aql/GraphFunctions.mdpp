@@ -144,12 +144,32 @@ instead.
     Note: The *connections* function parameter value will contain the edges connected to the 
     vertex only if *order* was set to *preorder-expander*. Otherwise, the value of this parameter 
     will be *undefined*.
+
+    The following custom visitor functions are predefined and can be used by specifying the function
+    name in the *visitor* attribute:
+
+    - *"_AQL::PROJECTINGVISITOR"*: this visitor will produce an object with the attributes 
+      specified in *data.attributes* for each visited vertex. This can be used to create a 
+      projection of each visited vertex' document.
+
+    - *"_AQL::IDVISITOR"*: this visitor will return the _id attribute of each visited vertex.
+
+    - *"_AQL::KEYVISITOR"*: this visitor will return the _key attribute of each visited vertex.
+
+    - *"_AQL::COUNTINGVISITOR"*: this visitor will return a single number indicating the number
+      of vertices visited.
+
   
   - *visitorReturnsResults*: only useful in combination with a custom AQL visitor function. If
     set to *true*, the data returned by the visitor will be appended to the result. If set to
     *false*, any return value of the visitor function will be ignored. Instead, the visitor 
     function can modify its *result* parameter value in-place. At the end of the traversal,
     *result* is expected to be an array.
+
+  - *data*: only useful in combination with a custom AQL visitor function. This attribute can
+    be used to pass arbitrary data into the custom visitor function. The value contained in the
+    *data* attribute will be made available to the *visitor* function in the *config.data*
+    attribute.
 
   By default, the result of the TRAVERSAL function is an array of traversed points. Each point 
   is an object consisting of the following attributes:
