@@ -3,6 +3,8 @@ v2.5.0 (XXXX-XX-XX)
 
 * fixed issue #1226: arangod log issues
 
+* added additional logger if arangod is started in foreground mode on a tty
+
 * added AQL optimizer rule "move-calculations-down"
 
 * use exclusive native SRWLocks on Windows instead of native mutexes
