@@ -1,9 +1,10 @@
 <script id="modalApplicationMount.ejs" type="text/template">
+  <input type="text" id="new-app-mount"></input>
   <ul id="infoTab" class="nav nav-tabs">
-    <li class="active"><a href="#newApp" data-toggle="tab">New App</a></li>
-    <li><a href="#appstore" data-toggle="tab"><img src="img/arangodblogoAvatar_150.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
-    <li><a href="#github" data-toggle="tab">Github</a></li>
-    <li><a href="#zip" data-toggle="tab">Zip</a></li>
+    <li class="active"><a href="#newApp" data-toggle="tab" id="tab-new">New App</a></li>
+    <li><a href="#appstore" data-toggle="tab" id="tab-store"><img src="img/arangodblogoAvatar_150.png" alt="ArangoDB" class="tab-icon" />Store</a></li>
+    <li><a href="#github" data-toggle="tab" id="tab-git">Github</a></li>
+    <li><a href="#zip" data-toggle="tab" id="tab-zip">Zip</a></li>
   </ul>
 
   <div class="tab-content" id="tab-content-application-info">

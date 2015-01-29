@@ -43,8 +43,6 @@
       $('#uploadIndicator').hide();
     },
 
-    ///// NEW CODE 
-
     toggleDevel: function() {
       var self = this;
       this._showDevel = !this._showDevel;
@@ -112,31 +110,22 @@
     },
 
     installFoxxFromStore: function(e) {
+      var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       var toInstall = $(e.currentTarget).attr("appId");
       var version = $(e.currentTarget).attr("appVersion");
-      var self = this;
-      $.post("foxxes/fishbowlinstall", JSON.stringify({
-        name: toInstall,
-        version: version
-      }), function(result) {
-        if (result.error === false) {
-          window.modalView.hide();
-          self.showConfigureDialog(result.configuration, result.name, result.version);
-        } else {
-          alert("Error: " + result.errorNum + ". " + result.errorMessage);
-        }
-      });
+      this.collection.installFromStore({name: toInstall, version: version}, mount, this.installCallback.bind(this));
     },
 
     installFoxxFromZip: function(files, data) {
-      this.collection.installFromZip(files, data, this.installCallback.bind(this));
+      var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+      this.collection.installFromZip(data.filename, mount, this.installCallback.bind(this));
     },
 
     installCallback: function(result) {
       if (result.error === false) {
         window.modalView.hide();
         // TODO has to be moved!
-        this.showConfigureDialog(result.configuration, result.name, result.version);
+        // this.showConfigureDialog(result.configuration, result.name, result.version);
       } else {
         switch(result.errorNum) {
           case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
@@ -149,12 +138,11 @@
     },
 
     installFoxxFromGithub: function() {
-      var mount = "TODO";
-
-      var url, version;
+      var url, version, mount;
 
       //fetch needed information, need client side verification
       //remove name handling on server side because not needed
+      mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       url = window.arangoHelper.escapeHtml($('#repository').val());
       version = window.arangoHelper.escapeHtml($('#tag').val());
 
@@ -370,29 +358,19 @@
     },
 
     generateNewFoxxApp: function() {
+      var mount;
+      mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
       var info = {
         name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
         collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
           return window.arangoHelper.escapeHtml(d.text);
         }),
-        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+//        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
         author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
         license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
         description: window.arangoHelper.escapeHtml($("#new-app-description").val())
-      },
-        self = this;
-      $.post("templates/generate", JSON.stringify(info), function(a) {
-        window.modalView.hide();
-        if (a.hasOwnProperty("file")) {
-          self.showFoxxDownload(a.file);
-          return;
-        }
-        if (a.hasOwnProperty("appPath")) {
-          self.showFoxxDevappPath(a.appPath);
-          return;
-        }
-        //TODO Error Handling
-      });
+      };
+      this.collection.generate(info, mount, this.installCallback.bind(this));
     },
 
     addAppAction: function() {

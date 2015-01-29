@@ -1,5 +1,4 @@
 /*jshint browser: true */
-/*jshint unused: false */
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global runs, waitsFor, jasmine*/
 /*global $, arangoHelper */
@@ -8,185 +7,234 @@
   "use strict";
 
   describe("Applications View", function() {
-    var view,
-        collection,
-        model,
-        div,
-        specificFetch,
-        modalDiv;
+    var div, view, listDummy, closeButton, generateButton, modalDiv;
 
     beforeEach(function() {
-      specificFetch = undefined;
       modalDiv = document.createElement("div");
       modalDiv.id = "modalPlaceholder";
       document.body.appendChild(modalDiv);
       window.modalView = new window.ModalView();
+      closeButton = "#modalButton0";
+      generateButton = "#modalButton1";
       div = document.createElement("div");
       div.id = "content";
       document.body.appendChild(div);
-      collection = new window.FoxxCollection();
-      spyOn(collection, "fetch").andCallFake(function(opts) {
-        if (specificFetch) {
-          specificFetch(opts);
-          return;
-        }
-        // Fake model already included
-        if (collection.length > 0) {
-          if (opts.success) {
-            opts.success();
-          }
-          return;
-        }
-        model = new window.Foxx({
-          _key: "1234",
-          _id: "aal/1234",
-          title: "TestFoxx",
-          version: 1.2,
-          mount: "/testfoxx",
-          description: "Test application",
-          manifest: {
-            git: "gitpath"
-          },
-          app: "app:TestFoxx:1.2",
-          type: "mount",
-          isSystem: false,
-          options: {
-            collectionPrefix: "testfoxx"
-          },
-          development: false
-        });
-        collection.add(model);
-        if (opts.success) {
-          opts.success();
-        }
-      });
-      view = new window.ApplicationsView({collection: collection});
-      view.reload();
+      window.CreateDummyForObject(window, "FoxxCollection");
+      listDummy = new window.FoxxCollection();
     });
 
     afterEach(function() {
-      delete window.modalView;
       document.body.removeChild(div);
+      delete window.modalView;
       document.body.removeChild(modalDiv);
     });
 
-    describe("edit a foxx", function() {
-
-      var modalButtons, ajaxFunction;
+    describe("Adding a new App", function() {
+      var uploadCallback, storeApp, storeAppVersion;
 
       beforeEach(function() {
+        storeApp = "Online App";
+        storeAppVersion = "2.1.1";
+        spyOn(listDummy, "fetch").andCallFake(function(opts) {
+          opts.success();
+        });
+        spyOn(listDummy, "each");
+        spyOn(listDummy, "sort");
+        spyOn($.fn, "uploadFile").andCallFake(function(opts) {
+          expect(opts.url).toEqual("/_api/upload?multipart=true");
+          expect(opts.allowedTypes).toEqual("zip");
+          expect(opts.onSuccess).toEqual(jasmine.any(Function));
+          uploadCallback = opts.onSuccess;
+        });
+        spyOn($, "get").andCallFake(function(url, callback) {
+          expect(url).toEqual("foxxes/fishbowl");
+          callback([
+            {
+              name: "MyApp",
+              author: "ArangoDB",
+              description: "Description of the app",
+              latestVersion: "1.1.0"
+            },{
+              name: storeApp,
+              author: "ArangoDB",
+              description: "Description of the other app",
+              latestVersion: storeAppVersion
+            }
+          ]);
+          return {
+            fail: function() {}
+          };
+        });
+        view = new window.ApplicationsView({
+          collection: listDummy
+        });
+
+        runs(function () {
+          $("#addApp").click();
+        });
+
+        waitsFor(function () {
+          return $("#modal-dialog").css("display") === "block";
+        }, "The Add App dialog should be shown", 750);
+
+      });
+
+      it("should open and close the install dialog", function() {
+
         runs(function() {
-          // Check if exactly on application is available
-          var button = $(".iconSet .icon_arangodb_settings2");
+          $(closeButton).click();
+        });
+
+        waitsFor(function () {
+          return $("#modal-dialog").css("display") === "none";
+        }, "The Add App dialog should be hidden.", 750);
+
+      });
+
+      it("should generate an empty app", function() {
+        var mount, author, name, desc, license, expectedInfo;
+
+        runs(function() {
+          $("#tab-new").click();
+          spyOn(listDummy, "generate").andCallFake(function(i, m, callback) {
+            callback({
+              error: false
+            }); 
+          });
+          mount = "/my/app";
+          author = "ArangoDB";
+          name = "MyApp";
+          desc = "My new app";
+          license = "Apache 2";
+          expectedInfo = {
+            author: author,
+            name: name,
+            description: desc,
+            license: license,
+            collectionNames: []
+          };
+
+          $("#new-app-mount").val(mount);
+          $("#new-app-author").val(author);
+          $("#new-app-name").val(name);
+          $("#new-app-description").val(desc);
+          $("#new-app-license").val(license);
+          expect($(generateButton).prop("disabled")).toBeFalsy();
+          $(generateButton).click();
+        });
+
+        waitsFor(function () {
+          return $("#modal-dialog").css("display") === "none";
+        }, "The Add App dialog should be hidden.", 750);
+
+        runs(function() {
+          expect(listDummy.generate).toHaveBeenCalledWith(
+            expectedInfo, mount, jasmine.any(Function)
+          );
+        });
+
+      });
+
+      it("should install an app from the store", function() {
+        var mount;
+
+        runs(function() {
+          var button;
+          mount = "/my/app";
+          $("#new-app-mount").val(mount);
+          $("#tab-store").click();
+          spyOn(listDummy, "installFromStore").andCallFake(function(i, m, callback) {
+            callback({
+              error: false
+            });
+          });
+          expect($(generateButton).prop("disabled")).toBeTruthy();
+          expect($("#appstore-content").children().length).toEqual(2);
+          button = $("#appstore-content .install-app[appId='" + storeApp + "']");
           expect(button.length).toEqual(1);
           button.click();
         });
 
-        waitsFor(function() {
-          return $("#modal-dialog").css("display") === "block";
-        }, "show the modal dialog");
+        waitsFor(function () {
+          return $("#modal-dialog").css("display") === "none";
+        }, "The Add App dialog should be hidden.", 750);
 
         runs(function() {
-          ajaxFunction = function() {
-            return undefined;
-          };
-          modalButtons = {};
-          modalButtons.uninstall = function() {
-            return $("#modal-dialog .button-danger");
-          };
-          modalButtons.cancel = function() {
-            return $("#modal-dialog .button-close");
-          };
-          modalButtons.change = function() {
-            return $("#modal-dialog .button-success");
-          };
-          spyOn($, "ajax").andCallFake(function() {
-            ajaxFunction.apply(window, arguments);
+          expect(listDummy.installFromStore).toHaveBeenCalledWith(
+            {name: storeApp, version: storeAppVersion}, mount, jasmine.any(Function)
+          );
+        });
+
+      });
+
+      it("should install an app from github", function() {
+        var repository, version, mount, expectedInfo;
+        runs(function() {
+          $("#tab-git").click();
+          spyOn(listDummy, "installFromGithub").andCallFake(function(i, m, callback) {
+            callback({
+              error: false
+            }); 
           });
+          repository = "arangodb/itzpapalotl";
+          version = "1.2.0";
+          mount = "/my/app";
+          expectedInfo = {
+            url: repository,
+            version: version
+          };
+          $("#new-app-mount").val(mount);
+          $("#repository").val(repository);
+          $("#tag").val(version);
+          expect($(generateButton).prop("disabled")).toBeFalsy();
+          $(generateButton).click();
         });
+
+        waitsFor(function () {
+          return $("#modal-dialog").css("display") === "none";
+        }, "The Add App dialog should be hidden.", 750);
+
+        runs(function() {
+          expect(listDummy.installFromGithub).toHaveBeenCalledWith(
+            expectedInfo, mount, jasmine.any(Function)
+          );
+        });
+
       });
 
-       it("should be able to switch mount point", function() {
-         var calledBack,
-             newMount;
+      it("should install an app from zip file", function() {
+        var fileName = "/tmp/upload-12345.zip";
+        var mount = "/my/app";
 
-         runs(function() {
-           newMount = "/newMount";
-           ajaxFunction = function() {
-             calledBack = true;
-           };
-           $("#change-mount-point").val(newMount);
-           modalButtons.change().click();
-         });
-
-         waitsFor(function() {
-           return calledBack;
-         }, 1000);
-
-         runs(function() {
-           expect($.ajax).toHaveBeenCalledWith(
-             "foxx/move/" + model.get("_key"),{
-               dataType: "json",
-               data: JSON.stringify({
-                 mount: newMount,
-                 app: model.get("app"),
-                 prefix: model.get("options").collectionPrefix
-               }),
-               async: false,
-               type: "PUT",
-               error: jasmine.any(Function)
-             });
-           });
-         });
-
-         it("should not hide the modal view if mountpoint change has failed", function() {
-           var calledBack,
-               newMount,
-               resText;
-
-           runs(function() {
-             newMount = "/newMount";
-             resText = "Mount-Point already in use";
-             ajaxFunction = function(url, options) {
-               expect(options.error).toEqual(jasmine.any(Function));
-               options.error(
-                 {
-                   status: 409,
-                   statusText: "Conflict",
-                   responseText: resText
-                 }
-               );
-               calledBack = true;
-             };
-             spyOn(window.modalView, "hide");
-             spyOn(arangoHelper, "arangoError");
-             $("#change-mount-point").val(newMount);
-             modalButtons.change().click();
-           });
-
-           waitsFor(function() {
-             return calledBack;
-           }, 1000);
-
-           runs(function() {
-             expect(arangoHelper.arangoError).toHaveBeenCalledWith(resText);
-             expect(window.modalView.hide).not.toHaveBeenCalled();
-           });
-
-         });
-
-        it("should not trigger a remount if mountpoint has not been changed", function() {
-          spyOn(window, "alert");
-          modalButtons.change().click();
-          expect(window.alert).not.toHaveBeenCalled();
+        runs(function() {
+          $("#tab-zip").click();
+          spyOn(listDummy, "installFromZip").andCallFake(function(i, m, callback) {
+            callback({
+              error: false
+            });
+          });
+          $("#new-app-mount").val(mount);
+          uploadCallback(["app.zip"], {filename: fileName});
         });
 
-        it("should prevent an illegal mountpoint", function() {
-          spyOn(arangoHelper, "arangoError");
-          $("#change-mount-point").val("illegal");
-          modalButtons.change().click();
-          expect(arangoHelper.arangoError).toHaveBeenCalled();
+        waitsFor(function () {
+          return $("#modal-dialog").css("display") === "none";
+        }, "The Add App dialog should be hidden.", 750);
+
+        runs(function() {
+          expect(listDummy.installFromZip).toHaveBeenCalledWith(
+            fileName, mount, jasmine.any(Function)
+          );
+
+
         });
+
       });
+
     });
-  }());
+
+    describe("showing installed Apps", function() {
+
+    });
+  });
+}());

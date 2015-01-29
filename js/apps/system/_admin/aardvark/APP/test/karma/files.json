@@ -13,6 +13,7 @@
     "frontend/js/lib/jquery.slideto.min.js",
     "frontend/js/lib/jquery.wiggle.min.js",
     "frontend/js/lib/jquery.contextmenu.js",
+    "frontend/js/lib/jquery.uploadfile.js",
     "frontend/js/lib/select2.min.js",
     "frontend/js/lib/handlebars-1.0.rc.1.js",
     "frontend/js/lib/underscore.js",
@@ -246,6 +247,7 @@
 
 
     "test/specs/views/apiViewSpec.js",
+    "test/specs/views/applicationsViewSpec.js",
     "test/specs/views/modalViewSpec.js",
     "test/specs/views/editListEntryViewSpec.js",
     "test/specs/views/collectionsViewSpec.js",
