@@ -36,30 +36,62 @@
       expect(myFoxx.isNew()).toBeFalsy();
     });
     
-    it("can get it's configuration", function() {
-      var data = {
-        opt1: {
-          type: "string",
-          description: "Option description",
-          default: "empty",
-          current: "empty"
-        }
-      };
-      var testMount = "/this/is_/a/test/mount";
-      var myFoxx = new window.Foxx({
-        mount: testMount
+    describe("configuration", function() {
+      var myFoxx;
+
+      beforeEach(function() {
+        var testMount = "/this/is_/a/test/mount";
+        myFoxx = new window.Foxx({
+          mount: testMount
+        });
+
       });
-      spyOn($, "ajax").andCallFake(function(opts) {
-        expect(opts.url).toEqual("/_admin/aardvark/foxxes/config?mount=" + myFoxx.encodedMount());
-        expect(opts.type).toEqual("GET");
-        expect(opts.success).toEqual(jasmine.any(Function));
-        expect(opts.error).toEqual(jasmine.any(Function));
-        opts.success(data);
+
+      it("can be read", function() {
+        var data = {
+          opt1: {
+            type: "string",
+            description: "Option description",
+            default: "empty",
+            current: "empty"
+          }
+        };
+        spyOn($, "ajax").andCallFake(function(opts) {
+          expect(opts.url).toEqual("/_admin/aardvark/foxxes/config?mount=" + myFoxx.encodedMount());
+          expect(opts.type).toEqual("GET");
+          expect(opts.success).toEqual(jasmine.any(Function));
+          expect(opts.error).toEqual(jasmine.any(Function));
+          opts.success(data);
+        });
+        myFoxx.getConfiguration(function(result) {
+          expect(result).toEqual(data);
+        });
+        expect($.ajax).toHaveBeenCalled();
       });
-      myFoxx.getConfiguration(function(result) {
-        expect(result).toEqual(data);
+
+      it("can be saved", function() {
+        var data = {
+          opt1: "empty"
+        };
+        var call = {
+          back: function() {
+            throw new Error("Should be a spy.");
+          }
+        };
+        spyOn($, "ajax").andCallFake(function(opts) {
+          expect(opts.url).toEqual("/_admin/aardvark/foxxes/config?mount=" + myFoxx.encodedMount());
+          expect(opts.type).toEqual("PATCH");
+          expect(opts.data).toEqual(JSON.stringify(data));
+          expect(opts.success).toEqual(jasmine.any(Function));
+          expect(opts.error).toEqual(jasmine.any(Function));
+          opts.success(data);
+        });
+        spyOn(call, "back");
+        myFoxx.setConfiguration(data, call.back); 
+        expect($.ajax).toHaveBeenCalled();
+        expect(call.back).toHaveBeenCalled();
       });
-      expect($.ajax).toHaveBeenCalled();
+
     });
   });
 
