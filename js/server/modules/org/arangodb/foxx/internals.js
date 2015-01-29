@@ -122,7 +122,18 @@ constructRoute = function (method, route, callback, controller, constraints) {
             controller.injected[key] = injector;
           }
         });
-        callback(req, res, controller.injected);
+        try {
+          callback(req, res, controller.injected);
+        } catch (err) {
+          var body = {
+            error: err.message || String(err)
+          };
+          if (controller.applicationContext.isDevelopment) {
+            body.stack = err.stack;
+          }
+          res.status(500);
+          res.json(body);
+        }
       }
     },
     docs: {
