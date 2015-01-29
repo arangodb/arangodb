@@ -34,6 +34,7 @@
 #include "unicode/ucasemap.h"
 #include "unicode/brkiter.h"
 #include "unicode/ustdio.h"
+#include "unicode/uclean.h"
 
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
@@ -64,6 +65,9 @@ Utf8Helper::Utf8Helper (std::string const& lang) : _coll(0) {
 Utf8Helper::~Utf8Helper () {
   if (_coll) {
     delete _coll;
+    if (this == &DefaultUtf8Helper) {
+      u_cleanup();
+    }
   }
 }
 
