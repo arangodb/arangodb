@@ -79,6 +79,10 @@ The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
 
 * <a href="http://sinonjs.org/">"Sinon.JS"</a>
 
+* <a href="https://github.com/hapijs/qs">"qs"</a>
+  provides utilities for dealing with query strings using a different format
+  than the "querystring" module.
+
 * <a href="http://underscorejs.org/">"underscore"</a> is a utility-belt library
   for JavaScript that provides a lot of the functional programming support that 
   you would expect in Prototype.js (or Ruby), but without extending any of the
