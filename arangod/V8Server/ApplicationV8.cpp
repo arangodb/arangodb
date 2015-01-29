@@ -972,7 +972,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  options["JAVASCRIPT Options:help-admin"]
+  options["Javascript Options:help-admin"]
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.app-path", &_appPath, "directory for Foxx applications (normal mode)")
@@ -981,7 +981,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 
-  options[ApplicationServer::OPTIONS_HIDDEN]
+  options["Hidden Options"]
     ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
 
     // deprecated options
