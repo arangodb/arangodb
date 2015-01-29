@@ -526,9 +526,7 @@ void ApplicationV8::exitContext (V8Context* context) {
         TRI_ASSERT(context->_locker->IsLocked(isolate));
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
-        isolate->LowMemoryNotification();
-        while (! isolate->IdleNotification(1000)) {
-        }
+        TRI_RunGarbageCollectionV8(isolate, 1.0);
 
         localContext->Exit();
       }
@@ -644,10 +642,7 @@ void ApplicationV8::collectGarbage () {
         TRI_ASSERT(context->_locker->IsLocked(isolate));
         TRI_ASSERT(v8::Locker::IsLocked(isolate));
 
-        isolate->LowMemoryNotification();
-        // todo 1000 was the old V8-default, is this really good?
-        while(! isolate->IdleNotification(1000)) {
-        }
+        TRI_RunGarbageCollectionV8(isolate, 1.0);
 
         localContext->Exit();
       }
@@ -977,7 +972,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  options["JAVASCRIPT Options:help-admin"]
+  options["Javascript Options:help-admin"]
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.app-path", &_appPath, "directory for Foxx applications (normal mode)")
@@ -986,7 +981,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 
-  options[ApplicationServer::OPTIONS_HIDDEN]
+  options["Hidden Options"]
     ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
 
     // deprecated options
@@ -1361,10 +1356,16 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
 
     // load all init files
     for (size_t j = 0;  j < files.size();  ++j) {
-      bool ok = _startupLoader.loadScript(isolate, localContext, files[j]);
-
-      if (! ok) {
-        LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", files[j].c_str());
+      switch (_startupLoader.loadScript(isolate, localContext, files[j])) {
+      case JSLoader::eSuccess:
+        LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
+        break;
+      case JSLoader::eFailLoad:
+        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
+        break;
+      case JSLoader::eFailExecute:
+        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[i].c_str());
+        break;
       }
     }
 
@@ -1408,10 +1409,16 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
     v8::Context::Scope contextScope(localContext);
 
     // load server startup file
-    bool ok = _startupLoader.loadScript(isolate, localContext, startupFile);
-
-    if (! ok) {
+    switch (_startupLoader.loadScript(isolate, localContext, startupFile)) {
+    case JSLoader::eSuccess:
+      LOG_TRACE("loaded JavaScript file '%s'", startupFile.c_str());
+      break;
+    case JSLoader::eFailLoad:
       LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", startupFile.c_str());
+      break;
+    case JSLoader::eFailExecute:
+      LOG_FATAL_AND_EXIT("error during execution of JavaScript utilities from file '%s'", startupFile.c_str());
+      break;
     }
 
     // and return from the context
@@ -1445,9 +1452,7 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     localContext->Enter();
     v8::Context::Scope contextScope(localContext);
 
-    isolate->LowMemoryNotification();
-    while (! isolate->IdleNotification(1000)) {
-    }
+    TRI_RunGarbageCollectionV8(isolate, 30.0);
 
     TRI_GET_GLOBALS();
     if (v8g != nullptr) {

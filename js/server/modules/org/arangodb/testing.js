@@ -466,6 +466,7 @@ function shutdownInstance (instanceInfo, options) {
         if (instanceInfo.exitStatus.status === "RUNNING") {
           count ++;
           if (typeof(options.valgrind) === 'string') {
+            wait(1);
             continue;
           }
           if (count % 10 ===0) {
@@ -523,8 +524,12 @@ function cleanupDBDirectories(options) {
   }
 }
 
-function makePath (path) {
+function makePathUnix (path) {
   return fs.join.apply(null,path.split("/"));
+}
+
+function makePathGeneric (path) {
+  return fs.join.apply(null,path.split(fs.pathSeparator));
 }
 
 var foundTests = false;
@@ -542,56 +547,56 @@ function findTests () {
   if (foundTests) {
     return;
   }
-  tests_shell_common = _.filter(fs.list(makePath("js/common/tests")),
+  tests_shell_common = _.filter(fs.list(makePathUnix("js/common/tests")),
             function (p) {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/common/tests"),x);
+              return fs.join(makePathUnix("js/common/tests"),x);
             }).sort();
-  tests_shell_server_only = _.filter(fs.list(makePath("js/server/tests")),
+  tests_shell_server_only = _.filter(fs.list(makePathUnix("js/server/tests")),
             function (p) {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/tests"),x);
+              return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
-  tests_shell_client_only = _.filter(fs.list(makePath("js/client/tests")),
+  tests_shell_client_only = _.filter(fs.list(makePathUnix("js/client/tests")),
             function (p) {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/client/tests"),x);
+              return fs.join(makePathUnix("js/client/tests"),x);
             }).sort();
-  tests_shell_server_aql = _.filter(fs.list(makePath("js/server/tests")),
+  tests_shell_server_aql = _.filter(fs.list(makePathUnix("js/server/tests")),
             function (p) {
               return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") === -1;
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/tests"),x);
+              return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql_extended = 
-            _.filter(fs.list(makePath("js/server/tests")),
+            _.filter(fs.list(makePathUnix("js/server/tests")),
             function (p) {
               return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") !== -1;
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/tests"),x);
+              return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql_performance = 
-            _.filter(fs.list(makePath("js/server/perftests")),
+            _.filter(fs.list(makePathUnix("js/server/perftests")),
             function (p) {
               return p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/perftests"),x);
+              return fs.join(makePathUnix("js/server/perftests"),x);
             }).sort();
 
   tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
@@ -760,6 +765,9 @@ function performTests(options, testList, testname, remote) {
       }
       if (r.hasOwnProperty('status')) {
         results[te] = r;
+        if (results[te].status === false) {
+          options.cleanup = false;
+        }
         if (! r.status && ! options.force) {
           break;
         }
@@ -812,8 +820,11 @@ testFuncs.single_server = function (options) {
     var te = options.test;
     print("\narangod: Trying",te,"...");
     result = {};
-    result[te] = runThere(options, instanceInfo, makePath(te));
+    result[te] = runThere(options, instanceInfo, makePathGeneric(te));
     print("Shutting down...");
+    if (result[te].status === false) {
+      options.cleanup = false;
+    }
     shutdownInstance(instanceInfo,options);
     print("done.");
     return result;
@@ -831,7 +842,10 @@ testFuncs.single_localserver = function (options) {
     var te = options.test;
     print("\nArangod: Trying",te,"...");
     result = {};
-    result[te] = runHere(options, instanceInfo, makePath(te));
+    result[te] = runHere(options, instanceInfo, makePathGeneric(te));
+    if (result[te].status === false) {
+      options.cleanup = false;
+    }
     return result;
   }
   else {
@@ -850,7 +864,11 @@ testFuncs.single_client = function (options) {
     var te = options.test;
     print("\narangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
+
     print("Shutting down...");
+    if (result[te].status === false) {
+      options.cleanup = false;
+    }
     shutdownInstance(instanceInfo,options);
     print("done.");
     return result;
@@ -954,8 +972,11 @@ testFuncs.shell_client = function(options) {
 
       var r = runInArangosh(options, instanceInfo, te);
       results[te] = r;
-      if (r.status !== true && ! options.force) {
-        break;
+      if (r.status !== true) {
+        options.cleanup = false;
+        if (! options.force) {
+          break;
+        }
       }
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
@@ -1072,8 +1093,11 @@ function rubyTests (options, ssl) {
         print("\nTrying ",te,"...");
 
         result[te] = executeAndWait(command, args);
-        if (result[te].status === false && !options.force) {
-          break;
+        if (result[te].status === false) {
+          options.cleanup = false;
+          if (!options.force) {
+            break;
+          }
         }
 
         continueTesting = checkInstanceAlive(instanceInfo, options);
@@ -1156,31 +1180,31 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
 }
 
 var impTodo = [
-  {id: "json1", data: makePath("UnitTests/import-1.json"),
+  {id: "json1", data: makePathUnix("UnitTests/import-1.json"),
    coll: "UnitTestsImportJson1", type: "json", create: undefined},
-  {id: "json2", data: makePath("UnitTests/import-2.json"),
+  {id: "json2", data: makePathUnix("UnitTests/import-2.json"),
    coll: "UnitTestsImportJson2", type: "json", create: undefined},
-  {id: "json3", data: makePath("UnitTests/import-3.json"),
+  {id: "json3", data: makePathUnix("UnitTests/import-3.json"),
    coll: "UnitTestsImportJson3", type: "json", create: undefined},
-  {id: "json4", data: makePath("UnitTests/import-4.json"),
+  {id: "json4", data: makePathUnix("UnitTests/import-4.json"),
    coll: "UnitTestsImportJson4", type: "json", create: undefined},
-  {id: "json5", data: makePath("UnitTests/import-5.json"),
+  {id: "json5", data: makePathUnix("UnitTests/import-5.json"),
    coll: "UnitTestsImportJson5", type: "json", create: undefined},
-  {id: "csv1", data: makePath("UnitTests/import-1.csv"),
+  {id: "csv1", data: makePathUnix("UnitTests/import-1.csv"),
    coll: "UnitTestsImportCsv1", type: "csv", create: "true"},
-  {id: "csv2", data: makePath("UnitTests/import-2.csv"),
+  {id: "csv2", data: makePathUnix("UnitTests/import-2.csv"),
    coll: "UnitTestsImportCsv2", type: "csv", create: "true"},
-  {id: "csv3", data: makePath("UnitTests/import-3.csv"),
+  {id: "csv3", data: makePathUnix("UnitTests/import-3.csv"),
    coll: "UnitTestsImportCsv3", type: "csv", create: "true"},
-  {id: "csv4", data: makePath("UnitTests/import-4.csv"),
+  {id: "csv4", data: makePathUnix("UnitTests/import-4.csv"),
    coll: "UnitTestsImportCsv4", type: "csv", create: "true", separator: ";", backslash: true},
-  {id: "csv5", data: makePath("UnitTests/import-5.csv"),
+  {id: "csv5", data: makePathUnix("UnitTests/import-5.csv"),
    coll: "UnitTestsImportCsv5", type: "csv", create: "true", separator: ";", backslash: true},
-  {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
+  {id: "tsv1", data: makePathUnix("UnitTests/import-1.tsv"),
    coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
-  {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),
+  {id: "tsv2", data: makePathUnix("UnitTests/import-2.tsv"),
    coll: "UnitTestsImportTsv2", type: "tsv", create: "true"},
-  {id: "edge", data: makePath("UnitTests/import-edges.json"),
+  {id: "edge", data: makePathUnix("UnitTests/import-edges.json"),
    coll: "UnitTestsImportEdge", type: "json", create: "false"}
 ];
 
@@ -1204,7 +1228,7 @@ testFuncs.importing = function (options) {
   var result = {};
   try {
     var r = runInArangosh(options, instanceInfo,
-                          makePath("js/server/tests/import-setup.js"));
+                          makePathUnix("js/server/tests/import-setup.js"));
     result.setup = r;
     if (r.status !== true) {
       throw "banana";
@@ -1218,10 +1242,10 @@ testFuncs.importing = function (options) {
       }
     }
     r = runInArangosh(options, instanceInfo,
-                      makePath("js/server/tests/import.js"));
+                      makePathUnix("js/server/tests/import.js"));
     result.check = r;
     r = runInArangosh(options, instanceInfo,
-                      makePath("js/server/tests/import-teardown.js"));
+                      makePathUnix("js/server/tests/import-teardown.js"));
     result.teardown = r;
   }
   catch (banana) {
@@ -1309,17 +1333,17 @@ testFuncs.dump = function (options) {
   }
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
-       makePath("js/server/tests/dump-setup"+cluster+".js"));
+       makePathUnix("js/server/tests/dump-setup"+cluster+".js"));
   if (results.setup.status === true) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
     results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
                                            "UnitTestsDumpDst");
     results.test = runInArangosh(options, instanceInfo,
-       makePath("js/server/tests/dump"+cluster+".js"),
+       makePathUnix("js/server/tests/dump"+cluster+".js"),
        [ "--server.database", "UnitTestsDumpDst" ]);
     results.tearDown = runInArangosh(options, instanceInfo,
-       makePath("js/server/tests/dump-teardown"+cluster+".js"));
+       makePathUnix("js/server/tests/dump-teardown"+cluster+".js"));
   }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
@@ -1430,7 +1454,14 @@ testFuncs.authentication_parameters = function (options) {
   var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
   var all_ok = true;
   var continueTesting = true;
+  var downloadOptions = {
+    followRedirects:false,
+    returnBodyOnError:true
+  };
 
+  if (typeof(options.valgrind) === 'string') {
+    downloadOptions.timeout = 300;
+  }
   print("Starting Full test");
   results.auth_full = {};
   for (i = 0; i < urlsTodo.length; i++) {
@@ -1443,7 +1474,7 @@ testFuncs.authentication_parameters = function (options) {
       continue;
     }
 
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
+    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
     if (r.code === expectAuthFullRC[i]) {
       results.auth_full[urlsTodo[i]] = { status: true, message: ""};
     }
@@ -1483,7 +1514,7 @@ testFuncs.authentication_parameters = function (options) {
       all_ok = false;
       continue;
     }
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
+    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
     if (r.code === expectAuthSystemRC[i]) {
       results.auth_system[urlsTodo[i]] = { status: true, message: ""};
     }
@@ -1524,7 +1555,7 @@ testFuncs.authentication_parameters = function (options) {
       continue;
     }
 
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
+    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
     if (r.code === expectAuthNoneRC[i]) {
       results.auth_none[urlsTodo[i]] = { status: true, message: ""};
     }
@@ -1668,8 +1699,8 @@ function UnitTest (which, options) {
       cleanupDBDirectories(options);
     }
     else {
-      print("since some tests weren't successfully, not cleaning up: ");
-      print(cleanupDirectories);
+      print("since some tests weren't successfully, not cleaning up: \n" +
+            yaml.safeDump(cleanupDirectories));
     }
     if (jsonReply === true ) {
       return results;
@@ -1686,7 +1717,7 @@ function UnitTest (which, options) {
   else {
     var r;
     results[which] = r = testFuncs[which](options);
-    print("Testresult:", r);
+    print("Testresult:", yaml.safeDump(r));
     ok = true;
     for (i in r) {
       if (r.hasOwnProperty(i) &&
@@ -1705,8 +1736,8 @@ function UnitTest (which, options) {
       cleanupDBDirectories(options);
     }
     else {
-      print("since some tests weren't successfully, not cleaning up: ");
-      print(cleanupDirectories);
+      print("since some tests weren't successfully, not cleaning up: \n" +
+            yaml.safeDump(cleanupDirectories));
     }
     if (jsonReply === true ) {
       return results;

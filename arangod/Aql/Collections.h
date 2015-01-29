@@ -44,6 +44,7 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     class Collections {
+
       public:
 
         Collections& operator= (Collections const& other) = delete;

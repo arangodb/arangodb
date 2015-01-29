@@ -236,18 +236,19 @@ pack-win32-relative:
 	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12" MOREOPTS='-D "USE_RELATIVE=ON"'
 
 pack-win64-relative:
-	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON"'
-
+	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "TRI_ENABLE_MAINTAINER_MODE=1" -D "HAVE_BACKTRACE=1"'
 
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+	${MAKE} pack-winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
 
 pack-winXX-MOREOPTS:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
+	${MAKE} pack-winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
 pack-winXX-cmake:
 	cd Build$(BITS) && cmake \
@@ -263,11 +264,30 @@ pack-winXX-cmake:
 		$(MOREOPTS) \
 		..
 
-	cd Build$(BITS) && cmake --build . --config Release
+pack-winXX-build:
+	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
 	cd Build$(BITS) && cpack -G NSIS
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
+
+################################################################################
+### @brief generates a tar archive
+################################################################################
+
+.PHONY: pack-tar pack-tar-config
+
+pack-tar-config:
+	./configure \
+		--prefix=/usr \
+		--sysconfdir=/etc \
+		--localstatedir=/var \
+		--disable-mruby
+
+pack-tar:
+	rm -rf /tmp/pack-arangodb
+	make install-strip DESTDIR=/tmp/pack-arangodb
+	tar -c -v -z -f arangodb-$(VERSION).tar.gz -C /tmp/pack-arangodb .
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

@@ -354,8 +354,6 @@ AstNode::AstNode (AstNodeType type)
     computedJson(nullptr) {
 
   TRI_InitVectorPointer(&members, TRI_UNKNOWN_MEM_ZONE);
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -367,8 +365,8 @@ AstNode::AstNode (AstNodeType type,
   : AstNode(type) {
 
   value.type = valueType;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,8 +379,8 @@ AstNode::AstNode (bool v,
 
   TRI_ASSERT(valueType == VALUE_TYPE_BOOL);
   value.value._bool = v;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -395,8 +393,8 @@ AstNode::AstNode (int64_t v,
 
   TRI_ASSERT(valueType == VALUE_TYPE_INT);
   value.value._int = v;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -409,8 +407,8 @@ AstNode::AstNode (char const* v,
 
   TRI_ASSERT(valueType == VALUE_TYPE_STRING);
   value.value._string = v;
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -421,8 +419,8 @@ AstNode::AstNode (Ast* ast,
                   triagens::basics::Json const& json) 
   : AstNode(getNodeTypeFromJson(json)) {
 
-  TRI_ASSERT(flags == 0);
-  TRI_ASSERT(computedJson == nullptr);
+  TRI_ASSERT_EXPENSIVE(flags == 0);
+  TRI_ASSERT_EXPENSIVE(computedJson == nullptr);
 
   auto query = ast->query();
 
@@ -577,7 +575,7 @@ TRI_json_t* AstNode::computeJson () const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sort the members of a (list) node
-/// this will also set the FLAG_SORTED flag for the node
+/// this will also set the VALUE_SORTED flag for the node
 ////////////////////////////////////////////////////////////////////////////////
   
 void AstNode::sort () {
@@ -593,7 +591,7 @@ void AstNode::sort () {
     return (triagens::aql::CompareAstNodes(l, r) < 0);
   });
 
-  setFlag(FLAG_SORTED);
+  setFlag(DETERMINED_SORTED, VALUE_SORTED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1132,14 +1130,14 @@ bool AstNode::isFalse () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isSimple () const {
-  if (hasFlag(FLAG_SIMPLE)) {
+  if (hasFlag(DETERMINED_SIMPLE)) {
     // fast track exit
-    return true;
+    return hasFlag(VALUE_SIMPLE);
   }
 
   if (type == NODE_TYPE_REFERENCE ||
       type == NODE_TYPE_VALUE) {
-    setFlag(FLAG_SIMPLE);
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
 
@@ -1149,11 +1147,12 @@ bool AstNode::isSimple () const {
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
       if (! member->isSimple()) {
+        setFlag(DETERMINED_SIMPLE);
         return false;
       }
     }
 
-    setFlag(FLAG_SIMPLE);
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
 
@@ -1163,10 +1162,11 @@ bool AstNode::isSimple () const {
     TRI_ASSERT(numMembers() == 1);
 
     if (! getMember(0)->isSimple()) {
+      setFlag(DETERMINED_SIMPLE);
       return false;
     }
 
-    setFlag(FLAG_SIMPLE);
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
 
@@ -1177,10 +1177,11 @@ bool AstNode::isSimple () const {
     TRI_ASSERT(func != nullptr);
 
     if (func->implementation == nullptr || ! getMember(0)->isSimple()) {
+      setFlag(DETERMINED_SIMPLE);
       return false;
     }
 
-    setFlag(FLAG_SIMPLE);
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
   
@@ -1200,13 +1201,15 @@ bool AstNode::isSimple () const {
     // a comparison operator is simple if both bounds are simple
     // a range is simple if both bounds are simple
     if (! getMember(0)->isSimple() || ! getMember(1)->isSimple()) {
+      setFlag(DETERMINED_SIMPLE);
       return false;
     }
  
-    setFlag(FLAG_SIMPLE);
+    setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
     return true;
   }
 
+  setFlag(DETERMINED_SIMPLE);
   return false;
 }
 
@@ -1215,19 +1218,13 @@ bool AstNode::isSimple () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isConstant () const {
-  if (hasFlag(FLAG_CONSTANT)) {
-    TRI_ASSERT(! hasFlag(FLAG_DYNAMIC));
+  if (hasFlag(DETERMINED_CONSTANT)) {
     // fast track exit
-    return true;
-  }
-  if (hasFlag(FLAG_DYNAMIC)) {
-    TRI_ASSERT(! hasFlag(FLAG_CONSTANT));
-    // fast track exit
-    return false;
+    return hasFlag(VALUE_CONSTANT);
   }
 
   if (type == NODE_TYPE_VALUE) {
-    setFlag(FLAG_CONSTANT);
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
     return true;
   }
 
@@ -1239,13 +1236,13 @@ bool AstNode::isConstant () const {
 
       if (member != nullptr) {
         if (! member->isConstant()) {
-          setFlag(FLAG_DYNAMIC);
+          setFlag(DETERMINED_CONSTANT);
           return false;
         }
       }
     }
 
-    setFlag(FLAG_CONSTANT);
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
     return true;
   }
 
@@ -1263,24 +1260,24 @@ bool AstNode::isConstant () const {
         }
 
         if (! value->isConstant()) {
-          setFlag(FLAG_DYNAMIC);
+          setFlag(DETERMINED_CONSTANT);
           return false;
         }
       }
     }
 
-    setFlag(FLAG_CONSTANT);
+    setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
     return true;
   }
 
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     if (getMember(0)->isConstant()) {
-      setFlag(FLAG_CONSTANT);
+      setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
       return true;
     }
   }
 
-  setFlag(FLAG_DYNAMIC);
+  setFlag(DETERMINED_CONSTANT);
   return false;
 }
 
@@ -1305,9 +1302,9 @@ bool AstNode::isComparisonOperator () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::canThrow () const {
-  if (hasFlag(FLAG_THROWS)) {
+  if (hasFlag(DETERMINED_THROWS)) {
     // fast track exit
-    return true;
+    return hasFlag(VALUE_THROWS);
   }
   
   // check sub-nodes first
@@ -1316,7 +1313,7 @@ bool AstNode::canThrow () const {
     auto member = getMember(i);
     if (member->canThrow()) {
       // if any sub-node may throw, the whole branch may throw
-      setFlag(FLAG_THROWS);
+      setFlag(DETERMINED_THROWS);
       return true;
     }
   }
@@ -1332,19 +1329,22 @@ bool AstNode::canThrow () const {
     // the other hand we must not optimize or move non-deterministic functions
     // during optimization
     if (func->canThrow) {
-      setFlag(FLAG_THROWS);
+      setFlag(DETERMINED_THROWS, VALUE_THROWS);
       return true;
     }
+
+    setFlag(DETERMINED_THROWS);
     return false;
   }
   
   if (type == NODE_TYPE_FCALL_USER) {
     // user functions can always throw
-    setFlag(FLAG_THROWS);
+    setFlag(DETERMINED_THROWS, VALUE_THROWS);
     return true;
   }
 
   // everything else does not throw!
+  setFlag(DETERMINED_THROWS);
   return false;
 }
 
@@ -1354,12 +1354,18 @@ bool AstNode::canThrow () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::canRunOnDBServer () const {
+  if (hasFlag(DETERMINED_RUNONDBSERVER)) {
+    // fast track exit
+    return hasFlag(VALUE_RUNONDBSERVER);
+  }
+
   // check sub-nodes first
   size_t const n = numMembers();
   for (size_t i = 0; i < n; ++i) {
     auto member = getMember(i);
     if (! member->canRunOnDBServer()) {
       // if any sub-node cannot run on a DB server, we can't either
+      setFlag(DETERMINED_RUNONDBSERVER);
       return false;
     }
   }
@@ -1368,15 +1374,23 @@ bool AstNode::canRunOnDBServer () const {
   if (type == NODE_TYPE_FCALL) {
     // built-in function
     auto func = static_cast<Function*>(getData());
+    if (func->canRunOnDBServer) {
+      setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+    }
+    else {
+      setFlag(DETERMINED_RUNONDBSERVER);
+    }
     return func->canRunOnDBServer;
   }
   
   if (type == NODE_TYPE_FCALL_USER) {
     // user function. we don't know anything about it
+    setFlag(DETERMINED_RUNONDBSERVER);
     return false;
   }
 
   // everyhing else can run everywhere
+  setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
   return true;
 }
 
@@ -1385,9 +1399,9 @@ bool AstNode::canRunOnDBServer () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AstNode::isDeterministic () const {
-  if (hasFlag(FLAG_NONDETERMINISTIC)) {
+  if (hasFlag(DETERMINED_NONDETERMINISTIC)) {
     // fast track exit
-    return false;
+    return ! hasFlag(VALUE_NONDETERMINISTIC);
   }
 
   // check sub-nodes first
@@ -1396,7 +1410,7 @@ bool AstNode::isDeterministic () const {
     auto member = getMember(i);
     if (! member->isDeterministic()) {
       // if any sub-node is non-deterministic, we are neither
-      setFlag(FLAG_NONDETERMINISTIC);
+      setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
       return false;
     }
   }
@@ -1405,19 +1419,21 @@ bool AstNode::isDeterministic () const {
     // built-in functions may or may not be deterministic
     auto func = static_cast<Function*>(getData());
     if (! func->isDeterministic) {
-      setFlag(FLAG_NONDETERMINISTIC);
+      setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
       return false;
     }
+    setFlag(DETERMINED_NONDETERMINISTIC);
     return true;
   }
   
   if (type == NODE_TYPE_FCALL_USER) {
     // user functions are always non-deterministic
-    setFlag(FLAG_NONDETERMINISTIC);
+    setFlag(DETERMINED_NONDETERMINISTIC, VALUE_NONDETERMINISTIC);
     return false;
   }
 
   // everything else is deterministic
+  setFlag(DETERMINED_NONDETERMINISTIC);
   return true;
 }
 

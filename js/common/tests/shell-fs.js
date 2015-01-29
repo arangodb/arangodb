@@ -1,3 +1,5 @@
+/*jshint strict: false */
+/*global require, assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filesystem functions
 ///
@@ -472,7 +474,16 @@ function FileSystemSuite () {
       // tolerate a max deviation of 60 seconds
       // (deviation needs to be > 1 to make the tests succeed even on busy
       // test servers)
-      assertTrue(Math.abs(mtime - now) <= 60);
+      if (require("internal").platform.substr(0, 3) === 'win') {
+        // Windows is bugged. For details see:
+        // http://stackoverflow.com/questions/19800811/last-modification-time-reported-by-stat-changes-depending-on-daylight-savings
+        // we just work around it here.
+        var deltaModulo = Math.abs(mtime - now);
+        assertTrue(deltaModulo <= 60 || (deltaModulo > 3540));
+      }
+      else {
+        assertTrue(Math.abs(mtime - now) <= 60);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -850,8 +861,8 @@ function FileSystemSuite () {
       assertEqual(true, fs.write(filename, data.toString('hex')));
       assertEqual(hex, fs.read(filename));
 
-      var data = fs.read(filename);
-      var data2 = new Buffer(data.toString('ascii'), 'hex');
+      var data3 = fs.read(filename);
+      var data2 = new Buffer(data3.toString('ascii'), 'hex');
       assertEqual(binary, data2.toString('base64'));
     },
 

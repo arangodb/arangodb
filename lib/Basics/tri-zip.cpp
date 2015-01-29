@@ -129,18 +129,27 @@ static int ExtractCurrentFile (unzFile uf,
 
     // cannot write to outfile. this may be due to the target directory missing
     if (fout == NULL && ! skipPaths && filenameWithoutPath != (char*) filenameInZip) {
-      char* d;
-
       char c = *(filenameWithoutPath - 1);
       *(filenameWithoutPath - 1) = '\0';
 
       // create target directory recursively
-      d = TRI_Concatenate2File(outPath, filenameInZip);
+      char* d = TRI_Concatenate2File(outPath, filenameInZip);
       TRI_CreateRecursiveDirectory(d);
       TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       *(filenameWithoutPath - 1) = c;
 
+      // try again
+      fout = fopen(fullPath, "wb");
+    }
+    else if (fout == nullptr) {
+      // try to create the target directory recursively
+      char* d = TRI_Concatenate2File(outPath, filenameInZip);
+      // strip filename so we only have the directory name
+      char* dir = TRI_Dirname(d);
+      TRI_Free(TRI_CORE_MEM_ZONE, d);
+      TRI_CreateRecursiveDirectory(dir);
+      TRI_Free(TRI_CORE_MEM_ZONE, dir);
       // try again
       fout = fopen(fullPath, "wb");
     }

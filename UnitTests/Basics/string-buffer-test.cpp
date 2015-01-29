@@ -45,14 +45,14 @@
 #define REP_C "REPDEFGHIJKLMNOP"
 #define STR_C "The quick brown fox jumped over the laxy dog"
 
-static char const* ABC = ABC_C;
+static char const* ABC_const = ABC_C;
 static char const* AEP = AEP_C;
 static char const* F_2_T = "56789A";
 static char const* ONETWOTHREE = "123";
 static char const* REP = REP_C;
 static char const* STR = STR_C;
 static char const* STRSTR = STR_C STR_C;
-static char const* STRSTRABC = STR_C STR_C ABC_C;
+static char const* STRSTRABC_const = STR_C STR_C ABC_C;
 static char const* TWNTYA = "aaaaaaaaaaaaaaaaaaaa";
 static char const* Z_2_T = "0123456789A";
 
@@ -102,12 +102,12 @@ BOOST_AUTO_TEST_CASE (tst_str_append) {
   BOOST_TEST_CHECKPOINT("basic append (cmp)");
   BOOST_CHECK_EQUAL_COLLECTIONS(STRSTR, STRSTR + l1, sb._buffer, sb._buffer + l2);
   
-  TRI_AppendString2StringBuffer(&sb, ABC, 3); // ABC ... Z
+  TRI_AppendString2StringBuffer(&sb, ABC_const, 3); // ABC_const ... Z
 
   l2 = STRLEN(sb._buffer);
 
   BOOST_TEST_CHECKPOINT("basic append 2 (cmp)");
-  BOOST_CHECK_EQUAL_COLLECTIONS(STRSTRABC, STRSTRABC + l2, sb._buffer, sb._buffer + l2);
+  BOOST_CHECK_EQUAL_COLLECTIONS(STRSTRABC_const, STRSTRABC_const + l2, sb._buffer, sb._buffer + l2);
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendStringStringBuffer(&sb, STR);
@@ -381,7 +381,7 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
 
   TRI_InitStringBuffer(&sb, TRI_CORE_MEM_ZONE);
 
-  TRI_AppendStringStringBuffer(&sb, ABC);
+  TRI_AppendStringStringBuffer(&sb, ABC_const);
   TRI_ReplaceStringStringBuffer(&sb, "REP", 3);
   
   l = STRLEN(sb._buffer);
@@ -389,14 +389,14 @@ BOOST_AUTO_TEST_CASE (tst_replace) {
   BOOST_TEST_CHECKPOINT("replace1");
   BOOST_CHECK_EQUAL_COLLECTIONS(REP, REP + l, sb._buffer, sb._buffer + l);
 
-  TRI_ReplaceStringStringBuffer(&sb, ABC, 1);
+  TRI_ReplaceStringStringBuffer(&sb, ABC_const, 1);
   l = STRLEN(sb._buffer);
 
   BOOST_TEST_CHECKPOINT("replace2");
   BOOST_CHECK_EQUAL_COLLECTIONS(AEP, AEP + l, sb._buffer, sb._buffer + l);
 
   TRI_ClearStringBuffer(&sb);
-  TRI_AppendStringStringBuffer(&sb, ABC);
+  TRI_AppendStringStringBuffer(&sb, ABC_const);
 
   TRI_InitStringBuffer(&sb2, TRI_CORE_MEM_ZONE);
   TRI_AppendStringStringBuffer(&sb2, "REP");
@@ -685,8 +685,7 @@ BOOST_AUTO_TEST_CASE (tst_doubles) {
   TRI_AppendDoubleStringBuffer(&sb, value);
   BOOST_CHECK_EQUAL("-inf", sb._buffer);
   
-  // div 0. deliberately.
-  value = 1.0 / 0.0;
+  value = INFINITY;
 
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);

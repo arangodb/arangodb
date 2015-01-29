@@ -345,10 +345,12 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 
 * `move-calculations-up`: will appear if a *CalculationNode* was moved up in a plan. 
   The intention of this rule is to move calculations up in the processing pipeline
-  as far as possible (ideally out of enumerations) so they are executed less often.
+  as far as possible (ideally out of enumerations) so they are not executed in loops
+  if not required. It is also quite common that this rule enables further optimizations
+  to kick in.
 * `move-filters-up`: will appear if a *FilterNode* was moved up in a plan. The
   intention of this rule is to move filters up in the processing pipeline as far
-  as possible (ideally out of enumerations) so they are executed less often.
+  as possible (ideally out of inner loops) so they filter results as early as possible.
 * `remove-unnecessary-filters`: will appear if a *FilterNode* was removed or replaced.
   *FilterNode*s whose filter condition will always evaluate to *true* will be
   removed from the plan, whereas *FilterNode* that will never let any results pass
@@ -381,7 +383,10 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
   because the filter condition is already covered by an *IndexRangeNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
   operation. If the rule was applied, a *SortNode* has been removed from the
-  plan.
+* `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan. 
+  The intention of this rule is to move calculations down in the processing pipeline
+  as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed 
+  only when really required.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 

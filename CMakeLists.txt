@@ -183,8 +183,8 @@ if (USE_RELATIVE)
   ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
   ################################################################################
 
-  set(ETCDIR_NATIVE "./etc/relative")
-  set(ETCDIR_INSTALL "etc/relative")
+  set(ETCDIR_NATIVE "./etc/relative/")
+  set(ETCDIR_INSTALL "etc/relative/")
 
   file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")

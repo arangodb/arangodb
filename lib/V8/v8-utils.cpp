@@ -2100,7 +2100,10 @@ static void JS_Read (const v8::FunctionCallbackInfo<v8::Value>& args) {
   char* content = TRI_SlurpFile(TRI_UNKNOWN_MEM_ZONE, *name, &length);
 
   if (content == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), TRI_last_error());
+    std::string msg = TRI_last_error();
+    msg += ": while reading ";
+    msg += *name;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), msg);
   }
 
   auto result = TRI_V8_PAIR_STRING(content, length);
@@ -2109,6 +2112,7 @@ static void JS_Read (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   TRI_V8_RETURN(result);
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads in a file
@@ -2805,7 +2809,6 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   double n = TRI_ObjectToDouble(args[0]);
-  double until = TRI_microtime() + n;
 
   bool gc = true; // default is to trigger the gc
   if (args.Length() > 1) {
@@ -2813,31 +2816,15 @@ static void JS_Wait (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   if (gc) {
-    // wait with gc
-    isolate->LowMemoryNotification();
-    // todo 1000 was the old V8-default, is this really good?
-    while (! isolate->IdleNotification(1000)) {
-    }
-
-    size_t i = 0;
-    while (TRI_microtime() < until) {
-      if (++i % 1000 == 0) {
-        // garbage collection only every x iterations, otherwise we'll use too much CPU
-        isolate->LowMemoryNotification();
-        // todo 1000 was the old V8-default, is this really good?
-        while(! isolate->IdleNotification(1000)) {
-        }
-      }
-
-      usleep(100);
-    }
+    TRI_RunGarbageCollectionV8(isolate, n);
   }
-  else {
-    // wait without gc
-    while (TRI_microtime() < until) {
-      usleep(100);
-    }
+    
+  // wait without gc
+  double until = TRI_microtime() + n;
+  while (TRI_microtime() < until) {
+    usleep(100);
   }
+
   TRI_V8_RETURN_UNDEFINED();
 }
 
@@ -3967,9 +3954,8 @@ void TRI_CreateErrorObject (v8::Isolate *isolate,
 
     TRI_V8_RETURN(TRI_V8_STRING_UTF16( (const uint16_t*) result.getBuffer(), result.length()));
   }
-  else {
-    TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
-  }
+    
+  TRI_V8_RETURN(v8::String::NewFromUtf8(isolate, ""));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3993,6 +3979,64 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
   }
 
   return scope.Escape<v8::Array>(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute a single garbage collection run
+////////////////////////////////////////////////////////////////////////////////
+
+bool TRI_SingleRunGarbageCollectionV8 (v8::Isolate* isolate,
+                                       int idleTimeInMs) {
+  isolate->LowMemoryNotification();
+  return isolate->IdleNotification(idleTimeInMs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run the V8 garbage collection for at most a specifiable amount of 
+/// time
+////////////////////////////////////////////////////////////////////////////////
+   
+void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
+                                 double availableTime) { 
+  int idleTimeInMs = 1000;
+
+  if (availableTime >= 5.0) {
+    idleTimeInMs = 10000;
+  }
+  if (availableTime >= 10.0) {
+    idleTimeInMs = 100000;
+  }
+    
+  double const until = TRI_microtime() + availableTime;
+
+  int totalGcTimeInMs = static_cast<int>(availableTime) * 1000;
+  int gcAttempts = totalGcTimeInMs / idleTimeInMs;
+
+  if (gcAttempts <= 0) {
+    // minimum is to run the GC once
+    gcAttempts = 1;
+  }
+
+  int gcTries = 0;
+
+  while (++gcTries <= gcAttempts) {
+    if (TRI_SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+      return;
+    }
+  }
+
+  size_t i = 0;
+  while (TRI_microtime() < until) {
+    if (++i % 1000 == 0) {
+      // garbage collection only every x iterations, otherwise we'll use too much CPU
+      if (++gcTries > gcAttempts ||
+          TRI_SingleRunGarbageCollectionV8(isolate, idleTimeInMs)) {
+        return;  
+      } 
+    }
+
+    usleep(100);
+  }
 }
 
 // -----------------------------------------------------------------------------

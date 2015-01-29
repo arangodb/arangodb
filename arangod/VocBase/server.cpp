@@ -825,6 +825,32 @@ static int CloseDatabases (TRI_server_t* server) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief close all opened databases
+////////////////////////////////////////////////////////////////////////////////
+
+static int CloseDroppedDatabases (TRI_server_t* server) {
+  DatabaseWriteLocker locker(&server->_databasesLock);
+
+  size_t n = server->_droppedDatabases._length;
+
+  for (size_t i = 0; i < n; ++i) {
+    TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(TRI_AtVectorPointer(&server->_droppedDatabases, i));
+
+    if (vocbase != nullptr) {
+      if (vocbase->_type == TRI_VOCBASE_TYPE_NORMAL) {
+        TRI_DestroyVocBase(vocbase);
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+
+        // clear to avoid potential double freeing
+        server->_droppedDatabases._buffer[i] = nullptr;
+      }
+    }
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the names of all databases in the ArangoDB 1.4 layout
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1532,6 +1558,8 @@ static void DatabaseManager (void* data) {
 
     // next iteration
   }
+
+  CloseDroppedDatabases(server);
 }
 
 // -----------------------------------------------------------------------------

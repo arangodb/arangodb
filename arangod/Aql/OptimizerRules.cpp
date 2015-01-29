@@ -56,7 +56,7 @@ using EN   = triagens::aql::ExecutionNode;
 
 int triagens::aql::removeRedundantSortsRule (Optimizer* opt, 
                                              ExecutionPlan* plan,
-                                             Optimizer::Rule const* rule) { 
+                                             Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::SORT, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
@@ -721,6 +721,110 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief move calculations down in the plan
+/// this rule modifies the plan in place
+/// it aims to move calculations as far down in the plan as possible, beyond 
+/// FILTER and LIMIT operations
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::moveCalculationsDownRule (Optimizer* opt, 
+                                             ExecutionPlan* plan, 
+                                             Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::CALCULATION, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto nn = static_cast<CalculationNode*>(n);
+    if (nn->expression()->canThrow() || 
+        ! nn->expression()->isDeterministic()) {
+      // we will only move expressions down that cannot throw and that are deterministic
+      continue;
+    }
+
+    // this is the variable that the calculation will set
+    auto variable = nn->outVariable();
+
+    std::vector<ExecutionNode*> stack;
+    for (auto p : n->getParents()) {
+      stack.push_back(p);
+    }
+      
+    bool shouldMove = false;
+    ExecutionNode* lastNode = nullptr;
+
+    while (! stack.empty()) {
+      auto current = stack.back();
+      stack.pop_back();
+
+      lastNode = current;
+      bool done = false;
+
+      auto&& varsUsed = current->getVariablesUsedHere();
+
+      for (auto v : varsUsed) {
+        if (v == variable) {
+          // the node we're looking at needs the variable we're setting. 
+          // can't push further!
+          done = true;
+          break;
+        }
+      }
+
+      if (done) {
+        // done with optimizing this calculation node
+        break;
+      }
+
+      auto const currentType = current->getType();
+
+      if (currentType == EN::FILTER ||
+          currentType == EN::SORT || 
+          currentType == EN::LIMIT ||
+          currentType == EN::SUBQUERY) {
+        // we found something interesting that justifies moving our node down
+        shouldMove = true;
+      } 
+      else if (currentType == EN::INDEX_RANGE ||
+               currentType == EN::ENUMERATE_COLLECTION ||
+               currentType == EN::ENUMERATE_LIST ||
+               currentType == EN::AGGREGATE ||
+               currentType == EN::NORESULTS) {
+        // we will not push further down than such nodes
+        shouldMove = false;
+        break;
+      }
+        
+      auto parents = current->getParents();
+      if (parents.size() != 1) {
+        break;
+      }
+      
+      for (auto p : parents) {
+        stack.push_back(p);
+      }
+    }
+
+    if (shouldMove && lastNode != nullptr) {
+      // first, unlink the calculation from the plan
+      plan->unlinkNode(n);
+
+      // and re-insert into before the current node
+      plan->insertDependency(lastNode, n);
+      modified = true;
+    }
+
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief split and-combined filters and break them into smaller parts
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1209,7 +1313,6 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
 
   bool foundSomething = false;
 
-
   if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
     auto lhs = node->getMember(0);
     auto rhs = node->getMember(1);
@@ -1358,18 +1461,11 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
   if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
     auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type);
     auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type);
-
-    if ((lhs == nullptr || lhs->empty()) && rhs != nullptr) {
-      delete lhs;
-      return rhs;
-    }
-    else if (lhs != nullptr && (rhs == nullptr || rhs->empty())) {
-      delete rhs;
-      return lhs;
-    }
+    
+    mustNotUseRanges = false;
 
     // distribute AND into OR
-    return andCombineRangeInfoMapVecs(lhs, rhs);
+    return andCombineRangeInfoMapVecsIgnoreEmpty(lhs, rhs);
   }
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_IN) {
@@ -1431,10 +1527,17 @@ static RangeInfoMapVec* BuildRangeInfo (ExecutionPlan* plan,
   }
 
   if (node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
-    return orCombineRangeInfoMapVecs(
-      BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, mustNotUseRanges, node->type),
-      BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, mustNotUseRanges, node->type)
-    );
+    bool lhsMustNotUseRange = false;
+    bool rhsMustNotUseRange = false;
+
+    auto lhs = BuildRangeInfo(plan, node->getMember(0), enumCollVar, attr, lhsMustNotUseRange, node->type);
+    auto rhs = BuildRangeInfo(plan, node->getMember(1), enumCollVar, attr, rhsMustNotUseRange, node->type);
+    
+    if (lhsMustNotUseRange || rhsMustNotUseRange) {
+      mustNotUseRanges = true;
+    }
+
+    return orCombineRangeInfoMapVecs(lhs, rhs);
   }
     
   if (combineType == NODE_TYPE_OPERATOR_BINARY_AND) {
@@ -1460,7 +1563,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   std::unordered_set<VariableId> _varIds;
   bool _modified;
   bool _canThrow; 
-  bool _mustNotUseRanges;
   // The following maps ids of EnumerateCollectionNodes in the original
   // plan to an index in the (outer vector) of the _changes container.
   std::unordered_map<size_t, size_t>& _changesPlaces;
@@ -1481,7 +1583,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         _varIds(),
         _modified(false),
         _canThrow(false),
-        _mustNotUseRanges(false),
         _changesPlaces(changesPlaces),
         _changes(changes) {
 
@@ -1512,20 +1613,32 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
             std::string attr;
             Variable const* enumCollVar = nullptr;
             auto expression = node->expression()->node();
+            bool mustNotUseRanges = false;
+
             // there is an implicit AND between FILTER statements
             if (_rangeInfoMapVec == nullptr) {
               // don't yet have anything to AND-combine
-              _rangeInfoMapVec = BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges);
+              _rangeInfoMapVec = BuildRangeInfo(_plan, expression, enumCollVar, attr, mustNotUseRanges);
             } 
             else {
               // AND-combine with previous ranges
-              _rangeInfoMapVec = andCombineRangeInfoMapVecs(
-                _rangeInfoMapVec,
-                BuildRangeInfo(_plan, expression, enumCollVar, attr, _mustNotUseRanges)
-              );
+              auto other = BuildRangeInfo(_plan, expression, enumCollVar, attr, mustNotUseRanges);
+
+              if (mustNotUseRanges) {
+                mustNotUseRanges = false;
+
+                if (other != nullptr) {
+                  delete other;
+                }
+                // keep existing _rangeInfoMapVec
+              }
+              else {
+                // AND-combine ranges in FILTER found with previous ranges
+                _rangeInfoMapVec = andCombineRangeInfoMapVecsIgnoreEmpty(_rangeInfoMapVec, other);
+              }
             }
 
-            if (_rangeInfoMapVec != nullptr && _mustNotUseRanges) {
+            if (_rangeInfoMapVec != nullptr && mustNotUseRanges) {
               // it is unsafe to use the ranges found. throw them away immediately
               delete _rangeInfoMapVec;
               _rangeInfoMapVec = nullptr;
@@ -1928,6 +2041,39 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
                        // cleanupChanges does not touch it
         }
       }
+#if 0
+      else if (j < i && v.size() > 1) {
+        // if we have more than one candidate index, use index selectivity (if available)
+        double lastSelectivity = -1.0;
+        size_t choice = 0;
+        bool hasFound = false;
+        for (size_t k = 0; k < v.size(); k++) {
+          auto n = static_cast<IndexRangeNode*>(v[k]);
+          auto const* idx = n->getIndex();
+          if (idx->hasSelectivityEstimate()) {
+            double selectivity = idx->selectivityEstimate();
+            if (selectivity > lastSelectivity) {
+              choice = k;
+            }
+          }
+
+          if (hasFound) {
+            size_t id = changes[j].first;
+            plan->registerNode(v[choice]);
+            plan->replaceNode(plan->getNodeById(id), v[choice]);
+            modified = true;
+            // Free the other nodes, if they are there:
+            for (size_t k = 0; k < v.size(); k++) {
+              if (k != choice) {
+                delete v[k];
+              }
+            }
+            v.clear();   // take the new node away from changes such that 
+                         // cleanupChanges does not touch it
+          }
+        }
+      }
+#endif
     }
   }
   catch (...) {

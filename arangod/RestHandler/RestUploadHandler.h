@@ -74,6 +74,14 @@ namespace triagens {
 
         Handler::status_t execute ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a multi-part request body and determines the boundaries of
+/// its first element
+////////////////////////////////////////////////////////////////////////////////
+
+        bool parseMultiPart (char const*&,
+                             size_t&);
+
      };
   }
 }

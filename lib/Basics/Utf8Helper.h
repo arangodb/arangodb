@@ -107,7 +107,7 @@ namespace triagens {
 ///     This parameter can instead be an ICU style C locale (e.g. "en_US")
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setCollatorLanguage (std::string const& lang);
+        bool setCollatorLanguage (std::string const& lang);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get collator language

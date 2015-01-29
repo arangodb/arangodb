@@ -2214,13 +2214,16 @@ int warmupEnvironment (v8::Isolate *isolate,
   files.push_back("client/client.js"); // needs internal
 
   for (size_t i = 0;  i < files.size();  ++i) {
-    bool ok = StartupLoader.loadScript(isolate, context, files[i]);
-
-    if (ok) {
+    switch (StartupLoader.loadScript(isolate, context, files[i])) {
+    case JSLoader::eSuccess:
       LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
-    }
-    else {
+      break;
+    case JSLoader::eFailLoad:
       LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
+      break;
+    case JSLoader::eFailExecute:
+      LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[i].c_str());
+      break;
     }
   }
 
@@ -2346,6 +2349,10 @@ int main (int argc, char* args[]) {
   // set-up V8 objects
   // .............................................................................
 
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("en")) {
+    BaseClient.printErrLine("cannot initialize ICU; please make sure ICU*dat is available.");
+    return -1;
+  }    
   v8::V8::InitializeICU();
 
   // set V8 options

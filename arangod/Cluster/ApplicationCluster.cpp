@@ -112,6 +112,7 @@ void ApplicationCluster::setupOptions (std::map<std::string, basics::ProgramOpti
   options["Cluster options:help-cluster"]
     ("cluster.agency-endpoint", &_agencyEndpoints, "agency endpoint to connect to")
     ("cluster.agency-prefix", &_agencyPrefix, "agency prefix")
+    ("cluster.my-local-info", &_myLocalInfo, "this server's local info")
     ("cluster.my-id", &_myId, "this server's id")
     ("cluster.my-address", &_myAddress, "this server's endpoint")
     ("cluster.username", &_username, "username used for cluster-internal communication")
@@ -152,11 +153,18 @@ bool ApplicationCluster::prepare () {
   ServerState::instance()->setDisableDispatcherKickstarter(_disableDispatcherKickstarter);
 
   // check the cluster state
-  _enableCluster = (! _agencyEndpoints.empty() || ! _agencyPrefix.empty());
+  _enableCluster = ! _agencyEndpoints.empty();
+
+  if (_agencyPrefix.empty()) {
+    _agencyPrefix = "arango";
+  }
 
   if (! enabled()) {
+    ServerState::instance()->setRole(ServerState::ROLE_SINGLE);
     return true;
   }
+
+  ServerState::instance()->setClusterEnabled();
 
   // validate --cluster.agency-prefix
   size_t found = _agencyPrefix.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789/");
@@ -186,7 +194,12 @@ bool ApplicationCluster::prepare () {
 
   // validate --cluster.my-id
   if (_myId.empty()) {
-    LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
+    if (_myLocalInfo.empty()) {
+      LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id and --cluster.my-local-info");
+    }
+    if (_myAddress.empty()) {
+      LOG_FATAL_AND_EXIT("must specify --cluster.my-address if --cluster.my-id is empty");
+    }
   }
   else {
     size_t found = _myId.find_first_not_of("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789");
@@ -194,6 +207,11 @@ bool ApplicationCluster::prepare () {
     if (found != std::string::npos) {
       LOG_FATAL_AND_EXIT("invalid value specified for --cluster.my-id");
     }
+  }
+  // Now either _myId is set properly or _myId is empty and _myLocalInfo and
+  // _myAddress are set.
+  if (! _myAddress.empty()) {
+    ServerState::instance()->setAddress(_myAddress);
   }
 
   // initialise ClusterInfo library
@@ -204,6 +222,56 @@ bool ApplicationCluster::prepare () {
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);
+
+  // perfom an initial connect to the agency
+  const std::string endpoints = AgencyComm::getEndpointsString();
+
+  if (! AgencyComm::tryConnect()) {
+    LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)",
+                       endpoints.c_str());
+  }
+
+  ServerState::instance()->setLocalInfo(_myLocalInfo);
+  if (! _myId.empty()) {
+    ServerState::instance()->setId(_myId);
+  }
+
+  ServerState::RoleEnum role = ServerState::instance()->getRole();
+
+  if (role == ServerState::ROLE_UNDEFINED) {
+    // no role found
+    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured in agency (%s)",
+                       _myId.c_str(),
+                       endpoints.c_str());
+  }
+
+  if (_myId.empty()) {
+    _myId = ServerState::instance()->getId();  // has been set by getRole!
+  }
+
+  // check if my-address is set
+  if (_myAddress.empty()) {
+    // no address given, now ask the agency for out address
+    _myAddress = ServerState::instance()->getAddress();
+  }
+  // if nonempty, it has already been set above
+
+  // If we are a coordinator, we wait until at least one DBServer is there,
+  // otherwise we can do very little, in particular, we cannot create
+  // any collection:
+  if (role == ServerState::ROLE_COORDINATOR) {
+    ClusterInfo* ci = ClusterInfo::instance();
+    do {
+      LOG_INFO("Waiting for a DBserver to show up...");
+      ci->loadCurrentDBServers();
+      std::vector<ServerID> DBServers = ci->getCurrentDBServers();
+      if (DBServers.size() > 0) {
+        LOG_INFO("Found a DBserver.");
+        break;
+      }
+      sleep(1);
+    } while (true);
+  }
 
   return true;
 }
@@ -217,35 +285,9 @@ bool ApplicationCluster::start () {
     return true;
   }
 
-  ServerState::instance()->setId(_myId);
-
-  // perfom an initial connect to the agency
   const std::string endpoints = AgencyComm::getEndpointsString();
 
-  if (! AgencyComm::tryConnect()) {
-    LOG_FATAL_AND_EXIT("Could not connect to agency endpoints (%s)",
-                       endpoints.c_str());
-  }
-
-
   ServerState::RoleEnum role = ServerState::instance()->getRole();
-
-  if (role == ServerState::ROLE_UNDEFINED) {
-    // no role found
-    LOG_FATAL_AND_EXIT("unable to determine unambiguous role for server '%s'. No role configured in agency (%s)",
-                       _myId.c_str(),
-                       endpoints.c_str());
-  }
-
-  // check if my-address is set
-  if (_myAddress.empty()) {
-    // no address given, now ask the agency for out address
-    _myAddress = ServerState::instance()->getAddress();
-  }
-  else {
-    // register our own address
-    ServerState::instance()->setAddress(_myAddress);
-  }
 
   if (_myAddress.empty()) {
     LOG_FATAL_AND_EXIT("unable to determine internal address for server '%s'. "

@@ -84,6 +84,15 @@ namespace triagens {
     int moveCalculationsUpRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief move calculations down in the plan
+/// this rule modifies the plan in place
+/// it aims to move down calculations as far down in the plan as possible, 
+/// beyond FILTER and LIMIT statements 
+////////////////////////////////////////////////////////////////////////////////
+
+    int moveCalculationsDownRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief split and-combined filters and break them into smaller parts
 ////////////////////////////////////////////////////////////////////////////////
 

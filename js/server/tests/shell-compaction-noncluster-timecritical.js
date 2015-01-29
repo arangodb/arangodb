@@ -409,8 +409,15 @@ function CompactionSuite () {
 
       c1.truncate();
       testHelper.rotate(c1);
+        
+      tries = 0;
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === 0) {
+          break;
+        }
+      }
      
-      fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
@@ -536,7 +543,15 @@ function CompactionSuite () {
       internal.wal.flush(true, true);
       c1.rotate();
 
-      fig = c1.figures();
+      var tries = 0;
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["dead"]["deletion"] === n && fig["alive"]["count"] === 0) {
+          break;
+        }
+        internal.wait(1);
+      }
+
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["alive"]["size"]);
@@ -557,7 +572,7 @@ function CompactionSuite () {
         maxWait = 15;
       }
 
-      var tries = 0;
+      tries = 0;
       while (++tries < maxWait) {
         fig = c1.figures();
         if (fig["alive"]["count"] === 0) {
@@ -581,7 +596,14 @@ function CompactionSuite () {
       
       internal.wal.flush(true, true);
 
-      fig = c1.figures();
+      tries = 0;
+      while (++tries < maxWait) {
+        fig = c1.figures();
+        if (fig["journals"]["count"] === 1) {
+          break;
+        }
+        internal.wait(1);
+      }
       assertEqual(1, fig["journals"]["count"]);
 
       internal.db._drop(cn);
@@ -618,8 +640,17 @@ function CompactionSuite () {
       var doc = c1.document("test1"); 
 
       c1.rotate();
-      
-      var fig = c1.figures();
+
+      var tries = 0, fig;
+
+      while (++tries < 20) {
+        fig = c1.figures();
+        if (fig["alive"]["count"] === n / 2 && fig["dead"]["count"] === 0) {
+          break;
+        }
+        internal.wait(1, false);
+      }
+
       assertEqual(n / 2, c1.count());
       assertEqual(n / 2, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);

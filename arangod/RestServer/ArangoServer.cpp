@@ -424,7 +424,7 @@ void ArangoServer::buildApplicationServer () {
 
   string ignoreOpt;
 
-  additional[ApplicationServer::OPTIONS_HIDDEN]
+  additional["Hidden Options"]
     ("ruby.gc-interval", &ignoreOpt, "Ruby garbage collection interval (each x requests)")
     ("ruby.action-directory", &ignoreOpt, "path to the Ruby action directory")
     ("ruby.modules-path", &ignoreOpt, "one or more directories separated by (semi-) colons")
@@ -451,19 +451,35 @@ void ArangoServer::buildApplicationServer () {
   // .............................................................................
 
   // command-line only options
-  additional[ApplicationServer::OPTIONS_CMDLINE]
+  additional["General Options:help-default"]
     ("console", "do not start as server, start a JavaScript emergency console instead")
     ("upgrade", "perform a database upgrade")
     ("check-version", "checks the versions of the database and exit")
   ;
 
-  // other options
-  additional[ApplicationServer::OPTIONS_SERVER]
+  // .............................................................................
+  // set language of default collator
+  // .............................................................................
+
+  additional["Server Options:help-default"]
     ("temp-path", &_tempPath, "temporary path")
     ("default-language", &_defaultLanguage, "ISO-639 language code")
   ;
+  string languageName;
 
-  additional[ApplicationServer::OPTIONS_HIDDEN]
+  if (!Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage)) {
+    LOG_FATAL_AND_EXIT("failed to initialise ICU");
+  }
+
+  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
+    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
+  }
+  else {
+    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
+  }
+
+  // other options
+  additional["Hidden Options"]
     ("no-upgrade", "skip a database upgrade")
     ("start-service", "used to start as windows service")
     ("no-server", "do not start the server, if console is requested")
@@ -475,7 +491,7 @@ void ArangoServer::buildApplicationServer () {
 
 #ifndef _WIN32
 
-  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
+  additional["General Options:help-admin"]
     ("daemon", "run as daemon")
     ("pid-file", &_pidFile, "pid-file in daemon mode")
     ("supervisor", "starts a supervisor and runs as daemon")
@@ -485,12 +501,12 @@ void ArangoServer::buildApplicationServer () {
 #endif
 
 #ifdef __APPLE__
-  additional[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
+  additional["General Options:help-admin"]
     ("voice", "enable voice based welcome")
   ;
 #endif
 
-  additional[ApplicationServer::OPTIONS_HIDDEN]
+  additional["Hidden Options"]
     ("development-mode", "start server in development mode")
   ;
 
@@ -498,12 +514,12 @@ void ArangoServer::buildApplicationServer () {
   // javascript options
   // .............................................................................
 
-  additional["JAVASCRIPT Options:help-admin"]
+  additional["Javascript Options:help-admin"]
     ("javascript.script", &_scriptFile, "do not start as server, run script instead")
     ("javascript.script-parameter", &_scriptParameters, "script parameter")
   ;
 
-  additional["JAVASCRIPT Options:help-devel"]
+  additional["Hidden Options"]
     ("javascript.unit-tests", &_unitTests, "do not start as server, run unit tests instead")
   ;
 
@@ -511,11 +527,11 @@ void ArangoServer::buildApplicationServer () {
   // database options
   // .............................................................................
 
-  additional["DIRECTORY Options:help-admin"]
+  additional["Database Options:help-admin"]
     ("database.directory", &_databasePath, "path to the database directory")
   ;
 
-  additional["DATABASE Options:help-admin"]
+  additional["Database Options:help-admin"]
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
@@ -541,7 +557,7 @@ void ArangoServer::buildApplicationServer () {
   // for this server we display our own options such as port to use
   // .............................................................................
 
-  additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+  additional["Server Options:help-admin"]
     ("server.authenticate-system-only", &_authenticateSystemOnly, "use HTTP authentication only for requests to /_api and /_admin")
     ("server.disable-authentication", &_disableAuthentication, "disable authentication for ALL client requests")
 #ifdef TRI_HAVE_LINUX_SOCKETS
@@ -549,22 +565,22 @@ void ArangoServer::buildApplicationServer () {
 #endif
     ("server.disable-replication-applier", &_disableReplicationApplier, "start with replication applier turned off")
     ("server.allow-use-database", &ALLOW_USE_DATABASE_IN_REST_ACTIONS, "allow change of database in REST actions, only needed for unittests")
+    ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
   ;
 
   bool disableStatistics = false;
 
 #if TRI_ENABLE_FIGURES
-  additional[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+  additional["Server Options:help-admin"]
     ("server.disable-statistics", &disableStatistics, "turn off statistics gathering")
   ;
 #endif
 
-  additional["THREAD Options:help-admin"]
-    ("server.threads", &_dispatcherThreads, "number of threads for basic operations")
+  additional["Javascript Options:help-admin"]
     ("javascript.v8-contexts", &_v8Contexts, "number of V8 contexts that are created for executing JavaScript actions")
   ;
 
-  additional["Server Options:help-extended"]
+  additional["Server Options:help-admin"]
     ("scheduler.maximal-queue-size", &_dispatcherQueueSize, "maximum size of queue for asynchronous operations")
   ;
 
@@ -606,21 +622,6 @@ void ArangoServer::buildApplicationServer () {
   // configure v8 w/ development-mode
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
-  }
-
-  // .............................................................................
-  // set language of default collator
-  // .............................................................................
-
-  string languageName;
-
-  Utf8Helper::DefaultUtf8Helper.setCollatorLanguage(_defaultLanguage);
-
-  if (Utf8Helper::DefaultUtf8Helper.getCollatorCountry() != "") {
-    languageName = string(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage() + "_" + Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
-  }
-  else {
-    languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
 
   // .............................................................................
@@ -707,6 +708,11 @@ void ArangoServer::buildApplicationServer () {
     if (_pidFile.empty()) {
       LOG_INFO("please use the '--pid-file' option");
       LOG_FATAL_AND_EXIT("no pid-file defined, but daemon or supervisor mode was requested");
+    }
+  
+    OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+    if (mode != OperationMode::MODE_SERVER) {
+      LOG_FATAL_AND_EXIT("invalid mode. must not specify --console together with --daemon or --supervisor");
     }
 
     // make the pid filename absolute
@@ -876,6 +882,7 @@ int ArangoServer::startupServer () {
   httpOptions._queue = "STANDARD";
 
   if (startServer) {
+
     // start with enabled maintenance mode
     HttpHandlerFactory::setMaintenance(true);
 
@@ -1113,10 +1120,9 @@ int ArangoServer::runScript (TRI_vocbase_t* vocbase) {
           LOG_FATAL_AND_EXIT("cannot load script '%s', giving up", _scriptFile[i].c_str());
         }
       }
-
-      isolate->LowMemoryNotification();
-      while (! isolate->IdleNotification(1000)) {
-      }
+ 
+      // run the garbage collection for at most 30 seconds
+      TRI_RunGarbageCollectionV8(isolate, 30.0);
 
       // parameter array
       v8::Handle<v8::Array> params = v8::Array::New(isolate);

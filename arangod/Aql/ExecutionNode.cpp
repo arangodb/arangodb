@@ -1117,6 +1117,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
                                                            std::vector<size_t>& prefixes) const {
 
   auto&& indexes = _collection->getIndexes();
+
   for (auto idx : indexes) {
     TRI_ASSERT(idx != nullptr);
 
@@ -1269,12 +1270,51 @@ ExecutionNode* EnumerateListNode::clone (ExecutionPlan* plan,
 double EnumerateListNode::estimateCost (size_t& nrItems) const {
   size_t incoming = 0;
   double depCost = _dependencies.at(0)->getCost(incoming);
-  nrItems = 100*incoming;
-  return depCost + 100.0 * incoming; 
+
   // Well, what can we say? The length of the list can in general
   // only be determined at runtime... If we were to know that this
   // list is constant, then we could maybe multiply by the length
   // here... For the time being, we assume 100
+  size_t length = 100;
+ 
+  auto setter = _plan->getVarSetBy(_inVariable->id);
+
+  if (setter != nullptr) {
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // list variable introduced by a calculation
+      auto expression = static_cast<CalculationNode*>(setter)->expression();
+
+      if (expression != nullptr) {
+        auto node = expression->node();
+
+        if (node->type == NODE_TYPE_ARRAY) {
+          // this one is easy
+          length = node->numMembers();
+        }
+        if (node->type == NODE_TYPE_RANGE) {
+          auto low = node->getMember(0); 
+          auto high = node->getMember(1); 
+
+          if (low->isConstant() && 
+              high->isConstant() &&
+              (low->isValueType(VALUE_TYPE_INT) || low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) || high->isValueType(VALUE_TYPE_DOUBLE))) {
+            // create a temporary range to determine the size
+            Range range(low->getIntValue(), high->getIntValue());
+
+            length = range.size();
+          }
+        }
+      }
+    }
+    else if (setter->getType() == ExecutionNode::SUBQUERY) {
+      // length will be set by the subquery's cost estimator
+      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(length);
+    }
+  }
+
+  nrItems = length * incoming;
+  return depCost + static_cast<double>(length) * incoming; 
 }
 
 // -----------------------------------------------------------------------------
@@ -1353,16 +1393,17 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
                                 triagens::basics::Json const& json)
   : ExecutionNode(plan, json),
     _vocbase(plan->getAst()->query()->vocbase()),
-    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
-            "collection"))),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
     _index(nullptr), 
     _ranges(),
     _reverse(false) {
 
   triagens::basics::Json rangeArrayJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetArrayValue(json.json(), "ranges"));
+
   for (size_t i = 0; i < rangeArrayJson.size(); i++) { //loop over the ranges . . .
     _ranges.emplace_back();
+
     triagens::basics::Json rangeJson(rangeArrayJson.at(static_cast<int>(i)));
     for (size_t j = 0; j < rangeJson.size(); j++) {
       _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
@@ -1606,6 +1647,7 @@ double LimitNode::estimateCost (size_t& nrItems) const {
 CalculationNode::CalculationNode (ExecutionPlan* plan,
                                   triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
+    _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable", true)),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
     _expression(new Expression(plan->getAst(), base)) {
 }
@@ -1627,6 +1669,10 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
       ("outVariable", _outVariable->toJson())
       ("canThrow", triagens::basics::Json(_expression->canThrow()));
 
+  if (_conditionVariable != nullptr) {
+    json("conditionVariable", _conditionVariable->toJson());
+  }
+
   // And add it:
   nodes(json);
 }
@@ -1634,13 +1680,17 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
 ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
+  auto conditionVariable = _conditionVariable;
   auto outVariable = _outVariable;
 
   if (withProperties) {
+    if (_conditionVariable != nullptr) {
+      conditionVariable = plan->getAst()->variables()->createVariable(conditionVariable);
+    }
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new CalculationNode(plan, _id, _expression->clone(),
-                               outVariable);
+
+  auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1713,8 +1763,8 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
         
 double SubqueryNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
-  size_t dummy;
-  double subCost = _subquery->getCost(dummy);
+  size_t nrItemsSubquery;
+  double subCost = _subquery->getCost(nrItemsSubquery);
   return depCost + nrItems * subCost;
 }
 

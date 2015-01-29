@@ -106,7 +106,7 @@ For the examples contained in this manual, we'll be starting the traversals at v
 v/world <- is-in <- continent (Africa) <- is-in <- country (Algeria) <- is-in <- capital (Algiers)
 ```
 
-To get any meaningful results, we must traverse the graph in inbound order. This means,
+To get any meaningful results, we must traverse the graph in **inbound** order. This means,
 we'll be following all incoming edges of to a vertex. In the traversal configuration, we
 have specified this via the *expander* attribute:
 
@@ -117,7 +117,7 @@ var config = {
 };
 ```
 
-For other graphs, we might want to traverse via the outgoing edges. For this, we can
+For other graphs, we might want to traverse via the **outgoing** edges. For this, we can
 use the *outboundExpander*. There is also an *anyExpander*, which will follow both outgoing
 and incoming edges. This should be used with care and the traversal should always be
 limited to a maximum number of iterations (e.g. using the *maxIterations* attribute) in
@@ -181,9 +181,9 @@ which confirms that now we're going outbound.
 
 !SUBSUBSECTION Depth-first traversals
 
-The visitation order of vertices is determined by the *strategy*, *order* attributes set
+The visitation order of vertices is determined by the *strategy* and *order* attributes set
 in the configuration. We chose *depthfirst* and *preorder*, meaning the traverser will 
-emit each vertex before handling connected edges (pre-order), and descend into any 
+visit each vertex **before** handling connected edges (pre-order), and descend into any 
 connected edges before processing other vertices on the same level (depth-first). 
 
 Let's remove the *maxDepth* attribute now. We'll now be getting all vertices (directly
@@ -234,7 +234,7 @@ the linked capital:
 ```
 
 Let's switch the *order* attribute from *preorder* to *postorder*. This will make the
-traverser emit vertices after all connected vertices were visited (i.e. most distant
+traverser visit vertices **after** all connected vertices were visited (i.e. most distant
 vertices will be emitted first):
 
 ```js
@@ -343,19 +343,34 @@ This is the reason why the *result* variable looked different after the traversa
 needed to be initialized before the traversal was started.
 
 Note that the default visitor (named `trackingVisitor`) will add every visited vertex
-into the result, including the full from the start node. This is useful for learning and
-debugging purposes, but should be avoided in production. Instead, only those data should
-be copied into the result that are actually necessary.
+into the result, including the full paths from the start vertex. This is useful for learning and
+debugging purposes, but should be avoided in production because it might produce (and
+copy) huge amounts of data. Instead, only those data should be copied into the result 
+that are actually necessary.
 
-We can write our own visitor function if we want to. The general function signature for
+The traverser comes with the following predefined visitors:
+- *trackingVisitor*: this is the default visitor. It will copy all data of each visited
+  vertex plus the full path information into the result. This can be slow if the result
+  set is huge or vertices contain a lot of data.
+- *countingVisitor*: this is a very lightweight visitor: all it does is increase a
+  counter in the result for each vertex visited. Vertex data and paths will not be copied
+  into the result.
+- *doNothingVisitor*: if no action shall be carried out when a vertex is visited, this
+  visitor can be employed. It will not do anything and will thus be fast. It can be used
+  for performance comparisons with other visitors.
+ 
+We can also write our own visitor function if we want to. The general function signature for
 visitor functions is as follows:
 
 ```js
 var config = {
   ...
-  visitor: function (config, result, vertex, path) { ... }
+  visitor: function (config, result, vertex, path, connections) { ... }
 };
 ```
+
+Note: the *connections* parameter value will only be set if the traversal order is
+set to *preorder-expander*. Otherwise, this parameter won't be set by the traverser.
 
 Visitor functions are not expected to return any values. Instead, they can modify the
 *result* variable (e.g. by pushing the current vertex into it), or do anything else.
@@ -382,48 +397,69 @@ To write a visitor that increments a counter each time a vertex is visited,
 we could write the following custom visitor:
 
 ```js
-config.visitor = function (config, result, vertex, path) {
-  if (! result) {
-    return;
+config.visitor = function (config, result, vertex, path, connections) {
+  if (! result) { 
+    result = { };
   }
 
-  if (result.hasOwnProperty('count')) {
-    // increment by one
-    ++result.count;
+  if (! result.hasOwnProperty('count')) {
+    result.count = 0;
   }
-  else {
-    // result not yet there, so set it to one
-    result.count = 1;
-  }
+  
+  ++result.count;
 }
 ```
 
-Note that such visitor is already predefined. It can be used as follows:
+Note that such visitor is already predefined (it's the countingVisitor described
+above). It can be used as follows:
 ```js
 config.visitor = traversal.countingVisitor;
 ```
 
-Another example of a visitor is one that prints the `_id` values of vertices 
-encountered:
+Another example of a visitor is one that collects the `_id` values of all vertices 
+visited:
 
 ```js
-config.visitor = function (config, result, vertex, path) {
-  if (! result || ! result.visited || ! result.visited.vertices) {
-    return;
+config.visitor = function (config, result, vertex, path, connections) {
+  if (! result) {
+    result = { }; 
+  }
+  if (! result.hasOwnProperty("visited")) {
+    result.visited = { vertices: [ ] };
   }
 
   result.visited.vertices.push(vertex._id);
 }
 ```
 
+When the traversal order is set to *preorder-expander*, the traverser will pass
+a fifth parameter value into the visitor function. This parameter contains the
+connected edges of the visited vertex as an array. This can be handy because in this
+case the visitor will get all information about the vertex and the connected edges
+together.
+
+For example, the following visitor can be used to print only leaf nodes (that
+do not have any further connected edges):
+
+```js
+config.visitor = function (config, result, vertex, path, connections) {
+  if (connections && connections.length === 0) {
+    require("internal").print("found a leaf-node: ", vertex);
+  }
+}
+```
+
+Note that for this visitor to work, the traversal *order* attribute needs to be
+set to the value *preorder-expander*.
+
 !SUBSECTION Filtering Vertices and Edges
 
 !SUBSUBSECTION Filtering Vertices
 
-So far we have returned all vertices that were visited during the traversal. This is not 
-always required. If the result shall be restrict to just specific vertices, we can use a
-filter function for vertices. It can be defined by setting the *filter* attribute of a
-traversal configuration, e.g.:
+So far we have printed or returned all vertices that were visited during the traversal. 
+This is not always required. If the result shall be restrict to just specific vertices, 
+we can use a filter function for vertices. It can be defined by setting the *filter* 
+attribute of a traversal configuration, e.g.:
 
 ```js
 var config = {
@@ -692,7 +728,7 @@ but it is only safe for graphs that do not contain cycles. When uniqueness check
 with cycles, the traversal might not abort in a sensible amount of time.
 
 
-!SUBSECTION Optimization
+!SUBSECTION Optimizations
 
 There are a few options for making a traversal run faster.
 
@@ -702,15 +738,25 @@ interest, and only follow edges that might be interesting.
 
 Traversal depth can also be bounded with the *minDepth* and *maxDepth* options.
 
-Another way to speed up traversals is to write a custom visitor function. The default visitor function will
-copy any visited vertex into the result. If vertices contain lots of data, this might be expensive. It is
-there recommended to only copy such data into the result that is actually needed. The default visitor function
-will also copy the full path to the visited document into the result. This is even more expensive and should
-be avoided if possible.
+Another way to speed up traversals is to write a custom visitor function. The default visitor function 
+(*trackingVisitor*) will copy every visited vertex into the result. If vertices contain lots of data, 
+this might be expensive. It is therefore recommended to only copy such data into the result that is actually 
+needed. The default visitor function will also copy the full path to the visited document into the result. 
+This is even more expensive and should be avoided if possible.
 
-For graphs that are known to not contain any cycles, uniqueness checks may be turned off. This can achieved
+If the goal of a traversal is to only count the number of visited vertices, the prefab *countingVisitor*  
+will be much more efficient than the default visitor.
+
+For graphs that are known to not contain any cycles, uniqueness checks should be turned off. This can achieved
 via the *uniqueness* configuration options. Note that uniqueness checks should not be turned off for graphs
-that contain cycles or if there is no information about the graph's structure.
+that are known contain cycles or if there is no information about the graph's structure.
+
+By default, a traversal will only process a limited number of vertices. This is protect the user from
+unintentionally run a never-ending traversal on a graph with cyclic data. How many vertices will be processed
+at most is determined by the *maxIterations* configuration option. If a traversal hits the cap specified 
+by *maxIterations*, it will abort and throw a *too many iterations* exception. If this error is encountered,
+the *maxIterations* value should be increased if it is made sure that the other traversal configuration
+parameters are sane and the traversal will abort naturally at some point. 
 
 Finally, the *buildVertices* configuration option can be set to *false* to avoid looking up and fully constructing
 vertex data. If all that's needed from vertices are the *_id* or *_key* attributes, the *buildvertices* 
@@ -723,20 +769,25 @@ attributes, the option should not be changed.
 This section summarizes the configuration attributes for the traversal object. The
 configuration can consist of the following attributes:
 
-- *visitor*: visitor function for vertices. The function signature is *function (config, result, vertex, path)*.
-   This function is not expected to return a value, but may modify the *variable* as needed
-   (e.g. by pushing vertex data into the result).
+- *visitor*: visitor function for vertices. It will be called for all non-excluded vertices. The
+  general visitor function signature is *function (config, result, vertex, path)*. If the traversal
+  order is *preorder-expander*, the connecting edges of the visited vertex will be passed as the
+  fifth parameter, extending the function signature to: *function (config, result, vertex, path, edges)*. 
+ 
+  Visitor functions are not expected to return values, but they may modify the *result* variable as 
+  needed (e.g. by pushing vertex data into the result).
 - *expander*: expander function that is responsible for returning edges and vertices
-   directly connected to a vertex . The function signature is *function (config, vertex, path)*.
-   The expander function is required to return an array of connection objects, consisting of an
-   *edge* and *vertex* attribute each.
+  directly connected to a vertex. The function signature is *function (config, vertex, path)*.
+  The expander function is required to return an array of connection objects, consisting of an
+  *edge* and *vertex* attribute each. If there are no connecting edges, the expander is expected to
+  return an empty array.
 - *filter*: vertex filter function. The function signature is *function (config, vertex, path)*. It
-   may return one of the following values:
-   - *undefined*: vertex will be included in the result and connected edges will be traversed
-   - *exclude*: vertex will not be included in the result and connected edges will be traversed
-   - *prune*: vertex will be included in the result but connected edges will not be traversed
-   - [ *prune*, *exclude* ]: vertex will not be included in the result and connected edges will not
-     be returned
+  may return one of the following values:
+  - *undefined*: vertex will be included in the result and connected edges will be traversed
+  - *"exclude"*: vertex will not be included in the result and connected edges will be traversed
+  - *"prune"*: vertex will be included in the result but connected edges will not be traversed
+  - [ *"prune"*, *"exclude"* ]: vertex will not be included in the result and connected edges will not
+    be returned
 - *expandFilter*: filter function applied on each edge/vertex combination determined by the expander.
   The function signature is *function (config, vertex, edge, path)*. The function should return
   *true* if the edge/vertex combination should be processed, and *false* if it should be ignored.
@@ -747,7 +798,9 @@ configuration can consist of the following attributes:
   - *1* if *l* should have a higher sort value than *r*
   - *0* if *l* and *r* have the same sort value
 - *strategy*: determines the visitation strategy. Possible values are *depthfirst* and *breadthfirst*.
-- *order*: determines the visitation order. Possible values are *preorder* and *postorder*.
+- *order*: determines the visitation order. Possible values are *preorder*, *postorder*, and
+  *preorder-expander*. *preorder-expander* is the same as *preorder*, except that the signature of
+  the *visitor* function will change as described above.
 - *itemOrder*: determines the order in which connections returned by the expander will be processed. 
   Possible values are *forward* and *backward*.
 - *maxDepth*: if set to a value greater than *0*, this will limit the traversal to this maximum depth. 

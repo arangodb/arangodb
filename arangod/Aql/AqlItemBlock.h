@@ -100,7 +100,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue getValue (size_t index, RegisterId varNr) const {
-          TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+          TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
           return _data[index * _nrRegs + varNr];
         }
  
@@ -109,7 +109,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue const& getValueReference (size_t index, RegisterId varNr) const {
-          TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
+          TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
           return _data[index * _nrRegs + varNr];
         }
 
@@ -118,8 +118,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       void setValue (size_t index, RegisterId varNr, AqlValue value) {
-        TRI_ASSERT(_data.capacity() > index * _nrRegs + varNr);
-        TRI_ASSERT(_data.at(index * _nrRegs + varNr).isEmpty());
+        TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+        TRI_ASSERT_EXPENSIVE(_data.at(index * _nrRegs + varNr).isEmpty());
 
         // First update the reference count, if this fails, the value is empty
         if (! value.isEmpty()) {
