@@ -97,86 +97,50 @@ string const ApplicationServer::OPTIONS_SSL = "SSL Options";
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
+ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
+  : _options(),
+    _description(),
+    _descriptionFile(),
+    _arguments(),
+    _features(),
+    _exitOnParentDeath(false),
+    _watchParent(0),
+    _stopping(0),
+    _name(name),
+    _title(title),
+    _version(version),
+    _configFile(),
+    _userConfigFile(),
+    _systemConfigFile(),
+    _uid(),
+    _realUid(0),
+    _effectiveUid(0),
+    _gid(),
+    _realGid(0),
+    _effectiveGid(0),
+    _logApplicationName("arangod"),
+    _logFacility(""),
+    _logLevel("info"),
+    _logSeverity("human"),
+    _logFile("+"),
+    _logTty("+"),
+    _logRequestsFile(""),
+    _logPrefix(),
+    _logThreadId(false),
+    _logLineNumber(false),
+    _logLocalTime(false),
+    _logSourceFilter(),
+    _logContentFilter(),
 #ifdef _WIN32
-
-ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
-  : _options(),
-    _description(),
-    _descriptionFile(),
-    _arguments(),
-    _features(),
-    _exitOnParentDeath(false),
-    _watchParent(0),
-    _stopping(0),
-    _name(name),
-    _title(title),
-    _version(version),
-    _configFile(),
-    _userConfigFile(),
-    _systemConfigFile(),
-    _uid(),
-    _realUid(0),
-    _effectiveUid(0),
-    _gid(),
-    _realGid(0),
-    _effectiveGid(0),
-    _logApplicationName("arangod"),
-    _logFacility(""),
-    _logLevel("info"),
-    _logSeverity("human"),
-    _logFile("+"),
-    _logRequestsFile(""),
-    _logPrefix(),
-    _logThreadId(false),
-    _logLineNumber(false),
-    _logLocalTime(false),
-    _logSourceFilter(),
-    _logContentFilter(),
     _randomGenerator(5),
-    _finishedCondition() {
-}
-
 #else
-
-ApplicationServer::ApplicationServer (std::string const& name, std::string const& title, std::string const& version)
-  : _options(),
-    _description(),
-    _descriptionFile(),
-    _arguments(),
-    _features(),
-    _exitOnParentDeath(false),
-    _watchParent(0),
-    _stopping(0),
-    _name(name),
-    _title(title),
-    _version(version),
-    _configFile(),
-    _userConfigFile(),
-    _systemConfigFile(),
-    _uid(),
-    _realUid(0),
-    _effectiveUid(0),
-    _gid(),
-    _realGid(0),
-    _effectiveGid(0),
-    _logApplicationName("arangod"),
-    _logFacility(""),
-    _logLevel("info"),
-    _logSeverity("human"),
-    _logFile("+"),
-    _logRequestsFile(""),
-    _logPrefix(),
-    _logThreadId(false),
-    _logLineNumber(false),
-    _logLocalTime(false),
-    _logSourceFilter(),
-    _logContentFilter(),
     _randomGenerator(3),
-    _finishedCondition() {
-  storeRealPrivileges();
-}
-
 #endif
+    _finishedCondition() {
+#ifndef _WIN32
+  storeRealPrivileges();
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
@@ -227,7 +191,7 @@ string const& ApplicationServer::getName () const {
 /// @brief sets up the logging
 ////////////////////////////////////////////////////////////////////////////////
 
-void ApplicationServer::setupLogging (bool threaded, bool daemon) {
+void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgrounded) {
   TRI_ShutdownLogging(false);
   TRI_InitialiseLogging(threaded);
 
@@ -302,6 +266,19 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon) {
     // the user specified a log file to use but it could not be created. bail out
     if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
+    }
+  }
+
+  // additional log file in case of tty
+  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
+    bool regularOut = (_logFile == "+" || _logFile == "-");
+    bool ttyOut = (_logTty == "+" || _logTty == "-");
+
+    if (! regularOut || ! ttyOut) {
+      TRI_CreateLogAppenderFile(_logTty.c_str(),
+                                contentFilter,
+                                TRI_LOG_SEVERITY_UNKNOWN,
+                                false);
     }
   }
 
@@ -446,7 +423,7 @@ bool ApplicationServer::parse (int argc,
   // setup logging
   // .............................................................................
 
-  setupLogging(false, false);
+  setupLogging(false, false, false);
 
   // .............................................................................
   // parse phase 2
@@ -811,7 +788,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   options[OPTIONS_LOGGER]
     ("log.file", &_logFile, "log to file")
     ("log.requests-file", &_logRequestsFile, "log requests to file")
-    ("log.level,l", &_logLevel, "log level for severity 'human'")
+    ("log.level,l", &_logLevel, "log level")
   ;
 
   options[OPTIONS_LOGGER + ":help-log"]
@@ -824,6 +801,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log.severity", &_logSeverity, "log severities")
     ("log.thread", "log the thread identifier for severity 'human'")
     ("log.use-local-time", "use local dates and times in log messages")
+    ("log.tty", &_logTty, "additional log file if started on tty")
   ;
 
   options[OPTIONS_HIDDEN]

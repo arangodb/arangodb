@@ -147,7 +147,7 @@ namespace triagens {
 /// @brief sets up the logging
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setupLogging (bool thread, bool daemon);
+        void setupLogging (bool thread, bool daemon, bool backgrounded);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the command line options
@@ -660,21 +660,16 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log file
 /// @startDocuBlock logFile
-/// `--log.file filename`
-///
-/// This option allows the user to specify the name of a file to which
-/// information is logged. By default, if no log file is specified, the standard
-/// output is used. Note that if the file named by *filename* does not
-/// exist, it will be created. If the file cannot be created (e.g. due to
-/// missing file privileges), the server will refuse to start. If the specified
-/// file already exists, output is appended to that file.
-///
-/// Use *+* to log to standard error. Use *-* to log to standard output.
-/// Use *""* to disable logging to file.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string _logFile;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief log file
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string _logTty;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log file for requests
