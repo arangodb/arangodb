@@ -1117,6 +1117,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
                                                            std::vector<size_t>& prefixes) const {
 
   auto&& indexes = _collection->getIndexes();
+
   for (auto idx : indexes) {
     TRI_ASSERT(idx != nullptr);
 
@@ -1392,16 +1393,17 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
                                 triagens::basics::Json const& json)
   : ExecutionNode(plan, json),
     _vocbase(plan->getAst()->query()->vocbase()),
-    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
-            "collection"))),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
     _index(nullptr), 
     _ranges(),
     _reverse(false) {
 
   triagens::basics::Json rangeArrayJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetArrayValue(json.json(), "ranges"));
+
   for (size_t i = 0; i < rangeArrayJson.size(); i++) { //loop over the ranges . . .
     _ranges.emplace_back();
+
     triagens::basics::Json rangeJson(rangeArrayJson.at(static_cast<int>(i)));
     for (size_t j = 0; j < rangeJson.size(); j++) {
       _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
