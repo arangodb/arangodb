@@ -196,15 +196,15 @@ bool ApplicationEndpointServer::buildServers () {
 
 void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescription>& options) {
   // issue #175: add deprecated hidden option for downwards compatibility
-  options[ApplicationServer::OPTIONS_HIDDEN]
+  options["Hidden Options"]
     ("server.http-port", &_httpPort, "http port for client requests (deprecated)")
   ;
 
-  options[ApplicationServer::OPTIONS_SERVER]
+  options["Server Options:help-default"]
     ("server.endpoint", &_endpoints, "endpoint for client requests (e.g. \"tcp://127.0.0.1:8529\", or \"ssl://192.168.1.1:8529\")")
   ;
 
-  options[ApplicationServer::OPTIONS_SERVER + ":help-admin"]
+  options["Server Options:help-admin"]
     ("server.allow-method-override", &_allowMethodOverride, "allow HTTP method override using special headers")
     ("server.backlog-size", &_backlogSize, "listen backlog size")
     ("server.default-api-compatibility", &_defaultApiCompatibility, "default API compatibility version")
@@ -212,7 +212,7 @@ void ApplicationEndpointServer::setupOptions (map<string, ProgramOptionsDescript
     ("server.reuse-address", &_reuseAddress, "try to reuse address")
   ;
 
-  options[ApplicationServer::OPTIONS_SSL]
+  options["SSL Options:help-ssl"]
     ("server.keyfile", &_httpsKeyfile, "keyfile for SSL connections")
     ("server.cafile", &_cafile, "file containing the CA certificates of clients")
     ("server.ssl-protocol", &_sslProtocol, "1 = SSLv2, 2 = SSLv23, 3 = SSLv3, 4 = TLSv1")
