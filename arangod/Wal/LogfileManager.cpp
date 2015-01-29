@@ -147,6 +147,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
     _allowWrites(false), // start in read-only mode
     _hasFoundLastTick(false),
     _inRecovery(true),
+    _startCalled(false),
     _slots(nullptr),
     _synchroniserThread(nullptr),
     _allocatorThread(nullptr),
@@ -387,6 +388,7 @@ bool LogfileManager::open () {
   }
   
   opened = true;
+  _startCalled = true;
   
   int res = runRecovery();
 
@@ -517,6 +519,10 @@ void LogfileManager::close () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void LogfileManager::stop () {
+  if (! _startCalled) {
+    return;
+  }
+
   if (_shutdown > 0) {
     return;
   }

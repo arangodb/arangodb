@@ -708,6 +708,11 @@ void ArangoServer::buildApplicationServer () {
       LOG_INFO("please use the '--pid-file' option");
       LOG_FATAL_AND_EXIT("no pid-file defined, but daemon or supervisor mode was requested");
     }
+  
+    OperationMode::server_operation_mode_e mode = OperationMode::determineMode(_applicationServer->programOptions());
+    if (mode != OperationMode::MODE_SERVER) {
+      LOG_FATAL_AND_EXIT("invalid mode. must not specify --console together with --daemon or --supervisor");
+    }
 
     // make the pid filename absolute
     int err = 0;
