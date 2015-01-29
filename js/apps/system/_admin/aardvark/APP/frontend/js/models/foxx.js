@@ -54,7 +54,22 @@
           callback(err);
         }
       });
-    }
+    },
 
+    setConfiguration: function(data, callback) {
+      $.ajax({
+        type: "PATCH",
+        url: "/_admin/aardvark/foxxes/config?mount=" + this.encodedMount(),
+        data: JSON.stringify(data),
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          callback(data);
+        },
+        error: function(err) {
+          callback(err);
+        }
+      });
+    }
   });
 }());
