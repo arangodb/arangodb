@@ -120,9 +120,10 @@ void QueryRegistry::insert (QueryId id,
       if (Transaction::_makeNolockHeaders == query->engine()->lockedShards()) {
         Transaction::_makeNolockHeaders = nullptr;
       }
-      else {
-        LOG_WARNING("Found strange lockedShards in thread!");
-      }
+      // else {
+        // We have not set it, just leave it alone. This happens in particular
+        // on the DBServers, who do not set lockedShards() themselves.
+      // }
     }
   }
   else {
@@ -207,7 +208,15 @@ void QueryRegistry::close (TRI_vocbase_t* vocbase, QueryId id, double ttl) {
       Transaction::_makeNolockHeaders = nullptr;
     }
     else {
-      LOG_WARNING("Found strange lockedShards in thread!");
+      if (Transaction::_makeNolockHeaders != nullptr) {
+        if (Transaction::_makeNolockHeaders == qi->_query->engine()->lockedShards()) {
+          Transaction::_makeNolockHeaders = nullptr;
+        }
+        // else {
+          // We have not set it, just leave it alone. This happens in particular
+          // on the DBServers, who do not set lockedShards() themselves.
+        // }
+      }
     }
   }
 
