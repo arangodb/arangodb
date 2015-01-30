@@ -43,7 +43,6 @@ var FoxxController = require("org/arangodb/foxx").Controller,
 
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
-var docus = new (require("lib/swagger").Swagger)();
 var sortVersions = function(a, b) {
   var left = a.split(".").map(function(c) {
     return parseInt(c, 10);
