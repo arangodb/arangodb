@@ -122,7 +122,7 @@ bool ClientConnection::connectSocket () {
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
 
   if (! TRI_isvalidsocket(_socket)) {
-    _errorDetails = std::string("failed to connect : ") + std::string(strerror(errno)); 
+    _errorDetails = _endpoint->_errorMessage; 
     return false;
   }
 
