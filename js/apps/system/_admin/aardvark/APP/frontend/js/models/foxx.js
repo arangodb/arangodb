@@ -70,6 +70,24 @@
           callback(err);
         }
       });
-    }
+    },
+
+    toggleDevelopment: function(activate, callback) {
+      $.ajax({
+        type: "PATCH",
+        url: "/_admin/aardvark/foxxes/devel?mount=" + this.encodedMount(),
+        data: JSON.stringify(activate),
+        contentType: "application/json",
+        processData: false,
+        success: function(data) {
+          this.set("development", activate);
+          callback(data);
+        }.bind(this),
+        error: function(err) {
+          callback(err);
+        }
+      });
+    },
+
   });
 }());

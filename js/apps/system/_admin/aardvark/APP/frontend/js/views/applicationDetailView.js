@@ -2,15 +2,6 @@
 /*jshint strict: false, unused: false */
 /*global Backbone, $, window, arangoHelper, templateEngine, Joi, _, modalDialogHelper, alert*/
 (function() {
-  var splitSnakeCase = function(snakeCase) {
-    var str = snakeCase.replace(/([a-z])([A-Z])/g, "$1 $2");
-    str = str.replace(/([a-z])([0-9])/gi, "$1 $2");
-    str = str.replace(/_+/, " ");
-    return _.map(str.split(/\s+/), function(s) {
-      return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
-    }).join(" ");
-  };
-
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
 
@@ -19,7 +10,8 @@
     events: {
       'click .open': 'openApp',
       'click .delete': 'deleteApp',
-      'click #configure-app': 'showConfigureDialog'
+      'click #configure-app': 'showConfigureDialog',
+      'click #app-switch-mode': 'toggleDevelopment'
     },
 
     updateConfig: function() {
@@ -29,6 +21,16 @@
           $("#configure-app").prop("disabled", true);
         } else {
           $("#configure-app").prop("disabled", false);
+        }
+      }.bind(this));
+    },
+
+    toggleDevelopment: function() {
+      this.model.toggleDevelopment(!this.model.get("development"), function() {
+        if (this.model.get("development")) {
+          $("#app-switch-mode").val("Production");
+        } else {
+          $("#app-switch-mode").val("Development");
         }
       }.bind(this));
     },

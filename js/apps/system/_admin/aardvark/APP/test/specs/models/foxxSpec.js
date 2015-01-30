@@ -31,11 +31,60 @@
       expect(myFoxx.get('development')).toBeFalsy();
     });
 
-    it("is always considered newNew", function() {
+    it("is always considered new", function() {
       var myFoxx = new window.Foxx();
       expect(myFoxx.isNew()).toBeFalsy();
     });
     
+
+    describe("mode chages", function() {
+
+      var myFoxx, expected, call;
+      beforeEach(function() {
+        var testMount = "/this/is_/a/test/mount";
+
+        myFoxx = new window.Foxx({
+          mount: testMount
+        });
+        expected = {
+          value: false
+        };
+        call = {
+          back: function() {
+            throw new Error("Should be a spy");
+          }
+        };
+        spyOn($, "ajax").andCallFake(function(opts) {
+          expect(opts.url).toEqual("/_admin/aardvark/foxxes/devel?mount=" + myFoxx.encodedMount());
+          expect(opts.type).toEqual("PATCH");
+          expect(opts.success).toEqual(jasmine.any(Function));
+          expect(opts.error).toEqual(jasmine.any(Function));
+          expect(opts.data).toEqual(JSON.stringify(expected.value));
+          opts.success();
+        });
+        spyOn(call, "back");
+      });
+
+      it("should activate production mode", function() {
+        myFoxx.set("development", true);
+        expected.value = false;
+        myFoxx.toggleDevelopment(false, call.back);
+        expect($.ajax).toHaveBeenCalled();
+        expect(call.back).toHaveBeenCalled();
+        expect(myFoxx.get("development")).toEqual(false);
+      });
+
+      it("should activate development mode", function() {
+        myFoxx.set("development", false);
+        expected.value = true;
+        myFoxx.toggleDevelopment(true, call.back);
+        expect($.ajax).toHaveBeenCalled();
+        expect(call.back).toHaveBeenCalled();
+        expect(myFoxx.get("development")).toEqual(true);
+      });
+
+    });
+
     describe("configuration", function() {
       var myFoxx;
 
