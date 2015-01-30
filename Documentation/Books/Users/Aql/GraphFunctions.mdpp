@@ -165,14 +165,15 @@ instead.
     *false*, any return value of the visitor function will be ignored. Instead, the visitor 
     function can modify its *result* parameter value in-place. At the end of the traversal,
     *result* is expected to be an array.
-
-  - *data*: only useful in combination with a custom AQL visitor function. This attribute can
+  
+  - *data*: only useful in combination with custom AQL visitor or filter functions. This attribute can
     be used to pass arbitrary data into the custom visitor function. The value contained in the
-    *data* attribute will be made available to the *visitor* function in the *config.data*
+    *data* attribute will be made available to the *visitor* and *filterVertices* functions in the *config.data*
     attribute.
 
   By default, the result of the TRAVERSAL function is an array of traversed points. Each point 
   is an object consisting of the following attributes:
+
   - *vertex*: The vertex at the traversal point
   - *path*: The path history for the traversal point. The path is a document with the
     attributes *vertices* and *edges*, which are both arrays. Note that *path* is only present
@@ -239,7 +240,10 @@ instead.
         order: "preorder-expander"
       })
 
-      // registering the custom leaf node visitor function
+      // to register the custom AQL function visitor that only returns leaf nodes, run
+      // the following commands in arangosh once:
+      var aqlfunctions = require("org/arangodb/aql/functions");
+
       aqlfunctions.register("myfunctions::leafnodevisitor", function (config, vertex, edge, path, connections) { 
         if (connected && connected.length === 0) {
           // will put the vertex into the result if it does not have any further connections
@@ -267,6 +271,19 @@ instead.
           result[0]++;
         }
       }, false);
+
+
+      // using one of the predefined visitor functions
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        visitor: "_AQL::COUNTINGVISITOR"
+      })
+
+
+      // passing data into a visitor
+      TRAVERSAL(friends, friendrelations, "friends/john", "outbound", {
+        visitor: "_AQL::PROJECTINGVISITOR",
+        data: { attributes: [ "_id", "_key", "name" ] }
+      })
 
 
 - *TRAVERSAL_TREE(vertexcollection, edgecollection, startVertex, direction, connectName, options)*: 
@@ -343,6 +360,7 @@ instead.
         function (config, vertex, path)
 
     If a custom AQL function is used, it is expected to return one of the following values:
+
     - *[ ]*: Include the vertex in the result and descend into its connected edges
     - *[ "prune" ]*: Will include the vertex in the result but not descend into its connected edges
     - *[ "exclude" ]*: Will not include the vertex in the result but descend into its connected edges
@@ -372,6 +390,10 @@ instead.
     function can modify its *result* parameter value in-place. At the end of the traversal,
     *result* is expected to be an array.
 
+  - *data*: only useful in combination with custom AQL visitor or filter functions. This attribute can
+    be used to pass arbitrary data into the custom visitor function. The value contained in the
+    *data* attribute will be made available to the *visitor* and *filterVertices* functions in the *config.data*
+    attribute.
 
   By default, the result of the SHORTEST_PATH function is an array with the components of the 
   shortest path. Each component is a document consisting of the following attributes:
