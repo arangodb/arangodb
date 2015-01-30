@@ -1578,6 +1578,7 @@ void RestReplicationHandler::handleCommandRestoreCollection () {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(&result);
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
   }
 }
 
@@ -1624,6 +1625,7 @@ void RestReplicationHandler::handleCommandRestoreIndexes () {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(&result);
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
   }
 }
 
@@ -2403,6 +2405,7 @@ void RestReplicationHandler::handleCommandRestoreData () {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
     generateResult(&result);
+    TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
   }
 }
 
@@ -2693,6 +2696,7 @@ void RestReplicationHandler::handleCommandRestoreDataCoordinator () {
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &result, "result", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   generateResult(&result);
+  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
