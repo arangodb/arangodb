@@ -17,6 +17,10 @@ var oldservers;
 
 while (true) {
   result = download("http://localhost:4001/v2/keys/arango/Current/NewServers","",{"method":"GET"});
+  if (result.code != 200) {
+    print("Received error from agency: ", result);
+    break;
+  }
   body = JSON.parse(result.body);
   nodes = body.node.nodes;
   if (nodes === undefined) {
@@ -27,6 +31,10 @@ while (true) {
   }
   print("New:", newservers);
   result = download("http://localhost:4001/v2/keys/arango/Target/MapLocalToID","",{"method":"GET"});
+  if (result.code != 200) {
+    print("Received error from agency: ", result);
+    break;
+  }
   body = JSON.parse(result.body);
   nodes = body.node.nodes;
   if (nodes === undefined) {
