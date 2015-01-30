@@ -141,13 +141,12 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
   listenSocket = TRI_socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 
   if (! TRI_isvalidsocket(listenSocket)) {
-      pErr = STR_ERROR();
-      snprintf(errBuf, sizeof(errBuf),
-               "socket() failed with %d - %s",
-               errno, pErr);
+    pErr = STR_ERROR();
+    snprintf(errBuf, sizeof(errBuf),
+             "socket() failed with %d - %s",
+             errno, pErr);
 
-      LOG_ERROR("%s", errBuf);
-      _errorMessage = errBuf;
+    _errorMessage = errBuf;
     return listenSocket;
   }
 
@@ -156,14 +155,13 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
 #ifdef _WIN32
     int excl = 1;
     if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
-          reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
+                       reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
 
       pErr = STR_ERROR();
       snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s",
                errno,
                pErr);
 
-      LOG_ERROR("%s", errBuf);
       _errorMessage = errBuf;
 
       TRI_CLOSE_SOCKET(listenSocket);
@@ -181,7 +179,6 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
                  errno,
                  pErr);
         
-        LOG_ERROR("%s", errBuf);
         _errorMessage = errBuf;
 
         TRI_CLOSE_SOCKET(listenSocket);
@@ -202,7 +199,6 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
                errno,
                pErr);
 
-      LOG_ERROR("%s", errBuf);
       _errorMessage = errBuf;
 
       TRI_CLOSE_SOCKET(listenSocket);
@@ -221,7 +217,6 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
                "listen() failed with #%d - %s",
                errno, pErr);
 
-      LOG_ERROR("%s", errBuf);
       _errorMessage = errBuf;
 
       TRI_CLOSE_SOCKET(listenSocket);
@@ -243,7 +238,6 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
                "connect() failed with #%d - %s",
                errno, pErr);
 
-      LOG_ERROR("%s", errBuf);
       _errorMessage = errBuf;
 
       TRI_CLOSE_SOCKET(listenSocket);
@@ -314,12 +308,10 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
 
     switch (lastError) {
       case WSANOTINITIALISED: {
-        LOG_ERROR("getaddrinfo for host '%s': WSAStartup was not called or not called successfully.", _host.c_str());
         _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': WSAStartup was not called or not called successfully.");
         break;
       }
       default: {
-        LOG_ERROR("getaddrinfo for host '%s': %s", _host.c_str(), gai_strerror(error));
         _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': ") + gai_strerror(error);
         break;
       }
@@ -373,7 +365,6 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
 
   if (error != 0) {
-    LOG_ERROR("getaddrinfo for host '%s': %s", _host.c_str(), gai_strerror(error));
     _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': ") + gai_strerror(error);
 
     if (result != 0) {
@@ -435,7 +426,6 @@ bool EndpointIp::initIncoming (TRI_socket_t incoming) {
              errno,
              pErr);
 
-    LOG_WARNING("%s", errBuf);
     _errorMessage = errBuf;
     return false;
   }
