@@ -314,6 +314,24 @@ function GET_FILTER (name, config) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create a user-defined expand filter from a function name
+////////////////////////////////////////////////////////////////////////////////
+
+function GET_EXPANDFILTER (name, config) {
+  var func = GET_USERFUNCTION(name, config);
+
+  return function (config, vertex, edge, path) {
+    try {
+      var filterResult = func.apply(null, arguments);
+      return FIX_VALUE(filterResult);
+    }
+    catch (err) {
+      WARN(name, INTERNAL.errors.ERROR_QUERY_FUNCTION_RUNTIME_ERROR, AQL_TO_STRING(err));
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief normalise a function name
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -5118,10 +5136,7 @@ function TRAVERSAL_FUNC (func,
 
   if (params.followEdges) {
     if (typeof params.followEdges === 'string') {
-      var f1 = params.followEdges.toUpperCase();
-      config.expandFilter = function (config, vertex, edge, path) {
-        return FCALL_USER(f1, [ config, vertex, edge, path ]);
-      };
+      config.expandFilter = GET_EXPANDFILTER(params.followEdges, params);
     }
     else {
       config.expandFilter = TRAVERSAL_EDGE_EXAMPLE_FILTER;
@@ -5135,10 +5150,7 @@ function TRAVERSAL_FUNC (func,
 
   if (params.filterVertices) {
     if (typeof params.filterVertices === 'string') {
-      var f2 = params.filterVertices.toUpperCase();
-      config.filter = function (config, vertex, edge, path) {
-        return FCALL_USER(f2, [ config, vertex, path ]);
-      };
+      config.filter = GET_FILTER(params.filterVertices, params);
     }
     else {
       config.filter = TRAVERSAL_VERTEX_FILTER;
@@ -5512,11 +5524,6 @@ function SHORTEST_PATH_PARAMS (params) {
     params.visitor = TRAVERSAL_VISITOR;
   }
 
-  // add user-defined filter, if specified
-  if (typeof params.filter === "string") {
-    params.filter = GET_FILTER(params.filter, params);
-  }
-
   if (typeof params.distance === "string") {
     var name = params.distance.toUpperCase();
 
@@ -5740,11 +5747,6 @@ function TRAVERSAL_PARAMS (params) {
   }
   else {
     params.visitor = TRAVERSAL_VISITOR;
-  }
-
-  // add user-defined filter, if specified
-  if (typeof params.filter === "string") {
-    params.filter = GET_FILTER(params.filter, params);
   }
 
   return params;
@@ -6101,11 +6103,6 @@ function TRAVERSAL_TREE_PARAMS (params, connectName, func) {
     params.visitor = TRAVERSAL_TREE_VISITOR;
   }
   
-  // add user-defined filter, if specified
-  if (typeof params.filter === "string") {
-    params.filter = GET_FILTER(params.filter, params);
-  }
-
   params.connect  = AQL_TO_STRING(connectName);
 
   if (params.connect === "") {
