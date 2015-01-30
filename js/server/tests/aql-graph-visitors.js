@@ -2257,6 +2257,72 @@ function ahuacatlGraphVisitorsSuite () {
 /// @brief registers a custom visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+    testLeafNodeVisitorPathAccessor : function () {
+      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path, connected) {
+        if (connected && connected.length === 0) {
+          var res = "";
+          path.vertices.forEach(function(v, i) {
+            if (i > 0 && i <= path.edges.length) {
+              res += " <--[" + path.edges[i - 1].type + "]-- ";
+            }
+            res += v.name;
+          });
+          return res;
+        }
+      });
+
+      var result = AQL_EXECUTE('LET params = { _sort : true, visitor : "UnitTests::visitor", visitorReturnsResults : true, order : "preorder-expander" } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+
+      var expected = [
+        "World <--[is-in]-- Africa <--[is-in]-- Algeria <--[is-in]-- Algiers", 
+        "World <--[is-in]-- Africa <--[is-in]-- Angola <--[is-in]-- Luanda", 
+        "World <--[is-in]-- Africa <--[is-in]-- Botswana <--[is-in]-- Gaborone", 
+        "World <--[is-in]-- Africa <--[is-in]-- Burkina Faso <--[is-in]-- Ouagadougou", 
+        "World <--[is-in]-- Africa <--[is-in]-- Burundi <--[is-in]-- Bujumbura", 
+        "World <--[is-in]-- Africa <--[is-in]-- Cameroon <--[is-in]-- Yaounde", 
+        "World <--[is-in]-- Africa <--[is-in]-- Chad <--[is-in]-- N'Djamena", 
+        "World <--[is-in]-- Africa <--[is-in]-- Cote d'Ivoire <--[is-in]-- Yamoussoukro", 
+        "World <--[is-in]-- Africa <--[is-in]-- Egypt <--[is-in]-- Cairo", 
+        "World <--[is-in]-- Africa <--[is-in]-- Eritrea <--[is-in]-- Asmara", 
+        "World <--[is-in]-- Asia <--[is-in]-- Afghanistan <--[is-in]-- Kabul", 
+        "World <--[is-in]-- Asia <--[is-in]-- Bahrain <--[is-in]-- Manama", 
+        "World <--[is-in]-- Asia <--[is-in]-- Bangladesh <--[is-in]-- Dhaka", 
+        "World <--[is-in]-- Asia <--[is-in]-- Bhutan <--[is-in]-- Thimphu", 
+        "World <--[is-in]-- Asia <--[is-in]-- Brunei <--[is-in]-- Bandar Seri Begawan", 
+        "World <--[is-in]-- Asia <--[is-in]-- Cambodia <--[is-in]-- Phnom Penh", 
+        "World <--[is-in]-- Asia <--[is-in]-- People's Republic of China <--[is-in]-- Beijing", 
+        "World <--[is-in]-- Australia <--[is-in]-- Australia <--[is-in]-- Canberra", 
+        "World <--[is-in]-- Europe <--[is-in]-- Albania <--[is-in]-- Tirana", 
+        "World <--[is-in]-- Europe <--[is-in]-- Andorra <--[is-in]-- Andorra la Vella", 
+        "World <--[is-in]-- Europe <--[is-in]-- Austria <--[is-in]-- Vienna", 
+        "World <--[is-in]-- Europe <--[is-in]-- Belgium <--[is-in]-- Brussels", 
+        "World <--[is-in]-- Europe <--[is-in]-- Bosnia and Herzegovina <--[is-in]-- Sarajevo", 
+        "World <--[is-in]-- Europe <--[is-in]-- Bulgaria <--[is-in]-- Sofia", 
+        "World <--[is-in]-- Europe <--[is-in]-- Croatia <--[is-in]-- Zagreb", 
+        "World <--[is-in]-- Europe <--[is-in]-- Czech Republic <--[is-in]-- Prague", 
+        "World <--[is-in]-- Europe <--[is-in]-- Denmark <--[is-in]-- Copenhagen", 
+        "World <--[is-in]-- Europe <--[is-in]-- Finland <--[is-in]-- Helsinki", 
+        "World <--[is-in]-- Europe <--[is-in]-- France <--[is-in]-- Paris", 
+        "World <--[is-in]-- Europe <--[is-in]-- Germany <--[is-in]-- Berlin", 
+        "World <--[is-in]-- North America <--[is-in]-- Antigua and Barbuda <--[is-in]-- Saint John's", 
+        "World <--[is-in]-- North America <--[is-in]-- Bahamas <--[is-in]-- Nassau", 
+        "World <--[is-in]-- North America <--[is-in]-- Barbados <--[is-in]-- Bridgetown", 
+        "World <--[is-in]-- North America <--[is-in]-- Canada <--[is-in]-- Ottawa", 
+        "World <--[is-in]-- South America <--[is-in]-- Argentina <--[is-in]-- Buenos Aires", 
+        "World <--[is-in]-- South America <--[is-in]-- Bolivia <--[is-in]-- La Paz", 
+        "World <--[is-in]-- South America <--[is-in]-- Brazil <--[is-in]-- Brasilia", 
+        "World <--[is-in]-- South America <--[is-in]-- Chile <--[is-in]-- Santiago", 
+        "World <--[is-in]-- South America <--[is-in]-- Colombia <--[is-in]-- Bogota", 
+        "World <--[is-in]-- South America <--[is-in]-- Ecuador <--[is-in]-- Quito" 
+      ];
+
+      assertEqual(expected, result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a custom visitor
+////////////////////////////////////////////////////////////////////////////////
+
     testCountingVisitorInPlace : function () {
       aqlfunctions.register("UnitTests::visitor", function (config, result) {
         if (result.length === 0) {
