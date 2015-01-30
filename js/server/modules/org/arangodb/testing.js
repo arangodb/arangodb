@@ -368,23 +368,23 @@ function startInstance (protocol, options, addArgs, testname) {
 }
 
 function readImportantLogLines(logFilename) {
-    var importantLines = [];
-    var buf = fs.readBuffer(logFilename);
-    var i;
-    var lineStart = 0;
-    var maxBuffer = buf.length;
-    for (i = 0; i < maxBuffer; i++) {
-	if (buf[i] === 10) { // \n
-	    var line = buf.asciiSlice(lineStart, i - 1);
-	    // filter out regular INFO lines, and test related messages
-	    if ((line.search(" INFO ") < 0) &&
-		(line.search("WARNING about to execute:") < 0) { 
-		importantLines.push(line);
-	    }
-	    lineStart = i + 1;
-	}
+  var importantLines = [];
+  var buf = fs.readBuffer(logFilename);
+  var i;
+  var lineStart = 0;
+  var maxBuffer = buf.length;
+  for (i = 0; i < maxBuffer; i++) {
+    if (buf[i] === 10) { // \n
+      var line = buf.asciiSlice(lineStart, i - 1);
+      // filter out regular INFO lines, and test related messages
+      if ((line.search(" INFO ") < 0) &&
+	  (line.search("WARNING about to execute:") < 0)) { 
+	importantLines.push(line);
+      }
+      lineStart = i + 1;
     }
-    return importantLines;
+  }
+  return importantLines;
 }
 
 function copy (src, dst) {
