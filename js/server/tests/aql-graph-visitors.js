@@ -372,6 +372,490 @@ function ahuacatlGraphVisitorsSuite () {
 /// @brief registers a custom visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+    testStringifyVisitorTraversalTree : function () {
+      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path) {
+        if (result.length === 0) {
+          result.push({ });
+        }
+
+        var current = result[0], connector = config.connect, i;
+
+        for (i = 0; i < path.vertices.length; ++i) {
+          var v = path.vertices[i];
+          if (typeof current[connector] === "undefined") {
+            current[connector] = [ ];
+          }
+          var found = false, j;
+          for (j = 0; j < current[connector].length; ++j) {
+            if (current[connector][j]._id === v._id) {
+              current = current[connector][j];
+              found = true;
+              break;
+            }
+          }
+          if (! found) {
+            current[connector].push({ name: v.name, _id : v._id });
+            current = current[connector][current[connector].length - 1];
+          }
+        }
+      });
+
+      var result = AQL_EXECUTE('LET params = { _sort : true, visitor : "UnitTests::visitor", visitorReturnsResults : false } FOR result IN TRAVERSAL_TREE(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/world", "inbound", "children", params) RETURN result');
+
+      var expected = [ 
+        [ 
+          { 
+            "name" : "World", 
+            "_id" : "UnitTestsAhuacatlVertex/world", 
+            "children" : [ 
+              { 
+                "name" : "Africa", 
+                "_id" : "UnitTestsAhuacatlVertex/continent-africa", 
+                "children" : [ 
+                  { 
+                    "name" : "Algeria", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-algeria", 
+                    "children" : [ 
+                      { 
+                        "name" : "Algiers", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-algiers" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Angola", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-angola", 
+                    "children" : [ 
+                      { 
+                        "name" : "Luanda", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-luanda" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Botswana", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-botswana", 
+                    "children" : [ 
+                      { 
+                        "name" : "Gaborone", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-gaborone" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Burkina Faso", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-burkina-faso", 
+                    "children" : [ 
+                      { 
+                        "name" : "Ouagadougou", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-ouagadougou" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Burundi", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-burundi", 
+                    "children" : [ 
+                      { 
+                        "name" : "Bujumbura", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-bujumbura" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Cameroon", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-cameroon", 
+                    "children" : [ 
+                      { 
+                        "name" : "Yaounde", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-yaounde" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Chad", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-chad", 
+                    "children" : [ 
+                      { 
+                        "name" : "N'Djamena", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-n-djamena" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Cote d'Ivoire", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-cote-d-ivoire", 
+                    "children" : [ 
+                      { 
+                        "name" : "Yamoussoukro", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-yamoussoukro" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Egypt", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-egypt", 
+                    "children" : [ 
+                      { 
+                        "name" : "Cairo", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-cairo" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Eritrea", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-eritrea", 
+                    "children" : [ 
+                      { 
+                        "name" : "Asmara", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-asmara" 
+                      } 
+                    ] 
+                  } 
+                ] 
+              }, 
+              { 
+                "name" : "Asia", 
+                "_id" : "UnitTestsAhuacatlVertex/continent-asia", 
+                "children" : [ 
+                  { 
+                    "name" : "Afghanistan", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-afghanistan", 
+                    "children" : [ 
+                      { 
+                        "name" : "Kabul", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-kabul" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bahrain", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bahrain", 
+                    "children" : [ 
+                      { 
+                        "name" : "Manama", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-manama" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bangladesh", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bangladesh", 
+                    "children" : [ 
+                      { 
+                        "name" : "Dhaka", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-dhaka" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bhutan", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bhutan", 
+                    "children" : [ 
+                      { 
+                        "name" : "Thimphu", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-thimphu" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Brunei", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-brunei", 
+                    "children" : [ 
+                      { 
+                        "name" : "Bandar Seri Begawan", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-bandar-seri-begawan" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Cambodia", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-cambodia", 
+                    "children" : [ 
+                      { 
+                        "name" : "Phnom Penh", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-phnom-penh" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "People's Republic of China", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-people-s-republic-of-china", 
+                    "children" : [ 
+                      { 
+                        "name" : "Beijing", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-beijing" 
+                      } 
+                    ] 
+                  } 
+                ] 
+              }, 
+              { 
+                "name" : "Australia", 
+                "_id" : "UnitTestsAhuacatlVertex/continent-australia", 
+                "children" : [ 
+                  { 
+                    "name" : "Australia", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-australia", 
+                    "children" : [ 
+                      { 
+                        "name" : "Canberra", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-canberra" 
+                      } 
+                    ] 
+                  } 
+                ] 
+              }, 
+              { 
+                "name" : "Europe", 
+                "_id" : "UnitTestsAhuacatlVertex/continent-europe", 
+                "children" : [ 
+                  { 
+                    "name" : "Albania", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-albania", 
+                    "children" : [ 
+                      { 
+                        "name" : "Tirana", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-tirana" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Andorra", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-andorra", 
+                    "children" : [ 
+                      { 
+                        "name" : "Andorra la Vella", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-andorra-la-vella" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Austria", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-austria", 
+                    "children" : [ 
+                      { 
+                        "name" : "Vienna", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-vienna" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Belgium", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-belgium", 
+                    "children" : [ 
+                      { 
+                        "name" : "Brussels", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-brussels" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bosnia and Herzegovina", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bosnia-and-herzegovina", 
+                    "children" : [ 
+                      { 
+                        "name" : "Sarajevo", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-sarajevo" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bulgaria", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bulgaria", 
+                    "children" : [ 
+                      { 
+                        "name" : "Sofia", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-sofia" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Croatia", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-croatia", 
+                    "children" : [ 
+                      { 
+                        "name" : "Zagreb", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-zagreb" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Czech Republic", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-czech-republic", 
+                    "children" : [ 
+                      { 
+                        "name" : "Prague", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-prague" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Denmark", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-denmark", 
+                    "children" : [ 
+                      { 
+                        "name" : "Copenhagen", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-copenhagen" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Finland", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-finland", 
+                    "children" : [ 
+                      { 
+                        "name" : "Helsinki", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-helsinki" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "France", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-france", 
+                    "children" : [ 
+                      { 
+                        "name" : "Paris", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-paris" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Germany", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-germany", 
+                    "children" : [ 
+                      { 
+                        "name" : "Berlin", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-berlin" 
+                      } 
+                    ] 
+                  } 
+                ] 
+              }, 
+              { 
+                "name" : "North America", 
+                "_id" : "UnitTestsAhuacatlVertex/continent-north-america", 
+                "children" : [ 
+                  { 
+                    "name" : "Antigua and Barbuda", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-antigua-and-barbuda", 
+                    "children" : [ 
+                      { 
+                        "name" : "Saint John's", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-saint-john-s" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bahamas", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bahamas", 
+                    "children" : [ 
+                      { 
+                        "name" : "Nassau", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-nassau" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Barbados", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-barbados", 
+                    "children" : [ 
+                      { 
+                        "name" : "Bridgetown", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-bridgetown" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Canada", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-canada", 
+                    "children" : [ 
+                      { 
+                        "name" : "Ottawa", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-ottawa" 
+                      } 
+                    ] 
+                  } 
+                ] 
+              }, 
+              { 
+                "name" : "South America", 
+                "_id" : "UnitTestsAhuacatlVertex/continent-south-america", 
+                "children" : [ 
+                  { 
+                    "name" : "Argentina", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-argentina", 
+                    "children" : [ 
+                      { 
+                        "name" : "Buenos Aires", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-buenos-aires" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Bolivia", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-bolivia", 
+                    "children" : [ 
+                      { 
+                        "name" : "La Paz", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-la-paz" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Brazil", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-brazil", 
+                    "children" : [ 
+                      { 
+                        "name" : "Brasilia", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-brasilia" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Chile", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-chile", 
+                    "children" : [ 
+                      { 
+                        "name" : "Santiago", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-santiago" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Colombia", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-colombia", 
+                    "children" : [ 
+                      { 
+                        "name" : "Bogota", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-bogota" 
+                      } 
+                    ] 
+                  }, 
+                  { 
+                    "name" : "Ecuador", 
+                    "_id" : "UnitTestsAhuacatlVertex/country-ecuador", 
+                    "children" : [ 
+                      { 
+                        "name" : "Quito", 
+                        "_id" : "UnitTestsAhuacatlVertex/capital-quito" 
+                      } 
+                    ] 
+                  } 
+                ] 
+              } 
+            ] 
+          } 
+        ] 
+      ];
+
+      assertEqual(expected, result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a custom visitor
+////////////////////////////////////////////////////////////////////////////////
+
     testStructuredVisitor : function () {
       aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path) {
         return {
