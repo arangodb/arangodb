@@ -64,13 +64,13 @@ Under Mac OS X you also need to install:
 
 Download the latest source using GIT:
     
-    git clone git://github.com/triAGENS/ArangoDB.git
+    git clone git://github.com/arangodb/arangodb.git
 
 Note: if you only plan to compile ArangoDB locally and do not want to modify or push
 any changes, you can speed up cloning substantially by using the *--single-branch* and 
 *--depth* parameters for the clone command as follws:
     
-    git clone --single-branch --depth 1 git://github.com/triAGENS/ArangoDB.git
+    git clone --single-branch --depth 1 git://github.com/arangodb/arangodb.git
 
 !SUBSECTION Configure
 
@@ -192,7 +192,7 @@ When compiling with special configure options, you may need the following extra 
 
 Download the latest ArangoDB source using *git*:
 
-    git clone -b devel git://github.com/triAGENS/ArangoDB.git
+    git clone -b devel git://github.com/arangodb/arangodb.git
 
 !SUBSECTION Setup
 

@@ -1714,6 +1714,102 @@ function optimizerIndexesTestSuite () {
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexUsageIn : function () {
+      c.ensureHashIndex("value2");
+      c.ensureSkiplist("value3");
+      
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      var queries = [
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23), b = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value2 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN [23] RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
+        [ "LET a = PASSTHRU([23]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU([23, 42]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23), b = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value3 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23] RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ],
+        [ "LET a = PASSTHRU([23]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU([23, 42]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU('test42') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23' ] ],
+        [ "LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ a ], a) RETURN i._key", [ 'test23' ] ],
+        [ "LET a = PASSTHRU('test23'), b = PASSTHRU('test42') FOR i IN " + c.name() + " FILTER i._key IN [ a, b ] RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU([]) RETURN i._key", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU(['test23']) RETURN i._key", [ 'test23' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU(['test23', 'test42']) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23'] RETURN i._key", [ 'test23' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23', 'test42'] RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
+        [ "LET a = PASSTHRU(['test23']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23' ] ],
+        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query[0]).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1].length, results.json.length, query); 
+        assertEqual(query[1].sort(), results.json.sort(), query);
+        assertTrue(results.stats.scannedIndex >= 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexUsageInNoIndex : function () {
+      c.ensureHashIndex("value2");
+      c.ensureSkiplist("value3");
+      
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      var queries = [
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN [] RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN [] RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN [] RETURN i.value2", [ ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query[0]).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
+
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(0, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      });
     }
 
   };

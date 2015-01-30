@@ -138,6 +138,22 @@ function printRules (rules) {
   print(); 
 }
 
+/* print warnings */
+function printWarnings (warnings) {
+  "use strict";
+  if (! Array.isArray(warnings) || warnings.length === 0) {
+    return;
+  }
+
+  print(section("Warnings:"));
+  var maxIdLen = String("Code").length;
+  print(" " + pad(1 + maxIdLen - String("Code").length) + header("Code") + "   " + header("Message"));
+  for (var i = 0; i < warnings.length; ++i) {
+    print(" " + pad(1 + maxIdLen - String(warnings[i].code).length) + variable(warnings[i].code) + "   " + keyword(warnings[i].message));
+  }
+  print(); 
+}
+
 /* print indexes used */
 function printIndexes (indexes) {
   "use strict";
@@ -192,14 +208,15 @@ function printIndexes (indexes) {
 }
 
 /* analzye and print execution plan */
-function processQuery (query, plan) {
+function processQuery (query, explain) {
   "use strict";
   var nodes = { }, 
     parents = { }, 
     rootNode = null,
     maxTypeLen = 0,
     maxIdLen = String("Id").length,
-    maxEstimateLen = String("Est.").length;
+    maxEstimateLen = String("Est.").length,
+    plan = explain.plan;
 
   var recursiveWalk = function (n, level) {
     n.forEach(function(node) {
@@ -538,6 +555,7 @@ function processQuery (query, plan) {
   printIndexes(indexes);
   printRules(plan.rules);
   printModificationFlags(modificationFlags);
+  printWarnings(explain.warnings);
 }
 
 /* the exposed function */
@@ -557,7 +575,7 @@ function explain (data, options) {
   var result = stmt.explain();
 
   print();
-  processQuery(data.query, result.plan);
+  processQuery(data.query, result);
   print();
 }
 

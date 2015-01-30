@@ -331,7 +331,7 @@ void ArangoClient::parse (ProgramOptions& options,
   // setup the logging
   TRI_SetLogLevelLogging(_logLevel.c_str());
   TRI_SetUseLocalTimeLogging(_logLocalTime);
-  TRI_CreateLogAppenderFile("-", 0, TRI_LOG_SEVERITY_UNKNOWN, false);
+  TRI_CreateLogAppenderFile("-", 0, TRI_LOG_SEVERITY_UNKNOWN, false, true);
   TRI_SetLineNumberLogging(false);
   TRI_SetThreadIdentifierLogging(false);
 

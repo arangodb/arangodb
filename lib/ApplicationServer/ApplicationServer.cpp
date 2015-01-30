@@ -60,34 +60,20 @@ static string DeprecatedParameter;
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Command Line Options
-////////////////////////////////////////////////////////////////////////////////
-
-string const ApplicationServer::OPTIONS_CMDLINE = "Command Line Options";
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Hidden Options
 ////////////////////////////////////////////////////////////////////////////////
 
-string const ApplicationServer::OPTIONS_HIDDEN = "Hidden Options";
+namespace {
+  const string OPTIONS_HIDDEN = "Hidden Options";
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Logger Options
+/// @brief Command Line Options
 ////////////////////////////////////////////////////////////////////////////////
 
-string const ApplicationServer::OPTIONS_LOGGER = "Logging Options";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Server Options
-////////////////////////////////////////////////////////////////////////////////
-
-string const ApplicationServer::OPTIONS_SERVER = "Server Options";
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief SSL Options
-////////////////////////////////////////////////////////////////////////////////
-
-string const ApplicationServer::OPTIONS_SSL = "SSL Options";
+namespace {
+  const string OPTIONS_CMDLINE = "General Options";
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -242,11 +228,33 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
                                                                     0,
                                                                     TRI_LOG_SEVERITY_USAGE,
-                                                                    true);
+                                                                    true,
+                                                                    false);
 
     // the user specified a requests log file to use but it could not be created. bail out
     if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create requests logfile '%s'. Please check the path and permissions.", filename.c_str());
+    }
+  }
+
+  // additional log file in case of tty
+  bool ttyLogger = false;
+
+  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
+    bool regularOut = (_logFile == "+" || _logFile == "-");
+    bool ttyOut = (_logTty == "+" || _logTty == "-");
+
+    if (! regularOut || ! ttyOut) {
+      struct TRI_log_appender_s* appender
+        = TRI_CreateLogAppenderFile(_logTty.c_str(),
+                                    contentFilter,
+                                    TRI_LOG_SEVERITY_UNKNOWN,
+                                    false,
+                                    true);
+
+      if (appender) {
+        ttyLogger = true;
+      }
     }
   }
 
@@ -258,27 +266,16 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
       filename = filename + ".daemon";
     }
 
-    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
-                                                                    contentFilter,
-                                                                    TRI_LOG_SEVERITY_UNKNOWN,
-                                                                    false);
+    struct TRI_log_appender_s* appender
+      = TRI_CreateLogAppenderFile(filename.c_str(),
+                                  contentFilter,
+                                  TRI_LOG_SEVERITY_UNKNOWN,
+                                  false,
+                                  ! ttyLogger);
 
     // the user specified a log file to use but it could not be created. bail out
     if (appender == nullptr) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
-    }
-  }
-
-  // additional log file in case of tty
-  if (! backgrounded && isatty(STDIN_FILENO) != 0 && ! _logTty.empty()) {
-    bool regularOut = (_logFile == "+" || _logFile == "-");
-    bool ttyOut = (_logTty == "+" || _logTty == "-");
-
-    if (! regularOut || ! ttyOut) {
-      TRI_CreateLogAppenderFile(_logTty.c_str(),
-                                contentFilter,
-                                TRI_LOG_SEVERITY_UNKNOWN,
-                                false);
     }
   }
 
@@ -365,15 +362,6 @@ bool ApplicationServer::parse (int argc,
     return false;
   }
 
-  // check for help
-  set<string> help = _options.needHelp("help");
-
-  if (! help.empty()) {
-    // output help, but do not yet exit (we'll exit a little later so we can also
-    // check the specified configuration for errors)
-    cout << argv[0] << " " << _title << endl << endl << _description.usage(help) << endl;
-  }
-
   // check for version request
   if (_options.has("version")) {
     cout << _version << endl;
@@ -399,6 +387,15 @@ bool ApplicationServer::parse (int argc,
   // .............................................................................
 
   ok = readConfigurationFile();
+
+  // check for help
+  set<string> help = _options.needHelp("help");
+
+  if (! help.empty()) {
+    // output help, but do not yet exit (we'll exit a little later so we can also
+    // check the specified configuration for errors)
+    cout << argv[0] << " " << _title << "\n\n" << _description.usage(help) << endl;
+  }
 
   if (! ok) {
     return false;
@@ -426,7 +423,7 @@ bool ApplicationServer::parse (int argc,
   setupLogging(false, false, false);
 
   // .............................................................................
-  // parse phase 2
+  // select random generate
   // .............................................................................
 
   try {
@@ -460,6 +457,9 @@ bool ApplicationServer::parse (int argc,
     LOG_FATAL_AND_EXIT("cannot select random generator, giving up");
   }
 
+  // .............................................................................
+  // parse phase 2
+  // .............................................................................
 
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
     ok = (*i)->parsePhase2(_options);
@@ -764,7 +764,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // command line options
   // .............................................................................
 
-  options[OPTIONS_CMDLINE]
+  options["General Options:help-default"]
     ("version,v", "print version string and exit")
     ("help,h", "produce a usage message and exit")
     ("configuration,c", &_configFile, "read configuration file")
@@ -772,7 +772,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
 
 #if defined(TRI_HAVE_SETUID) || defined(TRI_HAVE_SETGID)
 
-  options[OPTIONS_CMDLINE + ":help-extended"]
+  options["General Options:help-admin"]
 #ifdef TRI_HAVE_GETPPID
     ("exit-on-parent-death", &_exitOnParentDeath, "exit if parent dies")
 #endif
@@ -785,13 +785,13 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // logger options
   // .............................................................................
 
-  options[OPTIONS_LOGGER]
+  options["Logging Options:help-default:help-log"]
     ("log.file", &_logFile, "log to file")
     ("log.requests-file", &_logRequestsFile, "log requests to file")
     ("log.level,l", &_logLevel, "log level")
   ;
 
-  options[OPTIONS_LOGGER + ":help-log"]
+  options["Logging Options:help-log"]
     ("log.application", &_logApplicationName, "application name for syslog")
     ("log.facility", &_logFacility, "facility name for syslog (OS dependent)")
     ("log.source-filter", &_logSourceFilter, "only debug and trace messages emitted by specific C source file")
@@ -804,7 +804,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
     ("log.tty", &_logTty, "additional log file if started on tty")
   ;
 
-  options[OPTIONS_HIDDEN]
+  options["Hidden Options"]
     ("log", &_logLevel, "log level for severity 'human'")
     ("log.syslog", &DeprecatedParameter, "use syslog facility (deprecated)")
     ("log.hostname", &DeprecatedParameter, "host name for syslog")
@@ -820,7 +820,7 @@ void ApplicationServer::setupOptions (map<string, ProgramOptionsDescription>& op
   // application server options
   // .............................................................................
 
-  options[OPTIONS_SERVER + ":help-extended"]
+  options["Server Options:help-admin"]
     ("random.generator", &_randomGenerator, "1 = mersenne, 2 = random, 3 = urandom, 4 = combined")
 #ifdef TRI_HAVE_SETUID
     ("server.uid", &_uid, "switch to user-id after reading config files")
