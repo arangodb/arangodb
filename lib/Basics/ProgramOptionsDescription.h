@@ -31,6 +31,7 @@
 #define ARANGODB_BASICS_PROGRAM_OPTIONS_DESCRIPTION_H 1
 
 #include "Basics/Common.h"
+#include <functional>
 
 namespace triagens {
   namespace basics {
