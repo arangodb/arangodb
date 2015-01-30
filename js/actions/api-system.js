@@ -466,6 +466,7 @@ actions.defineHttp({
   callback : function (req, res) {
     res.responseCode = actions.HTTP_OK;
     res.contentType = "application/json; charset=utf-8";
+    req.rawRequestBody = require('internal').rawRequestBody(req);
     res.body = JSON.stringify(req);
   }
 });

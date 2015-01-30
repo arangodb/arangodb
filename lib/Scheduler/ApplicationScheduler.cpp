@@ -400,7 +400,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
   // command line options
   // .............................................................................
 
-  options[ApplicationServer::OPTIONS_CMDLINE + ":help-extended"]
+  options["General Options:help-admin"]
     ("show-io-backends", "show available io backends")
   ;
 
@@ -408,7 +408,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
   // application server options
   // .............................................................................
 
-  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
+  options["Server Options:help-admin"]
 #ifdef _WIN32
     // ...........................................................................
     // since we are trying to use libev, then only select is available
@@ -426,7 +426,7 @@ void ApplicationScheduler::setupOptions (map<string, ProgramOptionsDescription>&
   ;
 
   if (_multiSchedulerAllowed) {
-    options["THREAD Options:help-admin"]
+    options["Server Options:help-admin"]
       ("scheduler.threads", &_nrSchedulerThreads, "number of threads for I/O scheduler")
     ;
   }

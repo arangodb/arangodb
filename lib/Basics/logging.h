@@ -476,7 +476,8 @@ struct TRI_log_appender_s;
 struct TRI_log_appender_s* TRI_CreateLogAppenderFile (char const*,
                                                       char const*,
                                                       TRI_log_severity_e,
-                                                      bool);
+                                                      bool consume,
+                                                      bool fatal2error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for syslog

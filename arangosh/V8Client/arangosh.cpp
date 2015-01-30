@@ -2434,6 +2434,9 @@ int main (int argc, char* args[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
+  v8::V8::Dispose();
+  v8::V8::ShutdownPlatform();
+  delete platform;
   arangoshExitFunction(ret, nullptr);
 
   return ret;

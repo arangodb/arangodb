@@ -53,21 +53,21 @@ using JsonHelper = triagens::basics::JsonHelper;
 /// expressions but must never be freed
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t const Expression::NullJson  = { TRI_JSON_NULL, false };
+TRI_json_t const Expression::NullJson  = { TRI_JSON_NULL, { false } };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "constant" global object for TRUE which can be shared by all 
 /// expressions but must never be freed
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t const Expression::TrueJson  = { TRI_JSON_BOOLEAN, true };
+TRI_json_t const Expression::TrueJson  = { TRI_JSON_BOOLEAN, { true } };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief "constant" global object for FALSE which can be shared by all 
 /// expressions but must never be freed
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t const Expression::FalseJson = { TRI_JSON_BOOLEAN, false };
+TRI_json_t const Expression::FalseJson = { TRI_JSON_BOOLEAN, { false } };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

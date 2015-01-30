@@ -293,7 +293,8 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _definedBooleans(),
     _definedDoubles(),
     _startupFile("server/server.js"),
-    _gcFinished(false) {
+    _gcFinished(false),
+    _platform(nullptr) {
 
   TRI_ASSERT(_server != nullptr);
 
@@ -972,7 +973,7 @@ bool ApplicationV8::prepareNamedContexts (const string& name,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>& options) {
-  options["JAVASCRIPT Options:help-admin"]
+  options["Javascript Options:help-admin"]
     ("javascript.gc-interval", &_gcInterval, "JavaScript request-based garbage collection interval (each x requests)")
     ("javascript.gc-frequency", &_gcFrequency, "JavaScript time-based garbage collection frequency (each x seconds)")
     ("javascript.app-path", &_appPath, "directory for Foxx applications (normal mode)")
@@ -981,7 +982,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
     ("javascript.v8-options", &_v8Options, "options to pass to v8")
   ;
 
-  options[ApplicationServer::OPTIONS_HIDDEN]
+  options["Hidden Options"]
     ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
 
     // deprecated options
@@ -1062,8 +1063,8 @@ bool ApplicationV8::prepare2 () {
   static const string name = "STANDARD";
   size_t nrInstances = _nrInstances[name];
   v8::V8::InitializeICU();
-  v8::Platform* platform = v8::platform::CreateDefaultPlatform();
-  v8::V8::InitializePlatform(platform);
+  v8::Platform* _platform = v8::platform::CreateDefaultPlatform();
+  v8::V8::InitializePlatform(_platform);
   v8::V8::Initialize();
 
   // setup instances
@@ -1189,6 +1190,9 @@ void ApplicationV8::stop () {
     }
   }
 
+  v8::V8::Dispose();
+  v8::V8::ShutdownPlatform();
+  delete _platform;
   // delete GC thread after all action threads have been stopped
   delete _gcThread;
 }

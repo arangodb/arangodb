@@ -146,8 +146,7 @@ void ApplicationDispatcher::buildStandardQueue (size_t nrThreads,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationDispatcher::setupOptions (map<string, ProgramOptionsDescription>& options) {
-
-  options[ApplicationServer::OPTIONS_SERVER + ":help-extended"]
+  options["Server Options:help-admin"]
     ("dispatcher.report-interval", &_reportInterval, "dispatcher report interval")
   ;
 }

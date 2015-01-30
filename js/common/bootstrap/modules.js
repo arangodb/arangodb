@@ -1665,6 +1665,10 @@ function require (path) {
                           path2FileUri(libpath),
                           false);
 
+    pkg._environment = {
+      console: require("org/arangodb/foxx/console")(appContext.mount)
+    };
+
     return new Module("/application-module",
                       pkg,
                       appContext,
@@ -1677,11 +1681,12 @@ function require (path) {
 /// @brief createAppContext
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.createAppContext = function () {
+  ArangoApp.prototype.createAppContext = function (mount) {
     'use strict';
 
     var context = {};
 
+    context.mount = mount;
     context.name = this._name;
     context.version = this._version;
     context.appId = this._id;
