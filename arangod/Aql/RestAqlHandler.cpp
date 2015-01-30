@@ -436,7 +436,6 @@ void RestAqlHandler::useQuery (std::string const& operation,
   }
   catch (triagens::arango::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_ERROR("failed during use of Query: %s", ex.message().c_str());
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
                   ex.message());
@@ -452,7 +451,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
   }
   catch (...) {
     _queryRegistry->close(_vocbase, _qId);
-    LOG_ERROR("failed during use of Query: Unknown exeption occured");
+    LOG_ERROR("failed during use of Query: Unknown exception occurred");
 
     generateError(HttpResponse::SERVER_ERROR, 
                   TRI_ERROR_HTTP_SERVER_ERROR,
@@ -689,7 +688,6 @@ bool RestAqlHandler::findQuery (std::string const& idString,
 
   if (query == nullptr) {
     _qId = 0;
-    LOG_ERROR("Query not found");
     generateError(HttpResponse::NOT_FOUND, TRI_ERROR_QUERY_NOT_FOUND);
     return true;
   }
