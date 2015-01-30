@@ -34,7 +34,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "skiplist", 
-            "id" : "1244012424", 
+            "id" : "1245868422", 
             "unique" : false, 
             "fields" : [ 
               "id" 
