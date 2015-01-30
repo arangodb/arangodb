@@ -162,10 +162,11 @@ namespace triagens {
               &bytesWritten);
 
             if (! res) {
-              if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-                setErrorMessage(TRI_last_error(), false);
-              }
-
+              setErrorMessage("Error writing to '" +
+                              _connection->getEndpoint()->getSpecification() +
+                              "' '" +
+                              _connection->getErrorDetails() +
+                              "'");
               this->close(); // this sets _state to IN_CONNECT for a retry
             }
             else {
@@ -194,6 +195,11 @@ namespace triagens {
 
             // If there was an error, then we are doomed:
             if (! res) {
+              setErrorMessage("Error reading from: '" +
+                              _connection->getEndpoint()->getSpecification() +
+                              "' '" +
+                              _connection->getErrorDetails() +
+                              "'");
               this->close(); // this sets the state to IN_CONNECT for a retry
               break;
             }
@@ -292,7 +298,7 @@ namespace triagens {
                           _connection->getEndpoint()->getSpecification() +
                           "' '" +
                           _connection->getErrorDetails() +
-                          "' '");
+                          "'");
           _state = DEAD;
         }
         else {
