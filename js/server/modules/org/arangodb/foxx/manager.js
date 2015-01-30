@@ -946,6 +946,32 @@ function routingAalApp (app, mount, options) {
                   route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
                 }
 
+                var handler = route.action.callback;
+                if (typeof handler === "function") {
+                  route.action.callback = function(req, res) {
+                    try {
+                      this(req, res);
+                    } catch (err) {
+                      if (
+                        res.hasOwnProperty("status")
+                        && res.hasOwnProperty("json")
+                      ) {
+                        var body = {
+                          error: err.message || String(err)
+                        };
+                        if (appContext.isDevelopment) {
+                          body.stack = err.stack;
+                        }
+                        res.status(500);
+                        res.json(body);
+                        console.log(body);
+                      } else {
+                        throw err;
+                      }
+                    }
+                  }.bind(handler);
+                }
+
                 route.context = i;
 
                 routes[key].push(route);
