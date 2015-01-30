@@ -1,10 +1,18 @@
 v2.4.2 (2015-XX-XX)
 -------------------
 
+* added custom visitor functionality for AQL traversals
+  
+  This allows more complex result processing in traversals triggered by AQL. A few examples
+  are shown in [this article](http://jsteemann.github.io/blog/2015/01/28/using-custom-visitors-in-aql-graph-traversals/).
+
 * improved number of results estimated for nodes of type EnumerateListNode and SubqueryNode
   in AQL explain output
 
-* added AQL explain helper:
+* added AQL explain helper to explain arbitrary AQL queries
+
+  The helper function prints the query execution plan and the indexes to be used in the
+  query. It can be invoked from the ArangoShell or the web interface as follows:
 
       require("org/arangodb/aql/explainer").explain(query);
 
