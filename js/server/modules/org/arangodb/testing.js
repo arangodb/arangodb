@@ -521,8 +521,8 @@ function shutdownInstance (instanceInfo, options) {
       print("Server already dead, doing nothing.");
     }
     
+    instanceInfo.importantLogLines = readImportantLogLines(fs.join(instanceInfo.tmpDataDir, "log"));
   }
-  instanceInfo.importantLogLines = readImportantLogLines(fs.join(instanceInfo.tmpDataDir, "log"));
 
   cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
 }
