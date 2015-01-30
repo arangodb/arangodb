@@ -761,7 +761,7 @@ double TRI_SelectivityHashArrayMulti (TRI_hash_array_multi_t* array) {
   size_t numTotal = array->_nrUsed + array->_nrOverflowUsed;
 
   if (numTotal == 0) {
-    return -1.0;
+    return 1.0;
   }
   return static_cast<double>(array->_nrUsed) / static_cast<double>(numTotal);
 }

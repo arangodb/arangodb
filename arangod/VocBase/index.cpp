@@ -90,13 +90,15 @@ void TRI_InitIndex (TRI_index_t* idx,
   idx->_collection        = document;
   idx->_unique            = unique;
   idx->_sparse            = sparse;
+  idx->_hasSelectivityEstimate = false;
 
   // init common functions
-  idx->memory            = nullptr;
-  idx->removeIndex       = nullptr;
-  idx->cleanup           = nullptr;
-  idx->sizeHint          = nullptr;
-  idx->postInsert        = nullptr;
+  idx->selectivityEstimate    = nullptr;
+  idx->memory                 = nullptr;
+  idx->removeIndex            = nullptr;
+  idx->cleanup                = nullptr;
+  idx->sizeHint               = nullptr;
+  idx->postInsert             = nullptr;
 
   LOG_TRACE("initialising index of type %s", TRI_TypeNameIndex(idx->_type));
 }
@@ -433,6 +435,9 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
     TRI_Insert3ObjectJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number, strlen(number)));
     TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type), strlen(TRI_TypeNameIndex(idx->_type))));
     TRI_Insert3ObjectJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
+    if (idx->_hasSelectivityEstimate) { 
+      TRI_Insert3ObjectJson(zone, json, "selectivityEstimate", TRI_CreateNumberJson(zone, idx->selectivityEstimate(idx)));
+    }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, number);
   }
@@ -526,6 +531,14 @@ static size_t MemoryPrimary (TRI_index_t const* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the selectivity estimate for the index
+////////////////////////////////////////////////////////////////////////////////
+
+static double SelectivityEstimatePrimary (TRI_index_t const* idx) {
+  return 1.0;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of a primary index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -565,10 +578,12 @@ TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
 
   TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true, false);
 
-  idx->memory   = MemoryPrimary;
-  idx->json     = JsonPrimary;
-  idx->insert   = InsertPrimary;
-  idx->remove   = RemovePrimary;
+  idx->_hasSelectivityEstimate = true;
+  idx->selectivityEstimate     = &SelectivityEstimatePrimary;
+  idx->memory                  = MemoryPrimary;
+  idx->json                    = JsonPrimary;
+  idx->insert                  = InsertPrimary;
+  idx->remove                  = RemovePrimary;
 
   return idx;
 }
@@ -921,6 +936,16 @@ static size_t MemoryEdge (TRI_index_t const* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a selectivity esimtate for the index
+////////////////////////////////////////////////////////////////////////////////
+
+static double SelectivityEstimateEdge (TRI_index_t const* idx) {
+  // return average selectivity of the two index parts
+  return (TRI_SelectivityEstimateMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_from)) +
+          TRI_SelectivityEstimateMultiPointer(&(((TRI_edge_index_t*) idx)->_edges_to))) * 0.5;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief JSON description of edge index
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1028,10 +1053,12 @@ TRI_index_t* TRI_CreateEdgeIndex (TRI_document_collection_t* document,
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_EDGE_INDEX, document, false, false);
 
-  idx->memory   = MemoryEdge;
-  idx->json     = JsonEdge;
-  idx->insert   = InsertEdge;
-  idx->remove   = RemoveEdge;
+  idx->_hasSelectivityEstimate = true;
+  idx->selectivityEstimate     = SelectivityEstimateEdge;
+  idx->memory                  = MemoryEdge;
+  idx->json                    = JsonEdge;
+  idx->insert                  = InsertEdge;
+  idx->remove                  = RemoveEdge;
 
   idx->sizeHint = SizeHintEdge;
 

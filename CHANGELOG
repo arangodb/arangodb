@@ -1,6 +1,26 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* added selectivity estimates for primary, edge, and hash indexes.
+
+  The selectivity estimates are returned by the `GET /_api/index` REST API method
+  in a sub-attribute `selectivityEstimate` for each index that supports it. This
+  attribute will be omitted for indexes that do not provide selectivity estimates.
+  If provided, the selectivity estimate will be a numeric value between 0 and 1.
+
+  Selectivity estimates will also be reported in the result of `collection.getIndexes()`
+  for all indexes that support this. If no selectivity estimate can be determined for 
+  an index, the attribute `selectivityEstimate` will be omitted here, too.
+
+  The web interface also shows selectivity estimates for each index that supports this.
+
+  Currently the following index types can provide selectivity estimates:
+  - primary index
+  - edge index
+  - hash index (unique and non-unique)
+
+  No selectivity estimates will be provided when running in cluster mode.
+
 * fixed issue #1226: arangod log issues
 
 * added additional logger if arangod is started in foreground mode on a tty
