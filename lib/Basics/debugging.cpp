@@ -312,31 +312,35 @@ void TRI_ShutdownDebugging () {
 void TRI_GetBacktrace (std::string& btstr) {
 #if HAVE_BACKTRACE
 #ifdef _WIN32
-  unsigned int   i;
-  void         * stack[ 100 ];
+  void         * stack[100];
   unsigned short frames;
   SYMBOL_INFO  * symbol;
   HANDLE         process;
 
   process = GetCurrentProcess();
 
-  SymInitialize( process, NULL, TRUE );
+  SymInitialize(process, nullptr, true);
 
-  frames               = CaptureStackBackTrace( 0, 100, stack, NULL );
-  symbol               = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
+  frames               = CaptureStackBackTrace(0, 100, stack, nullptr);
+  symbol               = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+
+  if (symbol == nullptr) {
+    // cannot allocate memory
+    return;
+  }
+
   symbol->MaxNameLen   = 255;
-  symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+  symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
 
-  for( i = 0; i < frames; i++ )
-    {
-      char address[64];
-      SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
+  for (unsigned int i = 0; i < frames; i++) {
+    char address[64];
+    SymFromAddr(process, (DWORD64) stack[i], 0, symbol);
 
-      snprintf(address, sizeof(address),  "0x%0X", symbol->Address );
-      bstr += std::string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
-    }
+    snprintf(address, sizeof(address), "0x%0X", symbol->Address);
+    bstr += std::string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
+  }
 
-  free( symbol );
+  TRI_SystemFree(symbol);
 
 #else
   void* stack_frames[50];
