@@ -135,7 +135,7 @@ void TRI_UnlockMutex (TRI_mutex_t* mutex) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
-
+#ifndef TRI_FAKE_SPIN_LOCKS
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialises a new spin
 ////////////////////////////////////////////////////////////////////////////////
@@ -171,6 +171,7 @@ void TRI_LockSpin (TRI_spin_t* spin) {
 void TRI_UnlockSpin (TRI_spin_t* spin) {
   LeaveCriticalSection(spin);
 }
+#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   READ-WRITE LOCK

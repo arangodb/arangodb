@@ -171,6 +171,30 @@ endif ()
 ## --SECTION--                                                       DIRECTORIES
 ## -----------------------------------------------------------------------------
 
+################################################################################
+### @brief Enable Backtrace
+################################################################################
+
+option(USE_BACKTRACE "whether we should try to generate c-level stacktraces" OFF)
+if (USE_BACKTRACE)
+  if (MSVC)
+    set(BT_LIBS "Dbghelp" CACHE path "Debug Helper libraries")
+  else ()
+    set(BT_LIBS "" CACHE path "Debug Helper libraries")
+  endif()
+  add_definitions("-DHAVE_BACKTRACE=1")
+else()
+  set(BT_LIBS "" CACHE path "Debug Helper libraries")
+endif()
+
+################################################################################
+### @brief Enable Backtrace
+################################################################################
+
+option(USER_MAINTAINER_MODE "whether we want to have Assertions and other development features" OFF)
+if (USER_MAINTAINER_MODE)
+  add_definitions("-DTRI_ENABLE_MAINTAINER_MODE=1")
+endif()
 
 ################################################################################
 ### @brief Enable Relative

@@ -171,6 +171,7 @@ target_link_libraries(
     ${LIBEV_LIBS}
     ${V8_LIBS} # need this for rest::Version
     ${ICU_LIBS}
+    ${BT_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
