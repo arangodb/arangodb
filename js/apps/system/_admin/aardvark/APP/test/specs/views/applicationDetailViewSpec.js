@@ -211,6 +211,36 @@
       });
     });
 
+    describe("app modes", function() {
+      var switchButton;
+
+      beforeEach(function() {
+        switchButton = "#app-switch-mode";
+        spyOn(appDummy, "toggleDevelopment").andCallThrough();
+        spyOn($, "ajax").andCallFake(function(opts) {
+          opts.success();
+        });
+      });
+
+      it("should switch to production if in development", function() {
+        appDummy.set("development", true);
+        view.render();
+        expect($(switchButton).val()).toEqual("Production");
+        $(switchButton).click();
+        expect($(switchButton).val()).toEqual("Development");
+        expect(appDummy.toggleDevelopment).toHaveBeenCalledWith(false, jasmine.any(Function));
+      });
+
+      it("should switch to development if in production", function() {
+        appDummy.set("development", false);
+        view.render();
+        expect($(switchButton).val()).toEqual("Development");
+        $(switchButton).click();
+        expect($(switchButton).val()).toEqual("Production");
+        expect(appDummy.toggleDevelopment).toHaveBeenCalledWith(true, jasmine.any(Function));
+      });
+
+    });
     /*
     describe("edit a foxx", function() {
 

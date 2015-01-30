@@ -197,8 +197,21 @@ controller.get("/config", function(req, res) {
 controller.patch("/config", function(req, res) {
   var mount = validateMount(req);
   var data = req.body();
-  require("console").log(data, typeof data);
   res.json(FoxxManager.configure(mount, data));
+}).queryParam("mount", mountPoint);
+
+/** Activate/Deactivate development mode for an app
+ *
+ * Used to toggle between production and development mode
+ */
+controller.patch("/devel", function(req, res) {
+  var mount = validateMount(req);
+  var activate = Boolean(req.body());
+  if (activate) {
+    res.json(FoxxManager.development(mount));
+  } else {
+    res.json(FoxxManager.production(mount));
+  }
 }).queryParam("mount", mountPoint);
 
 // ------------------------------------------------------------
