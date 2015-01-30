@@ -1,9 +1,49 @@
-language: c
-before_script: "bash -c 'cd UnitTests/HttpInterface && bundle'"
-script: "./configure && make && ./unittests.sh"
-
-branches: 
+branches:
   only:
     - master
     - 1.0
     - 1.1
+    - 1.2
+    - 1.3
+    - 1.4
+    - 2.0
+    - 2.1
+    - 2.2
+    - 2.3
+    - 2.4
+    - devel
+
+language: cpp
+compiler: g++
+
+before_install:
+# g++4.9.2
+- if [ "$CXX" == "g++" ]; then sudo add-apt-repository -y ppa:ubuntu-toolchain-r/test; fi
+
+# clang 3.4
+- if [ "$CXX" == "clang++" ]; then sudo add-apt-repository -y ppa:h-rayflood/llvm; fi
+
+- sudo apt-get update -qq
+
+install:
+# g++4.9.2
+- if [ "$CXX" = "g++" ]; then sudo apt-get install -qq g++-4.9 gcc-4.9; fi
+- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/gcc; ln -s /usr/bin/gcc-4.9 /usr/bin/gcc' ; fi
+- if [ "$CXX" = "g++" ]; then sudo /bin/bash -c 'rm /usr/bin/g++; ln -s /usr/bin/g++-4.9 /usr/bin/g++' ; fi
+- if [ "$CXX" = "g++" ]; then export CC="gcc-4.9"; fi
+- if [ "$CXX" = "g++" ]; then export CXX="g++-4.9"; fi
+- ls -l /usr/bin/
+
+# clang 3.4
+- if [ "$CXX" == "clang++" ]; then sudo apt-get install --allow-unauthenticated -qq clang-3.4; fi
+- if [ "$CXX" == "clang++" ]; then export CXX="clang++-3.4"; fi
+
+# gdb
+- sudo apt-get -y install gdb
+
+before_script: "bash -c Installation/travisCI/before_script.sh"
+script:
+ - "bash -c Installation/travisCI/build.sh"
+ - "bash -c Installation/travisCI/jslint.sh"
+ - "bash -c Installation/travisCI/tests.sh"
+after_failure: "bash -c Installation/travisCI/after_failure.sh"
