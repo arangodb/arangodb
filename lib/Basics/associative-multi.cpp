@@ -78,6 +78,8 @@ int TRI_InitMultiPointer (TRI_multi_pointer_t* array,
   array->_memoryZone = zone;
   array->_nrUsed  = 0;
   array->_nrAlloc = 0;
+  array->_nrUnique = 0;
+  array->_nrDuplicate = 0;
 
   if (nullptr == (array->_table_alloc = static_cast<TRI_multi_pointer_entry_t*>(TRI_Allocate(zone,
                  sizeof(TRI_multi_pointer_entry_t) * INITIAL_SIZE + 64, true)))) {
@@ -375,6 +377,19 @@ size_t TRI_MemoryUsageMultiPointer (TRI_multi_pointer_t const* array) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a selectivity estimate of the index
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_SelectivityEstimateMultiPointer (TRI_multi_pointer_t const* array) {
+  size_t numTotal = array->_nrUnique + array->_nrDuplicate;
+
+  if (numTotal == 0) {
+    return 1.0;
+  }
+  return static_cast<double>(array->_nrUnique) / static_cast<double>(numTotal);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief adds a key/element to the array
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -416,6 +431,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_nrUsed++;
+    array->_nrUnique++;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     TRI_CheckMultiPointerHash(array, true, true);
 #endif
@@ -442,6 +458,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[i].next = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_table[i].prev = TRI_MULTI_POINTER_INVALID_INDEX;
     array->_nrUsed++;
+    array->_nrUnique++;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
     TRI_CheckMultiPointerHash(array, true, true);
 #endif
@@ -489,6 +506,7 @@ void* TRI_InsertElementMultiPointer (TRI_multi_pointer_t* array,
     array->_table[array->_table[j].next].prev = j;
   }
   array->_nrUsed++;
+  array->_nrDuplicate++;
 
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
   TRI_CheckMultiPointerHash(array, true, true);
@@ -596,6 +614,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       TRI_CheckMultiPointerHash(array, false, false);
 #endif
       HealHole(array, i);
+      array->_nrUnique--;
     }
     else {
       // There is at least one successor in position j.
@@ -605,6 +624,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
       TRI_CheckMultiPointerHash(array, false, false);
 #endif
       HealHole(array, j);
+      array->_nrDuplicate--;
     }
   }
   else {
@@ -621,6 +641,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t* array, void const* ele
     TRI_CheckMultiPointerHash(array, false, false);
 #endif
     HealHole(array, i);
+    array->_nrDuplicate--;
   }
   array->_nrUsed--;
 #ifdef TRI_CHECK_MULTI_POINTER_HASH
@@ -679,11 +700,11 @@ static int ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ResizeMultiPointer (TRI_multi_pointer_t* array, size_t size) {
-  if (2*size+1 < array->_nrUsed) {
+  if (2 * size + 1 < array->_nrUsed) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
-  return ResizeMultiPointer(array, 2*size+1);
+  return ResizeMultiPointer(array, 2 * size + 1);
 }
 
 // -----------------------------------------------------------------------------

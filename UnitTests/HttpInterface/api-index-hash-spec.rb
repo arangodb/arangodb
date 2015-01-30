@@ -4,7 +4,6 @@ require 'rspec'
 require 'arangodb.rb'
 
 describe ArangoDB do
-  api = "/_api/index"
   prefix = "api-index-hash"
 
 ################################################################################

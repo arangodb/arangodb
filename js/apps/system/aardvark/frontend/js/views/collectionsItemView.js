@@ -222,10 +222,10 @@
       }
 
 
-      if(collectionIsLoaded) {
+      if (collectionIsLoaded) {
         // prevent "unexpected sync method error"
-                var wfs = this.model.getProperties().waitForSync;
-                tableContent.push(
+        var wfs = this.model.getProperties().waitForSync;
+        tableContent.push(
           window.modalView.createSelectEntry(
             "change-collection-sync",
             "Wait for sync",
@@ -263,7 +263,7 @@
           this.truncateCollection.bind(this)
         )
       );
-      if(collectionIsLoaded) {
+      if (collectionIsLoaded) {
         buttons.push(
           window.modalView.createNotificationButton(
             "Unload",
