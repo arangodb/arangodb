@@ -311,6 +311,34 @@ void TRI_ShutdownDebugging () {
 
 void TRI_GetBacktrace (std::string& btstr) {
 #if HAVE_BACKTRACE
+#ifdef _WIN32
+  unsigned int   i;
+  void         * stack[ 100 ];
+  unsigned short frames;
+  SYMBOL_INFO  * symbol;
+  HANDLE         process;
+
+  process = GetCurrentProcess();
+
+  SymInitialize( process, NULL, TRUE );
+
+  frames               = CaptureStackBackTrace( 0, 100, stack, NULL );
+  symbol               = ( SYMBOL_INFO * )calloc( sizeof( SYMBOL_INFO ) + 256 * sizeof( char ), 1 );
+  symbol->MaxNameLen   = 255;
+  symbol->SizeOfStruct = sizeof( SYMBOL_INFO );
+
+  for( i = 0; i < frames; i++ )
+    {
+      char address[64];
+      SymFromAddr( process, ( DWORD64 )( stack[ i ] ), 0, symbol );
+
+      snprintf(address, sizeof(address),  "0x%0X", symbol->Address );
+      bstr += std::string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
+    }
+
+  free( symbol );
+
+#else
   void* stack_frames[50];
   size_t size, i;
   char** strings;
@@ -376,6 +404,7 @@ void TRI_GetBacktrace (std::string& btstr) {
   if (strings != nullptr) {
     TRI_SystemFree(strings);  
   }
+#endif
 #endif
 }
 

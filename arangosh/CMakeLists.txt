@@ -32,6 +32,7 @@ target_link_libraries(
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
     ${ICU_LIBS}
+    ${BT_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
@@ -67,6 +68,7 @@ target_link_libraries(
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
     ${ICU_LIBS}
+    ${BT_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
@@ -106,6 +108,7 @@ target_link_libraries(
     ${LIB_ARANGO}
     ${V8_LIBS}
     ${ICU_LIBS}
+    ${BT_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
@@ -141,6 +144,7 @@ target_link_libraries(
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
     ${ICU_LIBS}
+    ${BT_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
     ${OPENSSL_LIBS}
@@ -179,6 +183,7 @@ target_link_libraries(
     ${LIB_ARANGO_CLIENT}
     ${LIB_ARANGO}
     ${V8_LIBS}
+    ${BT_LIBS}
     ${ICU_LIBS}
     ${ZLIB_LIBS}
     ${READLINE_LIBS}
