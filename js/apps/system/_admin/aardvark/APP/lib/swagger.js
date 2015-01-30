@@ -1,4 +1,4 @@
-/*global exports, appCollection, require*/
+/*global exports, require*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to expose API documentation for Foxx apps
@@ -26,70 +26,21 @@
 /// @author Michael Hackstein
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-
-exports.Swagger = function () {
+(function() {
   "use strict";
-
-  var db = require("internal").db,
-    _aal = db._collection("_aal"),
-    foxx_manager = require("org/arangodb/foxx/manager");
-
-
-  // Define the functionality to receive the documentation.
-  // And transform it into swagger format.
-
-  // Get the overview of all installed foxxes.
-  this.list = function(basePath) {
-    var result = {},
-    apis = [],
-    res = _aal.byExample({"type": "mount"});
-    result.swaggerVersion = "1.1";
-    result.basePath = basePath;
-    result.apis = apis;
-    while (res.hasNext()) {
-      var m = res.next().mount;
-      if (m === "/aardvark") {
-
-      } else {
-        apis.push({
-          path: m
-        });
-      }
-    }
-    return result;
-  },
-
-  this.listOne = function(basePath, key) {
-    var result = {},
-      res;
-
-    if (key.substr(0, 4) === "dev:") {
-      res = "/dev/" + key.split(":")[2];
-    }
-    else {
-      res = _aal.document(key).mount;
-    }
-
-    result.swaggerVersion = "1.1";
-    result.basePath = basePath;
-
-    result.apis = [
-      {path: res}
-    ];
-
-    return result;
-  },
-
   // Get details of one specific installed foxx.
-  this.show = function(mount) {
+  exports.Swagger = function (mount) {
+
+    var foxx_manager = require("org/arangodb/foxx/manager");
+
     var result = {},
-      apis = [],
-      pathes,
-      regex = /(:)([^\/]*)/g,
-      i,
-      url,
-      api,
-      ops;
+        apis = [],
+        pathes,
+        regex = /(:)([^\/]*)/g,
+        i,
+        url,
+        api,
+        ops;
     var routes = foxx_manager.routes(mount);
 
     result.swaggerVersion = "1.1";
@@ -110,8 +61,7 @@ exports.Swagger = function () {
         apis.push(api);
       }
     }
-    require("console").log(result);
 
     return result;
-  }
-};
+  };
+}());
