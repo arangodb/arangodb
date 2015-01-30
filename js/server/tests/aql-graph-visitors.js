@@ -267,8 +267,8 @@ function ahuacatlGraphVisitorsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testStringifyVisitor : function () {
-      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex) {
-        var indentation = Array(path.vertices.length).join("  ");
+      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path) {
+        var indentation = new Array(path.vertices.length).join("  ");
         var label       = "- " + vertex.name + " (" + vertex.type + ")";
         return indentation + label;
       });
@@ -830,18 +830,18 @@ function ahuacatlGraphVisitorsSuite () {
 
     testParentPrinterVisitor : function () {
       aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path) {
-        var result = {
+        var r = {
           name: vertex.name,
           type: vertex.type,
           level: path.vertices.length
         };
         if (path.vertices.length > 1) {
-          result.parent = {
+          r.parent = {
             name: path.vertices[path.vertices.length - 2].name,
             type: path.vertices[path.vertices.length - 2].type
-          }
+          };
         }
-        return result;
+        return r;
       });
 
       var result = AQL_EXECUTE('LET params = { _sort : true, visitor : "UnitTests::visitor", visitorReturnsResults : true } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
