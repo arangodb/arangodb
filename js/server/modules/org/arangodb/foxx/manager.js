@@ -49,6 +49,7 @@
   var errors = arangodb.errors;
   var download = require("internal").download;
   var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
+  var actions = require("org/arangodb/actions");
 
   var throwDownloadError = arangodb.throwDownloadError;
   var throwFileNotFound = arangodb.throwFileNotFound;
@@ -80,7 +81,7 @@
       refillCaches();
     }
     if (!appCache.hasOwnProperty(mount)) {
-      throw "App not found";
+      throw new Error("App not found");
     }
     return appCache[mount];
   };
@@ -806,6 +807,7 @@
     app.development(activate);
     utils.updateApp(mount, app.toJSON());
     executeGlobalContextFunction("reloadRouting");
+    actions.reloadRouting();
     return app;
   };
   
@@ -847,6 +849,7 @@
     var app = lookupApp(mount);
     var invalid = app.configure(options);
     if (invalid.length > 0) {
+      // TODO Error handling
       require("console").log(invalid);
     }
     utils.updateApp(mount, app.toJSON());
