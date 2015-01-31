@@ -96,11 +96,17 @@ exports.Swagger = function () {
 
       _.each(list, function(r) {
         var ac = r.appContext;
-        if (ac.mount === mount) {
+        // note: ac may be undefined or null if an app is broken!
+        if (ac && ac.mount === mount) {
           app = r;
           return;
         }
       });
+
+      if (! app) {
+        // non-existing or broken app
+        throw new Error("app not found or not mounted");
+      }
 
       result.swaggerVersion = "1.1";
       result.basePath = app.urlPrefix;
