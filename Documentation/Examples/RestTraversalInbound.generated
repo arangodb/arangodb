@@ -11,13 +11,13 @@ content-type: application/json; charset=utf-8
         { 
           "_id" : "persons/alice", 
           "_key" : "alice", 
-          "_rev" : "1377902472", 
+          "_rev" : "1379692934", 
           "name" : "Alice" 
         }, 
         { 
           "_id" : "persons/eve", 
           "_key" : "eve", 
-          "_rev" : "1378754440", 
+          "_rev" : "1380544902", 
           "name" : "Eve" 
         } 
       ], 
@@ -28,7 +28,7 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1377902472", 
+              "_rev" : "1379692934", 
               "name" : "Alice" 
             } 
           ] 
@@ -36,9 +36,9 @@ content-type: application/json; charset=utf-8
         { 
           "edges" : [ 
             { 
-              "_id" : "knows/1379606408", 
-              "_key" : "1379606408", 
-              "_rev" : "1379606408", 
+              "_id" : "knows/1381396870", 
+              "_key" : "1381396870", 
+              "_rev" : "1381396870", 
               "_from" : "persons/eve", 
               "_to" : "persons/alice" 
             } 
@@ -47,13 +47,13 @@ content-type: application/json; charset=utf-8
             { 
               "_id" : "persons/alice", 
               "_key" : "alice", 
-              "_rev" : "1377902472", 
+              "_rev" : "1379692934", 
               "name" : "Alice" 
             }, 
             { 
               "_id" : "persons/eve", 
               "_key" : "eve", 
-              "_rev" : "1378754440", 
+              "_rev" : "1380544902", 
               "name" : "Eve" 
             } 
           ] 

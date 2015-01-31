@@ -65,8 +65,8 @@ content-type: application/json; charset=utf-8
           4 
         ], 
         "id" : 3, 
-        "estimatedCost" : 103, 
-        "estimatedNrItems" : 100, 
+        "estimatedCost" : 13, 
+        "estimatedNrItems" : 10, 
         "inVariable" : { 
           "id" : 1, 
           "name" : "1" 
@@ -82,8 +82,8 @@ content-type: application/json; charset=utf-8
           3 
         ], 
         "id" : 5, 
-        "estimatedCost" : 203, 
-        "estimatedNrItems" : 100, 
+        "estimatedCost" : 23, 
+        "estimatedNrItems" : 10, 
         "inVariable" : { 
           "id" : 2, 
           "name" : "2" 
@@ -109,8 +109,8 @@ content-type: application/json; charset=utf-8
         "name" : "i" 
       } 
     ], 
-    "estimatedCost" : 203, 
-    "estimatedNrItems" : 100 
+    "estimatedCost" : 23, 
+    "estimatedNrItems" : 10 
   }, 
   "warnings" : [ 
     { 
