@@ -1886,6 +1886,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-functions-types.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
+			@top_srcdir@/js/server/tests/aql-graph-visitors.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-is-in-polygon.js \
 			@top_srcdir@/js/server/tests/aql-logical.js \
@@ -1894,6 +1895,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-costs.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
@@ -1995,6 +1997,7 @@ JAVASCRIPT_BROWSER = \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/arango-statement-common.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph-common.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/graph/traversal.js \
+	js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql/explainer.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/aql/functions.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/mimetypes.js \
 	js/apps/system/aardvark/frontend/js/modules/org/arangodb/replication.js \
