@@ -135,6 +135,7 @@ Job::status_t V8Job::work () {
     }
 
     v8::Handle<v8::Value> fArgs;
+
     if (_parameters != nullptr) {
       fArgs = TRI_ObjectJson(isolate, _parameters);
     }
@@ -142,19 +143,22 @@ Job::status_t V8Job::work () {
       fArgs = v8::Undefined(isolate);
     }
 
-    v8::TryCatch tryCatch;
-    // call the function
-    action->Call(current, 1, &fArgs);
+    // call the function wihtin a try/catch
+    {
+      v8::TryCatch tryCatch;
 
-    if (tryCatch.HasCaught()) {
-      if (tryCatch.CanContinue()) {
-        TRI_LogV8Exception(isolate, &tryCatch);
-      }
-      else {
-        TRI_GET_GLOBALS();
+      action->Call(current, 1, &fArgs);
 
-        v8g->_canceled = true;
-        LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
+      if (tryCatch.HasCaught()) {
+        if (tryCatch.CanContinue()) {
+          TRI_LogV8Exception(isolate, &tryCatch);
+        }
+        else {
+          TRI_GET_GLOBALS();
+
+          v8g->_canceled = true;
+          LOG_WARNING("caught non-catchable exception (aka termination) in periodic job");
+        }
       }
     }
   }
