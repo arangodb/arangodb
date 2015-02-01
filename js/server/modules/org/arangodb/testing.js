@@ -367,21 +367,26 @@ function startInstance (protocol, options, addArgs, testname) {
   return instanceInfo;
 }
 
-function readImportantLogLines(logFilename) {
+function readImportantLogLines(logPath) {
+  var i, j;
   var importantLines = [];
-  var buf = fs.readBuffer(logFilename);
-  var i;
-  var lineStart = 0;
-  var maxBuffer = buf.length;
-  for (i = 0; i < maxBuffer; i++) {
-    if (buf[i] === 10) { // \n
-      var line = buf.asciiSlice(lineStart, i - 1);
-      // filter out regular INFO lines, and test related messages
-      if ((line.search(" INFO ") < 0) &&
-	  (line.search("WARNING about to execute:") < 0)) { 
-	importantLines.push(line);
+  var list=fs.list(logPath);
+  for (i = 0; i < list.length; i++) {
+    if (list[i].slice(0,3) === 'log') {
+      var buf = fs.readBuffer(fs.join(logPath,list[i]));
+      var lineStart = 0;
+      var maxBuffer = buf.length;
+      for (j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          var line = buf.asciiSlice(lineStart, j - 1);
+          // filter out regular INFO lines, and test related messages
+          if ((line.search(" INFO ") < 0) &&
+      	    (line.search("WARNING about to execute:") < 0)) {
+      	    importantLines.push(line);
+          }
+          lineStart = j + 1;
+        }
       }
-      lineStart = i + 1;
     }
   }
   return importantLines;
@@ -454,10 +459,11 @@ function checkInstanceAlive(instanceInfo, options) {
 
 function shutdownInstance (instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
-      print("Server already dead, doing nothing. This shouldn't happen?");    
+      print("Server already dead, doing nothing. This shouldn't happen?");
   }
   if (options.cluster) {
     var rc = instanceInfo.kickstarter.shutdown();
+    instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
     if (options.cleanup) {
       instanceInfo.kickstarter.cleanup();
     }
@@ -500,7 +506,7 @@ function shutdownInstance (instanceInfo, options) {
           else {
             wait(1);
           }
-        }      
+        }
         else if (instanceInfo.exitStatus.status !== "TERMINATED") {
           if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
             print("Server shut down with : " + yaml.safeDump(instanceInfo.exitStatus) + " marking build as crashy.");
@@ -520,8 +526,7 @@ function shutdownInstance (instanceInfo, options) {
     else {
       print("Server already dead, doing nothing.");
     }
-    
-    instanceInfo.importantLogLines = readImportantLogLines(fs.join(instanceInfo.tmpDataDir, "log"));
+    instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
   }
 
   cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
