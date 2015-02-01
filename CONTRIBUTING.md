@@ -1,7 +1,9 @@
 Contributing
 ============
 
-We welcome bug fixes and patches from 3rd party contributors.
+We welcome bug fixes and patches from 3rd party contributors. Please
+see the [Contributor Agreement](https://www.arangodb.com/community#contribute)
+for details.
 
 Please follow these guidelines if you want to contribute to ArangoDB:
 
@@ -21,21 +23,21 @@ Getting started
 * For feature requests: please clearly describe the proposed feature, additional
   configuration options, and side effects.
 
-* Please let us know if you plan to work an a ticket. This way we can make sure
+* Please let us know if you plan to work on a ticket. This way we can make sure
   we avoid redundant work.
 
-* Create a fork our repository. You can use GitHub to do this.
+* Create a fork of our repository. You can use GitHub to do this.
 
 * Clone the fork to your development box and pull the latest changes from the
   ArangoDB repository. Please make sure to use the appropriate branch:
 
-  * the "devel" branch is normally used for new features 
+  * the **devel** branch is normally used for new features 
 
-  * bug fixes should be done in the "devel" first, before being applied to
-    master or other branches
+  * bug fixes should be done in the **devel** branch first, before being applied to
+    master or other branches.
 
 * If missing, install the required prerequisites. They are listed
-  [in the manual](https://www.arangodb.org/manuals/current/Compiling.html).
+  [in the manual](https://docs.arangodb.com/Installing/Compiling.html).
 
 * configure and make your local clone. If you intend to modify the parser files,
   please make sure to activate the --enable-maintainer-mode configure option. In
@@ -65,13 +67,14 @@ Making Changes
   directory. To recreate the documentation locally, run make doxygen. This will
   re-create all documentation files in the Doxygen directory in your
   repository. You can inspect the documentation in this folder using a text
-  editor or a browser.
+  editor or a browser. We recently agreed that future documentation should be
+  written in American English (AE).
 
 * When done, run the complete test suite and make sure all tests pass.
 
 * When finished, push the changes to your GitHub repository and send a pull
   request from your fork to the ArangoDB repository. Please make sure to select
-  the appropriate branches there.
+  the appropriate branches there. This will most likely be **devel**.
 
 * You must use the Apache License for your changes.
 
@@ -87,7 +90,7 @@ configuration.  This will help us reproducing and finding bugs.
 Additional Resources
 --------------------
 
-* [ArangoDB website](https://www.arangodb.org/)
+* [ArangoDB website](https://www.arangodb.com/)
 
 * [ArangoDB on Twitter](https://twitter.com/arangodb)
 
