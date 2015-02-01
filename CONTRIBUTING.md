@@ -1,7 +1,9 @@
 Contributing
 ============
 
-We welcome bug fixes and patches from 3rd party contributors.
+We welcome bug fixes and patches from 3rd party contributors. Please
+see the [Contributor Agreement](https://www.arangodb.com/community#contribute)
+for details.
 
 Please follow these guidelines if you want to contribute to ArangoDB:
 
