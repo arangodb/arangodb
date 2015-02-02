@@ -1496,21 +1496,27 @@ var urlsTodo = [
   "/the-big-fat-fox"
 ];
 
+var authTestServerParams = [
+  ["--server.disable-authentication", "false",
+   "--server.authenticate-system-only", "false"],
+  ["--server.disable-authentication", "false",
+   "--server.authenticate-system-only", "true"],
+  ["--server.disable-authentication", "true",
+   "--server.authenticate-system-only", "true"]
+];
+var authTestNames = ["Full",
+                     "SystemAuth",
+                     "None"];
+var authTestExpectRC = [
+  [401, 401, 401, 401, 401, 401, 401],
+  [401, 401, 401, 401, 401, 404, 404],
+  [404, 404, 200, 301, 301, 404, 404]
+];
+
 testFuncs.authentication_parameters = function (options) {
   print("Authentication with parameters tests...");
   var results = {};
-  // With full authentication:
-  var instanceInfo = startInstance("tcp", options,
-                       ["--server.disable-authentication", "false",
-                        "--server.authenticate-system-only", "false"],
-                       "authentication_parameters_1");
-  if (instanceInfo === false) {
-    return {status: false, message: "failed to start server!"};
-  }
-  var r;
-  var i;
-  var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
-  var all_ok = true;
+
   var continueTesting = true;
   var downloadOptions = {
     followRedirects:false,
@@ -1520,127 +1526,64 @@ testFuncs.authentication_parameters = function (options) {
   if (typeof(options.valgrind) === 'string') {
     downloadOptions.timeout = 300;
   }
-  print("Starting Full test");
-  results.auth_full = {};
-  for (i = 0; i < urlsTodo.length; i++) {
 
-    if (!continueTesting) {
-      print("Skipping " + urlsTodo[i] + ", server is gone.");
-      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
-      instanceInfo.exitStatus = "server is gone.";
-      all_ok = false;
-      continue;
+  var test;
+  for (test = 0; test < 3; test++) {
+    var all_ok = true;
+    var instanceInfo = startInstance("tcp", options,
+                                     authTestServerParams[test],
+                                     "authentication_parameters_" + test);
+    if (instanceInfo === false) {
+      return {status: false, message: authTestNames[test] + ": failed to start server!"};
     }
+    var r;
+    var i;
+    var testName = 'auth_' + authTestNames[test];
 
-    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
-    if (r.code === expectAuthFullRC[i]) {
-      results.auth_full[urlsTodo[i]] = { status: true, message: ""};
-    }
-    else {
-      checkBodyForJsonToParse(r);
-      results.auth_full[urlsTodo[i]] = { 
-        status: false,
-        message: "we expected " + expectAuthFullRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
-      };
-      all_ok = false;
-    }
-    continueTesting = checkInstanceAlive(instanceInfo, options);
-  }
-  results.auth_full.status = all_ok;
+    print("Starting " + authTestNames[test] + " test");
+    results[testName] = {};
+    for (i = 0; i < urlsTodo.length; i++) {
+      print("  URL: " + urlsTodo[i]);
+      if (!continueTesting) {
+        print("Skipping " + urlsTodo[i] + ", server is gone.");
+        results[testName][urlsTodo[i]] = {
+          status: false,
+          message: instanceInfo.exitStatus
+        };
+        instanceInfo.exitStatus = "server is gone.";
+        all_ok = false;
+        continue;
+      }
 
-  print("Shutting down Full test...");
-  shutdownInstance(instanceInfo,options);
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
-    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
-  }
-  print("done with Full test.");
-  // Only system authentication:
-  continueTesting = true;
-  instanceInfo = startInstance("tcp", options,
-                   ["--server.disable-authentication", "false",
-                    "--server.authenticate-system-only", "true"],
-                   "authentication_parameters_2");
-  if (instanceInfo === false) {
-    return {status: false, message: "failed to start server!"};
-  }
-  var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
-  all_ok = true;
-  print("Starting System test");
-  results.auth_system = {};
-  for (i = 0; i < urlsTodo.length; i++) {
-    if (! continueTesting) {
-      print("Skipping " + urlsTodo[i] + " server is gone.");
-      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
-      instanceInfo.exitStatus = "server is gone.";
-      all_ok = false;
-      continue;
+      r = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
+      if (r.code === authTestExpectRC[test][i]) {
+        results[testName][urlsTodo[i]] = { status: true, message: ""};
+      }
+      else {
+        checkBodyForJsonToParse(r);
+        results[testName][urlsTodo[i]] = { 
+          status: false,
+          message: "we expected " + 
+            authTestExpectRC[test][i] +
+            " and we got "
+            + r.code +
+            " Full Status: "
+            + yaml.safeDump(r)
+        };
+        all_ok = false;
+      }
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
-    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
-    if (r.code === expectAuthSystemRC[i]) {
-      results.auth_system[urlsTodo[i]] = { status: true, message: ""};
-    }
-    else {
-      checkBodyForJsonToParse(r);
-      results.auth_system[urlsTodo[i]] = { 
-        status: false,
-        message: "we expected " + expectAuthSystemRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
-      };
-      all_ok = false;
-    }
-    continueTesting = checkInstanceAlive(instanceInfo, options);
-  }
-  results.auth_system.status = all_ok;
+    results[testName].status = all_ok;
 
-  print("Shutting down System test...");
-  shutdownInstance(instanceInfo,options);
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
-    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
-  }
-  print("done with System test.");
-  // No authentication:
-  instanceInfo = startInstance("tcp", options,
-                   ["--server.disable-authentication", "true",
-                    "--server.authenticate-system-only", "true"],
-                   "authentication_parameters_3");
-  if (instanceInfo === false) {
-    return {status: false, message: "failed to start server!"};
-  }
-  var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
-  results.auth_none = {};
-  all_ok = true;
-  continueTesting = true;
-  print("Starting None test");
-  for (i = 0; i < urlsTodo.length; i++) {
-    if (! continueTesting) {
-      print("Skipping " + urlsTodo[i] + " server is gone.");
-      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
-      instanceInfo.exitStatus = "server is gone.";
-      all_ok = false;
-      continue;
+    print("Shutting down " + authTestNames[test] + " test...");
+    shutdownInstance(instanceInfo, options);
+    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+        (instanceInfo.importantLogLines.length > 0)) {
+      print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
     }
-
-    r = download(instanceInfo.url+urlsTodo[i],"", downloadOptions);
-    if (r.code === expectAuthNoneRC[i]) {
-      results.auth_none[urlsTodo[i]] = { status: true, message: ""};
-    }
-    else {
-      checkBodyForJsonToParse(r);
-      results.auth_none[urlsTodo[i]] = { 
-        status: false,
-        message: "we expected " + expectAuthNoneRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
-      };
-      all_ok = false;
-    }
-    continueTesting = checkInstanceAlive(instanceInfo, options);
+    print("done with " + authTestNames[test] + " test.");
   }
-  results.auth_none.status = all_ok;
-
-  print("Shutting down None test...");
-  shutdownInstance(instanceInfo,options);
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
-    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
-  }
-  print("done with None test.");
   return results;
 };
 
@@ -1656,7 +1599,7 @@ function unitTestPrettyPrintResults(r) {
   var fail = "";
 
   try {
-    for (testrun in r) {    
+    for (testrun in r) {
       if (r.hasOwnProperty(testrun) && (internalMembers.indexOf(testrun) === -1)) {
         var isSuccess = true;
         var oneOutput = "";
