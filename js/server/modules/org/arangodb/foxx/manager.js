@@ -652,7 +652,7 @@
     var app;
     var collection = utils.tmp_getStorage();
     if (fs.exists(targetPath)) {
-      throw "An app is already installed at this location.";
+      throw new Error("An app is already installed at this location.");
     }
     fs.makeDirectoryRecursive(targetPath);
     // Remove the empty APP folder.
@@ -697,6 +697,7 @@
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
+    utils.validateMount(mount);
     var app = _install(appInfo, mount, options, true);
     executeGlobalContextFunction("reloadRouting");
     return app.simpleJSON();
@@ -740,6 +741,7 @@
       "uninstall(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    utils.validateMount(mount);
     var app = _uninstall(mount);
     executeGlobalContextFunction("reloadRouting");
     return app.simpleJSON();
@@ -757,6 +759,7 @@
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
+    utils.validateMount(mount);
     _uninstall(mount, true);
     var app = _install(appInfo, mount, options, true);
     executeGlobalContextFunction("reloadRouting");
@@ -775,6 +778,7 @@
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
+    utils.validateMount(mount);
     _uninstall(mount, false);
     var app = _install(appInfo, mount, options, false);
     executeGlobalContextFunction("reloadRouting");
@@ -820,6 +824,7 @@
       "setDevelopment(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    utils.validateMount(mount);
     var app = _toggleDevelopment(mount, true);
     return app.simpleJSON();
   };
@@ -833,6 +838,7 @@
       "setProduction(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    utils.validateMount(mount);
     var app = _toggleDevelopment(mount, false);
     return app.simpleJSON();
   };
@@ -846,6 +852,7 @@
       "configure(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    utils.validateMount(mount);
     var app = lookupApp(mount);
     var invalid = app.configure(options);
     if (invalid.length > 0) {
@@ -866,6 +873,7 @@
       "configuration(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    utils.validateMount(mount);
     var app = lookupApp(mount);
     return app.getConfiguration();
   };

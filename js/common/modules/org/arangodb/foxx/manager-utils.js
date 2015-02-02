@@ -38,9 +38,12 @@ var throwFileNotFound = arangodb.throwFileNotFound;
 var throwDownloadError = arangodb.throwDownloadError;
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
+var mountRegEx = /^\/[a-zA-Z0-9][a-zA-Z0-9_]*(\/[a-zA-Z0-9_]+)*$/;
+var mountAppRegEx = /\/APP(\/|$)/i;
 
 // TODO Only temporary
 var tmp_getStorage = function() {
+  "use strict";
   var c = db._tmp_aal;
   if (c === undefined) {
     c = db._create("_tmp_aal", {isSystem: true});
@@ -358,6 +361,26 @@ function listDevelopment() {
   return list(true);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the mount point of an app
+////////////////////////////////////////////////////////////////////////////////
+
+function validateMount(mount) {
+  'use strict';
+  if (mount[0] !== "/") {
+    throw new Error("Mount point is invalid. It has to start with /.");
+  }
+  if (mount[1] === "_") {
+    throw new Error("Mount point is invalid. /_ apps are reserved for internal use.");
+  }
+  if (!mountRegEx.test(mount)) {
+    throw new Error("Mount point is invalid. It can only contain a-z, A-Z, 0-9 or _.");
+  }
+  if (mountAppRegEx.test(mount)) {
+    throw new Error("Mount point is invalid. It is not allowed to contain /app/.");
+  }
+  return true;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate an app name and fail if it is invalid
@@ -375,6 +398,7 @@ function validateAppName (name) {
     errorMessage: errors.ERROR_APPLICATION_INVALID_NAME.message
   });
 }
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the app mounted at this mount point
@@ -447,6 +471,7 @@ exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
 exports.validateAppName = validateAppName;
+exports.validateMount = validateMount;
 exports.typeToRegex = typeToRegex;
 exports.zipDirectory = zipDirectory;
 
