@@ -27,7 +27,8 @@ if test $? -eq 0; then
   echo removing log-$PID data-$PID
   rm -rf log-$PID data-$PID
 else
-  echo "failed - don't remove log-$PID data-$PID"
+  echo "failed - don't remove log-$PID data-$PID - heres the logfile:"
+  cat log-$PID
 fi
 
 echo Server has terminated.
