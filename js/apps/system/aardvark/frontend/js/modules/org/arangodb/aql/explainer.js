@@ -166,6 +166,7 @@ function printIndexes (indexes) {
     var maxCollectionLen = String("Collection").length;
     var maxUniqueLen = String("Unique").length; 
     var maxTypeLen = String("Type").length;
+    var maxSelectivityLen = String("Selectivity Est.").length;
     var maxFieldsLen = String("Fields").length;
     indexes.forEach(function(index) {
       var l = index.type.length;
@@ -185,6 +186,7 @@ function printIndexes (indexes) {
                header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " + 
                header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + 
                header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " +
+               header("Selectivity Est.") + "   " + 
                header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " +
                header("Ranges");
     print(line);
@@ -194,11 +196,16 @@ function printIndexes (indexes) {
       var fields = indexes[i].fields.map(attribute).join(", ");
       var fieldsLen = indexes[i].fields.map(passthru).join(", ").length;
       var ranges = "[ " + indexes[i].ranges + " ]";
+      var selectivity = (indexes[i].hasOwnProperty("selectivityEstimate") ? 
+        (indexes[i].selectivityEstimate * 100).toFixed(2) + " %" : 
+        "n/a"
+      );
       line = " " + 
         pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + 
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + "   " +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + "   " +
+        pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " +
         fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + 
         ranges;
       print(line);

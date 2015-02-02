@@ -105,6 +105,10 @@ namespace triagens {
             ("id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id))) 
             ("unique", triagens::basics::Json(unique));
 
+        if (hasSelectivityEstimate()) {
+          json("selectivityEstimate", triagens::basics::Json(selectivityEstimate()));
+        }
+
         triagens::basics::Json f(triagens::basics::Json::Array);
         for (auto& field : fields) {
           f.add(triagens::basics::Json(field));
