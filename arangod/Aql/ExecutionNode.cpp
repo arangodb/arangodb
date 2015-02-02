@@ -1571,7 +1571,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
       totalCost += cost;
     }
 
-    totalCost = (std::max)(static_cast<size_t>(totalCost), static_cast<size_t>(2)); 
+    totalCost = (std::max)(static_cast<size_t>(totalCost), static_cast<size_t>(1)); 
 
     nrItems = static_cast<size_t>(totalCost);
 

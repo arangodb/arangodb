@@ -544,118 +544,6 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortWithMultipleIndexes : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(1, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testSortWithMultipleIndexesAndRanges : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 9 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(2, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiSortWithMultipleIndexes : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(1, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiSortWithMultipleIndexesAndRanges : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 9 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(2, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
     testIndexOrPrimary : function () {
       var query = "FOR i IN " + c.name() + " FILTER i._key == 'test1' || i._key == 'test9' RETURN i.value";
 
@@ -2611,12 +2499,169 @@ function optimizerIndexesRangesTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerIndexesSortTestSuite () {
+  var c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+
+      for (var i = 0; i < 2000; ++i) {
+        c.save({ _key: "test" + i, value: i % 10 });
+      }
+
+      c.ensureSkiplist("value");
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortWithMultipleIndexes : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+      }
+      assertEqual(expected.sort(), results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortWithMultipleIndexesAndRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+        expected.push(9);
+      }
+      assertEqual(expected.sort(), results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiSortWithMultipleIndexes : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+      }
+      assertEqual(expected, results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiSortWithMultipleIndexesAndRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+        expected.push(9);
+      }
+      assertEqual(expected.sort(), results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    }
+
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suite
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerIndexesTestSuite);
 jsunity.run(optimizerIndexesInOrTestSuite);
 jsunity.run(optimizerIndexesRangesTestSuite);
+jsunity.run(optimizerIndexesSortTestSuite);
 
 return jsunity.done();
 
