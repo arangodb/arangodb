@@ -369,9 +369,10 @@ function startInstance (protocol, options, addArgs, testname) {
 
 function readImportantLogLines(logPath) {
   var i, j;
-  var importantLines = [];
+  var importantLines = {};
   var list=fs.list(logPath);
   for (i = 0; i < list.length; i++) {
+    var fnLines = [];
     if (list[i].slice(0,3) === 'log') {
       var buf = fs.readBuffer(fs.join(logPath,list[i]));
       var lineStart = 0;
@@ -381,12 +382,15 @@ function readImportantLogLines(logPath) {
           var line = buf.asciiSlice(lineStart, j - 1);
           // filter out regular INFO lines, and test related messages
           if ((line.search(" INFO ") < 0) &&
-      	    (line.search("WARNING about to execute:") < 0)) {
-      	    importantLines.push(line);
+              (line.search("WARNING about to execute:") < 0)) {
+            fnLines.push(line);
           }
           lineStart = j + 1;
         }
       }
+    }
+    if (fnLines.length > 0) {
+      importantLines[list[i]] = fnLines;
     }
   }
   return importantLines;
@@ -399,7 +403,7 @@ function copy (src, dst) {
   fs.write(dst, buffer);
 }
 
-function checkInstanceAlive(instanceInfo, options) {  
+function checkInstanceAlive(instanceInfo, options) {
   var storeArangodPath;
   if (options.cluster === false) {
     var res = statusExternal(instanceInfo.pid, false);
@@ -818,7 +822,8 @@ function performTests(options, testList, testname, remote) {
     shutdownInstance(instanceInfo,options);
   }
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return results;
@@ -857,8 +862,8 @@ testFuncs.single_server = function (options) {
     }
     shutdownInstance(instanceInfo,options);
     print("done.");
-
-    if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+        Object.keys(instanceInfo.importantLogLines).length > 0) {
       print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
     }
     return result;
@@ -905,7 +910,8 @@ testFuncs.single_client = function (options) {
     }
     shutdownInstance(instanceInfo,options);
     print("done.");
-    if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+        Object.keys(instanceInfo.importantLogLines).length > 0) {
       print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
     }
     return result;
@@ -1025,9 +1031,10 @@ testFuncs.shell_client = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-    if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
-      print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
-    }
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
@@ -1119,7 +1126,7 @@ function rubyTests (options, ssl) {
     var te = files[i];
     if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
       if (filterTestcaseByOptions(te, options, filtered)) {
-        
+
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface", te)];
@@ -1153,7 +1160,8 @@ function rubyTests (options, ssl) {
   fs.remove(tmpname);
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return result;
@@ -1298,7 +1306,8 @@ testFuncs.importing = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return result;
@@ -1360,7 +1369,8 @@ testFuncs.foxx_manager = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return results;
@@ -1397,7 +1407,8 @@ testFuncs.dump = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return results;
@@ -1460,7 +1471,8 @@ testFuncs.arangob = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return results;
@@ -1480,7 +1492,8 @@ testFuncs.authentication = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') && instanceInfo.importantLogLines.length > 0) {
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
   return results;
