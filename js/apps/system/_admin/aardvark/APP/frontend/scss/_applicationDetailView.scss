@@ -9,40 +9,38 @@
       margin-bottom: 10px;
       position: relative;
 
-      .header_left {
+      div.header-icon-container {
+        height: 160px;
+        left: 0;
+        margin: 0 0 4px;
         position: absolute;
-        text-align: center;
         width: 160px;
 
-        div.header-icon-container {
-          height: 160px;
-          margin: 0 0 4px;
-          width: 160px;
-
-          img.icon {
-            height: auto;
-            max-height: 160px;
-            max-width: 160px;
-            width: auto;
-          }
-
+        img.icon {
+          height: auto;
+          max-height: 160px;
+          max-width: 160px;
+          width: auto;
         }
 
-        input.open {
-          left: 0;
-          margin-left: 0;
-          position: absolute;
-        }
+      }
+
+      .header_left {
+        left: 170px;
+        position: absolute;
+        width: 120px;
 
         input.delete {
-          margin-right: 0;
-          position: absolute;
-          right: 0;
+          margin-top: (160px - 3 * 30px) / 2;
+        }
+
+        input.switch-mode {
+          margin-top: (160px - 3 * 30px) / 2;
         }
       }
 
       .header_right {
-        left: 170px;
+        left: 300px;
         padding: 5px;
         position: relative;
 

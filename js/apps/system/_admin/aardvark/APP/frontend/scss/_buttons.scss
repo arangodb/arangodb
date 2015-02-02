@@ -171,6 +171,11 @@ a.headerButton {
       color: $c-positive-hover;
     }
   }
+  &.disabled {
+    @extend %icon-inactive;
+
+    cursor: not-allowed;
+  }
 }
 
 #exportCollection {

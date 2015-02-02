@@ -18,9 +18,9 @@
       this.model.getConfiguration(function(cfg) {
         this._appConfig = cfg;
         if (Object.keys(this._appConfig).length === 0) {
-          $("#configure-app").prop("disabled", true);
+          $("#configure-app").addClass("disabled");
         } else {
-          $("#configure-app").prop("disabled", false);
+          $("#configure-app").removeClass("disabled");
         }
       }.bind(this));
     },
@@ -29,8 +29,10 @@
       this.model.toggleDevelopment(!this.model.get("development"), function() {
         if (this.model.get("development")) {
           $("#app-switch-mode").val("Production");
+          $("#app-development-indicator").css("display", "inline");
         } else {
           $("#app-switch-mode").val("Development");
+          $("#app-development-indicator").css("display", "none");
         }
       }.bind(this));
     },
@@ -40,10 +42,6 @@
         app: this.model,
         db: arangoHelper.currentDatabase()
       }));
-
-      if (!this.model.get('development') && !this.model.get('isSystem')) {
-        $('.delete', this.el).prop('disabled', false);
-      }
 
       $.get(this.appUrl()).success(function () {
         $('.open', this.el).prop('disabled', false);
@@ -115,7 +113,11 @@
       }.bind(this));
     },
 
-    showConfigureDialog: function() {
+    showConfigureDialog: function(e) {
+      if ((this._appConfig).keys.length === 0) {
+        e.stopPropagation();
+        return;
+      }
       var buttons = [],
           tableContent = [],
           entry;
