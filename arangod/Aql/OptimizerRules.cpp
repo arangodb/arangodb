@@ -2214,7 +2214,7 @@ public:
 /// @returns pair used for further processing with the indices.
 ////////////////////////////////////////////////////////////////////////////////
 
-  Range_IndexPair getAttrsForVariableName (std::string &variableName) {
+  Range_IndexPair getAttrsForVariableName (std::string const& variableName) {
     ECN::IndexMatchVec v;
     IndexOrCondition rangeInfo;
 
