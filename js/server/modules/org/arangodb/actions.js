@@ -997,7 +997,7 @@ function flattenRouting (routes, path, rexpr, urlParameters, depth, prefix) {
     result = result.concat(flattenRouting(
       routes.prefix,
       path + "/...",
-      rexpr + "(/[^/]+)*",
+      rexpr + "(/[^/]+)*/?",
       urlParameters._shallowCopy,
       depth + 1,
       true));

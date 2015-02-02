@@ -396,7 +396,6 @@
             _.extend(routes.models, foxx.models);
 
             p = ri.urlPrefix;
-// TODO            p = "";
 
             for (k = 0;  k < rm.length;  ++k) {
               var key = rm[k];
