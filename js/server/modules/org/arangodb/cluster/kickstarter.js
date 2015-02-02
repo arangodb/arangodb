@@ -309,7 +309,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
   var body = JSON.parse( res.body );
   var info = JSON.parse(body.node.value);
-  var id,ep,args,pids,port,endpoints,roles;
+  var id,ep,args,pids,port,endpoints,endpointNames,roles;
 
   console.info("Starting servers...");
   var i;
@@ -323,6 +323,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
   pids = [];
   endpoints = [];
+  endpointNames = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
     console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
@@ -399,6 +400,7 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     ep = exchangePort(dispatchers[cmd.dispatcher].endpoint,port);
     ep = exchangeProtocol(ep,useSSL);
     endpoints.push(ep);
+    endpointNames.push(id);
   }
 
   var error = false;
@@ -408,8 +410,12 @@ launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
     }
   }
 
-  return {"error": error, "isStartServers": true,
-          "pids": pids, "endpoints": endpoints, "roles": roles};
+  return {"error": error,
+          "isStartServers": true,
+          "pids": pids,
+          "endpoints": endpoints,
+          "endpointNames": endpointNames,
+          "roles": roles};
 };
 
 launchActions.bootstrapServers = function (dispatchers, cmd, isRelaunch,
@@ -497,13 +503,22 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
   var error = false;
 
   for (i = 0;i < run.endpoints.length;i++) {
-    console.info("Using API to shutdown %s", JSON.stringify(run.pids[i]));
+    console.info("Using API to shutdown %s %s %s %s",
+                 run.roles[i],
+                 run.endpointNames[i],
+                 run.endpoints[i],
+                 JSON.stringify(run.pids[i]));
     url = endpointToURL(run.endpoints[i])+"/_admin/shutdown";
     // We use the cluster-internal authentication:
     var hdrs = { Authorization : ArangoServerState.getClusterAuthentication() };
     r = download(url,"",{method:"GET", headers: hdrs});
     if (r.code !== 200) {
-      console.info("Shutdown API result:"+JSON.stringify(r));
+      console.info("Shutdown API result: %s %s %s %s %s",
+                   run.roles[i],
+                   run.endpointNames[i],
+                   run.endpoints[i],
+                   JSON.stringify(run.pids[i]),
+                   JSON.stringify(r));
     }
   }
   for (i = 0;i < run.endpoints.length;i++) {
@@ -519,7 +534,10 @@ shutdownActions.startServers = function (dispatchers, cmd, run) {
     if (s.status !== "TERMINATED") {
       if (s.hasOwnProperty('signal')) {
         error = true;
-        console.info("done - with problems: " + s);
+        console.error("shuting down %s %s done - with problems: " + s,
+                      run.roles[i],
+                      run.endpointNames[i],
+                      JSON.stringify(run.pids[i]));
       }
       else {
         console.info("Shutting down %s the hard way...",
@@ -589,7 +607,12 @@ isHealthyActions.startServers = function (dispatchers, cmd, run) {
   var i;
   var r = [];
   for (i = 0;i < run.pids.length;i++) {
-    console.info("Checking health of server %s", JSON.stringify(run.pids[i]));
+    console.info("Checking health of %s %s %s %s",
+                 run.roles[i],
+                 run.endpointNames[i],
+                 run.endpoints[i],
+                 JSON.stringify(run.pids[i]));
+
     r.push(statusExternal(run.pids[i]));
   }
   var s = [];
@@ -638,7 +661,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
   var body = JSON.parse( res.body );
   var info = JSON.parse(body.node.value);
-  var id,ep,args,pids,port,endpoints,roles;
+  var id,ep,args,pids,port,endpoints,endpointNames,roles;
 
   console.info("Upgrading servers...");
   var i;
@@ -732,6 +755,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
   }
   pids = [];
   endpoints = [];
+  endpointNames = [];
   for (i = 0; i < servers.length; i++) {
     id = servers[i];
     console.info("Downloading %sTarget/MapIDToEndpoint/%s", url, id);
@@ -798,6 +822,7 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
     ep = exchangePort(dispatchers[cmd.dispatcher].endpoint,port);
     ep = exchangeProtocol(ep,useSSL);
     endpoints.push(ep);
+    endpointNames.push(id);
   }
 
   error = false;
@@ -807,8 +832,12 @@ upgradeActions.startServers = function (dispatchers, cmd, isRelaunch) {
     }
   }
 
-  return {"error": error, "isStartServers": true,
-          "pids": pids, "endpoints": endpoints, "roles": roles};
+  return {"error": error,
+          "isStartServers": true,
+          "pids": pids,
+          "endpoints": endpoints,
+          "endpointNames": endpointNames,
+          "roles": roles};
 };
 
 
