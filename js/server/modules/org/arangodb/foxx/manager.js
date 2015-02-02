@@ -824,7 +824,6 @@
       "setDevelopment(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    utils.validateMount(mount);
     var app = _toggleDevelopment(mount, true);
     return app.simpleJSON();
   };
@@ -838,7 +837,6 @@
       "setProduction(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    utils.validateMount(mount);
     var app = _toggleDevelopment(mount, false);
     return app.simpleJSON();
   };
