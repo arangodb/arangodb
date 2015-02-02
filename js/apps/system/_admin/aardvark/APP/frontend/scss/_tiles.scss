@@ -134,6 +134,7 @@ $iconsize: 50px;
     border-bottom: 16px solid $c-unloaded;
   }
 
+
   .deleted div {
     border-bottom: 16px solid $c-state-critical;
   }
@@ -178,6 +179,10 @@ $iconsize: 50px;
         }
 
         &.unloaded {
+          border-bottom-color: $c-unloaded;
+        }
+
+        &.development {
           border-bottom-color: $c-unloaded;
         }
       }

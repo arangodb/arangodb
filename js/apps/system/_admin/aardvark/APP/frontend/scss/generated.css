@@ -2097,6 +2097,8 @@ div .tile, div .bigtile {
           border-bottom-color: #8aa051; }
         div .tile div.tileBadge span div.corneredBadge.unloaded, div .bigtile div.tileBadge span div.corneredBadge.unloaded {
           border-bottom-color: #ff8f35; }
+        div .tile div.tileBadge span div.corneredBadge.development, div .bigtile div.tileBadge span div.corneredBadge.development {
+          border-bottom-color: #ff8f35; }
 
 div .tile {
   height: 100px;

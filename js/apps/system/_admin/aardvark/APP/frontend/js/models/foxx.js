@@ -89,5 +89,9 @@
       });
     },
 
+    isDevelopment: function() {
+      return this.get("development");
+    }
+
   });
 }());
