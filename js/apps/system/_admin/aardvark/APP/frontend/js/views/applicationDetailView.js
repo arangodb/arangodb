@@ -114,7 +114,7 @@
     },
 
     showConfigureDialog: function(e) {
-      if ((this._appConfig).keys.length === 0) {
+      if (Object.keys(this._appConfig).length === 0) {
         e.stopPropagation();
         return;
       }

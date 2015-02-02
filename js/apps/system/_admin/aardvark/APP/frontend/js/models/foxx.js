@@ -89,6 +89,10 @@
       });
     },
 
+    isSystem: function() {
+      return this.get("system");
+    },
+
     isDevelopment: function() {
       return this.get("development");
     }
