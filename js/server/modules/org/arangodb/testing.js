@@ -1556,7 +1556,7 @@ testFuncs.authentication_parameters = function (options) {
     print("Starting " + authTestNames[test] + " test");
     results[testName] = {};
     for (i = 0; i < urlsTodo.length; i++) {
-      print("  URL: " + urlsTodo[i]);
+      print("  URL: " + instanceInfo.url + urlsTodo[i]);
       if (!continueTesting) {
         print("Skipping " + urlsTodo[i] + ", server is gone.");
         results[testName][urlsTodo[i]] = {
