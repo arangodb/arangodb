@@ -230,11 +230,11 @@
             <th class="collectionInfoTh">ID</th>
             <th class="collectionInfoTh">Type</th>
             <th class="collectionInfoTh">Unique</th>
-            <th class="collectionInfoTh">Selectivity</th>
+            <th class="collectionInfoTh">Selectivity Est.</th>
             <th class="collectionInfoTh">Fields</th>
           </tr>
           <%
-          if (index){
+          if (index) {
             var fieldString = '';
             $.each(index.indexes, function(k, v) {
               if (v.fields !== undefined) {
@@ -246,7 +246,7 @@
               var indexId = v.id.substr(position+1, v.id.length);
               var selectivity = (
                 v.hasOwnProperty("selectivityEstimate") ? 
-                (v.selectivityEstimate * 100).toFixed(1) + "%" : 
+                (v.selectivityEstimate * 100).toFixed(2) + "%" : 
                 "n/a"
               );
           %>
