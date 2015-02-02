@@ -65,6 +65,7 @@
     });
 
     it("should be able to delete the app", function() {
+
       runs(function() {
         deleteButton.click();
       });
@@ -153,7 +154,7 @@
         });
 
         it("the button should be enabled", function() {
-          expect($(buttonId).prop("disabled")).toEqual(false);
+          expect($(buttonId).hasClass("disabled")).toEqual(false);
         });
 
         it("should utilize a modal dialog", function() {
@@ -205,7 +206,7 @@
         });
 
         it("the button should be disabled", function() {
-          expect($(buttonId).prop("disabled")).toEqual(true);
+          expect($(buttonId).hasClass("disabled")).toEqual(true);
         });
 
       });

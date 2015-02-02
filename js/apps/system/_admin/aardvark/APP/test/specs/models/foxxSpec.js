@@ -35,7 +35,20 @@
       var myFoxx = new window.Foxx();
       expect(myFoxx.isNew()).toBeFalsy();
     });
+
+    it("system apps should know it", function() {
+      var myFoxx = new window.Foxx({
+        system: true
+      });
+      expect(myFoxx.isSystem()).toBeTruthy();
+    });
     
+    it("non system apps should know it", function() {
+      var myFoxx = new window.Foxx({
+        system: false
+      });
+      expect(myFoxx.isSystem()).toBeFalsy();
+    });
 
     describe("mode chages", function() {
 
