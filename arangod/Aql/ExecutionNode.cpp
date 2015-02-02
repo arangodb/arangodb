@@ -463,13 +463,28 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect one index; only skiplist indexes which match attrs in sequence.
-/// @returns a qualification how good they match;
-///      match->index==nullptr means no match at all.
+/// returns a qualification how good they match;
+/// match->index == nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
+ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node,
+                                                       Index const* idx,
                                                        ExecutionNode::IndexMatchVec const& attrs) {
   IndexMatch match;
+
+  if (node->getType() == INDEX_RANGE) {
+    // found an index range node...
+    // now check, regardless of the type of index, if the index ranges are only
+    // equality lookups and include all sort critieria. in this case, we can optimize
+    // away the sort completely
+    if (IndexRangeNode::SortCoveredByEqualityLookup(static_cast<IndexRangeNode const*>(node), idx, attrs)) {
+      match.doesMatch = true;
+
+      // when we get here we will be able to optimize away the sort
+      return match;
+    }
+  }
+
 
   if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX || 
       attrs.empty()) {
@@ -527,6 +542,7 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
       match.doesMatch = false;
     }
   }
+
   return match;
 }
 
@@ -1188,7 +1204,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
   std::vector<IndexMatch> out;
   auto&& indexes = _collection->getIndexes();
   for (auto idx : indexes) {
-    IndexMatch match = CompareIndex(idx, attrs);
+    IndexMatch match = CompareIndex(this, idx, attrs);
     if (match.index != nullptr) {
       out.push_back(match);
     }
@@ -1424,8 +1440,12 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the pattern matches this node's index
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionNode::IndexMatch IndexRangeNode::matchesIndex (IndexMatchVec const& pattern) const {
-  return CompareIndex(_index, pattern);
+  return CompareIndex(this, _index, pattern);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1618,6 +1638,43 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
     v.push_back(vv);
   }
   return v;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the index range node uses only equality lookups only, 
+/// and that the sort only consists of these same attributes.
+/// in this special case, the sort can be optimized away because the index 
+/// will only produce constant values (wrt to the sort criterion)
+////////////////////////////////////////////////////////////////////////////////
+
+bool IndexRangeNode::SortCoveredByEqualityLookup (IndexRangeNode const* node,
+                                                  Index const* idx,
+                                                  ExecutionNode::IndexMatchVec const& attrs) {
+
+  auto ranges = node->ranges();
+
+  // check for OR
+  if (ranges.size() != 1) {
+    return false; 
+  }
+
+  // check for non-equality ranges or different attributes used
+  std::unordered_set<std::string> used;
+  for (auto const& r : ranges[0]) {
+    if (! r.is1ValueRangeInfo()) {
+      return false;
+    }
+
+    used.insert(r._attr);
+  }
+ 
+  for (auto const& attr : attrs) {
+    if (used.find(attr.first) == used.end()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 // -----------------------------------------------------------------------------

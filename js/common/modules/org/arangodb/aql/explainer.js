@@ -168,7 +168,11 @@ function printIndexes (indexes) {
     var maxSelectivityLen = String("Selectivity Est.").length;
     var maxFieldsLen = String("Fields").length;
     indexes.forEach(function(index) {
-      var l = index.type.length;
+      var l = String(index.node).length;
+      if (l > maxIdLen) {
+        maxIdLen = l;
+      }
+      l = index.type.length;
       if (l > maxTypeLen) {
         maxTypeLen = l;
       }
@@ -200,7 +204,7 @@ function printIndexes (indexes) {
         "n/a"
       );
       line = " " + 
-        pad(1 + maxIdLen - String(i + 1).length) + variable(String(i + 1)) + "   " + 
+        pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + "   " + 
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + "   " +
         value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + "   " +
@@ -414,6 +418,7 @@ function processQuery (query, explain) {
         var index = node.index;
         index.ranges = node.ranges.map(buildRanges).join(" || ");
         index.collection = node.collection;
+        index.node = node.id;
         indexes.push(index);
         return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + "index scan using " + node.index.type + " index") + annotation("*/");
       case "CalculationNode":

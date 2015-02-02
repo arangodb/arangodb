@@ -524,6 +524,7 @@ namespace triagens {
 
         static RuleLevel previousRule (RuleLevel level) {
           auto it = _rules.find(level);
+
           if (it == _rules.begin()) {
             // already at start
             return level;
