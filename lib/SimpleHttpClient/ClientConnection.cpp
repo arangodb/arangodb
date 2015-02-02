@@ -44,6 +44,20 @@
 
 #include <sys/types.h>
 
+#ifdef _WIN32
+#define STR_ERROR()                             \
+  windowsErrorBuf;                              \
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,     \
+                NULL,                           \
+                GetLastError(),                 \
+                0,                              \
+                windowsErrorBuf,                \
+                sizeof(windowsErrorBuf), NULL); \
+  errno = GetLastError();
+#else
+#define STR_ERROR() strerror(errno)
+#endif
+
 using namespace triagens::basics;
 using namespace triagens::httpclient;
 using namespace triagens::rest;
@@ -155,6 +169,7 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   int res;
 
   if (! TRI_isvalidsocket(_socket)) {
+    _errorDetails = std::string("not a valid socket");
     return false;
   }
 
@@ -185,14 +200,24 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
 
   if (res == 0) {
     if (isWrite) {
+      _errorDetails = std::string("timeout during write");
       TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_WRITE);
     }
     else {
+      _errorDetails = std::string("timeout during read");
       TRI_set_errno(TRI_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   }
 
   if (res < 0) {
+    const char *pErr;
+#ifdef _WIN32
+    char windowsErrorBuf[256];
+#endif
+
+    pErr = STR_ERROR();
+    _errorDetails = std::string("during prepare: ") + std::to_string(errno) + std::string(" - ") + pErr;
+    
     TRI_set_errno(errno);
   }
 

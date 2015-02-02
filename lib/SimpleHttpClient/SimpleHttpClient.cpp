@@ -189,7 +189,8 @@ namespace triagens {
             // we need to notice if the other side has closed the connection:
             bool connectionClosed;
 
-            bool res = _connection->handleRead(remainingTime, _readBuffer,
+            bool res = _connection->handleRead(remainingTime,
+                                               _readBuffer,
                                                connectionClosed);
 
 

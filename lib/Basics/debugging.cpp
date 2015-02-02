@@ -33,10 +33,12 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-
+#ifdef _WIN32
+#include <DbgHelp.h>
+#else
 #include <execinfo.h>
 #include <cxxabi.h>
-
+#endif
 #endif
 #endif
 
@@ -337,7 +339,7 @@ void TRI_GetBacktrace (std::string& btstr) {
     SymFromAddr(process, (DWORD64) stack[i], 0, symbol);
 
     snprintf(address, sizeof(address), "0x%0X", symbol->Address);
-    bstr += std::string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
+    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
   }
 
   TRI_SystemFree(symbol);
