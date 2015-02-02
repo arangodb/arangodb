@@ -413,7 +413,7 @@ function checkInstanceAlive(instanceInfo, options) {
       instanceInfo.exitStatus = res;
       print(instanceInfo);
       if (res.hasOwnProperty('signal') && 
-          (res.signal === 11))
+          ((ress.signal === 11) || (ress.signal === 6)))
       {
         storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
         print("Core dump written; copying arangod to " + 
@@ -437,7 +437,7 @@ function checkInstanceAlive(instanceInfo, options) {
           var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
           var ress = statusExternal(checkpid, false);
           if (ress.hasOwnProperty('signal') && 
-              (ress.signal === 11)) {
+              ((ress.signal === 11) || (ress.signal === 6))) {
             storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
             print("Core dump written; copying arangod to " + 
                   storeArangodPath + " for later analysis.");
@@ -1393,16 +1393,24 @@ testFuncs.dump = function (options) {
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePathUnix("js/server/tests/dump-setup"+cluster+".js"));
-  if (results.setup.status === true) {
+  if (checkInstanceAlive(instanceInfo) &&
+      (results.setup.status === true)) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
-    results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
-                                           "UnitTestsDumpDst");
-    results.test = runInArangosh(options, instanceInfo,
-       makePathUnix("js/server/tests/dump"+cluster+".js"),
-       [ "--server.database", "UnitTestsDumpDst" ]);
-    results.tearDown = runInArangosh(options, instanceInfo,
-       makePathUnix("js/server/tests/dump-teardown"+cluster+".js"));
+    if (checkInstanceAlive(instanceInfo)) {
+      results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
+                                             "UnitTestsDumpDst");
+    
+      if (checkInstanceAlive(instanceInfo)) {
+        results.test = runInArangosh(options, instanceInfo,
+                                     makePathUnix("js/server/tests/dump"+cluster+".js"),
+                                     [ "--server.database", "UnitTestsDumpDst" ]);
+        if (checkInstanceAlive(instanceInfo)) {
+          results.tearDown = runInArangosh(options, instanceInfo,
+                                           makePathUnix("js/server/tests/dump-teardown"+cluster+".js"));
+        }
+      }
+    }
   }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
