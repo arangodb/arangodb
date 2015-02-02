@@ -300,7 +300,7 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
 
-
+    utils.validateMount(mount);
     if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
       appInfo = moveAppToServer(appInfo);
     }
@@ -335,7 +335,7 @@
     var req = {
       mount: mount,
     };
-
+    utils.validateMount(mount);
     res = arango.POST("/_admin/foxx/uninstall", JSON.stringify(req));
     arangosh.checkRequestResult(res);
     return {
@@ -357,6 +357,8 @@
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
+
+    utils.validateMount(mount);
     var res;
     var req = {
       appInfo: appInfo,
@@ -385,6 +387,7 @@
       [ [ "Install information", "string" ],
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
+    utils.validateMount(mount);
     var res;
     var req = {
       appInfo: appInfo,
