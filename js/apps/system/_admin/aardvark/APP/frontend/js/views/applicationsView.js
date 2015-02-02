@@ -236,6 +236,28 @@
       }
     },
 
+    setMountpointValidators: function() {
+      window.modalView.modalBindValidation({
+        id: "new-app-mount",
+        validateInput: function() {
+          return [
+            {
+              rule: Joi.string().required(),
+              msg: "No mountpoint given."
+            },
+            {
+              rule: Joi.string().regex(/^\/[^_]/),
+              msg: "Mountpoints with _ are reserved for internal use."
+            },
+            {
+              rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
+              msg: "Mountpoints have to start with / and can only contain [a-zA-Z0-9_-%]"
+            }
+          ];
+        }
+      });
+    },
+
     setGithubValidators: function() {
       window.modalView.modalBindValidation({
         id: "repository",

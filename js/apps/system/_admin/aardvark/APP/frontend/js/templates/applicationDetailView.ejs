@@ -16,17 +16,20 @@
         <a class="disabledBread">
           <%= app.attributes.mount %>
         </a>
+        <a class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
+          (development)
+        </a>
       </div>
     </div>
     <section class="info">
       <div class="header">
+        <div class="header-icon-container">
+          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for App" class="icon" />
+        </div>
         <div class="header_left">
-          <div class="header-icon-container">
-            <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for App" class="icon" />
-          </div>
           <input type="button" class="open button-success" disabled="true" value="Open" />
-          <input type="button" class="delete button-danger" disabled="true" value="Delete" />
-          <input id="app-switch-mode" type="button" class="button-warning" value="<%=app.get('development')?'Production':'Development'%>" />
+          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Production':'Development'%>" />
+          <input type="button" class="delete button-danger" value="Delete" disabled="<%=app.get('isSystem')%>" />
         </div>
         <div class="header_right">
           <h3>
@@ -38,11 +41,7 @@
             <% } %>
           </h3>
           <h3>
-            <% if (app.attributes.development) { %>
-              <span class="version">devel</span>
-            <% } else { %>
-              <span class="version"><%= app.attributes.version %></span>
-            <% } %>
+            <span class="version"><%= app.attributes.version %></span>
           </h3>
           <p class="description"><%= app.attributes.description %></p>
         </div>

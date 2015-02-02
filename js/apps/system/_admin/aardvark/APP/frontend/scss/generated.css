@@ -1452,6 +1452,11 @@ nav.navbar, footer.footer {
   [class*=' button-']:focus:disabled, .button-inactive:focus {
     background-color: #d3d3d3; }
 
+a.headerButton.disabled {
+  color: #d3d3d3; }
+  a.headerButton.disabled:hover, a.headerButton.disabled:focus {
+    color: #d3d3d3; }
+
 ul.link-dropdown-menu, ul.user-dropdown-menu, ul.gv-dropdown-menu {
   -moz-border-radius: 3px;
   -webkit-border-radius: 3px;
@@ -1766,6 +1771,8 @@ a.headerButton {
     a.headerButton.activated:hover {
       background-color: #fff;
       color: #788f3d; }
+  a.headerButton.disabled {
+    cursor: not-allowed; }
 
 #exportCollection i {
   margin-left: -3px !important; }
@@ -4551,8 +4558,8 @@ div.breadcrumb a.disabledBread {
     margin-top: -9px;
     position: absolute; }
   .modal-body .nav img.tab-icon {
-    width: 20px;
-    margin-right: 5px; }
+    margin-right: 5px;
+    width: 20px; }
 
 .modal-text {
   font-weight: 300;
@@ -4642,9 +4649,9 @@ pre.gv-object-view {
 .foxx-store-row .foxx-name {
   font-weight: 700; }
 .foxx-store-row .foxx-author {
-  margin-top: -4px;
   font-size: 10pt;
-  font-weight: 300; }
+  font-weight: 300;
+  margin-top: -4px; }
 .foxx-store-row .foxx-version {
   font-weight: 400; }
 
@@ -5790,9 +5797,6 @@ input.gv-radio-button {
 .show-collection .tab-content {
   min-height: 200px; }
 
-.collectionInfoTh {
-  width: 320px; }
-
 .collectionInfoTh2 {
   font-family: 'Open Sans', sans-serif !important;
   font-weight: 400 !important;
@@ -5988,52 +5992,51 @@ input.gv-radio-button {
     height: 200px;
     margin-bottom: 10px;
     position: relative; }
-    .application-detail-view section.info .header .header_left {
+    .application-detail-view section.info .header div.header-icon-container {
+      height: 160px;
+      left: 0;
+      margin: 0 0 4px;
       position: absolute;
-      width: 160px;
-      text-align: center; }
-      .application-detail-view section.info .header .header_left div.header-icon-container {
-        height: 160px;
-        margin: 0px 0px 4px;
-        width: 160px; }
-        .application-detail-view section.info .header .header_left div.header-icon-container img.icon {
-          height: auto;
-          max-height: 160px;
-          max-width: 160px;
-          width: auto; }
-      .application-detail-view section.info .header .header_left input.open {
-        position: absolute;
-        margin-left: 0;
-        left: 0; }
-      .application-detail-view section.info .header .header_left input.delete {
-        position: absolute;
-        margin-right: 0;
-        right: 0; }
-    .application-detail-view section.info .header .header_right {
-      position: relative;
+      width: 160px; }
+      .application-detail-view section.info .header div.header-icon-container img.icon {
+        height: auto;
+        max-height: 160px;
+        max-width: 160px;
+        width: auto; }
+    .application-detail-view section.info .header .header_left {
       left: 170px;
-      padding: 5px; }
+      position: absolute;
+      width: 120px; }
+      .application-detail-view section.info .header .header_left input.delete {
+        margin-top: 35px; }
+      .application-detail-view section.info .header .header_left input.switch-mode {
+        margin-top: 35px; }
+    .application-detail-view section.info .header .header_right {
+      left: 300px;
+      padding: 5px;
+      position: relative; }
       .application-detail-view section.info .header .header_right h3 {
-        padding-right: 5px;
-        float: left; }
-      .application-detail-view section.info .header .header_right .license, .application-detail-view section.info .header .header_right .version {
-        -webkit-border-radius: 6px;
+        float: left;
+        padding-right: 5px; }
+      .application-detail-view section.info .header .header_right .license,
+      .application-detail-view section.info .header .header_right .version {
         -moz-border-radius: 6px;
+        -webkit-border-radius: 6px;
         border-radius: 6px;
-        border: 1px solid #AAA;
-        color: #AAA;
-        padding: 0px 8px;
-        font-size: 0.6em;
+        border: 1px solid #a0a0a0;
+        color: #a0a0a0;
+        font-size: .6em;
+        padding: 0 8px;
         position: relative;
         top: -2px; }
       .application-detail-view section.info .header .header_right .description {
         clear: left; }
   .application-detail-view section.info .swagger iframe {
-    width: 100%;
-    height: 600px; }
+    height: 600px;
+    width: 100%; }
 .application-detail-view aside.meta {
-  float: left;
   clear: right;
+  float: left;
   width: 200px; }
 
 .hotkeysList .hotkeysLabel {
@@ -6336,10 +6339,10 @@ table .sorting {
 
 .ajax-upload-dragdrop {
   border: 2px dotted #8f8d8c;
-  width: 506px;
   color: #736b68;
+  padding: 10px 10px 0;
   text-align: left;
   vertical-align: middle;
-  padding: 10px 10px 0px 10px; }
+  width: 506px; }
 
 /*# sourceMappingURL=generated.css.map */
