@@ -242,17 +242,29 @@
         validateInput: function() {
           return [
             {
-              rule: Joi.string().required(),
-              msg: "No mountpoint given."
-            },
-            {
-              rule: Joi.string().regex(/^\/[^_]/),
-              msg: "Mountpoints with _ are reserved for internal use."
+              rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+              msg: "May not contain /APP"
             },
             {
               rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-              msg: "Mountpoints have to start with / and can only contain [a-zA-Z0-9_-%]"
-            }
+              msg: "Can only contain [a-zA-Z0-9_-%]"
+            },
+            {
+              rule: Joi.string().regex(/^\/[^_]/),
+              msg: "Mountpoints with _ are reserved for internal use"
+            },
+            {
+              rule: Joi.string().regex(/[^\/]$/),
+              msg: "May not end with /"
+            },
+            {
+              rule: Joi.string().regex(/^\//),
+              msg: "Has to start with /"
+            },
+            {
+              rule: Joi.string().required().min(2),
+              msg: "Has to be non-empty"
+            },
           ];
         }
       });
@@ -389,6 +401,7 @@
         table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
       });
       this.setNewAppValidators();
+      this.setMountpointValidators();
     },
 
     render: function() {

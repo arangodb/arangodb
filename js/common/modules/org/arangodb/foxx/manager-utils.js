@@ -38,7 +38,7 @@ var throwFileNotFound = arangodb.throwFileNotFound;
 var throwDownloadError = arangodb.throwDownloadError;
 var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
-var mountRegEx = /^\/[a-zA-Z0-9][a-zA-Z0-9_]*(\/[a-zA-Z0-9_]+)*$/;
+var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
 var mountAppRegEx = /\/APP(\/|$)/i;
 
 // TODO Only temporary
@@ -57,6 +57,7 @@ var tmp_getStorage = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 var compareMounts = function(l, r) {
+  "use strict";
   var left = l.mount.toLowerCase();
   var right = r.mount.toLowerCase();
 
