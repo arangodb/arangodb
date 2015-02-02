@@ -770,9 +770,9 @@ function routingBrokenApp (mount, err, isDevelopment) {
 function defaultFoxxErrorHandler (route, appContext) {
   var handler = route.action.callback;
   if (typeof handler === "function") {
-    route.action.callback = function(req, res) {
+    route.action.callback = function(req, res, opts, next) {
       try {
-        this(req, res);
+        this(req, res, opts, next);
       } catch (err) {
         if (
           res.hasOwnProperty("status")
@@ -786,7 +786,7 @@ function defaultFoxxErrorHandler (route, appContext) {
           }
           res.status(500);
           res.json(body);
-          console.log(body);
+          console.errorLines("Error in foxx route: '%s', Stacktrace: %s", err.message || String(err), err.stack || "");
         } else {
           throw err;
         }
