@@ -1393,19 +1393,19 @@ testFuncs.dump = function (options) {
   var results = {};
   results.setup = runInArangosh(options, instanceInfo,
        makePathUnix("js/server/tests/dump-setup"+cluster+".js"));
-  if (checkInstanceAlive(instanceInfo) &&
+  if (checkInstanceAlive(instanceInfo, options) &&
       (results.setup.status === true)) {
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
-    if (checkInstanceAlive(instanceInfo)) {
+    if (checkInstanceAlive(instanceInfo, options)) {
       results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
                                              "UnitTestsDumpDst");
     
-      if (checkInstanceAlive(instanceInfo)) {
+      if (checkInstanceAlive(instanceInfo, options)) {
         results.test = runInArangosh(options, instanceInfo,
                                      makePathUnix("js/server/tests/dump"+cluster+".js"),
                                      [ "--server.database", "UnitTestsDumpDst" ]);
-        if (checkInstanceAlive(instanceInfo)) {
+        if (checkInstanceAlive(instanceInfo, options)) {
           results.tearDown = runInArangosh(options, instanceInfo,
                                            makePathUnix("js/server/tests/dump-teardown"+cluster+".js"));
         }
