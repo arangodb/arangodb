@@ -115,15 +115,18 @@ function get_api_indexes (req, res) {
 /// The result is an object describing the index. It has at least the following
 /// attributes:
 ///
-/// - *id*: The identifier of the index.
+/// - *id*: the identifier of the index
 ///
-/// All other attributes are type-dependent.
+/// - *type*: the index type
+///
+/// All other attributes are type-dependent. For example, some indexes provide
+/// a *unique* flag, whereas others don't. Some indexes can also provide a
+/// selectivity estimate in the *selectivityEstimate* attribute.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index exists, then a *HTTP 200* is
-/// returned.
+/// If the index exists, then a *HTTP 200* is returned.
 ///
 /// @RESTRETURNCODE{404}
 /// If the index does not exist, then a *HTTP 404*
