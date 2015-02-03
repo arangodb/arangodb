@@ -41,12 +41,11 @@ var ArangoError = arangodb.ArangoError;
 var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
 var mountAppRegEx = /\/APP(\/|$)/i;
 
-// TODO Only temporary
-var tmp_getStorage = function() {
+var getStorage = function() {
   "use strict";
-  var c = db._tmp_aal;
+  var c = db._apps;
   if (c === undefined) {
-    c = db._create("_tmp_aal", {isSystem: true});
+    c = db._create("_apps", {isSystem: true});
     c.ensureUniqueConstraint("mount");
   }
   return c;
@@ -282,7 +281,7 @@ function getStorage () {
 function listJson (showPrefix, onlyDevelopment) {
   'use strict';
 
-  var mounts = tmp_getStorage();
+  var mounts = getStorage();
   var cursor;
   if (onlyDevelopment) {
     cursor = mounts.byExample({isDevelopment: true});
@@ -406,7 +405,7 @@ function validateAppName (name) {
 ////////////////////////////////////////////////////////////////////////////////
 function mountedApp (mount) {
   "use strict";
-  return tmp_getStorage().firstExample({mount: mount});
+  return getStorage().firstExample({mount: mount});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,7 +413,7 @@ function mountedApp (mount) {
 ////////////////////////////////////////////////////////////////////////////////
 function updateApp (mount, update) {
   "use strict";
-  return tmp_getStorage().updateByExample({mount: mount}, update);
+  return getStorage().updateByExample({mount: mount}, update);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -475,8 +474,7 @@ exports.validateAppName = validateAppName;
 exports.validateMount = validateMount;
 exports.typeToRegex = typeToRegex;
 exports.zipDirectory = zipDirectory;
-
-exports.tmp_getStorage = tmp_getStorage;
+exports.getStorage = getStorage;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
