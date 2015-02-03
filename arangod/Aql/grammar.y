@@ -903,6 +903,9 @@ object_element:
     object_element_name T_COLON expression {
       parser->pushObjectElement($1, $3);
     }
+  | T_ARRAY_OPEN expression T_ARRAY_CLOSE T_COLON expression {
+      parser->pushObjectElement($2, $5);
+    }
   ;
 
 reference:

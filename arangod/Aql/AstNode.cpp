@@ -120,7 +120,8 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_RANGE),                    "range" },
   { static_cast<int>(NODE_TYPE_NOP),                      "no-op" },
   { static_cast<int>(NODE_TYPE_COLLECT_COUNT),            "collect count" },
-  { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" }
+  { static_cast<int>(NODE_TYPE_COLLECT_EXPRESSION),       "collect expression" },
+  { static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),"calculated object element" }
 };
 
 std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
@@ -170,7 +171,8 @@ static AstNode const* ResolveAttribute (AstNode const* node) {
       for (size_t i = 0; i < n; ++i) {
         auto member = node->getMember(i);
 
-        if (member != nullptr && strcmp(member->getStringValue(), attributeName) == 0) {
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT 
+            && strcmp(member->getStringValue(), attributeName) == 0) {
           // found the attribute
           node = member->getMember(0);
           if (attributeNames.empty()) {
@@ -523,10 +525,12 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_ARRAY:
     case NODE_TYPE_RANGE:
     case NODE_TYPE_NOP:
+    case NODE_TYPE_CALCULATED_OBJECT_ELEMENT:
       break;
   }
 
   Json subNodes = json.get("subNodes");
+
   if (subNodes.isArray()) {
     size_t const len = subNodes.size();
     for (size_t i = 0; i < len; i++) {
@@ -1156,6 +1160,12 @@ bool AstNode::isSimple () const {
     return true;
   }
 
+  if (type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+    // this one is explicitly non-simple!
+    setFlag(DETERMINED_SIMPLE);
+    return false;
+  } 
+
   if (type == NODE_TYPE_OBJECT_ELEMENT || 
       type == NODE_TYPE_ATTRIBUTE_ACCESS ||
       type == NODE_TYPE_OPERATOR_UNARY_NOT) {
@@ -1234,11 +1244,9 @@ bool AstNode::isConstant () const {
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
 
-      if (member != nullptr) {
-        if (! member->isConstant()) {
-          setFlag(DETERMINED_CONSTANT);
-          return false;
-        }
+      if (! member->isConstant()) {
+        setFlag(DETERMINED_CONSTANT);
+        return false;
       }
     }
 
@@ -1251,18 +1259,19 @@ bool AstNode::isConstant () const {
 
     for (size_t i = 0; i < n; ++i) {
       auto member = getMember(i);
-
-      if (member != nullptr) {
+      if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         auto value = member->getMember(0);
-
-        if (value == nullptr) {
-          continue;
-        }
 
         if (! value->isConstant()) {
           setFlag(DETERMINED_CONSTANT);
           return false;
         }
+      }
+      else {
+        // definitely not const!
+        TRI_ASSERT(member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
+        setFlag(DETERMINED_CONSTANT);
+        return false;
       }
     }
 
@@ -1438,6 +1447,24 @@ bool AstNode::isDeterministic () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the object node contains dynamically named attributes
+/// on its first level
+////////////////////////////////////////////////////////////////////////////////
+
+bool AstNode::containsDynamicAttributeName () const {
+  TRI_ASSERT(type == NODE_TYPE_OBJECT);
+
+  size_t const n = numMembers();
+  for (size_t i = 0; i < n; ++i) {
+    if (getMember(i)->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief clone a node, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1449,6 +1476,7 @@ AstNode* AstNode::clone (Ast* ast) const {
 /// @brief append a string representation of the node to a string buffer
 /// the string representation does not need to be JavaScript-compatible 
 /// except for node types NODE_TYPE_VALUE, NODE_TYPE_ARRAY and NODE_TYPE_OBJECT
+/// (only for objects that do not contain dynamic attributes)
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::stringify (triagens::basics::StringBuffer* buffer,
@@ -1494,8 +1522,8 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
         }
 
         AstNode* member = getMember(i);
-        if (member != nullptr) {
-          TRI_ASSERT(member->type == NODE_TYPE_OBJECT_ELEMENT);
+
+        if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
           TRI_ASSERT(member->numMembers() == 1);
 
           buffer->appendChar('"');
@@ -1503,6 +1531,17 @@ void AstNode::stringify (triagens::basics::StringBuffer* buffer,
           buffer->appendText("\":", 2);
 
           member->getMember(0)->stringify(buffer, verbose);
+        }
+        else if (member->type == NODE_TYPE_CALCULATED_OBJECT_ELEMENT) {
+          TRI_ASSERT(member->numMembers() == 2);
+
+          buffer->appendText("$[", 2);
+          member->getMember(0)->stringify(buffer, verbose);
+          buffer->appendText("]:", 2);
+          member->getMember(1)->stringify(buffer, verbose);
+        }
+        else {
+          TRI_ASSERT(false);
         }
       }
       buffer->appendChar('}');
