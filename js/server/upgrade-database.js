@@ -1417,31 +1417,6 @@ function updateGlobals() {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create new application collection
-///
-/// Setup the collection _apps
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name: "setupApps",
-      description: "setup _apps collection",
-
-      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
-      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
-
-      task: function () {
-        var created = createSystemCollection("_apps");
-        if (!created) {
-          return false;
-        }
-        var apps = getCollection("_apps");
-        apps.ensureUniqueConstraint("mount");
-        return true;
-      }
-    });
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief move applications
 ///
 /// Pack all existing foxx applications into zip-files.
@@ -1474,7 +1449,12 @@ function updateGlobals() {
         while (appsToZip.hasNext()) {
           tmp = appsToZip.next();
           path = fs.join(module.oldAppPath(), tmp.path);
-          mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
+          try {
+            mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
+          } catch (e) {
+            logger.errorLines("Tried to move app " + tmp.app + " but it was not found at app-path" + path +
+              " : " +(e.stack || String(e)));
+          }
         }
 
         // 2. If development mode, Zip all development APPs and create a map name => zipFile
@@ -1486,8 +1466,13 @@ function updateGlobals() {
           appsToZip = fs.list(devPath);
           for (i = 0; i < appsToZip.length; ++i) {
             path = fs.join(devPath, appsToZip[i]);
-            if (fs.exists() && fs.isDirectory(path)) {
-              mapDevAppZip[appsToZip[i]] = fmUtils.zipDirectory(path);
+            if (fs.exists(path) && fs.isDirectory(path)) {
+              try {
+                mapDevAppZip[appsToZip[i]] = fmUtils.zipDirectory(path);
+              } catch (e) {
+                logger.errorLines("Tried to move app " + appsToZip[i] + " but it was not found at app-path" + path +
+                  " : " + (e.stack || String(e)));
+              }
             }
           }
         }
@@ -1503,6 +1488,7 @@ function updateGlobals() {
           tmp = appsToInstall.next();
           if (mapAppZip.hasOwnProperty(tmp.app)) {
             foxxManager.install(mapAppZip[tmp.app], tmp.mount, {}, false);
+            logger.log("Upgraded app '" + tmp.app + "' on mount: " + tmp.mount);
           }
         }
 
@@ -1514,10 +1500,12 @@ function updateGlobals() {
           name = appsToInstall[i];
           foxxManager.install(mapDevAppZip[name], "/dev/" + name, {}, false);
           foxxManager.development("/dev/" + name);
+          logger.log("Upgraded dev app '" + name + "' on mount: /dev/" + name);
           try {
             fs.remove(mapDevAppZip[name]);
           } catch (err1) {
-            require("org/arangodb").printf("Cannot remove temporary file '%s'\n", mapDevAppZip[name]);
+            logger.errorLines("Could not remove temporary file '%s'\n%s",
+              mapDevAppZip[name], err1.stack || String(err1));
           }
         }
 
@@ -1527,12 +1515,12 @@ function updateGlobals() {
           try {
             fs.remove(mapAppZip[appsToInstall[i]]);
           } catch (err1) {
-            require("org/arangodb").printf("Cannot remove temporary file '%s'\n", mapAppZip[appsToInstall[i]]);
+            logger.errorLines("Could not remove temporary file '%s'\n%s",
+              mapDevAppZip[name], err1.stack || String(err1));
           }
         }
         
-        
-
+        return true;
       }
     });
 
@@ -1549,7 +1537,8 @@ function updateGlobals() {
         if (!aal) {
           return true;
         }
-        return aal.drop();
+        aal.drop();
+        return true;
       }
     });
 

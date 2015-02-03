@@ -94,7 +94,7 @@
   var refillCaches = function() {
     appCache = {};
 
-    var cursor = utils.tmp_getStorage().all();
+    var cursor = utils.getStorage().all();
     var config, app;
     var routes = [];
 
@@ -467,11 +467,14 @@
     // .............................................................................
     // throw away temporary app folder
     // .............................................................................
-    try {
-      fs.removeDirectoryRecursive(tempFile);
-    }
-    catch (err1) {
-      arangodb.printf("Cannot remove temporary folder '%s'\n Stack: %s", tempFile, err1.stack || String(err1));
+    if (found !== mf) {
+      try {
+        require("console").log(tempFile);
+        fs.removeDirectoryRecursive(tempFile);
+      }
+      catch (err1) {
+        arangodb.printf("Cannot remove temporary folder '%s'\n Stack: %s", tempFile, err1.stack || String(err1));
+      }
     }
   };
 
@@ -596,7 +599,7 @@
   var _scanFoxx = function(mount, options, activateDevelopment) {
     delete appCache[mount];
     var app = createApp(mount, options, activateDevelopment);
-    utils.tmp_getStorage().save(app.toJSON());
+    utils.getStorage().save(app.toJSON());
     return app;
   };
 
@@ -629,7 +632,7 @@
       [ mount ] );
 
     var old = lookupApp(mount);
-    var collection = utils.tmp_getStorage();
+    var collection = utils.getStorage();
     db._executeTransaction({
       collections: {
         write: collection.name()
@@ -650,7 +653,7 @@
   var _install = function(appInfo, mount, options, runSetup) {
     var targetPath = computeAppPath(mount, true);
     var app;
-    var collection = utils.tmp_getStorage();
+    var collection = utils.getStorage();
     if (fs.exists(targetPath)) {
       throw new Error("An app is already installed at this location.");
     }
@@ -710,7 +713,7 @@
 
   var _uninstall = function(mount) {
     var app = lookupApp(mount);
-    var collection = utils.tmp_getStorage();
+    var collection = utils.getStorage();
     var targetPath = computeAppPath(mount, true);
     if (!fs.exists(targetPath)) {
       throw "No foxx app found at this location.";
