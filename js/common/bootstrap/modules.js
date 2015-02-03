@@ -1284,6 +1284,21 @@ function require (path) {
       return undefined;
     }
 
+    return fs.join(appPath, '_db', internal.db._name());
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief oldAppPath
+/// Legacy needed for upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.oldAppPath = function () {
+    'use strict';
+
+    if (appPath === undefined) {
+      return undefined;
+    }
+
     return fs.join(appPath, 'databases', internal.db._name());
   };
 
