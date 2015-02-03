@@ -1411,6 +1411,149 @@ function updateGlobals() {
       }
     });
 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 upgrade 2.4 - 2.5
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create new application collection
+///
+/// Setup the collection _apps
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name: "setupApps",
+      description: "setup _apps collection",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        var created = createSystemCollection("_apps");
+        if (!created) {
+          return false;
+        }
+        var apps = getCollection("_apps");
+        apps.ensureUniqueConstraint("mount");
+        return true;
+      }
+    });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief move applications
+///
+/// Pack all existing foxx applications into zip-files.
+/// Reinstall them at their corresponding mount points 
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name: "moveFoxxApps",
+      description: "move foxx applications from name-based to mount-based folder.",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        var aal = getCollection("_aal");
+        if (!aal) {
+          return true;
+        }
+        var mapAppZip = {};
+        var tmp;
+        var tmpZip;
+        var path;
+        var fmUtils = require("org/arangodb/foxx/manager-utils");
+        var foxxManager = require("org/arangodb/foxx/manager");
+
+        // 1. Zip all production APPs and create a map appId => zipFile
+
+        var appsToZip = aal.byExample({type: "app", isSystem: false});
+        while (appsToZip.hasNext()) {
+          tmp = appsToZip.next();
+          path = fs.join(module.oldAppPath(), tmp.path);
+          mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
+        }
+
+        // 2. If development mode, Zip all development APPs and create a map name => zipFile
+        
+        var devPath = module.basePaths().devAppPath;
+        var mapDevAppZip = {};
+        var i;
+        if (devPath !== "") {
+          appsToZip = fs.list(devPath);
+          for (i = 0; i < appsToZip.length; ++i) {
+            path = fs.join(devPath, appsToZip[i]);
+            if (fs.exists() && fs.isDirectory(path)) {
+              mapDevAppZip[appsToZip[i]] = fmUtils.zipDirectory(path);
+            }
+          }
+        }
+
+        // 3. Remove old appPath
+
+        fs.removeDirectoryRecursive(module.oldAppPath(), true);
+        
+        // 4. For each mounted app, reinstall appId from zipFile to mount
+        
+        var appsToInstall = aal.byExample({type: "mount", isSystem: false});
+        while (appsToInstall.hasNext()) {
+          tmp = appsToInstall.next();
+          if (mapAppZip.hasOwnProperty(tmp.app)) {
+            foxxManager.install(mapAppZip[tmp.app], tmp.mount, {}, false);
+          }
+        }
+
+        // 5. For each dev app, reinstall app from zipFile to /dev/name. Activate development Mode
+        
+        appsToInstall = Object.keys(mapDevAppZip);
+        var name;
+        for (i = 0; i < appsToInstall.length; ++i) {
+          name = appsToInstall[i];
+          foxxManager.install(mapDevAppZip[name], "/dev/" + name, {}, false);
+          foxxManager.development("/dev/" + name);
+          try {
+            fs.remove(mapDevAppZip[name]);
+          } catch (err1) {
+            require("org/arangodb").printf("Cannot remove temporary file '%s'\n", mapDevAppZip[name]);
+          }
+        }
+
+        // 6. Clean tmp zip files
+        appsToInstall = Object.keys(mapAppZip);
+        for (i = 0; i < appsToInstall.length; ++i) {
+          try {
+            fs.remove(mapAppZip[appsToInstall[i]]);
+          } catch (err1) {
+            require("org/arangodb").printf("Cannot remove temporary file '%s'\n", mapAppZip[appsToInstall[i]]);
+          }
+        }
+        
+        
+
+      }
+    });
+
+    addTask({
+      name: "dropAal",
+      description: "drop _aal collection",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        var aal = getCollection("_aal");
+        if (!aal) {
+          return true;
+        }
+        return aal.drop();
+      }
+    });
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
