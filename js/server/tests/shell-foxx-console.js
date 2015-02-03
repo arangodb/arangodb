@@ -117,27 +117,23 @@ function ConsoleTestSuite () {
       expect(logs[0].time).not.to.be.lessThan(min);
       expect(logs[0].time).not.to.be.greaterThan(max);
     },
-/*
- [FAILED] testConsoleTimeLogsDuration: Error: expected 0 to be above 1
-  at Assertion.assert (/home/virtual/jenkins/compile/SHARDING1/js/node/node_modules/expect.js/index.js:96:13)
-  at Assertion.lessThan.Assertion.below (/home/virtual/jenkins/compile/SHARDING1/js/node/node_modules/expect.js/index.js:313:10)
-  at Function.<anonymous> (/home/virtual/jenkins/compile/SHARDING1/js/node/node_modules/expect.js/index.js:499:17)
-  at Object.ConsoleTestSuite.testConsoleTimeLogsDuration (js/server/tests/shell-foxx-console.js:132:42)
     testConsoleTimeLogsDuration: function () {
       rmrf();
       var start = Date.now();
       console.time('hi');
       var min = Date.now();
+      while (Date.now() - start < 3); // make sure a measurable amount of time passes
       console.timeEnd('hi');
       var max = Date.now();
+      expect(max).to.be.greaterThan(min); // sanity checking
       var logs = ls();
       var match = logs[0].message.match(/^([^:]+):\s+(\d+)ms$/);
       expect(match).to.be.ok();
       expect(match[1]).to.equal('hi');
-      expect(Number(match[2])).not.to.be.lessThan(min - start);
-      expect(Number(match[2])).not.to.be.greaterThan(max - start);
+      var elapsed = Number(match[2]);
+      expect(elapsed).not.to.be.lessThan(min - start);
+      expect(elapsed).not.to.be.greaterThan(max - start);
     },
-*/
     testConsoleTimeThrowsForInvalidLabel: function () {
       expect(function () {
         console.timeEnd('this is a label that does not exist');
