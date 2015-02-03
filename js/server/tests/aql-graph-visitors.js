@@ -30,6 +30,7 @@
 
 var jsunity = require("jsunity");
 var db = require("org/arangodb").db;
+var graph = require("org/arangodb/general-graph");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for EDGES() function
@@ -239,6 +240,14 @@ function ahuacatlGraphVisitorsSuite () {
       edge.save("UnitTestsAhuacatlVertex/capital-yamoussoukro", "UnitTestsAhuacatlVertex/country-cote-d-ivoire", { _key: "237", type: "is-in" });
       edge.save("UnitTestsAhuacatlVertex/capital-yaounde", "UnitTestsAhuacatlVertex/country-cameroon", { _key: "238", type: "is-in" });
       edge.save("UnitTestsAhuacatlVertex/capital-zagreb", "UnitTestsAhuacatlVertex/country-croatia", { _key: "239", type: "is-in" });
+
+      try {
+        db._collection("_graphs").remove("_graphs/UnitTestsVisitor");
+      } 
+      catch (err) {
+      }
+
+      graph._create("UnitTestsVisitor", graph._edgeDefinitions(graph._relation(edge.name(), vertex.name(), vertex.name())));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,19 +255,25 @@ function ahuacatlGraphVisitorsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      try {
+        db._collection("_graphs").remove("_graphs/UnitTestsVisitor");
+      } 
+      catch (err1) {
+      }
+
       db._drop("UnitTestsAhuacatlVertex");
       db._drop("UnitTestsAhuacatlEdge");
 
       try {
         aqlfunctions.unregister("UnitTests::visitor");
       }
-      catch (err1) {
+      catch (err2) {
       }
       
       try {
         aqlfunctions.unregister("UnitTests::filter");
       }
-      catch (err2) {
+      catch (err3) {
       }
     },
 
@@ -2198,6 +2213,65 @@ function ahuacatlGraphVisitorsSuite () {
 /// @brief registers a custom visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+    testLeafNodeVisitorGeneralGraph : function () {
+      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path, connected) {
+        if (connected && connected.length === 0) {
+          return vertex.name + " (" + vertex.type + ")";
+        }
+      });
+
+      var result = AQL_EXECUTE('LET params = { _sort : true, visitor : "UnitTests::visitor", visitorReturnsResults : true, order : "preorder-expander" } FOR result IN GRAPH_TRAVERSAL("UnitTestsVisitor", "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+
+      var expected = [
+        "Algiers (capital)", 
+        "Luanda (capital)", 
+        "Gaborone (capital)", 
+        "Ouagadougou (capital)", 
+        "Bujumbura (capital)", 
+        "Yaounde (capital)", 
+        "N'Djamena (capital)", 
+        "Yamoussoukro (capital)", 
+        "Cairo (capital)", 
+        "Asmara (capital)", 
+        "Kabul (capital)", 
+        "Manama (capital)", 
+        "Dhaka (capital)", 
+        "Thimphu (capital)", 
+        "Bandar Seri Begawan (capital)", 
+        "Phnom Penh (capital)", 
+        "Beijing (capital)", 
+        "Canberra (capital)", 
+        "Tirana (capital)", 
+        "Andorra la Vella (capital)", 
+        "Vienna (capital)", 
+        "Brussels (capital)", 
+        "Sarajevo (capital)", 
+        "Sofia (capital)", 
+        "Zagreb (capital)", 
+        "Prague (capital)", 
+        "Copenhagen (capital)", 
+        "Helsinki (capital)", 
+        "Paris (capital)", 
+        "Berlin (capital)", 
+        "Saint John's (capital)", 
+        "Nassau (capital)", 
+        "Bridgetown (capital)", 
+        "Ottawa (capital)", 
+        "Buenos Aires (capital)", 
+        "La Paz (capital)", 
+        "Brasilia (capital)", 
+        "Santiago (capital)", 
+        "Bogota (capital)", 
+        "Quito (capital)" 
+      ];
+
+      assertEqual([ expected ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a custom visitor
+////////////////////////////////////////////////////////////////////////////////
+
     testLeafNodeVisitorInPlace : function () {
       aqlfunctions.register("UnitTests::visitor", function (config, result, vertex, path, connected) {
         if (connected && connected.length === 0) {
@@ -2340,6 +2414,23 @@ function ahuacatlGraphVisitorsSuite () {
 /// @brief registers a custom visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+    testCountingVisitorInPlaceGeneralGraph : function () {
+      aqlfunctions.register("UnitTests::visitor", function (config, result) {
+        if (result.length === 0) {
+          result.push(0);
+        }
+        result[0]++;
+      });
+
+      var result = AQL_EXECUTE('LET params = { visitor : "UnitTests::visitor", visitorReturnsResults : false } FOR result IN GRAPH_TRAVERSAL("UnitTestsVisitor", "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+
+      assertEqual([ [ 87 ] ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a custom visitor
+////////////////////////////////////////////////////////////////////////////////
+
     testTypeCountingVisitorInPlace : function () {
       aqlfunctions.register("UnitTests::visitor", function (config, result, vertex) {
         if (result.length === 0) {
@@ -2366,6 +2457,38 @@ function ahuacatlGraphVisitorsSuite () {
       ];
 
       assertEqual(expected, result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a custom visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testTypeCountingVisitorInPlaceGeneralGraph : function () {
+      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex) {
+        if (result.length === 0) {
+          result.push({ });
+        }
+        var vertexType = vertex.type;
+        if (! result[0].hasOwnProperty(vertexType)) {
+          result[0][vertexType] = 1;
+        }
+        else {
+          result[0][vertexType]++;
+        }
+      });
+
+      var result = AQL_EXECUTE('LET params = { visitor : "UnitTests::visitor", visitorReturnsResults : false } FOR result IN GRAPH_TRAVERSAL("UnitTestsVisitor", "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+        
+      var expected = [
+        { 
+          "root" : 1,
+          "continent" : 6,
+          "country" : 40,
+          "capital" : 40
+        }
+      ];
+
+      assertEqual([ expected ], result.json);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2409,6 +2532,49 @@ function ahuacatlGraphVisitorsSuite () {
       ];
 
       assertEqual(expected, result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a custom filter
+////////////////////////////////////////////////////////////////////////////////
+
+    testFilterGeneralGraph : function () {
+      aqlfunctions.register("UnitTests::filter", function (config, vertex) {
+        if (vertex.type === "country") {
+          return "prune";
+        }
+
+        if (vertex.type === "continent") {
+          if (vertex.name !== "Europe") {
+            return [ "prune", "exclude" ];
+          }
+        }
+
+        return "exclude";
+      });
+
+      aqlfunctions.register("UnitTests::visitor", function (config, result, vertex) {
+        return vertex.name;
+      });
+
+      var result = AQL_EXECUTE('LET params = { _sort : true, filterVertices : "UnitTests::filter", visitor : "UnitTests::visitor", visitorReturnsResults : true } FOR result IN GRAPH_TRAVERSAL("UnitTestsVisitor", "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+
+      var expected = [
+        "Albania", 
+        "Andorra", 
+        "Austria", 
+        "Belgium", 
+        "Bosnia and Herzegovina", 
+        "Bulgaria", 
+        "Croatia", 
+        "Czech Republic", 
+        "Denmark", 
+        "Finland", 
+        "France", 
+        "Germany" 
+      ];
+
+      assertEqual([ expected ], result.json);
     }
 
   };
