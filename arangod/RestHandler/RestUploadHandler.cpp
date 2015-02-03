@@ -97,10 +97,9 @@ Handler::status_t RestUploadHandler::execute () {
 
   bool found;
   char const* value = _request->value("multipart", found);
-  bool multiPart = false;
 
   if (found) {
-    multiPart = triagens::basics::StringUtils::boolean(value);
+    bool multiPart = triagens::basics::StringUtils::boolean(value);
 
     if (multiPart) {
       if (! parseMultiPart(body, bodySize)) {
