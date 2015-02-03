@@ -156,7 +156,7 @@ function main (argv) {
   }
 
   UnitTest.unitTestPrettyPrintResults(r);
-  if (r.hasOwnProperty(crashed) && (r.crashed)) {
+  if (r.hasOwnProperty("crashed") && (r.crashed)) {
     return -1;
   }
   else {
