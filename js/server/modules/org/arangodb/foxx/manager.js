@@ -471,7 +471,7 @@
       fs.removeDirectoryRecursive(tempFile);
     }
     catch (err1) {
-      arangodb.printf("Cannot remove temporary folder '%s'\n", tempFile);
+      arangodb.printf("Cannot remove temporary folder '%s'\n Stack: %s", tempFile, err1.stack || String(err1));
     }
   };
 
