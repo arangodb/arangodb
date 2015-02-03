@@ -240,25 +240,26 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an attribute value from the AqlValue 
+/// this will return null if the value is not an object
+////////////////////////////////////////////////////////////////////////////////
+
+      triagens::basics::Json extractObjectMember (triagens::arango::AqlTransaction*,
+                                                  TRI_document_collection_t const*,
+                                                  char const*,
+                                                  bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract a value from an array AqlValue 
 /// this will return null if the value is not an array
+/// depending on the last parameter, the return value will either contain a
+/// copy of the original value in the array or a reference to it (which must
+/// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
       triagens::basics::Json extractArrayMember (triagens::arango::AqlTransaction*,
                                                  TRI_document_collection_t const*,
-                                                 char const*) const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a value from a list AqlValue 
-/// this will return null if the value is not a list
-/// depending on the last parameter, the return value will either contain a
-/// copy of the original value in the list or a reference to it (which must
-/// not be freed)
-////////////////////////////////////////////////////////////////////////////////
-
-      triagens::basics::Json extractListMember (triagens::arango::AqlTransaction*,
-                                                TRI_document_collection_t const*,
-                                                int64_t,
-                                                bool) const;
+                                                 int64_t,
+                                                 bool) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AqlValue from a vector of AqlItemBlock*s

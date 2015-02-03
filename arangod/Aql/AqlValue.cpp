@@ -626,12 +626,13 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an attribute value from the AqlValue 
-/// this will return an empty Json if the value is not an array
+/// this will return an empty Json if the value is not an object
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
-                                   TRI_document_collection_t const* document,
-                                   char const* name) const {
+Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
+                                    TRI_document_collection_t const* document,
+                                    char const* name,
+                                    bool copy) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
@@ -641,7 +642,13 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
         TRI_json_t const* found = TRI_LookupObjectJson(json, name);
 
         if (found != nullptr) {
-          return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found));
+          if (copy) {
+            // return a copy of the value
+            return Json(TRI_UNKNOWN_MEM_ZONE, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, found), triagens::basics::Json::AUTOFREE);
+          }
+
+          // return a pointer to the original value, without asking for its ownership
+          return Json(TRI_UNKNOWN_MEM_ZONE, found, triagens::basics::Json::NOFREE);
         }
       }
       
@@ -690,6 +697,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
       auto shaper = document->getShaper();
 
       TRI_shape_pid_t pid = shaper->lookupAttributePathByName(shaper, name);
+
       if (pid != 0) {
         // attribute exists
         TRI_shaped_json_t document;
@@ -699,6 +707,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
         TRI_shape_t const* shape;
 
         bool ok = TRI_ExtractShapedJsonVocShaper(shaper, &document, 0, pid, &json, &shape);
+
         if (ok && shape != nullptr) {
           return Json(TRI_UNKNOWN_MEM_ZONE, TRI_JsonShapedJson(shaper, &json));
         }
@@ -719,17 +728,17 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief extract a value from a list AqlValue 
-/// this will return null if the value is not a list
+/// @brief extract a value from an array AqlValue 
+/// this will return null if the value is not an array
 /// depending on the last parameter, the return value will either contain a
-/// copy of the original value in the list or a reference to it (which must
+/// copy of the original value in the array or a reference to it (which must
 /// not be freed)
 ////////////////////////////////////////////////////////////////////////////////
 
-Json AqlValue::extractListMember (triagens::arango::AqlTransaction* trx,
-                                  TRI_document_collection_t const* document,
-                                  int64_t position,
-                                  bool copy) const {
+Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
+                                   TRI_document_collection_t const* document,
+                                   int64_t position,
+                                   bool copy) const {
   switch (_type) {
     case JSON: {
       TRI_ASSERT(_json != nullptr);
