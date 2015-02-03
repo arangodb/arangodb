@@ -505,9 +505,54 @@ void Executor::generateCodeArray (AstNode const* node) {
 void Executor::generateCodeObject (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
+  if (node->containsDynamicAttributeName()) {
+    generateCodeDynamicObject(node);
+  }
+  else {
+    generateCodeRegularObject(node);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an object with dynamically named
+/// attributes
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeDynamicObject (AstNode const* node) {
   size_t const n = node->numMembers();
   // very conservative minimum bound
-  _buffer->reserve(2 + n * 6); 
+  _buffer->reserve(64 + n * 10);
+
+  _buffer->appendText("(function() { var o={};");
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      _buffer->appendText("o[", 2);
+      generateCodeString(member->getStringValue());
+      _buffer->appendText("]=", 2);
+      generateCodeNode(member->getMember(0));
+    }
+    else {
+      _buffer->appendText("o[_AQL.AQL_TO_STRING(");
+      generateCodeNode(member->getMember(0));
+      _buffer->appendText(")]=", 3);
+      generateCodeNode(member->getMember(1));
+    }
+    _buffer->appendChar(';');
+  }
+  _buffer->appendText("return o;})()");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an object without dynamically named
+/// attributes
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeRegularObject (AstNode const* node) {
+  size_t const n = node->numMembers();
+  // very conservative minimum bound
+  _buffer->reserve(2 + n * 6);
 
   _buffer->appendChar('{');
   for (size_t i = 0; i < n; ++i) {

@@ -59,21 +59,21 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     enum AstNodeFlagType : AstNodeFlagsType {
-      DETERMINED_SORTED           = 1,       // node is a list and its members are sorted asc.
-      DETERMINED_CONSTANT         = 2,       // node value is constant (i.e. not dynamic)
-      DETERMINED_SIMPLE           = 4,       // node value is simple (i.e. for use in a simple expression)
-      DETERMINED_THROWS           = 8,       // node can throw an exception
-      DETERMINED_NONDETERMINISTIC = 16,      // node produces non-deterministic result (e.g. function call nodes)
-      DETERMINED_RUNONDBSERVER    = 32,      // node can run on the DB server in a cluster setup
+      DETERMINED_SORTED             = 1,       // node is a list and its members are sorted asc.
+      DETERMINED_CONSTANT           = 2,       // node value is constant (i.e. not dynamic)
+      DETERMINED_SIMPLE             = 4,       // node value is simple (i.e. for use in a simple expression)
+      DETERMINED_THROWS             = 8,       // node can throw an exception
+      DETERMINED_NONDETERMINISTIC   = 16,      // node produces non-deterministic result (e.g. function call nodes)
+      DETERMINED_RUNONDBSERVER      = 32,      // node can run on the DB server in a cluster setup
 
-      VALUE_SORTED                 = 64,     // node is a list and its members are sorted asc.
-      VALUE_CONSTANT               = 128,    // node value is constant (i.e. not dynamic)
-      VALUE_SIMPLE                 = 256,    // node value is simple (i.e. for use in a simple expression)
-      VALUE_THROWS                 = 512,    // node can throw an exception
-      VALUE_NONDETERMINISTIC       = 1024,   // node produces non-deterministic result (e.g. function call nodes)
-      VALUE_RUNONDBSERVER          = 2048,   // node can run on the DB server in a cluster setup
+      VALUE_SORTED                  = 64,      // node is a list and its members are sorted asc.
+      VALUE_CONSTANT                = 128,     // node value is constant (i.e. not dynamic)
+      VALUE_SIMPLE                  = 256,     // node value is simple (i.e. for use in a simple expression)
+      VALUE_THROWS                  = 512,     // node can throw an exception
+      VALUE_NONDETERMINISTIC        = 1024,    // node produces non-deterministic result (e.g. function call nodes)
+      VALUE_RUNONDBSERVER           = 2048,    // node can run on the DB server in a cluster setup
 
-      FLAG_KEEP_VARIABLENAME       = 4096    // node is a reference to a variable name, not the variable value (used in KEEP nodes)
+      FLAG_KEEP_VARIABLENAME        = 4096     // node is a reference to a variable name, not the variable value (used in KEEP nodes)
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +167,8 @@ namespace triagens {
       NODE_TYPE_RANGE                         = 49,
       NODE_TYPE_NOP                           = 50,
       NODE_TYPE_COLLECT_COUNT                 = 51,
-      NODE_TYPE_COLLECT_EXPRESSION            = 52
+      NODE_TYPE_COLLECT_EXPRESSION            = 52,
+      NODE_TYPE_CALCULATED_OBJECT_ELEMENT     = 53
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types");
@@ -485,6 +486,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
         
         bool isDeterministic () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the object node contains dynamically named attributes
+/// on its first level
+////////////////////////////////////////////////////////////////////////////////
+
+        bool containsDynamicAttributeName () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the number of members

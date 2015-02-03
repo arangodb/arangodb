@@ -852,6 +852,19 @@ AstNode* Ast::createNodeObjectElement (char const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST calculated object element node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCalculatedObjectElement (AstNode const* attributeName,
+                                                 AstNode const* expression) {
+  AstNode* node = createNode(NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
+  node->addMember(attributeName);
+  node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
 
