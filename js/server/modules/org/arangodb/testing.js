@@ -786,7 +786,7 @@ function performTests(options, testList, testname, remote) {
         continue;
       }
 
-      print("\narangod: Trying",te,"...");
+      print("\n" + Date() + " arangod: Trying",te,"...");
       var r;
       if (remote) {
         r = runThere(options, instanceInfo, te);
@@ -853,7 +853,7 @@ testFuncs.single_server = function (options) {
       return {status: false, message: "failed to start server!"};
     }
     var te = options.test;
-    print("\narangod: Trying",te,"...");
+    print("\n" + Date() + " arangod: Trying",te,"...");
     result = {};
     result[te] = runThere(options, instanceInfo, makePathGeneric(te));
     print("Shutting down...");
@@ -901,7 +901,7 @@ testFuncs.single_client = function (options) {
       return {status: false, message: "failed to start server!"};
     }
     var te = options.test;
-    print("\narangosh: Trying ",te,"...");
+    print("\n" + Date() + " arangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
 
     print("Shutting down...");
@@ -1391,21 +1391,26 @@ testFuncs.dump = function (options) {
     return {status: false, message: "failed to start server!"};
   }
   var results = {};
+  print(Date() + ": Setting up");
   results.setup = runInArangosh(options, instanceInfo,
        makePathUnix("js/server/tests/dump-setup"+cluster+".js"));
   if (checkInstanceAlive(instanceInfo, options) &&
       (results.setup.status === true)) {
+    print(Date() + ": Dump and Restore - dump");
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
     if (checkInstanceAlive(instanceInfo, options)) {
+      print(Date() + ": Dump and Restore - restore");
       results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
                                              "UnitTestsDumpDst");
     
       if (checkInstanceAlive(instanceInfo, options)) {
+        print(Date() + ": Dump and Restore - dump 2");
         results.test = runInArangosh(options, instanceInfo,
                                      makePathUnix("js/server/tests/dump"+cluster+".js"),
                                      [ "--server.database", "UnitTestsDumpDst" ]);
         if (checkInstanceAlive(instanceInfo, options)) {
+          print(Date() + ": Dump and Restore - teardown");
           results.tearDown = runInArangosh(options, instanceInfo,
                                            makePathUnix("js/server/tests/dump-teardown"+cluster+".js"));
         }
@@ -1561,7 +1566,7 @@ testFuncs.authentication_parameters = function (options) {
     var i;
     var testName = 'auth_' + authTestNames[test];
 
-    print("Starting " + authTestNames[test] + " test");
+    print(Date() + " Starting " + authTestNames[test] + " test");
     results[testName] = {};
     for (i = 0; i < urlsTodo.length; i++) {
       print("  URL: " + instanceInfo.url + urlsTodo[i]);
