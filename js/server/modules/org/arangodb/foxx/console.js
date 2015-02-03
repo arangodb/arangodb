@@ -32,6 +32,7 @@
 var qb = require('aqb');
 var util = require('util');
 var extend = require('underscore').extend;
+var ErrorStackParser = require('error-stack-parser');
 var AssertionError = require('assert').AssertionError;
 var exists = require('org/arangodb/is').existy;
 var db = require('org/arangodb').db;
@@ -176,15 +177,8 @@ extend(Console.prototype, {
     if (this._tracing) {
       var e = new Error();
       Error.captureStackTrace(e, callee || this._log);
-      doc.stack = e.stack.replace(/\n$/, '').split('\n').slice(2)
-      .map(function (line) {
-        var tokens = line.replace(/^\s*at\s+/, '').split(':');
-        return {
-          fileName: tokens.slice(0, tokens.length - 2).join(':'),
-          lineNumber: Number(tokens[tokens.length - 2]),
-          columnNumber: Number(tokens[tokens.length - 1])
-        };
-      });
+      e.stack = e.stack.replace(/\n$/, '');
+      doc.stack = ErrorStackParser.parse(e).slice(1);
     }
 
     if (!db._foxxlog) {
