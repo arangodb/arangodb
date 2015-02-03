@@ -1,7 +1,22 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
-* added selectivity estimates for primary, edge, and hash indexes.
+* Allow dynamic attribute names in AQL
+  
+  This allows using arbitrary expressions to construct object attribute names. To
+  disambuigate expressions from other unquoted attribute names, dynamic attribute
+  names need to be enclosed in brackets (`[` and `]`):
+
+      FOR i IN 1..100
+        RETURN { [ CONCAT('value-of-', i) ] : i }
+
+* make AQL optimizer rule "use-index-for-sort" remove sort also in case a non-sorted
+  index (e.g. a hash index) is used for only equality lookups and all sort attributes
+  are covered by the index, e.g.
+
+      FOR doc IN collection FILTER doc.value == 1 SORT doc.value RETURN doc
+
+* added selectivity estimates for primary index, edge index, and hash indexes.
 
   The selectivity estimates are returned by the `GET /_api/index` REST API method
   in a sub-attribute `selectivityEstimate` for each index that supports it. This
