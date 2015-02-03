@@ -1,11 +1,12 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
-* Allow dynamic attribute names in AQL
+* Allow dynamic attribute names in AQL object literals
   
-  This allows using arbitrary expressions to construct object attribute names. To
-  disambuigate expressions from other unquoted attribute names, dynamic attribute
-  names need to be enclosed in brackets (`[` and `]`):
+  This allows using arbitrary expressions to construct attribute names in object
+  literals specified in AQL queries. To disambiguate expressions and other unquoted 
+  attribute names, dynamic attribute names need to be enclosed in brackets (`[` and `]`).
+  Example:
 
       FOR i IN 1..100
         RETURN { [ CONCAT('value-of-', i) ] : i }

@@ -906,6 +906,18 @@ object_element:
   | T_ARRAY_OPEN expression T_ARRAY_CLOSE T_COLON expression {
       parser->pushObjectElement($2, $5);
     }
+  | T_PARAMETER T_COLON expression {
+      if ($1 == nullptr) {
+        ABORT_OOM
+      }
+      
+      if (strlen($1) < 1 || $1[0] == '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1, yylloc.first_line, yylloc.first_column);
+      }
+
+      auto param = parser->ast()->createNodeParameter($1);
+      parser->pushObjectElement(param, $3);
+    }
   ;
 
 reference:
