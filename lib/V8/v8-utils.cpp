@@ -160,6 +160,7 @@ static void CreateErrorObject (v8::Isolate* isolate,
   if (! ArangoError.IsEmpty()) {
     errorObject->SetPrototype(ArangoError);
   }
+
   isolate->ThrowException(errorObject);
 }
 
@@ -3545,6 +3546,17 @@ static void JS_ArangoError (const v8::FunctionCallbackInfo<v8::Value>& args) {
     if (data->Has(ErrorMessageKey)) {
       self->Set(ErrorMessageKey, data->Get(ErrorMessageKey));
     }
+  }
+
+  {  
+    // call Error.captureStackTrace(this) so the ArangoError object gets a nifty stack trace 
+    v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Value> errorObject = current->Get(TRI_V8_ASCII_STRING("Error"));
+    v8::Handle<v8::Object> err = v8::Handle<v8::Object>::Cast(errorObject);
+    v8::Handle<v8::Function> captureStackTrace = v8::Handle<v8::Function>::Cast(err->Get(TRI_V8_ASCII_STRING("captureStackTrace")));
+
+    v8::Handle<v8::Value> arguments[] = { self };
+    captureStackTrace->Call(current, 1, arguments);
   }
 
   TRI_V8_RETURN(self);
