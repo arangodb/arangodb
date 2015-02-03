@@ -178,13 +178,26 @@ extend(Console.prototype, {
       Error.captureStackTrace(e, callee || this._log);
       doc.stack = e.stack.replace(/\n$/, '').split('\n').slice(2)
       .map(function (line) {
-        var tokens = line.replace(/^\s*at\s+/, '').split(':');
-        return {
-          fileName: tokens.slice(0, tokens.length - 2).join(':'),
-          lineNumber: Number(tokens[tokens.length - 2]),
-          columnNumber: Number(tokens[tokens.length - 1])
-        };
-      });
+        var tokens = line.match(/\s+at\s+(.+)\s+\((.+):(\d+):(\d+)\)/);
+        if (tokens) {
+          return {
+            functionName: tokens[1],
+            fileName: tokens[2],
+            lineNumber: Number(tokens[3]),
+            columnNumber: Number(tokens[4])
+          };
+        }
+        tokens = line.match(/\s+at\s+(.+):(\d+):(\d+)/);
+        if (tokens) {
+          return {
+            functionName: null,
+            fileName: tokens[1],
+            lineNumber: Number(tokens[2]),
+            columnNumber: Number(tokens[3])
+          };
+        }
+        return false;
+      }).filter(Boolean);
     }
 
     if (!db._foxxlog) {
