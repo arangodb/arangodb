@@ -3603,9 +3603,10 @@ int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
                                    std::string& key) const {
   if (value.isObject()) {
-    Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
+    Json member(value.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY, false));
 
     TRI_json_t const* json = member.json();
+
     if (TRI_IsStringJson(json)) {
       key = std::string(json->_value._string.data, json->_value._string.length - 1);
       return TRI_ERROR_NO_ERROR;
@@ -3834,7 +3835,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           // array must have _from and _to attributes
           TRI_json_t const* json;
 
-          Json member(a.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM));
+          Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM, false));
           json = member.json();
 
           if (TRI_IsStringJson(json)) {
@@ -3845,7 +3846,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
          
           if (errorCode == TRI_ERROR_NO_ERROR) { 
-            Json member(a.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_TO));
+            Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
             json = member.json();
             if (TRI_IsStringJson(json)) {
               errorCode = resolve(json->_value._string.data, edge._toCid, to);
