@@ -1498,7 +1498,7 @@ static void SignalHandler (int signal) {
 
 static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING("(shell)"));
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
   Console = new V8LineEditor(context, ".arangosh.history");
   Console->open(BaseClient.autoComplete());
@@ -1713,7 +1713,7 @@ static bool RunUnitTests (v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
   // run tests
   auto input = TRI_V8_ASCII_STRING("require(\"org/arangodb/testrunner\").runCommandLineTests();");
-  auto name  = TRI_V8_ASCII_STRING("(arangosh)");
+  auto name  = TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME);
   TRI_ExecuteJavaScriptString(isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
@@ -1855,7 +1855,7 @@ static bool RunJsLint (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   // run tests
   auto input = TRI_V8_ASCII_STRING("require(\"jslint\").runCommandLineTests({ });");
-  auto name  = TRI_V8_ASCII_STRING("(arangosh)");
+  auto name  = TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME);
   TRI_ExecuteJavaScriptString(isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
