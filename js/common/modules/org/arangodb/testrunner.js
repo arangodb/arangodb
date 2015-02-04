@@ -25,7 +25,8 @@ runJSUnityTests = function (tests) {
     if (result) {
       print("\n" + Date() + " " + runenvironment + ": Running JSUnity test from file '" + file + "'");
     } else {
-      print("\n" + Date() + " " + runenvironment + ": Skipping JSUnity test from file '" + file + "' due to previous errors");
+      print("\n" + Date() + " " + runenvironment +
+            ": Skipping JSUnity test from file '" + file + "' due to previous errors");
     }
 
     try {
