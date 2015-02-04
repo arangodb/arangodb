@@ -667,7 +667,7 @@
       installAppFromGenerator(targetPath, options || {});
     } else if (/^GIT:/i.test(appInfo)) {
       installAppFromRemote(buildGithubUrl(appInfo), targetPath);
-    } else if (/^https?:/.test(appInfo)) {
+    } else if (/^https?:/i.test(appInfo)) {
       installAppFromRemote(appInfo, targetPath);
     } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
       installAppFromLocal(appInfo, targetPath);
@@ -824,7 +824,7 @@
 
   var setDevelopment = function(mount) {
     checkParameter(
-      "setDevelopment(<mount>)",
+      "development(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = _toggleDevelopment(mount, true);
@@ -837,7 +837,7 @@
 
   var setProduction = function(mount) {
     checkParameter(
-      "setProduction(<mount>)",
+      "production(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = _toggleDevelopment(mount, false);
@@ -888,18 +888,23 @@
   /// @brief Exports
   ////////////////////////////////////////////////////////////////////////////////
 
-  exports.scanFoxx = scanFoxx;
   exports.install = install;
   exports.setup = setup;
   exports.teardown = teardown;
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
-  exports.mountPoints = mountPoints;
   exports.development = setDevelopment;
   exports.production = setProduction;
   exports.configure = configure;
   exports.configuration = configuration;
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Serverside only API
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  exports.scanFoxx = scanFoxx;
+  exports.mountPoints = mountPoints;
   exports.routes = routes;
   exports.rescanFoxx = rescanFoxx;
   exports.lookupApp = lookupApp;

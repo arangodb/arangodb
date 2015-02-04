@@ -152,6 +152,65 @@ actions.defineHttp({
   })
 });
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief configures a Foxx application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/configure",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+      var options = body.options;
+
+      return foxxManager.configure(mount, options);
+    }
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Gets the configuration of a Foxx application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/configuration",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+
+      return foxxManager.configuration(mount);
+    }
+  })
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Toggles the development mode of a foxx application
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/foxx/development",
+  prefix : false,
+
+  callback: easyPostCallback({
+    body: true,
+    callback: function (body) {
+      var mount = body.mount;
+      var activate = body.activate;
+      if (activate) {
+        return foxxManager.development(mount);
+      } else {
+        return foxxManager.production(mount);
+      }
+    }
+  })
+});
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

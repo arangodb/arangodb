@@ -166,7 +166,11 @@
       "info"         : "displays information about a Foxx application",
       "search"       : "searches the local foxx-apps repository",
       "update"       : "updates the local foxx-apps repository with data from the central foxx-apps repository",
-      "help"         : "shows this help"
+      "help"         : "shows this help",
+      "development"  : "activates development mode for the given mountpoint",
+      "production"   : "activates production mode for the given mountpoint",
+      "configuration": "request the configuration information for the given mountpoint",
+      "configure"    : "sets the configuration for the given mountpoint",
     };
 
     arangodb.print("\nThe following commands are available:\n");
@@ -405,6 +409,95 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Activate the development mode for the application on the given mount point.
+////////////////////////////////////////////////////////////////////////////////
+
+  var development = function(mount) {
+    checkParameter(
+      "development(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var res;
+    var req = {
+      mount: mount,
+      activate: true
+    };
+    res = arango.POST("/_admin/foxx/development", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Activate the production mode for the application on the given mount point.
+////////////////////////////////////////////////////////////////////////////////
+
+  var production = function(mount) {
+    checkParameter(
+      "production(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var res;
+    var req = {
+      mount: mount,
+      activate: false
+    };
+    res = arango.POST("/_admin/foxx/development", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Configure the app at the mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var configure = function(mount, options) {
+    checkParameter(
+      "configure(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var req = {
+      mount: mount,
+      options: options
+    };
+    var res = arango.POST("/_admin/foxx/configure", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return {
+      name: res.name,
+      version: res.version,
+      mount: res.mount
+    };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Get the configuration for the app at the given mountpoint
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var configuration = function(mount) {
+    checkParameter(
+      "configuration(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount);
+    var req = {
+      mount: mount
+    };
+    var res = arango.POST("/_admin/foxx/configuration", JSON.stringify(req));
+    arangosh.checkRequestResult(res);
+    return res;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief command line dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -486,6 +579,31 @@
         case "help":
           help();
           break;
+        case "development":
+          res = development(args[1]);
+          printf("Activated development mode for Application %s version %s on mount point %s\n",
+             res.name,
+             res.version,
+             res.mount);
+          break;
+        case "production":
+          res = production(args[1]);
+          printf("Activated production mode for Application %s version %s on mount point %s\n",
+             res.name,
+             res.version,
+             res.mount);
+          break;
+        case "configure":
+          res = configure(args[1]);
+          printf("Reconfigured Application %s version %s on mount point %s\n",
+             res.name,
+             res.version,
+             res.mount);
+          break;
+        case "configuration":
+          res = configuration(args[1]);
+          printf("Configuration options:\n%s\n", JSON.stringify(res, undefined, 2));
+          break;
         default:
           arangodb.printf("Unknown command '%s', please try:\n", type);
           cmdUsage();
@@ -508,14 +626,23 @@
 // --SECTION--                                                           exports
 // -----------------------------------------------------------------------------
 
-  exports.run = run;
-  exports.help = help;
   exports.install = install;
   exports.setup = setup;
   exports.teardown = teardown;
   exports.uninstall = uninstall;
   exports.replace = replace;
   exports.upgrade = upgrade;
+  exports.development = development;
+  exports.production = production;
+  exports.configure = configure;
+  exports.configuration = configuration;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Clientside only API
+////////////////////////////////////////////////////////////////////////////////
+  
+  exports.run = run;
+  exports.help = help;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports from foxx utils module.
