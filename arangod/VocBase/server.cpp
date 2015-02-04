@@ -488,6 +488,12 @@ static int CreateApplicationDirectory (char const* name,
                    name);
         }
       }
+      else if (res == TRI_ERROR_FILE_EXISTS) {
+        LOG_INFO("unable to create application directory '%s' for database '%s': %s",
+                 path,
+                 name,
+                 TRI_errno_string(res));
+      }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
                   path,
