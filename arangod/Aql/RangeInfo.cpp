@@ -390,16 +390,19 @@ void RangeInfoMap::eraseEmptyOrUndefined (std::string const& var) {
 /// @brief isValid: are all the range infos for the variable <var> valid?
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RangeInfoMap::isValid (std::string const& var) {
-  std::unordered_map<std::string, RangeInfo>* map = find(var);
+bool RangeInfoMap::isValid (std::string const& var) const {
+  auto map = find(var);
+
   if (map != nullptr) {
-    for(auto x: *map) {
+    for (auto x : *map) {
       if (! x.second.isValid()) {
         return false;
       }
     }
+
     return true;
   }
+
   return false;
 }
 
@@ -484,7 +487,7 @@ void RangeInfoMapVec::eraseEmptyOrUndefined (std::string const& var) {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::unordered_map<std::string, RangeInfo>* RangeInfoMapVec::find (
-                                              std::string const& var, size_t pos) {
+                                              std::string const& var, size_t pos) const {
   if (pos >= _rangeInfoMapVec.size()) {
     return nullptr;
   }
@@ -509,7 +512,7 @@ bool RangeInfoMapVec::isMapped (std::string const& var) const {
 /// that contain valid RangeInfoMap for the variable named var
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<size_t> RangeInfoMapVec::validPositions (std::string const& var) {
+std::vector<size_t> RangeInfoMapVec::validPositions (std::string const& var) const {
   std::vector<size_t> valid;
 
   for (size_t i = 0; i < _rangeInfoMapVec.size(); i++) {
