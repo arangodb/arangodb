@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue */
+/*global require, fail, assertEqual, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -41,17 +41,19 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function HashIndexSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionHash";
   var collection = null;
 
   var sorter = function (l, r) {
-    if (l.length != r.length) {
+    var i;
+    if (l.length !== r.length) {
       return l.length - r.length < 0 ? -1 : 1;
     }
 
     // length is equal
     for (i = 0; i < l.length; ++i) {
-      if (l[i] != r[i]) {
+      if (l[i] !== r[i]) {
         return l[i] < r[i] ? -1 : 1;
       }
     }
@@ -171,15 +173,15 @@ function HashIndexSuite() {
 
       var d1 = collection.save({ a : 1, b : 1 })._id;
       var d2 = collection.save({ a : 2, b : 1 })._id;
-      collection.save({ a : 3, b : 1 })._id;
-      collection.save({ a : 4, b : 1 })._id;
-      collection.save({ a : 4, b : 2 })._id;
+      collection.save({ a : 3, b : 1 });
+      collection.save({ a : 4, b : 1 });
+      collection.save({ a : 4, b : 2 });
       var d6 = collection.save({ a : 1, b : 1 })._id;
 
       var d7 = collection.save({ a : 1 })._id;
       var d8 = collection.save({ a : 1 })._id;
-      collection.save({ a : null, b : 1 })._id;
-      collection.save({ a : null, b : 1 })._id;
+      collection.save({ a : null, b : 1 });
+      collection.save({ a : null, b : 1 });
       var d11 = collection.save({ c : 1 })._id;
       var d12 = collection.save({ c : 1 })._id;
 
@@ -244,9 +246,9 @@ function HashIndexSuite() {
     testReadDocumentsUnloaded : function () {
       var idx = collection.ensureHashIndex("a");
 
-      collection.save({ a : 1, b : 1 })._id;
+      collection.save({ a : 1, b : 1 });
       var d2 = collection.save({ a : 2, b : 1 })._id;
-      collection.save({ a : 3, b : 1 })._id;
+      collection.save({ a : 3, b : 1 });
 
       testHelper.waitUnload(collection);
 
@@ -270,30 +272,31 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadWriteMultipleDocuments : function () {
+      var i, s;
       var idx = collection.ensureHashIndex("a");
-
+      var removeDoc = function(doc) {
+        collection.remove(doc);
+      };
       for (i = 0; i < 2000; ++i) {
         collection.save({ _key: "test" + i, a : i % 10 });
       }
 
       assertEqual(2000, collection.count());
       for (i = 0; i < 10; ++i) {
-        var s = collection.byExampleHash(idx.id, { a: i });
+        s = collection.byExampleHash(idx.id, { a: i });
         assertEqual(200, s.count());
       }
 
       for (i = 0; i < 10; ++i) {
-        var s = collection.byExampleHash(idx.id, { a: i });
+        s = collection.byExampleHash(idx.id, { a: i });
         assertEqual(200, s.count());
-        s.toArray().forEach(function(doc) {
-          collection.remove(doc);
-        });
+        s.toArray().forEach(removeDoc);
       }
 
       assertEqual(0, collection.count());
 
       for (i = 0; i < 10; ++i) {
-        var s = collection.byExampleHash(idx.id, { a: i });
+        s = collection.byExampleHash(idx.id, { a: i });
         assertEqual(0, s.count());
       }
     },
@@ -399,7 +402,9 @@ function HashIndexSuite() {
 
     testMultiHashQuery3 : function () {
       var i;
-
+      var checkDoc = function(doc) {
+        assertEqual(i, doc.value);
+      };
       collection.ensureHashIndex("value");
       for (i = 0; i < 1000; ++i) {
         collection.save({ _key: "test" + i, value: i % 4 });
@@ -408,9 +413,7 @@ function HashIndexSuite() {
       for (i = 0; i < 4; ++i) {
         var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
         assertEqual(250, docs.length);
-        docs.forEach(function(doc) {
-          assertEqual(i, doc.value);
-        });
+        docs.forEach(checkDoc);
       }
     },
 
@@ -439,19 +442,19 @@ function HashIndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMultiHashUpdate : function () {
-      var i;
-
+      var i, docs;
+      var checkDoc = function(doc) {
+        assertEqual(i, doc.value);
+      };
       collection.ensureHashIndex("value");
       for (i = 0; i < 1000; ++i) {
         collection.save({ _key: "test" + i, value: i % 4 });
       }
 
       for (i = 0; i < 4; ++i) {
-        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
+        docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
         assertEqual(250, docs.length);
-        docs.forEach(function(doc) {
-          assertEqual(i, doc.value);
-        });
+        docs.forEach(checkDoc);
       }
 
       for (i = 500; i < 1000; ++i) {
@@ -459,11 +462,9 @@ function HashIndexSuite() {
       }
 
       for (i = 0; i < 8; ++i) {
-        var docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
+        docs = collection.byExampleHash(collection.getIndexes()[1], { value: i }).toArray();
         assertEqual(125, docs.length);
-        docs.forEach(function(doc) {
-          assertEqual(i, doc.value);
-        });
+        docs.forEach(checkDoc);
       }
     },
 

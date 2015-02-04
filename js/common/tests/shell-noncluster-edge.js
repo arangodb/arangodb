@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require,  assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the edges interface
 ///
@@ -41,6 +44,7 @@ var wait = require("internal").wait;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuite () {
+  "use strict";
   var vn = "UnitTestsCollectionVertex";
   var vertex = null;
 
@@ -92,7 +96,7 @@ function CollectionEdgeSuite () {
 
       assertEqual(2, e.length);
 
-      if (e[0]._id == d1._id) {
+      if (e[0]._id === d1._id) {
         assertEqual(v2._id, e[0]._to);
         assertEqual(v1._id, e[0]._from);
 

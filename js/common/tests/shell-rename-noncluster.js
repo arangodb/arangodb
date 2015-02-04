@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual, assertMatch */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the random document selector 
 ///
@@ -31,7 +34,7 @@ var arangodb = require("org/arangodb");
 var db = arangodb.db;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       RenameSuite                                                  
+// --SECTION--                                                       RenameSuite
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -39,6 +42,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function RenameSuite () {
+  "use strict";
   var cn1 = "UnitTestsRename1";
   var cn2 = "UnitTestsRename2";
 
@@ -69,12 +73,12 @@ function RenameSuite () {
     testAqlAfterRename : function () {
       var c = db._create(cn1);
       for (var i = 0; i < 10000; ++i) {
-        db.UnitTestsRename1.save({ value: i }); 
+        db.UnitTestsRename1.save({ value: i });
       }
       c.rename(cn2);
-      db._create(cn1); 
+      db._create(cn1);
       for (i = 0; i < 100; ++i) {
-        db.UnitTestsRename1.save({ value: i }); 
+        db.UnitTestsRename1.save({ value: i });
       }
 
       var result = db._query("FOR i IN " + cn1 + " LIMIT 99, 2 RETURN i").toArray();
@@ -101,4 +105,3 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

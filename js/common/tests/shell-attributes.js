@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual, assertTrue, assertFalse, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attribute naming
 ///
@@ -41,6 +44,7 @@ var wait = require("internal").wait;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AttributesSuite () {
+  "use strict";
   var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionAttributes";
   var c = null;
@@ -73,7 +77,7 @@ function AttributesSuite () {
 
     testNoAttributes : function () {
       var doc = { };
-      
+
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
       delete d1.error;
@@ -128,21 +132,21 @@ function AttributesSuite () {
 
     testNumericAttributes : function () {
       var doc = { "12345" : 1, "6669" : "foo", "7734" : true };
-      
+
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
 
       assertEqual(1, d2["12345"]);
       assertEqual("foo", d2["6669"]);
       assertEqual(true, d2["7734"]);
-      
+
       assertEqual(undefined, d2["999"]);
 
       d2 = c.toArray()[0];
       assertEqual(1, d2["12345"]);
       assertEqual("foo", d2["6669"]);
       assertEqual(true, d2["7734"]);
-      
+
       assertEqual(undefined, d2["999"]);
     },
 
@@ -151,7 +155,15 @@ function AttributesSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReservedAttributes : function () {
-      var doc = { "_id" : "foo", "_rev": "99", "_key" : "meow", "_from" : "33", "_to": "99", "_test" : false, "_boom" : "bang" };
+      var doc = {
+        "_id" : "foo",
+        "_rev": "99",
+        "_key" : "meow",
+        "_from" : "33",
+        "_to": "99",
+        "_test" : false,
+        "_boom" : "bang"
+      };
 
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
@@ -165,7 +177,7 @@ function AttributesSuite () {
       assertEqual("bang", d2._boom);
       assertFalse(d2.hasOwnProperty("_from"));
       assertFalse(d2.hasOwnProperty("_to"));
-      
+
       // user specified _rev value must have been ignored
       assertTrue(d1._rev !== "99");
     },
@@ -196,7 +208,7 @@ function AttributesSuite () {
 
     testSpecialAttributes : function () {
       var doc = { "-meow-" : 1, "mötör" : 2, " " : 3, "\t" : 4, "\r" : 5, "\n" : 6 };
-      
+
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
 
@@ -215,12 +227,12 @@ function AttributesSuite () {
     testSharedAttributesList : function () {
       var sub = { name: 1 };
       var doc = { a: [ sub, sub ] };
-      
+
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
 
-      assertEqual(sub, d2["a"][0]);
-      assertEqual(sub, d2["a"][1]);
+      assertEqual(sub, d2.a[0]);
+      assertEqual(sub, d2.a[1]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,12 +242,12 @@ function AttributesSuite () {
     testSharedAttributesObject : function () {
       var sub = { name: 1 };
       var doc = { a: sub, b: sub };
-      
+
       var d1 = c.save(doc);
       var d2 = c.document(d1._id);
 
-      assertEqual(sub, d2["a"]);
-      assertEqual(sub, d2["b"]);
+      assertEqual(sub, d2.a);
+      assertEqual(sub, d2.a);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -247,7 +259,7 @@ function AttributesSuite () {
       var doc = { a: [ sub ] };
 
       sub.cycle = doc;
-     
+
       try {
         c.save(doc);
         fail();
@@ -259,6 +271,7 @@ function AttributesSuite () {
         }
         else {
           // we're on the client, and the JS engine just throws a generic type error
+          assertTrue(true);
         }
 
       }
