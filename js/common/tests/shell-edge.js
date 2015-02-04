@@ -1,3 +1,6 @@
+/*jshint strict: false */
+/*global require, assertEqual, assertMatch, assertTypeOf, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the document interface
 ///
@@ -28,7 +31,6 @@
 var jsunity = require("jsunity");
 
 var arangodb = require("org/arangodb");
-var console = require("console");
 
 var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
@@ -266,8 +268,7 @@ function CollectionEdgeSuite () {
       edge.unload();
 
       var e3 = edge.save(k1, k2, { _key: "ex3", connect: "vx1->vx2" });
-      
-      d1 = edge.document("ex1");
+      var d1 = edge.document("ex1");
       assertEqual("ex1", d1._key);
       assertEqual(en + "/ex1", d1._id);
       assertEqual(vn + "/vx1", d1._from);
@@ -276,7 +277,7 @@ function CollectionEdgeSuite () {
       assertEqual("ex1", e1._key);
       assertEqual(en + "/ex1", e1._id);
 
-      d2 = edge.document("ex2");
+      var d2 = edge.document("ex2");
       assertEqual("ex2", d2._key);
       assertEqual(en + "/ex2", d2._id);
       assertEqual(vn + "/vx2", d2._from);
@@ -285,7 +286,7 @@ function CollectionEdgeSuite () {
       assertEqual("ex2", e2._key);
       assertEqual(en + "/ex2", e2._id);
       
-      d3 = edge.document("ex3");
+      var d3 = edge.document("ex3");
       assertEqual("ex3", d3._key);
       assertEqual(en + "/ex3", d3._id);
       assertEqual(vn + "/vx1", d3._from);
@@ -312,7 +313,9 @@ function CollectionEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSaveEdgeInvalidVertexCollection : function () {
-      [ "UnitTestsCollectionNonExistingVertex/12345", "UnitTestsCollectionNonExistingVertex/456745" ].forEach(function(key) {
+      [ "UnitTestsCollectionNonExistingVertex/12345", 
+        "UnitTestsCollectionNonExistingVertex/456745" 
+      ].forEach(function(key) {
         try {
           edge.save(key, key, { });
           fail();
@@ -375,7 +378,7 @@ function CollectionEdgeSuite () {
 
       assertEqual(2, e.length);
 
-      if (e[0]._id == d1._id) {
+      if (e[0]._id === d1._id) {
         assertEqual(v2._id, e[0]._to);
         assertEqual(v1._id, e[0]._from);
 
@@ -461,7 +464,7 @@ function CollectionEdgeSuite () {
 
       assertEqual(2, e.length);
 
-      if (e[0]._id == d1) {
+      if (e[0]._id === d1) {
         assertEqual(v2._id, e[0]._to);
         assertEqual(v1._id, e[0]._from);
 
