@@ -1,0 +1,177 @@
+!CHAPTER Details on FoxxRepository
+
+A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as *repository*.
+
+```javascript
+var Foxx = require("org/arangodb/foxx");
+
+var TodosRepository = Foxx.Repository.extend({
+});
+
+exports.repository = TodosRepository;
+```
+
+!SUBSECTION Initialize
+
+@startDocuBlock JSF_foxx_repository_initializer
+
+!SECTION Defining custom queries
+
+You can define custom query methods using Foxx.createQuery and Foxx.Repository.extend.
+
+For more details see the chapter on [Foxx Queries](../Foxx/FoxxQueries.md).
+
+*Examples*
+
+Making a simple query in the repository and using it from the controller:
+
+```js
+// in the repository
+var Foxx = require("org/arangodb/foxx");
+
+var TodosRepository = Foxx.Repository.extend({
+    getPendingItems: Foxx.createQuery(
+        'FOR todo IN my_todos FILTER todo.completed == false RETURN todo'
+    )
+});
+
+// in the controller
+ctrl.get("/", function(req, res) {
+    req.json(todosRepository.getPendingItems());
+});
+```
+
+It is also possible to supply parameters to the query:
+
+```js
+// in the repository
+getPendingItemById: Foxx.createQuery({
+    query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
+    params: ['id']
+})
+
+// in the controller
+ctrl.get("/:id", function(req, res) {
+    var id = req.params("id");
+    var rv = todosRepository.getPendingItemById(id);
+    res.json(rv);
+});
+```
+
+The list of results can also be transformed before returning it from the repository:
+
+```js
+// in the repository
+getPendingItemById: Foxx.createQuery({
+    query: 'FOR todo IN my_todos FILTER todo.completed == false FILTER todo._key == @id RETURN todo',
+    params: ['id'],
+    transform: function(results, extra) {
+        for (var i = 0; i < results.length; i++) {
+            results[i].extraProperty = extra;
+        }
+    }
+})
+
+// in the controller
+ctrl.get("/:id", function(req, res) {
+    var id = req.params("id");
+    var extra = req.params("extra");
+    var rv = todosRepository.getPendingItemById(id, extra);
+    res.json(rv);
+});
+```
+
+!SECTION Attributes of a Repository
+
+!SUBSECTION Collection
+
+@startDocuBlock JSF_foxx_repository_collection
+
+!SUBSECTION Model
+
+@startDocuBlock JSF_foxx_repository_model
+
+!SUBSECTION Model schema
+
+@startDocuBlock JSF_foxx_repository_modelSchema
+
+!SUBSECTION Prefix
+
+@startDocuBlock JSF_foxx_repository_prefix
+
+!SECTION Defining indexes
+
+Repository can take care of ensuring the existence of collection indexes for you.
+If you define indexes for a repository, instances of the repository will have
+access to additional index-specific methods like *range* or *fulltext* (see below).
+
+The syntax for defining indexes is the same used in [*collection.ensureIndex*](../IndexHandling/README.md).
+
+@EXAMPLES
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var FulltextRepository = Foxx.Repository.extend({
+    indexes: [
+        {
+            type: 'fulltext',
+            fields: ['text'],
+            minLength: 3
+        }
+    ]
+});
+```
+
+!SECTION Methods of a Repository
+
+!SUBSECTION Adding entries to the repository
+
+@startDocuBlock JSF_foxx_repository_save
+
+!SUBSECTION Finding entries in the repository
+
+@startDocuBlock JSF_foxx_repository_byId
+
+@startDocuBlock JSF_foxx_repository_byExample
+
+@startDocuBlock JSF_foxx_repository_firstExample
+
+@startDocuBlock JSF_foxx_repository_all
+
+@startDocuBlock JSF_foxx_repository_any
+
+!SUBSECTION Removing entries from the repository
+
+@startDocuBlock JSF_foxx_repository_remove
+
+@startDocuBlock JSF_foxx_repository_removeById
+
+@startDocuBlock JSF_foxx_repository_removeByExample
+
+!SUBSECTION Replacing entries in the repository
+
+@startDocuBlock JSF_foxx_repository_replace
+
+@startDocuBlock JSF_foxx_repository_replaceById
+
+@startDocuBlock JSF_foxx_repository_replaceByExample
+
+!SUBSECTION Updating entries in the repository
+
+@startDocuBlock JSF_foxx_repository_updateById
+
+@startDocuBlock JSF_foxx_repository_updateByExample
+
+!SUBSECTION Counting entries in the repository
+
+@startDocuBlock JSF_foxx_repository_count
+
+!SUBSECTION Index-specific repository methods
+
+@startDocuBlock JSF_foxx_repository_range
+
+@startDocuBlock JSF_foxx_repository_near
+
+@startDocuBlock JSF_foxx_repository_within
+
+@startDocuBlock JSF_foxx_repository_fulltext
