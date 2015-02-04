@@ -35,6 +35,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
 #include "Utils/Exception.h"
+#include "Basics/logging.h"
 
 using namespace triagens::aql;
 using namespace triagens::arango;
@@ -630,7 +631,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
           std::string(res->shardID) + 
           std::string("' on cluster node '") +
           std::string(res->serverID) +
-          std::string("' failed.");
+          std::string("' failed : ") +
+          res->errorMessage;
       }
       delete res;
     }
@@ -1009,10 +1011,14 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
              triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, "{}", 
              headers, 30.0);
           if (res->status != CL_COMM_SENT) {
+            std::string message("could not lock all shards");
+            if (res->errorMessage.length() > 0) {
+              message += std::string(" : ") + res->errorMessage;
+            }
             delete res;
             THROW_ARANGO_EXCEPTION_MESSAGE(
                 TRI_ERROR_QUERY_COLLECTION_LOCK_FAILED,
-                "could not lock all shards");
+                message);
           }
           delete res;
         }
@@ -1045,7 +1051,17 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
                "shard:" + shardId,  
                triagens::rest::HttpRequest::HTTP_REQUEST_PUT, url, 
                  "{\"code\": 0}", headers, 30.0);
-            // Ignore result
+            // Ignore result, we need to try to remove all.
+            // However, log the incident if we have an errormessage.
+            if (res->errorMessage.length() > 0) {
+              std::string msg("while trying to unregister query ");
+              msg += queryId +
+                std::string("from shard: ") +
+                shardId + 
+                std::string("communication failed: ") + 
+                res->errorMessage;
+              LOG_WARNING("%s", msg.c_str());
+            }
             delete res;
           }
           else {
