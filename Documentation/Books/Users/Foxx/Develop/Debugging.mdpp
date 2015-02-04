@@ -1,0 +1,10 @@
+!Available Debugging mechanisms
+
+  <dt>Installation error on Mountpoint</dt>
+  <dl>
+    If your application cannot be installed, e.g. it contains syntactic errors, you will get the error description and the stacktrace on any request to a route within the mount point.
+  </dl>
+  <dt>Error Stacktraces on routes</dt>
+  <dl>
+    If your application could be installed but contains an unhandled error on a specific route, the request for this route will return the error message as well as the stacktrace.
+  </dl>
