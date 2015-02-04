@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual, assertTrue, assertEqual, assertTypeOf, assertNotEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
 ///
@@ -31,7 +34,7 @@ var ArangoCollection = arangodb.ArangoCollection;
 var testHelper = require("org/arangodb/test-helper").Helper;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
- 
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                collection methods
 // -----------------------------------------------------------------------------
@@ -41,6 +44,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionSuite () {
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,14 +58,14 @@ function CollectionSuite () {
       var c1 = db._create(cn);
 
       c1.save({ _key: "test1" });
-      var f = c1.figures(); 
+      var f = c1.figures();
       assertEqual(0, f.datafiles.count);
 
       testHelper.rotate(c1);
 
       f = c1.figures();
       assertEqual(1, f.datafiles.count);
-        
+
       c1.save({ _key: "test2" });
       testHelper.rotate(c1);
 
@@ -209,7 +213,7 @@ function CollectionSuite () {
       assertTrue(r1.revision !== "");
       assertTrue(r1.revision.match(/^[0-9]+$/));
       assertTypeOf("number", r1.checksum);
-      assertEqual(0, r1.checksum); 
+      assertEqual(0, r1.checksum);
 
       // inserting a doc, checksum should change
       c1.save({ a : 1 });
@@ -219,8 +223,8 @@ function CollectionSuite () {
       assertTrue(r2.revision !== "");
       assertTrue(r2.revision.match(/^[0-9]+$/));
       assertTypeOf("number", r2.checksum);
-      assertNotEqual(0, r2.checksum); 
-      
+      assertNotEqual(0, r2.checksum);
+
       // inserting another doc, checksum should change
       c1.save({ a : 2 });
       var r3 = c1.checksum(true);
@@ -230,8 +234,8 @@ function CollectionSuite () {
       assertTrue(r3.revision !== "");
       assertTrue(r3.revision.match(/^[0-9]+$/));
       assertTypeOf("number", r3.checksum);
-      assertNotEqual(0, r3.checksum); 
-      assertNotEqual(r2.checksum, r3.checksum); 
+      assertNotEqual(0, r3.checksum);
+      assertNotEqual(r2.checksum, r3.checksum);
 
       // test after unloading
       c1.unload();
@@ -239,15 +243,15 @@ function CollectionSuite () {
       assertTypeOf("string", r4.revision);
       assertEqual(r3.revision, r4.revision);
       assertTypeOf("number", r4.checksum);
-      assertNotEqual(0, r4.checksum); 
+      assertNotEqual(0, r4.checksum);
       assertEqual(r3.checksum, r4.checksum);
-      
+
       // test withData
       var r5 = c1.checksum(true, true);
       assertTypeOf("string", r5.revision);
       assertEqual(r4.revision, r5.revision);
       assertTypeOf("number", r5.checksum);
-      assertNotEqual(0, r5.checksum); 
+      assertNotEqual(0, r5.checksum);
       assertNotEqual(r4.checksum, r5.checksum);
 
       // test after truncation
@@ -258,7 +262,7 @@ function CollectionSuite () {
       assertNotEqual(r5.revision, r6.revision);
       assertTypeOf("number", r6.checksum);
       assertEqual(0, r6.checksum);
-      
+
       db._drop(cn);
     },
 
@@ -280,7 +284,7 @@ function CollectionSuite () {
       assertTrue(r1.revision !== "");
       assertTrue(r1.revision.match(/^[0-9]+$/));
       assertTypeOf("number", r1.checksum);
-      assertEqual(0, r1.checksum); 
+      assertEqual(0, r1.checksum);
 
       c1.save(vn + "/1", vn + "/2", { a : 1 });
       var r2 = c1.checksum(true);
@@ -289,8 +293,8 @@ function CollectionSuite () {
       assertTrue(r2.revision !== "");
       assertTrue(r2.revision.match(/^[0-9]+$/));
       assertTypeOf("number", r2.checksum);
-      assertNotEqual(0, r2.checksum); 
-      
+      assertNotEqual(0, r2.checksum);
+
       c1.save(vn + "/1", vn + "/2", { a : 2 });
       var r3 = c1.checksum(true);
       assertNotEqual(r1.revision, r3.revision);
@@ -299,8 +303,8 @@ function CollectionSuite () {
       assertTrue(r3.revision !== "");
       assertTrue(r3.revision.match(/^[0-9]+$/));
       assertTypeOf("number", r3.checksum);
-      assertNotEqual(0, r3.checksum); 
-      assertNotEqual(r2.checksum, r3.checksum); 
+      assertNotEqual(0, r3.checksum);
+      assertNotEqual(r2.checksum, r3.checksum);
 
       c1.unload();
       var r4 = c1.checksum(true);
@@ -308,13 +312,13 @@ function CollectionSuite () {
       assertEqual(r3.revision, r4.revision);
       assertTypeOf("number", r4.checksum);
       assertEqual(r3.checksum, r4.checksum);
-      
+
       // test withData
       var r5 = c1.checksum(true, true);
       assertTypeOf("string", r5.revision);
       assertEqual(r4.revision, r5.revision);
       assertTypeOf("number", r5.checksum);
-      assertNotEqual(0, r5.checksum); 
+      assertNotEqual(0, r5.checksum);
       assertNotEqual(r4.checksum, r5.checksum);
 
       // test after truncation
@@ -325,7 +329,7 @@ function CollectionSuite () {
       assertNotEqual(r5.revision, r6.revision);
       assertTypeOf("number", r6.checksum);
       assertEqual(0, r6.checksum);
-      
+
       db._drop(cn);
       db._drop(vn);
     },
@@ -351,13 +355,13 @@ function CollectionSuite () {
 
       c1.save({ _key: "foobar", value: 123 });
       c2.save({ _key: "foobar", value: 123 });
-      
+
       // keys are the same
       cs1 = c1.checksum().checksum;
       cs2 = c2.checksum().checksum;
 
       assertEqual(cs1, cs2);
-      
+
       // data is the same
       cs1 = c1.checksum(false, true).checksum;
       cs2 = c2.checksum(false, true).checksum;
@@ -369,7 +373,7 @@ function CollectionSuite () {
       cs2 = c2.checksum(true, false).checksum;
 
       assertNotEqual(cs1, cs2);
-      
+
       // revisions are still different
       cs1 = c1.checksum(true, true).checksum;
       cs2 = c2.checksum(true, true).checksum;
@@ -378,13 +382,13 @@ function CollectionSuite () {
 
       // update document in c1, keep data
       c1.replace("foobar", { value: 123 });
-      
+
       // keys are still the same
       cs1 = c1.checksum().checksum;
       cs2 = c2.checksum().checksum;
 
       assertEqual(cs1, cs2);
-      
+
       // data is still the same
       cs1 = c1.checksum(false, true).checksum;
       cs2 = c2.checksum(false, true).checksum;
@@ -394,16 +398,16 @@ function CollectionSuite () {
       // revisions are still different
       cs1 = c1.checksum(true, false).checksum;
       cs2 = c2.checksum(true, false).checksum;
-      
+
       // update document in c1, changing data
       c1.replace("foobar", { value: 124 });
-      
+
       // keys are still the same
       cs1 = c1.checksum().checksum;
       cs2 = c2.checksum().checksum;
 
       assertEqual(cs1, cs2);
-      
+
       // data is not the same
       cs1 = c1.checksum(false, true).checksum;
       cs2 = c2.checksum(false, true).checksum;
@@ -434,13 +438,13 @@ function CollectionSuite () {
       catch (err1) {
         assertEqual(ERRORS.ERROR_FORBIDDEN.code, err1.errorNum);
       }
-        
+
       // rename
-      var cn = "example";
-      db._drop(cn);
+      var cn1 = "example";
+      db._drop(cn1);
 
       try {
-        c.rename(cn);
+        c.rename(cn1);
         fail();
       }
       catch (err2) {
@@ -470,4 +474,3 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

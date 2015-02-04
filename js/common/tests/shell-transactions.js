@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client/server side transaction invocation
@@ -42,6 +42,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function TransactionsInvocationsSuite () {
+  "use strict";
 
   return {
 
@@ -117,23 +118,6 @@ function TransactionsInvocationsSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief execute a transaction with an invalid action
-////////////////////////////////////////////////////////////////////////////////
-
-    testInvokeActionInvalid2 : function () {
-      try {
-        db._executeTransaction({
-          collections: { },
-          action: [ ],
-        });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief execute a transaction without an action
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -187,7 +171,7 @@ function TransactionsInvocationsSuite () {
 /// @brief execute a transaction with an invalid action
 ////////////////////////////////////////////////////////////////////////////////
 
-    testInvokeActionInvalid1 : function () {
+    testInvokeActionInvalid2 : function () {
       try {
         db._executeTransaction({
           collections: { },

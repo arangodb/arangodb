@@ -1,4 +1,5 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*jshint strict: true */
+/*global require, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -39,6 +40,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function UniqueConstraintSuite() {
+  "use strict";
   var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionHash";
   var collection = null;
@@ -156,10 +158,10 @@ function UniqueConstraintSuite() {
       assertEqual(true, idx.isNewlyCreated);
 
       var d1 = collection.save({ a : 1, b : 1 })._id;
-      collection.save({ a : 2, b : 1 })._id;
-      collection.save({ a : 3, b : 1 })._id;
-      collection.save({ a : 4, b : 1 })._id;
-      collection.save({ a : 4, b : 2 })._id;
+      collection.save({ a : 2, b : 1 });
+      collection.save({ a : 3, b : 1 });
+      collection.save({ a : 4, b : 1 });
+      collection.save({ a : 4, b : 2 });
 
       collection.save({ a : 1 });
       collection.save({ a : 1 });

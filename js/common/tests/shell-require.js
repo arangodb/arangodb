@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertNull, module */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the module and package require
@@ -38,7 +38,8 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function RequireTestSuite () {
-
+  "use strict";
+  var console = require("console");
   function createTestPackage () {
     var test = module.createTestEnvironment("./js/common/test-data/modules");
 
@@ -139,6 +140,7 @@ function RequireTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CommonJSTestSuite () {
+  "use strict";
   var fs = require("fs");
   var console = require("console");
 

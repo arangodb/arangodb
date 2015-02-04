@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the common database interface
 ///
@@ -39,6 +42,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseSuite () {
+  "use strict";
   return {
 
     setUp : function () {
@@ -153,14 +157,14 @@ function DatabaseSuite () {
       assertTrue(Array.isArray(actual));
       n = actual.length;
       assertTrue(n > 0);
-      assertTrue(function () {
+      assertTrue( ( function () {
         for (var i = 0; i < actual.length; ++i) {
           if (actual[i] === "_system") {
             return true;
           }
         }
         return false;
-      }());
+      }() ) );
 
       try {
         internal.db._dropDatabase("UnitTestsDatabase0");
@@ -173,14 +177,14 @@ function DatabaseSuite () {
       actual = internal.db._listDatabases();
       assertTrue(Array.isArray(actual));
       assertEqual(n + 1, actual.length);
-      assertTrue(function () {
+      assertTrue( ( function () {
         for (var i = 0; i < actual.length; ++i) {
           if (actual[i] === "UnitTestsDatabase0") {
             return true;
           }
         }
         return false;
-      }());
+      }() ) );
 
       internal.db._dropDatabase("UnitTestsDatabase0");
     },
@@ -647,4 +651,3 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

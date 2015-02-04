@@ -1,4 +1,5 @@
-/*global require, db, assertEqual, assertTrue */
+/*jshint strict: true */
+/*global require, assertEqual, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the hash index, selectivity estimates
@@ -39,23 +40,9 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function HashIndexSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionHash";
   var collection = null;
-
-  var sorter = function (l, r) {
-    if (l.length != r.length) {
-      return l.length - r.length < 0 ? -1 : 1;
-    }
-
-    // length is equal
-    for (i = 0; i < l.length; ++i) {
-      if (l[i] != r[i]) {
-        return l[i] < r[i] ? -1 : 1;
-      }
-    }
-
-    return 0;
-  };
 
   return {
 
@@ -156,7 +143,7 @@ function HashIndexSuite() {
       for (i = 0; i < 1000; ++i) {
         collection.save({ value: 1 });
       }
-      
+
       idx = collection.ensureHashIndex("value");
       assertTrue(idx.selectivityEstimate <= (2 / 2000 + 0.0001));
 

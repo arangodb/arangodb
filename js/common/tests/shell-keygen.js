@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual, assertTrue, assertEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
 ///
@@ -40,6 +43,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function TraditionalSuite () {
+  "use strict";
   var cn = "UnitTestsKeyGen";
 
   return {
@@ -103,7 +107,7 @@ function TraditionalSuite () {
 
     testCreateOk2 : function () {
       var c = db._create(cn, { keyOptions: { } });
-      
+
       var options = c.properties().keyOptions;
       assertEqual("traditional", options.type);
       assertEqual(true, options.allowUserKeys);
@@ -115,7 +119,7 @@ function TraditionalSuite () {
 
     testCreateOk3 : function () {
       var c = db._create(cn, { keyOptions: { allowUserKeys: false } });
-      
+
       var options = c.properties().keyOptions;
       assertEqual("traditional", options.type);
       assertEqual(false, options.allowUserKeys);
@@ -127,7 +131,7 @@ function TraditionalSuite () {
 
     testCheckUserKey : function () {
       var c = db._create(cn, { keyOptions: { type: "traditional", allowUserKeys: true } });
-      
+
       var options = c.properties().keyOptions;
       assertEqual("traditional", options.type);
       assertEqual(true, options.allowUserKeys);
@@ -174,4 +178,3 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

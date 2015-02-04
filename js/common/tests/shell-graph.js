@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, assertTrue, assertNotNull, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -44,7 +44,7 @@ var print = arangodb.print;
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphCreationSuite() {
-
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,8 +67,8 @@ function GraphCreationSuite() {
       graph = new Graph(graph_name, vertex, edge);
 
       assertEqual(graph_name, graph._properties._key);
-      assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
-      assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
+      assertEqual(graph._vertices.type(), ArangoCollection.TYPE_DOCUMENT);
+      assertEqual(graph._edges.type(), ArangoCollection.TYPE_EDGE);
 
       graph.drop();
     },
@@ -93,8 +93,8 @@ function GraphCreationSuite() {
 
       graph = new Graph(graph_name, vertex, edge);
       assertEqual(graph_name, graph._properties._key);
-      assertTrue(graph._vertices.type() == ArangoCollection.TYPE_DOCUMENT);
-      assertTrue(graph._edges.type() == ArangoCollection.TYPE_EDGE);
+      assertEqual(graph._vertices.type(), ArangoCollection.TYPE_DOCUMENT);
+      assertEqual(graph._edges.type(), ArangoCollection.TYPE_EDGE);
 
       graph.drop();
 
@@ -202,6 +202,7 @@ function GraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphBasicsSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -219,10 +220,9 @@ function GraphBasicsSuite() {
         try {
           graph = new Graph(graph_name);
           print("FOUND: ");
-          printObject(graph);
+          require("internal").printObject(graph);
           graph.drop();
-        } catch (err1) {
-        }
+        } catch (err1) {  }
 
         graph = new Graph(graph_name, vertex, edge);
       } catch (err2) {
@@ -487,6 +487,7 @@ function GraphBasicsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VertexSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -504,10 +505,9 @@ function VertexSuite() {
         try {
           graph = new Graph(graph_name);
           print("FOUND: ");
-          printObject(graph);
+          require("internal").printObject(graph);
           graph.drop();
-        } catch (err1) {
-        }
+        } catch (err1) {        }
 
         graph = new Graph(graph_name, vertex, edge);
       } catch (err2) {
@@ -619,6 +619,7 @@ function VertexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EdgeSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -636,10 +637,9 @@ function EdgeSuite() {
         try {
           graph = new Graph(graph_name);
           print("FOUND: ");
-          printObject(graph);
+          require("internal").printObject(graph);
           graph.drop();
-        } catch (err1) {
-        }
+        } catch (err1) {        }
 
         graph = new Graph(graph_name, vertex, edge);
       } catch (err2) {

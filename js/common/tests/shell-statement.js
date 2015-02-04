@@ -42,6 +42,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function StatementSuite () {
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -180,7 +181,9 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testParseBind2 : function () {
-      var st = db._createStatement({ query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u" });
+      var st = db._createStatement({
+        query : "for u in @@users for f in friends filter u.name == @name && f.friendId == u._id return u"
+      });
       var result = st.parse();
 
       assertEqual([ "friends" ], result.collections);
@@ -372,7 +375,10 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainWithOptions : function () {
-      var st = db._createStatement({ query : "for i in _users for j in _users return i", options: { allPlans: true, maxNumberOfPlans: 1 } });
+      var st = db._createStatement({
+        query : "for i in _users for j in _users return i",
+        options: { allPlans: true, maxNumberOfPlans: 1 }
+      });
       var result = st.explain();
       
       assertEqual([ ], result.warnings);
@@ -389,7 +395,7 @@ function StatementSuite () {
       var st = db._createStatement({ query : "for u in" });
       try {
         var result = st.execute();
-        result;
+        result = true;
         fail();
       }
       catch (e) {
@@ -437,7 +443,11 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtra : function () {
-      var st = db._createStatement({ query : "for i in 1..50 limit 1, 2 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({
+        query : "for i in 1..50 limit 1, 2 return i",
+        count: true,
+        options: { fullCount: true }
+      });
       var result = st.execute();
 
       assertEqual(2, result.count());
@@ -459,7 +469,11 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtraFullCount : function () {
-      var st = db._createStatement({ query : "for i in 1..12345 limit 4564, 2123 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({
+        query : "for i in 1..12345 limit 4564, 2123 return i",
+        count: true,
+        options: { fullCount: true }
+      });
       var result = st.execute();
 
       assertEqual(2123, result.count());
@@ -485,7 +499,11 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtraFullCountLimit0 : function () {
-      var st = db._createStatement({ query : "for i in 1..12345 limit 4564, 0 return i", count: true, options: { fullCount: true } });
+      var st = db._createStatement({
+        query : "for i in 1..12345 limit 4564, 0 return i",
+        count: true,
+        options: { fullCount: true }
+      });
       var result = st.execute();
 
       assertEqual(0, result.count());
@@ -505,7 +523,11 @@ function StatementSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecuteExtraNoFullCount : function () {
-      var st = db._createStatement({ query : "for i in 1..10 return i", count: true, options: { fullCount: false } });
+      var st = db._createStatement({
+        query : "for i in 1..10 return i",
+        count: true,
+        options: { fullCount: false }
+      });
       var result = st.execute();
 
       assertEqual(10, result.count());
@@ -558,7 +580,10 @@ function StatementSuite () {
       st.bind("even more", "data goes here");
       var result = st.getBindVariables();
 
-      assertEqual({ "list" : [ 1, 2 ], "value" : "something", "something" : "something else", "even more" : "data goes here" }, result);
+      assertEqual({ "list" : [ 1, 2 ],
+                    "value" : "something",
+                    "something" : "something else",
+                    "even more" : "data goes here" }, result);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

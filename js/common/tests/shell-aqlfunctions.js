@@ -1,5 +1,7 @@
-/*global require, assertEqual, assertTrue */
+/*jshint maxlen: 200, unused: false*/
+/*global require, assertEqual, fail */
 
+/* unused for functions with 'what' parameter.*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the AQL user functions management
 ///
@@ -43,7 +45,7 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 ////////////////////////////////////////////////////////////////////////////////
 
 function AqlFunctionsSuite () {
-
+  "use strict";
   var unregister = function (name) {
     try {
       aqlfunctions.unregister(name);
@@ -526,7 +528,21 @@ function AqlFunctionsSuite () {
 
     testQueryReturnComplex : function () {
       unregister("UnitTests::tryme");
-      aqlfunctions.register("UnitTests::tryme", function (what) { return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] }, true);
+      aqlfunctions.register("UnitTests::tryme",
+                            function (what) {
+                              return [ true,
+                                       false,
+                                       null,
+                                       1, 2, -4,
+                                       [ 5.5,
+                                         {
+                                           a: 1,
+                                           "b": "def"
+                                         }
+                                       ]
+                                     ];
+                            },
+                            true);
 
       var actual = db._createStatement({ query: "RETURN UnitTests::tryme()" }).execute().toArray();
       assertEqual([ [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] ], actual);
@@ -555,7 +571,7 @@ function AqlFunctionsSuite () {
         /* bar
         baz
         */
-        return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ] // some comment
+        return [ true, false, null, 1, 2, -4, [ 5.5, { a: 1, "b": "def" } ] ]; // some comment
       }, true);
 
       var actual = db._createStatement({ query: "RETURN UnitTests::tryme()" }).execute().toArray();

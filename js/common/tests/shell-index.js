@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -41,6 +41,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 
@@ -202,7 +203,7 @@ function indexSuite() {
       collection.drop();
 
       try {
-        collection.index(idx.id).id;
+        collection.index(idx.id);
         fail();
       }
       catch (e1) {
@@ -230,6 +231,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getIndexesSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 
@@ -425,6 +427,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getIndexesEdgesSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 
