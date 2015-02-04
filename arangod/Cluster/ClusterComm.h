@@ -102,6 +102,7 @@ namespace triagens {
       OperationID         operationID;
       ShardID             shardID;
       ServerID            serverID;   // the actual server ID of the sender
+      std::string         errorMessage;
       ClusterCommOpStatus status;
       bool                dropped; // this is set to true, if the operation
                                    // is dropped whilst in state CL_COMM_SENDING

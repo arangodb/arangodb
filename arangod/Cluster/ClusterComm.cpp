@@ -397,7 +397,8 @@ ClusterCommResult* ClusterComm::syncRequest (
                                     headersCopy);
 
       if (res->result == nullptr || ! res->result->isComplete()) {
-        if (client->getErrorMessage() == "Request timeout reached") {
+        res->errorMessage = client->getErrorMessage();
+        if (res->errorMessage == "Request timeout reached") {
           res->status = CL_COMM_TIMEOUT;
         }
         else {
@@ -410,6 +411,7 @@ ClusterCommResult* ClusterComm::syncRequest (
         cm->returnConnection(connection);
         if (res->result->wasHttpError()) {
           res->status = CL_COMM_ERROR;
+          res->errorMessage = client->getErrorMessage();
         }
       }
       delete client;
