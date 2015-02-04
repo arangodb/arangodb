@@ -1626,11 +1626,11 @@ void Return_PrepareClusterCommResultForJS(const v8::FunctionCallbackInfo<v8::Val
 
         r->Set(TRI_V8_ASCII_STRING("details"), details);
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-        r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("got bad HTTP response"));
+        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res->errorMessage));
       }
       else {
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-        r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("got no HTTP response, DBserver seems gone"));
+        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res->errorMessage));
       }
     }
     else if (res->status == CL_COMM_DROPPED) {
