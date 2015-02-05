@@ -1,6 +1,14 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* inspection of AQL data-modification queries will now detect if the data-modification part
+  of the query can run in lockstep with the data retrieval part of the query, or if the data
+  retrieval part must be executed before the data modification can start.
+
+  Executing the two in lockstep allows using much smaller buffers for intermediate results 
+  and starts the actual data-modification operations much earlier than if the two phases
+  were executed seperately.
+
 * Allow dynamic attribute names in AQL object literals
   
   This allows using arbitrary expressions to construct attribute names in object
