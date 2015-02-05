@@ -472,24 +472,54 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
                                                        ExecutionNode::IndexMatchVec const& attrs) {
   IndexMatch match;
 
-  if (node->getType() == INDEX_RANGE) {
-    // found an index range node...
-    // now check, regardless of the type of index, if the index ranges are only
-    // equality lookups and include all sort critieria. in this case, we can optimize
-    // away the sort completely
-    if (IndexRangeNode::SortCoveredByEqualityLookup(static_cast<IndexRangeNode const*>(node), idx, attrs)) {
-      match.doesMatch = true;
-
-      // when we get here we will be able to optimize away the sort
-      return match;
-    }
-  }
-
-
-  if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX || 
-      attrs.empty()) {
+  if (attrs.empty()) {
     return match;
   }
+  
+  // check 
+  std::unordered_set<std::string> equalityLookupAttributes;
+
+  if (node->getType() == INDEX_RANGE) {
+    // found an index range node...
+    // now check, regardless of the type of index, which attributes are only used in
+    // equality lookups 
+    auto ranges = static_cast<IndexRangeNode const*>(node)->ranges();
+
+    // check for OR
+    if (ranges.size() == 1) {
+      // no OR
+   
+      // check for equality-lookup ranges and note them for later
+      for (auto const& r : ranges[0]) {
+        if (r.is1ValueRangeInfo()) {
+          // found an equality lookup    
+          equalityLookupAttributes.emplace(r._attr);
+        }
+      }
+    }
+  }
+  
+  // check index type
+  if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    // no skiplist... that means we might have found the primary index or a hash index
+    // with no guaranteed sort order.
+    // still we can optimize away the sort if (and only if) all index attributes are used
+    // in the sort criteria, and all index attributes are used for constant equality
+    // lookups (e.g. doc.value1 == 1 && doc.value2 == 2 SORT doc.value1, doc.value2)
+ 
+    for (auto const& attr : attrs) {
+      if (equalityLookupAttributes.find(attr.first) == equalityLookupAttributes.end()) {
+        return match;
+      }
+    }
+ 
+    // when we get here we will be able to optimize away the sort
+    match.doesMatch = true;
+    return match;
+  }
+
+
+  TRI_ASSERT(idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX);
 
   size_t const idxFields = idx->fields.size();
   size_t const n = attrs.size();
@@ -498,10 +528,24 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
   size_t interestingCount = 0;
   size_t forwardCount = 0;
   size_t backwardCount = 0;
+  size_t i = 0;
   size_t j = 0;
 
-  for (; (j < idxFields && j < n); j++) {
-    if (idx->fields[j] == attrs[j].first) {
+  for (; (i < idxFields && j < n); i++) {
+    if (equalityLookupAttributes.find(idx->fields[i]) != equalityLookupAttributes.end()) {
+      // found an attribute in the sort criterion that is used in an equality lookup, too...
+      // (e.g. doc.value == 1 && SORT doc.value1)
+      // in this case, we can ignore the sorting for this particular attribute, as the index
+      // will only return constant values for it
+      match.matches.push_back(FORWARD_MATCH); // doesn't matter here if FORWARD or BACKWARD
+      ++interestingCount;
+      if (attrs[j].first == idx->fields[i]) {
+        ++j;
+      }
+      continue;
+    }
+
+    if (attrs[j].first == idx->fields[i]) {
       if (attrs[j].second) {
         // ascending
         match.matches.push_back(FORWARD_MATCH);
@@ -525,13 +569,14 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node
       match.matches.push_back(NO_MATCH);
       match.doesMatch = false;
     }
+    ++j;
   }
 
   if (interestingCount > 0) {
     match.index = idx;
 
-    if (j < idxFields) { // more index fields
-      for (; j < idxFields; j++) {
+    if (i < idxFields) { // more index fields
+      for (; i < idxFields; i++) {
         match.matches.push_back(NOT_COVERED_IDX);
       }
     }
@@ -1638,43 +1683,6 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
     v.push_back(vv);
   }
   return v;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the index range node uses only equality lookups only, 
-/// and that the sort only consists of these same attributes.
-/// in this special case, the sort can be optimized away because the index 
-/// will only produce constant values (wrt to the sort criterion)
-////////////////////////////////////////////////////////////////////////////////
-
-bool IndexRangeNode::SortCoveredByEqualityLookup (IndexRangeNode const* node,
-                                                  Index const* idx,
-                                                  ExecutionNode::IndexMatchVec const& attrs) {
-
-  auto ranges = node->ranges();
-
-  // check for OR
-  if (ranges.size() != 1) {
-    return false; 
-  }
-
-  // check for non-equality ranges or different attributes used
-  std::unordered_set<std::string> used;
-  for (auto const& r : ranges[0]) {
-    if (! r.is1ValueRangeInfo()) {
-      return false;
-    }
-
-    used.insert(r._attr);
-  }
- 
-  for (auto const& attr : attrs) {
-    if (used.find(attr.first) == used.end()) {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 // -----------------------------------------------------------------------------

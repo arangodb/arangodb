@@ -616,6 +616,21 @@ namespace triagens {
     
         ~RangeInfoMap() {
         }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief find, find all the range infos for variable <var>,
+/// ownership is not transferred
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<std::string, RangeInfo> const* find (std::string const& var) const {
+          auto it = _ranges.find(var);
+
+          if (it == _ranges.end()) {
+            return nullptr;
+          }
+
+          return &((*it).second);
+        }
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find, find all the range infos for variable <var>,
@@ -637,11 +652,13 @@ namespace triagens {
         
         RangeInfo* find (std::string const& var, std::string const& attr) {
           auto map = find(var);
+
           if (map == nullptr) {
             return nullptr;
           }
           
           auto it = map->find(attr);
+
           if (it == map->end()){
             return nullptr;
           }
@@ -734,7 +751,7 @@ namespace triagens {
 /// @brief isValid: are all the range infos for the variable <var> valid?
 ////////////////////////////////////////////////////////////////////////////////
         
-        bool isValid (std::string const&);
+        bool isValid (std::string const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attributes: insert attributes of the variable <var> into set
@@ -853,7 +870,7 @@ namespace triagens {
 /// the map of RangeInfos for the variable <var>.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos);
+        std::unordered_map<std::string, RangeInfo>* find (std::string const& var, size_t pos) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief differenceRangeInfo: returns the difference of the constant parts of
@@ -875,7 +892,7 @@ namespace triagens {
 /// that contain valid RangeInfoMap for the variable named var
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<size_t> validPositions (std::string const& var); 
+        std::vector<size_t> validPositions (std::string const& var) const; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief attributes: returns a vector of the names of the attributes for the
