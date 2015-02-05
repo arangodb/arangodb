@@ -48,17 +48,19 @@ namespace triagens {
 /// @brief constructor, using default values
 ////////////////////////////////////////////////////////////////////////////////
 
-      ModificationOptions (triagens::basics::Json const& json);
+      ModificationOptions (triagens::basics::Json const&);
 
       ModificationOptions ()
         : ignoreErrors(false),
           waitForSync(false),
           nullMeansRemove(false),
           mergeObjects(true),
-          ignoreDocumentNotFound(false) {
+          ignoreDocumentNotFound(false),
+          readCompleteInput(true) {
       }
 
-      void toJson (triagens::basics::Json& json, TRI_memory_zone_t* zone) const;
+      void toJson (triagens::basics::Json&, 
+                   TRI_memory_zone_t*) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -69,6 +71,7 @@ namespace triagens {
       bool nullMeansRemove;
       bool mergeObjects;
       bool ignoreDocumentNotFound;
+      bool readCompleteInput;
 
     };
 

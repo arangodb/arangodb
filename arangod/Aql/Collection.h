@@ -234,6 +234,7 @@ namespace triagens {
       TRI_vocbase_t*               vocbase;
       TRI_vocbase_col_t*           collection;
       TRI_transaction_type_e       accessType;
+      bool                         isReadWrite;
       std::vector<Index*> mutable  indexes;
       int64_t mutable              numDocuments = UNINITIALIZED;
 

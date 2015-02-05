@@ -94,6 +94,11 @@ namespace triagens {
             return collection;
           }
           else {
+            // note that the collection is used in both read & write ops
+            if (accessType != (*it).second->accessType) {
+              (*it).second->isReadWrite = true;
+            }
+
             // change access type from read to write
             if (accessType == TRI_TRANSACTION_WRITE &&
                 (*it).second->accessType == TRI_TRANSACTION_READ) {
@@ -114,6 +119,10 @@ namespace triagens {
         }
 
         std::map<std::string, Collection*>* collections () {
+          return &_collections;
+        }
+        
+        std::map<std::string, Collection*> const* collections () const {
           return &_collections;
         }
 
