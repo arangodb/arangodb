@@ -564,6 +564,14 @@
             utils.list();
           }
           break;
+        case "listDevelopment":
+          if (1 < args.length && args[1] === "prefix") {
+            utils.listDevelopment(true);
+          }
+          else {
+            utils.listDevelopment();
+          }
+          break;
         case "available":
           store.available();
           break;
