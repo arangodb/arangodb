@@ -192,13 +192,8 @@
       if (this.getTotal() < 10000 || this.filters.length > 0) {
         queryObj.options = {
           fullCount: true,
-          count: true
         };
       }
-        queryObj.options = {
-          fullCount: true,
-          count: true
-        };
 
       $.ajax({
         cache: false,
