@@ -37,6 +37,7 @@
 #include "Aql/Variable.h"
 #include "Aql/VariableGenerator.h"
 #include "Basics/json.h"
+#include "VocBase/transaction.h"
 
 #include <functional>
 
@@ -189,6 +190,14 @@ namespace triagens {
                      node->type == NODE_TYPE_PARAMETER);
 
           _writeCollection = node;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not function calls may access collection documents
+////////////////////////////////////////////////////////////////////////////////
+
+        bool functionsMayAccessDocuments () const {
+          return _functionsMayAccessDocuments;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -348,7 +357,8 @@ namespace triagens {
 /// @brief create an AST collection node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeCollection (char const*);
+        AstNode* createNodeCollection (char const*,
+                                       TRI_transaction_type_e);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST reference node
@@ -772,6 +782,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode const*                     _writeCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not function calls may access collection data
+////////////////////////////////////////////////////////////////////////////////
+
+        bool                               _functionsMayAccessDocuments;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a singleton no-op node instance

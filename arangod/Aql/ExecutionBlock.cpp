@@ -3541,6 +3541,7 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _outReg(ExecutionNode::MaxRegisterId),
     _collection(ep->_collection) {
+
   if (ep->_outVariable != nullptr) {
     /*
     auto const& registerPlan = ep->getRegisterPlan()->varInfo;
@@ -3570,28 +3571,55 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
         delete (*it);
       }
     }
+    blocks.clear();
   };
 
   // loop over input until it is exhausted
   try {
-    while (true) { 
-      auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+    if (static_cast<ModificationNode const*>(_exeNode)->_options.readCompleteInput) {
+      // read all input into a buffer first
+      while (true) { 
+        auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
 
-      if (res == nullptr) {
-        break;
-      }
+        if (res == nullptr) {
+          break;
+        }
        
-      blocks.push_back(res);
-    }
+        blocks.push_back(res);
+      }
 
-    replyBlocks = work(blocks);
-    freeBlocks(blocks);
+      // now apply the modifications for the complete input
+      replyBlocks = work(blocks);
+    }
+    else {
+      // read input in chunks, and process it in chunks
+      // this reduces the amount of memory used for storing the input
+      while (true) {
+        freeBlocks(blocks);
+        auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+
+        if (res == nullptr) {
+          break;
+        }
+       
+        blocks.push_back(res);
+        replyBlocks = work(blocks);
+
+        if (replyBlocks != nullptr) {
+          break;
+        }
+      }
+    }
   }
   catch (...) {
     freeBlocks(blocks);
+
     delete replyBlocks;
     throw;
   }
+
+  freeBlocks(blocks);
+        
   return replyBlocks;
 }
 
@@ -3666,6 +3694,7 @@ RemoveBlock::~RemoveBlock () {
 
 AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   std::unique_ptr<AqlItemBlock> result;
+
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3779,6 +3808,7 @@ InsertBlock::~InsertBlock () {
 
 AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
   std::unique_ptr<AqlItemBlock> result;
+
   auto ep = static_cast<InsertNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());

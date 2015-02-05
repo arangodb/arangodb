@@ -119,7 +119,8 @@ Ast::Ast (Query* query)
     _bindParameters(),
     _root(nullptr),
     _queries(),
-    _writeCollection(nullptr) {
+    _writeCollection(nullptr),
+    _functionsMayAccessDocuments(false) {
 
   TRI_ASSERT(_query != nullptr);
 
@@ -530,7 +531,8 @@ AstNode* Ast::createNodeVariable (char const* name,
 /// @brief create an AST collection node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollection (char const* name) {
+AstNode* Ast::createNodeCollection (char const* name,
+                                    TRI_transaction_type_e accessType) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -543,7 +545,7 @@ AstNode* Ast::createNodeCollection (char const* name) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name);
  
-  _query->collections()->add(name, TRI_TRANSACTION_READ);
+  _query->collections()->add(name, accessType);
 
   return node;
 }
@@ -894,6 +896,7 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
     size_t const n = arguments->numMembers();
     
     auto numExpectedArguments = func->numArguments();
+
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, 
                                     functionName,
@@ -901,6 +904,10 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
                                     static_cast<int>(numExpectedArguments.second));
     }
 
+    if (! func->canRunOnDBServer) {
+      // this also qualifies a query for potentially reading or modifying documents via function calls!
+      _functionsMayAccessDocuments = true;
+    }
   }
   else {
     // user-defined function
@@ -908,6 +915,8 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
     // register the function name
     char* fname = _query->registerString(normalized.first.c_str(), normalized.first.size(), false);
     node->setStringValue(fname);
+      
+    _functionsMayAccessDocuments = true;
   }
 
   node->addMember(arguments);
@@ -979,7 +988,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         // turn node into a collection node
         char const* name = _query->registerString(value->_value._string.data, value->_value._string.length - 1, false);
 
-        node = createNodeCollection(name);
+        node = createNodeCollection(name, isWriteCollection ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
         if (isWriteCollection) {
           // this was the bind parameter that contained the collection to update 
