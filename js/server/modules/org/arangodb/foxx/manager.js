@@ -393,7 +393,7 @@
       invalidOptions.push("options.authenticated has to be a boolean.");
     }
     if (!Array.isArray(options.collectionNames)) {
-      invalidOptions.push("options.array has to be an array.");
+      invalidOptions.push("options.collectionNames has to be an array.");
     }
     if (invalidOptions.length > 0) {
       // TODO Pretty print
