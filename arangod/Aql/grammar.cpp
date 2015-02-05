@@ -2991,7 +2991,7 @@ yyreduce:
         node = parser->ast()->createNodeReference((yyvsp[0].strval));
       }
       else {
-        node = parser->ast()->createNodeCollection((yyvsp[0].strval));
+        node = parser->ast()->createNodeCollection((yyvsp[0].strval), TRI_TRANSACTION_READ);
       }
 
       (yyval.node) = node;
@@ -3182,7 +3182,7 @@ yyreduce:
         ABORT_OOM
       }
 
-      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval), TRI_TRANSACTION_WRITE);
     }
 #line 3188 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;
@@ -3194,7 +3194,7 @@ yyreduce:
         ABORT_OOM
       }
 
-      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval));
+      (yyval.node) = parser->ast()->createNodeCollection((yyvsp[0].strval), TRI_TRANSACTION_WRITE);
     }
 #line 3200 "arangod/Aql/grammar.cpp" /* yacc.c:1646  */
     break;

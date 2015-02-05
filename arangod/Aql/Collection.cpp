@@ -54,7 +54,8 @@ Collection::Collection (std::string const& name,
     name(name),
     vocbase(vocbase),
     collection(nullptr),
-    accessType(accessType) {
+    accessType(accessType),
+    isReadWrite(false) {
           
   TRI_ASSERT(! name.empty());
   TRI_ASSERT(vocbase != nullptr);

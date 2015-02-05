@@ -33,11 +33,13 @@ using JsonHelper = triagens::basics::JsonHelper;
 
 ModificationOptions::ModificationOptions (Json const& json) {
   Json array = json.get("modificationFlags");
-  ignoreErrors = JsonHelper::getBooleanValue(array.json(), "ignoreErrors", false);
-  waitForSync = JsonHelper::getBooleanValue(array.json(), "waitForSync", false);
-  nullMeansRemove = JsonHelper::getBooleanValue(array.json(), "nullMeansRemove", false);
-  mergeObjects = JsonHelper::getBooleanValue(array.json(), "mergeObjects", true);
+
+  ignoreErrors           = JsonHelper::getBooleanValue(array.json(), "ignoreErrors", false);
+  waitForSync            = JsonHelper::getBooleanValue(array.json(), "waitForSync", false);
+  nullMeansRemove        = JsonHelper::getBooleanValue(array.json(), "nullMeansRemove", false);
+  mergeObjects           = JsonHelper::getBooleanValue(array.json(), "mergeObjects", true);
   ignoreDocumentNotFound = JsonHelper::getBooleanValue(array.json(), "ignoreDocumentNotFound", false);
+  readCompleteInput      = JsonHelper::getBooleanValue(array.json(), "readCompleteInput", true);
 }
 
 void ModificationOptions::toJson (triagens::basics::Json& json,
@@ -48,9 +50,9 @@ void ModificationOptions::toJson (triagens::basics::Json& json,
     ("waitForSync", Json(waitForSync))
     ("nullMeansRemove", Json(nullMeansRemove))
     ("mergeObjects", Json(mergeObjects))
-    ("ignoreDocumentNotFound", Json(ignoreDocumentNotFound));
+    ("ignoreDocumentNotFound", Json(ignoreDocumentNotFound))
+    ("readCompleteInput", Json(readCompleteInput));
 
   json ("modificationFlags", flags);
 }
-
 

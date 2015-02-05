@@ -957,7 +957,7 @@ single_reference:
         node = parser->ast()->createNodeReference($1);
       }
       else {
-        node = parser->ast()->createNodeCollection($1);
+        node = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_READ);
       }
 
       $$ = node;
@@ -1063,14 +1063,14 @@ collection_name:
         ABORT_OOM
       }
 
-      $$ = parser->ast()->createNodeCollection($1);
+      $$ = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_WRITE);
     }
   | T_QUOTED_STRING {
       if ($1 == nullptr) {
         ABORT_OOM
       }
 
-      $$ = parser->ast()->createNodeCollection($1);
+      $$ = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_WRITE);
     }
   | T_PARAMETER {
       if ($1 == nullptr) {
