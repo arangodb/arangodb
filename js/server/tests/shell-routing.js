@@ -1,3 +1,5 @@
+/*jshint strict: true, unused : false */
+/*global require, fail, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for routing
 ///
@@ -38,6 +40,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteSingle () {
+  "use strict";
   var cn = "_routing";
 
   return {
@@ -47,6 +50,7 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      var collection;
       internal.db._drop(cn);
       collection = internal.db._create(cn, { isSystem: true });
 
@@ -214,8 +218,8 @@ function routingSuiteSingle () {
     testContentString: function () {
       var r = actions.firstRouting('GET', "/opt/12345");
 
-      req = {};
-      res = {};
+      var req = {};
+      var res = {};
 
       r.route.callback.controller(req, res);
 
@@ -231,8 +235,8 @@ function routingSuiteSingle () {
     testContentJson: function () {
       var r = actions.firstRouting('GET', "/json");
 
-      req = {};
-      res = {};
+      var req = {};
+      var res = {};
 
       r.route.callback.controller(req, res);
 
@@ -252,6 +256,7 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteBundle () {
+  "use strict";
   var cn = "_routing";
 
   return {
@@ -262,7 +267,7 @@ function routingSuiteBundle () {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { isSystem: true });
+      var collection = internal.db._create(cn, { isSystem: true });
 
       collection.save({
         middleware: [
@@ -355,6 +360,7 @@ function routingSuiteBundle () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuitePrefix () {
+  "use strict";
   var cn = "_routing";
 
   return {
@@ -365,7 +371,7 @@ function routingSuitePrefix () {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { isSystem: true });
+      var collection = internal.db._create(cn, { isSystem: true });
 
       collection.save({
         urlPrefix: "/test",

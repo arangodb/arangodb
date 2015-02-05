@@ -1,3 +1,5 @@
+/*jshint strict: true, unused : false */
+/*global require, fail, assertTrue, assertFalse, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the server-side database interface
 ///
@@ -37,6 +39,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseSuite () {
+  "use strict";
   return {
 
     setUp : function () {

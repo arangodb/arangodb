@@ -1,3 +1,5 @@
+/*jshint strict: true */
+/*global require */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for dump/reload tests
 ///
@@ -26,6 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
+
   var db = require("org/arangodb").db;
 
   db._dropDatabase("UnitTestsDumpSrc");

@@ -1,3 +1,33 @@
+/* jshint unused:false */
+/*global require, assertEqual, assertTrue, assertFalse, assertUndefined */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief simple queries
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lucas Dohmen
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
 // Stubbing and Mocking
 
 var stub,
@@ -116,6 +146,7 @@ fakeContextWithRootElement = {
 };
 
 function CreateFoxxControllerSpec () {
+  'use strict';
   return {
     testCreationWithoutParameters: function () {
       var app = new FoxxController(fakeContext),
@@ -145,6 +176,7 @@ function CreateFoxxControllerSpec () {
 }
 
 function SetRoutesFoxxControllerSpec () {
+  'use strict';
   var app;
 
   return {
@@ -358,6 +390,7 @@ function SetRoutesFoxxControllerSpec () {
 }
 
 function ControllerInjectionSpec () {
+  'use strict';
   return {
     testInjectFactoryFunction: function () {
       var app = new FoxxController(fakeContext),
@@ -485,6 +518,7 @@ function ControllerInjectionSpec () {
 }
 
 function DocumentationAndConstraintsSpec () {
+  'use strict';
   var app, routes, models, Model;
 
   return {
@@ -947,11 +981,6 @@ function DocumentationAndConstraintsSpec () {
           rawBody: function () { return reqBody; }
         },
         res = {},
-        paramName = stub(),
-        description = stub(),
-        requestBody = stub(),
-        ModelPrototype = stub(),
-        jsonSchemaId = stub(),
         receivedParam = false,
         receivedRawBody = null;
 
@@ -975,11 +1004,6 @@ function DocumentationAndConstraintsSpec () {
           rawBody: function () { return reqBody; }
         },
         res = {},
-        paramName = stub(),
-        description = stub(),
-        requestBody = stub(),
-        ModelPrototype = stub(),
-        jsonSchemaId = stub(),
         receivedParam = false,
         receivedRawBody = null;
 
@@ -1116,8 +1140,9 @@ function DocumentationAndConstraintsSpec () {
     }
   };
 }
-
+/*
 function LegacyDocumentationAndConstraintsSpec () {
+  'use strict';
   var app, routes, models;
 
   return {
@@ -1242,8 +1267,9 @@ function LegacyDocumentationAndConstraintsSpec () {
     }
   };
 }
-
+*/
 function LegacyDocumentationAndConstraintsSpec () {
+  'use strict';
   var app, routes, models;
 
   return {
@@ -1398,6 +1424,7 @@ function LegacyDocumentationAndConstraintsSpec () {
 }
 
 function AddMiddlewareFoxxControllerSpec () {
+  'use strict';
   var app;
 
   return {
@@ -1406,7 +1433,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1421,7 +1448,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddABeforeMiddlewareForCertainRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1436,7 +1463,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddAnAfterMiddlewareForAllRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1451,7 +1478,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddAnAfterMiddlewareForCertainRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1468,6 +1495,7 @@ function AddMiddlewareFoxxControllerSpec () {
 }
 
 function CommentDrivenDocumentationSpec () {
+  'use strict';
   var app, routingInfo, noop;
 
   return {
@@ -1540,6 +1568,7 @@ function CommentDrivenDocumentationSpec () {
 }
 
 function SetupAuthorization () {
+  'use strict';
   var app;
 
   return {
@@ -1638,8 +1667,8 @@ function SetupAuthorization () {
 }
 
 function SetupSessions () {
+  'use strict';
   var app;
-  var sessionTypes = require('org/arangodb/foxx/sessions').sessionTypes;
 
   return {
     testWorksWithUnsignedCookies: function () {
@@ -1909,7 +1938,8 @@ function SetupSessions () {
 }
 
 function FoxxControllerWithRootElement () {
-  var app;
+  'use strict';
+  var app, routes;
 
   return {
     setUp: function () {
@@ -1984,6 +2014,7 @@ function FoxxControllerWithRootElement () {
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(ControllerInjectionSpec);
+//jsunity.run(LegacyDocumentationAndConstraintsSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);

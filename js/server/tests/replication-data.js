@@ -1,3 +1,4 @@
+/*jshint unused: false */
 /*global require, fail, assertEqual, assertTrue, assertFalse, assertNull, arango */
 
 ////////////////////////////////////////////////////////////////////////////////

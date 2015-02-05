@@ -100,7 +100,8 @@ describe('Repository Indexes', function () {
         indexes: indexes
       });
 
-    new Repository(collection, {model: Model});
+    var rep = new Repository(collection, {model: Model});
+    expect(rep).toBeDefined();
 
     expect(collection.ensureIndex.calls.count()).toEqual(3);
     expect(collection.ensureIndex).toHaveBeenCalledWith(indexes[0]);
