@@ -191,7 +191,7 @@
       };
       if (this.getTotal() < 10000 || this.filters.length > 0) {
         queryObj.options = {
-          fullCount: true
+          fullCount: true,
         };
       }
 
@@ -205,8 +205,8 @@
         success: function(data) {
           window.progressView.toShow = false;
           self.clearDocuments();
-          if (data.extra && data.extra.fullCount !== undefined) {
-            self.setTotal(data.extra.fullCount);
+          if (data.extra && data.extra.stats.fullCount !== undefined) {
+            self.setTotal(data.extra.stats.fullCount);
           }
           if (self.getTotal() !== 0) {
             _.each(data.result, function(v) {
