@@ -18,7 +18,7 @@ echo "$0: configuring ArangoDB"
 echo
 echo "$0: compiling ArangoDB"
 
-make -j2
+make -j1
 
 echo
 echo "$0: done"

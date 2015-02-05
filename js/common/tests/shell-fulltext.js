@@ -1,3 +1,6 @@
+/*jshint strict: true, maxlen: 50000 */
+/*global require, assertTrue, assertFalse, assertEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for fulltext indexes
 ///
@@ -33,6 +36,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function fulltextCreateSuite () {
+  "use strict";
   var cn = "UnitTestsFulltext";
   var c = null;
 
@@ -79,7 +83,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
@@ -102,7 +106,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
       
@@ -127,7 +131,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
@@ -150,7 +154,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
@@ -175,7 +179,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
@@ -200,19 +204,19 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
-        if (index.id == idx1.id) {
+        if (index.id === idx1.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr1" ], index.fields);
         }
-        else if (index.id == idx2.id) {
+        else if (index.id === idx2.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr1" ], index.fields);
         }
-        else if (index.id == idx3.id) {
+        else if (index.id === idx3.id) {
           assertEqual("fulltext", index.type);
           assertEqual([ "attr2" ], index.fields);
         }
@@ -232,7 +236,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
@@ -256,7 +260,7 @@ function fulltextCreateSuite () {
       var indexes = c.getIndexes();
       for (var i = 0; i < indexes.length; ++i) {
         var index = indexes[i];
-        if (index.type != "fulltext") {
+        if (index.type !== "fulltext") {
           continue;
         }
 
@@ -296,6 +300,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function fulltextQuerySuite () {
+  "use strict";
   var cn = "UnitTestsFulltext";
   var collection = null;
   var idx = null;
@@ -830,7 +835,7 @@ function fulltextQuerySuite () {
         text += "some random text,";
       }
 
-      for (var i = 0; i < 1000; ++i) {
+      for (i = 0; i < 1000; ++i) {
         collection.save({ text: text });
       }
      
@@ -880,7 +885,7 @@ function fulltextQuerySuite () {
       assertEqual(500, collection.fulltext("text", "some", idx).toArray().length);
       assertEqual(0, collection.fulltext("text", "banana", idx).toArray().length);
 
-      for (var i = 0; i < 250; ++i) {
+      for (i = 0; i < 250; ++i) {
         collection.remove(docs[i]);
       }
 
@@ -1380,8 +1385,9 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fulltext queries
 ////////////////////////////////////////////////////////////////////////////////
-
+/*
 function fulltextQuerySubstringSuite () {
+  "use strict";
   var cn = "UnitTestsFulltext";
   var collection = null;
   var idx = null;
@@ -1629,14 +1635,14 @@ function fulltextQuerySubstringSuite () {
 
   };
 }
-
+*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(fulltextCreateSuite);
 jsunity.run(fulltextQuerySuite);
-//jsunity.run(fulltextQuerySubstringSuite);
+/// jsunity.run(fulltextQuerySubstringSuite);
 
 return jsunity.done();
 

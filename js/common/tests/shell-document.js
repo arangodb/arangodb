@@ -1,3 +1,6 @@
+/*jshint strict: true, maxlen: 5000 */
+/*global require, fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the document interface
 ///
@@ -42,6 +45,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuiteErrorHandling () {
+  "use strict";
   var cn = "UnitTestsCollectionBasics";
   var collection = null;
 
@@ -188,6 +192,7 @@ function CollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuite () {
+  "use strict";
   var ERRORS = require("internal").errors;
 
   var cn = "UnitTestsCollectionBasics";
@@ -433,7 +438,7 @@ function CollectionDocumentSuite () {
 
       assertEqual(0, collection.count());
         
-      var d = collection.save({ _key: "test", value: 200 }); 
+      d = collection.save({ _key: "test", value: 200 }); 
       assertTypeOf("string", d._id);
       assertTypeOf("string", d._key);
       assertTypeOf("string", d._rev);
@@ -510,7 +515,7 @@ function CollectionDocumentSuite () {
 
       assertEqual(1, collection.count());
         
-      var doc = collection.document("test");
+      doc = collection.document("test");
       assertEqual("UnitTestsCollectionBasics/test", doc._id);
       assertEqual("test", doc._key);
       assertEqual(0, doc.value);
@@ -786,7 +791,7 @@ function CollectionDocumentSuite () {
 /// @brief tests the replace function with new signature 
 ////////////////////////////////////////////////////////////////////////////////
 
-    testReplaceDocumentSyncTrue : function () {
+    testReplaceDocumentSyncTrue2 : function () {
       var a1 = collection.save({ a : 1});
 
       assertTypeOf("string", a1._id);
@@ -1052,7 +1057,7 @@ function CollectionDocumentSuite () {
       var doc2 = collection.save({ name: { first: "foo", last: "bar" }, owns: { evilCellPhone: [ 1 ] } });
       collection.update(doc2, { name: { middle: "baz" }, owns: { schabernack: true, pileOfBones: null } }, { mergeObjects: true });
 
-      var doc = collection.document(doc2._key);
+      doc = collection.document(doc2._key);
       assertEqual({ first: "foo", last: "bar", middle: "baz" }, doc.name);
       assertEqual({ evilCellPhone: [ 1 ], schabernack: true, pileOfBones: null }, doc.owns);
       
@@ -1295,6 +1300,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuiteErrorHandling () {
+  "use strict";
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
 
@@ -1367,6 +1373,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
   var collection = null;

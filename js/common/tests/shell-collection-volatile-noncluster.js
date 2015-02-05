@@ -1,3 +1,6 @@
+/*jshint strict: false */
+/*global require, fail, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface w/ volatile collections
 ///

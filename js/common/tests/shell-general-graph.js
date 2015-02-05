@@ -1,3 +1,4 @@
+/*jshint unused: false */
 /*global require, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,7 +45,7 @@ var _ = require("underscore");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphCreationSuite() {
-
+  "use strict";
   var rn = "UnitTestRelationName";
   var rn1 = "UnitTestRelationName1";
   var vn1 = "UnitTestVerticies1";
@@ -688,7 +689,7 @@ function GeneralGraphCreationSuite() {
 // -----------------------------------------------------------------------------
 
 function GeneralGraphAQLQueriesSuite() {
-
+  "use strict";
   // Definition of names
   var graphName = "UnitTestsGraph";
   var included = "UnitTestIncluded";
@@ -956,6 +957,7 @@ function GeneralGraphAQLQueriesSuite() {
 }
 
 function ChainedFluentAQLResultsSuite() {
+  "use strict";
 
   var gn = "UnitTestGraph";
   var user = "UnitTestUsers";
@@ -1808,6 +1810,7 @@ function ChainedFluentAQLResultsSuite() {
 }
 
 function EdgesAndVerticesSuite() {
+  "use strict";
 
   var g;
   var vertexId1, vertexId2;
@@ -1899,34 +1902,37 @@ function EdgesAndVerticesSuite() {
     test_connectingEdges : function () {
       fillCollections();
       var res = g._getConnectingEdges({first_name: "Tam"}, {first_name: "Tem"}, {});
-      assertTrue(res.length == 3);
+      assertTrue(res.length === 3);
     },
 
     test_connectingEdgesWithEdgeCollectionRestriction : function () {
       fillCollections();
       var res = g._getConnectingEdges({first_name: "Tam"}, null, {});
-      assertTrue(res.length == 13);
-      var res = g._getConnectingEdges({first_name: "Tam"}, null, {edgeCollectionRestriction : "unitTestEdgeCollection2"});
-      assertTrue(res.length == 5);
+      assertEqual(res.length, 13);
+      res = g._getConnectingEdges({first_name: "Tam"},
+                                  null,
+                                  {edgeCollectionRestriction : "unitTestEdgeCollection2"});
+      assertEqual(res.length, 5);
     },
 
     test_connectingEdgesWithVertexCollectionRestriction : function () {
       fillCollections();
       var res = g._getConnectingEdges(null, null, {});
-      assertTrue(res.length == 13);
-      var res = g._getConnectingEdges(null, null, {vertex1CollectionRestriction : "unitTestVertexCollection1"});
-      assertTrue(res.length == 13);
-      var res = g._getConnectingEdges(null, null, {
+      assertEqual(res.length, 13);
+      res = g._getConnectingEdges(null, null,
+                                      {vertex1CollectionRestriction : "unitTestVertexCollection1"});
+      assertEqual(res.length, 13);
+      res = g._getConnectingEdges(null, null, {
         vertex1CollectionRestriction : "unitTestVertexCollection1",
         vertex2CollectionRestriction : "unitTestVertexCollection3"
       });
-      assertTrue(res.length == 5);
+      assertEqual(res.length, 5);
     },
 
     test_connectingEdgesWithIds : function () {
       var ids = fillCollections();
       var res = g._getConnectingEdges(ids.vId11, ids.vId13, {});
-      assertTrue(res.length == 2);
+      assertEqual(res.length, 2);
     },
 
 
@@ -1976,7 +1982,7 @@ function EdgesAndVerticesSuite() {
       assertTrue(db._collection(vc1) !== null);
       assertTrue(db._collection(ec1) !== null);
     },
-    
+
     test_createGraphWithMalformedEdgeDefinitions : function () {
       var myGraphName = unitTestGraphName + "2";
       try {
@@ -2345,7 +2351,7 @@ function EdgesAndVerticesSuite() {
       graph._drop(gN3, true);
       graph._drop(gN4, true);
     },
-    
+
     test_eC_malformedId : function() {
       [ null, "foo", [ ] ].forEach(function(v) {
         try {
@@ -2379,6 +2385,7 @@ function EdgesAndVerticesSuite() {
 }
 
 function GeneralGraphCommonNeighborsSuite() {
+  "use strict";
   var testGraph, actual;
 
   var v1ColName = "UnitTestsAhuacatlVertex1";
@@ -2604,6 +2611,7 @@ function GeneralGraphCommonNeighborsSuite() {
 }
 
 function OrphanCollectionSuite() {
+  "use strict";
   var prefix = "UnitTestGraphVertexCollection",
     g1,
     g2,
@@ -2702,7 +2710,7 @@ function OrphanCollectionSuite() {
     },
 
     test_removeVertexCollection1: function() {
-      var name = "completelyNonsenseNameForACollectionBLUBBBBB"
+      var name = "completelyNonsenseNameForACollectionBLUBBBBB";
       try {
         g1._removeVertexCollection(name);
       } catch (e) {
@@ -2775,7 +2783,7 @@ function OrphanCollectionSuite() {
 }
 
 function MeasurementsSuite() {
-
+  "use strict";
   var g;
   var vertexId1, vertexId2;
   var unitTestGraphName = "unitTestGraph";
@@ -2901,11 +2909,21 @@ function MeasurementsSuite() {
       assertEqual(a[0].length , 50);
     },
     test_shortestPaths : function () {
-      var a = g._shortestPath([{first_name: 'Tim',age : 24}, {first_name: 'Tom'}], [{first_name: 'Tam'}, {first_name: 'Tem',age : 20}]);
+      var a = g._shortestPath([{first_name: 'Tim',
+                                age : 24},
+                               {first_name: 'Tom'}],
+                              [{first_name: 'Tam'},
+                               {first_name: 'Tem',
+                                age : 20}]);
       assertEqual(a[0].length , 9);
     },
     test_distanceTo : function () {
-      var a = g._distanceTo([{first_name: 'Tim',age : 24}, {first_name: 'Tom'}], [{first_name: 'Tam'}, {first_name: 'Tem' ,age : 20}]);
+      var a = g._distanceTo([{first_name: 'Tim',
+                              age : 24},
+                             {first_name: 'Tom'}],
+                            [{first_name: 'Tam'},
+                             {first_name: 'Tem',
+                              age : 20}]);
       assertEqual(a[0].length , 9);
     }
 

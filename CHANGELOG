@@ -13,11 +13,25 @@ v2.5.0 (XXXX-XX-XX)
 
 * make AQL optimizer rule "use-index-for-sort" remove sort also in case a non-sorted
   index (e.g. a hash index) is used for only equality lookups and all sort attributes
-  are covered by the index, e.g.
+  are covered by the index.
+
+  Example that does not require an extra sort (needs hash index on `value`):
 
       FOR doc IN collection FILTER doc.value == 1 SORT doc.value RETURN doc
 
-* added selectivity estimates for primary index, edge index, and hash indexes.
+  Another example that does not require an extra sort (with hash index on `value1`, `value2`):
+
+      FOR doc IN collection FILTER doc.value1 == 1 && doc.value2 == 2 SORT doc.value1, doc.value2 RETURN doc
+
+* make AQL optimizer rule "use-index-for-sort" remove sort also in case the sort critieria
+  excludes the left-most index attributes, but the left-most index attributes are used
+  by the index for equality-only lookups.
+
+  Example that can use the index for sorting (needs skiplist index on `value1`, `value2`):
+
+      FOR doc IN collection FILTER doc.value1 == 1 SORT doc.value2 RETURN doc
+
+* added selectivity estimates for primary index, edge index, and hash index
 
   The selectivity estimates are returned by the `GET /_api/index` REST API method
   in a sub-attribute `selectivityEstimate` for each index that supports it. This

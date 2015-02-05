@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -40,6 +40,7 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoIndexCreationSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -508,6 +509,7 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoIndexErrorHandlingSuite() {
+  "use strict";
   var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
@@ -790,7 +792,7 @@ function GeoIndexErrorHandlingSuite() {
 /// @brief test: error handling index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testErrorHandlingConstraintNullList : function () {
+    testErrorHandlingConstraintNullList2 : function () {
       collection.ensureGeoConstraint("lat", "lon", true);
 
       var d1 = collection.save({ lat : 0, lon : 0 });
@@ -866,6 +868,7 @@ function GeoIndexErrorHandlingSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoIndexSimpleQueriesSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 

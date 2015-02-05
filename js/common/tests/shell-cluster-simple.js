@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, fail, assertEqual, assertTrue, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test simple queries in a cluster
@@ -34,6 +34,7 @@ var db = arangodb.db;
 var _ = require("underscore");
 
 var createCollection = function (properties) {
+  "use strict";
   try {
     db._drop("UnitTestsClusterCrud");
   }
@@ -57,7 +58,7 @@ var createCollection = function (properties) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterCrudSimpleSuite () {
-
+  "use strict";
   var queryToArray = function (q, n, cb) {
     var result = q.toArray();
     assertEqual(n, result.length);
@@ -83,7 +84,7 @@ function ClusterCrudSimpleSuite () {
   };
 
   var checkQuery = function (q, n, cb) {
-    qc = _.clone(q);
+    var qc = _.clone(q);
     queryToArray(qc, n, cb);
     qc = _.clone(q);
     queryToCursor(qc, n, cb);
@@ -238,10 +239,10 @@ function ClusterCrudSimpleSuite () {
     r0 = c.firstExample({ value2 : "test2000" });
     assertNull(r0);
 
-    r0 = c.firstExample({ _key : "test2000", foobar : "baz" })
+    r0 = c.firstExample({ _key : "test2000", foobar : "baz" });
     assertNull(r0);
 
-    r0 = c.firstExample({ foobar : "baz" })
+    r0 = c.firstExample({ foobar : "baz" });
     assertNull(r0);
   };
 

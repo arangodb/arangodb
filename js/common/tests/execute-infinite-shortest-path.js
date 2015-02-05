@@ -1,5 +1,5 @@
-/*global require, db, assertEqual, assertTrue, print, PRINT_OBJECT, console,
-  AvocadoCollection, AvocadoEdgesCollection */
+/*jshint strict: true, unused:false */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function main(args) {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -39,13 +40,8 @@ function main(args) {
     v2,
     e,
     pathes,
-    results = [],
-    neo4j_results = [],
-    single_result = {},
     console = require("console"),
     Helper = require("test-helper").Helper,
-    counter,
-    i,
     caching = false;
 
     if (args[2] === "true") {
@@ -60,8 +56,8 @@ function main(args) {
     try {
       // Drop the graph if it exsits
       graph = new Graph(graph_name);
-      print("FOUND: ");
-      PRINT_OBJECT(graph);
+      require("internal").print("FOUND: ");
+      require("internal").printObject(graph);
       graph.drop();
     } catch (err1) {
     }
@@ -85,7 +81,7 @@ function main(args) {
 
   console.log("Starting Tests");
 
-  processor = function (row) {
+  var processor = function (row) {
     v1 = graph.getVertex(row[0]);
     v2 = graph.getVertex(row[1]);
 
