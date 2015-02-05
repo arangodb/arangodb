@@ -1227,17 +1227,6 @@ namespace triagens {
           return _index;
         }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether the index range node uses only equality lookups only, 
-/// and that the sort only consists of these same attributes.
-/// in this special case, the sort can be optimized away because the index 
-/// will only produce constant values (wrt to the sort criterion)
-////////////////////////////////////////////////////////////////////////////////
-
-        static bool SortCoveredByEqualityLookup (IndexRangeNode const*,
-                                                 Index const*,
-                                                 ExecutionNode::IndexMatchVec const&);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
