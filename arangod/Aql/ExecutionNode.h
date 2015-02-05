@@ -2286,8 +2286,7 @@ namespace triagens {
                           TRI_vocbase_t* vocbase, 
                           Collection* collection,
                           ModificationOptions const& options,
-                          Variable const* outVariable
-                          )
+                          Variable const* outVariable)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -2300,7 +2299,6 @@ namespace triagens {
 
         ModificationNode (ExecutionPlan*,
                           triagens::basics::Json const& json);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
@@ -2387,7 +2385,6 @@ namespace triagens {
         Variable const* _outVariable;
 
     };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class RemoveNode

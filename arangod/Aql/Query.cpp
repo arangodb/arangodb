@@ -161,7 +161,6 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
   enterState(INITIALIZATION);
   
   _ast = new Ast(this);
-
   _nodes.reserve(32);
   _strings.reserve(32);
 }
@@ -208,9 +207,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
   }
   enterState(INITIALIZATION);
 
-  _nodes.reserve(32);
-
   _ast = new Ast(this);
+  _nodes.reserve(32);
   _strings.reserve(32);
 }
 
