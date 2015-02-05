@@ -12,8 +12,9 @@
 var jasmine = require('jasmine/core'),
   _ = require('underscore'),
   fs = require('fs'),
-  Reporter = require('jasmine/reporter').Reporter,
-  tasks = require('org/arangodb/tasks');
+  Reporter = require('jasmine/reporter').Reporter;
+  
+// tasks = require('org/arangodb/tasks');
 
 jasmine = jasmine.core(jasmine);
 
@@ -36,7 +37,7 @@ jasmine.getGlobal().setTimeout = function (func) {
 };
 
 jasmine.getGlobal().clearTimeout = function (timeoutId) {
-  tasks.unregister(timeoutId);
+  // tasks.unregister(timeoutId);
 };
 
 exports.executeTestSuite = function (specFileNames, options) {
