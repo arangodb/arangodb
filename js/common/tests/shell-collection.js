@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertNull, fail */
+/*global require, assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertNull, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -73,6 +73,7 @@ function CollectionSuiteErrorHandling () {
       try {
         // one char too long
         db._create("a1234567890123456789012345678901234567890123456789012345678901234");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -85,8 +86,8 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameSystem : function () {
       try {
-        // one char too long
         db._create("1234");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -100,6 +101,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameUnderscore : function () {
       try {
         db._create("_illegal");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -113,6 +115,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameEmpty : function () {
       try {
         db._create("");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -126,6 +129,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameNumber : function () {
       try {
         db._create("12345");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -138,10 +142,11 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameUnderscoreShortCut : function () {
       try {
-        db._illegal.blarg();
+        var a = db._illegal;
+        assertUndefined(a);
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        assertTrue(false);
       }
     },
 
@@ -151,7 +156,10 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameEmptyShortCut : function () {
       try {
-        db[""] = true;
+        var a = db[""];
+        if (a.length >= 0) {
+          fail();
+        }
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -164,7 +172,10 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameNumberShortCut : function () {
       try {
-        db["12345"] = true;
+        var a = db["12345"];
+        if (a.length >= 0) {
+          fail();
+        }
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
