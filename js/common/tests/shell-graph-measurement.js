@@ -1,5 +1,4 @@
-/*global require, db, assertEqual, assertTrue, assertException, print,
-  PRINT_OBJECT, AvocadoCollection, AvocadoEdgesCollection */
+/*global require, assertEqual, assertException */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -40,6 +39,7 @@ var jsunity = require("jsunity"),
 ////////////////////////////////////////////////////////////////////////////////
 
 function measurementSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -57,8 +57,8 @@ function measurementSuite() {
         try {
           // Drop the graph if it exsits
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          require("internal").print("FOUND: ");
+          require("internal").printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -214,6 +214,7 @@ function measurementSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function geodesicSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -231,8 +232,8 @@ function geodesicSuite() {
         try {
           // Drop the graph if it exsits
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          require("internal").print("FOUND: ");
+          require("internal").printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -376,6 +377,7 @@ function geodesicSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function normalizedSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -393,8 +395,8 @@ function normalizedSuite() {
         try {
           // Drop the graph if it exsits
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          require("internal").print("FOUND: ");
+          require("internal").printObject(graph);
           graph.drop();
         } catch (err1) {
         }

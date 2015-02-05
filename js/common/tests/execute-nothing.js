@@ -1,5 +1,5 @@
-/*global require, db, assertEqual, assertTrue, print, PRINT_OBJECT, console,
-    AvocadoCollection, AvocadoEdgesCollection */
+/*jshint unused: false */
+/*global assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -29,5 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function main(args) {
-  while (true) {};
+  "use strict";
+  while (true) {assertTrue(true);}
 }

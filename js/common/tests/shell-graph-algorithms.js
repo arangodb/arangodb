@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue */
+/*jshint unused: false */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -40,6 +41,7 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function neighborSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -57,8 +59,8 @@ function neighborSuite() {
         try {
           // Drop the graph if it exsits
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          require("internal").print("FOUND: ");
+          require("internal").printObject(graph);
           graph.drop();
         } catch (err1) {
         }
@@ -155,6 +157,7 @@ function neighborSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function dijkstraSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -447,6 +450,7 @@ function dijkstraSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function commonSuite() {
+  "use strict";
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -464,8 +468,8 @@ function commonSuite() {
         try {
           // Drop the graph if it exsits
           graph = new Graph(graph_name);
-          print("FOUND: ");
-          PRINT_OBJECT(graph);
+          require("internal").print("FOUND: ");
+          require("internal").printObject(graph);
           graph.drop();
         } catch (err1) {
         }

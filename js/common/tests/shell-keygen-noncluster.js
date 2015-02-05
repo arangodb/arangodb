@@ -1,3 +1,5 @@
+/*jshint strict: true, maxlen: 5000 */
+/*global require, assertEqual, fail */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the non-traditional key generators
 ///
@@ -27,12 +29,9 @@
 
 var jsunity = require("jsunity");
 
-var wait = require("internal").wait;
-var console = require("console");
 var arangodb = require("org/arangodb");
 var testHelper = require("org/arangodb/test-helper").Helper;
 
-var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 
@@ -45,6 +44,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AutoIncrementSuite () {
+  "use strict";
   var cn = "UnitTestsKeyGen";
 
   return {

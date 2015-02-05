@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/*jshint strict: true, maxlen: 5000 */
 /*global require, assertTrue, assertFalse, assertEqual, assertNotEqual, fail, Buffer */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filesystem functions
@@ -41,6 +41,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function FileSystemSuite () {
+  "use strict";
   var ERRORS = require("internal").errors;
   var tempDir;
 
