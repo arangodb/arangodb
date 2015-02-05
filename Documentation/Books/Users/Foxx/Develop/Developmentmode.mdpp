@@ -19,19 +19,14 @@ Activating the development mode is done with a single command:
     unix> foxx-manager development /example
     Activated development mode for Application hello-foxx version 1.5.0 on mount point /example
 
-Now the app will *list* itself as a development app:
+Now the app will now be listed in *listDevelopment*:
 
-    unix> foxx-manager list
-    Mount                   Name           Author           Description                                       Version    Development
-    ---------------------   ------------   --------------   -----------------------------------------------   --------   ------------
-    /_admin/aardvark        aardvark       ArangoDB GmbH    ArangoDB Admin Web Interface                      1.0        false
-    /_api/gharial           gharial        ArangoDB GmbH    ArangoDB Graph Module                             0.1        false
-    /_system/cerberus       cerberus       ArangoDB GmbH    Password Manager                                  0.0.1      false
-    /_system/sessions       sessions       ArangoDB GmbH    Session storage for Foxx.                         0.1        false
-    /_system/simple-auth    simple-auth    ArangoDB GmbH    Simple password-based authentication for Foxx.    0.1        false
-    /example                hello-foxx     Frank Celler     This is 'Hello World' for ArangoDB Foxx.          1.5.0      true
-    ---------------------   ------------   --------------   -----------------------------------------------   --------   ------------
-    6 application(s) found
+    unix> foxx-manager listDevelopment
+    Mount       Name          Author          Description                                 Version    Development
+    ---------   -----------   -------------   -----------------------------------------   --------   ------------
+    /example    hello-foxx    Frank Celler    This is 'Hello World' for ArangoDB Foxx.    1.5.0      true
+    ---------   -----------   -------------   -----------------------------------------   --------   ------------
+    1 application(s) found
 
 !SECTION Effects
 
