@@ -1,3 +1,6 @@
+/*jshint strict: true, sub: true */
+/*global require, fail, assertEqual, assertTrue, assertFalse */
+// enable ['bla'] notation...
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the compaction
 ///
@@ -38,6 +41,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CompactionSuite () {
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,14 +49,20 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testShapesMovement : function () {
-      var cn = "example";
-      internal.db._drop(cn);
+      var collectionName = "example";
+      internal.db._drop(collectionName);
 
       var cn = internal.db._create(cn, { "journalSize" : 1048576 });
-      var i, j;
+      var x, i, j, doc;
 
       for (i = 0; i < 1000; ++i) {
-        var doc = { _key: "old" + i, a: i, b: "test" + i, values: [ ], atts: { } }, x = { };
+        doc = {
+          _key: "old" + i,
+          a: i,
+          b: "test" + i,
+          values: [ ],
+          atts: { } };
+        x = { };
         for (j = 0; j < 10; ++j) { 
           doc.values.push(j);
           doc.atts["test" + i + j] = "test";
@@ -64,7 +74,7 @@ function CompactionSuite () {
 
       // now access the documents once, to build the shape accessors
       for (i = 0; i < 1000; ++i) {
-        var doc = cn.document("old" + i);
+        doc = cn.document("old" + i);
 
         assertTrue(doc.hasOwnProperty("a"));
         assertEqual(i, doc.a);
@@ -98,7 +108,7 @@ function CompactionSuite () {
 
       // now access the "old" documents, which were probably moved
       for (i = 0; i < 1000; ++i) {
-        var doc = cn.document("old" + i);
+        doc = cn.document("old" + i);
 
         assertTrue(doc.hasOwnProperty("a"));
         assertEqual(i, doc.a);
@@ -129,7 +139,7 @@ function CompactionSuite () {
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
-      var i;
+      var i, doc;
 
       // prefill with "trash"
       for (i = 0; i < 1000; ++i) {
@@ -144,10 +154,10 @@ function CompactionSuite () {
 
       // create lots of different shapes
       for (i = 0; i < 100; ++i) { 
-        var doc = { _key: "test" + i }; 
+        doc = { _key: "test" + i }; 
         doc["number" + i] = i; 
         doc["string" + i] = "test" + i; 
-        doc["bool" + i] = (i % 2 == 0); 
+        doc["bool" + i] = (i % 2 === 0); 
         c1.save(doc); 
       } 
 
@@ -158,22 +168,22 @@ function CompactionSuite () {
       internal.wait(5, false); 
       
       for (i = 0; i < 100; ++i) { 
-        var doc = { _key: "test" + i }; 
+        doc = { _key: "test" + i }; 
         doc["number" + i] = i + 1; 
         doc["string" + i] = "test" + (i + 1); 
-        doc["bool" + i] = (i % 2 != 0);
+        doc["bool" + i] = (i % 2 !== 0);
         c1.save(doc); 
       } 
      
       for (i = 0; i < 100; ++i) {
-        var doc = c1.document("test" + i);
+        doc = c1.document("test" + i);
         assertTrue(doc.hasOwnProperty("number" + i));
         assertTrue(doc.hasOwnProperty("string" + i));
         assertTrue(doc.hasOwnProperty("bool" + i));
 
         assertEqual(i + 1, doc["number" + i]);
         assertEqual("test" + (i + 1), doc["string" + i]);
-        assertEqual(i % 2 != 0, doc["bool" + i]);
+        assertEqual(i % 2 !== 0, doc["bool" + i]);
       } 
 
       internal.db._drop(cn);
@@ -188,7 +198,7 @@ function CompactionSuite () {
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
-      var i;
+      var i, doc;
       // prefill with "trash"
       for (i = 0; i < 1000; ++i) {
         c1.save({ _key: "test" + i });
@@ -198,10 +208,10 @@ function CompactionSuite () {
 
       // create lots of different shapes
       for (i = 0; i < 100; ++i) { 
-        var doc = { _key: "test" + i }; 
+        doc = { _key: "test" + i }; 
         doc["number" + i] = i; 
         doc["string" + i] = "test" + i; 
-        doc["bool" + i] = (i % 2 == 0); 
+        doc["bool" + i] = (i % 2 === 0); 
         c1.save(doc); 
       } 
       
@@ -216,7 +226,7 @@ function CompactionSuite () {
       // make sure compaction moves the shapes
       testHelper.rotate(c1);
       
-      var doc = c1.document("foo");
+      doc = c1.document("foo");
       assertTrue(doc.hasOwnProperty("name"));
       assertFalse(doc.hasOwnProperty("age"));
       assertEqual({ first: "foo", last: "bar" }, doc.name);
@@ -239,14 +249,14 @@ function CompactionSuite () {
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
-      var i;
+      var i, doc;
       
       // create lots of different shapes
       for (i = 0; i < 100; ++i) { 
-        var doc = { _key: "test" + i }; 
+        doc = { _key: "test" + i }; 
         doc["number" + i] = i; 
         doc["string" + i] = "test" + i; 
-        doc["bool" + i] = (i % 2 == 0); 
+        doc["bool" + i] = (i % 2 === 0); 
         c1.save(doc); 
       } 
       
@@ -270,7 +280,7 @@ function CompactionSuite () {
       c1 = internal.db._collection(cn);
      
       // check if documents are still there 
-      var doc = c1.document("foo");
+      doc = c1.document("foo");
       assertTrue(doc.hasOwnProperty("name"));
       assertFalse(doc.hasOwnProperty("age"));
       assertEqual({ first: "foo", last: "bar" }, doc.name);
@@ -283,23 +293,23 @@ function CompactionSuite () {
       
       // create docs with already existing shapes
       for (i = 0; i < 100; ++i) { 
-        var doc = { _key: "test" + i }; 
+        doc = { _key: "test" + i }; 
         doc["number" + i] = i; 
         doc["string" + i] = "test" + i; 
-        doc["bool" + i] = (i % 2 == 0); 
+        doc["bool" + i] = (i % 2 === 0); 
         c1.save(doc); 
       } 
      
       // check if the documents work 
       for (i = 0; i < 100; ++i) {
-        var doc = c1.document("test" + i);
+        doc = c1.document("test" + i);
         assertTrue(doc.hasOwnProperty("number" + i));
         assertTrue(doc.hasOwnProperty("string" + i));
         assertTrue(doc.hasOwnProperty("bool" + i));
 
         assertEqual(i, doc["number" + i]);
         assertEqual("test" + i, doc["string" + i]);
-        assertEqual(i % 2 == 0, doc["bool" + i]);
+        assertEqual(i % 2 === 0, doc["bool" + i]);
       } 
 
       internal.db._drop(cn);
@@ -367,7 +377,7 @@ function CompactionSuite () {
 
       internal.wal.flush(true, true);
 
-      var tries = 0;
+      tries = 0;
       while (++tries < 20) {
         fig = c1.figures();
       
@@ -430,19 +440,20 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testFiguresTruncate : function () {
+      var i;
       var maxWait;
       var cn = "example";
       var n = 400;
       var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.";
 
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         payload += payload;
       }
 
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 } );
 
-      for (var i = 0; i < n; ++i) {
+      for (i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
       }
      
@@ -489,7 +500,7 @@ function CompactionSuite () {
       while (++tries < maxWait) {
         fig = c1.figures();
 
-        if (fig["dead"]["deletion"] == 0 && fig["dead"]["count"] == 0) {
+        if (fig["dead"]["deletion"] === 0 && fig["dead"]["count"] === 0) {
           break;
         }
 
@@ -515,16 +526,17 @@ function CompactionSuite () {
       var maxWait;
       var cn = "example";
       var n = 400;
+      var i;
       var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox. boom bang.";
 
-      for (var i = 0; i < 5; ++i) {
+      for ( i = 0; i < 5; ++i) {
         payload += payload;
       }
 
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576, "doCompact" : false });
 
-      for (var i = 0; i < n; ++i) {
+      for (i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
       }
      
@@ -618,26 +630,28 @@ function CompactionSuite () {
       var waited;
       var cn = "example";
       var n = 400;
+      var i;
+      var doc;
       var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
 
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         payload += payload;
       }
 
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
-      for (var i = 0; i < n; ++i) {
+      for (i = 0; i < n; ++i) {
         c1.save({ _key: "test" + i, value : i, payload : payload });
       }
       
-      for (var i = 0; i < n; i += 2) {
+      for (i = 0; i < n; i += 2) {
         c1.remove("test" + i);
       }
      
       internal.wal.flush(true, true);
       // this will create a barrier that will block compaction
-      var doc = c1.document("test1"); 
+      doc = c1.document("test1"); 
 
       c1.rotate();
 
@@ -682,17 +696,16 @@ function CompactionSuite () {
         waited += 5;
       
         fig = c1.figures();
-        if (fig["dead"]["deletion"] == lastValue) {
+        if (fig["dead"]["deletion"] === lastValue) {
           break;
         }
         lastValue = fig["dead"]["deletion"];
       }
 
-      var doc;
-      for (var i = 0; i < n; i++) {
+      for (i = 0; i < n; i++) {
 
         // will throw if document does not exist
-        if (i % 2 == 0) {
+        if (i % 2 === 0) {
           try {
             doc = c1.document("test" + i);
             fail();
@@ -720,12 +733,12 @@ function CompactionSuite () {
         waited += 2;
       
         fig = c1.figures();
-        if (fig["dead"]["deletion"] == 0) {
+        if (fig["dead"]["deletion"] === 0) {
           break;
         }
       }
       
-      var fig = c1.figures();
+      fig = c1.figures();
       assertEqual(0, c1.count());
       assertEqual(0, fig["alive"]["count"]);
       assertEqual(0, fig["dead"]["count"]);
@@ -745,19 +758,20 @@ function CompactionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testCompactAfterTruncate : function () {
-      var waited;
+      var maxWait;
       var cn = "example";
       var n = 400;
+      var i;
       var payload = "the quick brown fox jumped over the lazy dog. a quick dog jumped over the lazy fox";
 
-      for (var i = 0; i < 5; ++i) {
+      for (i = 0; i < 5; ++i) {
         payload += payload;
       }
 
       internal.db._drop(cn);
       var c1 = internal.db._create(cn, { "journalSize" : 1048576 });
 
-      for (var i = 0; i < n; ++i) {
+      for (i = 0; i < n; ++i) {
         c1.save({ value : i, payload : payload });
       }
 
@@ -787,7 +801,7 @@ function CompactionSuite () {
         
       internal.wal.flush(true, true);
 
-      var tries = 0;
+      tries = 0;
       while (++tries < 20) {
         fig = c1.figures();
       
@@ -816,7 +830,7 @@ function CompactionSuite () {
       while (++tries < maxWait) {
         fig = c1.figures();
 
-        if (fig["dead"]["count"] == 0) {
+        if (fig["dead"]["count"] === 0) {
           break;
         }
 

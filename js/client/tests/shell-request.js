@@ -1,4 +1,5 @@
-/*global arango */
+/*jshint strict: true */
+/*global require, arango, Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request module
@@ -29,7 +30,6 @@
 
 var jsunity = require('jsunity');
 var expect = require('expect.js');
-var arangodb = require('org/arangodb');
 var request = require('org/arangodb/request');
 var url = require('url');
 var querystring = require('querystring');
@@ -44,13 +44,14 @@ var qs = require('qs');
 ////////////////////////////////////////////////////////////////////////////////
 
 function RequestSuite () {
-  buildUrl = function (append, base) {
+  "use strict";
+  var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + base + append;
   };
   
-  buildUrlBroken = function (append) {
+  var buildUrlBroken = function (append) {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + '/_not-there' + append;
   };
 

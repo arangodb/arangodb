@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, fail, assertTrue, assertNotEqual, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
 ///
@@ -40,6 +43,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function walFailureSuite () {
+  "use strict";
   var cn = "UnitTestsWal";
   var c;
   var props;
@@ -197,6 +201,7 @@ function walFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function walSuite () {
+  "use strict";
   var cn = "UnitTestsWal";
   var c;
   var props;
@@ -329,7 +334,7 @@ function walSuite () {
       testHelper.waitUnload(c);
 
       // we should have a tick and no uncollected entries
-      fig = c.figures();
+      var fig = c.figures();
       assertNotEqual("0", fig.lastTick);
       assertEqual(0, fig.uncollectedLogfileEntries);
     },

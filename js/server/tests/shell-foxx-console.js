@@ -1,3 +1,5 @@
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Foxx console
 ///
@@ -35,6 +37,7 @@ var qb = require('aqb');
 var mountPath = '##TEST##';
 
 function ls() {
+  "use strict";
   if (!db._foxxlog) {
     return [];
   }
@@ -47,6 +50,7 @@ function ls() {
 }
 
 function rmrf() {
+  "use strict";
   if (!db._foxxlog) {
     return [];
   }
@@ -62,6 +66,7 @@ function rmrf() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ConsoleTestSuite () {
+  "use strict";
   var console;
 
   return {
@@ -122,7 +127,7 @@ function ConsoleTestSuite () {
       var start = Date.now();
       console.time('hi');
       var min = Date.now();
-      while (Date.now() - start < 3); // make sure a measurable amount of time passes
+      while (Date.now() - start < 3) {var a = true; a=false;} // make sure a measurable amount of time passes
       console.timeEnd('hi');
       var max = Date.now();
       expect(max).to.be.greaterThan(min); // sanity checking

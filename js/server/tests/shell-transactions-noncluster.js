@@ -1,3 +1,5 @@
+/*jshint strict: true, maxlen : 200 */
+/*global require, fail, assertTrue, assertEqual, TRANSACTION */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for transactions
 ///
@@ -33,13 +35,15 @@ var db = arangodb.db;
 var testHelper = require("org/arangodb/test-helper").Helper;
 
 var compareStringIds = function (l, r) {
-  if (l.length != r.length) {
+  "use strict";
+  var i;
+  if (l.length !== r.length) {
     return l.length - r.length < 0 ? -1 : 1;
   }
 
   // length is equal
   for (i = 0; i < l.length; ++i) {
-    if (l[i] != r[i]) {
+    if (l[i] !== r[i]) {
       return l[i] < r[i] ? -1 : 1;
     }
   }
@@ -48,6 +52,7 @@ var compareStringIds = function (l, r) {
 };
   
 var sortedKeys = function (col) {
+  "use strict";
   var keys = [ ];
 
   col.toArray().forEach(function (d) { 
@@ -59,6 +64,7 @@ var sortedKeys = function (col) {
 };
 
 var assertOrder = function (keys, col) {
+  "use strict";
   assertEqual(keys.length, col.count());
   assertEqual(keys, col.first(keys.length).map(function (doc) { return doc._key; }));
 };
@@ -72,7 +78,7 @@ var assertOrder = function (keys, col) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionInvocationSuite () {
-
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,10 +176,10 @@ function transactionInvocationSuite () {
       var tests = [
         { expected: 1, trx: { collections: { }, action: function () { return 1; } } },
         { expected: undefined, trx: { collections: { }, action: function () { } } },
-        { expected: [ ], trx: { collections: { read: [ ] }, action: function () { return [ ] } } },
-        { expected: [ null, true, false ], trx: { collections: { write: [ ] }, action: function () { return [ null, true, false ] } } },
-        { expected: "foo", trx: { collections: { read: [ ], write: [ ] }, action: function () { return "foo" } } },
-        { expected: { "a" : 1, "b" : 2 }, trx: { collections: { read: [ ], write: [ ] }, action: function () { return { "a" : 1, "b" : 2 } } } }
+        { expected: [ ], trx: { collections: { read: [ ] }, action: function () { return [ ]; } } },
+        { expected: [ null, true, false ], trx: { collections: { write: [ ] }, action: function () { return [ null, true, false ]; } } },
+        { expected: "foo", trx: { collections: { read: [ ], write: [ ] }, action: function () { return "foo"; } } },
+        { expected: { "a" : 1, "b" : 2 }, trx: { collections: { read: [ ], write: [ ] }, action: function () { return { "a" : 1, "b" : 2 }; } } }
       ];
 
       tests.forEach(function (test) {
@@ -320,6 +326,7 @@ function transactionInvocationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionCollectionsSuite () {
+  "use strict";
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -894,6 +901,7 @@ function transactionCollectionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionOperationsSuite () {
+  "use strict";
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -1787,6 +1795,7 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionBarriersSuite () {
+  "use strict";
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -1921,10 +1930,11 @@ function transactionBarriersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionGraphSuite () {
+  "use strict";
   var cn1 = "UnitTestsVertices";
   var cn2 = "UnitTestsEdges";
 
-  var g = require('org/arangodb/graph').Graph; 
+  var G = require('org/arangodb/graph').Graph; 
 
   var c1 = null;
   var c2 = null;
@@ -1970,13 +1980,13 @@ function transactionGraphSuite () {
       var graph;
 
       try {
-        graph = new g('UnitTestsGraph'); 
+        graph = new G('UnitTestsGraph'); 
         graph.drop();
       }
       catch (err) {
       }
 
-      graph = new g('UnitTestsGraph', cn1, cn2);
+      graph = new G('UnitTestsGraph', cn1, cn2);
       var gotHere = 0;
       
       assertEqual(0, db[cn1].count());
@@ -1992,10 +2002,10 @@ function transactionGraphSuite () {
           result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name: "john smith" })._properties;
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev : null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev : null });
-          result.xsjzbst = function (){
+          result.xsjzbst = (function (){
             graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
             return true;
-          }(); 
+          }());
 
           result.thizhdd = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name: "david smith" });
           gotHere = 1;
@@ -2027,13 +2037,13 @@ function transactionGraphSuite () {
       var graph;
 
       try {
-        graph = new g('UnitTestsGraph'); 
+        graph = new G('UnitTestsGraph'); 
         graph.drop();
       }
       catch (err) {
       }
 
-      graph = new g('UnitTestsGraph', cn1, cn2);
+      graph = new G('UnitTestsGraph', cn1, cn2);
 
       var obj = {
         collections: { 
@@ -2047,10 +2057,10 @@ function transactionGraphSuite () {
           result.oboyuhh = graph.addEdge(graph.getVertex(result.enxirvp._id), graph.getVertex(result.biitqtk._id), null, { name : "john smith" })._properties;
           result.cvwmkym = db[cn1].replace(result.enxirvp._id, { _rev : null });
           result.gsalfxu = db[cn1].replace(result.biitqtk._id, { _rev : null });
-          result.xsjzbst = function (){
+          result.xsjzbst = (function (){
             graph.removeEdge(graph.getEdge(result.oboyuhh._id)); 
             return true;
-          }();
+          }());
 
           result.rldfnre = graph.addEdge(graph.getVertex(result.cvwmkym._id), graph.getVertex(result.gsalfxu._id), result.oboyuhh._key, { name : "david smith" })._properties;
 
@@ -2179,6 +2189,7 @@ function transactionGraphSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionRollbackSuite () {
+  "use strict";
   var cn1 = "UnitTestsTransaction1";
 
   var c1 = null;
@@ -3474,6 +3485,7 @@ function transactionRollbackSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionCountSuite () {
+  "use strict";
   var cn1 = "UnitTestsTransaction1";
 
   var c1 = null;
@@ -3667,6 +3679,7 @@ function transactionCountSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionCrossCollectionSuite () {
+  "use strict";
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -3991,6 +4004,7 @@ function transactionCrossCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionConstraintsSuite () {
+  "use strict";
   var cn = "UnitTestsTransaction";
 
   var c = null;
@@ -4218,6 +4232,7 @@ function transactionConstraintsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionServerFailuresSuite () {
+  "use strict";
   var cn = "UnitTestsTransaction";
 
   var c = null;
@@ -4723,7 +4738,19 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresEmpty : function () {
-      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ]; 
+      var failures = [ "InsertDocumentNoLegend",
+                       "InsertDocumentNoLegendExcept",
+                       "InsertDocumentNoMarker",
+                       "InsertDocumentNoMarkerExcept",
+                       "InsertDocumentNoHeader",
+                       "InsertDocumentNoHeaderExcept",
+                       "InsertDocumentNoLock",
+                       "InsertDocumentNoOperation",
+                       "InsertDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ]; 
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4749,7 +4776,19 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresNonEmpty : function () {
-      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ]; 
+      var failures = [ "InsertDocumentNoLegend",
+                       "InsertDocumentNoLegendExcept",
+                       "InsertDocumentNoMarker",
+                       "InsertDocumentNoMarkerExcept",
+                       "InsertDocumentNoHeader",
+                       "InsertDocumentNoHeaderExcept",
+                       "InsertDocumentNoLock",
+                       "InsertDocumentNoOperation",
+                       "InsertDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ]; 
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4779,7 +4818,13 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresConstraint : function () {
-      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock" ];
+      var failures = [ "InsertDocumentNoLegend",
+                       "InsertDocumentNoLegendExcept",
+                       "InsertDocumentNoMarker",
+                       "InsertDocumentNoMarkerExcept",
+                       "InsertDocumentNoHeader",
+                       "InsertDocumentNoHeaderExcept",
+                       "InsertDocumentNoLock" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4809,7 +4854,19 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInsertServerFailuresMulti : function () {
-      var failures = [ "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ]; 
+      var failures = [ "InsertDocumentNoLegend",
+                       "InsertDocumentNoLegendExcept",
+                       "InsertDocumentNoMarker",
+                       "InsertDocumentNoMarkerExcept",
+                       "InsertDocumentNoHeader",
+                       "InsertDocumentNoHeaderExcept",
+                       "InsertDocumentNoLock",
+                       "InsertDocumentNoOperation",
+                       "InsertDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ]; 
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4823,7 +4880,7 @@ function transactionServerFailuresSuite () {
             },
             action: function () {
               for (var i = 0; i < 10; ++i) {
-                if (i == 9) {
+                if (i === 9) {
                   internal.debugSetFailAt(f);
                 }
                 c.save({ _key: "test" + i, a: 1 });
@@ -4870,7 +4927,15 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveServerFailuresNonEmpty : function () {
-      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ];
+      var failures = [ "RemoveDocumentNoMarker",
+                       "RemoveDocumentNoMarkerExcept",
+                       "RemoveDocumentNoLock",
+                       "RemoveDocumentNoOperation",
+                       "RemoveDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4900,7 +4965,15 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveServerFailuresMulti : function () {
-      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ];
+      var failures = [ "RemoveDocumentNoMarker",
+                       "RemoveDocumentNoMarkerExcept",
+                       "RemoveDocumentNoLock",
+                       "RemoveDocumentNoOperation",
+                       "RemoveDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4918,7 +4991,7 @@ function transactionServerFailuresSuite () {
             },
             action: function () {
               for (var i = 0; i < 10; ++i) {
-                if (i == 9) {
+                if (i === 9) {
                   internal.debugSetFailAt(f);
                 }
                 c.remove("test" + i);
@@ -4942,7 +5015,17 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateServerFailuresNonEmpty : function () {
-      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ];
+      var failures = [ "UpdateDocumentNoLegend",
+                       "UpdateDocumentNoLegendExcept",
+                       "UpdateDocumentNoMarker",
+                       "UpdateDocumentNoMarkerExcept",
+                       "UpdateDocumentNoLock",
+                       "UpdateDocumentNoOperation",
+                       "UpdateDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4973,7 +5056,17 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateServerFailuresMulti : function () {
-      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ];
+      var failures = [ "UpdateDocumentNoLegend",
+                       "UpdateDocumentNoLegendExcept",
+                       "UpdateDocumentNoMarker",
+                       "UpdateDocumentNoMarkerExcept",
+                       "UpdateDocumentNoLock",
+                       "UpdateDocumentNoOperation",
+                       "UpdateDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -4992,7 +5085,7 @@ function transactionServerFailuresSuite () {
             },
             action: function () {
               for (var i = 0; i < 10; ++i) {
-                if (i == 9) {
+                if (i === 9) {
                   internal.debugSetFailAt(f);
                 }
                 c.update("test" + i, { a: i + 1 });
@@ -5016,7 +5109,17 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateServerFailuresMultiUpdate : function () {
-      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ];
+      var failures = [ "UpdateDocumentNoLegend",
+                       "UpdateDocumentNoLegendExcept",
+                       "UpdateDocumentNoMarker",
+                       "UpdateDocumentNoMarkerExcept",
+                       "UpdateDocumentNoLock",
+                       "UpdateDocumentNoOperation",
+                       "UpdateDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -5035,7 +5138,7 @@ function transactionServerFailuresSuite () {
             },
             action: function () {
               for (var i = 0; i < 10; ++i) {
-                if (i == 9) {
+                if (i === 9) {
                   internal.debugSetFailAt(f);
                 }
                 // double update
@@ -5062,7 +5165,13 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTruncateServerFailures : function () {
-      var failures = [ "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept" ];
+      var failures = [ "RemoveDocumentNoMarker",
+                       "RemoveDocumentNoMarkerExcept",
+                       "RemoveDocumentNoLock",
+                       "RemoveDocumentNoOperation",
+                       "RemoveDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept" ];
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();
@@ -5096,7 +5205,31 @@ function transactionServerFailuresSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testMixedServerFailures : function () {
-      var failures = [ "UpdateDocumentNoLegend", "UpdateDocumentNoLegendExcept", "UpdateDocumentNoMarker", "UpdateDocumentNoMarkerExcept", "UpdateDocumentNoLock", "UpdateDocumentNoOperation", "UpdateDocumentNoOperationExcept", "RemoveDocumentNoMarker", "RemoveDocumentNoMarkerExcept", "RemoveDocumentNoLock", "RemoveDocumentNoOperation", "RemoveDocumentNoOperationExcept", "InsertDocumentNoLegend", "InsertDocumentNoLegendExcept", "InsertDocumentNoMarker", "InsertDocumentNoMarkerExcept", "InsertDocumentNoHeader", "InsertDocumentNoHeaderExcept", "InsertDocumentNoLock", "InsertDocumentNoOperation", "InsertDocumentNoOperationExcept", "TransactionOperationNoSlot", "TransactionOperationNoSlotExcept", "TransactionOperationAfterAdjust", "TransactionOperationAtEnd" ]; 
+      var failures = [ "UpdateDocumentNoLegend",
+                       "UpdateDocumentNoLegendExcept",
+                       "UpdateDocumentNoMarker",
+                       "UpdateDocumentNoMarkerExcept",
+                       "UpdateDocumentNoLock",
+                       "UpdateDocumentNoOperation",
+                       "UpdateDocumentNoOperationExcept",
+                       "RemoveDocumentNoMarker",
+                       "RemoveDocumentNoMarkerExcept",
+                       "RemoveDocumentNoLock",
+                       "RemoveDocumentNoOperation",
+                       "RemoveDocumentNoOperationExcept",
+                       "InsertDocumentNoLegend",
+                       "InsertDocumentNoLegendExcept",
+                       "InsertDocumentNoMarker",
+                       "InsertDocumentNoMarkerExcept",
+                       "InsertDocumentNoHeader",
+                       "InsertDocumentNoHeaderExcept",
+                       "InsertDocumentNoLock",
+                       "InsertDocumentNoOperation",
+                       "InsertDocumentNoOperationExcept",
+                       "TransactionOperationNoSlot",
+                       "TransactionOperationNoSlotExcept",
+                       "TransactionOperationAfterAdjust",
+                       "TransactionOperationAtEnd" ]; 
 
       failures.forEach (function (f) {
         internal.debugClearFailAt();

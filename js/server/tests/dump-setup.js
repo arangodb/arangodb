@@ -1,3 +1,6 @@
+/*jshint strict: true, maxlen:4000, unused:false */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup collections for dump/reload tests
 ///
@@ -26,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   var db = require("org/arangodb").db;
   var i, c;
 
@@ -58,7 +62,9 @@
 
   c = db._createEdgeCollection("UnitTestsDumpEdges");
   for (i = 0; i < 10; ++i) {
-    c.save("UnitTestsDumpMany/test" + i, "UnitTestsDumpMany/test" + (i + 1), { _key: "test" + i, what: i + "->" + (i + 1) });
+    c.save("UnitTestsDumpMany/test" + i,
+           "UnitTestsDumpMany/test" + (i + 1),
+           { _key: "test" + i, what: i + "->" + (i + 1) });
   }
 
   // we update & modify the order
