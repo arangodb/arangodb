@@ -69,6 +69,7 @@ Controller = function (context, options) {
   if (is.notExisty(context)) {
     throw new Error("parameter <context> is missing");
   }
+  context.clearComments();
 
   this.routingInfo = {
     routes: []
