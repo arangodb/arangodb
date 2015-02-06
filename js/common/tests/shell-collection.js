@@ -157,12 +157,10 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameEmptyShortCut : function () {
       try {
         var a = db[""];
-        if (a.length >= 0) {
-          fail();
-        }
+        assertUndefined(a);
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        assertTrue(false);
       }
     },
 
@@ -173,12 +171,10 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameNumberShortCut : function () {
       try {
         var a = db["12345"];
-        if (a.length >= 0) {
-          fail();
-        }
+        assertUndefined(a);
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        assertTrue(false);
       }
     },
 
