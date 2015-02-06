@@ -100,8 +100,7 @@
    * Generate a new empty foxx on the given mount point
    */
   controller.put("/generate", function (req, res) {
-    var content = JSON.parse(req.requestBody),
-        info = content.info,
+    var info = JSON.parse(req.requestBody),
         mount = validateMount(req);
     installApp(res, "EMPTY", mount, info);
   }).queryParam("mount", mountPoint);
