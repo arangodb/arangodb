@@ -101,10 +101,10 @@ void ExecutionNode::validateType (int type) {
   }
 }
 
-void ExecutionNode::getSortElements(SortElementVector& elements,
-                                    ExecutionPlan* plan,
-                                    triagens::basics::Json const& oneNode,
-                                    char const* which) {
+void ExecutionNode::getSortElements (SortElementVector& elements,
+                                     ExecutionPlan* plan,
+                                     triagens::basics::Json const& oneNode,
+                                     char const* which) {
   triagens::basics::Json jsonElements = oneNode.get("elements");
   if (! jsonElements.isArray()){
     std::string error = std::string("unexpected value for ") +
@@ -117,7 +117,7 @@ void ExecutionNode::getSortElements(SortElementVector& elements,
     triagens::basics::Json oneJsonElement = jsonElements.at(static_cast<int>(i));
     bool ascending = JsonHelper::checkAndGetBooleanValue(oneJsonElement.json(), "ascending");
     Variable *v = varFromJson(plan->getAst(), oneJsonElement, "inVariable");
-    elements.push_back(std::make_pair(v, ascending));
+    elements.emplace_back(std::make_pair(v, ascending));
   }
 }
 
@@ -463,18 +463,63 @@ void ExecutionNode::appendAsString (std::string& st, int indent) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect one index; only skiplist indexes which match attrs in sequence.
-/// @returns a qualification how good they match;
-///      match->index==nullptr means no match at all.
+/// returns a qualification how good they match;
+/// match->index == nullptr means no match at all.
 ////////////////////////////////////////////////////////////////////////////////
 
-ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
+ExecutionNode::IndexMatch ExecutionNode::CompareIndex (ExecutionNode const* node,
+                                                       Index const* idx,
                                                        ExecutionNode::IndexMatchVec const& attrs) {
   IndexMatch match;
 
-  if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX || 
-      attrs.empty()) {
+  if (attrs.empty()) {
     return match;
   }
+  
+  // check 
+  std::unordered_set<std::string> equalityLookupAttributes;
+
+  if (node->getType() == INDEX_RANGE) {
+    // found an index range node...
+    // now check, regardless of the type of index, which attributes are only used in
+    // equality lookups 
+    auto ranges = static_cast<IndexRangeNode const*>(node)->ranges();
+
+    // check for OR
+    if (ranges.size() == 1) {
+      // no OR
+   
+      // check for equality-lookup ranges and note them for later
+      for (auto const& r : ranges[0]) {
+        if (r.is1ValueRangeInfo()) {
+          // found an equality lookup    
+          equalityLookupAttributes.emplace(r._attr);
+        }
+      }
+    }
+  }
+  
+  // check index type
+  if (idx->type != TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    // no skiplist... that means we might have found the primary index or a hash index
+    // with no guaranteed sort order.
+    // still we can optimize away the sort if (and only if) all index attributes are used
+    // in the sort criteria, and all index attributes are used for constant equality
+    // lookups (e.g. doc.value1 == 1 && doc.value2 == 2 SORT doc.value1, doc.value2)
+ 
+    for (auto const& attr : attrs) {
+      if (equalityLookupAttributes.find(attr.first) == equalityLookupAttributes.end()) {
+        return match;
+      }
+    }
+ 
+    // when we get here we will be able to optimize away the sort
+    match.doesMatch = true;
+    return match;
+  }
+
+
+  TRI_ASSERT(idx->type == TRI_IDX_TYPE_SKIPLIST_INDEX);
 
   size_t const idxFields = idx->fields.size();
   size_t const n = attrs.size();
@@ -483,10 +528,24 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
   size_t interestingCount = 0;
   size_t forwardCount = 0;
   size_t backwardCount = 0;
+  size_t i = 0;
   size_t j = 0;
 
-  for (; (j < idxFields && j < n); j++) {
-    if (idx->fields[j] == attrs[j].first) {
+  for (; (i < idxFields && j < n); i++) {
+    if (equalityLookupAttributes.find(idx->fields[i]) != equalityLookupAttributes.end()) {
+      // found an attribute in the sort criterion that is used in an equality lookup, too...
+      // (e.g. doc.value == 1 && SORT doc.value1)
+      // in this case, we can ignore the sorting for this particular attribute, as the index
+      // will only return constant values for it
+      match.matches.push_back(FORWARD_MATCH); // doesn't matter here if FORWARD or BACKWARD
+      ++interestingCount;
+      if (attrs[j].first == idx->fields[i]) {
+        ++j;
+      }
+      continue;
+    }
+
+    if (attrs[j].first == idx->fields[i]) {
       if (attrs[j].second) {
         // ascending
         match.matches.push_back(FORWARD_MATCH);
@@ -510,13 +569,14 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
       match.matches.push_back(NO_MATCH);
       match.doesMatch = false;
     }
+    ++j;
   }
 
   if (interestingCount > 0) {
     match.index = idx;
 
-    if (j < idxFields) { // more index fields
-      for (; j < idxFields; j++) {
+    if (i < idxFields) { // more index fields
+      for (; i < idxFields; i++) {
         match.matches.push_back(NOT_COVERED_IDX);
       }
     }
@@ -527,6 +587,7 @@ ExecutionNode::IndexMatch ExecutionNode::CompareIndex (Index const* idx,
       match.doesMatch = false;
     }
   }
+
   return match;
 }
 
@@ -1117,6 +1178,7 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
                                                            std::vector<size_t>& prefixes) const {
 
   auto&& indexes = _collection->getIndexes();
+
   for (auto idx : indexes) {
     TRI_ASSERT(idx != nullptr);
 
@@ -1187,7 +1249,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
   std::vector<IndexMatch> out;
   auto&& indexes = _collection->getIndexes();
   for (auto idx : indexes) {
-    IndexMatch match = CompareIndex(idx, attrs);
+    IndexMatch match = CompareIndex(this, idx, attrs);
     if (match.index != nullptr) {
       out.push_back(match);
     }
@@ -1278,32 +1340,37 @@ double EnumerateListNode::estimateCost (size_t& nrItems) const {
  
   auto setter = _plan->getVarSetBy(_inVariable->id);
 
-  if (setter != nullptr &&
-      setter->getType() == ExecutionNode::CALCULATION) {
-    // list variable introduced by a calculation
-    auto expression = static_cast<CalculationNode*>(setter)->expression();
+  if (setter != nullptr) {
+    if (setter->getType() == ExecutionNode::CALCULATION) {
+      // list variable introduced by a calculation
+      auto expression = static_cast<CalculationNode*>(setter)->expression();
 
-    if (expression != nullptr) {
-      auto node = expression->node();
+      if (expression != nullptr) {
+        auto node = expression->node();
 
-      if (node->type == NODE_TYPE_ARRAY) {
-        // this one is easy
-        length = node->numMembers();
-      }
-      if (node->type == NODE_TYPE_RANGE) {
-        auto low = node->getMember(0); 
-        auto high = node->getMember(1); 
+        if (node->type == NODE_TYPE_ARRAY) {
+          // this one is easy
+          length = node->numMembers();
+        }
+        if (node->type == NODE_TYPE_RANGE) {
+          auto low = node->getMember(0); 
+          auto high = node->getMember(1); 
 
-        if (low->isConstant() && 
-            high->isConstant() &&
-            (low->isValueType(VALUE_TYPE_INT) || low->isValueType(VALUE_TYPE_DOUBLE)) &&
-            (high->isValueType(VALUE_TYPE_INT) || high->isValueType(VALUE_TYPE_DOUBLE))) {
-          // create a temporary range to determine the size
-          Range range(low->getIntValue(), high->getIntValue());
+          if (low->isConstant() && 
+              high->isConstant() &&
+              (low->isValueType(VALUE_TYPE_INT) || low->isValueType(VALUE_TYPE_DOUBLE)) &&
+              (high->isValueType(VALUE_TYPE_INT) || high->isValueType(VALUE_TYPE_DOUBLE))) {
+            // create a temporary range to determine the size
+            Range range(low->getIntValue(), high->getIntValue());
 
-          length = range.size();
+            length = range.size();
+          }
         }
       }
+    }
+    else if (setter->getType() == ExecutionNode::SUBQUERY) {
+      // length will be set by the subquery's cost estimator
+      static_cast<SubqueryNode const*>(setter)->getSubquery()->estimateCost(length);
     }
   }
 
@@ -1387,16 +1454,17 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
                                 triagens::basics::Json const& json)
   : ExecutionNode(plan, json),
     _vocbase(plan->getAst()->query()->vocbase()),
-    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), 
-            "collection"))),
+    _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(json.json(), "collection"))),
     _outVariable(varFromJson(plan->getAst(), json, "outVariable")),
     _index(nullptr), 
     _ranges(),
     _reverse(false) {
 
   triagens::basics::Json rangeArrayJson(TRI_UNKNOWN_MEM_ZONE, JsonHelper::checkAndGetArrayValue(json.json(), "ranges"));
+
   for (size_t i = 0; i < rangeArrayJson.size(); i++) { //loop over the ranges . . .
     _ranges.emplace_back();
+
     triagens::basics::Json rangeJson(rangeArrayJson.at(static_cast<int>(i)));
     for (size_t j = 0; j < rangeJson.size(); j++) {
       _ranges.at(i).emplace_back(rangeJson.at(static_cast<int>(j)));
@@ -1417,8 +1485,12 @@ IndexRangeNode::IndexRangeNode (ExecutionPlan* plan,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the pattern matches this node's index
+////////////////////////////////////////////////////////////////////////////////
+
 ExecutionNode::IndexMatch IndexRangeNode::matchesIndex (IndexMatchVec const& pattern) const {
-  return CompareIndex(_index, pattern);
+  return CompareIndex(this, _index, pattern);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1437,32 +1509,52 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
   
   if (_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     // always an equality lookup
+
+    // selectivity of primary index is always 1
     nrItems = incoming * _ranges.size();
     return dependencyCost + nrItems;
   }
   
   if (_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
     // always an equality lookup
-    nrItems = incoming * _ranges.size() * docCount / static_cast<size_t>(EqualityReductionFactor);
+    
+    // check if the index can provide a selectivity estimate
+    if (! estimateItemsWithIndexSelectivity(incoming, nrItems)) {
+      // use hard-coded heuristic
+      nrItems = incoming * _ranges.size() * docCount / static_cast<size_t>(EqualityReductionFactor);
+    }
+        
+    nrItems = (std::max)(nrItems, static_cast<size_t>(1));
+
     return dependencyCost + nrItems;
   }
-  
+
   if (_index->type == TRI_IDX_TYPE_HASH_INDEX) {
     // always an equality lookup
-    if (_index->unique) {
-      nrItems = incoming * _ranges.size();
-      return dependencyCost + nrItems;
-    }
 
-    double cost = static_cast<double>(docCount) * incoming * _ranges.size();
-    // the more attributes are contained in the index, the more specific the lookup will be
-    for (size_t i = 0; i < _ranges.at(0).size(); ++i) { 
-      cost /= EqualityReductionFactor; 
-    }
+    // check if the index can provide a selectivity estimate
+    if (! estimateItemsWithIndexSelectivity(incoming, nrItems)) {
+      // use hard-coded heuristic
+      if (_index->unique) {
+        nrItems = incoming * _ranges.size();
+      }
+      else {
+        double cost = static_cast<double>(docCount) * incoming * _ranges.size();
+        // the more attributes are contained in the index, the more specific the lookup will be
+        for (size_t i = 0; i < _ranges.at(0).size(); ++i) { 
+          cost /= EqualityReductionFactor; 
+        }
     
-    nrItems = static_cast<size_t>(cost);
-    cost *= 0.9999995; // this is to prefer the hash index over skiplists if everything else is equal
-    return dependencyCost + cost;
+        nrItems = static_cast<size_t>(cost);
+      }
+    }
+        
+    nrItems = (std::max)(nrItems, static_cast<size_t>(1));
+    // the more attributes an index matches, the better it is
+    double matchLengthFactor = _ranges.at(0).size() * 0.01;
+
+    // this is to prefer the hash index over skiplists if everything else is equal
+    return dependencyCost + ((static_cast<double>(nrItems) - matchLengthFactor) * 0.9999995);
   }
 
   if (_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
@@ -1544,7 +1636,10 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
       totalCost += cost;
     }
 
+    totalCost = (std::max)(static_cast<size_t>(totalCost), static_cast<size_t>(1)); 
+
     nrItems = static_cast<size_t>(totalCost);
+
     return dependencyCost + totalCost;
   }
 
@@ -1582,10 +1677,40 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
   }
 
   // Copy set elements into vector:
+  v.reserve(s.size());
+
   for (auto vv : s) {
     v.push_back(vv);
   }
   return v;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief provide an estimate for the number of items, using the index
+/// selectivity info (if present)
+////////////////////////////////////////////////////////////////////////////////
+
+bool IndexRangeNode::estimateItemsWithIndexSelectivity (size_t incoming,
+                                                        size_t& nrItems) const {
+  // check if the index can provide a selectivity estimate
+  if (! _index->hasSelectivityEstimate()) {
+    return false; 
+  }
+
+  // use index selectivity estimate
+  double estimate = _index->selectivityEstimate();
+
+  if (estimate <= 0.0) {
+    // avoid DIV0
+    return false;
+  }
+
+  nrItems = static_cast<size_t>(incoming * _ranges.size() * (1.0 / estimate));
+  return true;
 }
 
 // -----------------------------------------------------------------------------
@@ -1640,6 +1765,7 @@ double LimitNode::estimateCost (size_t& nrItems) const {
 CalculationNode::CalculationNode (ExecutionPlan* plan,
                                   triagens::basics::Json const& base)
   : ExecutionNode(plan, base),
+    _conditionVariable(varFromJson(plan->getAst(), base, "conditionVariable", true)),
     _outVariable(varFromJson(plan->getAst(), base, "outVariable")),
     _expression(new Expression(plan->getAst(), base)) {
 }
@@ -1661,6 +1787,10 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
       ("outVariable", _outVariable->toJson())
       ("canThrow", triagens::basics::Json(_expression->canThrow()));
 
+  if (_conditionVariable != nullptr) {
+    json("conditionVariable", _conditionVariable->toJson());
+  }
+
   // And add it:
   nodes(json);
 }
@@ -1668,13 +1798,17 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
 ExecutionNode* CalculationNode::clone (ExecutionPlan* plan,
                                        bool withDependencies,
                                        bool withProperties) const {
+  auto conditionVariable = _conditionVariable;
   auto outVariable = _outVariable;
 
   if (withProperties) {
+    if (_conditionVariable != nullptr) {
+      conditionVariable = plan->getAst()->variables()->createVariable(conditionVariable);
+    }
     outVariable = plan->getAst()->variables()->createVariable(outVariable);
   }
-  auto c = new CalculationNode(plan, _id, _expression->clone(),
-                               outVariable);
+
+  auto c = new CalculationNode(plan, _id, _expression->clone(), conditionVariable, outVariable);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -1747,8 +1881,8 @@ void SubqueryNode::replaceOutVariable(Variable const* var) {
         
 double SubqueryNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
-  size_t dummy;
-  double subCost = _subquery->getCost(dummy);
+  size_t nrItemsSubquery;
+  double subCost = _subquery->getCost(nrItemsSubquery);
   return depCost + nrItems * subCost;
 }
 

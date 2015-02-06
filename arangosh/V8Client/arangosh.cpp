@@ -1498,7 +1498,7 @@ static void SignalHandler (int signal) {
 
 static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, bool promptError) {
   v8::Context::Scope contextScope(context);
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING("(shell)"));
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
   Console = new V8LineEditor(context, ".arangosh.history");
   Console->open(BaseClient.autoComplete());
@@ -1713,7 +1713,7 @@ static bool RunUnitTests (v8::Isolate* isolate, v8::Handle<v8::Context> context)
 
   // run tests
   auto input = TRI_V8_ASCII_STRING("require(\"org/arangodb/testrunner\").runCommandLineTests();");
-  auto name  = TRI_V8_ASCII_STRING("(arangosh)");
+  auto name  = TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME);
   TRI_ExecuteJavaScriptString(isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
@@ -1855,7 +1855,7 @@ static bool RunJsLint (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
 
   // run tests
   auto input = TRI_V8_ASCII_STRING("require(\"jslint\").runCommandLineTests({ });");
-  auto name  = TRI_V8_ASCII_STRING("(arangosh)");
+  auto name  = TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME);
   TRI_ExecuteJavaScriptString(isolate, context, input, name, true);
 
   if (tryCatch.HasCaught()) {
@@ -2214,13 +2214,16 @@ int warmupEnvironment (v8::Isolate *isolate,
   files.push_back("client/client.js"); // needs internal
 
   for (size_t i = 0;  i < files.size();  ++i) {
-    bool ok = StartupLoader.loadScript(isolate, context, files[i]);
-
-    if (ok) {
+    switch (StartupLoader.loadScript(isolate, context, files[i])) {
+    case JSLoader::eSuccess:
       LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
-    }
-    else {
+      break;
+    case JSLoader::eFailLoad:
       LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
+      break;
+    case JSLoader::eFailExecute:
+      LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[i].c_str());
+      break;
     }
   }
 
@@ -2346,6 +2349,10 @@ int main (int argc, char* args[]) {
   // set-up V8 objects
   // .............................................................................
 
+  if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("en")) {
+    BaseClient.printErrLine("cannot initialize ICU; please make sure ICU*dat is available.");
+    return -1;
+  }    
   v8::V8::InitializeICU();
 
   // set V8 options
@@ -2427,6 +2434,9 @@ int main (int argc, char* args[]) {
 
   TRIAGENS_REST_SHUTDOWN;
 
+  v8::V8::Dispose();
+  v8::V8::ShutdownPlatform();
+  delete platform;
   arangoshExitFunction(ret, nullptr);
 
   return ret;

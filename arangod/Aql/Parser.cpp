@@ -301,6 +301,18 @@ void Parser::pushObjectElement (char const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief push an AstNode into the object element on top of the stack
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::pushObjectElement (AstNode* attributeName,
+                                AstNode* node) {
+  auto object = static_cast<AstNode*>(peekStack());
+  TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+  auto element = _ast->createNodeCalculatedObjectElement(attributeName, node);
+  object->addMember(element);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief push a temporary value on the parser's stack
 ////////////////////////////////////////////////////////////////////////////////
 

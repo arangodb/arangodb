@@ -304,10 +304,10 @@ function require (path) {
   }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief checks if a file exists
+/// @brief checks if a file exists without cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  function checkModulePathFile (root, path) {
+  function checkModulePathFileNoCache (root, path) {
     'use strict';
 
     var filename = fs.join(root, path);
@@ -400,6 +400,20 @@ function require (path) {
 
     // no idea
     return null;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file exists without cache
+////////////////////////////////////////////////////////////////////////////////
+
+  function checkModulePathFile (pkg, root, path) {
+    var key = root + "/" + path;
+
+    if (pkg._pathCache.hasOwnProperty(key)) {
+      return pkg._pathCache[key];
+    }
+
+    return (pkg._pathCache[key] = checkModulePathFileNoCache(root, path));
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -617,7 +631,7 @@ function require (path) {
         throw new Error("corrupted package origin '" + currentPackage._origin + "'");
       }
 
-      description = checkModulePathFile(root, path);
+      description = checkModulePathFile(currentPackage, root, path);
     }
     else if (currentPackage._origin.substr(0, 5) === "db://") {
       description = checkModulePathDB(currentPackage._origin, path);
@@ -700,7 +714,7 @@ function require (path) {
     }
 
     // locate the mainfile
-    var description = checkModulePathFile(dirname, mainfile);
+    var description = checkModulePathFile(currentPackage, dirname, mainfile);
 
     if (description === null) {
       e = new Error("corrupted package '" + path
@@ -864,7 +878,9 @@ function require (path) {
     path = path.substr(1);
     if (path.indexOf('/') !== -1) {
       var p = path.split('/');
+
       localModule = requirePackage(currentModule, '/' + p.shift());
+
       if (localModule !== null) {
         localModule = requirePackage(localModule, '/' + p.join('/'));
         return localModule;
@@ -970,6 +986,7 @@ function require (path) {
 
     this._moduleCache = {};             // module cache
     this._packageCache = {};            // package chache
+    this._pathCache = {};               // path cache
 
     this._origin = origin;              // root of the package
     this._isSystem = isSystem;          // is a system package
@@ -1381,6 +1398,10 @@ function require (path) {
                           undefined,
                           path2FileUri(libpath),
                           false);
+
+    pkg._environment = {
+      console: require("org/arangodb/foxx/console")(appContext.mount)
+    };
 
     return new Module("/application-module",
                       pkg,

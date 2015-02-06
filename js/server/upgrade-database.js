@@ -357,7 +357,8 @@ function updateGlobals() {
         }
         catch (err) {
           logger.errorLines("Executing " + taskName + " failed with exception: " +
-                            String(err.stack || err));
+                            String(err) + " " +
+                            String(err.stack || ""));
         }
 
         // success
@@ -723,7 +724,8 @@ function updateGlobals() {
             }
             catch (err) {
               logger.warn("could not add database user '" + user.username + "': " +
-                          String(err.stack || err));
+                          String(err) + " " +
+                          String(err.stack || ""));
             }
           });
         }
@@ -1060,7 +1062,7 @@ function updateGlobals() {
           );
         }
         catch (e) {
-          logger.error("could not upgrade _graphs");
+          logger.error("could not upgrade _graphs - " + String(e));
           return false;
         }
 

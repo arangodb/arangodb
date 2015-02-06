@@ -192,11 +192,35 @@ namespace triagens {
 
       void fillIndexes () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the index list, cluster coordinator case
+////////////////////////////////////////////////////////////////////////////////
+
+      void fillIndexesCoordinator () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the index list, cluster DB server case
+////////////////////////////////////////////////////////////////////////////////
+
+      void fillIndexesDBServer () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fills the index list, local server case
+/// note: this will also be called for local collection on the DB server
+////////////////////////////////////////////////////////////////////////////////
+
+      void fillIndexesLocal () const;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
     
     private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief currently handled shard. this is a temporary variable that will
+/// only be filled during plan creation
+////////////////////////////////////////////////////////////////////////////////
 
       std::string                  currentShard;
 
@@ -210,6 +234,7 @@ namespace triagens {
       TRI_vocbase_t*               vocbase;
       TRI_vocbase_col_t*           collection;
       TRI_transaction_type_e       accessType;
+      bool                         isReadWrite;
       std::vector<Index*> mutable  indexes;
       int64_t mutable              numDocuments = UNINITIALIZED;
 

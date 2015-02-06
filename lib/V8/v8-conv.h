@@ -32,10 +32,9 @@
 
 #include "Basics/Common.h"
 
-#include "V8/v8-globals.h"
-
 #include "Basics/json.h"
 #include "ShapedJson/json-shaper.h"
+#include "V8/v8-globals.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              CONVERSION FUNCTIONS
@@ -110,8 +109,16 @@ int TRI_FillShapedJsonV8Object (v8::Isolate* isolate,
 /// @brief convert a V8 value to a json_t value
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* TRI_ObjectToJson (v8::Isolate* isolate,
+TRI_json_t* TRI_ObjectToJson (v8::Isolate*,
                               v8::Handle<v8::Value> const);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a V8 value to a json_t value, simplified version called
+/// from within AQL
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* TRI_SimplifiedObjectToJson (v8::Isolate*,
+                                        v8::Handle<v8::Value> const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts an V8 object to a string

@@ -149,6 +149,12 @@ int TRI_LookupHashIndex (TRI_index_t*,
                          struct TRI_hash_index_element_multi_s*&,
                          size_t);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a selectivity estimate for the index
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_SelectivityHashIndex (TRI_index_t*);
+
 #endif
 
 // -----------------------------------------------------------------------------

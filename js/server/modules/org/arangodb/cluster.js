@@ -829,7 +829,7 @@ var wait = function (data, shards) {
 
     if (status === "ERROR") {
       raiseError(arangodb.errors.ERROR_INTERNAL.code,
-                 "received an error from a DB server");
+                 "received an error from a DB server: " + JSON.stringify(result));
     }
     else if (status === "TIMEOUT") {
       raiseError(arangodb.errors.ERROR_CLUSTER_TIMEOUT.code,
@@ -853,7 +853,7 @@ var wait = function (data, shards) {
           }
           catch (err) {
             raiseError(arangodb.errors.ERROR_INTERNAL.code,
-                       "received an error from a DB server");
+                       "error parsing JSON received from a DB server: " + err.message);
           }
 
           raiseError(body.errorNum,

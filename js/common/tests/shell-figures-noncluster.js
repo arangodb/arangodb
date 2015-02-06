@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
 ///
@@ -30,12 +33,8 @@ var jsunity = require("jsunity");
 var arangodb = require("org/arangodb");
 var internal = require("internal");
 
-var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
-var ERRORS = arangodb.errors;
-var testHelper = require("org/arangodb/test-helper").Helper;
- 
-  
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    figure methods
 // -----------------------------------------------------------------------------
@@ -46,6 +45,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function FiguresSuite () {
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,7 +230,7 @@ function FiguresSuite () {
       catch (e2) {
       }
 
-      // we should see the same figures 
+      // we should see the same figures
       internal.wal.flush(true, true);
       figures = collection.figures();
 
@@ -257,7 +257,7 @@ function FiguresSuite () {
 
       // replacing one document does not change alive, but increases dead!
       collection.replace("a1", { });
-      
+
       internal.wal.flush(true, true);
       tries = 0;
       while (++tries < 20) {
@@ -278,7 +278,7 @@ function FiguresSuite () {
       }
       catch (e3) {
       }
-      
+
       internal.wal.flush(true, true);
       figures = collection.figures();
 
@@ -305,4 +305,3 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

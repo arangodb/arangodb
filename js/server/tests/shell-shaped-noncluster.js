@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, fail, assertFalse, assertTrue, assertEqual, assertUndefined */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the shaped json behavior
 ///
@@ -40,6 +43,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function DocumentShapedJsonSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionShaped";
   var c;
 
@@ -54,7 +58,11 @@ function DocumentShapedJsonSuite () {
       c = db._create(cn);
 
       for (var i = 0; i < 100; ++i) {
-        c.save({ _key: "test" + i, value: i, text: "Test" + i, values: [ i ], one: { two: { three: [ 1 ] } } });
+        c.save({ _key: "test" + i,
+                 value: i,
+                 text: "Test" + i,
+                 values: [ i ],
+                 one: { two: { three: [ 1 ] } } });
       }
 
       // wait until the documents are actually shaped json
@@ -507,7 +515,7 @@ function DocumentShapedJsonSuite () {
       for (var i = 0; i < 100; ++i) {
         var doc = c.document("test" + i);
 
-        delete doc["_key"];
+        delete doc._key;
         doc[9] = "42!";
 
         assertFalse(doc.hasOwnProperty("_key"));
@@ -550,7 +558,7 @@ function DocumentShapedJsonSuite () {
 
       internal.wait(5);
         
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         assertEqual(cn + "/test" + i, docs[i]._id);
         assertEqual("test" + i, docs[i]._key);
         assertEqual("Test" + i, docs[i].text);
@@ -573,7 +581,7 @@ function DocumentShapedJsonSuite () {
 
       internal.wait(5);
         
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         assertEqual(cn + "/test" + i, docs[i]._id);
         assertEqual("test" + i, docs[i]._key);
         assertEqual("Test" + i, docs[i].text);
@@ -590,6 +598,7 @@ function DocumentShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EdgeShapedJsonSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionShaped";
   var c;
 
@@ -604,7 +613,13 @@ function EdgeShapedJsonSuite () {
       c = db._createEdgeCollection(cn);
 
       for (var i = 0; i < 100; ++i) {
-        c.save(cn + "/from" + i, cn + "/to" + i, { _key: "test" + i, value: i, text: "Test" + i, values: [ i ], one: { two: { three: [ 1 ] } } });
+        c.save(cn + "/from" + i,
+               cn + "/to" + i,
+               { _key: "test" + i,
+                 value: i,
+                 text: "Test" + i,
+                 values: [ i ],
+                 one: { two: { three: [ 1 ] } } });
       }
 
       // wait until the documents are actually shaped json
@@ -737,6 +752,7 @@ function EdgeShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoShapedJsonSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionShaped";
   var c;
 
@@ -775,7 +791,11 @@ function GeoShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testDistance : function () {
-      var result = db._query("FOR u IN WITHIN(" + cn + ", 40.0, 40.0, 5000000, 'distance') SORT u.distance RETURN { lat: u.lat, lon: u.lon, distance: u.distance }").toArray(); 
+      var result = db._query(
+        "FOR u IN WITHIN(" + cn + ", 40.0, 40.0, 5000000, 'distance') " + 
+          "SORT u.distance "+ 
+          "RETURN { lat: u.lat, lon: u.lon, distance: u.distance }"
+      ).toArray(); 
 
       // skip first result (which has a distance of 0)
       for (var i = 1; i < result.length; ++i) {
@@ -793,7 +813,10 @@ function GeoShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testNear : function () {
-      var result = db._query("FOR u IN NEAR(" + cn + ", 40.0, 40.0, 5, 'something') SORT u.something RETURN { lat: u.lat, lon: u.lon, distance: u.something }").toArray(); 
+      var result = db._query(
+        "FOR u IN NEAR(" + cn + ", 40.0, 40.0, 5, 'something') SORT u.something " +
+          "RETURN { lat: u.lat, lon: u.lon, distance: u.something }")
+        .toArray(); 
 
       // skip first result (which has a distance of 0)
       for (var i = 1; i < result.length; ++i) {

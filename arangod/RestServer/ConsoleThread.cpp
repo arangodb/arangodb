@@ -123,7 +123,7 @@ void ConsoleThread::inner () {
   // run the shell
   std::cout << "ArangoDB JavaScript emergency console (" << rest::Version::getVerboseVersionString() << ")" << std::endl;
 
-  v8::Local<v8::String> name(TRI_V8_ASCII_STRING("(arango)"));
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING(TRI_V8_SHELL_COMMAND_NAME));
 
   auto localContext = v8::Local<v8::Context>::New(isolate, _context->_context);
   localContext->Enter();

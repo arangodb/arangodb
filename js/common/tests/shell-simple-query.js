@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, fail, assertEqual, assertNotNull, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -41,6 +41,7 @@ var SimpleQueryArray = require("org/arangodb/simple-query").SimpleQueryArray;
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryArraySkipLimitSuite () {
+  "use strict";
   var numbers = null;
   var query = null;
 
@@ -156,6 +157,7 @@ function SimpleQueryArraySkipLimitSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryAllSkipLimitSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionSkipLimit";
   var collection = null;
   var numbers = null;
@@ -269,6 +271,7 @@ function SimpleQueryAllSkipLimitSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var id = function(d) { return d._id; };
@@ -790,7 +793,9 @@ function SimpleQueryByExampleSuite () {
         collection.save({ value: 2, a: i, b: i + 1 });
       }
 
-      replaced = collection.replaceByExample({ value : 2 }, { foo : "bar", bar : "baz" }, {limit : 20, waitForSync: true});
+      replaced = collection.replaceByExample({ value : 2 },
+                                             { foo : "bar", bar : "baz" },
+                                             {limit : 20, waitForSync: true});
       assertEqual(20, replaced);
 
       assertEqual(50, collection.count());
@@ -893,7 +898,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value : 5 }, { foo : "bart", bar : "baz", value : null }, false);
       assertEqual(1, updated);
 
-      var doc = collection.firstExample({ foo : "bart", bar : "baz" });
+      doc = collection.firstExample({ foo : "bart", bar : "baz" });
       assertEqual("bart", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(undefined, doc.value);
@@ -902,7 +907,7 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value : 17 }, { foo : "barw", bar : "baz", value : 9 }, false);
       assertEqual(1, updated);
 
-      var doc = collection.firstExample({ foo : "barw", bar : "baz" });
+      doc = collection.firstExample({ foo : "barw", bar : "baz" });
       assertEqual("barw", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(9, doc.value);
@@ -942,10 +947,12 @@ function SimpleQueryByExampleSuite () {
       assertEqual(2, doc.value);
 
       // update and remove old values
-      updated = collection.updateByExample({ value : 5 }, { foo : "bart", bar : "baz", value : null }, {keepNull: false});
+      updated = collection.updateByExample({ value : 5 },
+                                           { foo : "bart", bar : "baz", value : null },
+                                           {keepNull: false});
       assertEqual(1, updated);
 
-      var doc = collection.firstExample({ foo : "bart", bar : "baz" });
+      doc = collection.firstExample({ foo : "bart", bar : "baz" });
       assertEqual("bart", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(undefined, doc.value);
@@ -954,16 +961,18 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value : 17 }, { foo : "barw", bar : "baz", value : 9 }, {keepNull: false});
       assertEqual(1, updated);
 
-      var doc = collection.firstExample({ foo : "barw", bar : "baz" });
+      doc = collection.firstExample({ foo : "barw", bar : "baz" });
       assertEqual("barw", doc.foo);
       assertEqual("baz", doc.bar);
       assertEqual(9, doc.value);
 
       // update and remove old values keep null values
-      updated = collection.updateByExample({ value : 6 }, { foo : "bart6", bar : "baz6", value : null }, {keepNull: true});
+      updated = collection.updateByExample({ value : 6 },
+                                           { foo : "bart6", bar : "baz6", value : null },
+                                           {keepNull: true});
       assertEqual(1, updated);
 
-      var doc = collection.firstExample({ foo : "bart6", bar : "baz6" });
+      doc = collection.firstExample({ foo : "bart6", bar : "baz6" });
       assertEqual("bart6", doc.foo);
       assertEqual("baz6", doc.bar);
       assertEqual(null, doc.value);
@@ -979,11 +988,14 @@ function SimpleQueryByExampleSuite () {
       updated = collection.updateByExample({ value : 6 }, { });
       assertEqual(0, updated);
 
-      for (var i = 0; i < 50; ++i) {
+      for (i = 0; i < 50; ++i) {
         collection.save({ test : i , limit_test : 1});
       }
       // update and remove old values keep null values
-      updated = collection.updateByExample({ limit_test : 1 }, { foo : "bart", bar : "baz", value : null }, {keepNull: true, limit : 30});
+      updated = collection.updateByExample(
+        { limit_test : 1 },
+        { foo : "bart", bar : "baz", value : null },
+        {keepNull: true, limit : 30});
       assertEqual(30, updated);
     },
 
@@ -1070,6 +1082,7 @@ function SimpleQueryByExampleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleHashSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var errors = require("org/arangodb").errors;
@@ -1199,6 +1212,7 @@ function SimpleQueryByExampleHashSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleSkiplistSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var errors = require("org/arangodb").errors;
@@ -1328,6 +1342,7 @@ function SimpleQueryByExampleSkiplistSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleEdgeSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionByExample";
   var c1 = "UnitTestsCollectionByExampleEdge";
   var collection = null;
@@ -1370,7 +1385,7 @@ function SimpleQueryByExampleEdgeSuite () {
       assertEqual("bar", doc.foo);
       assertEqual(cn + "/foo", doc._from);
       assertEqual(cn + "/bar", doc._to);
-      
+
       doc = edge.firstExample({ _from: cn + "/barbaz" });
       assertNull(doc);
     },
@@ -1390,13 +1405,13 @@ function SimpleQueryByExampleEdgeSuite () {
       assertEqual("bar", doc.foo);
       assertEqual(cn + "/foo", doc._from);
       assertEqual(cn + "/bar", doc._to);
-      
+
       doc = edge.firstExample({ _from: cn + "/foo", foo: "baz" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _from: cn + "/foo", bar: "foo" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _from: cn + "/foo", boo: "far" });
       assertNull(doc);
     },
@@ -1416,7 +1431,7 @@ function SimpleQueryByExampleEdgeSuite () {
       assertEqual("foo", doc.bar);
       assertEqual(cn + "/bar", doc._from);
       assertEqual(cn + "/foo", doc._to);
-      
+
       doc = edge.firstExample({ _to: cn + "/bart" });
       assertNull(doc);
     },
@@ -1436,13 +1451,13 @@ function SimpleQueryByExampleEdgeSuite () {
       assertEqual("foo", doc.bar);
       assertEqual(cn + "/bar", doc._from);
       assertEqual(cn + "/foo", doc._to);
-      
+
       doc = edge.firstExample({ _to: cn + "/foo", bar: "baz" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _to: cn + "/foo", foo: "bar" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _to: cn + "/foo", boo: "far" });
       assertNull(doc);
     },
@@ -1462,10 +1477,10 @@ function SimpleQueryByExampleEdgeSuite () {
       assertEqual("foo", doc.bar);
       assertEqual(cn + "/bar", doc._from);
       assertEqual(cn + "/foo", doc._to);
-      
+
       doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/baz" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _to: cn + "/bar", _from: cn + "/bar" });
       assertNull(doc);
     },
@@ -1485,13 +1500,13 @@ function SimpleQueryByExampleEdgeSuite () {
       assertEqual("foo", doc.bar);
       assertEqual(cn + "/bar", doc._from);
       assertEqual(cn + "/foo", doc._to);
-      
+
       doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/baz", bar: "baz" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _to: cn + "/foo", _from: cn + "/baz", foo: "bar" });
       assertNull(doc);
-      
+
       doc = edge.firstExample({ _to: cn + "/bar", _from: cn + "/bar", boo: "far" });
       assertNull(doc);
     }
@@ -1508,6 +1523,7 @@ function SimpleQueryByExampleEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryRangeSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
@@ -1560,6 +1576,7 @@ function SimpleQueryRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryUniqueRangeSuite () {
+  "use strict";
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
@@ -1612,6 +1629,7 @@ function SimpleQueryUniqueRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryAnySuite () {
+  "use strict";
   var cn = "UnitTestsCollectionAny";
   var collectionEmpty = null;
   var collectionOne = null;

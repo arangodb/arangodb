@@ -112,6 +112,8 @@ typedef struct TRI_multi_pointer_s {
 
   uint64_t _nrAlloc;     // the size of the table
   uint64_t _nrUsed;      // the number of used entries
+  uint64_t _nrUnique;    // number of unique entries
+  uint64_t _nrDuplicate; // number of duplicate entries
 
   TRI_multi_pointer_entry_t* _table_alloc;   // the table itself
   TRI_multi_pointer_entry_t* _table;         // the table itself, 64 aligned
@@ -176,6 +178,12 @@ void TRI_FreeMultiPointer (TRI_memory_zone_t*, TRI_multi_pointer_t*);
 size_t TRI_MemoryUsageMultiPointer (TRI_multi_pointer_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return a selectivity estimate for the index
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_SelectivityEstimateMultiPointer (TRI_multi_pointer_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given a key
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -211,6 +219,7 @@ void* TRI_RemoveElementMultiPointer (TRI_multi_pointer_t*, void const* element);
 
 int TRI_ResizeMultiPointer (TRI_multi_pointer_t*, size_t);
 
+#if 0
 // -----------------------------------------------------------------------------
 // --SECTION--                     MULTI ASSOCIATIVE POINTERS WITH MULTIPLE KEYS
 // -----------------------------------------------------------------------------
@@ -393,6 +402,7 @@ void* TRI_RemovePairMultiPair (TRI_multi_pair_t*,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_ResizeMultiPair (TRI_multi_pair_t*, size_t);
+#endif
 
 #endif
 

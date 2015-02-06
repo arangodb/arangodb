@@ -1,4 +1,31 @@
-/*global require, describe, beforeEach, it, expect, spyOn, createSpy, createSpyObj */
+/*global require, describe, beforeEach, it, expect, createSpy, afterEach */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is triAGENS GmbH, Cologne, Germany
+///
+/// @author Lucas Doomen
+/// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
 
 var _ = require('underscore'),
   createQuery = require('org/arangodb/foxx/query').createQuery,
@@ -45,7 +72,6 @@ describe('createQuery(query)', function () {
   });
 
   it('should execute a query with valid arguments', function () {
-    var err = null;
     var query = createQuery('RETURN @x');
     expect(query({x: 'chicken'})).toEqual(['chicken']);
     expect(query({x: 23})).toEqual([23]);
@@ -200,7 +226,7 @@ describe('createQuery(cfg)', function () {
           createQuery({query: 'RETURN 23', model: value});
         }).toThrow();
       }
-    )
+    );
   });
 
   it('should throw an error if cfg.transform is a non-function', function () {
@@ -211,7 +237,7 @@ describe('createQuery(cfg)', function () {
           createQuery({query: 'RETURN 23', transform: value});
         }).toThrow();
       }
-    )
+    );
   });
 
   it('should throw an error if cfg.context has no "collectionName" method', function () {
@@ -222,6 +248,6 @@ describe('createQuery(cfg)', function () {
           createQuery({query: 'RETURN 23', context: value});
         }).toThrow();
       }
-    )
+    );
   });
 });

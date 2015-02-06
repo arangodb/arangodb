@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, fail, assertEqual, assertNotEqual  */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the skip-list index
@@ -40,6 +40,7 @@ var errors = internal.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function SkipListSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionSkiplist";
   var collection = null;
 
@@ -245,14 +246,19 @@ function SkipListSuite() {
       documents.push(d1._key);
       values.push(d2);
 
-      var i;
-      var j;
+      var i, j;
+      var val, vali, valj;
+      var isValid;
+      var res;
+      var expect;
+      var result;
+
+      var getKey = function(a) { return a._key; };
 
       // GREATER THAN OR EQUAL
       for (i = 1;  i < documents.length;  ++i) {
-        var val = values[i].a;
+        val = values[i].a;
         
-        var expect;
         if (i === 1) {
           // In the first case the document 0 (which is {}) is
           // returned as well, since the skiplist automatically takes
@@ -263,10 +269,10 @@ function SkipListSuite() {
           expect = documents.slice(i);
         }
 
-        var isValid = ! ((val !== null && typeof val === 'object'));
+        isValid = ! ((val !== null && typeof val === 'object'));
         if (isValid) {
-          var res = collection.byConditionSkiplist(idx.id, { a: [[">=", val]] }).toArray();
-          var result = res.map(function(a) { return a._key; });
+          res = collection.byConditionSkiplist(idx.id, { a: [[">=", val]] }).toArray();
+          result = res.map(getKey);
 
           assertEqual([i, ">=", expect], [i, ">=", result]);
         }
@@ -283,13 +289,13 @@ function SkipListSuite() {
 
       // GREATER THAN
       for (i = 1;  i < documents.length;  ++i) {
-        var val = values[i].a;
-        var expect = documents.slice(i + 1);
+        val = values[i].a;
+        expect = documents.slice(i + 1);
 
-        var isValid = ! ((val !== null && typeof val === 'object'));
+        isValid = ! ((val !== null && typeof val === 'object'));
         if (isValid) {
-          var res = collection.byConditionSkiplist(idx.id, { a: [[">", val]] }).toArray();
-          var result = res.map(function(a) { return a._key; });
+          res = collection.byConditionSkiplist(idx.id, { a: [[">", val]] }).toArray();
+          result = res.map(getKey);
 
           assertEqual([i, ">", expect], [i, ">", result]);
         }
@@ -306,13 +312,13 @@ function SkipListSuite() {
 
       // LESS THAN OR EQUAL
       for (i = 1;  i < documents.length;  ++i) {
-        var val = values[i].a;
-        var expect = documents.slice(0, i + 1);
+        val = values[i].a;
+        expect = documents.slice(0, i + 1);
 
-        var isValid = ! ((val !== null && typeof val === 'object'));
+        isValid = ! ((val !== null && typeof val === 'object'));
         if (isValid) {
-          var res = collection.byConditionSkiplist(idx.id, { a: [["<=", val]] }).toArray();
-          var result = res.map(function(a) { return a._key; });
+          res = collection.byConditionSkiplist(idx.id, { a: [["<=", val]] }).toArray();
+          result = res.map(getKey);
 
           assertEqual([i, "<=", expect], [i, "<=", result]);
         }
@@ -330,8 +336,7 @@ function SkipListSuite() {
 
       // LESS THAN
       for (i = 1;  i < documents.length;  ++i) {
-        var val = values[i].a;
-        var expect;
+        val = values[i].a;
         if (i === 1) {
           expect = [];
         }
@@ -339,10 +344,10 @@ function SkipListSuite() {
           expect = documents.slice(0, i);
         }
 
-        var isValid = ! ((val !== null && typeof val === 'object'));
+        isValid = ! ((val !== null && typeof val === 'object'));
         if (isValid) {
-          var res = collection.byConditionSkiplist(idx.id, { a: [["<", val]] }).toArray();
-          var result = res.map(function(a) { return a._key; });
+          res = collection.byConditionSkiplist(idx.id, { a: [["<", val]] }).toArray();
+          result = res.map(getKey);
 
           assertEqual([i, "<", expect], [i, "<", result]);
         }
@@ -359,11 +364,10 @@ function SkipListSuite() {
 
       // BETWEEN
       for (i = 1;  i < documents.length;  ++i) {
-        var vali = values[i].a;
+        vali = values[i].a;
 
         for (j = 1;  j < documents.length;  ++j) {
-          var valj = values[j].a;
-          var expect;
+          valj = values[j].a;
           if (i === 1) {
             expect = documents.slice(0, j + 1);
           }
@@ -371,14 +375,14 @@ function SkipListSuite() {
             expect = documents.slice(i, j + 1);
           }
         
-          var isValid = ! ((vali !== null && typeof vali === 'object'));
+          isValid = ! ((vali !== null && typeof vali === 'object'));
           if (isValid) {
-            isValid &= ! ((valj !== null && typeof valj === 'object'));
+            isValid = ! ((valj !== null && typeof valj === 'object'));
           }
 
           if (isValid) {
-            var res = collection.byConditionSkiplist(idx.id, { a: [[">=", vali], ["<=", valj]] }).toArray();
-            var result = res.map(function(a) { return a._key; });
+            res = collection.byConditionSkiplist(idx.id, { a: [[">=", vali], ["<=", valj]] }).toArray();
+            result = res.map(getKey);
 
             assertEqual([i, j, ">= <=", expect], [i, j, ">= <=", result]);
           }

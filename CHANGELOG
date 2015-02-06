@@ -1,6 +1,68 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* inspection of AQL data-modification queries will now detect if the data-modification part
+  of the query can run in lockstep with the data retrieval part of the query, or if the data
+  retrieval part must be executed before the data modification can start.
+
+  Executing the two in lockstep allows using much smaller buffers for intermediate results 
+  and starts the actual data-modification operations much earlier than if the two phases
+  were executed seperately.
+
+* Allow dynamic attribute names in AQL object literals
+  
+  This allows using arbitrary expressions to construct attribute names in object
+  literals specified in AQL queries. To disambiguate expressions and other unquoted 
+  attribute names, dynamic attribute names need to be enclosed in brackets (`[` and `]`).
+  Example:
+
+      FOR i IN 1..100
+        RETURN { [ CONCAT('value-of-', i) ] : i }
+
+* make AQL optimizer rule "use-index-for-sort" remove sort also in case a non-sorted
+  index (e.g. a hash index) is used for only equality lookups and all sort attributes
+  are covered by the index.
+
+  Example that does not require an extra sort (needs hash index on `value`):
+
+      FOR doc IN collection FILTER doc.value == 1 SORT doc.value RETURN doc
+
+  Another example that does not require an extra sort (with hash index on `value1`, `value2`):
+
+      FOR doc IN collection FILTER doc.value1 == 1 && doc.value2 == 2 SORT doc.value1, doc.value2 RETURN doc
+
+* make AQL optimizer rule "use-index-for-sort" remove sort also in case the sort critieria
+  excludes the left-most index attributes, but the left-most index attributes are used
+  by the index for equality-only lookups.
+
+  Example that can use the index for sorting (needs skiplist index on `value1`, `value2`):
+
+      FOR doc IN collection FILTER doc.value1 == 1 SORT doc.value2 RETURN doc
+
+* added selectivity estimates for primary index, edge index, and hash index
+
+  The selectivity estimates are returned by the `GET /_api/index` REST API method
+  in a sub-attribute `selectivityEstimate` for each index that supports it. This
+  attribute will be omitted for indexes that do not provide selectivity estimates.
+  If provided, the selectivity estimate will be a numeric value between 0 and 1.
+
+  Selectivity estimates will also be reported in the result of `collection.getIndexes()`
+  for all indexes that support this. If no selectivity estimate can be determined for 
+  an index, the attribute `selectivityEstimate` will be omitted here, too.
+
+  The web interface also shows selectivity estimates for each index that supports this.
+
+  Currently the following index types can provide selectivity estimates:
+  - primary index
+  - edge index
+  - hash index (unique and non-unique)
+
+  No selectivity estimates will be provided when running in cluster mode.
+
+* fixed issue #1226: arangod log issues
+
+* added additional logger if arangod is started in foreground mode on a tty
+
 * added AQL optimizer rule "move-calculations-down"
 
 * use exclusive native SRWLocks on Windows instead of native mutexes
@@ -22,10 +84,32 @@ v2.5.0 (XXXX-XX-XX)
   behavior.
 
 
+v2.4.3 (2015-02-XX)
+-------------------
+
+* fix multi-threading with openssl when running under Windows
+
+* fix timeout on socket operations when running under Windows
+
+* Fixed an error in Foxx routing which caused some apps that worked in 2.4.1 to fail with status 500: `undefined is not a function` errors in 2.4.2
+  This error was occurring due to seldom internal rerouting introduced by the malformed application handler. 
+
+
 v2.4.2 (2015-XX-XX)
 -------------------
 
-* added AQL explain helper:
+* added custom visitor functionality for AQL traversals
+  
+  This allows more complex result processing in traversals triggered by AQL. A few examples
+  are shown in [this article](http://jsteemann.github.io/blog/2015/01/28/using-custom-visitors-in-aql-graph-traversals/).
+
+* improved number of results estimated for nodes of type EnumerateListNode and SubqueryNode
+  in AQL explain output
+
+* added AQL explain helper to explain arbitrary AQL queries
+
+  The helper function prints the query execution plan and the indexes to be used in the
+  query. It can be invoked from the ArangoShell or the web interface as follows:
 
       require("org/arangodb/aql/explainer").explain(query);
 
@@ -42,6 +126,29 @@ v2.4.2 (2015-XX-XX)
       FILTER a.indexed == ... && ! (a.nonIndexed != ...)
       FILTER (a.indexed == ... && a.nonIndexed == ...) || (a.indexed == ... && a.nonIndexed == ...)
       FILTER (a.indexed == ... && a.nonIndexed != ...) || (a.indexed == ... && a.nonIndexed != ...)
+
+* Fixed spuriously occurring "collection not found" errors when running queries on local
+  collections on a cluster DB server
+
+* Fixed upload of Foxx applications to the server for apps exceeding approx. 1 MB zipped.
+
+* Malformed Foxx applications will now return a more useful error when any route is requested.
+
+  In Production a Foxx app mounted on /app will display an html page on /app/* stating a 503 Service temporarily not available.
+  It will not state any information about your Application.
+  Before it was a 404 Not Found without any information and not distinguishable from a correct not found on your route.
+
+  In Development Mode the html page also contains information about the error occured.
+
+* Unhandled errors thrown in Foxx routes are now handled by the Foxx framework itself.
+  
+  In Production the route will return a status 500 with a body {error: "Error statement"}.
+  In Development the route will return a status 500 with a body {error: "Error statement", stack: "..."}
+
+  Before, it was status 500 with a plain text stack including ArangoDB internal routing information.
+  
+* The Applications tab in web interface will now request development apps more often. 
+  So if you have a fixed a syntax error in your app it should always be visible after reload.
 
 
 v2.4.1 (2015-01-19)

@@ -1,3 +1,33 @@
+/* jshint unused:false */
+/*global require, assertEqual, assertTrue, assertFalse, assertUndefined */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief simple queries
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lucas Dohmen
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
 // Stubbing and Mocking
 
 var stub,
@@ -116,6 +146,7 @@ fakeContextWithRootElement = {
 };
 
 function CreateFoxxControllerSpec () {
+  'use strict';
   return {
     testCreationWithoutParameters: function () {
       var app = new FoxxController(fakeContext),
@@ -145,6 +176,7 @@ function CreateFoxxControllerSpec () {
 }
 
 function SetRoutesFoxxControllerSpec () {
+  'use strict';
   var app;
 
   return {
@@ -358,6 +390,7 @@ function SetRoutesFoxxControllerSpec () {
 }
 
 function ControllerInjectionSpec () {
+  'use strict';
   return {
     testInjectFactoryFunction: function () {
       var app = new FoxxController(fakeContext),
@@ -485,6 +518,7 @@ function ControllerInjectionSpec () {
 }
 
 function DocumentationAndConstraintsSpec () {
+  'use strict';
   var app, routes, models, Model;
 
   return {
@@ -947,11 +981,6 @@ function DocumentationAndConstraintsSpec () {
           rawBody: function () { return reqBody; }
         },
         res = {},
-        paramName = stub(),
-        description = stub(),
-        requestBody = stub(),
-        ModelPrototype = stub(),
-        jsonSchemaId = stub(),
         receivedParam = false,
         receivedRawBody = null;
 
@@ -975,11 +1004,6 @@ function DocumentationAndConstraintsSpec () {
           rawBody: function () { return reqBody; }
         },
         res = {},
-        paramName = stub(),
-        description = stub(),
-        requestBody = stub(),
-        ModelPrototype = stub(),
-        jsonSchemaId = stub(),
         receivedParam = false,
         receivedRawBody = null;
 
@@ -1117,287 +1141,8 @@ function DocumentationAndConstraintsSpec () {
   };
 }
 
-function LegacyDocumentationAndConstraintsSpec () {
-  var app, routes, models;
-
-  return {
-    setUp: function () {
-      app = new FoxxController(fakeContext);
-      routes = app.routingInfo.routes;
-      models = app.models;
-    },
-
-    testAddBodyParam: function () {
-      var paramName = stub(),
-        description = stub(),
-        ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
-
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
-
-      app.get('/foxx', function () {
-        //nothing
-      }).bodyParam(paramName, description, ModelPrototype);
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.parameters[0].name, paramName);
-      assertEqual(routes[0].docs.parameters[0].paramType, "body");
-      assertEqual(routes[0].docs.parameters[0].description, description);
-      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
-    },
-
-    testAddBodyParamWithMultipleItems: function () {
-      var paramName = stub(),
-        description = stub(),
-        ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
-
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
-
-      app.get('/foxx', function () {
-        //nothing
-      }).bodyParam(paramName, description, [ModelPrototype]);
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.parameters[0].name, paramName);
-      assertEqual(routes[0].docs.parameters[0].paramType, "body");
-      assertEqual(routes[0].docs.parameters[0].description, description);
-      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
-    },
-
-    testDefineBodyParamAddsJSONSchemaToModels: function () {
-      var paramName = stub(),
-        description = stub(),
-        ModelPrototype = stub(),
-        jsonSchema = { id: 'a', required: [], properties: {} };
-
-      allow(ModelPrototype)
-        .toReceive("toJSONSchema")
-        .andReturn(jsonSchema);
-
-      app.get('/foxx', function () {
-        //nothing
-      }).bodyParam(paramName, description, ModelPrototype);
-
-      assertEqual(app.models[jsonSchema.id], jsonSchema);
-    },
-
-    testSetParamForBodyParam: function () {
-      var req = { parameters: {} },
-        res = {},
-        paramName = stub(),
-        description = stub(),
-        requestBody = stub(),
-        ModelPrototype = stub(),
-        jsonSchemaId = stub(),
-        called = false;
-
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
-
-      ModelPrototype = mockConstructor(requestBody);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
-
-      app.get('/foxx', function (providedReq) {
-        called = (providedReq.parameters[paramName] instanceof ModelPrototype);
-      }).bodyParam(paramName, description, ModelPrototype);
-
-      routes[0].action.callback(req, res);
-
-      assertTrue(called);
-      ModelPrototype.assertIsSatisfied();
-    },
-
-    testSetParamForBodyParamWithMultipleItems: function () {
-      var req = { parameters: {} },
-        res = {},
-        paramName = stub(),
-        description = stub(),
-        rawElement = stub(),
-        requestBody = [rawElement],
-        ModelPrototype = stub(),
-        jsonSchemaId = stub(),
-        called = false;
-
-      allow(req)
-        .toReceive("body")
-        .andReturn(requestBody);
-
-      ModelPrototype = mockConstructor(rawElement);
-      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
-
-      app.get('/foxx', function (providedReq) {
-        called = (providedReq.parameters[paramName][0] instanceof ModelPrototype);
-      }).bodyParam(paramName, description, [ModelPrototype]);
-
-      routes[0].action.callback(req, res);
-
-      assertTrue(called);
-      ModelPrototype.assertIsSatisfied();
-    }
-  };
-}
-
-function LegacyDocumentationAndConstraintsSpec () {
-  var app, routes, models;
-
-  return {
-    setUp: function () {
-      app = new FoxxController(fakeContext);
-      routes = app.routingInfo.routes;
-      models = app.models;
-    },
-
-    testDefinePathParamOverride: function () {
-      var constraint = joi.number().integer().description("no text"),
-        context = app.get('/foxx/:id', function () {
-          //nothing
-        }).pathParam("id", {
-          type: constraint,
-          description: "Id of the Foxx"
-        });
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters[0].paramType, "path");
-      assertEqual(routes[0].docs.parameters[0].name, "id");
-      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
-      assertEqual(context.constraints.urlParams, {id: constraint});
-    },
-
-    testDefinePathParam: function () {
-      app.get('/foxx/:id', function () {
-        //nothing
-      }).pathParam("id", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters[0].paramType, "path");
-      assertEqual(routes[0].docs.parameters[0].name, "id");
-      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "int");
-    },
-
-    testDefinePathCaseParam: function () {
-      app.get('/foxx/:idParam', function () {
-        //nothing
-      }).pathParam("idParam", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters[0].paramType, "path");
-      assertEqual(routes[0].docs.parameters[0].name, "idParam");
-      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "int");
-    },
-
-    testDefineMultiplePathParams: function () {
-      app.get('/:foxx/:id', function () {
-        //nothing
-      }).pathParam("foxx", {
-        description: "Kind of Foxx",
-        type: "string"
-      }).pathParam("id", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
-
-      assertEqual(routes.length, 1);
-
-      assertEqual(routes[0].url.constraint.foxx, "/[^/]+/");
-      assertEqual(routes[0].docs.parameters[0].paramType, "path");
-      assertEqual(routes[0].docs.parameters[0].name, "foxx");
-      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "string");
-
-      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters[1].paramType, "path");
-      assertEqual(routes[0].docs.parameters[1].name, "id");
-      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[1].dataType, "int");
-    },
-
-    testDefineMultiplePathCaseParams: function () {
-      app.get('/:foxxParam/:idParam', function () {
-        //nothing
-      }).pathParam("foxxParam", {
-        description: "Kind of Foxx",
-        type: "string"
-      }).pathParam("idParam", {
-        description: "Id of the Foxx",
-        type: "int"
-      });
-
-      assertEqual(routes.length, 1);
-
-      assertEqual(routes[0].url.constraint.foxxParam, "/[^/]+/");
-      assertEqual(routes[0].docs.parameters[0].paramType, "path");
-      assertEqual(routes[0].docs.parameters[0].name, "foxxParam");
-      assertEqual(routes[0].docs.parameters[0].description, "Kind of Foxx");
-      assertEqual(routes[0].docs.parameters[0].dataType, "string");
-
-      assertEqual(routes[0].url.constraint.idParam, "/[0-9]+/");
-      assertEqual(routes[0].docs.parameters[1].paramType, "path");
-      assertEqual(routes[0].docs.parameters[1].name, "idParam");
-      assertEqual(routes[0].docs.parameters[1].description, "Id of the Foxx");
-      assertEqual(routes[0].docs.parameters[1].dataType, "int");
-    },
-
-    testDefineQueryParamOverride: function () {
-      var constraint = joi.number().integer().description("no text"),
-        context = app.get('/foxx', function () {
-          //nothing
-        }).queryParam("a", {
-          type: constraint,
-          required: true,
-          description: "The value of an a",
-          allowMultiple: true
-        });
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.parameters[0].paramType, "query");
-      assertEqual(routes[0].docs.parameters[0].name, "a");
-      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
-      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
-      assertEqual(routes[0].docs.parameters[0].required, false);
-      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
-      assertEqual(context.constraints.queryParams, {a: constraint});
-    },
-
-    testDefineQueryParam: function () {
-      app.get('/foxx', function () {
-        //nothing
-      }).queryParam("a", {
-        description: "The value of an a",
-        type: "int",
-        required: false,
-        allowMultiple: true
-      });
-
-      assertEqual(routes.length, 1);
-      assertEqual(routes[0].docs.parameters[0].paramType, "query");
-      assertEqual(routes[0].docs.parameters[0].name, "a");
-      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
-      assertEqual(routes[0].docs.parameters[0].dataType, "int");
-      assertEqual(routes[0].docs.parameters[0].required, false);
-      assertEqual(routes[0].docs.parameters[0].allowMultiple, true);
-    }
-  };
-}
-
 function AddMiddlewareFoxxControllerSpec () {
+  'use strict';
   var app;
 
   return {
@@ -1406,7 +1151,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddABeforeMiddlewareForAllRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1421,7 +1166,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddABeforeMiddlewareForCertainRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1436,7 +1181,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddAnAfterMiddlewareForAllRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1451,7 +1196,7 @@ function AddMiddlewareFoxxControllerSpec () {
     },
 
     testAddAnAfterMiddlewareForCertainRoutes: function () {
-      var myFunc = function (req, res) { a = (req > res); },
+      var myFunc = function (req, res) { var a = (req > res); },
         middleware = app.routingInfo.middleware,
         callback;
 
@@ -1468,6 +1213,7 @@ function AddMiddlewareFoxxControllerSpec () {
 }
 
 function CommentDrivenDocumentationSpec () {
+  'use strict';
   var app, routingInfo, noop;
 
   return {
@@ -1540,6 +1286,7 @@ function CommentDrivenDocumentationSpec () {
 }
 
 function SetupAuthorization () {
+  'use strict';
   var app;
 
   return {
@@ -1638,8 +1385,8 @@ function SetupAuthorization () {
 }
 
 function SetupSessions () {
+  'use strict';
   var app;
-  var sessionTypes = require('org/arangodb/foxx/sessions').sessionTypes;
 
   return {
     testWorksWithUnsignedCookies: function () {
@@ -1909,7 +1656,8 @@ function SetupSessions () {
 }
 
 function FoxxControllerWithRootElement () {
-  var app;
+  'use strict';
+  var app, routes;
 
   return {
     setUp: function () {
@@ -1984,6 +1732,7 @@ function FoxxControllerWithRootElement () {
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(ControllerInjectionSpec);
+//jsunity.run(LegacyDocumentationAndConstraintsSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);
 jsunity.run(CommentDrivenDocumentationSpec);

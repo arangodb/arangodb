@@ -229,8 +229,15 @@ namespace triagens {
 
         typedef std::vector<std::pair<std::string, bool>> IndexMatchVec;
 
-        static IndexMatch CompareIndex (Index const* idx,
-                                        IndexMatchVec const& attrs);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect one index; only skiplist indexes which match attrs in sequence.
+/// @returns a qualification how good they match;
+///      match->index==nullptr means no match at all.
+////////////////////////////////////////////////////////////////////////////////
+
+        static IndexMatch CompareIndex (ExecutionNode const*,
+                                        Index const*,
+                                        IndexMatchVec const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replace a dependency, returns true if the pointer was found and 
@@ -1221,6 +1228,20 @@ namespace triagens {
         }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief provide an estimate for the number of items, using the index
+/// selectivity info (if present)
+////////////////////////////////////////////////////////////////////////////////
+
+        bool estimateItemsWithIndexSelectivity (size_t,
+                                                size_t&) const;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -1398,13 +1419,26 @@ namespace triagens {
         CalculationNode (ExecutionPlan* plan,
                          size_t id,
                          Expression* expr, 
+                         Variable const* conditionVariable,
                          Variable const* outVariable)
           : ExecutionNode(plan, id), 
+            _conditionVariable(conditionVariable),
             _outVariable(outVariable),
             _expression(expr) {
 
           TRI_ASSERT(_expression != nullptr);
           TRI_ASSERT(_outVariable != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        CalculationNode (ExecutionPlan* plan,
+                         size_t id,
+                         Expression* expr, 
+                         Variable const* outVariable)
+          : CalculationNode(plan, id, expr, nullptr, outVariable) { 
         }
 
         CalculationNode (ExecutionPlan*, triagens::basics::Json const& base);
@@ -1477,6 +1511,11 @@ namespace triagens {
           for (auto vv : vars) {
             v.emplace_back(vv);
           }
+
+          if (_conditionVariable != nullptr) {
+            v.emplace_back(_conditionVariable);
+          }
+
           return v;
         }
 
@@ -1503,6 +1542,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an optional condition variable for the calculation
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _conditionVariable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output variable to write to
@@ -2241,8 +2286,7 @@ namespace triagens {
                           TRI_vocbase_t* vocbase, 
                           Collection* collection,
                           ModificationOptions const& options,
-                          Variable const* outVariable
-                          )
+                          Variable const* outVariable)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
@@ -2255,7 +2299,6 @@ namespace triagens {
 
         ModificationNode (ExecutionPlan*,
                           triagens::basics::Json const& json);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief export to JSON
@@ -2342,7 +2385,6 @@ namespace triagens {
         Variable const* _outVariable;
 
     };
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  class RemoveNode

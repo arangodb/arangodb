@@ -33,6 +33,7 @@
 #include "Aql/Variable.h"
 #include "Basics/json.h"
 #include "V8/v8-conv.h"
+#include "V8/v8-utils.h"
 
 using namespace triagens::aql;
 
@@ -71,7 +72,6 @@ V8Expression::~V8Expression () {
 AqlValue V8Expression::execute (v8::Isolate* isolate,
                                 Query* query,
                                 triagens::arango::AqlTransaction* trx,
-                                std::unordered_map<Variable const*, std::unordered_set<std::string>> const& attributes,
                                 std::vector<TRI_document_collection_t const*>& docColls,
                                 std::vector<AqlValue>& argv,
                                 size_t startPos,
@@ -80,7 +80,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   size_t const n = vars.size();
   TRI_ASSERT_EXPENSIVE(regs.size() == n); // assert same vector length
 
-  bool const attributesPresent = ! attributes.empty();
+  bool const hasRestrictions = ! _attributeRestrictions.empty();
 
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
@@ -90,11 +90,11 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
 
     TRI_ASSERT_EXPENSIVE(! argv[reg].isEmpty());
 
-    if (attributesPresent && argv[startPos + reg]._type == AqlValue::JSON) { 
+    if (hasRestrictions && argv[startPos + reg]._type == AqlValue::JSON) { 
       // check if we can get away with constructing a partial JSON object
-      auto it = attributes.find(vars[i]);
+      auto it = _attributeRestrictions.find(vars[i]);
 
-      if (it != attributes.end()) {
+      if (it != _attributeRestrictions.end()) {
         // build a partial object
         values->ForceSet(TRI_V8_STD_STRING(varname), argv[startPos + reg].toV8Partial(isolate, trx, (*it).second, docColls[reg]));
         continue;
@@ -121,11 +121,10 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   v8::TryCatch tryCatch;
 
   auto func = v8::Local<v8::Function>::New(isolate, _func);
-
   v8::Handle<v8::Value> result = func->Call(func, 1, args);
 
   v8g->_query = old;
-    
+
   Executor::HandleV8Error(tryCatch, result);
 
   // no exception was thrown if we get here
@@ -138,6 +137,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   else {
     // expression had a result. convert it to JSON
     json = TRI_ObjectToJson(isolate, result);
+    // TODO: json = TRI_SimplifiedObjectToJson(isolate, result);
   }
 
   if (json == nullptr) {
@@ -162,4 +162,4 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "/// @brief\\|/// {@inheritDoc}\\|/// @page\\|// --SECTION--\\|/// @\\}"
-// End:
+// End

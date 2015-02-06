@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the users management
@@ -43,6 +43,7 @@ var users = require("org/arangodb/users");
 ////////////////////////////////////////////////////////////////////////////////
 
 function UsersSuite () {
+  "use strict";
   var c = db._collection("_users");
 
   var clearGarbage = function () {

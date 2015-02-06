@@ -1,4 +1,4 @@
-/*global require, fail*/
+/*global require, fail, assertEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -34,6 +34,7 @@
   // -----------------------------------------------------------------------------
 
   var createResult = function(prefixes, list) {
+    "use strict";
     var prefix = prefixes.join("/") + "/";
     var res = {};
     _.each(list, function(v, k) {
@@ -67,6 +68,7 @@
     }
   };
   var resetToDefault = function() {
+    "use strict";
     var dbServers = {
       "pavel": "sandro",
       "paul": "sally",
@@ -181,16 +183,34 @@
     dummy.target.servers = createResult([agencyRoutes.target, agencyRoutes.sub.servers], dbServers);
     dummy.target.coordinators = createResult([agencyRoutes.target, agencyRoutes.sub.coords], coordinators);
     dummy.target.databases = databases;
-    dummy.target.syscollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
-    dummy.target.acollections = createResult([agencyRoutes.target, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+    dummy.target.syscollections = createResult([agencyRoutes.target,
+                                                agencyRoutes.sub.databases,
+                                                agencyRoutes.sub.colls,
+                                                "_system"], collections._system);
+
+    dummy.target.acollections = createResult([agencyRoutes.target,
+                                              agencyRoutes.sub.databases,
+                                              agencyRoutes.sub.colls,
+                                              "a_db"],
+                                             collections.a_db);
     dummy.target.vInfo = vInfo;
 
     dummy.plan = {};
     dummy.plan.servers = createResult([agencyRoutes.plan, agencyRoutes.sub.servers], dbServers);
     dummy.plan.coordinators = createResult([agencyRoutes.plan, agencyRoutes.sub.coords], coordinators);
     dummy.plan.databases = databases;
-    dummy.plan.syscollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections._system);
-    dummy.plan.acollections = createResult([agencyRoutes.plan, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.a_db);
+
+    dummy.plan.syscollections = createResult([agencyRoutes.plan,
+                                              agencyRoutes.sub.databases,
+                                              agencyRoutes.sub.colls,
+                                              "_system"],
+                                             collections._system);
+
+    dummy.plan.acollections = createResult([agencyRoutes.plan,
+                                            agencyRoutes.sub.databases,
+                                            agencyRoutes.sub.colls,
+                                            "a_db"],
+                                           collections.a_db);
     dummy.plan.vInfo = vInfo;
 
     dummy.current = {};
@@ -198,8 +218,17 @@
     dummy.current.coordinators = createResult([agencyRoutes.current, agencyRoutes.sub.coords], coordinators);
     dummy.current.registered = createResult([agencyRoutes.current, agencyRoutes.sub.registered], ips);
     dummy.current.databases = databases;
-    dummy.current.syscollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "_system"], collections.current._system);
-    dummy.current.acollections = createResult([agencyRoutes.current, agencyRoutes.sub.databases, agencyRoutes.sub.colls, "a_db"], collections.current.a_db);
+    dummy.current.syscollections = createResult([agencyRoutes.current,
+                                                 agencyRoutes.sub.databases,
+                                                 agencyRoutes.sub.colls,
+                                                 "_system"],
+                                                collections.current._system);
+
+    dummy.current.acollections = createResult([agencyRoutes.current,
+                                               agencyRoutes.sub.databases,
+                                               agencyRoutes.sub.colls,
+                                               "a_db"],
+                                              collections.current.a_db);
     dummy.current.vInfo = vInfo;
 
     dummy.sync = {};
@@ -208,12 +237,14 @@
     dummy.sync.interval = "1000";
   };
   var setup = function() {
+    "use strict";
     resetToDefault();
     comm = new Communication.Communication();
   };
   var teardown = function() {};
   var agencyMock = {
     get: function(route, recursive) {
+      "use strict";
       var parts = route.split("/");
       var res;
       var returnResult = function(base) {
@@ -291,6 +322,7 @@
       fail("Requested route: GET " + route);
     },
     list: function(route, recursive, flat) {
+      "use strict";
       var parts = route.split("/");
       var returnResult = function(route) {
         if (parts[1] === agencyRoutes.sub.databases) {
@@ -335,15 +367,8 @@
   };
 
   Communication._createAgency = function() {
+    "use strict";
     return agencyMock;
-  };
-
-
-  // -----------------------------------------------------------------------------
-  // --SECTION--                                                            vision
-  // -----------------------------------------------------------------------------
-  function runVisionTests(test) {
-   // Not yet defined and in use, changes are applied in Target directly
   };
 
   // -----------------------------------------------------------------------------
@@ -351,6 +376,7 @@
   // -----------------------------------------------------------------------------
 
   function runTargetTests(test) {
+    "use strict";
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                         DBServers
@@ -521,7 +547,7 @@
           assertUndefined(newList[pName].secondary);
         }
       };
-    };
+    }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                       Coordinator
@@ -586,7 +612,7 @@
           assertEqual(targetCoordinators.getList(), list);
         }
       };
-    };
+    }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                              data
@@ -682,19 +708,19 @@
         }
 
       };
-    };
+    }
 
     test.run(DBServersSuite);
     test.run(CoordinatorSuite);
     test.run(DataSuite);
-  };
-
+  }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                              plan
   // -----------------------------------------------------------------------------
 
   function runPlanTests(test) {
+    "use strict";
 
     function DBServersSuite() {
       var servers;
@@ -735,7 +761,7 @@
         }
 
       };
-    };
+    }
 
     function CoordinatorSuite() {
       var coordinators;
@@ -756,7 +782,7 @@
           assertEqual(coordinators.getList(), list);
         }
       };
-    };
+    }
 
     function DataSuite() {
       var dbs;
@@ -829,19 +855,19 @@
         }
 
       };
-    };
+    }
 
     test.run(DBServersSuite);
     test.run(CoordinatorSuite);
     test.run(DataSuite);
-  };
+  }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           current
   // -----------------------------------------------------------------------------
 
   function runCurrentTests(test) {
-
+    "use strict";
     function DBServersSuite() {
       var targetServers;
 
@@ -894,7 +920,7 @@
 
       };
 
-    };
+    }
 
     function CoordinatorSuite() {
 
@@ -922,7 +948,7 @@
         }
       };
 
-    };
+    }
 
     function DataSuite() {
       var dbs;
@@ -995,19 +1021,19 @@
         }
 
       };
-    };
+    }
 
     test.run(DBServersSuite);
     test.run(CoordinatorSuite);
     test.run(DataSuite);
-  };
+  }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                              Sync
   // -----------------------------------------------------------------------------
 
   function runSyncTests(test) {
-
+    "use strict";
     function HeartbeatSuite() {
       var beats;
 
@@ -1058,7 +1084,7 @@
           assertEqual(beats.noBeat(), ["pavel"]);
         }
       };
-    };
+    }
 
     function ProblemsSuite() {
       // TODO Not yet fully defined
@@ -1067,12 +1093,12 @@
         tearDown: teardown
 
       };
-    };
+    }
 
     test.run(HeartbeatSuite);
     test.run(ProblemsSuite);
 
-  };
+  }
 
 
   // -----------------------------------------------------------------------------
@@ -1080,7 +1106,7 @@
   // -----------------------------------------------------------------------------
 
   function runHighLevelTests(test) {
-
+    "use strict";
     function ConfigureSuite() {
 
       var targetServers;
@@ -1261,41 +1287,39 @@
           assertEqual(targetCoordinators.getList(), list);
         }
       };
-
-    };
+    }
 
     function DifferenceSuite() {
       var planMissingDB = [{
         name: "pavel",
         role: "primary",
-        address: ips["pavel"].endpoint.split("://")[1],
+        address: ips.pavel.endpoint.split("://")[1],
         protocol: "http"
       }, {
         name: "sandra",
         role: "secondary",
-        address: ips["sandra"].endpoint.split("://")[1],
+        address: ips.sandra.endpoint.split("://")[1],
         protocol: "http"
       }];
       var planMissingCoords = [{
         name: "carlos",
         role: "primary",
-        address: ips["carlos"].endpoint.split("://")[1],
+        address: ips.carlos.endpoint.split("://")[1],
         protocol: "http"
       }];
       var currentMissingDB = [{
         name: "patricia",
         role: "primary",
-        address: ips["patricia"].endpoint.split("://")[1],
+        address: ips.patricia.endpoint.split("://")[1],
         protocol: "http"
       }];
       var currentMissingCoords = [{
         name: "charly",
         role: "primary",
-        address: ips["charly"].endpoint.split("://")[1],
+        address: ips.charly.endpoint.split("://")[1],
         protocol: "http"
       }];
       var modified = "sandro";
-      var modtarget = dummy.target.servers[[agencyRoutes.target, agencyRoutes.sub.servers, modified].join("/")];
       var modplan = "none";
       var lonelyPrimary = "patricia";
 
@@ -1361,12 +1385,12 @@
           assertEqual(diff.missing, currentMissingCoords);
         }
       };
-    };
+    }
 
     test.run(ConfigureSuite);
     test.run(DifferenceSuite);
 
-  };
+  }
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                              main
@@ -1375,7 +1399,6 @@
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief executes the test suites
   ////////////////////////////////////////////////////////////////////////////////
-  runVisionTests(jsunity);
   runTargetTests(jsunity);
   runPlanTests(jsunity);
   runCurrentTests(jsunity);

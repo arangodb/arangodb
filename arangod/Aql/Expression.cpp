@@ -45,6 +45,31 @@ using Json = triagens::basics::Json;
 using JsonHelper = triagens::basics::JsonHelper;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                             public static members
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for NULL which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const Expression::NullJson  = { TRI_JSON_NULL, { false } };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for TRUE which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const Expression::TrueJson  = { TRI_JSON_BOOLEAN, { true } };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief "constant" global object for FALSE which can be shared by all 
+/// expressions but must never be freed
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const Expression::FalseJson = { TRI_JSON_BOOLEAN, { false } };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
@@ -142,7 +167,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         ISOLATE;
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(isolate, _ast->query(), trx, _attributes, docColls, argv, startPos, vars, regs);
+        return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
       }
       catch (triagens::arango::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
@@ -230,7 +255,7 @@ bool Expression::findInList (AqlValue const& left,
     while (true) {
       // determine midpoint
       size_t m = l + ((r - l) / 2);
-      auto listItem = right.extractListMember(trx, rightCollection, m, false);
+      auto listItem = right.extractArrayMember(trx, rightCollection, m, false);
       AqlValue listItemValue(&listItem);
 
       int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
@@ -259,7 +284,7 @@ bool Expression::findInList (AqlValue const& left,
     // use linear search
     for (size_t i = 0; i < n; ++i) {
       // do not copy the list element we're looking at
-      auto listItem = right.extractListMember(trx, rightCollection, i, false);
+      auto listItem = right.extractArrayMember(trx, rightCollection, i, false);
       AqlValue listItemValue(&listItem);
 
       int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
@@ -314,9 +339,10 @@ void Expression::analyzeExpression () {
       _attributes = std::move(Ast::getReferencedAttributes(_node, isSafeForOptimization));
 
       if (! isSafeForOptimization) {
-        // unfortunately there are not only top-level attribute accesses but
-        // also other accesses, e.g. the index values or the whole value
         _attributes.clear();
+        // unfortunately there are not only top-level attribute accesses but
+        // also other accesses, e.g. the index values or accesses of the whole value.
+        // for example, we cannot optimize LET x = a +1 or LET x = a[0], but LET x = a._key 
       }
     }
   }
@@ -345,6 +371,12 @@ void Expression::buildExpression () {
   else if (_type == V8) {
     // generate a V8 expression
     _func = _executor->generateExpression(_node);
+  
+    // optimizations for the generated function 
+    if (_func != nullptr && ! _attributes.empty()) {
+      // pass which variables do not need to be fully constructed
+      _func->setAttributeRestrictions(_attributes);
+    }
   }
 
   _built = true;
@@ -364,7 +396,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               std::vector<Variable*> const& vars,
                                               std::vector<RegisterId> const& regs) {
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    // array lookup, e.g. users.name
+    // object lookup, e.g. users.name
     TRI_ASSERT(node->numMembers() == 1);
 
     auto member = node->getMember(0);
@@ -373,17 +405,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
-    auto j = result.extractArrayMember(trx, myCollection, name);
+    auto j = result.extractObjectMember(trx, myCollection, name, true);
     result.destroy();
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
   
   else if (node->type == NODE_TYPE_INDEXED_ACCESS) {
-    // list lookup, e.g. users[0]
-    // note: it depends on the type of the value whether a list lookup or an array lookup is performed
-    // for example, if the value is an array, then its elements might be access like this:
+    // array lookup, e.g. users[0]
+    // note: it depends on the type of the value whether an array lookup or an object lookup is performed
+    // for example, if the value is an object, then its elements might be accessed like this:
     // users['name'] or even users['0'] (as '0' is a valid attribute name, too)
-    // if the value is a list, then string indexes might also be used and will be converted to integers, e.g.
+    // if the value is an array, then string indexes might also be used and will be converted to integers, e.g.
     // users['0'] is the same as users[0], users['-2'] is the same as users[-2] etc.
     TRI_ASSERT(node->numMembers() == 2);
 
@@ -398,7 +430,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
 
       if (indexResult.isNumber()) {
-        auto j = result.extractListMember(trx, myCollection, indexResult.toInt64(), true);
+        auto j = result.extractArrayMember(trx, myCollection, indexResult.toInt64(), true);
         indexResult.destroy();
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
@@ -410,7 +442,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         try {
           // stoll() might throw an exception if the string is not a number
           int64_t position = static_cast<int64_t>(std::stoll(value.c_str()));
-          auto j = result.extractListMember(trx, myCollection, position, true);
+          auto j = result.extractArrayMember(trx, myCollection, position, true);
           result.destroy();
           return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
         }
@@ -426,7 +458,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
       if (indexResult.isNumber()) {
         auto&& indexString = std::to_string(indexResult.toInt64());
-        auto j = result.extractArrayMember(trx, myCollection, indexString.c_str());
+        auto j = result.extractObjectMember(trx, myCollection, indexString.c_str(), true);
         indexResult.destroy();
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
@@ -435,7 +467,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto&& value = indexResult.toString();
         indexResult.destroy();
 
-        auto j = result.extractArrayMember(trx, myCollection, value.c_str());
+        auto j = result.extractObjectMember(trx, myCollection, value.c_str(), true);
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
@@ -443,7 +475,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
     result.destroy();
       
-    return AqlValue(new Json(Json::Null));
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &NullJson, Json::NOFREE));
   }
   
   else if (node->type == NODE_TYPE_ARRAY) {
@@ -578,7 +610,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     
     bool const operandIsTrue = operand.isTrue();
     operand.destroy();
-    return AqlValue(new triagens::basics::Json(! operandIsTrue));
+    return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, operandIsTrue ? &FalseJson : &TrueJson, Json::NOFREE));
   }
   
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
@@ -635,7 +667,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         left.destroy();
         right.destroy();
         // do not throw, but return "false" instead
-        return AqlValue(new triagens::basics::Json(false));
+        return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &FalseJson, Json::NOFREE));
       }
    
       bool result = findInList(left, right, leftCollection, rightCollection, trx, node); 
@@ -657,22 +689,22 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     right.destroy();
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
-      return AqlValue(new triagens::basics::Json(compareResult == 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult == 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_NE) {
-      return AqlValue(new triagens::basics::Json(compareResult != 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult != 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_LT) {
-    return AqlValue(new triagens::basics::Json(compareResult < 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult < 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_LE) {
-      return AqlValue(new triagens::basics::Json(compareResult <= 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult <= 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_GT) {
-      return AqlValue(new triagens::basics::Json(compareResult > 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult > 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     else if (node->type == NODE_TYPE_OPERATOR_BINARY_GE) {
-      return AqlValue(new triagens::basics::Json(compareResult >= 0));
+      return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, (compareResult >= 0) ? &TrueJson : &FalseJson, Json::NOFREE));
     }
     // fall-through intentional
   }

@@ -1,3 +1,6 @@
+/*jshint strict: true, sub: true */
+/*global require, fail, assertEqual, assertTrue, assertFalse, assertNotEqual, arango */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test download function
 ///
@@ -39,14 +42,15 @@ var fs = require("fs");
 ////////////////////////////////////////////////////////////////////////////////
 
 function DownloadSuite () {
+  "use strict";
   var tempDir;
   var tempName;
 
-  buildUrl = function (append) {
+  var buildUrl = function (append) {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_admin/echo" + append;
   };
   
-  buildUrlBroken = function (append) {
+  var buildUrlBroken = function (append) {
     return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:') + "/_not-there" + append;
   };
 
@@ -137,8 +141,8 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorNoReturn : function () {
-      var response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { }, tempName );
-
+      var response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"),
+                                       undefined, { timeout: 300 }, tempName );
       assertEqual(404, response.code);
 
       assertFalse(fs.exists(tempName));
@@ -149,7 +153,8 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorDirect : function () {
-      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true });
+      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"),
+                                               undefined, { timeout: 300, returnBodyOnError: true });
 
       assertEqual(404, response.code);
      
@@ -163,7 +168,9 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetErrorSave : function () {
-      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"), undefined, { returnBodyOnError: true }, tempName);
+      var result, response = internal.download(buildUrlBroken("?foo=1&bar=baz&code=404"),
+                                               undefined, { timeout: 300, returnBodyOnError: true },
+                                               tempName);
 
       assertEqual(404, response.code);
       
@@ -185,7 +192,7 @@ function DownloadSuite () {
       assertEqual("GET", result.requestType);
       assertTrue(response.body.length > 0);
       assertEqual(response.headers["content-length"], response.body.length);
-      assertTrue(response.headers["connection"] != "");
+      assertNotEqual(response.headers["connection"], "");
       assertEqual("200 OK", response.headers["http/1.1"]);
     },
 
@@ -194,7 +201,12 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRequestHeaders : function () {
-      var result, response = internal.download(buildUrl(""), "I am broken", { method: "post", headers: { "Content-Type" : "x/broken" } });
+      var result, response = internal.download(buildUrl(""),
+                                               "I am broken", 
+                                               { method: "post",
+                                                 headers: {
+                                                   "Content-Type" : "x/broken"
+                                                 } });
 
       assertEqual(200, response.code);
       
@@ -208,7 +220,12 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPost : function () {
-      var result, response = internal.download(buildUrl("?foo=1&bar=2&code=202"), "meow=1&baz=bam", { method: "POST", headers: { "Content-Type" : "application/x-www-form-urlencoded" } });
+      var result, response = internal.download(buildUrl("?foo=1&bar=2&code=202"),
+                                               "meow=1&baz=bam",
+                                               { method: "POST",
+                                                 headers: {
+                                                   "Content-Type" :
+                                                   "application/x-www-form-urlencoded" } });
 
       assertEqual(200, response.code);
 
@@ -225,7 +242,10 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPostEmpty1 : function () {
-      var result, response = internal.download(buildUrl("?code=200"), "", { method: "POST", headers: { "Content-Type" : "application/x-www-form-urlencoded" } });
+      var result, response = internal.download(buildUrl("?code=200"), "",
+                                               { method: "POST",
+                                                 headers: { "Content-Type" :
+                                                            "application/x-www-form-urlencoded" } });
 
       assertEqual(200, response.code);
 
@@ -240,7 +260,13 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPostEmpty2 : function () {
-      var result, response = internal.download(buildUrl("?code=200"), undefined, { method: "POST", headers: { "Content-Type" : "application/x-www-form-urlencoded" } });
+      var result, response = internal.download(buildUrl("?code=200"),
+                                               undefined,
+                                               { method: "POST",
+                                                 headers: {
+                                                   "Content-Type" :
+                                                   "application/x-www-form-urlencoded"
+                                                 } });
 
       assertEqual(200, response.code);
 
@@ -255,7 +281,13 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPut : function () {
-      var result, response = internal.download(buildUrl(""), "", { method: "put", headers: { "Content-Type" : "application/x-www-form-urlencoded" } });
+      var result, response = internal.download(buildUrl(""),
+                                               "",
+                                               { method: "put",
+                                                 headers: {
+                                                   "Content-Type" :
+                                                   "application/x-www-form-urlencoded"
+                                                 } });
 
       assertEqual(200, response.code);
 
@@ -269,7 +301,12 @@ function DownloadSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPatch : function () {
-      var result, response = internal.download(buildUrl(""), "", { method: "patch", headers: { "Content-Type" : "application/x-www-form-urlencoded" } });
+      var result, response = internal.download(buildUrl(""), "",
+                                               { method: "patch",
+                                                 headers: {
+                                                   "Content-Type" :
+                                                   "application/x-www-form-urlencoded"
+                                                 } });
 
       assertEqual(200, response.code);
 

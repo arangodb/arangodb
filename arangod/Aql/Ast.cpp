@@ -119,7 +119,8 @@ Ast::Ast (Query* query)
     _bindParameters(),
     _root(nullptr),
     _queries(),
-    _writeCollection(nullptr) {
+    _writeCollection(nullptr),
+    _functionsMayAccessDocuments(false) {
 
   TRI_ASSERT(_query != nullptr);
 
@@ -189,7 +190,7 @@ AstNode* Ast::createNodeFor (char const* variableName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST let node
+/// @brief create an AST let node, without an IF condition
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeLet (char const* variableName,
@@ -204,6 +205,27 @@ AstNode* Ast::createNodeLet (char const* variableName,
   AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST let node, with an IF condition
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeLet (char const* variableName,
+                             AstNode const* expression,
+                             AstNode const* condition) {
+  if (variableName == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_LET);
+
+  AstNode* variable = createNodeVariable(variableName, true);
+  node->addMember(variable);
+  node->addMember(expression);
+  node->addMember(condition);
 
   return node;
 }
@@ -509,7 +531,8 @@ AstNode* Ast::createNodeVariable (char const* name,
 /// @brief create an AST collection node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeCollection (char const* name) {
+AstNode* Ast::createNodeCollection (char const* name,
+                                    TRI_transaction_type_e accessType) {
   if (name == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -522,7 +545,7 @@ AstNode* Ast::createNodeCollection (char const* name) {
   AstNode* node = createNode(NODE_TYPE_COLLECTION);
   node->setStringValue(name);
  
-  _query->collections()->add(name, TRI_TRANSACTION_READ);
+  _query->collections()->add(name, accessType);
 
   return node;
 }
@@ -831,6 +854,19 @@ AstNode* Ast::createNodeObjectElement (char const* attributeName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST calculated object element node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeCalculatedObjectElement (AstNode const* attributeName,
+                                                 AstNode const* expression) {
+  AstNode* node = createNode(NODE_TYPE_CALCULATED_OBJECT_ELEMENT);
+  node->addMember(attributeName);
+  node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST function call node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -860,6 +896,7 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
     size_t const n = arguments->numMembers();
     
     auto numExpectedArguments = func->numArguments();
+
     if (n < numExpectedArguments.first || n > numExpectedArguments.second) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, 
                                     functionName,
@@ -867,6 +904,10 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
                                     static_cast<int>(numExpectedArguments.second));
     }
 
+    if (! func->canRunOnDBServer) {
+      // this also qualifies a query for potentially reading or modifying documents via function calls!
+      _functionsMayAccessDocuments = true;
+    }
   }
   else {
     // user-defined function
@@ -874,6 +915,8 @@ AstNode* Ast::createNodeFunctionCall (char const* functionName,
     // register the function name
     char* fname = _query->registerString(normalized.first.c_str(), normalized.first.size(), false);
     node->setStringValue(fname);
+      
+    _functionsMayAccessDocuments = true;
   }
 
   node->addMember(arguments);
@@ -945,7 +988,7 @@ void Ast::injectBindParameters (BindParameters& parameters) {
         // turn node into a collection node
         char const* name = _query->registerString(value->_value._string.data, value->_value._string.length - 1, false);
 
-        node = createNodeCollection(name);
+        node = createNodeCollection(name, isWriteCollection ? TRI_TRANSACTION_WRITE : TRI_TRANSACTION_READ);
 
         if (isWriteCollection) {
           // this was the bind parameter that contained the collection to update 
@@ -1882,15 +1925,17 @@ AstNode* Ast::optimizeReference (AstNode* node) {
 AstNode* Ast::optimizeLet (AstNode* node) {
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
 
   AstNode* variable = node->getMember(0);
   AstNode* expression = node->getMember(1);
+
+  bool const hasCondition = (node->numMembers() > 2);
     
   auto v = static_cast<Variable*>(variable->getData());
   TRI_ASSERT(v != nullptr);
 
-  if (expression->isConstant()) {
+  if (! hasCondition && expression->isConstant()) {
     // if the expression assigned to the LET variable is constant, we'll store
     // a pointer to the const value in the variable
     // further optimizations can then use this pointer and optimize further, e.g.
@@ -1982,7 +2027,7 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
-      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i)))); 
+      node->addMember(nodeFromJson(static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i)))); 
     }
 
     return node;
@@ -1993,11 +2038,11 @@ AstNode* Ast::nodeFromJson (TRI_json_t const* json) {
     size_t const n = json->_value._objects._length;
 
     for (size_t i = 0; i < n; i += 2) {
-      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
-      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
+      TRI_json_t const* key = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i));
+      TRI_json_t const* value = static_cast<TRI_json_t const*>(TRI_AddressVector(&json->_value._objects, i + 1));
 
       if (! TRI_IsStringJson(key) || value == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in array node");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unexpected type found in object node");
       }
 
       char const* attributeName = _query->registerString(key->_value._string.data, key->_value._string.length - 1, false);

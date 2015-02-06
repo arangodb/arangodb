@@ -39,6 +39,23 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 
+
+#ifdef _WIN32
+#define STR_ERROR()                             \
+  windowsErrorBuf;                              \
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,     \
+                NULL,                           \
+                GetLastError(),                 \
+                0,                              \
+                windowsErrorBuf,                \
+                sizeof(windowsErrorBuf), NULL); \
+  errno = GetLastError();
+#else
+#define STR_ERROR() strerror(errno)
+#endif
+
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        EndpointIp
 // -----------------------------------------------------------------------------
@@ -104,6 +121,11 @@ EndpointIp::~EndpointIp () {
 TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
                                         double connectTimeout,
                                         double requestTimeout) {
+  const char *pErr;
+  char errBuf[256];
+#ifdef _WIN32
+  char windowsErrorBuf[256];
+#endif
   // set address and port
   char host[NI_MAXHOST];
   char serv[NI_MAXSERV];
@@ -119,7 +141,12 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
   listenSocket = TRI_socket(aip->ai_family, aip->ai_socktype, aip->ai_protocol);
 
   if (! TRI_isvalidsocket(listenSocket)) {
-    LOG_ERROR("socket() failed with %d (%s)", errno, strerror(errno));
+    pErr = STR_ERROR();
+    snprintf(errBuf, sizeof(errBuf),
+             "socket() failed with %d - %s",
+             errno, pErr);
+
+    _errorMessage = errBuf;
     return listenSocket;
   }
 
@@ -128,8 +155,14 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
 #ifdef _WIN32
     int excl = 1;
     if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
-          reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
-      LOG_ERROR("setsockopt() failed with %d", WSAGetLastError());
+                       reinterpret_cast<char*> (&excl), sizeof (excl)) == -1) {
+
+      pErr = STR_ERROR();
+      snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s",
+               errno,
+               pErr);
+
+      _errorMessage = errBuf;
 
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
@@ -140,7 +173,13 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     if (_reuseAddress) {
       int opt = 1;
       if (TRI_setsockopt(listenSocket, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<char*> (&opt), sizeof (opt)) == -1) {
-        LOG_ERROR("setsockopt() failed with %d (%s)", errno, strerror(errno));
+
+        pErr = STR_ERROR();
+        snprintf(errBuf, sizeof(errBuf), "setsockopt() failed with #%d - %s",
+                 errno,
+                 pErr);
+        
+        _errorMessage = errBuf;
 
         TRI_CLOSE_SOCKET(listenSocket);
         TRI_invalidatesocket(&listenSocket);
@@ -153,12 +192,15 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     int result = TRI_bind(listenSocket, aip->ai_addr, (int) aip->ai_addrlen);
 
     if (result != 0) {
-      // error
-#ifndef _WIN32
-      LOG_ERROR("bind(address '%s', port %d) failed with %d (%s)", host, (int) _port, errno, strerror(errno));
-#else
-      LOG_ERROR("bind(address '%s', port %d) failed with %d", host, (int) _port, WSAGetLastError());
-#endif
+      pErr = STR_ERROR();
+      snprintf(errBuf, sizeof(errBuf), "bind(address '%s', port %d) failed with #%d - %s",
+               host,
+               (int) _port,
+               errno,
+               pErr);
+
+      _errorMessage = errBuf;
+
       TRI_CLOSE_SOCKET(listenSocket);
 
       TRI_invalidatesocket(&listenSocket);
@@ -170,8 +212,12 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     result = TRI_listen(listenSocket, _listenBacklog);
 
     if (result != 0) {
-      // todo: get the correct error code using WSAGetLastError for windows
-      LOG_ERROR("listen() failed with %d (%s)", errno, strerror(errno));
+      pErr = STR_ERROR();
+      snprintf(errBuf, sizeof(errBuf),
+               "listen() failed with #%d - %s",
+               errno, pErr);
+
+      _errorMessage = errBuf;
 
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
@@ -187,6 +233,13 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
     int result = TRI_connect(listenSocket, (const struct sockaddr*) aip->ai_addr, (int) aip->ai_addrlen);
 
     if (result != 0) {
+      pErr = STR_ERROR();
+      snprintf(errBuf, sizeof(errBuf),
+               "connect() failed with #%d - %s",
+               errno, pErr);
+
+      _errorMessage = errBuf;
+
       TRI_CLOSE_SOCKET(listenSocket);
       TRI_invalidatesocket(&listenSocket);
       return listenSocket;
@@ -255,11 +308,11 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
 
     switch (lastError) {
       case WSANOTINITIALISED: {
-        LOG_ERROR("getaddrinfo for host '%s': WSAStartup was not called or not called successfully.", _host.c_str());
+        _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': WSAStartup was not called or not called successfully.");
         break;
       }
       default: {
-        LOG_ERROR("getaddrinfo for host '%s': %s", _host.c_str(), gai_strerror(error));
+        _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': ") + gai_strerror(error);
         break;
       }
     }
@@ -312,7 +365,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   error = getaddrinfo(_host.c_str(), portString.c_str(), &hints, &result);
 
   if (error != 0) {
-    LOG_ERROR("getaddrinfo for host '%s': %s", _host.c_str(), gai_strerror(error));
+    _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': ") + gai_strerror(error);
 
     if (result != 0) {
       freeaddrinfo(result);
@@ -362,9 +415,18 @@ bool EndpointIp::initIncoming (TRI_socket_t incoming) {
   int res = TRI_setsockopt(incoming, IPPROTO_TCP, TCP_NODELAY, (char*) &n, sizeof(n));
 
   if (res != 0 ) {
-    // todo: get correct windows error code
-    LOG_WARNING("setsockopt failed with %d (%s)", errno, strerror(errno));
+    const char *pErr;
+    char errBuf[256];
+#ifdef _WIN32
+    char windowsErrorBuf[256];
+#endif
 
+    pErr = STR_ERROR();
+    snprintf(errBuf, sizeof(errBuf), "setsockopt failed with #%d - %s",
+             errno,
+             pErr);
+
+    _errorMessage = errBuf;
     return false;
   }
 

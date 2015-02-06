@@ -1,3 +1,5 @@
+/*jshint globalstrict: true */
+/*global require, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for routing
 ///
@@ -25,8 +27,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+"use strict";
 var actions = require("org/arangodb/actions");
-var internal = require("internal");
 var jsunity = require("jsunity");
 
 var flattenRoutingTree = actions.flattenRoutingTree;
@@ -220,8 +222,8 @@ function routingSuiteSingle () {
     testContentString: function () {
       var r = actions.firstRouting('GET', "/opt/12345", routing);
 
-      req = {};
-      res = {};
+      var req = {};
+      var res = {};
 
       r.route.callback.controller(req, res);
 
@@ -237,8 +239,8 @@ function routingSuiteSingle () {
     testContentJson: function () {
       var r = actions.firstRouting('GET', "/json", routing);
 
-      req = {};
-      res = {};
+      var req = {};
+      var res = {};
 
       r.route.callback.controller(req, res);
 

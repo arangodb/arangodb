@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the correctness of a skip-list index
@@ -39,6 +39,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function SkipListCorrSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionSkiplistCorr";
   var coll = null;
   var helper = require("org/arangodb/aql-helper");
@@ -215,7 +216,8 @@ function SkipListCorrSuite() {
     assertEqual(getQueryResults(
                 "FOR x IN "+cn+" FILTER x.v >= 4 RETURN x").length, 3);
   }
-}};
+  };
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              main

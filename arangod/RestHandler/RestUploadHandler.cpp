@@ -97,10 +97,9 @@ Handler::status_t RestUploadHandler::execute () {
 
   bool found;
   char const* value = _request->value("multipart", found);
-  bool multiPart = false;
 
   if (found) {
-    multiPart = triagens::basics::StringUtils::boolean(value);
+    bool multiPart = triagens::basics::StringUtils::boolean(value);
 
     if (multiPart) {
       if (! parseMultiPart(body, bodySize)) {
@@ -134,6 +133,7 @@ Handler::status_t RestUploadHandler::execute () {
 
   TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "filename", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, fullName, strlen(fullName)));
+  TRI_Free(TRI_CORE_MEM_ZONE, fullName);
 
   generateResult(HttpResponse::CREATED, &json);
   TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);

@@ -56,7 +56,7 @@ using EN   = triagens::aql::ExecutionNode;
 
 int triagens::aql::removeRedundantSortsRule (Optimizer* opt, 
                                              ExecutionPlan* plan,
-                                             Optimizer::Rule const* rule) { 
+                                             Optimizer::Rule const* rule) {
   std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::SORT, true);
   std::unordered_set<ExecutionNode*> toUnlink;
 
@@ -2211,10 +2211,10 @@ public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether our calculation nodes reference variableName; 
-/// @returns pair used for further processing with the indices.
+/// returns pair used for further processing with the indices.
 ////////////////////////////////////////////////////////////////////////////////
 
-  Range_IndexPair getAttrsForVariableName (std::string &variableName) {
+  Range_IndexPair getAttrsForVariableName (std::string const& variableName) {
     ECN::IndexMatchVec v;
     IndexOrCondition rangeInfo;
 
@@ -2227,12 +2227,12 @@ public:
     // Collect the right data for the sorting:
     v.reserve(_sortNodeData.size());
     for (size_t j = 0; j < _sortNodeData.size(); j ++) {
-      v.push_back(std::make_pair(_sortNodeData[j]->attributevec,
-                                 _sortNodeData[j]->ASC));
+      v.emplace_back(std::make_pair(_sortNodeData[j]->attributevec,
+                                    _sortNodeData[j]->ASC));
     }
     // We only need one or-condition (because this is mandatory) which
     // refers to 0 of the attributes:
-    rangeInfo.push_back(std::vector<RangeInfo>());
+    rangeInfo.emplace_back(std::vector<RangeInfo>());
     return std::make_pair(v, rangeInfo);
   }
 

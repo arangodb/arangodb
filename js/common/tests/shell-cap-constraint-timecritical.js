@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cap constraint
@@ -43,7 +43,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CapConstraintTimecriticalSuite() {
-  var ERRORS = internal.errors;
+  "use strict";
   var cn = "UnitTestsCollectionCap";
   var collection = null;
 
@@ -52,11 +52,6 @@ function CapConstraintTimecriticalSuite() {
       return (l < r) ? -1 : 1;
     }
     return 0;
-  };
-
-  var assertBadParameter = function (err) {
-    assertTrue(err.errorNum === ERRORS.ERROR_BAD_PARAMETER.code ||
-               err.errorNum === ERRORS.ERROR_HTTP_BAD_PARAMETER.code);
   };
 
   return {
@@ -124,7 +119,7 @@ function CapConstraintTimecriticalSuite() {
       assertEqual(5, collection.count());
       assertEqual([7, 8, 9, 10, 11], collection.toArray().map(fun).sort(nsort));
 
-      for (var i = 15;  i < 20;  ++i) {
+      for (i = 15;  i < 20;  ++i) {
         collection.save({ n : i });
       }
 

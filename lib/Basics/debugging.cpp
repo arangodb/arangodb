@@ -33,10 +33,12 @@
 
 #ifdef TRI_ENABLE_MAINTAINER_MODE
 #if HAVE_BACKTRACE
-
+#ifdef _WIN32
+#include <DbgHelp.h>
+#else
 #include <execinfo.h>
 #include <cxxabi.h>
-
+#endif
 #endif
 #endif
 
@@ -311,6 +313,38 @@ void TRI_ShutdownDebugging () {
 
 void TRI_GetBacktrace (std::string& btstr) {
 #if HAVE_BACKTRACE
+#ifdef _WIN32
+  void         * stack[100];
+  unsigned short frames;
+  SYMBOL_INFO  * symbol;
+  HANDLE         process;
+
+  process = GetCurrentProcess();
+
+  SymInitialize(process, nullptr, true);
+
+  frames               = CaptureStackBackTrace(0, 100, stack, nullptr);
+  symbol               = (SYMBOL_INFO*) calloc(sizeof(SYMBOL_INFO) + 256 * sizeof(char), 1);
+
+  if (symbol == nullptr) {
+    // cannot allocate memory
+    return;
+  }
+
+  symbol->MaxNameLen   = 255;
+  symbol->SizeOfStruct = sizeof(SYMBOL_INFO);
+
+  for (unsigned int i = 0; i < frames; i++) {
+    char address[64];
+    SymFromAddr(process, (DWORD64) stack[i], 0, symbol);
+
+    snprintf(address, sizeof(address), "0x%0X", symbol->Address);
+    btstr += std::to_string(frames - i - 1) + std::string(": ") + symbol->Name + std::string(" [") + address + std::string("]\n");
+  }
+
+  TRI_SystemFree(symbol);
+
+#else
   void* stack_frames[50];
   size_t size, i;
   char** strings;
@@ -376,6 +410,7 @@ void TRI_GetBacktrace (std::string& btstr) {
   if (strings != nullptr) {
     TRI_SystemFree(strings);  
   }
+#endif
 #endif
 }
 

@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual, assertTrue, assertMatch, assertNotEqual,
+  assertUndefined, assertFalse, fail, REPLICATION_LOGGER_LAST */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication functions
@@ -44,6 +45,7 @@ var replication = require("org/arangodb/replication");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationLoggerSuite () {
+  "use strict";
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
@@ -82,13 +84,14 @@ function ReplicationLoggerSuite () {
   };
 
   var compareTicks = function (l, r) {
-    if (l.length != r.length) {
+    var i;
+    if (l.length !== r.length) {
       return l.length - r.length < 0 ? -1 : 1;
     }
 
     // length is equal
     for (i = 0; i < l.length; ++i) {
-      if (l[i] != r[i]) {
+      if (l[i] !== r[i]) {
         return l[i] < r[i] ? -1 : 1;
       }
     }
@@ -129,7 +132,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testGetLoggerState : function () {
-      var state, tick, server, clients;
+      var state, tick, server;
 
       state = replication.logger.state().state;
       assertTrue(state.running);
@@ -185,7 +188,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testEnabledLogger : function () {
-      var state, tick;
+      var state, tick, events;
 
       state = replication.logger.state().state;
       assertTrue(state.running);
@@ -306,7 +309,7 @@ function ReplicationLoggerSuite () {
     testLoggerIncludedSystemCollection1 : function () {
       var state, tick;
 
-      c = db._collection("_graphs");
+      var c = db._collection("_graphs");
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -333,7 +336,7 @@ function ReplicationLoggerSuite () {
     testLoggerIncludedSystemCollection2 : function () {
       var state, tick;
 
-      c = db._collection("_users");
+      var c = db._collection("_users");
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -358,7 +361,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerSystemCollection : function () {
-      var state, tick, i;
+      var state, tick;
 
       db._drop("_unitfoxx");
       db._drop("_unittests");
@@ -407,7 +410,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testLoggerTruncateCollection1 : function () {
-      var state, tick, i;
+      var state, tick;
 
       var c = db._create(cn);
       c.save({ "test": 1, "_key": "abc" });
@@ -444,7 +447,7 @@ function ReplicationLoggerSuite () {
       var state, tick, i;
 
       var c = db._create(cn);
-      for (var i = 0; i < 100; ++i) {
+      for (i = 0; i < 100; ++i) {
         c.save({ "test": 1, "_key": "test" + i });
       }
 
@@ -561,8 +564,8 @@ function ReplicationLoggerSuite () {
 
       c.ensureUniqueSkiplist("a");
       var idx = c.getIndexes()[1];
-      var entry = getLogEntries(tick, 2100)[0];
-
+      var entry1 = getLogEntries(tick, 2100)[0];
+      entry1 = true;/// TODO
       var entry = getLogEntries(tick, 2100)[0];
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
@@ -607,6 +610,7 @@ function ReplicationLoggerSuite () {
       state = replication.logger.state().state;
       tick = state.lastLogTick;
       var count = getLogEntries();
+      count = true; /// TODO
 
       c.ensureGeoIndex("a", "b");
       var idx = c.getIndexes()[1];
@@ -1239,7 +1243,8 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionEmpty : function () {
       var state, tick;
 
-      c = db._create(cn);
+      var c = db._create(cn);
+      c = true; /// TODO
 
       state = replication.logger.state().state;
       tick = state.lastLogTick;
@@ -1331,7 +1336,7 @@ function ReplicationLoggerSuite () {
       tick = state.lastLogTick;
 
       try {
-        actual = db._executeTransaction({
+        var actual = db._executeTransaction({
           collections: {
             read: cn
           },
@@ -1346,6 +1351,7 @@ function ReplicationLoggerSuite () {
             cn: cn
           }
         });
+        actual = true;
         fail();
       }
       catch (err) {
@@ -1363,7 +1369,7 @@ function ReplicationLoggerSuite () {
       var state, tick;
 
       var c = db._create(cn);
-
+      c = true;// todo
       state = replication.logger.state().state;
       tick = state.lastLogTick;
 
@@ -1511,7 +1517,7 @@ function ReplicationLoggerSuite () {
     testLoggerTransactionWrite5 : function () {
       var state, tick;
 
-      var c1 = db._create(cn);
+      db._create(cn);
       db._create(cn2);
 
       state = replication.logger.state().state;
@@ -1522,10 +1528,10 @@ function ReplicationLoggerSuite () {
           write: [ cn, cn2 ]
         },
         action: function (params) {
-          var c1 = require("internal").db._collection(params.cn);
+          var c2 = require("internal").db._collection(params.cn);
 
-          c1.save({ "test" : 1, "_key": "12345" });
-          c1.save({ "test" : 2, "_key": "abc" });
+          c2.save({ "test" : 1, "_key": "12345" });
+          c2.save({ "test" : 2, "_key": "abc" });
         },
         params: {
           cn: cn
@@ -1644,7 +1650,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationApplierSuite () {
-
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1970,7 +1976,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationSyncSuite () {
-
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2018,7 +2024,7 @@ function ReplicationSyncSuite () {
 /// @brief invalid endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSyncNoEndpoint : function () {
+    testSyncNoEndpoint2 : function () {
       try {
         replication.sync({
           endpoint: "tcp://9.9.9.9:9999"

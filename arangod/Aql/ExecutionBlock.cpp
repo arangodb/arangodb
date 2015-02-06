@@ -1050,7 +1050,7 @@ bool IndexRangeBlock::initRanges () {
         
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
+        if (ExecutionEngine::isRunningInCluster()) {
           for (auto e : _allVariableBoundExpressions) {
             e->invalidate();
           }
@@ -1684,8 +1684,8 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
           int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
-            bool const isCluster = (ExecutionEngine::isCoordinator() ||
-                ExecutionEngine::isDBServer());
+            bool const isCluster = ExecutionEngine::isRunningInCluster();
+
             if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
               // only continue lookup if the id value is syntactically correct and
               // refers to "our" collection, using local collection id
@@ -1803,7 +1803,7 @@ void IndexRangeBlock::destroyHashIndexSearchValues () {
 
 bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range) { 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
+  TRI_index_t* idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
@@ -1832,6 +1832,12 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
     for (auto x : range) {
       if (x._attr == lookFor) {    //found attribute
+        if (x._lowConst.bound().json() == nullptr) {
+          // attribute is empty. this may be case if a function expression is used as a 
+          // comparison value, and the function returns an empty list, e.g. x.a IN PASSTHRU([])
+          return false;
+        }
+
         auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
         // here x->_low->_bound = x->_high->_bound 
         if (shaped == nullptr) {
@@ -1873,7 +1879,7 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
   }
 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
+  TRI_index_t* idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
   
   size_t nrSent = 0;
@@ -1942,7 +1948,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   TRI_ASSERT(_skiplistIterator == nullptr);
   
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
-  TRI_index_t* idx = en->_index->data;
+  TRI_index_t* idx = en->_index->getInternals();
   TRI_ASSERT(idx != nullptr);
 
   TRI_shaper_t* shaper = _collection->documentCollection()->getShaper(); 
@@ -1954,7 +1960,7 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   size_t i = 0;
   for (; i < ranges.size(); i++) {
     auto const& range = ranges[i];
-    TRI_ASSERT(range.isConstant());
+    // TRI_ASSERT(range.isConstant());
     if (range.is1ValueRangeInfo()) {   // it's an equality . . . 
       parameters(range._lowConst.bound().copy());
     } 
@@ -2124,7 +2130,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     AqlItemBlock* cur = _buffer.front();
 
     // get the thing we are looping over
-    AqlValue inVarReg = cur->getValue(_pos, _inVarRegId);
+    AqlValue inVarReg = cur->getValueReference(_pos, _inVarRegId);
     size_t sizeInVar = 0; // to shut up compiler
 
     // get the size of the thing we are looping over
@@ -2132,7 +2138,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
     switch (inVarReg._type) {
       case AqlValue::JSON: {
         if (! inVarReg._json->isArray()) {
-          throwListExpectedException();
+          throwArrayExpectedException();
         }
         sizeInVar = inVarReg._json->size();
         break;
@@ -2160,11 +2166,11 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
       }
 
       case AqlValue::SHAPED: {
-        throwListExpectedException();
+        throwArrayExpectedException();
       }
 
       case AqlValue::EMPTY: {
-        throwListExpectedException();
+        throwArrayExpectedException();
       }
     }
 
@@ -2253,7 +2259,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
     switch (inVarReg._type) {
       case AqlValue::JSON: {
         if (! inVarReg._json->isArray()) {
-          throwListExpectedException();
+          throwArrayExpectedException();
         }
         sizeInVar = inVarReg._json->size();
         break;
@@ -2278,7 +2284,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 
       case AqlValue::SHAPED: 
       case AqlValue::EMPTY: {
-        throwListExpectedException();
+        throwArrayExpectedException();
       }
     }
 
@@ -2305,7 +2311,7 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 /// @brief create an AqlValue from the inVariable using the current _index
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
+AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
   switch (inVarReg._type) {
     case AqlValue::JSON: {
       // FIXME: is this correct? What if the copy works, but the
@@ -2333,14 +2339,14 @@ AqlValue EnumerateListBlock::getAqlValue (AqlValue inVarReg) {
     }
   }
 
-  throwListExpectedException();
+  throwArrayExpectedException();
   TRI_ASSERT(false);
 
   // cannot be reached. function call above will always throw an exception
   return AqlValue();
 }
           
-void EnumerateListBlock::throwListExpectedException () {
+void EnumerateListBlock::throwArrayExpectedException () {
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_ARRAY_EXPECTED, 
                                  TRI_errno_string(TRI_ERROR_QUERY_ARRAY_EXPECTED) +
                                  std::string(" as operand to FOR loop"));
@@ -2359,6 +2365,8 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
     _outReg(ExecutionNode::MaxRegisterId) {
 
   std::unordered_set<Variable*> inVars = _expression->variables();
+  _inVars.reserve(inVars.size());
+  _inRegs.reserve(inVars.size());
 
   for (auto it = inVars.begin(); it != inVars.end(); ++it) {
     _inVars.push_back(*it);
@@ -2381,6 +2389,13 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
   TRI_ASSERT(it3 != en->getRegisterPlan()->varInfo.end());
   _outReg = it3->second.registerId;
   TRI_ASSERT(_outReg < ExecutionNode::MaxRegisterId);
+  
+  if (en->_conditionVariable != nullptr) {
+    auto it = en->getRegisterPlan()->varInfo.find(en->_conditionVariable->id);
+    TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
+    _conditionReg = it->second.registerId;
+    TRI_ASSERT(_conditionReg < ExecutionNode::MaxRegisterId);
+  }
 }
 
 CalculationBlock::~CalculationBlock () {
@@ -2391,70 +2406,112 @@ int CalculationBlock::initialize () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fill the target register in the item block with a reference to 
+/// another variable
+////////////////////////////////////////////////////////////////////////////////
+
+void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
+  result->setDocumentCollection(_outReg, result->getDocumentCollection(_inRegs[0]));
+
+  size_t const n = result->size();
+  for (size_t i = 0; i < n; i++) {
+    // need not clone to avoid a copy, the AqlItemBlock's hash takes
+    // care of correct freeing:
+    AqlValue a = result->getValueReference(i, _inRegs[0]);
+    try {
+      result->setValue(i, _outReg, a);
+    }
+    catch (...) {
+      a.destroy();
+      throw;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shared code for executing a simple or a V8 expression
+////////////////////////////////////////////////////////////////////////////////
+
+void CalculationBlock::executeExpression (AqlItemBlock* result) {
+  std::vector<AqlValue>& data(result->getData());
+  std::vector<TRI_document_collection_t const*> docColls(result->getDocumentCollections());
+
+  RegisterId nrRegs = result->getNrRegs();
+  result->setDocumentCollection(_outReg, nullptr);
+
+  bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
+
+  size_t const n = result->size();
+
+  for (size_t i = 0; i < n; i++) {
+    // check the condition variable (if any)
+    if (hasCondition) {
+      AqlValue conditionResult = result->getValueReference(i, _conditionReg);
+
+      if (! conditionResult.isTrue()) {
+        result->setValue(i, _outReg, AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &Expression::NullJson, Json::NOFREE)));
+        continue;
+      }
+    }
+
+    // execute the expression
+    TRI_document_collection_t const* myCollection = nullptr;
+    AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
+    try {
+      result->setValue(i, _outReg, a);
+    }
+    catch (...) {
+      a.destroy();
+      throw;
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief doEvaluation, private helper to do the work
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::doEvaluation (AqlItemBlock* result) {
   TRI_ASSERT(result != nullptr);
 
-  size_t const n = result->size();
   if (_isReference) {
-    // the expression is a reference to a variable only.
+    // the calculation is a reference to a variable only.
     // no need to execute the expression at all
-    result->setDocumentCollection(_outReg, result->getDocumentCollection(_inRegs[0]));
+    fillBlockWithReference(result);
+    return;
+  }
 
-    for (size_t i = 0; i < n; i++) {
-      // need not clone to avoid a copy, the AqlItemBlock's hash takes
-      // care of correct freeing:
-      AqlValue a = result->getValue(i, _inRegs[0]);
-      try {
-        result->setValue(i, _outReg, a);
-      }
-      catch (...) {
-        a.destroy();
-        throw;
-      }
-    }
+  // non-reference expression
+
+  TRI_ASSERT(_expression != nullptr);
+
+  if (! _expression->isV8()) {
+    // an expression that does not require V8
+    executeExpression(result);
   }
   else {
-    vector<AqlValue>& data(result->getData());
-    vector<TRI_document_collection_t const*> docColls(result->getDocumentCollections());
-
-    RegisterId nrRegs = result->getNrRegs();
-    result->setDocumentCollection(_outReg, nullptr);
-
-    TRI_ASSERT(_expression != nullptr);
-
     // must have a V8 context here to protect Expression::execute()
-    auto engine = _engine;
     triagens::basics::ScopeGuard guard{
-      [&engine]() -> void { 
-        engine->getQuery()->enterContext(); 
+      [&]() -> void {
+        _engine->getQuery()->enterContext(); 
       },
       [&]() -> void { 
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isDBServer() || ExecutionEngine::isCoordinator()) {
+        if (ExecutionEngine::isRunningInCluster()) {
           _expression->invalidate();
         }
-        engine->getQuery()->exitContext(); 
+        _engine->getQuery()->exitContext(); 
       }
     };
+
     ISOLATE;
     v8::HandleScope scope(isolate); // do not delete this!
 
-    for (size_t i = 0; i < n; i++) {
-      // need to execute the expression
-      TRI_document_collection_t const* myCollection = nullptr;
-      AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
-      try {
-        result->setValue(i, _outReg, a);
-      }
-      catch (...) {
-        a.destroy();
-        throw;
-      }
-    }
+    // do not merge the following function call with the same function call above!
+    // the V8 expression execution must happen in the scope that contains
+    // the V8 handle scope and the scope guard
+    executeExpression(result);
   }
 }
 
@@ -2524,32 +2581,36 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
     return nullptr;
   }
 
+  // TODO: constant and deterministic subqueries only need to be executed once
+  bool const subqueryIsConst = false; // TODO 
+
+  std::vector<AqlItemBlock*>* subqueryResults = nullptr;
+
   for (size_t i = 0; i < res->size(); i++) {
     int ret = _subquery->initializeCursor(res.get(), i);
+
     if (ret != TRI_ERROR_NO_ERROR) {
       THROW_ARANGO_EXCEPTION(ret);
     }
 
-    auto results = new std::vector<AqlItemBlock*>;
-    try {
-      do {
-        unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
-        if (tmp.get() == nullptr) {
-          break;
-        }
-        results->push_back(tmp.get());
-        tmp.release();
-      }
-      while(true);
-      res->setValue(i, _outReg, AqlValue(results));
+    if (i > 0 && subqueryIsConst) {
+      // re-use already calculated subquery result
+      TRI_ASSERT(subqueryResults != nullptr);
+      res->setValue(i, _outReg, AqlValue(subqueryResults));
     }
-    catch (...) {
-      for (auto x : *results) {
-        delete x;
+    else {
+      // initial subquery execution or subquery is not constant
+      subqueryResults = executeSubquery(); 
+      TRI_ASSERT(subqueryResults != nullptr);
+      try {
+        res->setValue(i, _outReg, AqlValue(subqueryResults));
       }
-      delete results;
-      throw;
-    }
+      catch (...) {
+        destroySubqueryResults(subqueryResults);
+        throw;
+      }
+    } 
+
   }
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
@@ -2567,6 +2628,41 @@ int SubqueryBlock::shutdown (int errorCode) {
   }
 
   return getSubquery()->shutdown(errorCode);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief execute the subquery and return its results
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
+  auto results = new std::vector<AqlItemBlock*>;
+  try {
+    do {
+      unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+      if (tmp.get() == nullptr) {
+        break;
+      }
+      results->push_back(tmp.get());
+      tmp.release();
+    }
+    while (true);
+    return results;
+  }
+  catch (...) {
+    destroySubqueryResults(results);
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the results of a subquery
+////////////////////////////////////////////////////////////////////////////////
+
+void SubqueryBlock::destroySubqueryResults (std::vector<AqlItemBlock*>* results) {
+  for (auto x : *results) {
+    delete x;
+  }
+  delete results;
 }
 
 // -----------------------------------------------------------------------------
@@ -3445,6 +3541,7 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _outReg(ExecutionNode::MaxRegisterId),
     _collection(ep->_collection) {
+
   if (ep->_outVariable != nullptr) {
     /*
     auto const& registerPlan = ep->getRegisterPlan()->varInfo;
@@ -3474,28 +3571,55 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
         delete (*it);
       }
     }
+    blocks.clear();
   };
 
   // loop over input until it is exhausted
   try {
-    while (true) { 
-      auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+    if (static_cast<ModificationNode const*>(_exeNode)->_options.readCompleteInput) {
+      // read all input into a buffer first
+      while (true) { 
+        auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
 
-      if (res == nullptr) {
-        break;
-      }
+        if (res == nullptr) {
+          break;
+        }
        
-      blocks.push_back(res);
-    }
+        blocks.push_back(res);
+      }
 
-    replyBlocks = work(blocks);
-    freeBlocks(blocks);
+      // now apply the modifications for the complete input
+      replyBlocks = work(blocks);
+    }
+    else {
+      // read input in chunks, and process it in chunks
+      // this reduces the amount of memory used for storing the input
+      while (true) {
+        freeBlocks(blocks);
+        auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+
+        if (res == nullptr) {
+          break;
+        }
+       
+        blocks.push_back(res);
+        replyBlocks = work(blocks);
+
+        if (replyBlocks != nullptr) {
+          break;
+        }
+      }
+    }
   }
   catch (...) {
     freeBlocks(blocks);
+
     delete replyBlocks;
     throw;
   }
+
+  freeBlocks(blocks);
+        
   return replyBlocks;
 }
 
@@ -3507,9 +3631,10 @@ int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
                                    std::string& key) const {
   if (value.isObject()) {
-    Json member(value.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY));
+    Json member(value.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY, false));
 
     TRI_json_t const* json = member.json();
+
     if (TRI_IsStringJson(json)) {
       key = std::string(json->_value._string.data, json->_value._string.length - 1);
       return TRI_ERROR_NO_ERROR;
@@ -3569,6 +3694,7 @@ RemoveBlock::~RemoveBlock () {
 
 AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   std::unique_ptr<AqlItemBlock> result;
+
   auto ep = static_cast<RemoveNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3682,6 +3808,7 @@ InsertBlock::~InsertBlock () {
 
 AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
   std::unique_ptr<AqlItemBlock> result;
+
   auto ep = static_cast<InsertNode const*>(getPlanNode());
   auto it = ep->getRegisterPlan()->varInfo.find(ep->_inVariable->id);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
@@ -3738,7 +3865,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           // array must have _from and _to attributes
           TRI_json_t const* json;
 
-          Json member(a.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM));
+          Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM, false));
           json = member.json();
 
           if (TRI_IsStringJson(json)) {
@@ -3749,7 +3876,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
          
           if (errorCode == TRI_ERROR_NO_ERROR) { 
-            Json member(a.extractArrayMember(_trx, document, TRI_VOC_ATTRIBUTE_TO));
+            Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
             json = member.json();
             if (TRI_IsStringJson(json)) {
               errorCode = resolve(json->_value._string.data, edge._toCid, to);
@@ -5431,8 +5558,8 @@ RemoteBlock::RemoteBlock (ExecutionEngine* engine,
     _queryId(queryId) {
 
   TRI_ASSERT(! queryId.empty());
-  TRI_ASSERT((ExecutionEngine::isCoordinator() && ownName.empty()) ||
-             (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
+  TRI_ASSERT_EXPENSIVE((ExecutionEngine::isCoordinator() && ownName.empty()) ||
+                       (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
 }
 
 RemoteBlock::~RemoteBlock () {

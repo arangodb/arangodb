@@ -382,11 +382,11 @@ The following optimizer rules may appear in the `rules` attribute of a plan:
 * `remove-filters-covered-by-index`: will appear if a *FilterNode* was removed or replaced
   because the filter condition is already covered by an *IndexRangeNode*.
 * `use-index-for-sort`: will appear if an index can be used to avoid a *SORT* 
-  operation. If the rule was applied, a *SortNode* has been removed from the
+  operation. If the rule was applied, a *SortNode* was removed from the plan.
 * `move-calculations-down`: will appear if a *CalculationNode* was moved down in a plan. 
   The intention of this rule is to move calculations down in the processing pipeline
   as far as possible (below *FILTER*, *LIMIT* and *SUBQUERY* nodes) so they are executed 
-  only when really required.
+  as late as possible and not before their results are required.
 
 The following optimizer rules may appear in the `rules` attribute of cluster plans:
 
