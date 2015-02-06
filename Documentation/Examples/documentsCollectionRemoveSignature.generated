@@ -1,9 +1,9 @@
 arangosh> db.example.save({ a:  1 } );
 { 
   "error" : false, 
-  "_id" : "example/992637318", 
-  "_rev" : "992637318", 
-  "_key" : "992637318" 
+  "_id" : "example/992579283", 
+  "_rev" : "992579283", 
+  "_key" : "992579283" 
 }
 arangosh> db.example.remove("example/11265325374", {overwrite: true, waitForSync: false})
 false
