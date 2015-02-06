@@ -1,0 +1,8 @@
+!CHAPTER Administrative Scripts
+
+Foxx offers hooks for administrative scripts that are executed once at a specified point.
+These scripts are used to create or drop collections, create indexes or insert seed data.
+
+!SECTION Setup script
+
+The setup script will be executed during the install process of your Application.
