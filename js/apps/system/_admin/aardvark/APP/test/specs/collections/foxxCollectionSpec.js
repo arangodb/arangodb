@@ -30,6 +30,34 @@
       expect(col.url).toEqual("/_admin/aardvark/foxxes");
     });
 
+    describe("sorting apps", function() {
+      var first, second, third;
+      beforeEach(function() {
+        first = "/_test";
+        second = "/aal";
+        third  = "/zztop";
+        col.add({mount: second});
+        col.add({mount: third});
+        col.add({mount: first});
+      });
+
+      it("should always be by mount", function() {
+        col.sort();
+        expect(col.models[0].get("mount")).toEqual(first);
+        expect(col.models[1].get("mount")).toEqual(second);
+        expect(col.models[2].get("mount")).toEqual(third);
+      });
+
+      it("should be by mount and reversable", function() {
+        col.setSortingDesc(true);
+        col.sort();
+        expect(col.models[2].get("mount")).toEqual(first);
+        expect(col.models[1].get("mount")).toEqual(second);
+        expect(col.models[0].get("mount")).toEqual(third);
+      });
+
+    });
+
     describe("installing apps", function() {
 
       it("should generate an app", function() {

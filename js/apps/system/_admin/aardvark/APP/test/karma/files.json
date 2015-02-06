@@ -5,6 +5,7 @@
     { "pattern": "clusterFrontend/js/templates/*.ejs", "served": true, "included": false, "watched": true},
     "frontend/js/lib/jquery-2.1.0.min.js",
     "test/mocks/overwriteAjax.js",
+    "test/mocks/createDummy.js",
     "frontend/js/lib/jquery-ui-1.9.2.custom.js",
     "frontend/js/lib/jquery.autogrow.js",
     "frontend/js/lib/jquery.jeditable.js",
@@ -248,6 +249,7 @@
 
     "test/specs/views/apiViewSpec.js",
     "test/specs/views/applicationsViewSpec.js",
+    "test/specs/views/applicationDetailViewSpec.js",
     "test/specs/views/modalViewSpec.js",
     "test/specs/views/editListEntryViewSpec.js",
     "test/specs/views/collectionsViewSpec.js",

@@ -26,8 +26,8 @@
     },
 
     toggleDevelopment: function() {
-      this.model.toggleDevelopment(!this.model.get("development"), function() {
-        if (this.model.get("development")) {
+      this.model.toggleDevelopment(!this.model.isDevelopment(), function() {
+        if (this.model.isDevelopment()) {
           $("#app-switch-mode").val("Production");
           $("#app-development-indicator").css("display", "inline");
         } else {
@@ -142,6 +142,14 @@
               rule: Joi.number().integer().optional().allow(""),
               msg: "Has to be an integer."
             }];
+            /* falls through */
+          case "number":
+            if (check === undefined) {
+              check = [{
+                rule: Joi.number().optional().allow(""),
+                msg: "Has to be a number."
+              }];
+            }
             /* falls through */
           default:
             if (check === undefined) {
