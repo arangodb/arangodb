@@ -65,6 +65,7 @@ var Controller,
 Controller = function (context, options) {
   'use strict';
   var urlPrefix, baseMiddleware;
+  context.clearComments();
 
   if (is.notExisty(context)) {
     throw new Error("parameter <context> is missing");
