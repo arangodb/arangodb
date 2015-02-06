@@ -1,6 +1,14 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* inspection of AQL data-modification queries will now detect if the data-modification part
+  of the query can run in lockstep with the data retrieval part of the query, or if the data
+  retrieval part must be executed before the data modification can start.
+
+  Executing the two in lockstep allows using much smaller buffers for intermediate results 
+  and starts the actual data-modification operations much earlier than if the two phases
+  were executed seperately.
+
 * Allow dynamic attribute names in AQL object literals
   
   This allows using arbitrary expressions to construct attribute names in object
@@ -74,6 +82,17 @@ v2.5.0 (XXXX-XX-XX)
   this was not enforced when registering a user function. Enforcing the AQL user functions to be contained
   inside functions prevents functions from doing some unexpected things that may have led to undefined
   behavior.
+
+
+v2.4.3 (2015-02-XX)
+-------------------
+
+* fix multi-threading with openssl when running under Windows
+
+* fix timeout on socket operations when running under Windows
+
+* Fixed an error in Foxx routing which caused some apps that worked in 2.4.1 to fail with status 500: `undefined is not a function` errors in 2.4.2
+  This error was occurring due to seldom internal rerouting introduced by the malformed application handler. 
 
 
 v2.4.2 (2015-XX-XX)
