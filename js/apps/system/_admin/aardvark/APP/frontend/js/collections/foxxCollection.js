@@ -15,12 +15,12 @@
     comparator: function(item, item2) {
       var a, b;
       if (this.sortOptions.desc === true) {
-        a = item.get('name');
-        b = item2.get('name');
+        a = item.get('mount');
+        b = item2.get('mount');
         return a < b ? 1 : a > b ? -1 : 0;
       }
-      a = item.get('name');
-      b = item2.get('name');
+      a = item.get('mount');
+      b = item2.get('mount');
       return a > b ? 1 : a < b ? -1 : 0;
     },
 

@@ -22,17 +22,17 @@
     toggle: function(type, shouldShow) {
       switch (type) {
         case "devel":
-          if (this.model.get("development") === true) {
+          if (this.model.isDevelopment()) {
             this._show = shouldShow;
           }
           break;
         case "production":
-          if (this.model.get("development") === false && this.model.get("system") === false) {
+          if (!this.model.isDevelopment() && !this.model.isSystem()) {
             this._show = shouldShow;
           }
           break;
         case "system":
-          if (this.model.get("system") === true) {
+          if (this.model.isSystem()) {
             this._show = shouldShow;
           }
           break;

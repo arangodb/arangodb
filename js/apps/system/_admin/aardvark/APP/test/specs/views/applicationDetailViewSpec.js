@@ -194,6 +194,131 @@
 
         });
 
+        describe("with different configuration types", function() {
+          var valid1, valid3, valid4, def;
+
+          beforeEach(function() {
+            runs(function() {
+              valid1 = "Value";
+              valid3 = "4.5";
+              valid4 = "4";
+              def = "default";
+
+              config.data.opt1 = {
+                type: "string",
+                description: "My String"
+              };
+              config.data.opt2 = {
+                type: "boolean",
+                description: "My Bool"
+              };
+              config.data.opt3 = {
+                type: "number",
+                description: "My Number"
+              };
+              config.data.opt4 = {
+                type: "integer",
+                description: "My Integer"
+              };
+              config.data.opt5 = {
+                type: "string",
+                description: "My String",
+                default: def
+              };
+              view.render();
+              $(buttonId).click();
+            });
+
+            waitsFor(function () {
+              return $("#modal-dialog").css("display") === "block";
+            }, "The configure App dialog should be shown", 750);
+          });
+
+          it("should not allow to configure if the string is empty", function() {
+            $("#app_config_opt1").val("");
+            $("#app_config_opt3").val(valid3);
+            $("#app_config_opt4").val(valid4);
+            $("#app_config_opt4").keyup();
+            expect($("#modalButton1").prop("disabled")).toBeTruthy();
+          });
+
+          it("should not allow to configure if the number is empty", function() {
+            $("#app_config_opt1").val(valid1);
+            $("#app_config_opt3").val("");
+            $("#app_config_opt4").val(valid4);
+            $("#app_config_opt4").keyup();
+            expect($("#modalButton1").prop("disabled")).toBeTruthy();
+          });
+
+          it("should not allow to configure if the number is invalid", function() {
+            $("#app_config_opt1").val(valid1);
+            $("#app_config_opt3").val("invalid");
+            $("#app_config_opt4").val(valid4);
+            $("#app_config_opt4").keyup();
+            expect($("#modalButton1").prop("disabled")).toBeTruthy();
+          });
+
+          it("should not allow to configure if the integer is empty", function() {
+            $("#app_config_opt1").val(valid1);
+            $("#app_config_opt3").val(valid3);
+            $("#app_config_opt4").val("");
+            $("#app_config_opt4").keyup();
+            expect($("#modalButton1").prop("disabled")).toBeTruthy();
+          });
+
+          it("should not allow to configure if the integer is invalid", function() {
+            $("#app_config_opt1").val(valid1);
+            $("#app_config_opt3").val(valid3);
+            $("#app_config_opt4").val("invalid");
+            $("#app_config_opt4").keyup();
+            expect($("#modalButton1").prop("disabled")).toBeTruthy();
+          });
+
+          it("should not allow to configure if the integer is not integer", function() {
+            $("#app_config_opt1").val(valid1);
+            $("#app_config_opt3").val(valid3);
+            $("#app_config_opt4").val("4.5");
+            $("#app_config_opt4").keyup();
+            expect($("#modalButton1").prop("disabled")).toBeTruthy();
+          });
+
+          it("should allow to configure if all values are valid", function() {
+            runs(function() {
+              $("#app_config_opt1").val(valid1);
+              $("#app_config_opt3").val(valid3);
+              $("#app_config_opt4").val(valid4);
+              $("#app_config_opt4").keyup();
+              expect($("#modalButton1").prop("disabled")).toBeFalsy();
+              spyOn(appDummy, "setConfiguration").andCallFake(function(data, callback) {
+                callback({
+                  error: false
+                });
+              });
+              $("#modalButton1").click();
+            });
+
+            waitsFor(function () {
+              return $("#modal-dialog").css("display") === "none";
+            }, "The configure App dialog should be hidden.", 750);
+
+            runs(function() {
+              expect(appDummy.setConfiguration).toHaveBeenCalledWith(
+                {
+                  opt1: valid1,
+                  opt2: false,
+                  opt3: 4.5,
+                  opt4: 4,
+                  opt5: def
+                },
+                jasmine.any(Function)
+              );
+            });
+
+          });
+
+        });
+
+
       });
 
       describe("if not required", function() {
@@ -207,6 +332,9 @@
 
         it("the button should be disabled", function() {
           expect($(buttonId).hasClass("disabled")).toEqual(true);
+          spyOn(window.modalView, "show");
+          $(buttonId).click();
+          expect(window.modalView.show).not.toHaveBeenCalled();
         });
 
       });
