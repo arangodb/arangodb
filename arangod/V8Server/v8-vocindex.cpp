@@ -127,11 +127,11 @@ static v8::Handle<v8::Value> IndexRep (v8::Isolate* isolate,
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexFields (v8::Isolate* isolate,
-                        v8::Handle<v8::Object> const obj,
-                        TRI_json_t* json,
-                        int numFields,
-                        bool create) {
+static int ProcessIndexFields (v8::Isolate* isolate,
+                               v8::Handle<v8::Object> const obj,
+                               TRI_json_t* json,
+                               int numFields,
+                               bool create) {
   v8::HandleScope scope(isolate);
   set<string> fields;
 
@@ -182,9 +182,9 @@ int ProcessIndexFields (v8::Isolate* isolate,
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
-                             v8::Handle<v8::Object> const obj,
-                             TRI_json_t* json) {
+static int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
+                                    v8::Handle<v8::Object> const obj,
+                                    TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool geoJson = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
@@ -196,10 +196,10 @@ int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexUniqueFlag (v8::Isolate* isolate,
-                            v8::Handle<v8::Object> const obj,
-                            TRI_json_t* json,
-                            bool fillConstraint = false) {
+static int ProcessIndexUniqueFlag (v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   TRI_json_t* json,
+                                   bool fillConstraint = false) {
   v8::HandleScope scope(isolate);
   bool unique = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
@@ -214,26 +214,12 @@ int ProcessIndexUniqueFlag (v8::Isolate* isolate,
 /// @brief process the ignoreNull flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
-                                v8::Handle<v8::Object> const obj,
-                                TRI_json_t* json) {
+static int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
+                                       v8::Handle<v8::Object> const obj,
+                                       TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool ignoreNull = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("ignoreNull"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the undefined flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexUndefinedFlag (v8::Isolate* isolate,
-                               v8::Handle<v8::Object> const obj,
-                               TRI_json_t* json) {
-  v8::HandleScope scope(isolate);
-  bool undefined = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("undefined"), false);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
 
   return TRI_ERROR_NO_ERROR;
 }
