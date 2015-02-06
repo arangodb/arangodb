@@ -7,6 +7,12 @@
     joi = require('joi'),
     _ = require('underscore'),
     controller,
+    <%= model %>Description = {
+      type: joi.string().required().description(
+        'The id of the <%= model %>-Item'
+      ),
+      allowMultiple: false
+    },
     <%= repositoryInstance %>;
 
   controller = new Foxx.Controller(applicationContext);
@@ -33,7 +39,10 @@
   controller.post('/<%= basePath %>', function (req, res) {
     var <%= modelInstance %> = req.params('<%= modelInstance %>');
     res.json(<%= repositoryInstance %>.save(<%= modelInstance %>).forClient());
-  }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want to create', <%= model %>);
+  }).bodyParam('<%= modelInstance %>', {
+    description: 'The <%= model %> you want to create',
+    type: <%= model %>
+  });
 
   /** Reads a <%= model %>
    *
@@ -42,10 +51,7 @@
   controller.get('/<%= basePath %>/:id', function (req, res) {
     var id = req.params('id');
     res.json(<%= repositoryInstance %>.byId(id).forClient());
-  }).pathParam('id', {
-    description: 'The id of the <%= model %>-Item',
-    type: 'string'
-  });
+  }).pathParam('id', <%=model %>Description);
 
   /** Updates a <%= model %>
    *
@@ -56,10 +62,8 @@
     var id = req.params('id'),
     <%= modelInstance %> = req.params('<%= modelInstance %>');
     res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
-  }).pathParam('id', {
-    description: 'The id of the <%= model %>-Item',
-    type: 'string'
-  }).bodyParam('<%= modelInstance %>', 'The <%= model %> you want your old one to be replaced with', <%= model %>);
+  }).pathParam('id', <%=model %>Description
+  ).bodyParam('<%= modelInstance %>', 'The <%= model %> you want your old one to be replaced with', <%= model %>);
 
   /** Removes a <%= model %>
    *
@@ -69,9 +73,7 @@
     var id = req.params('id');
     <%= repositoryInstance %>.removeById(id);
     res.json({ success: true });
-  }).pathParam('id', {
-    description: 'The ID of the <%= model %>-Item',
-    type: 'string'
-  }).errorResponse(ArangoError, 404, 'The document could not be found');
+  }).pathParam('id', <%=model %>Description
+  ).errorResponse(ArangoError, 404, 'The document could not be found');
 }());
 
