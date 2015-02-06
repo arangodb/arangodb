@@ -368,7 +368,6 @@
   /// @brief Generates an App with the given options into the targetPath
   ////////////////////////////////////////////////////////////////////////////////
   var installAppFromGenerator = function(targetPath, options) {
-    // TODO validate options
     var invalidOptions = [];
     // Set default values:
     options.name = options.name || "MyApp";
