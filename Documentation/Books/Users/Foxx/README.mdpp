@@ -1,5 +1,109 @@
 !CHAPTER Foxx
 
+How well maps the Foxx environment to the requirements for a microservice framework.
+
+<table>
+  <thead>
+    <tr>
+      <th>microservice</th>
+      <th>foxx</th>
+      <th>description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Few lines of Code</td>
+      <td>Little Boilerplate</td>
+      <td>Most of the boilerplate is already handled by the Foxx environment. You can focus on your business logic</td>
+    </tr>
+    <tr>
+      <td>HTTP API</td>
+      <td>Controller</td>
+      <td>The Foxx controller allows to easily define HTTP API routes.</td>
+    </tr>
+    <tr>
+      <td>Independently Deployable</td>
+      <td>Foxx Manager</td>
+      <td>Foxxes run in ArangoDB Coordinators. These are independent from one another. Foxxes can be installed on an arbitrary number of these Coordinators.</td>
+    </tr>
+    <tr>
+      <td>Access other Microservices</td>
+      <td>Requests</td>
+      <td>The Foxx request module offers a simple functionality to contact any other API via HTTP.</td>
+    </tr>
+    <tr>
+      <td>Scalability</td>
+      <td>Sharding</td>
+      <td>The dataset managed by a Foxx micro-service might be too large for a single server. The underlying ArangoDB infrastructure can handle this for you.</td>
+    </tr>
+    <tr>
+      <td>Persistence</td>
+      <td>Repositories</td>
+      <td>Foxx is part of a multi-model database. It has all features to persist data of diverse formats (Graphs, Documents) built-in.</td>
+    </tr>
+    <tr>
+      <td>Reuse Services</td>
+      <td>Arango Store</td>
+      <td>The Arango Store contains several Foxxes. Many of them are general-use services that are required in many applications. You can just reuse the reviewed and tested code of other Foxx users.</td>
+    </tr>
+    <tr>
+      <td>Automated Deployment</td>
+      <td>Foxx Manager</td>
+      <td>The Foxx manager tool allows to trigger installation of new applications. Also there is a native system HTTP API offering this feature. You can use either one as a step in your build automation tool.</td>
+    </tr>
+    <tr>
+      <td>Design for failure</td>
+      <td>Coordinators</td>
+      <td>ArangoDBs cluster setup is designed for failure. You can make use of this feature in your Foxxes.</td>
+    </tr>
+    <tr>
+      <td>Different Languages</td>
+      <td>Connect to other APIs</td>
+      <td>Foxxes are only implemented in JavaScript. However not your entire application has to be written in Foxx. You can connect via HTTP to services in other languages.</td>
+    </tr>
+    <tr>
+      <td>Different Databases</td>
+      <td>Multi-Model</td>
+      <td>In most setups you need different database technologies because you have several data formats. ArangoDB is a multi-model database that server many formats. However if you still need another database you can connect to it via Http.</td>
+    </tr>
+    <tr>
+      <td>Asynchronous Calls</td>
+      <td>Synchronous with multiple contexts</td>
+      <td>Foxx only allows synchronous execution. However it is executed in a multi-threaded fashion, hence blocking one thread is not a problem. Also background tasks are available for long-running tasks that should be executed outside of the request-response cycle.</td>
+    </tr>
+    <tr>
+      <td>Security</td>
+      <td>Authentication and Session</td>
+      <td>Foxx offers internal APIs to handle authentication and manage session data. It is just a handful lines of code and your service is secured.</td>
+    </tr>
+    <tr>
+      <td>Protected API</td>
+      <td>Libraries</td>
+      <td>Sometimes you have sensitive data that is not allowed to ever leave your database. Using libraries in Foxx you can write internal APIs that can only be accessed from the same server and are not exposed to the outside world. Perfect to keep your data inside but still using the paradigm of a microservice for it.</td>
+    </tr>
+    <tr>
+      <td>How To</td>
+      <td>Recipes</td>
+      <td>In ArangoDBs cookbook there are several recipes on how to design a microservice based application with the help of Foxx.</td>
+    </tr>
+    <tr>
+      <td>Maintenance UI</td>
+      <td>Built-in Web server</td>
+      <td>ArangoDB has a built-in Web server, allowing Foxxes to ship a Webpage as their UI. So you can attach a maintanance UI directly to your microservice and have it deployed with it in the same step.</td>
+    </tr>
+    <tr>
+      <td>Easy Setup</td>
+      <td>ArangoDB on Mesos</td>
+      <td>ArangoDB perfectly integrates with the Mesos project, a distributed kernel written for data centers. You can set up and deploy a Mesos instance running ArangoDB and having your microservice on top of it with just a single command.</td>
+    </tr>
+    <tr>
+      <td>Maintenance</td>
+      <td>Marathon</td>
+      <td>If you are running ArangoDB on top of Mesos you can use marathon to keep all your instances alive and scale up or down with just a few clicks. Do not bother with long configuration, that is all handled by the underlying systems.</td>
+    </tr>
+  </tbody>
+</table>
+
 TODO: Awesome introduction (micro-service framework)
 
 !SECTION Foxx in a nutshell
