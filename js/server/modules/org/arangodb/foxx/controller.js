@@ -70,6 +70,8 @@ Controller = function (context, options) {
     throw new Error("parameter <context> is missing");
   }
 
+  context.clearComments();
+
   this.routingInfo = {
     routes: []
   };
