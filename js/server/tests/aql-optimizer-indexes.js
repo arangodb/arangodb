@@ -544,118 +544,6 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
-    testSortWithMultipleIndexes : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(1, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testSortWithMultipleIndexesAndRanges : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 9 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(2, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiSortWithMultipleIndexes : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(1, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
-    testMultiSortWithMultipleIndexesAndRanges : function () {
-      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
-
-      // create multiple indexes
-      c.ensureHashIndex("value");
-      c.ensureHashIndex("value", "value2");
-      c.ensureSkiplist("value", "value2");
-
-      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
-
-      var plan = AQL_EXPLAIN(query).plan;
-      var nodeTypes = plan.nodes.map(function(node) {
-        return node.type;
-      });
-
-      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
-      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
-
-      var results = AQL_EXECUTE(query);
-      assertEqual([ 1, 9 ], results.json, query);
-      assertEqual(0, results.stats.scannedFull);
-      assertEqual(2, results.stats.scannedIndex);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test index usage
-////////////////////////////////////////////////////////////////////////////////
-
     testIndexOrPrimary : function () {
       var query = "FOR i IN " + c.name() + " FILTER i._key == 'test1' || i._key == 'test9' RETURN i.value";
 
@@ -1714,6 +1602,102 @@ function optimizerIndexesTestSuite () {
         assertTrue(results.stats.scannedIndex > 0);
         assertEqual(0, results.stats.scannedFull);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexUsageIn : function () {
+      c.ensureHashIndex("value2");
+      c.ensureSkiplist("value3");
+      
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      var queries = [
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN PASSTHRU([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value2 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23), b = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value2 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN [23] RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ ] ],
+        [ "LET a = PASSTHRU([23]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU([23, 42]) FOR i IN " + c.name() + " FILTER i.value2 IN a RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ 23 ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23) FOR i IN " + c.name() + " FILTER i.value3 IN APPEND([ a ], a) RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU(23), b = PASSTHRU(42) FOR i IN " + c.name() + " FILTER i.value3 IN [ a, b ] RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([]) RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([23]) RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN PASSTHRU([23, 42]) RETURN i.value2", [ 23, 42 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23] RETURN i.value2", [ 23 ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN [23, 42] RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ ] ],
+        [ "LET a = PASSTHRU([23]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23 ] ],
+        [ "LET a = PASSTHRU([23, 42]) FOR i IN " + c.name() + " FILTER i.value3 IN a RETURN i.value2", [ 23, 42 ] ],
+        [ "LET a = PASSTHRU('test42') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key", [ 'test23' ] ],
+        [ "LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ a ], a) RETURN i._key", [ 'test23' ] ],
+        [ "LET a = PASSTHRU('test23'), b = PASSTHRU('test42') FOR i IN " + c.name() + " FILTER i._key IN [ a, b ] RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU([]) RETURN i._key", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU(['test23']) RETURN i._key", [ 'test23' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN PASSTHRU(['test23', 'test42']) RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23'] RETURN i._key", [ 'test23' ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN ['test23', 'test42'] RETURN i._key", [ 'test23', 'test42' ] ],
+        [ "LET a = PASSTHRU([]) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ ] ],
+        [ "LET a = PASSTHRU(['test23']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23' ] ],
+        [ "LET a = PASSTHRU(['test23', 'test42']) FOR i IN " + c.name() + " FILTER i._key IN a RETURN i._key", [ 'test23', 'test42' ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query[0]).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1].length, results.json.length, query); 
+        assertEqual(query[1].sort(), results.json.sort(), query);
+        assertTrue(results.stats.scannedIndex >= 0);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexUsageInNoIndex : function () {
+      c.ensureHashIndex("value2");
+      c.ensureSkiplist("value3");
+      
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      var queries = [
+        [ "FOR i IN " + c.name() + " FILTER i.value2 IN [] RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i.value3 IN [] RETURN i.value2", [ ] ],
+        [ "FOR i IN " + c.name() + " FILTER i._key IN [] RETURN i.value2", [ ] ]
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query[0]).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("NoResultsNode"), query);
+
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(0, results.json.length); 
+        assertEqual(0, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      });
     }
 
   };
@@ -2515,12 +2499,473 @@ function optimizerIndexesRangesTestSuite () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
+/// @brief test suite
+////////////////////////////////////////////////////////////////////////////////
+
+function optimizerIndexesSortTestSuite () {
+  var c;
+
+  return {
+    setUp : function () {
+      db._drop("UnitTestsCollection");
+      c = db._create("UnitTestsCollection");
+
+      for (var i = 0; i < 2000; ++i) {
+        c.save({ _key: "test" + i, value: i % 10 });
+      }
+
+      c.ensureSkiplist("value");
+    },
+
+    tearDown : function () {
+      db._drop("UnitTestsCollection");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortWithMultipleIndexes : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+      }
+      assertEqual(expected.sort(), results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortWithMultipleIndexesAndRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+        expected.push(9);
+      }
+      assertEqual(expected.sort(), results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiSortWithMultipleIndexes : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 1 SORT i.value, i.value2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+      }
+      assertEqual(expected, results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiSortWithMultipleIndexesAndRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      // create multiple indexes
+      c.ensureHashIndex("value");
+      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value", "value2");
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 9 || i.value == 1 SORT i.value, i.value2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+      assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      var expected = [ ];
+      for (var j = 0; j < 200; ++j) {
+        expected.push(1);
+        expected.push(9);
+      }
+      assertEqual(expected.sort(), results.json.sort(), query);
+      assertEqual(0, results.stats.scannedFull);
+      assertEqual(expected.length, results.stats.scannedIndex);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleAttributeSortNotOptimizedAway : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2");
+      c.ensureHashIndex("value3");
+
+      var queries = [
+        "FOR j IN " + c.name() + " FILTER j.value2 == 2 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
+        "FOR j IN 1..1 FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 3 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 3 SORT i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, PASSTHRU(1) RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT i.value3, i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 SORT PASSTHRU(1) RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testSingleAttributeSortOptimizedAway : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 3 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && PASSTHRU(1) SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER PASSTHRU(1) && i.value2 == 2 SORT i.value2 RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testMultiAttributeSortOptimizedAway : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && PASSTHRU(1) SORT i.value2 RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUsePrimaryIndexForSortIfConstRanges : function () {
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i._key == 'test1' SORT i._key RETURN i._key",
+        "FOR i IN " + c.name() + " FILTER i._key == 'test1' SORT i._key DESC RETURN i._key"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseHashIndexForSortIfConstRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoHashIndexForSort : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 ASC RETURN i.value2",
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoHashIndexForSortDifferentVariable : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3");
+
+      var queries = [
+        "LET docs = PASSTHRU([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2 RETURN i.value2",
+        "LET docs = PASSTHRU([ { value2: 2, value3: 2 } ]) FOR i IN docs FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2, i.value3 RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testUseSkiplistIndexForSortIfConstRanges : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3", "value4");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC, i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
+
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 SORT i.value4 DESC RETURN i.value2",
+
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC, i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC, i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 ASC, i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value2 DESC, i.value3 DESC, i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 ASC, i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value3 DESC, i.value4 DESC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value4 ASC RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 && i.value4 == 2 SORT i.value4 DESC RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoSkiplistIndexForSort : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value, value4: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value2, i.value3, i.value4 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value3, i.value4 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value4 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 SORT i.value4, i.value2, i.value3 RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoSkiplistIndexForSortDifferentVariable : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3");
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 SORT i.value2, i.value3 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2 RETURN i.value2",
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 FOR j IN " + c.name() + " FILTER j.value2 == 3 && j.value3 == 3 SORT i.value2, i.value3 RETURN i.value2"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+        assertNotEqual(-1, nodeTypes.indexOf("SortNode"), query);
+      });
+    }
+  };
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
 jsunity.run(optimizerIndexesTestSuite);
 jsunity.run(optimizerIndexesInOrTestSuite);
 jsunity.run(optimizerIndexesRangesTestSuite);
+jsunity.run(optimizerIndexesSortTestSuite);
 
 return jsunity.done();
 

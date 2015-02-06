@@ -43,6 +43,7 @@ var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 ////////////////////////////////////////////////////////////////////////////////
 
 function EndpointsSuite () {
+  "use strict";
   var cleanupEndpoints = function () {
     db._useDatabase("_system");
 

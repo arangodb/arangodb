@@ -160,6 +160,7 @@ static void CreateErrorObject (v8::Isolate* isolate,
   if (! ArangoError.IsEmpty()) {
     errorObject->SetPrototype(ArangoError);
   }
+
   isolate->ThrowException(errorObject);
 }
 
@@ -413,7 +414,7 @@ static void JS_Parse (const v8::FunctionCallbackInfo<v8::Value>& args) {
     filename = args[1];
   }
   else {
-    filename = TRI_V8_ASCII_STRING("(snippet)");
+    filename = TRI_V8_ASCII_STRING("<snippet>");
   }
 
   if (! source->IsString()) {
@@ -963,7 +964,7 @@ static void JS_Execute (const v8::FunctionCallbackInfo<v8::Value>& args) {
       if (TRI_IsTraceLogging(__FILE__)) {
         TRI_Utf8ValueNFC keyName(TRI_UNKNOWN_MEM_ZONE, key);
 
-        if (*keyName != 0) {
+        if (*keyName != nullptr) {
           LOG_TRACE("copying key '%s' from context to sandbox", *keyName);
         }
       }
@@ -3547,6 +3548,17 @@ static void JS_ArangoError (const v8::FunctionCallbackInfo<v8::Value>& args) {
     }
   }
 
+  {  
+    // call Error.captureStackTrace(this) so the ArangoError object gets a nifty stack trace 
+    v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+    v8::Handle<v8::Value> errorObject = current->Get(TRI_V8_ASCII_STRING("Error"));
+    v8::Handle<v8::Object> err = v8::Handle<v8::Object>::Cast(errorObject);
+    v8::Handle<v8::Function> captureStackTrace = v8::Handle<v8::Function>::Cast(err->Get(TRI_V8_ASCII_STRING("captureStackTrace")));
+
+    v8::Handle<v8::Value> arguments[] = { self };
+    captureStackTrace->Call(current, 1, arguments);
+  }
+
   TRI_V8_RETURN(self);
 }
 
@@ -3604,7 +3616,7 @@ static void JS_IsIP (const v8::FunctionCallbackInfo<v8::Value>& args) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds attributes to array
+/// @brief adds attributes to object
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_AugmentObject (v8::Isolate* isolate, v8::Handle<v8::Value> value, TRI_json_t const* json) {
@@ -3665,7 +3677,7 @@ string TRI_StringifyV8Exception (v8::Isolate* isolate, v8::TryCatch* tryCatch) {
     int end = message->GetEndColumn();
 
     if ((filenameString == nullptr) || 
-        (!strcmp(filenameString,"(arango)"))) {
+        (! strcmp(filenameString, TRI_V8_SHELL_COMMAND_NAME))) {
       if (exceptionString == nullptr) {
         result = "JavaScript exception\n";
       }

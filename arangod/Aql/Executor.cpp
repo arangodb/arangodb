@@ -166,14 +166,14 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "POSITION",                    Function("POSITION",                    "AQL_POSITION", "l,.|b", true, false, true) },
   { "CALL",                        Function("CALL",                        "AQL_CALL", "s|.+", false, true, false) },
   { "APPLY",                       Function("APPLY",                       "AQL_APPLY", "s|l", false, true, false) },
-  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, false, false) },
-  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, false, false) },
-  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, false) },
-  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, false, false) },
-  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, false, false) },
-  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, false, false) },
-  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, false, false) },
-  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, false, false) },
+  { "PUSH",                        Function("PUSH",                        "AQL_PUSH", "l,.|b", true, false, true) },
+  { "APPEND",                      Function("APPEND",                      "AQL_APPEND", "l,lz|b", true, false, true) },
+  { "POP",                         Function("POP",                         "AQL_POP", "l", true, false, true) },
+  { "SHIFT",                       Function("SHIFT",                       "AQL_SHIFT", "l", true, false, true) },
+  { "UNSHIFT",                     Function("UNSHIFT",                     "AQL_UNSHIFT", "l,.|b", true, false, true) },
+  { "REMOVE_VALUE",                Function("REMOVE_VALUE",                "AQL_REMOVE_VALUE", "l,.|n", true, false, true) },
+  { "REMOVE_VALUES",               Function("REMOVE_VALUES",               "AQL_REMOVE_VALUES", "l,lz", true, false, true) },
+  { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, false, true) },
 
   // document functions
   { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true) },
@@ -505,9 +505,54 @@ void Executor::generateCodeArray (AstNode const* node) {
 void Executor::generateCodeObject (AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
+  if (node->containsDynamicAttributeName()) {
+    generateCodeDynamicObject(node);
+  }
+  else {
+    generateCodeRegularObject(node);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an object with dynamically named
+/// attributes
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeDynamicObject (AstNode const* node) {
   size_t const n = node->numMembers();
   // very conservative minimum bound
-  _buffer->reserve(2 + n * 6); 
+  _buffer->reserve(64 + n * 10);
+
+  _buffer->appendText("(function() { var o={};");
+  for (size_t i = 0; i < n; ++i) {
+    auto member = node->getMember(i);
+
+    if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
+      _buffer->appendText("o[", 2);
+      generateCodeString(member->getStringValue());
+      _buffer->appendText("]=", 2);
+      generateCodeNode(member->getMember(0));
+    }
+    else {
+      _buffer->appendText("o[_AQL.AQL_TO_STRING(");
+      generateCodeNode(member->getMember(0));
+      _buffer->appendText(")]=", 3);
+      generateCodeNode(member->getMember(1));
+    }
+    _buffer->appendChar(';');
+  }
+  _buffer->appendText("return o;})()");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief generate JavaScript code for an object without dynamically named
+/// attributes
+////////////////////////////////////////////////////////////////////////////////
+
+void Executor::generateCodeRegularObject (AstNode const* node) {
+  size_t const n = node->numMembers();
+  // very conservative minimum bound
+  _buffer->reserve(2 + n * 6);
 
   _buffer->appendChar('{');
   for (size_t i = 0; i < n; ++i) {

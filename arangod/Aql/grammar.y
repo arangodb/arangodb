@@ -903,6 +903,21 @@ object_element:
     object_element_name T_COLON expression {
       parser->pushObjectElement($1, $3);
     }
+  | T_ARRAY_OPEN expression T_ARRAY_CLOSE T_COLON expression {
+      parser->pushObjectElement($2, $5);
+    }
+  | T_PARAMETER T_COLON expression {
+      if ($1 == nullptr) {
+        ABORT_OOM
+      }
+      
+      if (strlen($1) < 1 || $1[0] == '@') {
+        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE), $1, yylloc.first_line, yylloc.first_column);
+      }
+
+      auto param = parser->ast()->createNodeParameter($1);
+      parser->pushObjectElement(param, $3);
+    }
   ;
 
 reference:
@@ -942,7 +957,7 @@ single_reference:
         node = parser->ast()->createNodeReference($1);
       }
       else {
-        node = parser->ast()->createNodeCollection($1);
+        node = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_READ);
       }
 
       $$ = node;
@@ -1048,14 +1063,14 @@ collection_name:
         ABORT_OOM
       }
 
-      $$ = parser->ast()->createNodeCollection($1);
+      $$ = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_WRITE);
     }
   | T_QUOTED_STRING {
       if ($1 == nullptr) {
         ABORT_OOM
       }
 
-      $$ = parser->ast()->createNodeCollection($1);
+      $$ = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_WRITE);
     }
   | T_PARAMETER {
       if ($1 == nullptr) {

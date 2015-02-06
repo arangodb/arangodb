@@ -989,7 +989,7 @@
       var fields;
       var unique;
 
-      switch(indexType) {
+      switch (indexType) {
         case 'Cap':
           var size = parseInt($('#newCapSize').val(), 10) || 0;
           var byteSize = parseInt($('#newCapByteSize').val(), 10) || 0;
@@ -1095,7 +1095,7 @@
         var fieldString = '';
         var actionString = '';
 
-        $.each(this.index.indexes, function(k,v) {
+        $.each(this.index.indexes, function(k, v) {
           if (v.type === 'primary' || v.type === 'edge') {
             actionString = '<span class="icon_arangodb_locked" ' +
               'data-original-title="No action"></span>';
@@ -1111,15 +1111,21 @@
 
           //cut index id
           var position = v.id.indexOf('/');
-          var indexId = v.id.substr(position+1, v.id.length);
+          var indexId = v.id.substr(position + 1, v.id.length);
+          var selectivity = (
+            v.hasOwnProperty("selectivityEstimate") ? 
+            (v.selectivityEstimate * 100).toFixed(2) + "%" : 
+            "n/a"
+          );
 
           $('#collectionEditIndexTable').append(
-            '<tr>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>'+
-            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>'+
+            '<tr>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +
             '</tr>'
           );
         });

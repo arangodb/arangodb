@@ -1,3 +1,5 @@
+/*jshint strict: true, maxlen: 500 */
+/*global require, assertTrue, assertEqual, fail */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the crypto interface
 ///
@@ -37,6 +39,7 @@ var crypto = require("org/arangodb/crypto");
 ////////////////////////////////////////////////////////////////////////////////
 
 function CryptoSuite () {
+  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,7 +389,6 @@ function CryptoSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testConstantEquals : function () {
-      var time = require('internal').time;
       var data = [
         [ "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", "", false ],
         [ "", "f9e66e179b6747ae54108f82f8ade8b3c25d76fd30afde6c395822c530196169", false ],

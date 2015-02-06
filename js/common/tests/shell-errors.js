@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, fail, assertFalse, assertTrue, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the error codes
 ///
@@ -39,7 +42,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ErrorsSuite () {
-
+  "use strict";
   var throwError = function (code, message) {
     var err = new ArangoError();
     err.errorNum = code; 
@@ -60,15 +63,17 @@ function ErrorsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testBuiltIn : function () {
+      var testthrow = false;
       try {
         throw "foo";
-        fail();
       }
       catch (err) {
         assertFalse(err instanceof ArangoError);
         assertEqual("string", typeof err);
         assertEqual("foo", err);
+        testthrow = true;  
       }
+      assertTrue(testthrow);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -76,14 +81,16 @@ function ErrorsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testTypeErrorBuiltIn : function () {
+      var testthrow = false;
       try {
         throw new TypeError("invalid type!");
-        fail();
       }
       catch (err) {
         assertFalse(err instanceof ArangoError);
         assertEqual("invalid type!", err.message);
+        testthrow = true;  
       }
+      assertTrue(testthrow);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

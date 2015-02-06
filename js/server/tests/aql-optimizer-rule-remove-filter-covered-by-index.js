@@ -206,16 +206,16 @@ function optimizerRuleTestSuite() {
 
     },
 
-    ////////////////////////////////////////////////////////////////////////////////
-    /// @brief test that rule has an effect, the filter can be removed, but the sort
-    /// is kept in place since the index can't fullfill all the sorting.
-    ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test that rule has an effect, the filter can be removed, but the sort
+/// is kept in place since the index can't fullfill all the sorting.
+////////////////////////////////////////////////////////////////////////////////
 
-    testRuleHasEffect_Combine_Sort_NO_Filter : function () {
+    testRuleHasEffectCombineSortNoFilter : function () {
       var queries = [ 
         "FOR v IN " + colName + " FILTER v.a == 1 SORT v.a, v.c RETURN [v.a, v.b, v.c]",
         "FOR v IN " + colName + " LET x = (FOR w IN " 
-          + colNameOther + " FILTER w.f == 1 SORT w.a, w.h RETURN  w.f ) SORT v.a , v.c FILTER v.a == 1RETURN [v.a, x]"
+          + colNameOther + " FILTER w.f == 1 SORT w.a, w.h RETURN  w.f ) SORT v.a , v.c FILTER v.a == 1 RETURN [v.a, x]"
       ];
       queries.forEach(function(query) {
         var result;

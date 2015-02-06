@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue */
+/*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -43,6 +43,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ExplainSuite () {
+  "use strict";
   var cn = "UnitTestsExplain";
 
   return {
@@ -149,7 +150,7 @@ function ExplainSuite () {
 
       node = nodes[1];
       assertEqual("CalculationNode", node.type);
-      
+
       node = nodes[2];
       assertEqual("EnumerateListNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -171,7 +172,7 @@ function ExplainSuite () {
 
       node = nodes[1];
       assertEqual("CalculationNode", node.type);
-      
+
       node = nodes[2];
       assertEqual("EnumerateListNode", node.type);
 
@@ -198,7 +199,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -219,7 +220,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -240,7 +241,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -261,7 +262,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -277,12 +278,15 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainUpdate1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@cn update u._key with u in @@cn", bindVars: { "@cn": cn } });
+      var st = new ArangoStatement(db, {
+        query : "for u in @@cn update u._key with u in @@cn",
+        bindVars: { "@cn": cn }
+      });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -306,7 +310,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -330,7 +334,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -351,7 +355,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -367,12 +371,15 @@ function ExplainSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExplainReplace1 : function () {
-      var st = new ArangoStatement(db, { query : "for u in @@cn replace u._key with u in @@cn", bindVars: { "@cn": cn } });
+      var st = new ArangoStatement(db, {
+        query : "for u in @@cn replace u._key with u in @@cn",
+        bindVars: { "@cn": cn }
+      });
       var nodes = st.explain().plan.nodes, node;
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -396,7 +403,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -420,7 +427,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);
@@ -441,7 +448,7 @@ function ExplainSuite () {
 
       node = nodes[0];
       assertEqual("SingletonNode", node.type);
-      
+
       node = nodes[1];
       assertEqual("EnumerateCollectionNode", node.type);
       assertEqual("u", node.outVariable.name);

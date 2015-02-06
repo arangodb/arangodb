@@ -58,8 +58,11 @@ TRI_mutex_t;
 
 #ifdef TRI_FAKE_SPIN_LOCKS
 
-#define TRI_spin_t phread_mutex_t
-
+#define TRI_spin_t TRI_mutex_t
+#define TRI_InitSpin TRI_InitMutex
+#define TRI_DestroySpin TRI_DestroyMutex
+#define TRI_LockSpin TRI_LockMutex
+#define TRI_UnlockSpin TRI_UnlockMutex
 #else
 
 #define TRI_spin_t CRITICAL_SECTION

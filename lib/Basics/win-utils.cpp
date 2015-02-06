@@ -367,6 +367,11 @@ void TRI_FixIcuDataEnv () {
     putenv(e.c_str());
   }
   else {
+#ifdef _SYSCONFDIR_
+    string e  = string("ICU_DATA=") + _SYSCONFDIR_ + "..\\..\\bin";
+    e = StringUtils::replace(e, "\\", "\\\\");
+    putenv(e.c_str());
+#else
     p = TRI_LocateBinaryPath(nullptr);
 
     if (p != nullptr) {
@@ -377,6 +382,7 @@ void TRI_FixIcuDataEnv () {
     else {
       putenv("ICU_DATA=.\\\\");
     }
+#endif
   }
 
   if (p != nullptr) {

@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, assertEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for import
 ///
@@ -34,6 +37,7 @@ var ArangoError = require("org/arangodb").ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 function importTestSuite () {
+  "use strict";
   var errors = internal.errors;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,15 +78,16 @@ function importTestSuite () {
     while (result.hasNext()) {
       var keys = [ ];
       var row = result.next();
-      for (var k in row) {
-        if (row.hasOwnProperty(k) && k != '_id' && k != '_rev' && k != '_key') {
+      var k;
+      for (k in row) {
+        if (row.hasOwnProperty(k) && k !== '_id' && k !== '_rev' && k !== '_key') {
           keys.push(k);
         }
       }
        
       keys.sort();
       var resultRow = { };
-      for (var k in keys) {
+      for (k in keys) {
         if (keys.hasOwnProperty(k)) {
           resultRow[keys[k]] = row[keys[k]];
         }
@@ -115,7 +120,26 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testJsonImport1 : function () {
-      var expected = [ { "id": 1, "one": 1, "three": 3, "two": 2 }, { "a": 1234, "b": "the quick fox", "id": 2, "jumped": "over the fox", "null": null }, { "id": 3, "not": "important", "spacing": "is" }, { "  c  ": "h\"'ihi", "a": true, "b": false, "d": "", "id": 4 }, { "id": 5 } ];
+      var expected = [ { "id": 1,
+                         "one": 1,
+                         "three": 3,
+                         "two": 2 },
+                       { "a": 1234,
+                         "b": "the quick fox",
+                         "id": 2,
+                         "jumped":
+                         "over the fox",
+                         "null": null },
+                       { "id": 3,
+                         "not": "important",
+                         "spacing": "is" },
+                       { "  c  ": "h\"'ihi",
+                         "a": true,
+                         "b": false,
+                         "d": "",
+                         "id": 4 },
+                       { "id": 5 } ];
+
       var actual = getQueryResults("FOR i IN UnitTestsImportJson1 SORT i.id RETURN i");
       assertEqual(expected, actual);
     },
@@ -196,7 +220,8 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testCsvImport2 : function () {
-      assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
+      assertEqual(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code,
+                  getErrorCode(function() { executeQuery("FOR i IN UnitTestsImportCsv2 SORT i.id RETURN i"); } ));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -259,7 +284,13 @@ function importTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
     
     testTsvImport2 : function () {
-      var expected = [ { "  fox" : "dog", "brown  " : " the lazy", "the quick": " jumped over" }, { "  fox" : " end", "brown  " : "\"\"\"", "the quick" : "\"'.,;" } ];
+      var expected = [ { "  fox" : "dog",
+                         "brown  " : " the lazy",
+                         "the quick": " jumped over" },
+                       { "  fox" : " end",
+                         "brown  " : "\"\"\"",
+                         "the quick" : "\"'.,;" } ];
+
       var actual = getQueryResults("FOR i IN UnitTestsImportTsv2 SORT i.`  fox` DESC RETURN i");
 
       assertEqual(expected, actual);
@@ -281,7 +312,7 @@ function importTestSuite () {
       assertEqual(expected, actual);
     }
 
-  }
+  };
 }
 
 ////////////////////////////////////////////////////////////////////////////////

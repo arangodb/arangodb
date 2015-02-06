@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue, arango */
+/*jshint unused: false */
+/*global require, fail, assertEqual, assertTrue, assertFalse, assertNull, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -47,6 +48,7 @@ var slaveEndpoint = masterEndpoint.replace(/:3(\d+)$/, ':4$1');
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationSuite () {
+  "use strict";
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
@@ -72,19 +74,20 @@ function ReplicationSuite () {
   };
 
   var compareTicks = function (l, r) {
+    var i;
     if (l === null) {
       l = "0";
     }
     if (r === null) {
       r = "0";
     }
-    if (l.length != r.length) {
+    if (l.length !== r.length) {
       return l.length - r.length < 0 ? -1 : 1;
     }
 
     // length is equal
     for (i = 0; i < l.length; ++i) {
-      if (l[i] != r[i]) {
+      if (l[i] !== r[i]) {
         return l[i] < r[i] ? -1 : 1;
       }
     }
@@ -474,7 +477,11 @@ function ReplicationSuite () {
           var c = db._create(cn), i;
 
           for (i = 0; i < 1000; ++i) {
-            c.save({ "value" : i, "foo" : true, "bar" : [ i , false ], "value2" : null, "mydata" : { "test" : [ "abc", "def" ] } });
+            c.save({ "value" : i,
+                     "foo" : true,
+                     "bar" : [ i , false ],
+                     "value2" : null,
+                     "mydata" : { "test" : [ "abc", "def" ] } });
           }
 
           state.checksum = collectionChecksum(cn);
@@ -500,10 +507,10 @@ function ReplicationSuite () {
 
           for (i = 0; i < 1000; ++i) {
             c.save({ "abc" : true, "_key" : "test" + i });
-            if (i % 3 == 0) {
+            if (i % 3 === 0) {
               c.remove(c.last());
             }
-            else if (i % 5 == 0) {
+            else if (i % 5 === 0) {
               c.update("test" + i, { "def" : "hifh" });
             }
           }
@@ -581,10 +588,10 @@ function ReplicationSuite () {
 
           for (i = 0; i < 100; ++i) {
             c.save({ "abc" : true, "_key" : "test" + i });
-            if (i % 3 == 0) {
+            if (i % 3 === 0) {
               c.remove(c.last());
             }
-            else if (i % 5 == 0) {
+            else if (i % 5 === 0) {
               c.update("test" + i, { "def" : "hifh" });
             }
           }
@@ -815,7 +822,7 @@ function ReplicationSuite () {
                 c.save({ "_key" : "test" + i, value : i });
                 c.update("test" + i, { value : i + 1 });
 
-                if (i % 5 == 0) {
+                if (i % 5 === 0) {
                   c.remove("test" + i);
                 }
               }
@@ -1264,7 +1271,7 @@ function ReplicationSuite () {
 /// @brief test unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUniqueConstraint : function () {
+    testUniqueConstraint2 : function () {
       compare(
         function (state) {
           var c = db._create(cn), i;

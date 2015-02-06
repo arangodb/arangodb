@@ -593,6 +593,20 @@ static int SizeHintHashIndex (TRI_index_t* idx,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the hash index can provide a selectivity estimate
+////////////////////////////////////////////////////////////////////////////////
+
+static double SelectivityEstimateHashIndex (TRI_index_t const* idx) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    return 1.0;
+  }
+
+  return TRI_SelectivityHashArrayMulti(&hashIndex->_hashArrayMulti);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -615,11 +629,13 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
 
   TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, unique, false);
 
-  idx->memory   = MemoryHashIndex;
-  idx->json     = JsonHashIndex;
-  idx->insert   = InsertHashIndex;
-  idx->remove   = RemoveHashIndex;
-  idx->sizeHint = SizeHintHashIndex;
+  idx->_hasSelectivityEstimate = true;
+  idx->selectivityEstimate     = SelectivityEstimateHashIndex;
+  idx->memory                  = MemoryHashIndex;
+  idx->json                    = JsonHashIndex;
+  idx->insert                  = InsertHashIndex;
+  idx->remove                  = RemoveHashIndex;
+  idx->sizeHint                = SizeHintHashIndex;
 
   // ...........................................................................
   // Copy the contents of the path list vector into a new vector and store this
@@ -732,6 +748,19 @@ int TRI_LookupHashIndex (TRI_index_t* idx,
   }
 
   return TRI_LookupByKeyHashArrayMulti(&hashIndex->_hashArrayMulti, searchValue, documents, next, batchSize);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns a selectivity estimate for the index
+////////////////////////////////////////////////////////////////////////////////
+
+double TRI_SelectivityHashIndex (TRI_index_t* idx) {
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
+
+  if (hashIndex->base._unique) {
+    return 1.0; 
+  }
+  return TRI_SelectivityHashArrayMulti(&hashIndex->_hashArrayMulti);
 }
 
 // -----------------------------------------------------------------------------

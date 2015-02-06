@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for import tests
 ///
@@ -26,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
+  "use strict";
   var db = require("org/arangodb").db;
 
   db._drop("UnitTestsImportJson1");
@@ -46,7 +50,7 @@
 
 return {
   status: true
-}
+};
 
 // Local Variables:
 // mode: outline-minor

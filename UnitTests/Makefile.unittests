@@ -436,9 +436,9 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-errors.js \
                @top_srcdir@/js/common/tests/shell-fs.js \
                @top_srcdir@/js/common/tests/shell-general-graph.js \
-               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-graph-algorithms.js \
                @top_srcdir@/js/common/tests/shell-graph-measurement.js \
+               @top_srcdir@/js/common/tests/shell-graph-traversal.js \
                @top_srcdir@/js/common/tests/shell-keygen.js \
                @top_srcdir@/js/common/tests/shell-keygen-noncluster.js \
                @top_srcdir@/js/common/tests/shell-index-ensure.js \
@@ -457,6 +457,7 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-cap-constraint-timecritical.js \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
+               @top_srcdir@/js/common/tests/shell-hash-index-noncluster.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
                @top_srcdir@/js/common/tests/shell-graph.js
 
@@ -539,6 +540,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-call-apply.js \
 			@top_srcdir@/js/server/tests/aql-complex.js \
 			@top_srcdir@/js/server/tests/aql-cross.js \
+			@top_srcdir@/js/server/tests/aql-dynamic-attributes.js \
 			@top_srcdir@/js/server/tests/aql-edges-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-escaping.js \
 			@top_srcdir@/js/server/tests/aql-explain-noncluster.js \
@@ -552,6 +554,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-functions-types.js \
 			@top_srcdir@/js/server/tests/aql-general-graph.js \
 			@top_srcdir@/js/server/tests/aql-graph.js \
+			@top_srcdir@/js/server/tests/aql-graph-visitors.js \
 			@top_srcdir@/js/server/tests/aql-hash-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-is-in-polygon.js \
 			@top_srcdir@/js/server/tests/aql-logical.js \
@@ -560,6 +563,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-operators.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-count.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-collect-into.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-costs.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-dynamic-bounds.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
@@ -684,8 +688,9 @@ unittests-shell-client-readonly:
 SHELL_CLIENT_ONLY = \
 	       @top_srcdir@/js/client/tests/shell-download.js \
 	       @top_srcdir@/js/client/tests/shell-endpoints.js \
+	       @top_srcdir@/js/client/tests/shell-client.js \
 	       @top_srcdir@/js/client/tests/shell-fm.js \
-	       @top_srcdir@/js/client/tests/shell-client.js
+	       @top_srcdir@/js/client/tests/shell-request.js 
 
 SHELL_CLIENT = $(SHELL_COMMON) $(SHELL_CLIENT_ONLY)
 

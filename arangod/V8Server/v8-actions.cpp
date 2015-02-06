@@ -1291,12 +1291,11 @@ static void JS_ClusterTest (const v8::FunctionCallbackInfo<v8::Value>& args) {
                      TRI_V8_STD_STRING(res->result->getBody()));
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
         r->Set(TRI_V8_ASCII_STRING("details"), details);
-        r->Set(ErrorMessageKey, TRI_V8_ASCII_STRING("got bad HTTP response"));
+        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res->errorMessage));
       }
       else {
         TRI_GET_GLOBAL_STRING(ErrorMessageKey);
-        r->Set(ErrorMessageKey,
-               TRI_V8_ASCII_STRING("got no HTTP response, DBserver seems gone"));
+        r->Set(ErrorMessageKey, TRI_V8_STD_STRING(res->errorMessage));
       }
       LOG_DEBUG("JS_ClusterTest: communications error");
     }

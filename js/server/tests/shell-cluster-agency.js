@@ -1,3 +1,6 @@
+/*jshint strict: true */
+/*global require, fail, assertFalse, assertTrue, assertEqual, assertNotEqual, assertMatch, ArangoAgency */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
 ///
@@ -36,6 +39,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function AgencySuite () {
+  "use strict";
   var agency = ArangoAgency;
   var oldPrefix = agency.prefix(true);
 
@@ -334,7 +338,7 @@ function AgencySuite () {
 
       // overwrite
       agency.set("UnitTestsAgency/foo", "test2", 2);
-      var values = agency.get("UnitTestsAgency/foo");
+      values = agency.get("UnitTestsAgency/foo");
       assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
       assertEqual(values["UnitTestsAgency/foo"], "test2");
 
@@ -342,13 +346,13 @@ function AgencySuite () {
       
       // re-insert
       agency.set("UnitTestsAgency/foo", "test3");
-      var values = agency.get("UnitTestsAgency/foo");
+      values = agency.get("UnitTestsAgency/foo");
       assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
       assertEqual(values["UnitTestsAgency/foo"], "test3");
 
       // update with ttl
       agency.set("UnitTestsAgency/foo", "test4", 2);
-      var values = agency.get("UnitTestsAgency/foo");
+      values = agency.get("UnitTestsAgency/foo");
       assertTrue(values.hasOwnProperty("UnitTestsAgency/foo"));
       assertEqual(values["UnitTestsAgency/foo"], "test4");
 

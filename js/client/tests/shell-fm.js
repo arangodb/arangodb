@@ -41,7 +41,7 @@ var db = require("internal").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function FoxxManagerSuite () {
-
+  "use strict";
   function inList (list, name) {
     var i;
 

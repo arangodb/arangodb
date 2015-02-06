@@ -1,3 +1,5 @@
+/*jshint strict: true, maxlen:4000 */
+/*global require, assertEqual, assertTrue, assertFalse */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
 ///
@@ -33,6 +35,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function dumpTestSuite () {
+  "use strict";
   var db = internal.db;
 
   return {
@@ -362,7 +365,7 @@ function dumpTestSuite () {
 
         assertEqual(i, doc.value1);
         assertEqual("this is a test", doc.value2);
-        if (i % 2 == 0) {
+        if (i % 2 === 0) {
           assertEqual(i, doc.value3);
         }
         else {

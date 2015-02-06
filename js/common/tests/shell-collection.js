@@ -1,3 +1,6 @@
+/*jshint strict: false */
+/*global require, assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertNull, assertUndefined, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
 ///
@@ -34,16 +37,16 @@ var ArangoCollection = arangodb.ArangoCollection;
 var db = arangodb.db;
 var ERRORS = arangodb.errors;
 var testHelper = require("org/arangodb/test-helper").Helper;
- 
-  
+
 var compareStringIds = function (l, r) {
-  if (l.length != r.length) {
+  var i;
+  if (l.length !== r.length) {
     return l.length - r.length < 0 ? -1 : 1;
   }
 
   // length is equal
   for (i = 0; i < l.length; ++i) {
-    if (l[i] != r[i]) {
+    if (l[i] !== r[i]) {
       return l[i] < r[i] ? -1 : 1;
     }
   }
@@ -70,6 +73,7 @@ function CollectionSuiteErrorHandling () {
       try {
         // one char too long
         db._create("a1234567890123456789012345678901234567890123456789012345678901234");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -82,8 +86,8 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameSystem : function () {
       try {
-        // one char too long
         db._create("1234");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -97,6 +101,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameUnderscore : function () {
       try {
         db._create("_illegal");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -110,6 +115,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameEmpty : function () {
       try {
         db._create("");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -123,6 +129,7 @@ function CollectionSuiteErrorHandling () {
     testErrorHandlingBadNameNumber : function () {
       try {
         db._create("12345");
+        fail();
       }
       catch (err) {
         assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
@@ -135,10 +142,11 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameUnderscoreShortCut : function () {
       try {
-        db["_illegal"];
+        var a = db._illegal;
+        assertUndefined(a);
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        assertTrue(false);
       }
     },
 
@@ -148,10 +156,11 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameEmptyShortCut : function () {
       try {
-        db[""];
+        var a = db[""];
+        assertUndefined(a);
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        assertTrue(false);
       }
     },
 
@@ -161,10 +170,11 @@ function CollectionSuiteErrorHandling () {
 
     testErrorHandlingBadNameNumberShortCut : function () {
       try {
-        db["12345"];
+        var a = db["12345"];
+        assertUndefined(a);
       }
       catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+        assertTrue(false);
       }
     },
 
@@ -369,7 +379,7 @@ function CollectionSuite () {
       c1.unload();
       c1 = null;
 
-      c2 = db[cn];
+      var c2 = db[cn];
       assertEqual(ArangoCollection.TYPE_DOCUMENT, c2.type());
 
       db._drop(cn);
@@ -387,7 +397,7 @@ function CollectionSuite () {
       c1.unload();
       c1 = null;
 
-      c2 = db[cn];
+      var c2 = db[cn];
       assertEqual(ArangoCollection.TYPE_EDGE, c2.type());
 
       db._drop(cn);
@@ -651,7 +661,7 @@ function CollectionSuite () {
       assertTypeOf("string", r2);
       assertTrue(r2.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r2, r1));
-      
+
       c1.save({ a : 2 });
       var r3 = c1.revision();
       assertTypeOf("string", r3);
@@ -667,7 +677,7 @@ function CollectionSuite () {
       var r4 = c1.revision();
       assertTypeOf("string", r4);
       assertEqual(0, compareStringIds(r3, r4));
-      
+
       db._drop(cn);
     },
 
@@ -688,11 +698,11 @@ function CollectionSuite () {
       var r2 = c1.revision();
       assertTrue(r2.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r2, r1));
-      
+
       c1.save({ _key: "123" });
       c1.save({ _key: "456" });
       c1.save({ _key: "789" });
-      
+
       var r3 = c1.revision();
       assertTrue(r3.match(/^[0-9]+$/));
       assertEqual(1, compareStringIds(r3, r2));
@@ -717,7 +727,7 @@ function CollectionSuite () {
       var r6 = c1.revision();
       assertTrue(r6.match(/^[0-9]+$/));
       assertEqual(0, compareStringIds(r6, r5));
-     
+
       for (var i = 0; i < 10; ++i) {
         c1.save({ _key: "test" + i });
         assertTrue(c1.revision().match(/^[0-9]+$/));
@@ -729,7 +739,7 @@ function CollectionSuite () {
       c1.unload();
       c1 = null;
       internal.wait(5);
-      
+
       // compare rev
       c1 = db._collection(cn);
       var r7 = c1.revision();
@@ -743,7 +753,7 @@ function CollectionSuite () {
       c1.unload();
       c1 = null;
       internal.wait(5);
-      
+
       // compare rev
       c1 = db._collection(cn);
       var r9 = c1.revision();
@@ -767,7 +777,7 @@ function CollectionSuite () {
 
       c1.save({ "a": 1, "_key" : "one" });
       assertEqual(1, c1.first().a);
-      
+
       c1.save({ "a": 2, "_key" : "two" });
       assertEqual(1, c1.first().a);
 
@@ -786,14 +796,14 @@ function CollectionSuite () {
       assertEqual(1, actual.length);
       assertEqual(0, actual[0].a);
       assertEqual("test0", actual[0]._key);
-      
+
       actual = c1.first(2);
       assertEqual(2, actual.length);
       assertEqual(0, actual[0].a);
       assertEqual(1, actual[1].a);
       assertEqual("test0", actual[0]._key);
       assertEqual("test1", actual[1]._key);
-      
+
       actual = c1.first(10);
       assertEqual(10, actual.length);
       assertEqual(0, actual[0].a);
@@ -805,7 +815,7 @@ function CollectionSuite () {
 
       c1.remove("test0");
       c1.remove("test3");
-      
+
       actual = c1.first(10);
       assertEqual(10, actual.length);
       assertEqual(1, actual[0].a);
@@ -818,7 +828,7 @@ function CollectionSuite () {
       assertEqual("test11", actual[9]._key);
 
       c1.truncate();
-      
+
       actual = c1.first(10);
       assertEqual(0, actual.length);
 
@@ -839,7 +849,7 @@ function CollectionSuite () {
 
       c1.save({ "a": 1, "_key" : "one" });
       assertEqual(1, c1.last().a);
-      
+
       c1.save({ "a": 2, "_key" : "two" });
       assertEqual(2, c1.last().a);
 
@@ -858,14 +868,14 @@ function CollectionSuite () {
       assertEqual(1, actual.length);
       assertEqual(999, actual[0].a);
       assertEqual("test999", actual[0]._key);
-      
+
       actual = c1.last(2);
       assertEqual(2, actual.length);
       assertEqual(999, actual[0].a);
       assertEqual(998, actual[1].a);
       assertEqual("test999", actual[0]._key);
       assertEqual("test998", actual[1]._key);
-      
+
       actual = c1.last(10);
       assertEqual(10, actual.length);
       assertEqual(999, actual[0].a);
@@ -877,7 +887,7 @@ function CollectionSuite () {
 
       c1.remove("test999");
       c1.remove("test996");
-      
+
       actual = c1.last(10);
       assertEqual(10, actual.length);
       assertEqual(998, actual[0].a);
@@ -923,7 +933,7 @@ function CollectionSuite () {
       assertEqual("test0", actual[0]._key);
       assertEqual("test1", actual[1]._key);
       assertEqual("test9", actual[9]._key);
-      
+
       actual = c1.last(10);
       assertEqual(10, actual.length);
       assertEqual(1999, actual[0].value);
@@ -983,20 +993,21 @@ function CollectionDbSuite () {
 
       var collections = db._collections();
       for (var i in collections) {
-        var c = collections[i];
+        if (collections.hasOwnProperty[i]) {
+          var c = collections[i];
 
-        assertTypeOf("string", c.name());
-        assertTypeOf("number", c.status());
-        assertTypeOf("number", c.type());
-        
-        if (c.name() == cn1) {
-          assertEqual(ArangoCollection.TYPE_DOCUMENT, c.type());
-        }
-        else if (c.name() == cn2) {
-          assertEqual(ArangoCollection.TYPE_EDGE, c.type());
+          assertTypeOf("string", c.name());
+          assertTypeOf("number", c.status());
+          assertTypeOf("number", c.type());
+
+          if (c.name() === cn1) {
+            assertEqual(ArangoCollection.TYPE_DOCUMENT, c.type());
+          }
+          else if (c.name() === cn2) {
+            assertEqual(ArangoCollection.TYPE_EDGE, c.type());
+          }
         }
       }
-
       db._drop(cn1);
       db._drop(cn2);
     },
@@ -1184,4 +1195,3 @@ return jsunity.done();
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}\\)"
 // End:
-

@@ -162,10 +162,11 @@ namespace triagens {
               &bytesWritten);
 
             if (! res) {
-              if (TRI_errno() != TRI_ERROR_NO_ERROR) {
-                setErrorMessage(TRI_last_error(), false);
-              }
-
+              setErrorMessage("Error writing to '" +
+                              _connection->getEndpoint()->getSpecification() +
+                              "' '" +
+                              _connection->getErrorDetails() +
+                              "'");
               this->close(); // this sets _state to IN_CONNECT for a retry
             }
             else {
@@ -188,12 +189,18 @@ namespace triagens {
             // we need to notice if the other side has closed the connection:
             bool connectionClosed;
 
-            bool res = _connection->handleRead(remainingTime, _readBuffer,
+            bool res = _connection->handleRead(remainingTime,
+                                               _readBuffer,
                                                connectionClosed);
 
 
             // If there was an error, then we are doomed:
             if (! res) {
+              setErrorMessage("Error reading from: '" +
+                              _connection->getEndpoint()->getSpecification() +
+                              "' '" +
+                              _connection->getErrorDetails() +
+                              "'");
               this->close(); // this sets the state to IN_CONNECT for a retry
               break;
             }
@@ -288,7 +295,11 @@ namespace triagens {
         TRI_ASSERT(_connection != nullptr);
 
         if (! _connection->connect()) {
-          setErrorMessage("Could not connect to '" +  _connection->getEndpoint()->getSpecification() + "'", errno);
+          setErrorMessage("Could not connect to '" +
+                          _connection->getEndpoint()->getSpecification() +
+                          "' '" +
+                          _connection->getErrorDetails() +
+                          "'");
           _state = DEAD;
         }
         else {
@@ -348,7 +359,9 @@ namespace triagens {
         case IN_CONNECT:
         default: {
           _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
-          setErrorMessage("Could not connect");
+          if (!haveErrorMessage()) {
+            setErrorMessage("Could not connect");
+          }
           break;
         }
       }

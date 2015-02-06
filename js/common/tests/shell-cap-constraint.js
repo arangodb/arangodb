@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, fail, assertEqual, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cap constraint
@@ -40,6 +40,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CapConstraintSuite() {
+  "use strict";
   var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionCap";
   var collection = null;
@@ -222,7 +223,7 @@ function CapConstraintSuite() {
       collection.save({ n : 10 });
       var a = collection.save({ n : 11 });
 
-      for (var i = 12;  i < 20;  ++i) {
+      for (i = 12;  i < 20;  ++i) {
         collection.save({ n : i });
       }
 
@@ -231,7 +232,7 @@ function CapConstraintSuite() {
 
       collection.replace(a._id, { n : 11, a : 1 });
 
-      for (var i = 20;  i < 29;  ++i) {
+      for (i = 20;  i < 29;  ++i) {
         collection.save({ n : i });
       }
 
@@ -273,7 +274,7 @@ function CapConstraintSuite() {
       assertEqual(0, collection.count());
       assertEqual([ ], collection.toArray());
 
-      for (var i = 0; i < 10; ++i) {
+      for (i = 0; i < 10; ++i) {
         collection.save({ n : i });
       }
 
@@ -284,7 +285,7 @@ function CapConstraintSuite() {
       assertEqual(0, collection.count());
       assertEqual([ ], collection.toArray());
 
-      for (var i = 25; i < 35; ++i) {
+      for (i = 25; i < 35; ++i) {
         collection.save({ n : i });
       }
 
@@ -582,7 +583,7 @@ function CapConstraintSuite() {
       var rev = doc._rev;
       collection.save({ a : 2 });
 
-      data = { };
+      var data = { };
       for (var i = 0; i < 1000; ++i) {
         data["b" + i] = "this document will really get too big...";
       }

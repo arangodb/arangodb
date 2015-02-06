@@ -1299,7 +1299,7 @@ static void DropIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& arg
 /// [
 ///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] },
 ///   { "id" : "example/991154", "unique" : false, "type" : "skiplist", "fields" : ["a", "b"] }
-///   ]
+/// ]
 /// 
 /// arango> db.example.dropIndex(i[0])
 /// false
@@ -1308,7 +1308,9 @@ static void DropIndexCoordinator (const v8::FunctionCallbackInfo<v8::Value>& arg
 /// true
 /// 
 /// arango> i = db.example.getIndexes();
-/// [{ "id" : "example/0", "type" : "primary", "fields" : ["_id"] }]
+/// [
+///   { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
+/// ]
 /// ```
 ///
 /// @endDocuBlock
@@ -1422,7 +1424,7 @@ static void GetIndexesCoordinator (const v8::FunctionCallbackInfo<v8::Value>& ar
 /// @startDocuBlock collectionGetIndexes
 /// `getIndexes()`
 ///
-/// Returns a list of all indexes defined for the collection.
+/// Returns an array of all indexes defined for the collection.
 ///
 /// @EXAMPLES
 ///

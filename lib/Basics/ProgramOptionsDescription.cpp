@@ -56,6 +56,9 @@ ProgramOptionsDescription::ProgramOptionsDescription ()
     _optionTypes(),
     _long2short(),
     _helpTexts(),
+    _defaultTexts(),
+    _currentTexts(),
+    _values(),
     _stringOptions(),
     _vectorStringOptions(),
     _int32Options(),
@@ -79,32 +82,8 @@ ProgramOptionsDescription::ProgramOptionsDescription ()
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription::ProgramOptionsDescription (string const& name)
-  : _name(""),
-    _helpOptions(),
-    _subDescriptions(),
-    _hiddenSubDescriptions(),
-    _optionNames(),
-    _optionTypes(),
-    _long2short(),
-    _helpTexts(),
-    _stringOptions(),
-    _vectorStringOptions(),
-    _int32Options(),
-    _vectorInt32Options(),
-    _int64Options(),
-    _vectorInt64Options(),
-    _uint32Options(),
-    _vectorUInt32Options(),
-    _uint64Options(),
-    _vectorUInt64Options(),
-    _doubleOptions(),
-    _vectorDoubleOptions(),
-    _boolOptions(),
-#if __WORDSIZE == 32
-    _timeOptions(),
-#endif
-    _positionals(0) {
+ProgramOptionsDescription::ProgramOptionsDescription (const string& name)
+  : ProgramOptionsDescription() {
   setName(name);
 }
 
@@ -121,6 +100,9 @@ ProgramOptionsDescription::ProgramOptionsDescription (ProgramOptionsDescription 
     _optionTypes(that._optionTypes),
     _long2short(that._long2short),
     _helpTexts(that._helpTexts),
+    _defaultTexts(that._defaultTexts),
+    _currentTexts(that._currentTexts),
+    _values(that._values),
     _stringOptions(that._stringOptions),
     _vectorStringOptions(that._vectorStringOptions),
     _int32Options(that._int32Options),
@@ -144,7 +126,7 @@ ProgramOptionsDescription::ProgramOptionsDescription (ProgramOptionsDescription 
 /// @brief assignment constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator= (ProgramOptionsDescription const& that) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator= (const ProgramOptionsDescription& that) {
   if (this != &that) {
     _name = that._name;
     _helpOptions = that._helpOptions;
@@ -154,6 +136,9 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator= (ProgramOptionsD
     _optionTypes = that._optionTypes;
     _long2short = that._long2short;
     _helpTexts = that._helpTexts;
+    _defaultTexts = that._defaultTexts;
+    _currentTexts = that._currentTexts;
+    _values = that._values;
     _stringOptions = that._stringOptions;
     _vectorStringOptions = that._vectorStringOptions;
     _int32Options = that._int32Options;
@@ -180,7 +165,7 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator= (ProgramOptionsD
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-void ProgramOptionsDescription::setName (string const& name) {
+void ProgramOptionsDescription::setName (const string& name) {
   vector<string> n = StringUtils::split(name, ':');
 
   if (! n.empty()) {
@@ -211,12 +196,13 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (ProgramOptions
 /// @brief adds a new flag
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, const string& text) {
   string name = check(full);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_FLAG;
   _helpTexts[name] = text;
+  _defaultTexts[name] = "";
 
   return *this;
 }
@@ -225,19 +211,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds a string argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, string* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, string* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_STRING;
   _stringOptions[name] = value;
-
-  if (value->empty()) {
-    _helpTexts[name] = text;
-  }
-  else {
-    _helpTexts[name] = text + " (default: \"" + *value + "\")";
-  }
+  _helpTexts[name] = text;
+  _defaultTexts[name] = (value->empty()) ? "" : ("\"" + *value + "\"");
+  _currentTexts[name] = [] (void* p) -> string { return ((string*)p)->empty() ? "" : "\"" + (* (string*) p) + "\""; };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -246,13 +229,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds a string vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, vector<string>* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, vector<string>* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_VECTOR_STRING;
   _vectorStringOptions[name] = value;
   _helpTexts[name] = text;
+  _defaultTexts[name] = value->empty() ? "" : StringUtils::join(*value, ", ");
+  _currentTexts[name] = [] (void* p) -> string { return ((vector<string>*)p)->empty() ? "" : "\"" + StringUtils::join(* (vector<string>*) p, " ,") + "\""; };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -261,13 +247,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an int32_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, int32_t* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, int32_t* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_INT32;
   _int32Options[name] = value;
-  _helpTexts[name] = text + " (default: " + StringUtils::itoa(*value) + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = StringUtils::itoa(*value);
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : StringUtils::itoa(* (int32_t*) p); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -276,13 +265,14 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an int32_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, vector<int32_t>* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, vector<int32_t>* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_VECTOR_INT32;
   _vectorInt32Options[name] = value;
   _helpTexts[name] = text;
+  _defaultTexts[name] = "";
 
   return *this;
 }
@@ -291,13 +281,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an int64_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, int64_t* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, int64_t* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_INT64;
   _int64Options[name] = value;
-  _helpTexts[name] = text + " (default: " + StringUtils::itoa(*value) + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = StringUtils::itoa(*value);
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : StringUtils::itoa(* (int64_t*) p); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -306,13 +299,14 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an int64_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, vector<int64_t>* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, vector<int64_t>* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_VECTOR_INT64;
   _vectorInt64Options[name] = value;
   _helpTexts[name] = text;
+  _defaultTexts[name] = "";
 
   return *this;
 }
@@ -321,13 +315,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an uint32_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, uint32_t* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, uint32_t* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_UINT32;
   _uint32Options[name] = value;
-  _helpTexts[name] = text + " (default: " + StringUtils::itoa(*value) + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = StringUtils::itoa(*value);
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : StringUtils::itoa(* (uint32_t*) p); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -336,13 +333,14 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an uint32_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, vector<uint32_t>* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, vector<uint32_t>* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_VECTOR_UINT32;
   _vectorUInt32Options[name] = value;
   _helpTexts[name] = text;
+  _defaultTexts[name] = "";
 
   return *this;
 }
@@ -351,13 +349,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an uint64_t argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, uint64_t* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, uint64_t* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_UINT64;
   _uint64Options[name] = value;
-  _helpTexts[name] = text + " (default: " + StringUtils::itoa(*value) + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = StringUtils::itoa(*value);
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : StringUtils::itoa(* (uint64_t*) p); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -366,13 +367,14 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds an uint64_t vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, vector<uint64_t>* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, vector<uint64_t>* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_VECTOR_UINT64;
   _vectorUInt64Options[name] = value;
   _helpTexts[name] = text;
+  _defaultTexts[name] = "";
 
   return *this;
 }
@@ -381,13 +383,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds a double argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, double* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, double* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_DOUBLE;
   _doubleOptions[name] = value;
-  _helpTexts[name] = text + " (default: " + StringUtils::ftoa(*value) + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = StringUtils::ftoa(*value);
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : StringUtils::ftoa(* (double*) p); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -396,13 +401,14 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds a double vector argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, vector<double>* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, vector<double>* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_VECTOR_DOUBLE;
   _vectorDoubleOptions[name] = value;
   _helpTexts[name] = text;
+  _defaultTexts[name] = "";
 
   return *this;
 }
@@ -411,13 +417,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 /// @brief adds a boolean argument
 ////////////////////////////////////////////////////////////////////////////////
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, bool* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, bool* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_BOOL;
   _boolOptions[name] = value;
-  _helpTexts[name] = text + " (default: " + (*value ? "true" : "false") + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = (*value ? "true" : "false");
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : string(((* (bool*) p) ? "true" : "false")); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -428,13 +437,16 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& 
 
 #if __WORDSIZE == 32
 
-ProgramOptionsDescription& ProgramOptionsDescription::operator() (string const& full, time_t* value, string const& text) {
+ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& full, time_t* value, const string& text) {
   string name = check(full, value);
 
   _optionNames.push_back(name);
   _optionTypes[name] = OPTION_TYPE_TIME;
   _timeOptions[name] = value;
-  _helpTexts[name] = text + " (default: " + StringUtils::itoa((int64_t)*value) + ")";
+  _helpTexts[name] = text;
+  _defaultTexts[name] = StringUtils::itoa((int64_t)*value);
+  _currentTexts[name] = [] (void* p) -> string { return p == nullptr ? "" : StringUtils::itoa((int64_t)(* (time_t*) p)); };
+  _values[name] = (void*) value;
 
   return *this;
 }
@@ -470,184 +482,54 @@ string ProgramOptionsDescription::usage () const {
 /// @brief returns the usage message
 ////////////////////////////////////////////////////////////////////////////////
 
-string ProgramOptionsDescription::usage (set<string> const& help, bool addHelpOptions) const {
-  string desc;
+string ProgramOptionsDescription::usage (set<string> help) const {
 
+  // footer with info about specific sections
+  string footer;
+
+  // we want all help, therefore use all help sections
   bool helpAll = help.find("--HELP-ALL--") != help.end();
-  bool helpStandard = help.find("--HELP--") != help.end();
+  help.erase("--HELP-ALL--");
+  help.erase("--HELP--");
 
-  // extract help-able sub-descriptions
-  vector<ProgramOptionsDescription> subDescriptions;
-
-  for (vector<ProgramOptionsDescription>::const_iterator i = _subDescriptions.begin();  i != _subDescriptions.end();  ++i) {
-    ProgramOptionsDescription pod = *i;
-    set<string> ho = pod._helpOptions;
-
-    if (ho.empty() || helpAll) {
-      subDescriptions.push_back(pod);
-    }
-    else {
-      set<string> is;
-      set_intersection(ho.begin(), ho.end(), help.begin(), help.end(), std::inserter(is, is.end()));
-
-      if (! is.empty()) {
-        subDescriptions.push_back(pod);
-      }
-    }
+  if (help.empty()) {
+    help.insert("help-default");
   }
 
-  // write help only if help options match
-  if (! _helpOptions.empty() || helpStandard || helpAll) {
-    // produce a headline
-    if (! _name.empty() && ! (subDescriptions.empty() && _optionNames.empty())) {
-      if (_helpOptions.empty()) {
-        desc = _name + ":\n";
-      }
-      else {
-        desc = "Extended " + _name + ":\n";
-      }
-    }
+  set<string> ho = helpOptions();
 
-    // construct the parameters
-    size_t tWidth = TRI_ColumnsWidth();
+  // remove help default
+  set<string> hd = ho;
+  hd.erase("help-default");
 
-    if (tWidth < 40) {
-      tWidth = 40;
-    }
-
-
-    // collect the maximal width of the option names
-    size_t oWidth = 0;
-
-    map<string, string> names;
-
-    for (vector<string>::const_iterator i = _optionNames.begin();  i != _optionNames.end();  ++i) {
-      string const& option = *i;
-      option_type_e type = _optionTypes.find(option)->second;
-
-      string name;
-
-      switch (type) {
-        case OPTION_TYPE_FLAG:
-          name = option;
-          break;
-
-        case OPTION_TYPE_STRING:
-          name = option + " <string>";
-          break;
-
-        case OPTION_TYPE_VECTOR_STRING:
-          name = option + " <string>";
-          break;
-
-        case OPTION_TYPE_INT32:
-          name = option + " <int32>";
-          break;
-
-        case OPTION_TYPE_VECTOR_INT64:
-          name = option + " <int64>";
-          break;
-
-        case OPTION_TYPE_INT64:
-          name = option + " <int64>";
-          break;
-
-        case OPTION_TYPE_VECTOR_INT32:
-          name = option + " <int32>";
-          break;
-
-        case OPTION_TYPE_UINT32:
-          name = option + " <uint32>";
-          break;
-
-        case OPTION_TYPE_VECTOR_UINT32:
-          name = option + " <uint32>";
-          break;
-
-        case OPTION_TYPE_UINT64:
-          name = option + " <uint64>";
-          break;
-
-        case OPTION_TYPE_VECTOR_UINT64:
-          name = option + " <uint64>";
-          break;
-
-        case OPTION_TYPE_DOUBLE:
-          name = option + " <double>";
-          break;
-
-        case OPTION_TYPE_VECTOR_DOUBLE:
-          name = option + " <double>";
-          break;
-
-        case OPTION_TYPE_TIME:
-          name = option + " <time>";
-          break;
-
-        case OPTION_TYPE_BOOL:
-          name = option + " <bool>";
-          break;
-      }
-
-      names[option] = name;
-
-      if (name.size() > oWidth) {
-        oWidth = name.size();
-      }
-    }
-
-    size_t sWidth = 8;
-    size_t dWidth = (oWidth + sWidth < tWidth) ? (tWidth - oWidth - sWidth) : (tWidth / 2);
-
-    vector<string> on = _optionNames;
-    sort(on.begin(), on.end());
-
-    for (vector<string>::iterator i = on.begin();  i != on.end();  ++i) {
-      string const& option = *i;
-      string const& name = names[option];
-      string const& text = _helpTexts.find(option)->second;
-
-      if (text.size() <= dWidth) {
-        desc += "  --" + StringUtils::rFill(name, oWidth) + "    " + text + "\n";
-      }
-      else {
-        vector<string> wrap = StringUtils::wrap(text, dWidth, " ,");
-
-        string sep = "  --" + StringUtils::rFill(name, oWidth) + "    ";
-
-        for (vector<string>::iterator j = wrap.begin();  j != wrap.end();  ++j) {
-          desc += sep + *j + "\n";
-          sep = string(oWidth + sWidth, ' ');
-        }
-      }
-    }
+  // add footer
+  if (helpAll) {
+    help = ho;
+    footer = "\nFor specific sections use: " + StringUtils::join(hd, ", ") + " or help";
   }
-
-  // check for sub-descriptions
-  string sep = desc.empty() ? "" : "\n";
-
-  for (vector<ProgramOptionsDescription>::iterator i = subDescriptions.begin();  i != subDescriptions.end();  ++i) {
-    string u = i->usage(help, false);
-
-    if (! u.empty()) {
-      desc += sep + u;
-      sep = "\n";
-    }
-  }
-
-  // add help options
-  if (addHelpOptions) {
-    set<string> ho = helpOptions();
+  else {
     set<string> is;
-    set_difference(ho.begin(), ho.end(), help.begin(), help.end(), inserter(is, is.end()));
-
+    set_difference(hd.begin(), hd.end(), help.begin(), help.end(), inserter(is, is.end()));
 
     if (! is.empty()) {
-      desc += sep + "For more information use: " + StringUtils::join(is, ", ");
+      footer = "\nFor more information use: " + StringUtils::join(is, ", ") + " or help-all";
     }
   }
 
-  return desc;
+  // compute all relevant names
+  map<string, string> names;
+  fillAllNames(help, names);
+  size_t oWidth = 0;
+
+  for (auto const& name : names) {
+    size_t len = name.second.length();
+
+    if (oWidth < len) {
+      oWidth = len;
+    }
+  }
+
+  return usageString(help, names, oWidth) + footer;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -671,10 +553,226 @@ set<string> ProgramOptionsDescription::helpOptions () const {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief computes all names
+////////////////////////////////////////////////////////////////////////////////
+
+void ProgramOptionsDescription::fillAllNames (const set<string>& help,
+                                              map<string, string>& names) const {
+  for (vector<string>::const_iterator i = _optionNames.begin();  i != _optionNames.end();  ++i) {
+    const string& option = *i;
+    option_type_e type = _optionTypes.find(option)->second;
+
+    string name;
+
+    switch (type) {
+      case OPTION_TYPE_FLAG:
+        name = option;
+        break;
+
+      case OPTION_TYPE_STRING:
+        name = option + " <string>";
+        break;
+
+      case OPTION_TYPE_VECTOR_STRING:
+        name = option + " <string>";
+        break;
+
+      case OPTION_TYPE_INT32:
+        name = option + " <int32>";
+        break;
+
+      case OPTION_TYPE_VECTOR_INT64:
+        name = option + " <int64>";
+        break;
+
+      case OPTION_TYPE_INT64:
+        name = option + " <int64>";
+        break;
+
+      case OPTION_TYPE_VECTOR_INT32:
+        name = option + " <int32>";
+        break;
+
+      case OPTION_TYPE_UINT32:
+        name = option + " <uint32>";
+        break;
+
+      case OPTION_TYPE_VECTOR_UINT32:
+        name = option + " <uint32>";
+        break;
+
+      case OPTION_TYPE_UINT64:
+        name = option + " <uint64>";
+        break;
+
+      case OPTION_TYPE_VECTOR_UINT64:
+        name = option + " <uint64>";
+        break;
+
+      case OPTION_TYPE_DOUBLE:
+        name = option + " <double>";
+        break;
+
+      case OPTION_TYPE_VECTOR_DOUBLE:
+        name = option + " <double>";
+        break;
+
+      case OPTION_TYPE_TIME:
+        name = option + " <time>";
+        break;
+
+      case OPTION_TYPE_BOOL:
+        name = option + " <bool>";
+        break;
+    }
+
+    names[option] = name;
+  }
+
+  for (vector<ProgramOptionsDescription>::const_iterator i = _subDescriptions.begin();  i != _subDescriptions.end();  ++i) {
+    ProgramOptionsDescription pod = *i;
+    set<string> ho = pod._helpOptions;
+
+    if (ho.empty()) {
+      pod.fillAllNames(help, names);
+    }
+    else {
+      set<string> is;
+      set_intersection(ho.begin(), ho.end(), help.begin(), help.end(), std::inserter(is, is.end()));
+
+      if (! is.empty()) {
+        pod.fillAllNames(help, names);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the usage message for given sections
+////////////////////////////////////////////////////////////////////////////////
+
+string ProgramOptionsDescription::usageString (const set<string>& help,
+                                               const map<string, string>& names,
+                                               size_t oWidth) const {
+
+  // extract help-able sub-descriptions
+  vector<ProgramOptionsDescription> subDescriptions;
+
+  for (vector<ProgramOptionsDescription>::const_iterator i = _subDescriptions.begin();  i != _subDescriptions.end();  ++i) {
+    ProgramOptionsDescription pod = *i;
+    set<string> ho = pod._helpOptions;
+
+    if (ho.empty()) {
+      subDescriptions.push_back(pod);
+    }
+    else {
+      set<string> is;
+      set_intersection(ho.begin(), ho.end(), help.begin(), help.end(), std::inserter(is, is.end()));
+
+      if (! is.empty()) {
+        subDescriptions.push_back(pod);
+      }
+    }
+  }
+
+  // write help only if help options match
+  string desc = usageString(names, oWidth);
+
+  // check for sub-descriptions
+  string sep = desc.empty() ? "" : "\n";
+  string lastName;
+
+  for (vector<ProgramOptionsDescription>::iterator i = subDescriptions.begin();  i != subDescriptions.end();  ++i) {
+    string u = i->usageString(help, names, oWidth);
+
+    if (! u.empty()) {
+      if (lastName == i->_name) {
+        desc += sep + u;
+      }
+      else {
+        desc += sep + i->_name + "\n" + u;
+      }
+
+      sep = "\n";
+      lastName = i->_name;
+    }
+  }
+
+  return desc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs the usage string
+////////////////////////////////////////////////////////////////////////////////
+
+string ProgramOptionsDescription::usageString (const map<string, string>& names,
+                                               size_t oWidth) const {
+
+  // the usage string without a headline
+  string desc = "";
+
+  // construct the parameters
+  size_t tWidth = TRI_ColumnsWidth();
+
+  if (tWidth < 40) {
+    tWidth = 40;
+  }
+
+  size_t sWidth = 8;
+  size_t dWidth = (oWidth + sWidth < tWidth) ? (tWidth - oWidth - sWidth) : (tWidth / 2);
+
+  vector<string> on = _optionNames;
+  sort(on.begin(), on.end());
+
+  for (vector<string>::iterator i = on.begin();  i != on.end();  ++i) {
+    const string& option = *i;
+    const string& name = names.find(option)->second;
+
+    string text = _helpTexts.find(option)->second;
+    string defval = _defaultTexts.find(option)->second;
+
+    auto curitr = _currentTexts.find(option);
+    string current = "";
+
+    if (curitr != _currentTexts.end()) {
+      current = (curitr->second)(_values.find(option)->second);
+    }
+
+    if (defval == "") {
+      if (current != "") {
+        text += " (current: " + current + ")";
+      }
+    }
+    else if (defval == current || current == "") {
+      text += " (default: " + defval + ")";
+    }
+    else {
+      text += " (default: " + defval + ", current: " + current + ")";
+    }
+
+    if (text.size() <= dWidth) {
+      desc += "  --" + StringUtils::rFill(name, oWidth) + "    " + text + "\n";
+    }
+    else {
+      vector<string> wrap = StringUtils::wrap(text, dWidth, " ,");
+
+      string sep = "  --" + StringUtils::rFill(name, oWidth) + "    ";
+
+      for (vector<string>::iterator j = wrap.begin();  j != wrap.end();  ++j) {
+        desc += sep + *j + "\n";
+        sep = string(oWidth + sWidth, ' ');
+      }
+    }
+  }
+
+  return desc;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if the name is an option, defines short/long mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-string ProgramOptionsDescription::check (string const& name) {
+string ProgramOptionsDescription::check (const string& name) {
   vector<string> s = StringUtils::split(name, ',');
 
   if (name.empty()) {
@@ -702,7 +800,7 @@ string ProgramOptionsDescription::check (string const& name) {
 /// @brief checks if the name is an option, defines short/long mapping
 ////////////////////////////////////////////////////////////////////////////////
 
-string ProgramOptionsDescription::check (string const& name, void* value) {
+string ProgramOptionsDescription::check (const string& name, void* value) {
   if (value == 0) {
     THROW_INTERNAL_ERROR("value is 0");
   }

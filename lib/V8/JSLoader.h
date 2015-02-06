@@ -55,6 +55,12 @@ namespace triagens {
 
       public:
 
+      enum eState {
+        eFailLoad,
+        eFailExecute,
+        eSuccess
+      };
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a loader
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,9 +85,9 @@ namespace triagens {
 /// @brief loads a named script
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool loadScript (v8::Isolate* isolate,
-                         v8::Handle<v8::Context>&,
-                         std::string const& name);
+        JSLoader::eState loadScript (v8::Isolate* isolate,
+                                     v8::Handle<v8::Context>&,
+                                     std::string const& name);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loads all scripts

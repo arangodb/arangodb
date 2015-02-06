@@ -1,4 +1,4 @@
-/*global require, db, assertEqual, assertTrue, ArangoCollection */
+/*global require, assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -40,6 +40,7 @@ var errors = internal.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ensureIndexSuite() {
+  "use strict";
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 
@@ -80,7 +81,7 @@ function ensureIndexSuite() {
       assertEqual([ "a" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
 
-      res = collection.getIndexes()[collection.getIndexes().length - 1];
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
 
       assertEqual("hash", res.type);
       assertFalse(res.unique);
@@ -100,7 +101,7 @@ function ensureIndexSuite() {
       assertEqual([ "b", "d" ], idx.fields);
       assertEqual(collection.name() + "/" + id, idx.id);
 
-      res = collection.getIndexes()[collection.getIndexes().length - 1];
+      var res = collection.getIndexes()[collection.getIndexes().length - 1];
 
       assertEqual("skiplist", res.type);
       assertFalse(res.unique);

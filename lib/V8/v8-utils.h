@@ -105,6 +105,12 @@ static int const SLOT_CLASS_TYPE = 0;
 
 static int const SLOT_CLASS = 1;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shell command program name (may be printed in stack traces)
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_V8_SHELL_COMMAND_NAME "<shell command>"
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------

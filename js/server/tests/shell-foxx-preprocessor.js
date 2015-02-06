@@ -1,9 +1,40 @@
+/*global require, assertEqual, assertUndefined */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief simple queries
+///
+/// @file
+///
+/// DISCLAIMER
+///
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+///
+/// Licensed under the Apache License, Version 2.0 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     http://www.apache.org/licenses/LICENSE-2.0
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lucas Dohmen
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+////////////////////////////////////////////////////////////////////////////////
+
 var jsunity = require("jsunity"),
   preprocess = require("org/arangodb/foxx/preprocessor").preprocess,
   Preprocessor = require("org/arangodb/foxx/preprocessor").Preprocessor;
 
 // High Level Spec Suite for the preprocess Function
 function PreprocessSpec () {
+  "use strict";
   var testFileWithoutJSDoc, testFileWithJSDoc, testFileWithJSDocTransformed;
 
   return {
@@ -49,7 +80,12 @@ function PreprocessSpec () {
 
 // Low level Spec Suite for the Transform prototype
 function PreprocessorSpec () {
-  var i, testFileWithSingleJSDoc, testFileWithJSDocAndMultiline, processedLineOne;
+  "use strict";
+  var i;
+  var testFileWithSingleJSDoc;
+  var testFileWithJSDocAndMultiline;
+  var processedLineOne;
+  var testFileWithMultiline;
 
   return {
     setUp: function () {
@@ -94,7 +130,7 @@ function PreprocessorSpec () {
     },
 
     testSearchForFirstJSDocStart: function () {
-      processer = new Preprocessor(testFileWithSingleJSDoc);
+      var processer = new Preprocessor(testFileWithSingleJSDoc);
 
       for (i = 0; i < 1; i++) {
         processer.searchNext();
@@ -104,7 +140,7 @@ function PreprocessorSpec () {
     },
 
     testContinueInJSDoc: function () {
-      processer = new Preprocessor(testFileWithSingleJSDoc);
+      var processer = new Preprocessor(testFileWithSingleJSDoc);
 
       for (i = 0; i < 2; i++) {
         processer.searchNext();
@@ -114,7 +150,7 @@ function PreprocessorSpec () {
     },
 
     testStopAtTheEndOfJSDoc: function () {
-      processer = new Preprocessor(testFileWithSingleJSDoc);
+      var processer = new Preprocessor(testFileWithSingleJSDoc);
 
       for (i = 0; i < 4; i++) {
         processer.searchNext();
@@ -124,7 +160,7 @@ function PreprocessorSpec () {
     },
 
     testDoNotIncludeNormalMultiline: function () {
-      processer = new Preprocessor(testFileWithMultiline);
+      var processer = new Preprocessor(testFileWithMultiline);
 
       for (i = 0; i < 1; i++) {
         processer.searchNext();
@@ -134,7 +170,7 @@ function PreprocessorSpec () {
     },
 
     testDoNotIncludeNonJSDocComments: function () {
-      processer = new Preprocessor(testFileWithJSDocAndMultiline);
+      var processer = new Preprocessor(testFileWithJSDocAndMultiline);
 
       for (i = 0; i < 4; i++) {
         processer.searchNext();
@@ -144,7 +180,7 @@ function PreprocessorSpec () {
     },
 
     testConvertLine: function () {
-      processer = new Preprocessor(testFileWithSingleJSDoc);
+      var processer = new Preprocessor(testFileWithSingleJSDoc);
 
       processer.searchNext();
       processer.convertLine();

@@ -367,6 +367,34 @@ function startInstance (protocol, options, addArgs, testname) {
   return instanceInfo;
 }
 
+function readImportantLogLines(logPath) {
+  var i, j;
+  var importantLines = {};
+  var list=fs.list(logPath);
+  for (i = 0; i < list.length; i++) {
+    var fnLines = [];
+    if (list[i].slice(0,3) === 'log') {
+      var buf = fs.readBuffer(fs.join(logPath,list[i]));
+      var lineStart = 0;
+      var maxBuffer = buf.length;
+      for (j = 0; j < maxBuffer; j++) {
+        if (buf[j] === 10) { // \n
+          var line = buf.asciiSlice(lineStart, j - 1);
+          // filter out regular INFO lines, and test related messages
+          if ((line.search(" INFO ") < 0) &&
+              (line.search("WARNING about to execute:") < 0)) {
+            fnLines.push(line);
+          }
+          lineStart = j + 1;
+        }
+      }
+    }
+    if (fnLines.length > 0) {
+      importantLines[list[i]] = fnLines;
+    }
+  }
+  return importantLines;
+}
 
 function copy (src, dst) {
   var fs = require("fs");
@@ -375,7 +403,7 @@ function copy (src, dst) {
   fs.write(dst, buffer);
 }
 
-function checkInstanceAlive(instanceInfo, options) {  
+function checkInstanceAlive(instanceInfo, options) {
   var storeArangodPath;
   if (options.cluster === false) {
     var res = statusExternal(instanceInfo.pid, false);
@@ -385,7 +413,7 @@ function checkInstanceAlive(instanceInfo, options) {
       instanceInfo.exitStatus = res;
       print(instanceInfo);
       if (res.hasOwnProperty('signal') && 
-          (res.signal === 11))
+          ((ress.signal === 11) || (ress.signal === 6)))
       {
         storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
         print("Core dump written; copying arangod to " + 
@@ -409,7 +437,7 @@ function checkInstanceAlive(instanceInfo, options) {
           var checkpid = instanceInfo.kickstarter.runInfo[part].pids[pid];
           var ress = statusExternal(checkpid, false);
           if (ress.hasOwnProperty('signal') && 
-              (ress.signal === 11)) {
+              ((ress.signal === 11) || (ress.signal === 6))) {
             storeArangodPath = "/var/tmp/arangod_" + checkpid.pid;
             print("Core dump written; copying arangod to " + 
                   storeArangodPath + " for later analysis.");
@@ -435,10 +463,11 @@ function checkInstanceAlive(instanceInfo, options) {
 
 function shutdownInstance (instanceInfo, options) {
   if (!checkInstanceAlive(instanceInfo, options)) {
-      print("Server already dead, doing nothing. This shouldn't happen?");    
+      print("Server already dead, doing nothing. This shouldn't happen?");
   }
   if (options.cluster) {
     var rc = instanceInfo.kickstarter.shutdown();
+    instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
     if (options.cleanup) {
       instanceInfo.kickstarter.cleanup();
     }
@@ -481,11 +510,12 @@ function shutdownInstance (instanceInfo, options) {
           else {
             wait(1);
           }
-        }      
+        }
         else if (instanceInfo.exitStatus.status !== "TERMINATED") {
           if (instanceInfo.exitStatus.hasOwnProperty('signal')) {
             print("Server shut down with : " + yaml.safeDump(instanceInfo.exitStatus) + " marking build as crashy.");
             serverCrashed = true;
+            break;
           }
         }
         else {
@@ -500,8 +530,9 @@ function shutdownInstance (instanceInfo, options) {
     else {
       print("Server already dead, doing nothing.");
     }
-    
+    instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
   }
+
   cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
 }
 
@@ -524,8 +555,12 @@ function cleanupDBDirectories(options) {
   }
 }
 
-function makePath (path) {
+function makePathUnix (path) {
   return fs.join.apply(null,path.split("/"));
+}
+
+function makePathGeneric (path) {
+  return fs.join.apply(null,path.split(fs.pathSeparator));
 }
 
 var foundTests = false;
@@ -543,56 +578,56 @@ function findTests () {
   if (foundTests) {
     return;
   }
-  tests_shell_common = _.filter(fs.list(makePath("js/common/tests")),
+  tests_shell_common = _.filter(fs.list(makePathUnix("js/common/tests")),
             function (p) {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/common/tests"),x);
+              return fs.join(makePathUnix("js/common/tests"),x);
             }).sort();
-  tests_shell_server_only = _.filter(fs.list(makePath("js/server/tests")),
+  tests_shell_server_only = _.filter(fs.list(makePathUnix("js/server/tests")),
             function (p) {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/tests"),x);
+              return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
-  tests_shell_client_only = _.filter(fs.list(makePath("js/client/tests")),
+  tests_shell_client_only = _.filter(fs.list(makePathUnix("js/client/tests")),
             function (p) {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/client/tests"),x);
+              return fs.join(makePathUnix("js/client/tests"),x);
             }).sort();
-  tests_shell_server_aql = _.filter(fs.list(makePath("js/server/tests")),
+  tests_shell_server_aql = _.filter(fs.list(makePathUnix("js/server/tests")),
             function (p) {
               return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") === -1;
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/tests"),x);
+              return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql_extended = 
-            _.filter(fs.list(makePath("js/server/tests")),
+            _.filter(fs.list(makePathUnix("js/server/tests")),
             function (p) {
               return p.substr(0,4) === "aql-" &&
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") !== -1;
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/tests"),x);
+              return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql_performance = 
-            _.filter(fs.list(makePath("js/server/perftests")),
+            _.filter(fs.list(makePathUnix("js/server/perftests")),
             function (p) {
               return p.substr(-3) === ".js";
             }).map(
             function(x) {
-              return fs.join(makePath("js/server/perftests"),x);
+              return fs.join(makePathUnix("js/server/perftests"),x);
             }).sort();
 
   tests_shell_server = tests_shell_common.concat(tests_shell_server_only);
@@ -751,7 +786,7 @@ function performTests(options, testList, testname, remote) {
         continue;
       }
 
-      print("\narangod: Trying",te,"...");
+      print("\n" + Date() + " arangod: Trying",te,"...");
       var r;
       if (remote) {
         r = runThere(options, instanceInfo, te);
@@ -787,6 +822,10 @@ function performTests(options, testList, testname, remote) {
     shutdownInstance(instanceInfo,options);
   }
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 }
 
@@ -814,15 +853,19 @@ testFuncs.single_server = function (options) {
       return {status: false, message: "failed to start server!"};
     }
     var te = options.test;
-    print("\narangod: Trying",te,"...");
+    print("\n" + Date() + " arangod: Trying",te,"...");
     result = {};
-    result[te] = runThere(options, instanceInfo, makePath(te));
+    result[te] = runThere(options, instanceInfo, makePathGeneric(te));
     print("Shutting down...");
     if (result[te].status === false) {
       options.cleanup = false;
     }
     shutdownInstance(instanceInfo,options);
     print("done.");
+    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+        Object.keys(instanceInfo.importantLogLines).length > 0) {
+      print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+    }
     return result;
   }
   else {
@@ -838,7 +881,7 @@ testFuncs.single_localserver = function (options) {
     var te = options.test;
     print("\nArangod: Trying",te,"...");
     result = {};
-    result[te] = runHere(options, instanceInfo, makePath(te));
+    result[te] = runHere(options, instanceInfo, makePathGeneric(te));
     if (result[te].status === false) {
       options.cleanup = false;
     }
@@ -858,7 +901,7 @@ testFuncs.single_client = function (options) {
       return {status: false, message: "failed to start server!"};
     }
     var te = options.test;
-    print("\narangosh: Trying ",te,"...");
+    print("\n" + Date() + " arangosh: Trying ",te,"...");
     result[te] = runInArangosh(options, instanceInfo, te);
 
     print("Shutting down...");
@@ -867,6 +910,10 @@ testFuncs.single_client = function (options) {
     }
     shutdownInstance(instanceInfo,options);
     print("done.");
+    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+        Object.keys(instanceInfo.importantLogLines).length > 0) {
+      print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+    }
     return result;
   }
   else {
@@ -984,6 +1031,10 @@ testFuncs.shell_client = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
@@ -1075,7 +1126,7 @@ function rubyTests (options, ssl) {
     var te = files[i];
     if (te.substr(0,4) === "api-" && te.substr(-3) === ".rb") {
       if (filterTestcaseByOptions(te, options, filtered)) {
-        
+
         args = ["--color", "-I", fs.join("UnitTests","HttpInterface"),
                 "--format", "d", "--require", tmpname,
                 fs.join("UnitTests","HttpInterface", te)];
@@ -1109,6 +1160,10 @@ function rubyTests (options, ssl) {
   fs.remove(tmpname);
   shutdownInstance(instanceInfo,options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return result;
 }
 
@@ -1176,31 +1231,31 @@ function runArangoBenchmark (options, instanceInfo, cmds) {
 }
 
 var impTodo = [
-  {id: "json1", data: makePath("UnitTests/import-1.json"),
+  {id: "json1", data: makePathUnix("UnitTests/import-1.json"),
    coll: "UnitTestsImportJson1", type: "json", create: undefined},
-  {id: "json2", data: makePath("UnitTests/import-2.json"),
+  {id: "json2", data: makePathUnix("UnitTests/import-2.json"),
    coll: "UnitTestsImportJson2", type: "json", create: undefined},
-  {id: "json3", data: makePath("UnitTests/import-3.json"),
+  {id: "json3", data: makePathUnix("UnitTests/import-3.json"),
    coll: "UnitTestsImportJson3", type: "json", create: undefined},
-  {id: "json4", data: makePath("UnitTests/import-4.json"),
+  {id: "json4", data: makePathUnix("UnitTests/import-4.json"),
    coll: "UnitTestsImportJson4", type: "json", create: undefined},
-  {id: "json5", data: makePath("UnitTests/import-5.json"),
+  {id: "json5", data: makePathUnix("UnitTests/import-5.json"),
    coll: "UnitTestsImportJson5", type: "json", create: undefined},
-  {id: "csv1", data: makePath("UnitTests/import-1.csv"),
+  {id: "csv1", data: makePathUnix("UnitTests/import-1.csv"),
    coll: "UnitTestsImportCsv1", type: "csv", create: "true"},
-  {id: "csv2", data: makePath("UnitTests/import-2.csv"),
+  {id: "csv2", data: makePathUnix("UnitTests/import-2.csv"),
    coll: "UnitTestsImportCsv2", type: "csv", create: "true"},
-  {id: "csv3", data: makePath("UnitTests/import-3.csv"),
+  {id: "csv3", data: makePathUnix("UnitTests/import-3.csv"),
    coll: "UnitTestsImportCsv3", type: "csv", create: "true"},
-  {id: "csv4", data: makePath("UnitTests/import-4.csv"),
+  {id: "csv4", data: makePathUnix("UnitTests/import-4.csv"),
    coll: "UnitTestsImportCsv4", type: "csv", create: "true", separator: ";", backslash: true},
-  {id: "csv5", data: makePath("UnitTests/import-5.csv"),
+  {id: "csv5", data: makePathUnix("UnitTests/import-5.csv"),
    coll: "UnitTestsImportCsv5", type: "csv", create: "true", separator: ";", backslash: true},
-  {id: "tsv1", data: makePath("UnitTests/import-1.tsv"),
+  {id: "tsv1", data: makePathUnix("UnitTests/import-1.tsv"),
    coll: "UnitTestsImportTsv1", type: "tsv", create: "true"},
-  {id: "tsv2", data: makePath("UnitTests/import-2.tsv"),
+  {id: "tsv2", data: makePathUnix("UnitTests/import-2.tsv"),
    coll: "UnitTestsImportTsv2", type: "tsv", create: "true"},
-  {id: "edge", data: makePath("UnitTests/import-edges.json"),
+  {id: "edge", data: makePathUnix("UnitTests/import-edges.json"),
    coll: "UnitTestsImportEdge", type: "json", create: "false"}
 ];
 
@@ -1224,7 +1279,7 @@ testFuncs.importing = function (options) {
   var result = {};
   try {
     var r = runInArangosh(options, instanceInfo,
-                          makePath("js/server/tests/import-setup.js"));
+                          makePathUnix("js/server/tests/import-setup.js"));
     result.setup = r;
     if (r.status !== true) {
       throw "banana";
@@ -1238,10 +1293,10 @@ testFuncs.importing = function (options) {
       }
     }
     r = runInArangosh(options, instanceInfo,
-                      makePath("js/server/tests/import.js"));
+                      makePathUnix("js/server/tests/import.js"));
     result.check = r;
     r = runInArangosh(options, instanceInfo,
-                      makePath("js/server/tests/import-teardown.js"));
+                      makePathUnix("js/server/tests/import-teardown.js"));
     result.teardown = r;
   }
   catch (banana) {
@@ -1251,6 +1306,10 @@ testFuncs.importing = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return result;
 };
 
@@ -1310,6 +1369,10 @@ testFuncs.foxx_manager = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
@@ -1328,22 +1391,39 @@ testFuncs.dump = function (options) {
     return {status: false, message: "failed to start server!"};
   }
   var results = {};
+  print(Date() + ": Setting up");
   results.setup = runInArangosh(options, instanceInfo,
-       makePath("js/server/tests/dump-setup"+cluster+".js"));
-  if (results.setup.status === true) {
+       makePathUnix("js/server/tests/dump-setup"+cluster+".js"));
+  if (checkInstanceAlive(instanceInfo, options) &&
+      (results.setup.status === true)) {
+    print(Date() + ": Dump and Restore - dump");
     results.dump = runArangoDumpRestore(options, instanceInfo, "dump",
                                         "UnitTestsDumpSrc");
-    results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
-                                           "UnitTestsDumpDst");
-    results.test = runInArangosh(options, instanceInfo,
-       makePath("js/server/tests/dump"+cluster+".js"),
-       [ "--server.database", "UnitTestsDumpDst" ]);
-    results.tearDown = runInArangosh(options, instanceInfo,
-       makePath("js/server/tests/dump-teardown"+cluster+".js"));
+    if (checkInstanceAlive(instanceInfo, options)) {
+      print(Date() + ": Dump and Restore - restore");
+      results.restore = runArangoDumpRestore(options, instanceInfo, "restore",
+                                             "UnitTestsDumpDst");
+    
+      if (checkInstanceAlive(instanceInfo, options)) {
+        print(Date() + ": Dump and Restore - dump 2");
+        results.test = runInArangosh(options, instanceInfo,
+                                     makePathUnix("js/server/tests/dump"+cluster+".js"),
+                                     [ "--server.database", "UnitTestsDumpDst" ]);
+        if (checkInstanceAlive(instanceInfo, options)) {
+          print(Date() + ": Dump and Restore - teardown");
+          results.tearDown = runInArangosh(options, instanceInfo,
+                                           makePathUnix("js/server/tests/dump-teardown"+cluster+".js"));
+        }
+      }
+    }
   }
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
@@ -1404,6 +1484,10 @@ testFuncs.arangob = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
@@ -1421,6 +1505,10 @@ testFuncs.authentication = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
+  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+      Object.keys(instanceInfo.importantLogLines).length > 0) {
+    print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+  }
   return results;
 };
 
@@ -1434,135 +1522,94 @@ var urlsTodo = [
   "/the-big-fat-fox"
 ];
 
+var authTestServerParams = [
+  ["--server.disable-authentication", "false",
+   "--server.authenticate-system-only", "false"],
+  ["--server.disable-authentication", "false",
+   "--server.authenticate-system-only", "true"],
+  ["--server.disable-authentication", "true",
+   "--server.authenticate-system-only", "true"]
+];
+var authTestNames = ["Full",
+                     "SystemAuth",
+                     "None"];
+var authTestExpectRC = [
+  [401, 401, 401, 401, 401, 401, 401],
+  [401, 401, 401, 401, 401, 404, 404],
+  [404, 404, 200, 301, 301, 404, 404]
+];
+
 testFuncs.authentication_parameters = function (options) {
   print("Authentication with parameters tests...");
   var results = {};
-  // With full authentication:
-  var instanceInfo = startInstance("tcp", options,
-                       ["--server.disable-authentication", "false",
-                        "--server.authenticate-system-only", "false"],
-                       "authentication_parameters_1");
-  if (instanceInfo === false) {
-    return {status: false, message: "failed to start server!"};
-  }
-  var r;
-  var i;
-  var expectAuthFullRC = [401, 401, 401, 401, 401, 401, 401];
-  var all_ok = true;
+
   var continueTesting = true;
+  var downloadOptions = {
+    followRedirects:false,
+    returnBodyOnError:true
+  };
 
-  print("Starting Full test");
-  results.auth_full = {};
-  for (i = 0; i < urlsTodo.length; i++) {
-
-    if (!continueTesting) {
-      print("Skipping " + urlsTodo[i] + ", server is gone.");
-      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
-      instanceInfo.exitStatus = "server is gone.";
-      all_ok = false;
-      continue;
-    }
-
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
-    if (r.code === expectAuthFullRC[i]) {
-      results.auth_full[urlsTodo[i]] = { status: true, message: ""};
-    }
-    else {
-      checkBodyForJsonToParse(r);
-      results.auth_full[urlsTodo[i]] = { 
-        status: false,
-        message: "we expected " + expectAuthFullRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
-      };
-      all_ok = false;
-    }
-    continueTesting = checkInstanceAlive(instanceInfo, options);
+  if (typeof(options.valgrind) === 'string') {
+    downloadOptions.timeout = 300;
   }
-  results.auth_full.status = all_ok;
 
-  print("Shutting down Full test...");
-  shutdownInstance(instanceInfo,options);
-  print("done with Full test.");
-  // Only system authentication:
-  continueTesting = true;
-  instanceInfo = startInstance("tcp", options,
-                   ["--server.disable-authentication", "false",
-                    "--server.authenticate-system-only", "true"],
-                   "authentication_parameters_2");
-  if (instanceInfo === false) {
-    return {status: false, message: "failed to start server!"};
-  }
-  var expectAuthSystemRC = [401, 401, 401, 401, 401, 404, 404];
-  all_ok = true;
-  print("Starting System test");
-  results.auth_system = {};
-  for (i = 0; i < urlsTodo.length; i++) {
-    if (! continueTesting) {
-      print("Skipping " + urlsTodo[i] + " server is gone.");
-      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
-      instanceInfo.exitStatus = "server is gone.";
-      all_ok = false;
-      continue;
+  var test;
+  for (test = 0; test < 3; test++) {
+    var all_ok = true;
+    var instanceInfo = startInstance("tcp", options,
+                                     authTestServerParams[test],
+                                     "authentication_parameters_" + test);
+    if (instanceInfo === false) {
+      return {status: false, message: authTestNames[test] + ": failed to start server!"};
     }
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
-    if (r.code === expectAuthSystemRC[i]) {
-      results.auth_system[urlsTodo[i]] = { status: true, message: ""};
-    }
-    else {
-      checkBodyForJsonToParse(r);
-      results.auth_system[urlsTodo[i]] = { 
-        status: false,
-        message: "we expected " + expectAuthSystemRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
-      };
-      all_ok = false;
-    }
-    continueTesting = checkInstanceAlive(instanceInfo, options);
-  }
-  results.auth_system.status = all_ok;
+    var r;
+    var i;
+    var testName = 'auth_' + authTestNames[test];
 
-  print("Shutting down System test...");
-  shutdownInstance(instanceInfo,options);
-  print("done with System test.");
-  // No authentication:
-  instanceInfo = startInstance("tcp", options,
-                   ["--server.disable-authentication", "true",
-                    "--server.authenticate-system-only", "true"],
-                   "authentication_parameters_3");
-  if (instanceInfo === false) {
-    return {status: false, message: "failed to start server!"};
-  }
-  var expectAuthNoneRC = [404, 404, 200, 301, 301, 404, 404];
-  results.auth_none = {};
-  all_ok = true;
-  continueTesting = true;
-  print("Starting None test");
-  for (i = 0; i < urlsTodo.length; i++) {
-    if (! continueTesting) {
-      print("Skipping " + urlsTodo[i] + " server is gone.");
-      results.auth_full[urlsTodo[i]] = {status: false, message: instanceInfo.exitStatus};
-      instanceInfo.exitStatus = "server is gone.";
-      all_ok = false;
-      continue;
-    }
+    print(Date() + " Starting " + authTestNames[test] + " test");
+    results[testName] = {};
+    for (i = 0; i < urlsTodo.length; i++) {
+      print("  URL: " + instanceInfo.url + urlsTodo[i]);
+      if (!continueTesting) {
+        print("Skipping " + urlsTodo[i] + ", server is gone.");
+        results[testName][urlsTodo[i]] = {
+          status: false,
+          message: instanceInfo.exitStatus
+        };
+        instanceInfo.exitStatus = "server is gone.";
+        all_ok = false;
+        continue;
+      }
 
-    r = download(instanceInfo.url+urlsTodo[i],"",{followRedirects:false,returnBodyOnError:true});
-    if (r.code === expectAuthNoneRC[i]) {
-      results.auth_none[urlsTodo[i]] = { status: true, message: ""};
+      r = download(instanceInfo.url + urlsTodo[i],"", downloadOptions);
+      if (r.code === authTestExpectRC[test][i]) {
+        results[testName][urlsTodo[i]] = { status: true, message: ""};
+      }
+      else {
+        checkBodyForJsonToParse(r);
+        results[testName][urlsTodo[i]] = { 
+          status: false,
+          message: "we expected " + 
+            authTestExpectRC[test][i] +
+            " and we got "
+            + r.code +
+            " Full Status: "
+            + yaml.safeDump(r)
+        };
+        all_ok = false;
+      }
+      continueTesting = checkInstanceAlive(instanceInfo, options);
     }
-    else {
-      checkBodyForJsonToParse(r);
-      results.auth_none[urlsTodo[i]] = { 
-        status: false,
-        message: "we expected " + expectAuthNoneRC[i] + " and we got " + r.code + " Full Status: " + yaml.safeDump(r)
-      };
-      all_ok = false;
-    }
-    continueTesting = checkInstanceAlive(instanceInfo, options);
-  }
-  results.auth_none.status = all_ok;
+    results[testName].status = all_ok;
 
-  print("Shutting down None test...");
-  shutdownInstance(instanceInfo,options);
-  print("done with None test.");
+    print("Shutting down " + authTestNames[test] + " test...");
+    shutdownInstance(instanceInfo, options);
+    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+        (instanceInfo.importantLogLines.length > 0)) {
+      print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
+    }
+    print("done with " + authTestNames[test] + " test.");
+  }
   return results;
 };
 
@@ -1578,7 +1625,7 @@ function unitTestPrettyPrintResults(r) {
   var fail = "";
 
   try {
-    for (testrun in r) {    
+    for (testrun in r) {
       if (r.hasOwnProperty(testrun) && (internalMembers.indexOf(testrun) === -1)) {
         var isSuccess = true;
         var oneOutput = "";
@@ -1688,8 +1735,8 @@ function UnitTest (which, options) {
       cleanupDBDirectories(options);
     }
     else {
-      print("since some tests weren't successfully, not cleaning up: ");
-      print(cleanupDirectories);
+      print("since some tests weren't successfully, not cleaning up: \n" +
+            yaml.safeDump(cleanupDirectories));
     }
     if (jsonReply === true ) {
       return results;
@@ -1725,8 +1772,8 @@ function UnitTest (which, options) {
       cleanupDBDirectories(options);
     }
     else {
-      print("since some tests weren't successfully, not cleaning up: ");
-      print(cleanupDirectories);
+      print("since some tests weren't successfully, not cleaning up: \n" +
+            yaml.safeDump(cleanupDirectories));
     }
     if (jsonReply === true ) {
       return results;

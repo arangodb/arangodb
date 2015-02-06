@@ -1,3 +1,4 @@
+/*jshint strict: true, unused: false */
 /*global require, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -46,6 +47,7 @@ var Traverser = traversal.Traverser;
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphTraversalSuite () {
+  "use strict";
   var gn = "UnitTestsGraphTraversal";
   var vn = "UnitTestsGraphTraversalVertices";
   var en = "UnitTestsGraphTraversalEdges";
@@ -226,6 +228,7 @@ function GraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function memoryDatasource (nodes, connections) {
+  "use strict";
   var vertices = { };
   var inEdges  = { };
   var outEdges = { };
@@ -329,6 +332,7 @@ function memoryDatasource (nodes, connections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MemoryTraversalSuite () {
+  "use strict";
   var datasourceWorld;
   var datasourcePeople;
 
@@ -1275,7 +1279,10 @@ function MemoryTraversalSuite () {
           vertices: Traverser.UNIQUE_GLOBAL,
           edges: Traverser.UNIQUE_NONE
         },
-        matchingAttributes: [{"name": "Alice"}, {"name": "Frank"}, {"name": "Diana", "key": "FAIL"}, {"_id": "vertices/Bob"}],
+        matchingAttributes: [{"name": "Alice"},
+                             {"name": "Frank"},
+                             {"name": "Diana", "key": "FAIL"},
+                             {"_id": "vertices/Bob"}],
         visitor: visitor,
         expander: anyExp,
         filter: traversal.includeMatchingAttributesFilter,
@@ -1534,6 +1541,7 @@ function MemoryTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionTraversalSuite () {
+  "use strict";
   var vn = "UnitTestsVertices";
   var en = "UnitTestsEdges";
 
@@ -1574,7 +1582,16 @@ function CollectionTraversalSuite () {
         vertexCollection.save({ _key: item, name: item });
       });
 
-      [ [ "A", "B" ], [ "B", "C" ], [ "C", "D" ], [ "A", "D" ], [ "D", "E" ], [ "D", "F" ], [ "B", "G" ], [ "B", "I" ], [ "G", "H" ], [ "I", "H"] ].forEach(function (item) {
+      [ [ "A", "B" ],
+        [ "B", "C" ],
+        [ "C", "D" ],
+        [ "A", "D" ],
+        [ "D", "E" ],
+        [ "D", "F" ],
+        [ "B", "G" ],
+        [ "B", "I" ],
+        [ "G", "H" ],
+        [ "I", "H"] ].forEach(function (item) {
         var l = item[0];
         var r = item[1];
         edgeCollection.save(vn + "/" + l, vn + "/" + r, { _key: l + r, what : l + "->" + r });
@@ -1866,6 +1883,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphTraversalSuite () {
+  "use strict";
   // Definition of the edges: A -> BDEH <-> CFGI
   var vnA = "UnitTestsVertices1";
   var enDir = "UnitTestsEdges1";

@@ -110,12 +110,12 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 /// @brief create an execution plan from JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionPlan::getCollectionsFromJson (Ast *ast, 
+void ExecutionPlan::getCollectionsFromJson (Ast* ast, 
                                             triagens::basics::Json const& json) {
   Json jsonCollectionList = json.get("collections");
 
   if (! jsonCollectionList.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not a list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node \"collections\" not found or not an array");
   }
 
   auto const size = jsonCollectionList.size();
@@ -125,9 +125,10 @@ void ExecutionPlan::getCollectionsFromJson (Ast *ast,
     auto typeStr = triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type");
       
     ast->query()->collections()->add(
-                                     triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
-                                     TRI_GetTransactionTypeFromStr(triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str()));
- }
+      triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "name"),
+      TRI_GetTransactionTypeFromStr(triagens::basics::JsonHelper::checkAndGetStringValue(oneJsonCollection.json(), "type").c_str())
+    );
+  }
 }
 
 ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
@@ -257,6 +258,27 @@ ModificationOptions ExecutionPlan::createOptions (AstNode const* node) {
           options.mergeObjects = value->isTrue();
         }
       }
+    }
+  }
+
+  options.readCompleteInput = true;
+
+  if (! _ast->functionsMayAccessDocuments()) {
+    // no functions in the query can access document data...
+    bool isReadWrite = false;
+
+    auto const collections = _ast->query()->collections();
+    for (auto it : *(collections->collections())) {
+      if (it.second->isReadWrite) {
+        isReadWrite = true;
+        break;
+      }
+    }
+
+    if (! isReadWrite) {
+      // no collection is used in both read and write
+      // this means the query's write operation can use read & write in lockstep
+      options.readCompleteInput = false;
     }
   }
 
@@ -419,10 +441,21 @@ ExecutionNode* ExecutionPlan::fromNodeFilter (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
                                            AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_LET);
-  TRI_ASSERT(node->numMembers() == 2);
+  TRI_ASSERT(node->numMembers() >= 2);
 
   AstNode const* variable = node->getMember(0);
   AstNode const* expression = node->getMember(1);
+
+  Variable const* conditionVariable = nullptr;
+
+  if (node->numMembers() > 2) {
+    // a LET with an IF condition
+    auto condition = createTemporaryCalculation(node->getMember(2));
+    condition->addDependency(previous);
+    previous = condition;
+
+    conditionVariable = condition->outVariable();
+  }
 
   auto v = static_cast<Variable*>(variable->getData());
   
@@ -464,11 +497,11 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
       // otherwise fall-through to normal behavior
     }
 
-    // operand is some misc expression, including references to other variables
+    // operand is some misc expression, potentially including references to other variables
     auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
 
     try {
-      en = registerNode(new CalculationNode(this, nextId(), expr, v));
+      en = registerNode(new CalculationNode(this, nextId(), expr, conditionVariable, v));
     }
     catch (...) {
       // prevent memleak
@@ -1384,7 +1417,7 @@ void ExecutionPlan::findVarUsage () {
 /// @brief determine if the above are already set
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ExecutionPlan::varUsageComputed () {
+bool ExecutionPlan::varUsageComputed () const {
   return _varUsageComputed;
 }
 
@@ -1410,7 +1443,7 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node,
   if (parents.empty()) {
     if (! allowUnlinkingRoot) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "Cannot unlink root node of plan.");
+                                     "Cannot unlink root node of plan");
     }
     // adjust root node. the caller needs to make sure that a new root node gets inserted
     _root = nullptr;
@@ -1453,7 +1486,7 @@ void ExecutionPlan::replaceNode (ExecutionNode* oldNode,
   for (auto* oldNodeParent : oldNodeParents) {
     if (! oldNodeParent->replaceDependency(oldNode, newNode)){
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                  "Could not replace dependencies of an old node.");
+                  "Could not replace dependencies of an old node");
     }
   }
   _varUsageComputed = false;
@@ -1476,7 +1509,7 @@ void ExecutionPlan::insertDependency (ExecutionNode* oldNode,
   auto oldDeps = oldNode->getDependencies();  // Intentional copy
   if (! oldNode->replaceDependency(oldDeps[0], newNode)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                "Could not replace dependencies of an old node.");
+                "Could not replace dependencies of an old node");
   }
 
   newNode->removeDependencies();
@@ -1527,7 +1560,7 @@ ExecutionPlan* ExecutionPlan::clone () {
     plan->_root->walk(&adder);
     if (! adder.success) {
       delete plan;
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan.");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "Could not clone plan");
     }
     // plan->findVarUsage();
     // Let's not do it here, because supposedly the plan is modified as
@@ -1550,7 +1583,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
   //std::cout << nodes.toString() << "\n";
 
   if (! nodes.isArray()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not a list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nodes is not an array");
   }
 
   // first, re-create all nodes from the JSON, using the node ids
@@ -1561,7 +1594,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
     Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (! oneJsonNode.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an object");
     }
     ret = ExecutionNode::fromJsonFactory(this, oneJsonNode);
 
@@ -1586,7 +1619,7 @@ ExecutionNode* ExecutionPlan::fromJson (Json const& json) {
     Json oneJsonNode = nodes.at(static_cast<int>(i));
 
     if (! oneJsonNode.isObject()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an array");
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json node is not an object");
     }
    
     // read the node's own id 

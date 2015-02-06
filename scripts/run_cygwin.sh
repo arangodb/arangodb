@@ -22,4 +22,13 @@ done
 echo Database has its data in data-$PID
 echo Logfile is in log-$PID
 $VG bin/arangod --configuration none --cluster.agent-path 'bin\etcd-arango' --cluster.arangod-path 'bin\arangod' --cluster.coordinator-config 'etc\relative\arangod-coordinator.conf' --cluster.dbserver-config 'etc\relative\arangod-dbserver.conf' --cluster.disable-dispatcher-frontend false --cluster.disable-dispatcher-kickstarter false --cluster.data-path cluster --cluster.log-path cluster --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://localhost:$PORT --javascript.startup-directory js --javascript.app-path 'js\apps' --javascript.script $SCRIPT --ruby.action-directory 'mr\actions\system' --ruby.modules-path 'mr\server\modules;mr\common\modules' "${ARGS[@]}" --temp-path '\var\tmp\' $VXML
+
+
+if test $? -eq 0; then
+  echo removing log-$PID data-$PID
+  rm -rf log-$PID data-$PID
+else
+  echo "failed - don't remove log-$PID data-$PID"
+fi
+
 echo Server has terminated.
