@@ -27,14 +27,6 @@
       $('#'+clicked).click();
     },
 
-    showSpinner: function() {
-      $('#uploadIndicator').show();
-    },
-
-    hideSpinner: function() {
-      $('#uploadIndicator').hide();
-    },
-
     toggleDevel: function() {
       var self = this;
       this._showDevel = !this._showDevel;
@@ -170,40 +162,6 @@
 
     /// NEW CODE
 
-    showFoxxDownload: function(file) {
-      var self = this;
-      var buttons = [
-        window.modalView.createSuccessButton("Download", function() {
-          window.open("templates/download/" + file);
-          window.modalView.hide();
-          self.reload();
-        })
-      ];
-      window.modalView.show(
-        "modalDownloadFoxx.ejs",
-        "Download application",
-        buttons
-      );
-    },
-
-    showFoxxDevappPath: function(path) {
-      var self = this;
-      var buttons = [
-        window.modalView.createSuccessButton("OK", function() {
-          window.modalView.hide();
-          self.reload();
-        })
-      ];
-      window.modalView.show(
-        "modalFoxxDevPath.ejs",
-        "Application created",
-        buttons,
-        {
-          path: path
-        }
-      );
-    },
-
     generateNewFoxxApp: function() {
       var mount;
       mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
@@ -237,6 +195,7 @@
     },
 
     setMountpointValidators: function() {
+      window.modalView.clearValidators();
       window.modalView.modalBindValidation({
         id: "new-app-mount",
         validateInput: function() {
@@ -285,6 +244,7 @@
     },
 
     setNewAppValidators: function() {
+      
       window.modalView.modalBindValidation({
         id: "new-app-author",
         validateInput: function() {
@@ -302,7 +262,7 @@
         validateInput: function() {
           return [
             {
-              rule: Joi.string().required().regex(/^[a-zA-Z-_][a-zA-Z0-9-_]*$/),
+              rule: Joi.string().required().regex(/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/),
               msg: "Can only contain a to z, A to Z, 0-9, '-' and '_'."
             }
           ];
@@ -326,18 +286,20 @@
         validateInput: function() {
           return [
             {
-              rule: Joi.string().required().regex(/^[a-zA-Z0-9 .,;\-]+$/),
+              rule: Joi.string().required().regex(/^[a-zA-Z0-9 \.,;\-]+$/),
               msg: "Has to be non empty."
             }
           ];
         }
       });
+      window.modalView.modalTestAll();
     },
 
     switchModalButton: function(event) {
       window.modalView.clearValidators();
       var openTab = $(event.currentTarget).attr("href").substr(1);
       var button = $("#modalButton1");
+      this.setMountpointValidators();
       switch (openTab) {
         case "newApp":
           button.html("Generate");
@@ -400,8 +362,8 @@
         var table = $("#appstore-content");
         table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
       });
-      this.setNewAppValidators();
       this.setMountpointValidators();
+      this.setNewAppValidators();
     },
 
     render: function() {

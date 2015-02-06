@@ -101,7 +101,7 @@
               error: false
             }); 
           });
-          mount = "/my/app";
+          mount = "/my/application";
           author = "ArangoDB";
           name = "MyApp";
           desc = "My new app";
@@ -114,11 +114,14 @@
             collectionNames: []
           };
 
+          expect($(generateButton).prop("disabled")).toBeTruthy();
+
           $("#new-app-mount").val(mount);
           $("#new-app-author").val(author);
           $("#new-app-name").val(name);
           $("#new-app-description").val(desc);
           $("#new-app-license").val(license);
+          $("#new-app-mount").keyup();
           expect($(generateButton).prop("disabled")).toBeFalsy();
           spyOn(view, "reload");
           $(generateButton).click();
@@ -142,15 +145,15 @@
 
         runs(function() {
           var button;
-          mount = "/my/app";
-          $("#new-app-mount").val(mount);
+          mount = "/my/application";
           $("#tab-store").click();
+          $("#new-app-mount").val(mount);
+          $("#new-app-mount").keyup();
           spyOn(listDummy, "installFromStore").andCallFake(function(i, m, callback) {
             callback({
               error: false
             });
           });
-          expect($(generateButton).prop("disabled")).toBeTruthy();
           expect($("#appstore-content").children().length).toEqual(2);
           button = $("#appstore-content .install-app[appId='" + storeApp + "']");
           expect(button.length).toEqual(1);
@@ -182,7 +185,7 @@
           });
           repository = "arangodb/itzpapalotl";
           version = "1.2.0";
-          mount = "/my/app";
+          mount = "/my/application";
           expectedInfo = {
             url: repository,
             version: version
@@ -190,6 +193,7 @@
           $("#new-app-mount").val(mount);
           $("#repository").val(repository);
           $("#tag").val(version);
+          $("#new-app-mount").keyup();
           expect($(generateButton).prop("disabled")).toBeFalsy();
           spyOn(view, "reload");
           $(generateButton).click();
@@ -210,7 +214,7 @@
 
       it("should install an app from zip file", function() {
         var fileName = "/tmp/upload-12345.zip";
-        var mount = "/my/app";
+        var mount = "/my/application";
 
         runs(function() {
           $("#tab-zip").click();
