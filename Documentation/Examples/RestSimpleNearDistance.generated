@@ -7,9 +7,9 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1327067526", 
-      "_key" : "1327067526", 
-      "_rev" : "1327067526", 
+      "_id" : "products/1326419667", 
+      "_key" : "1326419667", 
+      "_rev" : "1326419667", 
       "name" : "Name/-0.002/", 
       "loc" : [ 
         -0.002, 
@@ -18,9 +18,9 @@ content-type: application/json; charset=utf-8
       "distance" : 222.38985328911744 
     }, 
     { 
-      "_id" : "products/1327460742", 
-      "_key" : "1327460742", 
-      "_rev" : "1327460742", 
+      "_id" : "products/1326812883", 
+      "_key" : "1326812883", 
+      "_rev" : "1326812883", 
       "name" : "Name/0.002/", 
       "loc" : [ 
         0.002, 
@@ -29,9 +29,9 @@ content-type: application/json; charset=utf-8
       "distance" : 222.38985328911744 
     }, 
     { 
-      "_id" : "products/1326870918", 
-      "_key" : "1326870918", 
-      "_rev" : "1326870918", 
+      "_id" : "products/1326223059", 
+      "_key" : "1326223059", 
+      "_rev" : "1326223059", 
       "name" : "Name/-0.004/", 
       "loc" : [ 
         -0.004, 
