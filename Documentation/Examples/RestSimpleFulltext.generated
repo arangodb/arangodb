@@ -7,16 +7,16 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1338077574", 
-      "_key" : "1338077574", 
-      "_rev" : "1338077574", 
-      "text" : "this text contains word" 
+      "_id" : "products/1337626323", 
+      "_key" : "1337626323", 
+      "_rev" : "1337626323", 
+      "text" : "this text also has a word" 
     }, 
     { 
-      "_id" : "products/1338274182", 
-      "_key" : "1338274182", 
-      "_rev" : "1338274182", 
-      "text" : "this text also has a word" 
+      "_id" : "products/1337429715", 
+      "_key" : "1337429715", 
+      "_rev" : "1337429715", 
+      "text" : "this text contains word" 
     } 
   ], 
   "hasMore" : false, 

@@ -1,10 +1,10 @@
-shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/index/products/1316450694
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/index/products/1315802835
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1316450694", 
+  "id" : "products/1315802835", 
   "error" : false, 
   "code" : 200 
 }
