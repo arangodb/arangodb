@@ -32,6 +32,7 @@
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/MutexLocker.h"
 #include "Rest/Version.h"
 #include "VocBase/vocbase.h"
 #include "V8/V8LineEditor.h"
@@ -42,6 +43,9 @@
 using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
+
+std::atomic<V8LineEditor*> triagens::arango::serverConsole(nullptr);
+triagens::basics::Mutex triagens::arango::serverConsoleMutex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ConsoleThread
@@ -149,13 +153,19 @@ void ConsoleThread::inner () {
 
     console.open(true);
 
+    serverConsole = &console;
+
     while (! _userAborted) {
       if (nrCommands >= gcInterval) {
         TRI_RunGarbageCollectionV8(isolate, 0.5);
         nrCommands = 0;
       }
 
-      char* input = console.prompt("arangod> ");
+      char* input;
+      {
+        MUTEX_LOCKER(serverConsoleMutex);
+        input = console.prompt("arangod> ");
+      }
 
       if (_userAborted) {
         if (input != nullptr) {
@@ -189,6 +199,12 @@ void ConsoleThread::inner () {
         }
       }
     }
+
+    {
+      MUTEX_LOCKER(serverConsoleMutex);
+      serverConsole = nullptr;
+    }
+
   }
   localContext->Exit();
   throw "user aborted";

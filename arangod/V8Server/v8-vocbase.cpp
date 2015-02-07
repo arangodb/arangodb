@@ -42,12 +42,14 @@
 
 #include "Basics/conversions.h"
 #include "Basics/json-utilities.h"
+#include "Basics/MutexLocker.h"
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 
 #include "HttpServer/ApplicationEndpointServer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
+#include "V8/V8LineEditor.h"
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
@@ -64,6 +66,7 @@
 #include "unicode/smpdtfmt.h"
 #include "unicode/dtfmtsym.h"
 
+#include "RestServer/ConsoleThread.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -579,6 +582,70 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
   }
 
   triagens::arango::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+extern V8LineEditor* theConsole;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief starts a debugging console
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+
+  v8::Local<v8::String> name(TRI_V8_ASCII_STRING("debug loop"));
+  v8::Local<v8::String> debug(TRI_V8_ASCII_STRING("debug"));
+
+  v8::Local<v8::Object> callerScope;
+  if (args.Length() >= 1) {
+    TRI_AddGlobalVariableVocbase(isolate, isolate->GetCurrentContext(),
+                                 debug, args[0]);
+  }
+
+  V8LineEditor* console = triagens::arango::serverConsole.load();
+  if (console != nullptr) {
+    MUTEX_LOCKER(triagens::arango::serverConsoleMutex);
+    if (serverConsole.load() != nullptr) {   
+      // Check again if console was withdrawn
+      bool userAborted = false;
+      while (! userAborted) {
+        char* input = console->prompt("debug> ");
+
+        if (userAborted) {
+          if (input != nullptr) {
+            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+          }
+          break;
+        }
+
+        if (input == nullptr) {
+          userAborted = true;
+          break;
+        }
+
+        if (*input == '\0') {
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+          continue;
+        }
+
+        console->addHistory(input);
+
+        {
+          v8::TryCatch tryCatch;
+          v8::HandleScope scope(isolate);
+
+          TRI_ExecuteJavaScriptString(isolate, isolate->GetCurrentContext(), TRI_V8_STRING(input), name, true);
+          TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
+
+          if (tryCatch.HasCaught()) {
+            std::cout << TRI_StringifyV8Exception(isolate, &tryCatch);
+          }
+        }
+      }
+    }
+  }
 
   TRI_V8_RETURN_UNDEFINED();
 }
@@ -2630,6 +2697,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("WAL_PROPERTIES"), JS_PropertiesWal, true);
   
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("ENABLE_NATIVE_BACKTRACES"), JS_EnableNativeBacktraces, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("Debug"), JS_Debug, true);
 
   // .............................................................................
   // create global variables
