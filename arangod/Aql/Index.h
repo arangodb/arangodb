@@ -50,6 +50,7 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
+      Index (Index const&) = delete;
       Index& operator= (Index const&) = delete;
       
       Index (TRI_index_t* idx)
