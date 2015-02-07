@@ -26,6 +26,15 @@ install:
 # gdb
 - sudo apt-get -y install gdb
 
+# prepare wrapper for gold
+- sudo apt-get install binutils-gold
+- mkdir -p ~/bin/gold
+- echo '#!/bin/bash' > ~/bin/gold/ld
+- echo 'gold "$@"' >> ~/bin/gold/ld
+- chmod a+x ~/bin/gold/ld
+- export CFLAGS="-B$HOME/bin/gold $CFLAGS"
+- export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
+
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script:
  - "bash -c Installation/travisCI/build.sh"
