@@ -1137,6 +1137,11 @@ void Ast::optimize () {
       return this->optimizeReference(node);
     }
     
+    // indexed access, e.g. a[0] or a['foo']
+    if (node->type == NODE_TYPE_INDEXED_ACCESS) {
+      return this->optimizeIndexedAccess(node);
+    }
+    
     // LET
     if (node->type == NODE_TYPE_LET) {
       return this->optimizeLet(node);
@@ -1912,10 +1917,42 @@ AstNode* Ast::optimizeReference (AstNode* node) {
 
   if (node->hasFlag(FLAG_KEEP_VARIABLENAME)) {
     // this is a reference to a variable name, not a reference to the result
+    // this can be happen for variables that are specified in the COLLECT...KEEP clause
     return node;
   }
 
   return static_cast<AstNode*>(variable->constValue());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief optimizes indexed access, e.g. a[0] or a['foo']
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::optimizeIndexedAccess (AstNode* node) {
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->type == NODE_TYPE_INDEXED_ACCESS);
+  TRI_ASSERT(node->numMembers() == 2);
+
+  auto index = node->getMember(1);
+
+  if (index->isConstant() &&
+      index->type == NODE_TYPE_VALUE &&
+      index->value.type == VALUE_TYPE_STRING) {
+    // found a string value (e.g. a['foo']). now turn this into
+    // an attribute access (e.g. a.foo) in order to make the node qualify
+    // for being turned into an index range later
+    char const* indexValue = index->value.value._string;
+
+    if (indexValue != nullptr && 
+        (indexValue[0] < '0' || indexValue[0] > '9')) {
+      // we have to be careful with numeric values here...
+      // e.g. array['0'] is not the same as array.0 but must remain a['0'] or (a[0])
+      return createNodeAttributeAccess(node->getMember(0), index->getStringValue()); 
+    }
+  } 
+ 
+  // can't optimize when we get here
+  return node;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
