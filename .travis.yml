@@ -27,7 +27,7 @@ install:
 - sudo apt-get -y install gdb
 
 # prepare wrapper for gold
-- sudo apt-get install binutils-gold
+- sudo apt-get -y install binutils-gold
 - mkdir -p ~/bin/gold
 - echo '#!/bin/bash' > ~/bin/gold/ld
 - echo 'gold "$@"' >> ~/bin/gold/ld
