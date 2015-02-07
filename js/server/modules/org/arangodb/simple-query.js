@@ -303,19 +303,19 @@ function isContained (doc, example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a unique index can be used
+/// @brief whether or not the example contains null attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-function isUnique (example) {
+function containsNullAttributes (example) {
   var k;
   for (k in example) {
     if (example.hasOwnProperty(k)) {
-      if (example[k] === null) {
-        return false;
+      if (example[k] === null || example[k] === undefined) {
+        return true;
       }
     }
   }
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,13 +414,15 @@ function byExample (data) {
     else if (keys.length > 0) {
       // try these index types
       var checks = [
-        { type: "hash", fields: keys, unique: false },
-        { type: "skiplist", fields: keys, unique: false }
+        { type: "hash", fields: keys },
+        { type: "skiplist", fields: keys }
       ];
 
-      if (isUnique(example)) {
-        checks.push({ type: "hash", fields: keys, unique: true });
-        checks.push({ type: "skiplist", fields: keys, unique: true });
+      if (containsNullAttributes(example)) {
+        checks.forEach(function(check) {
+          check.sparse = false;
+          check.unique = false;
+        });
       }
 
       for (k = 0; k < checks.length; ++k) {

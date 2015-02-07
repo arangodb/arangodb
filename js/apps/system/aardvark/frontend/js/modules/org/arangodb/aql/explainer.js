@@ -165,6 +165,7 @@ function printIndexes (indexes) {
     var maxIdLen = String("Id").length;
     var maxCollectionLen = String("Collection").length;
     var maxUniqueLen = String("Unique").length; 
+    var maxSparseLen = String("Sparse").length; 
     var maxTypeLen = String("Type").length;
     var maxSelectivityLen = String("Selectivity Est.").length;
     var maxFieldsLen = String("Fields").length;
@@ -188,8 +189,9 @@ function printIndexes (indexes) {
     });
     var line = " " + pad(1 + maxIdLen - String("Id").length) + header("Id") + "   " + 
                header("Type") + pad(1 + maxTypeLen - "Type".length) + "   " + 
-               header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + 
                header("Collection") + pad(1 + maxCollectionLen - "Collection".length) + "   " +
+               header("Unique") + pad(1 + maxUniqueLen - "Unique".length) + "   " + 
+               header("Sparse") + pad(1 + maxSparseLen - "Sparse".length) + "   " + 
                header("Selectivity Est.") + "   " + 
                header("Fields") + pad(1 + maxFieldsLen - "Fields".length) + "   " +
                header("Ranges");
@@ -197,6 +199,7 @@ function printIndexes (indexes) {
  
     for (var i = 0; i < indexes.length; ++i) {
       var uniqueness = (indexes[i].unique ? "true" : "false");
+      var sparsity = (indexes[i].hasOwnProperty("sparse") ? (indexes[i].sparse ? "true" : "false") : "n/a");
       var fields = indexes[i].fields.map(attribute).join(", ");
       var fieldsLen = indexes[i].fields.map(passthru).join(", ").length;
       var ranges = "[ " + indexes[i].ranges + " ]";
@@ -207,8 +210,9 @@ function printIndexes (indexes) {
       line = " " + 
         pad(1 + maxIdLen - String(indexes[i].node).length) + variable(String(indexes[i].node)) + "   " + 
         keyword(indexes[i].type) + pad(1 + maxTypeLen - indexes[i].type.length) + "   " +
-        value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " +
         collection(indexes[i].collection) + pad(1 + maxCollectionLen - indexes[i].collection.length) + "   " +
+        value(uniqueness) + pad(1 + maxUniqueLen - uniqueness.length) + "   " +
+        value(sparsity) + pad(1 + maxSparseLen - sparsity.length) + "   " +
         pad(1 + maxSelectivityLen - selectivity.length) + value(selectivity) + "   " +
         fields + pad(1 + maxFieldsLen - fieldsLen) + "   " + 
         ranges;
@@ -286,7 +290,7 @@ function processQuery (query, explain) {
         }
         return variableName(node);
       case "collection": 
-        return node.name + "   " + annotation("/* all documents from collection */");
+        return collection(node.name) + "   " + annotation("/* all collection documents */");
       case "value":
         return value(JSON.stringify(node.value));
       case "object":
@@ -421,7 +425,7 @@ function processQuery (query, explain) {
         index.collection = node.collection;
         index.node = node.id;
         indexes.push(index);
-        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + "index scan using " + node.index.type + " index") + annotation("*/");
+        return keyword("FOR") + " " + variableName(node.outVariable) + " " + keyword("IN") + " " + collection(node.collection) + "   " + annotation("/* " + (node.reverse ? "reverse " : "") + node.index.type + " index scan") + annotation("*/");
       case "CalculationNode":
         return keyword("LET") + " " + variableName(node.outVariable) + " = " + buildExpression(node.expression);
       case "FilterNode":

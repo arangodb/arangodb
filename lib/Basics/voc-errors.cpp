@@ -243,9 +243,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
-  REG_ERROR(RESULT_KEY_EXISTS, "element not inserted into structure, because key already exists");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
-  REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
   REG_ERROR(ERROR_QUEUE_ALREADY_EXISTS, "named queue already exists");

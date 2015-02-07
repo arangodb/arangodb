@@ -70,8 +70,8 @@ void TRI_InitIndex (TRI_index_t* idx,
                     TRI_idx_iid_t iid,
                     TRI_idx_type_e type,
                     TRI_document_collection_t* document,
-                    bool unique,
-                    bool sparse) {
+                    bool sparse,
+                    bool unique) {
   TRI_ASSERT(idx != nullptr);
 
   if (iid > 0) {
@@ -435,6 +435,12 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
     TRI_Insert3ObjectJson(zone, json, "id", TRI_CreateStringCopyJson(zone, number, strlen(number)));
     TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type), strlen(TRI_TypeNameIndex(idx->_type))));
     TRI_Insert3ObjectJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
+
+    if (idx->_type == TRI_IDX_TYPE_HASH_INDEX ||
+        idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+      // only show sparse flag for these index types, as it can't be set on others
+      TRI_Insert3ObjectJson(zone, json, "sparse", TRI_CreateBooleanJson(zone, idx->_sparse));
+    }
     if (idx->_hasSelectivityEstimate) { 
       TRI_Insert3ObjectJson(zone, json, "selectivityEstimate", TRI_CreateNumberJson(zone, idx->selectivityEstimate(idx)));
     }
@@ -457,41 +463,6 @@ void TRI_CopyPathVector (TRI_vector_t* dst, TRI_vector_t* src) {
 
     TRI_PushBackVector(dst, &shape);
   }
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a path vector into a field list
-///
-/// Note that you must free the field list itself, but not the fields. The
-/// belong to the shaper.
-////////////////////////////////////////////////////////////////////////////////
-
-char const** TRI_FieldListByPathList (TRI_shaper_t const* shaper,
-                                      TRI_vector_t const* paths) {
-  // .............................................................................
-  // Allocate sufficent memory for the field list
-  // .............................................................................
-
-  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char const*) * paths->_length), false));
-
-  // ..........................................................................
-  // Convert the attributes (field list of the hash index) into strings
-  // ..........................................................................
-
-  for (size_t j = 0;  j < paths->_length;  ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths, j)));
-    TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(const_cast<TRI_shaper_t*>(shaper), shape);
-
-    if (path == nullptr) {
-      TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
-      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
-      return nullptr;
-    }
-
-    fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
-  }
-
-  return fieldList;
 }
 
 // -----------------------------------------------------------------------------
@@ -576,7 +547,7 @@ TRI_index_t* TRI_CreatePrimaryIndex (TRI_document_collection_t* document) {
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
   TRI_PushBackVectorString(&idx->_fields, id);
 
-  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, true, false);
+  TRI_InitIndex(idx, 0, TRI_IDX_TYPE_PRIMARY_INDEX, document, false, true);
 
   idx->_hasSelectivityEstimate = true;
   idx->selectivityEstimate     = &SelectivityEstimatePrimary;
@@ -1224,9 +1195,9 @@ TRI_skiplist_iterator_t* TRI_LookupSkiplistIndex (TRI_index_t* idx,
 /// @brief helper for skiplist methods
 ////////////////////////////////////////////////////////////////////////////////
 
-static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
+static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
                                 TRI_skiplist_index_element_t* skiplistElement,
-                                const TRI_doc_mptr_t* document) {
+                                TRI_doc_mptr_t const* document) {
   // ..........................................................................
   // Assign the document to the SkiplistIndexElement structure so that it can
   // be retrieved later.
@@ -1243,6 +1214,8 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 
     return TRI_ERROR_INTERNAL;
   }
+  
+  int res = TRI_ERROR_NO_ERROR;
 
   skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
   char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
@@ -1259,16 +1232,13 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       // OK, the document does not contain the attributed needed by 
       // the index, are we sparse?
-      if (! skiplistIndex->base._sparse) {
-        // No, so let's fake a JSON null:
-        skiplistElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
-        skiplistElement->_subObjects[j]._length = 0;
-        skiplistElement->_subObjects[j]._offset = 0;
-        continue;
-      }
-      return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-    }
+      skiplistElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+      skiplistElement->_subObjects[j]._length = 0;
+      skiplistElement->_subObjects[j]._offset = 0;
 
+      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      continue;
+    }
 
     // ..........................................................................
     // Extract the field
@@ -1277,6 +1247,10 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     TRI_shaped_json_t shapedObject;
     if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
       return TRI_ERROR_INTERNAL;
+    }
+
+    if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
+      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
     }
 
     // .........................................................................
@@ -1288,7 +1262,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
     skiplistElement->_subObjects[j]._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
   }
 
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1298,15 +1272,7 @@ static int SkiplistIndexHelper (const TRI_skiplist_index_t* skiplistIndex,
 static int InsertSkiplistIndex (TRI_index_t* idx,
                                 TRI_doc_mptr_t const* doc,
                                 bool isRollback) {
-  // ...........................................................................
-  // Obtain the skip listindex structure
-  // ...........................................................................
 
-  if (idx == nullptr) {
-    LOG_WARNING("internal error in InsertSkiplistIndex");
-    return TRI_ERROR_INTERNAL;
-  }
-  
   TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
   // ...........................................................................
@@ -1318,7 +1284,6 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
 
   if (skiplistElement._subObjects == nullptr) {
-    LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1333,24 +1298,22 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // all.
   // ...........................................................................
 
-  if (res != TRI_ERROR_NO_ERROR) {
+  // .........................................................................
+  // It may happen that the document does not have the necessary
+  // attributes to be included within the hash index, in this case do
+  // not report back an error.
+  // .........................................................................
 
-    // ..........................................................................
-    // Deallocated the memory already allocated to skiplistElement.fields
-    // ..........................................................................
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
-
-    // .........................................................................
-    // It may happen that the document does not have the necessary
-    // attributes to be included within the hash index, in this case do
-    // not report back an error.
-    // .........................................................................
-
-    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    if (idx->_sparse) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
       return TRI_ERROR_NO_ERROR;
     }
 
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
@@ -1413,7 +1376,7 @@ static TRI_json_t* JsonSkiplistIndex (TRI_index_t const* idx) {
 
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
-    const TRI_shape_path_t* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+    TRI_shape_path_t const* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
 
     if (path == nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
@@ -1462,7 +1425,6 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
 
   if (skiplistElement._subObjects == nullptr) {
-    LOG_WARNING("out-of-memory in InsertSkiplistIndex");
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1476,25 +1438,16 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Error returned generally implies that the document never was part of the
   // skiplist index
   // ..........................................................................
-
-  if (res != TRI_ERROR_NO_ERROR) {
-
-    // ........................................................................
-    // Deallocate memory allocated to skiplistElement.fields above
-    // ........................................................................
-
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
-
-    // ........................................................................
-    // It may happen that the document does not have the necessary attributes
-    // to have particpated within the hash index. In this case, we do not
-    // report an error to the calling procedure.
-    // ........................................................................
-
-    if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    if (idx->_sparse) {
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
       return TRI_ERROR_NO_ERROR;
     }
 
+    res = TRI_ERROR_NO_ERROR;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
@@ -1521,6 +1474,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
                                       TRI_idx_iid_t iid,
                                       TRI_vector_pointer_t* fields,
                                       TRI_vector_t* paths,
+                                      bool sparse,
                                       bool unique) {
   TRI_skiplist_index_t* skiplistIndex = static_cast<TRI_skiplist_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_skiplist_index_t), false));
 
@@ -1530,7 +1484,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
 
   TRI_index_t* idx = &skiplistIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, unique, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_SKIPLIST_INDEX, document, sparse, unique);
 
   idx->memory   = MemorySkiplistIndex;
   idx->json     = JsonSkiplistIndex;
@@ -1541,21 +1495,10 @@ TRI_index_t* TRI_CreateSkiplistIndex (TRI_document_collection_t* document,
   // Copy the contents of the shape list vector into a new vector and store this
   // ...........................................................................
 
-  TRI_InitVector(&skiplistIndex->_paths, TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shape_pid_t));
-
-  for (size_t j = 0;  j < paths->_length;  ++j) {
-    TRI_shape_pid_t shape = *((TRI_shape_pid_t*)(TRI_AtVector(paths,j)));
-
-    TRI_PushBackVector(&skiplistIndex->_paths, &shape);
-  }
+  TRI_CopyPathVector(&skiplistIndex->_paths, paths);
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
-
-  for (size_t j = 0;  j < fields->_length;  ++j) {
-    char const* name = static_cast<char const*>(fields->_buffer[j]);
-    char* copy = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, name);
-    TRI_PushBackVectorString(&idx->_fields, copy);
-  }
+  TRI_CopyDataFromVectorPointerVectorString(TRI_CORE_MEM_ZONE, &idx->_fields, fields);
 
   skiplistIndex->_skiplistIndex = SkiplistIndex_new(document,
                                                     paths->_length,

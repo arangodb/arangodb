@@ -63,7 +63,7 @@ var API = "_api/index";
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexAllIndexes}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///
@@ -120,8 +120,8 @@ function get_api_indexes (req, res) {
 /// - *type*: the index type
 ///
 /// All other attributes are type-dependent. For example, some indexes provide
-/// a *unique* flag, whereas others don't. Some indexes can also provide a
-/// selectivity estimate in the *selectivityEstimate* attribute.
+/// *unique* or *sparse* flags, whereas others don't. Some indexes also provide 
+/// a selectivity estimate in the *selectivityEstimate* attribute.
 ///
 /// @RESTRETURNCODES
 ///
@@ -254,7 +254,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewCapConstraint}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = {
@@ -343,7 +343,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateGeoLocation}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "geo", "fields" : [ "b" ] }';
@@ -360,7 +360,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateGeoLatitudeLongitude}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "geo", "fields" : [ "e", "f" ] }';
@@ -399,13 +399,14 @@ function get_api_index (req, res) {
 ///
 /// - *unique*: If *true*, then create a unique index.
 ///
+/// - *sparse*: If *true*, then create a sparse index.
+///
 /// **Note**: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a *HTTP 200* is
-/// returned.
+/// If the index already exists, then a *HTTP 200* is returned.
 ///
 /// @RESTRETURNCODE{201}
 /// If the index does not already exist and could be created, then a *HTTP 201*
@@ -426,7 +427,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewUniqueConstraint}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "hash", "unique" : true, "fields" : [ "a", "b" ] }';
@@ -438,15 +439,32 @@ function get_api_index (req, res) {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a hash index:
+/// Creating a non-unique hash index:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewHashIndex}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "hash", "unique" : false, "fields" : [ "a", "b" ] }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Creating a sparse index:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseHashIndex}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = '{ "type": "hash", "unique" : false, "sparse" : true, "fields" : [ "a" ] }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -482,6 +500,8 @@ function get_api_index (req, res) {
 ///
 /// - *unique*: If *true*, then create a unique index.
 ///
+/// - *sparse*: If *true*, then create a sparse index.
+///
 /// **Note**: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
@@ -504,15 +524,32 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a skiplist:
+/// Creating a skiplist index:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewSkiplist}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "skiplist", "unique" : false, "fields" : [ "a", "b" ] }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Creating a sparse skiplist index:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseSkiplist}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = '{ "type": "skiplist", "unique" : false, "sparse" : true, "fields" : [ "a" ] }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -572,7 +609,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewFulltext}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type" : "fulltext", "fields" : [ "text" ] }';
@@ -631,6 +668,13 @@ function get_api_index (req, res) {
 ///
 /// **Note**: Unique indexes on non-shard keys are not supported in a
 /// cluster.
+///
+/// Hash and skiplist indexes can optionally be created in a sparse
+/// variant. A sparse index will be created if the *sparse* attribute in
+/// the index details is set to *true*. Sparse indexes do not index documents
+/// for which the index attributes are null or not set. This can lead to
+/// smaller index sizes, but disables the use of sparse indexes for 
+/// certain types of queries.
 ///
 /// @RESTRETURNCODES
 ///
@@ -720,7 +764,7 @@ function post_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index/" + db.products.ensureSkiplist("a","b").id;
 ///
