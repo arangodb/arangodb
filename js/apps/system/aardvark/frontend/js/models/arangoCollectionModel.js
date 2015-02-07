@@ -103,10 +103,10 @@
           processData: false,
           async: false,
           success: function() {
-              returnVal = true;
+            returnVal = true;
           },
           error: function(data) {
-              returnVal = data;
+            returnVal = data;
           }
       });
       return returnVal;
@@ -120,10 +120,10 @@
               url: "/_api/index/"+ this.get("name") +"/"+encodeURIComponent(id),
               async: false,
               success: function () {
-                  returnval = true;
+                returnval = true;
               },
               error: function () {
-                  returnval = false;
+                returnval = false;
               }
           });
           return returnval;

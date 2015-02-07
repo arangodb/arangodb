@@ -98,6 +98,7 @@
               <th class="collectionInfoTh">ID</th>
               <th class="collectionInfoTh">Type</th>
               <th class="collectionInfoTh">Unique</th>
+              <th class="collectionInfoTh">Sparse</th>
               <th class="collectionInfoTh">Selectivity Est.</th>
               <th class="collectionInfoTh">Fields</th>
               <th class="collectionInfoTh">Action</th>
@@ -233,6 +234,19 @@
                   </div>
                 </th>
               </tr>
+              <tr>
+                <th class="collectionTh">Sparse:</th>
+                <th>
+                  <input id="newHashSparse" type="checkbox" name="newHashSparse" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
             </table>
           </div>
           <div id="newIndexTypeFulltext" class="newIndexClass" style="display:none">
@@ -289,9 +303,21 @@
                   </div>
                 </th>
               </tr>
+              <tr>
+                <th class="collectionTh">Sparse:</th>
+                <th>
+                  <input id="newSkiplistSparse" type="checkbox" name="newSkiplistSparse" value="true">
+                </th>
+                <th class="tooltipInfoTh">
+                  <div>
+                    <a class="index-tooltip" data-toggle="tooltip" data-placement="left" title="If true, then create a sparse index.">
+                      <span rel="tooltip" class="arangoicon icon_arangodb_info"></span>
+                    </a>
+                  </div>
+                </th>
+              </tr>
             </table>
           </div>
-
           <div class="index-button-bar">
             <button id="createIndex" class="button-success">Save</button>
             <button id="cancelIndex" class="button-danger">Cancel</button>

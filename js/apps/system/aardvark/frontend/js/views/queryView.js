@@ -188,7 +188,7 @@
 
       var sizeBox = $('#querySize');
       sizeBox.empty();
-      [ 100, 250, 500, 1000, 2500, 5000 ].forEach(function (value) {
+      [ 100, 250, 500, 1000, 2500, 5000, 10000 ].forEach(function (value) {
         sizeBox.append('<option value="' + _.escape(value) + '"' +
           (querySize === value ? ' selected' : '') +
           '>' + _.escape(value) + ' results</option>');

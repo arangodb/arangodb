@@ -227,8 +227,8 @@ void TRI_InitIndex (TRI_index_t*,
                     TRI_idx_iid_t,
                     TRI_idx_type_e,
                     struct TRI_document_collection_t*,
-                    bool,   // unique
-                    bool);  // sparse
+                    bool,   // sparse
+                    bool);  // unique
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -303,23 +303,6 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t*,
 void TRI_CopyPathVector (TRI_vector_t*,
                          TRI_vector_t*);
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief copies all pointers from a vector
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_CopyFieldsVector (TRI_vector_string_t*,
-                           TRI_vector_pointer_t const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief converts a path vector into a field list
-///
-/// Note that you must free the field list itself, but not the fields. The
-/// belong to the shaper.
-////////////////////////////////////////////////////////////////////////////////
-
-char const** TRI_FieldListByPathList (TRI_shaper_t const*,
-                                      TRI_vector_t const*);
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     PRIMARY INDEX
 // -----------------------------------------------------------------------------
@@ -379,6 +362,7 @@ TRI_index_t* TRI_CreateSkiplistIndex (struct TRI_document_collection_t*,
                                       TRI_idx_iid_t,
                                       TRI_vector_pointer_t*,
                                       TRI_vector_t*,
+                                      bool,
                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////

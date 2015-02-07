@@ -1817,8 +1817,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                       }
                     }
                     else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
-                      //each valid orCondition should match every field of the given index
-                      for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
+                      // each valid orCondition should match every field of the given index
+                      for (size_t k = 0; k < validPos.size() && ! indexOrCondition.empty(); k++) {
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         for (size_t j = 0; j < idx->fields.size(); j++) {
                           auto range = map->find(idx->fields[j]);
@@ -1828,6 +1828,28 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             break;
                           } 
                           else {
+                            if (idx->sparse) {
+                              bool mustClear = false;
+                              auto const& rib = range->second; 
+
+                              if (rib.isConstant()) {
+                                auto const& value = rib._lowConst.bound();
+                                if (value.isEmpty() || value.isNull()) {
+                                  mustClear = true;
+                                }
+                              }
+                              else {
+                                // non-constant range
+                                mustClear = true;
+                              }
+                            
+                              if (mustClear) {
+                                indexOrCondition.clear();   // not usable
+                                std::cout << "CANNOT USE SPARSE HASH INDEX\n";
+                                break;
+                              }
+                            }
+
                             indexOrCondition.at(k).push_back(range->second);
                           }
                         }
@@ -1893,6 +1915,34 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                           equality = equality && range->second.is1ValueRangeInfo();
                         }
 
+                        // check if index is sparse and exclude it if required
+                        if (idx->sparse) {
+                          bool mustClear = false;
+                          auto const& rib = range->second; 
+
+                          if (rib.isConstant()) {
+                            if (rib._lowConst.isDefined()) {
+                              if (rib._lowConst.inclusive() && 
+                                  rib._lowConst.bound().isNull()) {
+                                mustClear = true;
+                              }
+                            }
+                            else {
+                              mustClear = true;
+                            }
+                          }
+                          else {
+                            // non-constant range
+                            mustClear = true;
+                          }
+
+                          if (mustClear) {
+                            indexOrCondition.clear();
+                            handled = true;
+                          }
+                        }
+
+
                         if (handled) {
                           // exit the for loop, too. otherwise it will crash because
                           // indexOrCondition is empty now
@@ -1903,6 +1953,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                     // check if there are all positions are non-empty
                     bool isEmpty = indexOrCondition.empty();
+
                     if (! isEmpty) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         if (indexOrCondition.at(k).empty()) {

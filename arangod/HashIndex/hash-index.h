@@ -105,6 +105,7 @@ TRI_index_t* TRI_CreateHashIndex (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t,
                                   TRI_vector_pointer_t*,
                                   TRI_vector_t*,
+                                  bool,
                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
