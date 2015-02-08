@@ -4,7 +4,7 @@ ArangoDB
 ========
 
 Master: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=master)](http://travis-ci.org/triAGENS/ArangoDB)
-Devel: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=devel)](http://travis-ci.org/triAGENS/ArangoDB)
+2.4: [![Build Status](https://secure.travis-ci.org/triAGENS/ArangoDB.png?branch=2.4)](http://travis-ci.org/triAGENS/ArangoDB)
 
 ArangoDB is a multi-purpose, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
