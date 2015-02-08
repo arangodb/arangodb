@@ -1,9 +1,8 @@
 branches:
   only:
     - master
-    - "2.3"
-    - "2.4"
     - devel
+    - "2.3"
 
 language: cpp
 compiler: g++
