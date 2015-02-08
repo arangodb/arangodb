@@ -1,12 +1,11 @@
 branches:
   only:
     - master
-    - "1.4"
-    - "2.3"
-    - "2.4"
     - devel
+    - "1.4"
 
-language: c
+language: cpp
+compiler: g++
 
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script: "bash -c Installation/travisCI/script.sh"
