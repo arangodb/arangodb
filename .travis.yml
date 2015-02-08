@@ -1,13 +1,6 @@
-language: c
-before_script: "bash -c Installation/travisCI/before_script.sh"
-script: "bash -c Installation/travisCI/script.sh"
 branches:
   only:
     - master
-    - 1.0
-    - 1.1
-    - 1.2
-    - 1.3
-    - 1.4
-    - 2.0
+    - "2.3"
+    - "2.4"
     - devel
