@@ -32,6 +32,37 @@ module.isSystem = true;
 
 var internal = require("internal");
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add options from arguments to index specification
+////////////////////////////////////////////////////////////////////////////////
+
+function addIndexOptions (body, parameters) {
+  body.fields = [ ];
+
+  var setOption = function(k) {
+    if (! body.hasOwnProperty(k)) {
+      body[k] = parameters[i][k];
+    }
+  };
+
+  var i;
+  for (i = 0; i < parameters.length; ++i) {
+    if (typeof parameters[i] === "string") {
+      // set fields
+      body.fields.push(parameters[i]);
+    }
+    else if (typeof parameters[i] === "object" && 
+             ! Array.isArray(parameters[i]) &&
+             parameters[i] !== null) {
+      // set arbitrary options
+      Object.keys(parameters[i]).forEach(setOption);
+      break;
+    }
+  }
+
+  return body;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
 // -----------------------------------------------------------------------------
@@ -944,17 +975,30 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a skiplist index exists
+/// @brief ensures that a unique skiplist index exists
 /// @startDocuBlock ensureUniqueSkiplist
-/// `ensureUniqueSkiplist(field*1*, field*2*, ...,field*n*)`
+/// `ensureUniqueSkiplist(attribute*1*, attribute*2*, ..., attribute*n*, options)`
 ///
-/// Creates a skiplist index on all documents using attributes as paths to
-/// the fields. At least one attribute must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
+/// Creates a unique skiplist index on all documents using *attribute1*,
+/// *attribute2*, ... as attribute paths. At least one attribute path must be given.
 ///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
+/// All documents for which the given attributes exist must differ with respect
+/// to values of these attributes. Creating a new document or updating a document 
+/// will fail if the attribute uniqueness is violated. If any indexed attribute value
+/// is *null* in a document, the document is ignored by the index.
+///
+/// Additional index options can be specified in the *options* argument. If
+/// set, it must be an object. Currently the following index options are
+/// supported:
+///
+/// - *sparse*: if set to *true*, documents that do not contain at least one
+///   of the specified index attributes or that have a value of *null* in any
+///   of the specified index attributes will be ignored for this index.
+///   If set to *false*, these documents will be included in the index.
+///   The default value is *false* (i.e. non-sparse). 
+///
+/// In case that the index was successfully created, an object with the index
+/// details, including the index-identifier, is returned.
 ///
 /// @verbinclude unique-skiplist
 /// @endDocuBlock
@@ -963,25 +1007,33 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
   "use strict";
 
-  return this.ensureIndex({
+  return this.ensureIndex(addIndexOptions({
     type: "skiplist",
-    fields: Array.prototype.slice.call(arguments),
     unique: true
-  });
+  }, arguments));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a multi skiplist index exists
+/// @brief ensures that a non-unique skiplist index exists
 /// @startDocuBlock ensureSkiplist
-/// `ensureSkiplist(field*1*, field*2*, ...,field*n*)`
+/// `ensureSkiplist(attribute*1*, attribute*2*, ..., attribute*n*, options)`
 ///
-/// Creates a multi skiplist index on all documents using attributes as paths to
-/// the fields. At least one attribute must be given.
-/// All documents, which do not have the attribute path or
-/// with one or more values that are not suitable, are ignored.
+/// Creates a non-unique skiplist index on all documents using *attribute1*,
+/// *attribute2*, ... as attribute paths. At least one attribute path must be given.
 ///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
+/// Additional index options can be specified in the *options* argument. If
+/// set, it must be an object. Currently the following index options are
+/// supported:
+///
+/// - *sparse*: if set to *true*, documents that do not contain at least one
+///   of the specified index attributes or that have a value of *null* in any
+///   of the specified index attributes will be ignored for this index.
+///   If set to *false*, these documents will be included in the index.
+///   The default value is *false* (i.e. non-sparse). 
+///
+/// In case that the index was successfully created, an object with the index
+/// details, including the index-identifier, is returned.
+///
 ///
 /// @verbinclude multi-skiplist
 /// @endDocuBlock
@@ -990,10 +1042,9 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ArangoCollection.prototype.ensureSkiplist = function () {
   "use strict";
 
-  return this.ensureIndex({
-    type: "skiplist",
-    fields: Array.prototype.slice.call(arguments)
-  });
+  return this.ensureIndex(addIndexOptions({
+    type: "skiplist"
+  }, arguments));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1035,22 +1086,29 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a unique constraint exists
 /// @startDocuBlock ensureUniqueConstraint
-/// `ensureUniqueConstraint(field*1*, field*2*, ...,field*n*)`
+/// `ensureUniqueConstraint(attribute*1*, attribute*2*, ..., attribute*n*, options)`
 ///
-/// Creates a unique hash index on all documents using *field1*, *field2*,
+/// Creates a unique hash index on all documents using *attribute1*, *attribute2*,
 /// ... as attribute paths. At least one attribute path must be given.
 ///
 /// When a unique constraint is in effect for a collection, then all documents
 /// which contain the given attributes must differ in the attribute
 /// values. Creating a new document or updating a document will fail, if the
-/// uniqueness is violated. If any attribute value is null for a document, this
+/// uniqueness is violated. If any attribute value is *null* in a document, the
 /// document is ignored by the index.
 ///
-/// Note that non-existing attribute paths in a document are treated as if the
-/// value were *null*.
+/// Additional index options can be specified in the *options* argument. If
+/// set, it must be an object. Currently the following index options are
+/// supported:
 ///
-/// In case that the index was successfully created, the index identifier is
-/// returned.
+/// - *sparse*: if set to *true*, documents that do not contain at least one
+///   of the specified index attributes or that have a value of *null* in any
+///   of the specified index attributes will be ignored for this index.
+///   If set to *false*, these documents will be included in the index.
+///   The default value is *false* (i.e. non-sparse). 
+///
+/// In case that the index was successfully created, an object with the index
+/// details, including the index-identifier, is returned.
 ///
 /// *Examples*
 ///
@@ -1061,26 +1119,32 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
   "use strict";
 
-  return this.ensureIndex({
+  return this.ensureIndex(addIndexOptions({
     type: "hash",
-    fields: Array.prototype.slice.call(arguments),
     unique: true
-  });
+  }, arguments));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensures that a hash index exists
+/// @brief ensures that a non-unique hash index exists
 /// @startDocuBlock ensureHashIndex
-/// `ensureHashIndex(field*1*, field*2*, ...,field*n*)`
+/// `ensureHashIndex(attribute*1*, attribute*2*, ..., attribute*n*)`
 ///
-/// Creates a non-unique hash index on all documents using *field1*, *field2*,
+/// Creates a non-unique hash index on all documents using *attribute1*, *attribute2*,
 /// ... as attribute paths. At least one attribute path must be given.
 ///
-/// Note that non-existing attribute paths in a document are treated as if the
-/// value were *null*.
+/// Additional index options can be specified in the *options* argument. If
+/// set, it must be an object. Currently the following index options are
+/// supported:
 ///
-/// In case that the index was successfully created, the index identifier
-/// is returned.
+/// - *sparse*: if set to *true*, documents that do not contain at least one
+///   of the specified index attributes or that have a value of *null* in any
+///   of the specified index attributes will be ignored for this index.
+///   If set to *false*, these documents will be included in the index.
+///   The default value is *false* (i.e. non-sparse). 
+///
+/// In case that the index was successfully created, an object with the index
+/// details, including the index-identifier, is returned.
 ///
 /// *Examples*
 ///
@@ -1091,10 +1155,9 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ArangoCollection.prototype.ensureHashIndex = function () {
   "use strict";
 
-  return this.ensureIndex({
-    type: "hash",
-    fields: Array.prototype.slice.call(arguments)
-  });
+  return this.ensureIndex(addIndexOptions({
+    type: "hash"
+  }, arguments));
 };
 
 ////////////////////////////////////////////////////////////////////////////////

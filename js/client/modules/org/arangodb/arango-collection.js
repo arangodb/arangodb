@@ -33,6 +33,41 @@ var internal = require("internal");
 var arangosh = require("org/arangodb/arangosh");
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  helper functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief add options from arguments to index specification
+////////////////////////////////////////////////////////////////////////////////
+
+function addIndexOptions (body, parameters) {
+  body.fields = [ ];
+
+  var setOption = function(k) {
+    if (! body.hasOwnProperty(k)) {
+      body[k] = parameters[i][k];
+    }
+  };
+
+  var i;
+  for (i = 0; i < parameters.length; ++i) {
+    if (typeof parameters[i] === "string") {
+      // set fields
+      body.fields.push(parameters[i]);
+    }
+    else if (typeof parameters[i] === "object" && 
+             ! Array.isArray(parameters[i]) &&
+             parameters[i] !== null) {
+      // set arbitrary options
+      Object.keys(parameters[i]).forEach(setOption);
+      break;
+    }
+  }
+
+  return body;
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  ArangoCollection
 // -----------------------------------------------------------------------------
 
@@ -577,11 +612,10 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  var body = {
+  var body = addIndexOptions({
     type : "skiplist",
-    unique : true,
-    fields : Array.prototype.slice.call(arguments)
-  };
+    unique : true
+  }, arguments);
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -595,11 +629,10 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureSkiplist = function () {
-  var body = {
+  var body = addIndexOptions({
     type : "skiplist",
-    unique : false,
-    fields : Array.prototype.slice.call(arguments)
-  };
+    unique : false
+  }, arguments);
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -631,11 +664,10 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
-  var body = {
+  var body = addIndexOptions({
     type : "hash",
-    unique : true,
-    fields : Array.prototype.slice.call(arguments)
-  };
+    unique : true
+  }, arguments);
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
@@ -649,11 +681,10 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureHashIndex = function () {
-  var body = {
+  var body = addIndexOptions({
     type : "hash",
-    unique : false,
-    fields : Array.prototype.slice.call(arguments)
-  };
+    unique : false
+  }, arguments);
 
   var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
 
