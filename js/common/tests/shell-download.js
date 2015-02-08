@@ -217,12 +217,10 @@ function DownloadSuite () {
 
       result = JSON.parse(response.body);
       assertEqual("POST", result.requestType);
-      assertEqual(5, Object.getOwnPropertyNames(result.parameter).length);
+      assertEqual(3, Object.getOwnPropertyNames(result.parameter).length);
       assertEqual("1", result.parameter["foo"]);
       assertEqual("2", result.parameter["bar"]);
       assertEqual("202", result.parameter["code"]);
-      assertEqual("1", result.parameter["meow"]);
-      assertEqual("bam", result.parameter["baz"]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
