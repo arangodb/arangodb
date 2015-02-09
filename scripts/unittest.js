@@ -142,6 +142,7 @@ function main (argv) {
   catch (x) {
     print("Caught exception during test execution!");
     print(x.message);
+    print(x.stack);
     print(JSON.stringify(r));
   }
   fs.write("UNITTEST_RESULT.json",JSON.stringify(r));
