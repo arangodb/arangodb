@@ -1,5 +1,6 @@
 /*jshint unused: false */
 /*global require, start_pretty_print */
+
 var yaml = require("js-yaml");
 
 var UnitTest = require("org/arangodb/testing");
@@ -117,83 +118,101 @@ function resultsToXml(results, baseName) {
   }
 }
 
+
 function parseArvg(argv, startOffset) {
-    inFlat = false;
-    ret = {};
-    for (var i = startOffset; i < argv.length; i++) {
-	var thisString = argv[i];
-	if (!inFlat) {
-	    if ((thisString.length > 2) && 
-		(thisString.slice(0,2) === '--')) {
-		option = thisString.slice(2, thisString.length);
-		if ((argv.length > i) && 
-		    (argv[i+1].slice(0,1) !== '-')) {
-		    if (argv[i+1] === 'true') {
-			ret[option] = true;
-		    }
-		    else if (argv[i+1] == 'false') {
-			ret[option] = false;
-		    }
-		    else if (!isNaN(argv[i+1])) {
-			ret[option] = parseInt(argv[i+1]);
-		    }			
-		    else {
-			ret[option] = argv[i+1];
-		    }
-		    i ++;
-		}
-		else {
-		    if (!ret.hasOwnProperty('commandSwitches')) {
-			ret['commandSwitches'] = [];
-		    }
-		    ret.commandSwitches.pushBack(option);
-		}
-	    }
-	    else if (thisString === '--') {
-		inFlat = true;
-	    }
-	    else if ((thisString.length > 1) && 
-		     (thisString.slice(0, 1) === '-')) {
-		if (!ret.hasOwnProperty('commandSwitches')) {
-		    ret['commandSwitches'] = [];
-		}
-		for (var j = 1; j < thisString.length; j ++ ) {
-		    ret.commandSwitches.pushBack(thisString[j]);
-		}
-	    }
-	    else {
-		if (!ret.hasOwnProperty('flatCommands')) {
-		    ret['flatCommands'] = [];
-		}
-		ret.flatCommands.pushBack(thisString);
-	    }
-	}
-	else {
-	    if (!ret.hasOwnProperty('flatCommands')) {
-		ret['flatCommands'] = [];
-	    }
-	    ret.flatCommands.pushBack(thisString);
-	}
+  "use strict";
+
+  function setOption(ret, option, value) {
+    if (option.indexOf(':') > 0) {
+        var n = option.indexOf(':');
+        topOption = option.slice(0, n);
+        if (!ret.hasOwnProperty(topOption)) {
+    	ret.topOption = {};
+        }
+        setOption(ret.topOption, option.slice(n, options.length), value);
     }
-    return ret;
+    else if (argv[i+1] === 'true') {
+        ret[option] = true;
+    }
+    else if (argv[i+1] === 'false') {
+        ret[option] = false;
+    }
+    else if (!isNaN(argv[i+1])) {
+        ret[option] = parseInt(argv[i+1]);
+    }
+    else {
+        ret[option] = argv[i+1];
+    }
+  }
+  function setSwitch(ret, option) {
+    if (!ret.hasOwnProperty('commandSwitches')) {
+      ret.commandSwitches = [];
+    }
+    ret.commandSwitches.pushBack(option);
+  }
+
+  function setSwitchVec(ret, option) {
+    for (var i = 0; i < option.length; i ++ ) {
+      setSwitch(ret, option[i]);
+    }
+  }
+
+  function setFlatCommand(ret, thisString) {
+    if (!ret.hasOwnProperty('flatCommands')) {
+      ret.flatCommands = [];
+    }
+    ret.flatCommands.pushBack(thisString);
+  }
+
+  var inFlat = false;
+  var ret = {};
+  for (var i = startOffset; i < argv.length; i++) {
+    var thisString = argv[i];
+    if (!inFlat) {
+      if ((thisString.length > 2) && 
+      (thisString.slice(0,2) === '--')) {
+      var option = thisString.slice(2, thisString.length);
+      if ((argv.length > i) && 
+        (argv[i+1].slice(0,1) !== '-')) {
+        setOption(ret, option, argv[i+1]);
+        i ++;
+      }
+      else {
+        setSwitch(ret, option);
+      }
+      }
+      else if (thisString === '--') {
+      inFlat = true;
+      }
+      else if ((thisString.length > 1) &&
+               (thisString.slice(0, 1) === '-')) {
+      setSwitchVec(ret, thisString.slice(1, thisString.length));
+      }
+      else {
+      setFlatCommand(ret, thisString);
+      }
+    }
+    else {
+      setFlatCommand(ret, thisString);
+    }
+  }
+  return ret;
 
 }
 
 function main (argv) {
   "use strict";
-
   var test = argv[1];
   var options = {};
   var r;
   if (argv.length >= 3) {
     try {
-	if (argv[2].slice(0,1) === '{') {
-	    options = JSON.parse(argv[2]);
-	}
-	else {
-	    options = parseArvg(argv, 2);
-	    require("internal").print(yaml.safeDump(options));
-	}
+      if (argv[2].slice(0,1) === '{') {
+        options = JSON.parse(argv[2]);
+      }
+      else {
+        options = parseArvg(argv, 2);
+      }
     }
     catch (x) {
       print("failed to parse the json options");
