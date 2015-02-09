@@ -248,7 +248,7 @@ function getCollection () {
   }
 
   if (c !== null && ! checkedIndex) {
-    c.ensureUniqueConstraint('collection');
+    c.ensureUniqueConstraint('collection', { sparse: true });
     checkedIndex = true;
   }
 
