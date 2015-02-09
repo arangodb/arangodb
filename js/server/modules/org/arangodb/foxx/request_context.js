@@ -36,6 +36,7 @@ var RequestContext,
   internal = require("org/arangodb/foxx/internals"),
   toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   is = require("org/arangodb/is"),
+  isJoi,
   createBodyParamExtractor,
   createModelInstantiator,
   validateOrThrow,
@@ -77,7 +78,7 @@ createModelInstantiator = function (Model, allowInvalid) {
   Model = multiple ? Model[0] : Model;
   var instantiate = function (raw) {
     if (!allowInvalid) {
-      raw = validateOrThrow(raw, Model.prototype.schema);
+      raw = validateOrThrow(raw, Model.prototype.schema, allowInvalid);
     }
     return new Model(raw);
   };
@@ -89,9 +90,29 @@ createModelInstantiator = function (Model, allowInvalid) {
   };
 };
 
+isJoi = function (schema) {
+  'use strict';
+  var keys = Object.keys(schema),
+    isJoi = true,
+    i;
+
+  if (!schema) {
+    return false;
+  }
+
+  for (i = 0; i < keys.length; ++i) {
+    if (!schema[keys[i]].hasOwnProperty('isJoi') || !schema[keys[i]].isJoi) {
+      isJoi = false;
+    }
+  }
+
+  return isJoi;
+};
+
 validateOrThrow = function (raw, schema, allowInvalid) {
   'use strict';
-  if (!schema || !schema.isJoi) {
+
+  if (!isJoi(schema)) {
     return raw;
   }
   var result = joi.validate(raw, schema);
@@ -543,7 +564,6 @@ extend(RequestContext.prototype, {
         return raw;
       };
     } else if (typeof type === 'function' || is.array(type)) {
-      // assume ModelOrSchema is a Foxx Model
       construct = createModelInstantiator(type, allowInvalid);
     } else {
       if (!type.isJoi) {
@@ -567,6 +587,7 @@ extend(RequestContext.prototype, {
           }
         });
       }
+
       construct = function (raw) {
         return validateOrThrow(raw, type, allowInvalid);
       };
