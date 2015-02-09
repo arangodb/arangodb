@@ -119,86 +119,7 @@ function resultsToXml(results, baseName) {
 }
 
 
-function parseArvg(argv, startOffset) {
-  "use strict";
 
-  function setOption(ret, option, value) {
-    if (option.indexOf(':') > 0) {
-        var n = option.indexOf(':');
-        topOption = option.slice(0, n);
-        if (!ret.hasOwnProperty(topOption)) {
-    	ret.topOption = {};
-        }
-        setOption(ret.topOption, option.slice(n, options.length), value);
-    }
-    else if (argv[i+1] === 'true') {
-        ret[option] = true;
-    }
-    else if (argv[i+1] === 'false') {
-        ret[option] = false;
-    }
-    else if (!isNaN(argv[i+1])) {
-        ret[option] = parseInt(argv[i+1]);
-    }
-    else {
-        ret[option] = argv[i+1];
-    }
-  }
-  function setSwitch(ret, option) {
-    if (!ret.hasOwnProperty('commandSwitches')) {
-      ret.commandSwitches = [];
-    }
-    ret.commandSwitches.pushBack(option);
-  }
-
-  function setSwitchVec(ret, option) {
-    for (var i = 0; i < option.length; i ++ ) {
-      setSwitch(ret, option[i]);
-    }
-  }
-
-  function setFlatCommand(ret, thisString) {
-    if (!ret.hasOwnProperty('flatCommands')) {
-      ret.flatCommands = [];
-    }
-    ret.flatCommands.pushBack(thisString);
-  }
-
-  var inFlat = false;
-  var ret = {};
-  for (var i = startOffset; i < argv.length; i++) {
-    var thisString = argv[i];
-    if (!inFlat) {
-      if ((thisString.length > 2) && 
-      (thisString.slice(0,2) === '--')) {
-      var option = thisString.slice(2, thisString.length);
-      if ((argv.length > i) && 
-        (argv[i+1].slice(0,1) !== '-')) {
-        setOption(ret, option, argv[i+1]);
-        i ++;
-      }
-      else {
-        setSwitch(ret, option);
-      }
-      }
-      else if (thisString === '--') {
-      inFlat = true;
-      }
-      else if ((thisString.length > 1) &&
-               (thisString.slice(0, 1) === '-')) {
-      setSwitchVec(ret, thisString.slice(1, thisString.length));
-      }
-      else {
-      setFlatCommand(ret, thisString);
-      }
-    }
-    else {
-      setFlatCommand(ret, thisString);
-    }
-  }
-  return ret;
-
-}
 
 function main (argv) {
   "use strict";
@@ -215,8 +136,8 @@ function main (argv) {
       }
     }
     catch (x) {
-      print("failed to parse the json options");
-      print(x);
+      print("failed to parse the json options: " + x.message);
+      rint(x.stack);
       return -1;
     }
   }
@@ -224,7 +145,7 @@ function main (argv) {
   start_pretty_print();
 
   try {
-    r = UnitTest.UnitTest(test,options); 
+    r = UnitTest.UnitTest(test,options);
   }
   catch (x) {
     print("Caught exception during test execution!");

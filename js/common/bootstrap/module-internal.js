@@ -797,6 +797,128 @@
 }());
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                     Commandline argument handling
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Structured to flat commandline arguments
+////////////////////////////////////////////////////////////////////////////////
+function toArgv(structure) {
+  "use strict";
+  var vec = [];
+  for (var key in structure) {
+    if (structure.hasOwnProperty(key)) {
+      if (key === 'commandSwitches') {
+        var multivec="";
+        for (var i = 0; i <  structure[key].length; i ++) {
+          if (structure[key][i].length > 1) {
+            vec.push(structure[key][i]);
+          }
+          else {
+            multivec += structure[key][i];
+          }
+        }
+        if (multivec.length > 0) {
+          vec.push(multivec);
+        }
+      }
+      else if (key === 'flatCommands') {
+        vec = vec.concat(structure[key]);
+      }
+      else {
+      vec.push('--' + key);
+      vec.push(structure[key]);
+      }
+    }
+  }
+  return vec;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief arv to Structured
+////////////////////////////////////////////////////////////////////////////////
+function parseArvg(argv, startOffset) {
+  "use strict";
+
+  function setOption(ret, option, value) {
+    if (option.indexOf(':') > 0) {
+        var n = option.indexOf(':');
+        var topOption = option.slice(0, n);
+        if (!ret.hasOwnProperty(topOption)) {
+          ret.topOption = {};
+        }
+        setOption(ret.topOption, option.slice(n, option.length), value);
+    }
+    else if (argv[i+1] === 'true') {
+        ret[option] = true;
+    }
+    else if (argv[i+1] === 'false') {
+        ret[option] = false;
+    }
+    else if (!isNaN(argv[i+1])) {
+        ret[option] = parseInt(argv[i+1]);
+    }
+    else {
+        ret[option] = argv[i+1];
+    }
+  }
+  function setSwitch(ret, option) {
+    if (!ret.hasOwnProperty('commandSwitches')) {
+      ret.commandSwitches = [];
+    }
+    ret.commandSwitches.push(option);
+  }
+
+  function setSwitchVec(ret, option) {
+    for (var i = 0; i < option.length; i ++ ) {
+      setSwitch(ret, option[i]);
+    }
+  }
+
+  function setFlatCommand(ret, thisString) {
+    if (!ret.hasOwnProperty('flatCommands')) {
+      ret.flatCommands = [];
+    }
+    ret.flatCommands.push(thisString);
+  }
+
+  var inFlat = false;
+  var ret = {};
+  for (var i = startOffset; i < argv.length; i++) {
+    var thisString = argv[i];
+    if (!inFlat) {
+      if ((thisString.length > 2) &&
+      (thisString.slice(0,2) === '--')) {
+      var option = thisString.slice(2, thisString.length);
+      if ((argv.length > i) &&
+        (argv[i+1].slice(0,1) !== '-')) {
+        setOption(ret, option, argv[i+1]);
+        i ++;
+      }
+      else {
+        setSwitch(ret, option);
+      }
+      }
+      else if (thisString === '--') {
+      inFlat = true;
+      }
+      else if ((thisString.length > 1) &&
+               (thisString.slice(0, 1) === '-')) {
+      setSwitchVec(ret, thisString.slice(1, thisString.length));
+      }
+      else {
+      setFlatCommand(ret, thisString);
+      }
+    }
+    else {
+      setFlatCommand(ret, thisString);
+    }
+  }
+  return ret;
+}
+
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                          PRINTING
 // -----------------------------------------------------------------------------
 
