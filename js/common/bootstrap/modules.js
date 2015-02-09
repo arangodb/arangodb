@@ -1400,7 +1400,7 @@ function require (path) {
                           false);
 
     pkg._environment = {
-      console: require("org/arangodb/foxx/console")(appContext.mount)
+      console: require("org/arangodb/foxx/console")(app._mount)
     };
 
     return new Module("/application-module",

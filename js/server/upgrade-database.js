@@ -1481,7 +1481,11 @@ function updateGlobals() {
 
         // 3. Remove old appPath
 
-        fs.removeDirectoryRecursive(module.oldAppPath(), true);
+        try {
+          fs.removeDirectoryRecursive(module.oldAppPath(), true);
+        } catch(e) {
+          logger.log("Unable to remove old app path %s", module.oldAppPath());
+        }
         
         // 4. For each mounted app, reinstall appId from zipFile to mount
         
