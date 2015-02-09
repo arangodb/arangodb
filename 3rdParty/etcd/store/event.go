@@ -1,3 +1,17 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package store
 
 const (
@@ -12,9 +26,10 @@ const (
 )
 
 type Event struct {
-	Action   string      `json:"action"`
-	Node     *NodeExtern `json:"node,omitempty"`
-	PrevNode *NodeExtern `json:"prevNode,omitempty"`
+	Action    string      `json:"action"`
+	Node      *NodeExtern `json:"node,omitempty"`
+	PrevNode  *NodeExtern `json:"prevNode,omitempty"`
+	EtcdIndex uint64      `json:"-"`
 }
 
 func newEvent(action string, key string, modifiedIndex, createdIndex uint64) *Event {
@@ -46,50 +61,11 @@ func (e *Event) Index() uint64 {
 	return e.Node.ModifiedIndex
 }
 
-// Converts an event object into a response object.
-func (event *Event) Response(currentIndex uint64) interface{} {
-	if !event.Node.Dir {
-		response := &Response{
-			Action:     event.Action,
-			Key:        event.Node.Key,
-			Value:      event.Node.Value,
-			PrevValue:  event.PrevNode.Value,
-			Index:      event.Node.ModifiedIndex,
-			TTL:        event.Node.TTL,
-			Expiration: event.Node.Expiration,
-		}
-
-		if currentIndex != 0 {
-			response.Index = currentIndex
-		}
-
-		if response.Action == Set {
-			if response.PrevValue == "" {
-				response.NewKey = true
-			}
-		}
-
-		if response.Action == CompareAndSwap || response.Action == Create {
-			response.Action = "testAndSet"
-		}
-
-		return response
-	} else {
-		responses := make([]*Response, len(event.Node.Nodes))
-
-		for i, node := range event.Node.Nodes {
-			responses[i] = &Response{
-				Action: event.Action,
-				Key:    node.Key,
-				Value:  node.Value,
-				Dir:    node.Dir,
-				Index:  node.ModifiedIndex,
-			}
-
-			if currentIndex != 0 {
-				responses[i].Index = currentIndex
-			}
-		}
-		return responses
+func (e *Event) Clone() *Event {
+	return &Event{
+		Action:    e.Action,
+		EtcdIndex: e.EtcdIndex,
+		Node:      e.Node.Clone(),
+		PrevNode:  e.PrevNode.Clone(),
 	}
 }

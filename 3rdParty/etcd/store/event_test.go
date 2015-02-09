@@ -1,3 +1,17 @@
+// Copyright 2015 CoreOS, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package store
 
 import (
@@ -82,5 +96,36 @@ func TestFullEventQueue(t *testing.T) {
 				t.Fatalf("scan error [/foo] [%v] %v", i-1, i)
 			}
 		}
+	}
+}
+
+func TestCloneEvent(t *testing.T) {
+	e1 := &Event{
+		Action:    Create,
+		EtcdIndex: 1,
+		Node:      nil,
+		PrevNode:  nil,
+	}
+	e2 := e1.Clone()
+	if e2.Action != Create {
+		t.Fatalf("Action=%q, want %q", e2.Action, Create)
+	}
+	if e2.EtcdIndex != e1.EtcdIndex {
+		t.Fatalf("EtcdIndex=%d, want %d", e2.EtcdIndex, e1.EtcdIndex)
+	}
+	// Changing the cloned node should not affect the original
+	e2.Action = Delete
+	e2.EtcdIndex = uint64(5)
+	if e1.Action != Create {
+		t.Fatalf("Action=%q, want %q", e1.Action, Create)
+	}
+	if e1.EtcdIndex != uint64(1) {
+		t.Fatalf("EtcdIndex=%d, want %d", e1.EtcdIndex, uint64(1))
+	}
+	if e2.Action != Delete {
+		t.Fatalf("Action=%q, want %q", e2.Action, Delete)
+	}
+	if e2.EtcdIndex != uint64(5) {
+		t.Fatalf("EtcdIndex=%d, want %d", e2.EtcdIndex, uint64(5))
 	}
 }

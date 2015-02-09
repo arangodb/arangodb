@@ -1,8 +1,14 @@
 #!/bin/bash
 export PID=$$
 mkdir data-$PID
-export SCRIPT=$1
-shift
+
+self=$0
+if test -f "${self}.js"; then 
+    export SCRIPT=${self}.js
+else
+    export SCRIPT=$1
+    shift
+fi
 export PORT=`expr 1024 + $RANDOM`
 declare -a ARGS
 export VG=''
@@ -21,7 +27,7 @@ for i in "$@"; do
 done
 echo Database has its data in data-$PID
 echo Logfile is in log-$PID
-$VG bin/arangod --configuration none --cluster.agent-path bin/etcd-arango --cluster.arangod-path bin/arangod --cluster.coordinator-config etc/relative/arangod-coordinator.conf --cluster.dbserver-config etc/relative/arangod-dbserver.conf --cluster.disable-dispatcher-frontend false --cluster.disable-dispatcher-kickstarter false --cluster.data-path cluster --cluster.log-path cluster --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://localhost:$PORT --javascript.startup-directory js --javascript.app-path js/apps --javascript.script $SCRIPT --ruby.action-directory mr/actions/system --ruby.modules-path "mr/server/modules;mr/common/modules" "${ARGS[@]}" --no-server --temp-path /var/tmp/ $VXML
+$VG bin/arangod --configuration none --cluster.agent-path bin/etcd-arango --cluster.arangod-path bin/arangod --cluster.coordinator-config etc/relative/arangod-coordinator.conf --cluster.dbserver-config etc/relative/arangod-dbserver.conf --cluster.disable-dispatcher-frontend false --cluster.disable-dispatcher-kickstarter false --cluster.data-path cluster --cluster.log-path cluster --database.directory data-$PID --log.file log-$PID --server.endpoint tcp://127.0.0.1:$PORT --javascript.startup-directory js --javascript.app-path js/apps --javascript.script $SCRIPT --ruby.action-directory mr/actions/system --ruby.modules-path "mr/server/modules;mr/common/modules" "${ARGS[@]}" --no-server --temp-path /var/tmp/ $VXML
 
 if test $? -eq 0; then
   echo removing log-$PID data-$PID

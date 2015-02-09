@@ -56,7 +56,7 @@ var PlannerLocalDefaults = {
   "agentIntPorts"           : [7001],
   "DBserverPorts"           : [8629],
   "coordinatorPorts"        : [8530],
-  "dispatchers"             : {"me": {"endpoint": "tcp://localhost:"}},
+  "dispatchers"             : {"me": {"endpoint": "tcp://127.0.0.1:"}},
                               // this means only we as a local instance
   "useSSLonDBservers"       : false,
   "useSSLonCoordinators"    : false,
@@ -94,12 +94,12 @@ function copy (o) {
 
 function PortFinder (list, dispatcher) {
   if (!Array.isArray(list)) {
-    throw "need a list as first argument";
+    throw new Error("need a list as first argument");
   }
   if (typeof dispatcher !== "object" ||
       !dispatcher.hasOwnProperty("endpoint") ||
       !dispatcher.hasOwnProperty("id")) {
-    throw 'need a dispatcher object as second argument';
+    throw new Error('need a dispatcher object as second argument');
   }
   if (!dispatcher.hasOwnProperty("avoidPorts")) {
     dispatcher.avoidPorts = {};
@@ -146,10 +146,12 @@ PortFinder.prototype.next = function () {
     // Check that port is available:
     if (! this.dispatcher.avoidPorts.hasOwnProperty(this.port)) {
       var available = true;
-      if (this.dispatcher.endpoint === "tcp://localhost:") {
+      if ((this.dispatcher.endpoint === "tcp://localhost:") ||
+          (this.dispatcher.endpoint === "tcp://127.0.0.1:")) {
         available = testPort("tcp://0.0.0.0:" + this.port);
       }
       else {
+	  require("internal").print(this.dispatcher.endpoint);
         var url = endpointToURL(this.dispatcher.endpoint) +
                   "/_admin/clusterCheckPort?port="+this.port;
         var hdrs = {};
@@ -163,7 +165,7 @@ PortFinder.prototype.next = function () {
           available = JSON.parse(r.body);
         }
         else {
-          throw "Cannot check port on dispatcher "+this.dispatcher.endpoint;
+          throw new Error("Cannot check port on dispatcher "+this.dispatcher.endpoint);
         }
       }
       if (available) {
@@ -390,7 +392,7 @@ function fillConfigWithDefaults (config, defaultConfig) {
 function Planner (userConfig) {
   "use strict";
   if (typeof userConfig !== "object") {
-    throw "userConfig must be an object";
+    throw new Error("userConfig must be an object");
   }
   this.config = copy(userConfig);
   fillConfigWithDefaults(this.config, PlannerLocalDefaults);
@@ -440,7 +442,8 @@ Planner.prototype.makePlan = function() {
     config.onlyLocalhost = false;
     var k = Object.keys(dispatchers);
     if (k.length === 1 &&
-        dispatchers[k[0]].endpoint.substr(0,16) === "tcp://localhost:") {
+        ((dispatchers[k[0]].endpoint.substr(0,16) === "tcp://localhost:") ||
+	 (dispatchers[k[0]].endpoint.substr(0,16) === "tcp://127.0.0.1:") )){
       config.onlyLocalhost = true;
     }
   }

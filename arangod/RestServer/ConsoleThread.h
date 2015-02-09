@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Thread.h"
+#include "V8/V8LineEditor.h"
 #include "V8Server/ApplicationV8.h"
 
 struct TRI_vocbase_s;
@@ -46,6 +47,13 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 // --SECTION--                                               class ConsoleThread
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the line editor object for use in debugging
+////////////////////////////////////////////////////////////////////////////////
+
+    extern std::atomic<V8LineEditor*> serverConsole;
+    extern triagens::basics::Mutex serverConsoleMutex;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB server
