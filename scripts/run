@@ -1,8 +1,14 @@
 #!/bin/bash
 export PID=$$
 mkdir data-$PID
-export SCRIPT=$1
-shift
+
+self=$0
+if test -f "${self}.js"; then 
+    export SCRIPT=${self}.js
+else
+    export SCRIPT=$1
+    shift
+fi
 export PORT=`expr 1024 + $RANDOM`
 declare -a ARGS
 export VG=''

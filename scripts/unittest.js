@@ -1,5 +1,6 @@
 /*jshint unused: false */
 /*global require, start_pretty_print */
+var yaml = require("js-yaml");
 
 var UnitTest = require("org/arangodb/testing");
 
@@ -116,6 +117,67 @@ function resultsToXml(results, baseName) {
   }
 }
 
+function parseArvg(argv, startOffset) {
+    inFlat = false;
+    ret = {};
+    for (var i = startOffset; i < argv.length; i++) {
+	var thisString = argv[i];
+	if (!inFlat) {
+	    if ((thisString.length > 2) && 
+		(thisString.slice(0,2) === '--')) {
+		option = thisString.slice(2, thisString.length);
+		if ((argv.length > i) && 
+		    (argv[i+1].slice(0,1) !== '-')) {
+		    if (argv[i+1] === 'true') {
+			ret[option] = true;
+		    }
+		    else if (argv[i+1] == 'false') {
+			ret[option] = false;
+		    }
+		    else if (!isNaN(argv[i+1])) {
+			ret[option] = parseInt(argv[i+1]);
+		    }			
+		    else {
+			ret[option] = argv[i+1];
+		    }
+		    i ++;
+		}
+		else {
+		    if (!ret.hasOwnProperty('commandSwitches')) {
+			ret['commandSwitches'] = [];
+		    }
+		    ret.commandSwitches.pushBack(option);
+		}
+	    }
+	    else if (thisString === '--') {
+		inFlat = true;
+	    }
+	    else if ((thisString.length > 1) && 
+		     (thisString.slice(0, 1) === '-')) {
+		if (!ret.hasOwnProperty('commandSwitches')) {
+		    ret['commandSwitches'] = [];
+		}
+		for (var j = 1; j < thisString.length; j ++ ) {
+		    ret.commandSwitches.pushBack(thisString[j]);
+		}
+	    }
+	    else {
+		if (!ret.hasOwnProperty('flatCommands')) {
+		    ret['flatCommands'] = [];
+		}
+		ret.flatCommands.pushBack(thisString);
+	    }
+	}
+	else {
+	    if (!ret.hasOwnProperty('flatCommands')) {
+		ret['flatCommands'] = [];
+	    }
+	    ret.flatCommands.pushBack(thisString);
+	}
+    }
+    return ret;
+
+}
 
 function main (argv) {
   "use strict";
@@ -125,7 +187,13 @@ function main (argv) {
   var r;
   if (argv.length >= 3) {
     try {
-      options = JSON.parse(argv[2]);
+	if (argv[2].slice(0,1) === '{') {
+	    options = JSON.parse(argv[2]);
+	}
+	else {
+	    options = parseArvg(argv, 2);
+	    require("internal").print(yaml.safeDump(options));
+	}
     }
     catch (x) {
       print("failed to parse the json options");
