@@ -61,11 +61,11 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/tests -name "*.js"` \
 	`find @srcdir@/js/client/tests -name "*.js"` \
 	\
-	`find @srcdir@/js/apps/system/cerberus -name "*.js"` \
-	`find @srcdir@/js/apps/system/gharial -name "*.js"` \
-	`find @srcdir@/js/apps/system/sessions -name "*.js"` \
-	`find @srcdir@/js/apps/system/simple-auth -name "*.js"` \
-	`find @srcdir@/js/apps/system/users -name "*.js"` \
+	`find @srcdir@/js/apps/system/_system/cerberus/APP -name "*.js"` \
+	`find @srcdir@/js/apps/system/_api/gharial/APP -name "*.js"` \
+	`find @srcdir@/js/apps/system/_system/sessions/APP -name "*.js"` \
+	`find @srcdir@/js/apps/system/_system/simple-auth/APP -name "*.js"` \
+	`find @srcdir@/js/apps/system/_system/users/APP -name "*.js"` \
 	\
 	`find @srcdir@/js/apps/system/_admin/aardvark/APP/frontend/js/models -name "*.js"` \
 	`find @srcdir@/js/apps/system/_admin/aardvark/APP/frontend/js/views -name "*.js"` \
