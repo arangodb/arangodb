@@ -1,0 +1,11 @@
+/coverage
+/gopath
+/go-bindata
+/machine*
+/bin
+.vagrant
+*.etcd
+/etcd
+*.swp
+/hack/insta-discovery/.env
+*.test

@@ -1,102 +1,155 @@
-# Etcd Configuration
+## Configuration Flags
 
-Configuration options can be set in three places:
+etcd is configurable through command-line flags and environment variables. Options set on the command line take precedence over those from the environment.
 
- 1. Command line flags
- 2. Environment variables
- 3. Configuration file
+The format of environment variable for flag `-my-flag` is `ETCD_MY_FLAG`. It applies to all  flags.
 
-Options set on the command line take precedence over all other sources.
-Options set in environment variables take precedence over options set in
-configuration files.
+To start etcd automatically using custom settings at startup in Linux, using a [systemd][systemd-intro] unit is highly recommended.
 
-## Command Line Flags
+[systemd-intro]: http://freedesktop.org/wiki/Software/systemd/
 
-### Required
+### Member Flags
 
-* `-name` - The node name. Defaults to the hostname.
+##### -name
++ Human-readable name for this member.
++ default: "default"
 
-### Optional
+##### -data-dir
++ Path to the data directory.
++ default: "${name}.etcd"
 
-* `-addr` - The advertised public hostname:port for client communication. Defaults to `127.0.0.1:4001`.
-* `-discovery` - A URL to use for discovering the peer list. (i.e `"https://discovery.etcd.io/your-unique-key"`).
-* `-bind-addr` - The listening hostname for client communication. Defaults to advertised ip.
-* `-peers` - A comma separated list of peers in the cluster (i.e `"203.0.113.101:7001,203.0.113.102:7001"`).
-* `-peers-file` - The file path containing a comma separated list of peers in the cluster.
-* `-ca-file` - The path of the client CAFile. Enables client cert authentication when present.
-* `-cert-file` - The cert file of the client.
-* `-key-file` - The key file of the client.
-* `-config` - The path of the etcd config file. Defaults to `/etc/etcd/etcd.conf`.
-* `-cors` - A comma separated white list of origins for cross-origin resource sharing.
-* `-cpuprofile` - The path to a file to output cpu profile data. Enables cpu profiling when present.
-* `-data-dir` - The directory to store log and snapshot. Defaults to the current working directory.
-* `-max-result-buffer` - The max size of result buffer. Defaults to `1024`.
-* `-max-cluster-size` - The max size of the cluster. Defaults to `9`.
-* `-max-retry-attempts` - The max retry attempts when trying to join a cluster. Defaults to `3`.
-* `-peer-addr` - The advertised public hostname:port for server communication. Defaults to `127.0.0.1:7001`.
-* `-peer-bind-addr` - The listening hostname for server communication. Defaults to advertised ip.
-* `-peer-ca-file` - The path of the CAFile. Enables client/peer cert authentication when present.
-* `-peer-cert-file` - The cert file of the server.
-* `-peer-key-file` - The key file of the server.
-* `-snapshot=false` - Disable log snapshots. Defaults to `true`.
-* `-v` - Enable verbose logging. Defaults to `false`.
-* `-vv` - Enable very verbose logging. Defaults to `false`.
-* `-version` - Print the version and exit.
+##### -snapshot-count
++ Number of committed transactions to trigger a snapshot to disk.
++ default: "10000"
 
-## Configuration File
+##### -heartbeat-interval
++ Time (in milliseconds) of a heartbeat interval.
++ default: "100"
 
-The etcd configuration file is written in [TOML](https://github.com/mojombo/toml)
-and read from `/etc/etcd/etcd.conf` by default.
+##### -election-timeout
++ Time (in milliseconds) for an election to timeout.
++ default: "1000"
 
-```TOML
-addr = "127.0.0.1:4001"
-bind_addr = "127.0.0.1:4001"
-ca_file = ""
-cert_file = ""
-cors = []
-cpu_profile_file = ""
-data_dir = "."
-key_file = ""
-peers = []
-peers_file = ""
-max_cluster_size = 9
-max_result_buffer = 1024
-max_retry_attempts = 3
-name = "default-name"
-snapshot = false
-verbose = false
-very_verbose = false
+##### -listen-peer-urls
++ List of URLs to listen on for peer traffic.
++ default: "http://localhost:2380,http://localhost:7001"
 
-[peer]
-addr = "127.0.0.1:7001"
-bind_addr = "127.0.0.1:7001"
-ca_file = ""
-cert_file = ""
-key_file = ""
-```
+##### -listen-client-urls
++ List of URLs to listen on for client traffic.
++ default: "http://localhost:2379,http://localhost:4001"
 
-## Environment Variables
+##### -max-snapshots
++ Maximum number of snapshot files to retain (0 is unlimited)
++ default: 5
++ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
 
- * `ETCD_ADDR`
- * `ETCD_BIND_ADDR`
- * `ETCD_CA_FILE`
- * `ETCD_CERT_FILE`
- * `ETCD_CORS_ORIGINS`
- * `ETCD_CONFIG`
- * `ETCD_CPU_PROFILE_FILE`
- * `ETCD_DATA_DIR`
- * `ETCD_KEY_FILE`
- * `ETCD_PEERS`
- * `ETCD_PEERS_FILE`
- * `ETCD_MAX_CLUSTER_SIZE`
- * `ETCD_MAX_RESULT_BUFFER`
- * `ETCD_MAX_RETRY_ATTEMPTS`
- * `ETCD_NAME`
- * `ETCD_SNAPSHOT`
- * `ETCD_VERBOSE`
- * `ETCD_VERY_VERBOSE`
- * `ETCD_PEER_ADDR`
- * `ETCD_PEER_BIND_ADDR`
- * `ETCD_PEER_CA_FILE`
- * `ETCD_PEER_CERT_FILE`
- * `ETCD_PEER_KEY_FILE`
+##### -max-wals
++ Maximum number of wal files to retain (0 is unlimited)
++ default: 5
++ The default for users on Windows is unlimited, and manual purging down to 5 (or your preference for safety) is recommended.
+
+##### -cors
++ Comma-separated white list of origins for CORS (cross-origin resource sharing).
++ default: none
+
+### Clustering Flags
+
+`-initial` prefix flags are used in bootstrapping ([static bootstrap][build-cluster], [discovery-service bootstrap][discovery] or [runtime reconfiguration][reconfig]) a new member, and ignored when restarting an existing member.
+
+`-discovery` prefix flags need to be set when using [discovery service][discovery].
+
+##### -initial-advertise-peer-urls
+
++ List of this member's peer URLs to advertise to the rest of the cluster. These addresses are used for communicating etcd data around the cluster. At least one must be routable to all cluster members.
++ default: "http://localhost:2380,http://localhost:7001"
+
+##### -initial-cluster
++ Initial cluster configuration for bootstrapping.
++ default: "default=http://localhost:2380,default=http://localhost:7001"
+
+##### -initial-cluster-state
++ Initial cluster state ("new" or "existing"). Set to `new` for all members present during initial static or DNS bootstrapping. If this option is set to `existing`, etcd will attempt to join the existing cluster. If the wrong value is set, etcd will attempt to start but fail safely.
++ default: "new"
+
+[static bootstrap]: clustering.md#static
+
+##### -initial-cluster-token
++ Initial cluster token for the etcd cluster during bootstrap.
++ default: "etcd-cluster"
+
+##### -advertise-client-urls
++ List of this member's client URLs to advertise to the rest of the cluster.
++ default: "http://localhost:2379,http://localhost:4001"
+
+##### -discovery
++ Discovery URL used to bootstrap the cluster.
++ default: none
+
+##### -discovery-srv
++ DNS srv domain used to bootstrap the cluster.
++ default: none
+
+##### -discovery-fallback
++ Expected behavior ("exit" or "proxy") when discovery services fails.
++ default: "proxy"
+
+##### -discovery-proxy
++ HTTP proxy to use for traffic to discovery service.
++ default: none
+
+### Proxy Flags
+
+`-proxy` prefix flags configures etcd to run in [proxy mode][proxy].
+
+##### -proxy
++ Proxy mode setting ("off", "readonly" or "on").
++ default: "off"
+
+### Security Flags
+
+The security flags help to [build a secure etcd cluster][security].
+
+##### -ca-file
++ Path to the client server TLS CA file.
++ default: none
+
+##### -cert-file
++ Path to the client server TLS cert file.
++ default: none
+
+##### -key-file
++ Path to the client server TLS key file.
++ default: none
+
+##### -peer-ca-file
++ Path to the peer server TLS CA file.
++ default: none
+
+##### -peer-cert-file
++ Path to the peer server TLS cert file.
++ default: none
+
+##### -peer-key-file
++ Path to the peer server TLS key file.
++ default: none
+
+### Unsafe Flags
+
+Be CAUTIOUS to use unsafe flags because it will break the guarantee given by consensus protocol. For example, it may panic if other members in the cluster are still alive. Follow the instructions when using these falgs.
+
+##### -force-new-cluster
++ Force to create a new one-member cluster. It commits configuration changes in force to remove all existing members in the cluster and add itself. It needs to be set to [restore a backup][restore].
++ default: false
+
+### Miscellaneous Flags
+
+##### -version
++ Print the version and exit.
++ default: false
+
+[build-cluster]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#static
+[reconfig]: https://github.com/coreos/etcd/blob/master/Documentation/runtime-configuration.md
+[discovery]: https://github.com/coreos/etcd/blob/master/Documentation/clustering.md#discovery
+[proxy]: https://github.com/coreos/etcd/blob/master/Documentation/proxy.md
+[security]: https://github.com/coreos/etcd/blob/master/Documentation/security.md
+[restore]: https://github.com/coreos/etcd/blob/master/Documentation/admin_guide.md#restoring-a-backup
