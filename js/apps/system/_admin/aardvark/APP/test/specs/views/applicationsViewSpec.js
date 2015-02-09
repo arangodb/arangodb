@@ -1,7 +1,7 @@
 /*jshint browser: true */
 /*global describe, beforeEach, afterEach, it, spyOn, expect*/
 /*global runs, waitsFor, jasmine*/
-/*global $, arangoHelper */
+/*global $*/
 
 (function() {
   "use strict";
