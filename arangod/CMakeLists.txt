@@ -219,9 +219,10 @@ install(
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/apps
   DESTINATION share/arangodb/js
-  REGEX ".travis.yml" EXCLUDE
-  REGEX ".npmignore" EXCLUDE
-  PATTERN "databases" EXCLUDE)
+  REGEX "/\.bin$" EXCLUDE
+  REGEX "/\.travis.yml$" EXCLUDE
+  REGEX "/\.npmignore$" EXCLUDE
+  REGEX "/databases/" EXCLUDE)
 
 ################################################################################
 ### @brief install arangod mruby files

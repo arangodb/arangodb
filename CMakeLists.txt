@@ -456,7 +456,7 @@ elseif (RASPBIAN)
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 else ()
   set(ICU_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/third_party/icu/source/common;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/third_party/icu/source/i18n;${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/third_party/icu/source/io CACHE path "ICU include path")
-  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8/out/x64.release CACHE path "ICU library path")
+  set(ICU_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/V8-3.29.59/out/x64.release CACHE path "ICU library path")
   set(ICU_LIBS icui18n;icuuc;icudata;pthread;dl;m CACHE path "ICU libraries")
 endif ()
 
