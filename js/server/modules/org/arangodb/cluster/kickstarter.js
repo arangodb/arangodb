@@ -275,7 +275,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
       return {"error":false, "isStartAgent": true, "pid": pid,
               "endpoint": "tcp://"+extEndpoint};
     }
-    var res = statusExternal(pid, false);
+    res = statusExternal(pid, false);
     if (res.status !== "RUNNING") {
       return {"error":true, "isStartAgent": true,
               "errorMessage": "agency failed to start:\n" + yaml.safeDump({"exit status": res})};

@@ -313,7 +313,6 @@ function startInstance (protocol, options, addArgs, testname) {
       error.errorMessage = yaml.safeDump(runInfo);
       throw error;
     }
-      print(runInfo);
     var roles = runInfo[j].roles;
     var endpoints = runInfo[j].endpoints;
     pos = roles.indexOf("Coordinator");
