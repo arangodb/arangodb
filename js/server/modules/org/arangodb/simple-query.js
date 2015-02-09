@@ -414,14 +414,15 @@ function byExample (data) {
     else if (keys.length > 0) {
       // try these index types
       var checks = [
-        { type: "hash", fields: keys },
-        { type: "skiplist", fields: keys }
+        { type: "hash", fields: keys, unique: true },
+        { type: "skiplist", fields: keys, unique: true },
+        { type: "hash", fields: keys, unique: false },
+        { type: "skiplist", fields: keys, unique: false }
       ];
 
       if (containsNullAttributes(example)) {
         checks.forEach(function(check) {
           check.sparse = false;
-          check.unique = false;
         });
       }
 
@@ -848,19 +849,18 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
     };
   }
   else {
-    var idx = collection.lookupSkiplist(attribute);
+    var idx = null;
+    var attrs = { type: "skiplist", fields: [ attribute ], unique: true };
+    if (left === undefined || left === null) {
+      attrs.sparse = false;
+    }
 
+    idx = collection.lookupIndex(attrs);
     if (idx === null) {
-      idx = collection.lookupUniqueSkiplist(attribute);
-
-      if (idx !== null) {
-        console.debug("found unique skip-list index %s", idx.id);
-      }
+      attrs.unique = false;
+      idx = collection.lookupIndex(attrs);
     }
-    else {
-      console.debug("found skip-list index %s", idx.id);
-    }
-
+    
     if (idx !== null) {
       var cond = {};
 

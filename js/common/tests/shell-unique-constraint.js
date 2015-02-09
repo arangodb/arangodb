@@ -119,7 +119,7 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUniqueDocuments : function () {
-      var idx = collection.ensureUniqueConstraint("a", "b");
+      var idx = collection.ensureUniqueConstraint("a", "b", { sparse: true });
 
       assertEqual("hash", idx.type);
       assertEqual(true, idx.unique);
@@ -149,7 +149,7 @@ function UniqueConstraintSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testReadDocuments : function () {
-      var idx = collection.ensureUniqueConstraint("a", "b");
+      var idx = collection.ensureUniqueConstraint("a", "b", { sparse: true });
       var fun = function(d) { return d._id; };
 
       assertEqual("hash", idx.type);

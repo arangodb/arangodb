@@ -201,9 +201,10 @@ static int ProcessIndexSparseFlag (v8::Isolate* isolate,
                                    v8::Handle<v8::Object> const obj,
                                    TRI_json_t* json) {
   v8::HandleScope scope(isolate);
-  bool sparse = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("sparse"), false);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, sparse));
-
+  if (obj->Has(TRI_V8_ASCII_STRING("sparse"))) {
+    bool sparse = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("sparse"), false);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, sparse));
+  }
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -551,9 +552,11 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   
   // extract sparse flag
   bool sparse = false;
+  int sparsity = -1; // not set
   value = TRI_LookupObjectJson(json, "sparse");
   if (TRI_IsBooleanJson(value)) {
     sparse = value->_value._boolean;
+    sparsity = sparse ? 1 : 0;
   }
 
   TRI_vector_pointer_t attributes;
@@ -719,7 +722,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       else {
         idx = TRI_LookupHashIndexDocumentCollection(document,
                                                     &attributes,
-                                                    sparse,
+                                                    sparsity,
                                                     unique);
       }
 
@@ -746,7 +749,7 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       else {
         idx = TRI_LookupSkiplistIndexDocumentCollection(document,
                                                         &attributes,
-                                                        sparse,
+                                                        sparsity,
                                                         unique);
       }
       break;

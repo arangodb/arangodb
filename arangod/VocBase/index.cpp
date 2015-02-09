@@ -1214,6 +1214,8 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
 
     return TRI_ERROR_INTERNAL;
   }
+
+  bool const sparse = skiplistIndex->base._sparse;
   
   int res = TRI_ERROR_NO_ERROR;
 
@@ -1237,6 +1239,10 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
       skiplistElement->_subObjects[j]._offset = 0;
 
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      if (sparse) {
+        // no need to continue
+        return res;
+      }
       continue;
     }
 
@@ -1251,6 +1257,10 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
 
     if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      if (sparse) {
+        // no need to continue
+        return res;
+      }
     }
 
     // .........................................................................
