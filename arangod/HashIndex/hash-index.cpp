@@ -109,10 +109,10 @@ template<typename T>
 static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
                             T* hashElement,
                             TRI_doc_mptr_t const* document) {
-  TRI_shaper_t* shaper;                 // underlying shaper
   TRI_shaped_json_t shapedJson;         // the object behind document
 
-  shaper = hashIndex->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_shaper_t* shaper = hashIndex->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  bool const sparse = hashIndex->base._sparse;
 
   // .............................................................................
   // Assign the document to the TRI_hash_index_element_t structure - so that it
@@ -145,6 +145,11 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
       hashElement->_subObjects[j]._offset = 0;
 
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      if (sparse) {
+        // no need to continue
+        return res;
+      }
+
       continue;
     }
 
@@ -156,6 +161,11 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
     if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+
+      if (sparse) {
+        // no need to continue
+        return res;
+      }
     }
 
     hashElement->_subObjects[j]._sid    = shapedObject._sid;
@@ -187,17 +197,14 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
 
   int res = HashIndexHelper<T>(hashIndex, hashElement, document);
   
-  // .............................................................................
-  // It may happen that the document does not have the necessary attributes to
-  // have particpated within the hash index. If the index is unique, we do not
-  // report an error to the calling procedure, but return a warning instead. If
-  // the index is not unique, we ignore this error.
-  // .............................................................................
-
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING && 
-      ! hashIndex->base._unique && 
-      ! hashIndex->base._sparse) {
-    res = TRI_ERROR_NO_ERROR;
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    // if the document does not have the indexed attribute or has it, and it is null,
+    // then in case of a sparse index we don't index this document
+    if (! hashIndex->base._sparse) {
+      // in case of a non-sparse index, we index this document
+      res = TRI_ERROR_NO_ERROR;
+    }
+    // and for a sparse index, we return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
   }
 
   return res;

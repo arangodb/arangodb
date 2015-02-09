@@ -1527,6 +1527,7 @@ function SimpleQueryRangeSuite () {
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
 
   return {
 
@@ -1536,7 +1537,7 @@ function SimpleQueryRangeSuite () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn);
 
       for (var i = 0;  i < 100;  ++i) {
         collection.save({ age : i });
@@ -1558,11 +1559,87 @@ function SimpleQueryRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRange : function () {
-      var l = collection.range("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12], l);
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
 
-      l = collection.closedRange("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12,13], l);
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             basic tests for range
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: range
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQuerySparseRangeSuite () {
+  "use strict";
+  var cn = "UnitTestsCollectionRange";
+  var collection = null;
+  var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
+  var errors = require("org/arangodb").errors;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn);
+
+      for (var i = 0;  i < 100;  ++i) {
+        collection.save({ age : i });
+      }
+
+      collection.ensureSkiplist("age", { sparse: true });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRange : function () {
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      try {
+        l = collection.range("age", null, 13).toArray();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
+
+      try {
+        l = collection.range("age", null, 13).toArray();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
     }
   };
 }
@@ -1580,6 +1657,7 @@ function SimpleQueryUniqueRangeSuite () {
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
 
   return {
 
@@ -1589,7 +1667,7 @@ function SimpleQueryUniqueRangeSuite () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn);
 
       for (var i = 0;  i < 100;  ++i) {
         collection.save({ age : i });
@@ -1611,11 +1689,17 @@ function SimpleQueryUniqueRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRange : function () {
-      var l = collection.range("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12], l);
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
 
-      l = collection.closedRange("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12,13], l);
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
     }
   };
 }
@@ -1645,7 +1729,7 @@ function SimpleQueryAnySuite () {
 
       name = cn + "Empty";
       db._drop(name);
-      collectionEmpty = db._create(name, { waitForSync : false });
+      collectionEmpty = db._create(name);
 
       name = cn + "One";
       db._drop(name);
@@ -1692,6 +1776,7 @@ jsunity.run(SimpleQueryByExampleHashSuite);
 jsunity.run(SimpleQueryByExampleSkiplistSuite);
 jsunity.run(SimpleQueryByExampleEdgeSuite);
 jsunity.run(SimpleQueryRangeSuite);
+jsunity.run(SimpleQuerySparseRangeSuite);
 jsunity.run(SimpleQueryUniqueRangeSuite);
 jsunity.run(SimpleQueryAnySuite);
 
