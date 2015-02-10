@@ -50,6 +50,7 @@
   var download = require("internal").download;
   var executeGlobalContextFunction = require("internal").executeGlobalContextFunction;
   var actions = require("org/arangodb/actions");
+  var _ = require("underscore");
 
   var throwDownloadError = arangodb.throwDownloadError;
   var throwFileNotFound = arangodb.throwFileNotFound;
@@ -99,7 +100,7 @@
     var routes = [];
 
     while (cursor.hasNext()) {
-      config = cursor.next();
+      config = _.clone(cursor.next());
       app = new ArangoApp(config);
       appCache[app._mount] = app;
       routes.push(app._mount);
@@ -468,7 +469,6 @@
     // .............................................................................
     if (found !== mf) {
       try {
-        require("console").log(tempFile);
         fs.removeDirectoryRecursive(tempFile);
       }
       catch (err1) {
