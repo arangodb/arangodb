@@ -29,6 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var db = require("org/arangodb").db;
+var internal = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                               module "org/arangodb/configuration"
@@ -87,6 +88,10 @@ exports.notifications.versions = function () {
 
   if (! d.hasOwnProperty(v)) {
     d.versions = {};
+  }
+
+  if (! internal.frontendVersionCheck) {
+    d.enableVersionNotification = false;
   }
 
   return d.versions;
