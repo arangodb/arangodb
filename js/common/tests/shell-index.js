@@ -243,7 +243,7 @@ function getIndexesSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,6 +284,7 @@ function getIndexesSuite() {
 
       assertEqual("hash", idx.type);
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -300,6 +301,41 @@ function getIndexesSuite() {
 
       assertEqual("hash", idx.type);
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseHashUnique1 : function () {
+      collection.ensureUniqueConstraint("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("hash", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseHashUnique2 : function () {
+      collection.ensureUniqueConstraint("value1", "value2", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("hash", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -316,6 +352,7 @@ function getIndexesSuite() {
 
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -332,6 +369,41 @@ function getIndexesSuite() {
 
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseHashNonUnique1 : function () {
+      collection.ensureHashIndex("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseHashNonUnique2 : function () {
+      collection.ensureHashIndex("value1", "value2", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -348,6 +420,7 @@ function getIndexesSuite() {
 
       assertEqual("skiplist", idx.type);
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -364,6 +437,41 @@ function getIndexesSuite() {
 
       assertEqual("skiplist", idx.type);
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseSkiplistUnique1 : function () {
+      collection.ensureUniqueSkiplist("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("skiplist", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseSkiplistUnique2 : function () {
+      collection.ensureUniqueSkiplist("value1", "value2", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("skiplist", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -380,6 +488,7 @@ function getIndexesSuite() {
 
       assertEqual("skiplist", idx.type);
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "value" ], idx.fields);
     },
 
@@ -396,6 +505,41 @@ function getIndexesSuite() {
 
       assertEqual("skiplist", idx.type);
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value1", "value2" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseSkiplistNonUnique1 : function () {
+      collection.ensureSkiplist("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get non-unique skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseSkiplistNonUnique2 : function () {
+      collection.ensureSkiplist("value1", "value2", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(2, res.length);
+      var idx = res[1];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value1", "value2" ], idx.fields);
     },
 
@@ -602,6 +746,27 @@ function getIndexesEdgesSuite() {
 
       assertEqual("hash", idx.type);
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseHashUnique : function () {
+      collection.ensureUniqueConstraint("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("hash", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -621,6 +786,27 @@ function getIndexesEdgesSuite() {
 
       assertEqual("hash", idx.type);
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseHash : function () {
+      collection.ensureHashIndex("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("hash", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -640,6 +826,27 @@ function getIndexesEdgesSuite() {
 
       assertEqual("skiplist", idx.type);
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
+      assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get unique skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseSkiplistUnique : function () {
+      collection.ensureUniqueSkiplist("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("skiplist", idx.type);
+      assertTrue(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -659,6 +866,26 @@ function getIndexesEdgesSuite() {
 
       assertEqual("skiplist", idx.type);
       assertFalse(idx.unique);
+      assertEqual([ "value" ], idx.fields);
+      assertTrue(idx.hasOwnProperty("id"));
+      assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
+      assertNotEqual(collection.name() + "/0", idx.id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: get skiplist index
+////////////////////////////////////////////////////////////////////////////////
+
+    testGetSparseSkiplist : function () {
+      collection.ensureSkiplist("value", { sparse: true });
+      var res = collection.getIndexes();
+
+      assertEqual(3, res.length);
+      var idx = res[2];
+
+      assertEqual("skiplist", idx.type);
+      assertFalse(idx.unique);
+      assertTrue(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));

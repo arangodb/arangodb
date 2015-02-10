@@ -213,20 +213,21 @@ function normalizeAttributes (obj, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function supportsQuery (idx, attributes) {
-  var i, n;
-  var fields;
-
-  fields = idx.fields;
-
-  n = fields.length;
-  for (i = 0; i < n; ++i) {
+  var matches = 0;
+  var fields = idx.fields;
+  var n = fields.length;
+  for (var i = 0; i < n; ++i) {
     var field = fields[i];
     if (attributes.indexOf(field) === -1) {
-      return false;
+      if (idx.type === 'hash') {
+        return false;
+      }
+      break;
     }
+    ++matches;
   }
 
-  return true;
+  return (matches > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
