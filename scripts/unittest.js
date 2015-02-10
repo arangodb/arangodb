@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global require, start_pretty_print */
+/*global require, start_pretty_print, parseArvg */
 
 var yaml = require("js-yaml");
 
@@ -117,9 +117,6 @@ function resultsToXml(results, baseName) {
     }
   }
 }
-
-
-
 
 function main (argv) {
   "use strict";
