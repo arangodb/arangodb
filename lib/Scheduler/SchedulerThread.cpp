@@ -112,7 +112,7 @@ bool SchedulerThread::open () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::beginShutdown () {
-  LOG_TRACE("beginning shutdown sequence of scheduler thread (%d)", (int) threadId());
+  LOG_TRACE("beginning shutdown sequence of scheduler thread (%llu)", (unsigned long long) threadId());
 
   _stopping = 1;
   _scheduler->wakeupLoop(_loop);
@@ -231,7 +231,7 @@ void SchedulerThread::destroyTask (Task* task) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SchedulerThread::run () {
-  LOG_TRACE("scheduler thread started (%d)", (int) threadId());
+  LOG_TRACE("scheduler thread started (%llu)", (unsigned long long) threadId());
 
   if (_defaultLoop) {
 #ifdef TRI_HAVE_POSIX_THREADS
@@ -305,7 +305,7 @@ void SchedulerThread::run () {
     SCHEDULER_UNLOCK(&_queueLock);
   }
 
-  LOG_TRACE("scheduler thread stopped (%d)", (int) threadId());
+  LOG_TRACE("scheduler thread stopped (%llu)", (unsigned long long) threadId());
 
   _stopped = 1;
 

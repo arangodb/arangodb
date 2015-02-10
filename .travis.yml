@@ -1,3 +1,11 @@
+branches:
+  only:
+    - master
+    - devel
+    - "1.4"
+    - "2.3"
+    - "2.4"
+
 language: cpp
 compiler: g++
 
@@ -26,24 +34,18 @@ install:
 # gdb
 - sudo apt-get -y install gdb
 
+# prepare wrapper for gold
+- sudo apt-get -y install binutils-gold
+- mkdir -p ~/bin/gold
+- echo '#!/bin/bash' > ~/bin/gold/ld
+- echo 'gold "$@"' >> ~/bin/gold/ld
+- chmod a+x ~/bin/gold/ld
+- export CFLAGS="-B$HOME/bin/gold $CFLAGS"
+- export CXXFLAGS="-B$HOME/bin/gold $CXXFLAGS"
+
 before_script: "bash -c Installation/travisCI/before_script.sh"
 script:
  - "bash -c Installation/travisCI/build.sh"
  - "bash -c Installation/travisCI/jslint.sh"
  - "bash -c Installation/travisCI/tests.sh"
 after_failure: "bash -c Installation/travisCI/after_failure.sh"
-branches:
-  only:
-    - master
-    - 1.0
-    - 1.1
-    - 1.2
-    - 1.3
-    - 1.4
-    - 2.0
-    - 2.1
-    - 2.2
-    - 2.3
-    - 2.4
-    - devel
-
