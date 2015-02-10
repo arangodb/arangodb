@@ -3220,6 +3220,19 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   if (TRI_IsBooleanJson(bv)) {
     sparse = bv->_value._boolean;
   }
+  else {
+    // no sparsity information given for index
+    // now use pre-2.5 defaults: unique hash indexes were sparse, all other indexes were non-sparse
+    bool isHashIndex = false;
+    TRI_json_t const* typeJson = TRI_LookupObjectJson(definition, "type");
+    if (TRI_IsStringJson(typeJson)) {
+      isHashIndex = (strcmp(typeJson->_value._string.data, "hash") == 0);
+    }
+
+    if (isHashIndex && unique) {
+      sparse = true;
+    } 
+  }
 
   // Initialise the vector in which we store the fields on which the hashing
   // will be based.
