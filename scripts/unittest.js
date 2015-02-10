@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global require, start_pretty_print, parseArvg */
+/*global require, start_pretty_print */
 
 var yaml = require("js-yaml");
 
@@ -7,7 +7,8 @@ var UnitTest = require("org/arangodb/testing");
 
 var internalMembers = UnitTest.internalMembers;
 var fs = require("fs");
-var print = require("internal").print;
+var internal = require("internal");
+var print = internal.print;
 
 function makePathGeneric (path) {
   "use strict";
@@ -129,12 +130,12 @@ function main (argv) {
         options = JSON.parse(argv[2]);
       }
       else {
-        options = parseArvg(argv, 2);
+        options = internal.parseArgv(argv, 2);
       }
     }
     catch (x) {
       print("failed to parse the json options: " + x.message);
-      rint(x.stack);
+      //rint(x.stack);
       return -1;
     }
   }
