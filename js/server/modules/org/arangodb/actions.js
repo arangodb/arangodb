@@ -1107,9 +1107,9 @@ function buildRouting (dbname) {
 
   while (i.hasNext()) {
     var n = i.next();
-    var c = n._shallowCopy;
+    var c = _.clone(n);
     
-    c.name = '_routing.document("' + n._key + '")';
+    c.name = '_routing.document("' + c._key + '")';
 
     routes.push(c);
   }
