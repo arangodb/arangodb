@@ -234,27 +234,27 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   var clusterUrl = "http://" + clusterBind;
   var agencyUrl =  "http://" + extBind;
 
-  var args = ["--data-dir",               agentDataDir,
-              "--name",                   instanceName,
-              "--bind-addr",              extBind,
-              "--addr",                   extEndpoint,
-              "--peer-bind-addr",         clusterBind,
-              "--peer-addr",              clusterEndPoint,
-              "--initial-cluster-state",  "new",
-              "--initial-cluster",        instanceName + "=" + clusterUrl
-              // the following might speed up etcd, but it might also
-              // make it more unstable:
-              // ,"-peer-heartbeat-timeout=10",
-              // "-peer-election-timeout=20"
-             ];
+  var args = {
+      "data-dir":               agentDataDir,
+      "name":                   instanceName,
+      "bind-addr":              extBind,
+      "addr":                   extEndpoint,
+      "peer-bind-addr":         clusterBind,
+      "peer-addr":              clusterEndPoint,
+      "initial-cluster-state":  "new",
+      "initial-cluster":        instanceName + "=" + clusterUrl
+      // the following might speed up etcd, but it might also
+      // make it more unstable:
+      // ,"peer-heartbeat-timeout": "10",
+      // "peer-election-timeout": "20"
+  };
   var i;
   if (cmd.peers.length > 0) {
-    args.push("-peers");
     var st = getAddrPort(cmd.peers[0]);
     for (i = 1; i < cmd.peers.length; i++) {
       st = st + "," + getAddrPort(cmd.peers[i]);
     }
-    args.push(st);
+    args.peers = st;
   }
   var agentPath = cmd.agentPath;
   if (agentPath === "") {
@@ -264,8 +264,7 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     return {"error":true, "isStartAgent": true,
             "errorMessage": "agency binary not found at '" + agentPath + "'"};
   }
-
-  var pid = executeExternal(agentPath, args);
+  var pid = executeExternal(agentPath, toArgv(args));
   var res;
   var count = 0;
   while (++count < 20) {
@@ -298,7 +297,7 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (res === true) {
     return {"error":false, "isSendConfiguration": true};
   }
-  return {"error":true, "isSendConfiguration": true, "suberror": res};
+  return {"error":true, "isSendConfiguration": true, "suberror": res, errorMessage : yaml.safeDump(res)};
 };
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
