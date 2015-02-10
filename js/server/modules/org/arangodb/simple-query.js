@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var console = require("console");
 
 var ArangoError = require("org/arangodb").ArangoError;
 
