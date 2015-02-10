@@ -43,8 +43,8 @@ var mountAppRegEx = /\/APP(\/|$)/i;
 
 var getStorage = function() {
   "use strict";
-  var c = db._apps;
-  if (c === undefined) {
+  var c = db._collection("_apps");
+  if (c === null) {
     c = db._create("_apps", {isSystem: true});
     c.ensureUniqueConstraint("mount");
   }
@@ -279,7 +279,6 @@ function listJson (showPrefix, onlyDevelopment) {
   }
   var result = [];
   var doc, res;
-
   while (cursor.hasNext()) {
     doc = cursor.next();
 
