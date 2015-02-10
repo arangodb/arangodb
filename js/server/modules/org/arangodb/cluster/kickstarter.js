@@ -41,6 +41,7 @@ var yaml = require("js-yaml");
 
 var fs = require("fs");
 var wait = require("internal").wait;
+var toArgv = require("internal").toArgv;
 
 var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 var exchangeProtocol = require("org/arangodb/cluster/planner").exchangeProtocol;
