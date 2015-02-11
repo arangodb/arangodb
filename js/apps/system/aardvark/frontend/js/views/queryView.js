@@ -371,6 +371,10 @@
     },
 
     addAQL: function () {
+      //update queries first, before showing
+      this.getAQL();
+      this.getSystemQueries();
+
       //render options
       this.createCustomQueryModal();
       $('#new-query-name').val($('#querySelect').val());
@@ -435,6 +439,11 @@
 
     saveAQL: function (e) {
       e.stopPropagation();
+
+      //update queries first, before writing
+      this.getAQL();
+      this.getSystemQueries();
+
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
       var isUpdate = $('#modalButton1').text() === 'Update';
