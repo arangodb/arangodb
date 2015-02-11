@@ -90,6 +90,7 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case EXPECTATION_FAILED:              return "417 Expectation Failed";
     case I_AM_A_TEAPOT:                   return "418 I'm a teapot";
     case UNPROCESSABLE_ENTITY:            return "422 Unprocessable Entity";
+    case LOCKED:                          return "423 Locked";
     case PRECONDITION_REQUIRED:           return "428 Precondition Required";
     case TOO_MANY_REQUESTS:               return "429 Too Many Requests";
     case REQUEST_HEADER_FIELDS_TOO_LARGE: return "431 Request Header Fields Too Large";
@@ -103,10 +104,27 @@ string HttpResponse::responseString (HttpResponseCode code) {
     case NOT_EXTENDED:                    return "510 Not Extended";
 
     // default
-    default:
-      LOG_WARNING("unknown HTTP response code %d returned", (int) code);
-      return StringUtils::itoa((int) code) + " (unknown HttpResponseCode)";
+    default: {
+      // print generic group responses, based on error code group
+      int group = ((int) code) / 100;
+      switch (group) {
+        case 1:
+          return StringUtils::itoa((int) code) + " Informational";
+        case 2:
+          return StringUtils::itoa((int) code) + " Success";
+        case 3:
+          return StringUtils::itoa((int) code) + " Redirection";
+        case 4:
+          return StringUtils::itoa((int) code) + " Client error";
+        case 5:
+          return StringUtils::itoa((int) code) + " Server error";
+        default:
+          break;
+      }
+    }
   }
+          
+  return StringUtils::itoa((int) code) + " Unknown";
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -155,6 +173,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (const string& str) {
     case 417: return EXPECTATION_FAILED;
     case 418: return I_AM_A_TEAPOT;
     case 422: return UNPROCESSABLE_ENTITY;
+    case 423: return LOCKED;
     case 428: return PRECONDITION_REQUIRED;
     case 429: return TOO_MANY_REQUESTS;
     case 431: return REQUEST_HEADER_FIELDS_TOO_LARGE;
