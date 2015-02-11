@@ -525,7 +525,7 @@
 ///   Will be raised when the edge could not be created.
 /// - 1908: @LIT{could not change edge}
 ///   Will be raised when the edge could not be changed.
-/// - 1909: @LIT{too many iterations}
+/// - 1909: @LIT{too many iterations - try increasing the value of 'maxIterations'}
 ///   Will be raised when too many iterations are done in a graph traversal.
 /// - 1910: @LIT{invalid filter result}
 ///   Will be raised when an invalid filter result is returned in a graph
@@ -2806,7 +2806,7 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1909: ERROR_GRAPH_TOO_MANY_ITERATIONS
 ///
-/// too many iterations
+/// too many iterations - try increasing the value of 'maxIterations'
 ///
 /// Will be raised when too many iterations are done in a graph traversal.
 ////////////////////////////////////////////////////////////////////////////////
