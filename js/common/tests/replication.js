@@ -500,6 +500,7 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("hash", entry.index.type);
       assertEqual(true, entry.index.unique);
+      assertEqual(false, entry.index.sparse);
       assertEqual([ "a", "b" ], entry.index.fields);
     },
 
@@ -523,6 +524,56 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("hash", entry.index.type);
       assertEqual(false, entry.index.unique);
+      assertEqual(false, entry.index.sparse);
+      assertEqual([ "a" ], entry.index.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexSparseHash1 : function () {
+      var state, tick;
+
+      var c = db._create(cn);
+
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+
+      c.ensureUniqueConstraint("a", "b", { sparse: true });
+      var idx = c.getIndexes()[1];
+
+      var entry = getLogEntries(tick, 2100)[0];
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid);
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
+      assertEqual("hash", entry.index.type);
+      assertEqual(true, entry.index.unique);
+      assertEqual(true, entry.index.sparse);
+      assertEqual([ "a", "b" ], entry.index.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexSparseHash2 : function () {
+      var state, tick;
+
+      var c = db._create(cn);
+
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+
+      c.ensureHashIndex("a", { sparse: true });
+      var idx = c.getIndexes()[1];
+
+      var entry = getLogEntries(tick, 2100)[0];
+      assertEqual(c._id, entry.cid);
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
+      assertEqual("hash", entry.index.type);
+      assertEqual(false, entry.index.unique);
+      assertEqual(true, entry.index.sparse);
       assertEqual([ "a" ], entry.index.fields);
     },
 
@@ -547,6 +598,7 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("skiplist", entry.index.type);
       assertEqual(false, entry.index.unique);
+      assertEqual(false, entry.index.sparse);
       assertEqual([ "a", "b", "c" ], entry.index.fields);
     },
 
@@ -571,6 +623,57 @@ function ReplicationLoggerSuite () {
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("skiplist", entry.index.type);
       assertEqual(true, entry.index.unique);
+      assertEqual(false, entry.index.sparse);
+      assertEqual([ "a" ], entry.index.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexSparseSkiplist1 : function () {
+      var state, tick;
+
+      var c = db._create(cn);
+
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+
+      c.ensureSkiplist("a", "b", "c", { sparse: true });
+      var idx = c.getIndexes()[1];
+      var entry = getLogEntries(tick, 2100)[0];
+
+      assertTrue(2100, entry.type);
+      assertEqual(c._id, entry.cid);
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
+      assertEqual("skiplist", entry.index.type);
+      assertEqual(false, entry.index.unique);
+      assertEqual(true, entry.index.sparse);
+      assertEqual([ "a", "b", "c" ], entry.index.fields);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test actions
+////////////////////////////////////////////////////////////////////////////////
+
+    testLoggerCreateIndexSparseSkiplist2 : function () {
+      var state, tick;
+
+      var c = db._create(cn);
+
+      state = replication.logger.state().state;
+      tick = state.lastLogTick;
+
+      c.ensureUniqueSkiplist("a", { sparse: true });
+      var idx = c.getIndexes()[1];
+      var entry1 = getLogEntries(tick, 2100)[0];
+      entry1 = true;/// TODO
+      var entry = getLogEntries(tick, 2100)[0];
+      assertEqual(c._id, entry.cid);
+      assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
+      assertEqual("skiplist", entry.index.type);
+      assertEqual(true, entry.index.unique);
+      assertEqual(true, entry.index.sparse);
       assertEqual([ "a" ], entry.index.fields);
     },
 
