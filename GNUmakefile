@@ -250,7 +250,7 @@ pack-winXX-MOREOPTS:
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
 	${MAKE} pack-winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
-pack-winXX-cmake:
+pack-winXX-cmake: checkcmake
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
@@ -270,6 +270,13 @@ pack-winXX-build:
 	cd Build$(BITS) && cpack -G NSIS
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
+
+checkcmake:
+	if test -z "`cmake --help |grep -i visual`"; then \
+		echo "Your cmake is not sufficient; it lacks support for visual studio." ; \
+		exit 1; \
+	fi
+
 
 ################################################################################
 ### @brief generates a tar archive

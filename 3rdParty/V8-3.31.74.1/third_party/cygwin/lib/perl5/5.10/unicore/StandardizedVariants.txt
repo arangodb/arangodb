@@ -1,0 +1,139 @@
+# StandardizedVariants-5.1.0.txt
+# Date: 2008-03-24, 13:39:00 PDT [KW]
+#
+# Specification of the variant sequences that are defined in the
+# Unicode Standard.
+#
+# This file is a normative contributory data file in the
+# Unicode Character Database.
+#
+# Copyright (c) 1991-2008 Unicode, Inc.
+# For terms of use, see http://www.unicode.org/terms_of_use.html
+#
+# Standardized variation sequences are defined in this file.
+# Ideographic variation sequences are defined acording to the registration
+# process specified in UTS #37, and are listed in the Ideographic
+# Variation Database. Only those two types of variation sequences
+# are sanctioned for use by conformant implementations.
+# In all other cases, use of a variation selector character does
+# not change the visual appearance of the preceding base character
+# from what it would have had in the absence of the variation selector.
+#
+# For more information on standardized variation sequences, 
+# see Section 16.4, Variation Selectors, 
+# in The Unicode Standard, Version 5.0.
+#
+# For more information on the Ideographic Variation Database
+# see http://www.unicode.org/ivd/
+#
+# Format:
+#   Field 0: the variation sequence
+#   Field 1: the description of the desired appearance
+#   Field 2: where the appearance is only different in in particular shaping environments
+#	this field lists them. The possible values are: isolate, initial, medial, final.
+#	If more than one is present, there are spaces between them.
+# =============================
+
+# Mathematical
+
+2229 FE00; with serifs; # INTERSECTION 
+222A FE00; with serifs; # UNION
+2268 FE00; with vertical stroke; # LESS-THAN BUT NOT EQUAL TO
+2269 FE00; with vertical stroke; # GREATER-THAN BUT NOT EQUAL TO
+2272 FE00; following the slant of the lower leg; # LESS-THAN OR EQUIVALENT TO
+2273 FE00; following the slant of the lower leg; # GREATER-THAN OR EQUIVALENT TO
+#2278 FE00; with vertical stroke; # NEITHER LESS-THAN NOR GREATER-THAN
+#2279 FE00; with vertical stroke; # NEITHER GREATER-THAN NOR LESS-THAN
+228A FE00; with stroke through bottom members; # SUBSET OF WITH NOT EQUAL TO
+228B FE00; with stroke through bottom members; # SUPERSET OF WITH NOT EQUAL TO
+2293 FE00; with serifs; # SQUARE CAP
+2294 FE00; with serifs; # SQUARE CUP
+2295 FE00; with white rim; # CIRCLED PLUS
+2297 FE00; with white rim; # CIRCLED TIMES
+229C FE00; with equal sign touching the circle; # CIRCLED EQUALS
+22DA FE00; with slanted equal; # LESS-THAN EQUAL TO OR GREATER-THAN
+22DB FE00; with slanted equal; # GREATER-THAN EQUAL TO OR LESS-THAN
+2A3C FE00; tall variant with narrow foot; # INTERIOR PRODUCT
+2A3D FE00; tall variant with narrow foot; # RIGHTHAND INTERIOR PRODUCT
+2A9D FE00; with similar following the slant of the upper leg; # SIMILAR OR LESS-THAN
+2A9E FE00; with similar following the slant of the upper leg; # SIMILAR OR GREATER-THAN
+2AAC FE00; with slanted equal; # SMALLER THAN OR EQUAL TO
+2AAD FE00; with slanted equal; # LARGER THAN OR EQUAL TO
+2ACB FE00; with stroke through bottom members; # SUBSET OF ABOVE NOT EQUAL TO
+2ACC FE00; with stroke through bottom members; # SUPERSET OF ABOVE NOT EQUAL TO
+
+# Phags-pa
+
+A856 FE00; phags-pa letter reversed shaping small a; # PHAGS-PA LETTER SMALL A
+A85C FE00; phags-pa letter reversed shaping ha; # PHAGS-PA LETTER HA
+A85E FE00; phags-pa letter reversed shaping i; # PHAGS-PA LETTER I
+A85F FE00; phags-pa letter reversed shaping u; # PHAGS-PA LETTER U
+A860 FE00; phags-pa letter reversed shaping e; # PHAGS-PA LETTER E
+A868 FE00; phags-pa letter reversed shaping subjoined ya; # PHAGS-PA SUBJOINED LETTER YA
+
+# Mongolian
+
+1820 180B; second form; isolate medial final # MONGOLIAN LETTER A
+1820 180C; third form; medial # MONGOLIAN LETTER A 
+1821 180B; second form; initial final # MONGOLIAN LETTER E
+1822 180B; second form; medial # MONGOLIAN LETTER I
+1823 180B; second form; medial final # MONGOLIAN LETTER O 
+1824 180B; second form; medial # MONGOLIAN LETTER U 
+1825 180B; second form; medial final # MONGOLIAN LETTER OE 
+1825 180C; third form; medial # MONGOLIAN LETTER OE 
+1826 180B; second form; isolate medial final # MONGOLIAN LETTER UE 
+1826 180C; third form; medial # MONGOLIAN LETTER UE 
+1828 180B; second form; initial medial # MONGOLIAN LETTER NA
+1828 180C; third form; medial # MONGOLIAN LETTER NA
+1828 180D; separate form; medial # MONGOLIAN LETTER NA
+182A 180B; alternative form; final # MONGOLIAN LETTER BA
+182C 180B; second form; initial medial # MONGOLIAN LETTER QA
+182C 180B; feminine second form; isolate # MONGOLIAN LETTER QA 
+182C 180C; third form; medial # MONGOLIAN LETTER QA
+182C 180D; fourth form; medial # MONGOLIAN LETTER QA
+182D 180B; second form; initial medial # MONGOLIAN LETTER GA
+182D 180B; feminine form; final # MONGOLIAN LETTER GA
+182D 180C; third form; medial # MONGOLIAN LETTER GA
+182D 180D; feminine form; medial # MONGOLIAN LETTER GA
+1830 180B; second form; final # MONGOLIAN LETTER SA
+1830 180C; third form; final # MONGOLIAN LETTER SA
+1832 180B; second form; medial # MONGOLIAN LETTER TA 
+1833 180B; second form; initial medial final # MONGOLIAN LETTER DA
+1835 180B; second form; medial # MONGOLIAN LETTER JA
+1836 180B; second form; initial medial # # MONGOLIAN LETTER YA
+1836 180C; third form; medial # MONGOLIAN LETTER YA
+1838 180B; second form; final # MONGOLIAN LETTER WA
+1844 180B; second form; medial # MONGOLIAN LETTER TODO E
+1845 180B; second form; medial # MONGOLIAN LETTER TODO I 
+1846 180B; second form; medial # MONGOLIAN LETTER TODO O
+1847 180B; second form; isolate medial final # MONGOLIAN LETTER TODO U
+1847 180C; third form; medial # MONGOLIAN LETTER TODO U
+1848 180B; second form; medial # MONGOLIAN LETTER TODO OE
+1849 180B; second form; isolate medial # MONGOLIAN LETTER TODO UE
+184D 180B; feminine form; initial medial # MONGOLIAN LETTER TODO QA
+184E 180B; second form; medial # MONGOLIAN LETTER TODO GA
+185D 180B; second form; medial final # MONGOLIAN LETTER SIBE E
+185E 180B; second form; medial final # MONGOLIAN LETTER SIBE I
+185E 180C; third form; medial final # MONGOLIAN LETTER SIBE I
+1860 180B; second form; medial final # MONGOLIAN LETTER SIBE UE
+1863 180B; second form; medial # MONGOLIAN LETTER SIBE KA
+1868 180B; second form; initial medial # MONGOLIAN LETTER SIBE TA
+1868 180C; third form; medial # MONGOLIAN LETTER SIBE TA
+1869 180B; second form; initial medial # MONGOLIAN LETTER SIBE DA
+186F 180B; second form; initial medial # MONGOLIAN LETTER SIBE ZA
+1873 180B; second form; medial final # MONGOLIAN LETTER MANCHU I
+1873 180C; third form; medial final # MONGOLIAN LETTER MANCHU I
+1873 180D; fourth form; medial # MONGOLIAN LETTER MANCHU I
+1874 180B; second form; medial # MONGOLIAN LETTER MANCHU KA
+1874 180B; feminine first final form; final # MONGOLIAN LETTER MANCHU KA
+1874 180C; feminine first medial form; medial # MONGOLIAN LETTER MANCHU KA
+1874 180C; feminine second final form; final # MONGOLIAN LETTER MANCHU KA 
+1874 180D; feminine second medial form; medial # MONGOLIAN LETTER MANCHU KA
+1876 180B; second form; initial medial # MONGOLIAN LETTER MANCHU FA
+1880 180B; second form; # MONGOLIAN LETTER ALI GALI ANUSVARA ONE
+1881 180B; second form; # MONGOLIAN LETTER ALI GALI VISARGA ONE
+1887 180B; second form; isolate final # MONGOLIAN LETTER ALI GALI A
+1887 180C; third form; final # MONGOLIAN LETTER ALI GALI A
+1887 180D; fourth form; final # MONGOLIAN LETTER ALI GALI A
+1888 180B; second form; final # MONGOLIAN LETTER ALI GALI I 
+188A 180B; second form; initial medial # MONGOLIAN LETTER ALI GALI NGA
