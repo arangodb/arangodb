@@ -80,12 +80,22 @@
         var host = config.dispatchers.d1.endpoint;
         host = host.split("://")[1];
         host = host.split(":");
+
+        if (host === 'localhost') {
+          host = '127.0.0.1'
+        }
+
         param.hostname = host[0];
         param.port = host[1];
       } else {
         param.dbs = 3;
         param.coords = 2;
         param.hostname = window.location.hostname;
+
+        if (param.hostname === 'localhost') {
+          param.hostname = '127.0.0.1'
+        }
+
         param.port = window.location.port;
       }
       $(this.el).html(this.template.render(param));
