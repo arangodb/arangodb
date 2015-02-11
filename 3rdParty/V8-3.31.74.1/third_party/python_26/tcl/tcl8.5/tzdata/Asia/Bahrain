@@ -1,0 +1,7 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Asia/Bahrain) {
+    {-9223372036854775808 12140 0 LMT}
+    {-1577935340 14400 0 GST}
+    {76190400 10800 0 AST}
+}

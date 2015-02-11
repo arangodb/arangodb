@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Kigali) {
+    {-9223372036854775808 7216 0 LMT}
+    {-1091498416 7200 0 CAT}
+}

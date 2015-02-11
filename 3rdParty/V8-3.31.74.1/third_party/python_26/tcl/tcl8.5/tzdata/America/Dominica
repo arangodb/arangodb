@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:America/Dominica) {
+    {-9223372036854775808 -14736 0 LMT}
+    {-1846266804 -14400 0 AST}
+}

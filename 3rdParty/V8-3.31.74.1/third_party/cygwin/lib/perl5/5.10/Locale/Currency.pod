@@ -1,0 +1,191 @@
+
+=head1 NAME
+
+Locale::Currency - ISO three letter codes for currency identification (ISO 4217)
+
+=head1 SYNOPSIS
+
+    use Locale::Currency;
+
+    $curr = code2currency('usd');     # $curr gets 'US Dollar'
+    $code = currency2code('Euro');    # $code gets 'eur'
+
+    @codes   = all_currency_codes();
+    @names   = all_currency_names();
+
+
+=head1 DESCRIPTION
+
+The C<Locale::Currency> module provides access to the ISO three-letter
+codes for identifying currencies and funds, as defined in ISO 4217.
+You can either access the codes via the L<conversion routines>
+(described below),
+or with the two functions which return lists of all currency codes or
+all currency names.
+
+There are two special codes defined by the standard which aren't
+understood by this module:
+
+=over 4
+
+=item XTS
+
+Specifically reserved for testing purposes.
+
+=item XXX
+
+For transactions where no currency is involved.
+
+=back
+
+
+=head1 CONVERSION ROUTINES
+
+There are two conversion routines: C<code2currency()> and C<currency2code()>.
+
+=over 4
+
+=item code2currency()
+
+This function takes a three letter currency code and returns a string
+which contains the name of the currency identified. If the code is
+not a valid currency code, as defined by ISO 4217, then C<undef>
+will be returned.
+
+    $curr = code2currency($code);
+
+=item currency2code()
+
+This function takes a currency name and returns the corresponding
+three letter currency code, if such exists.
+If the argument could not be identified as a currency name,
+then C<undef> will be returned.
+
+    $code = currency2code('French Franc');
+
+The case of the currency name is not important.
+See the section L<KNOWN BUGS AND LIMITATIONS> below.
+
+=back
+
+
+=head1 QUERY ROUTINES
+
+There are two function which can be used to obtain a list of all
+currency codes, or all currency names:
+
+=over 4
+
+=item C<all_currency_codes()>
+
+Returns a list of all three-letter currency codes.
+The codes are guaranteed to be all lower-case,
+and not in any particular order.
+
+=item C<all_currency_names()>
+
+Returns a list of all currency names for which there is a corresponding
+three-letter currency code. The names are capitalised, and not returned
+in any particular order.
+
+=back
+
+
+=head1 EXAMPLES
+
+The following example illustrates use of the C<code2currency()> function.
+The user is prompted for a currency code, and then told the corresponding
+currency name:
+
+    $| = 1;    # turn off buffering
+
+    print "Enter currency code: ";
+    chop($code = <STDIN>);
+    $curr = code2currency($code);
+    if (defined $curr)
+    {
+        print "$code = $curr\n";
+    }
+    else
+    {
+        print "'$code' is not a valid currency code!\n";
+    }
+
+=head1 KNOWN BUGS AND LIMITATIONS
+
+=over 4
+
+=item *
+
+In the current implementation, all data is read in when the
+module is loaded, and then held in memory.
+A lazy implementation would be more memory friendly.
+
+=item *
+
+This module also includes the special codes which are
+not for a currency, such as Gold, Platinum, etc.
+This might cause a problem if you're using this module
+to display a list of currencies.
+Let Neil know if this does cause a problem, and we can
+do something about it.
+
+=item *
+
+ISO 4217 also defines a numeric code for each currency.
+Currency codes are not currently supported by this module,
+in the same way Locale::Country supports multiple codesets.
+
+=item *
+
+There are three cases where there is more than one
+code for the same currency name.
+Kwacha has two codes: mwk for Malawi, and zmk for Zambia.
+The Russian Ruble has two codes: rub and rur.
+The Belarussian Ruble has two codes: byr and byb.
+The currency2code() function only returns one code, so
+you might not get back the code you expected.
+
+=back
+
+=head1 SEE ALSO
+
+=over 4
+
+=item Locale::Country
+
+ISO codes for identification of country (ISO 3166).
+
+=item Locale::Script
+
+ISO codes for identification of written scripts (ISO 15924).
+
+=item ISO 4217:1995
+
+Code for the representation of currencies and funds.
+
+=item http://www.bsi-global.com/iso4217currency
+
+Official web page for the ISO 4217 maintenance agency.
+This has the latest list of codes, in MS Word format. Boo.
+
+=back
+
+=head1 AUTHOR
+
+Michael Hennecke E<lt>hennecke@rz.uni-karlsruhe.deE<gt>
+and
+Neil Bowers E<lt>neil@bowers.comE<gt>
+
+=head1 COPYRIGHT
+
+Copyright (C) 2002-2004, Neil Bowers.
+
+Copyright (c) 2001 Michael Hennecke and
+Canon Research Centre Europe (CRE).
+
+This module is free software; you can redistribute it and/or
+modify it under the same terms as Perl itself.
+
+=cut
+
