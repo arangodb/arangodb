@@ -1,0 +1,7 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Addis_Ababa) {
+    {-9223372036854775808 9288 0 LMT}
+    {-3155682888 9320 0 ADMT}
+    {-1062210920 10800 0 EAT}
+}

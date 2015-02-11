@@ -1,0 +1,336 @@
+# basic C types
+int			T_IV
+unsigned		T_UV
+unsigned int		T_UV
+long			T_IV
+unsigned long		T_UV
+short			T_IV
+unsigned short		T_UV
+char			T_CHAR
+unsigned char		T_U_CHAR
+char *			T_PV
+unsigned char *		T_PV
+const char *		T_PV
+caddr_t			T_PV
+wchar_t *		T_PV
+wchar_t			T_IV
+# bool_t is defined in <rpc/rpc.h>
+bool_t			T_IV
+size_t			T_UV
+ssize_t			T_IV
+time_t			T_NV
+unsigned long *		T_OPAQUEPTR
+char **			T_PACKEDARRAY
+void *			T_PTR
+Time_t *		T_PV
+SV *			T_SV
+SVREF			T_SVREF
+AV *			T_AVREF
+HV *			T_HVREF
+CV *			T_CVREF
+
+IV			T_IV
+UV			T_UV
+NV                      T_NV
+I32			T_IV
+I16			T_IV
+I8			T_IV
+STRLEN			T_UV
+U32			T_U_LONG
+U16			T_U_SHORT
+U8			T_UV
+Result			T_U_CHAR
+Boolean			T_BOOL
+float                   T_FLOAT
+double			T_DOUBLE
+SysRet			T_SYSRET
+SysRetLong		T_SYSRET
+FILE *			T_STDIO
+PerlIO *		T_INOUT
+FileHandle		T_PTROBJ
+InputStream		T_IN
+InOutStream		T_INOUT
+OutputStream		T_OUT
+bool			T_BOOL
+
+#############################################################################
+INPUT
+T_SV
+	$var = $arg
+T_SVREF
+	if (SvROK($arg))
+	    $var = (SV*)SvRV($arg);
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not a reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+T_AVREF
+	if (SvROK($arg) && SvTYPE(SvRV($arg))==SVt_PVAV)
+	    $var = (AV*)SvRV($arg);
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not an array reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+T_HVREF
+	if (SvROK($arg) && SvTYPE(SvRV($arg))==SVt_PVHV)
+	    $var = (HV*)SvRV($arg);
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not a hash reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+T_CVREF
+	if (SvROK($arg) && SvTYPE(SvRV($arg))==SVt_PVCV)
+	    $var = (CV*)SvRV($arg);
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not a code reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+T_SYSRET
+	$var NOT IMPLEMENTED
+T_UV
+	$var = ($type)SvUV($arg)
+T_IV
+	$var = ($type)SvIV($arg)
+T_INT
+	$var = (int)SvIV($arg)
+T_ENUM
+	$var = ($type)SvIV($arg)
+T_BOOL
+	$var = (bool)SvTRUE($arg)
+T_U_INT
+	$var = (unsigned int)SvUV($arg)
+T_SHORT
+	$var = (short)SvIV($arg)
+T_U_SHORT
+	$var = (unsigned short)SvUV($arg)
+T_LONG
+	$var = (long)SvIV($arg)
+T_U_LONG
+	$var = (unsigned long)SvUV($arg)
+T_CHAR
+	$var = (char)*SvPV_nolen($arg)
+T_U_CHAR
+	$var = (unsigned char)SvUV($arg)
+T_FLOAT
+	$var = (float)SvNV($arg)
+T_NV
+	$var = ($type)SvNV($arg)
+T_DOUBLE
+	$var = (double)SvNV($arg)
+T_PV
+	$var = ($type)SvPV_nolen($arg)
+T_PTR
+	$var = INT2PTR($type,SvIV($arg))
+T_PTRREF
+	if (SvROK($arg)) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    $var = INT2PTR($type,tmp);
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not a reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+T_REF_IV_REF
+	if (sv_isa($arg, \"${ntype}\")) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    $var = *INT2PTR($type *, tmp);
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\", \"$ntype\")
+T_REF_IV_PTR
+	if (sv_isa($arg, \"${ntype}\")) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    $var = INT2PTR($type, tmp);
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\", \"$ntype\")
+T_PTROBJ
+	if (sv_derived_from($arg, \"${ntype}\")) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    $var = INT2PTR($type,tmp);
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\", \"$ntype\")
+T_PTRDESC
+	if (sv_isa($arg, \"${ntype}\")) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    ${type}_desc = (\U${type}_DESC\E*) tmp;
+	    $var = ${type}_desc->ptr;
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\", \"$ntype\")
+T_REFREF
+	if (SvROK($arg)) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    $var = *INT2PTR($type,tmp);
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not a reference\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\")
+T_REFOBJ
+	if (sv_isa($arg, \"${ntype}\")) {
+	    IV tmp = SvIV((SV*)SvRV($arg));
+	    $var = *INT2PTR($type,tmp);
+	}
+	else
+	    Perl_croak(aTHX_ \"%s: %s is not of type %s\",
+			${$ALIAS?\q[GvNAME(CvGV(cv))]:\qq[\"$pname\"]},
+			\"$var\", \"$ntype\")
+T_OPAQUE
+	$var = *($type *)SvPV_nolen($arg)
+T_OPAQUEPTR
+	$var = ($type)SvPV_nolen($arg)
+T_PACKED
+	$var = XS_unpack_$ntype($arg)
+T_PACKEDARRAY
+	$var = XS_unpack_$ntype($arg)
+T_CALLBACK
+	$var = make_perl_cb_$type($arg)
+T_ARRAY
+	U32 ix_$var = $argoff;
+	$var = $ntype(items -= $argoff);
+	while (items--) {
+	    DO_ARRAY_ELEM;
+	    ix_$var++;
+	}
+        /* this is the number of elements in the array */
+        ix_$var -= $argoff
+T_STDIO
+	$var = PerlIO_findFILE(IoIFP(sv_2io($arg)))
+T_IN
+	$var = IoIFP(sv_2io($arg))
+T_INOUT
+	$var = IoIFP(sv_2io($arg))
+T_OUT
+	$var = IoOFP(sv_2io($arg))
+#############################################################################
+OUTPUT
+T_SV
+	$arg = $var;
+T_SVREF
+	$arg = newRV((SV*)$var);
+T_AVREF
+	$arg = newRV((SV*)$var);
+T_HVREF
+	$arg = newRV((SV*)$var);
+T_CVREF
+	$arg = newRV((SV*)$var);
+T_IV
+	sv_setiv($arg, (IV)$var);
+T_UV
+	sv_setuv($arg, (UV)$var);
+T_INT
+	sv_setiv($arg, (IV)$var);
+T_SYSRET
+	if ($var != -1) {
+	    if ($var == 0)
+		sv_setpvn($arg, "0 but true", 10);
+	    else
+		sv_setiv($arg, (IV)$var);
+	}
+T_ENUM
+	sv_setiv($arg, (IV)$var);
+T_BOOL
+	$arg = boolSV($var);
+T_U_INT
+	sv_setuv($arg, (UV)$var);
+T_SHORT
+	sv_setiv($arg, (IV)$var);
+T_U_SHORT
+	sv_setuv($arg, (UV)$var);
+T_LONG
+	sv_setiv($arg, (IV)$var);
+T_U_LONG
+	sv_setuv($arg, (UV)$var);
+T_CHAR
+	sv_setpvn($arg, (char *)&$var, 1);
+T_U_CHAR
+	sv_setuv($arg, (UV)$var);
+T_FLOAT
+	sv_setnv($arg, (double)$var);
+T_NV
+	sv_setnv($arg, (NV)$var);
+T_DOUBLE
+	sv_setnv($arg, (double)$var);
+T_PV
+	sv_setpv((SV*)$arg, $var);
+T_PTR
+	sv_setiv($arg, PTR2IV($var));
+T_PTRREF
+	sv_setref_pv($arg, Nullch, (void*)$var);
+T_REF_IV_REF
+	sv_setref_pv($arg, \"${ntype}\", (void*)new $ntype($var));
+T_REF_IV_PTR
+	sv_setref_pv($arg, \"${ntype}\", (void*)$var);
+T_PTROBJ
+	sv_setref_pv($arg, \"${ntype}\", (void*)$var);
+T_PTRDESC
+	sv_setref_pv($arg, \"${ntype}\", (void*)new\U${type}_DESC\E($var));
+T_REFREF
+	NOT_IMPLEMENTED
+T_REFOBJ
+	NOT IMPLEMENTED
+T_OPAQUE
+	sv_setpvn($arg, (char *)&$var, sizeof($var));
+T_OPAQUEPTR
+	sv_setpvn($arg, (char *)$var, sizeof(*$var));
+T_PACKED
+	XS_pack_$ntype($arg, $var);
+T_PACKEDARRAY
+	XS_pack_$ntype($arg, $var, count_$ntype);
+T_DATAUNIT	
+	sv_setpvn($arg, $var.chp(), $var.size());
+T_CALLBACK
+	sv_setpvn($arg, $var.context.value().chp(),
+		$var.context.value().size());
+T_ARRAY
+        {
+	    U32 ix_$var;
+	    EXTEND(SP,size_$var);
+	    for (ix_$var = 0; ix_$var < size_$var; ix_$var++) {
+		ST(ix_$var) = sv_newmortal();
+	DO_ARRAY_ELEM
+	    }
+        }
+T_STDIO
+	{
+	    GV *gv = newGVgen("$Package");
+	    PerlIO *fp = PerlIO_importFILE($var,0);
+	    if ( fp && do_open(gv, "+<&", 3, FALSE, 0, 0, fp) )
+		sv_setsv($arg, sv_bless(newRV((SV*)gv), gv_stashpv("$Package",1)));
+	    else
+		$arg = &PL_sv_undef;
+	}
+T_IN
+	{
+	    GV *gv = newGVgen("$Package");
+	    if ( do_open(gv, "<&", 2, FALSE, 0, 0, $var) )
+		sv_setsv($arg, sv_bless(newRV((SV*)gv), gv_stashpv("$Package",1)));
+	    else
+		$arg = &PL_sv_undef;
+	}
+T_INOUT
+	{
+	    GV *gv = newGVgen("$Package");
+	    if ( do_open(gv, "+<&", 3, FALSE, 0, 0, $var) )
+		sv_setsv($arg, sv_bless(newRV((SV*)gv), gv_stashpv("$Package",1)));
+	    else
+		$arg = &PL_sv_undef;
+	}
+T_OUT
+	{
+	    GV *gv = newGVgen("$Package");
+	    if ( do_open(gv, "+>&", 3, FALSE, 0, 0, $var) )
+		sv_setsv($arg, sv_bless(newRV((SV*)gv), gv_stashpv("$Package",1)));
+	    else
+		$arg = &PL_sv_undef;
+	}

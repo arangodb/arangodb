@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Asia/Aden) {
+    {-9223372036854775808 10848 0 LMT}
+    {-631162848 10800 0 AST}
+}

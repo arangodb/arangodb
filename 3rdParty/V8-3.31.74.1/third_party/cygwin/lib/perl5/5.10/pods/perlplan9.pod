@@ -1,0 +1,146 @@
+If you read this file _as_is_, just ignore the funny characters you see.
+It is written in the POD format (see pod/perlpod.pod) which is specially
+designed to be readable as is.
+
+=head1 NAME
+
+perlplan9 - Plan 9-specific documentation for Perl
+
+=head1 DESCRIPTION
+
+These are a few notes describing features peculiar to
+Plan 9 Perl. As such, it is not intended to be a replacement
+for the rest of the Perl 5 documentation (which is both 
+copious and excellent). If you have any questions to 
+which you can't find answers in these man pages, contact 
+Luther Huffman at lutherh@stratcom.com and we'll try to 
+answer them.
+
+=head2 Invoking Perl
+
+Perl is invoked from the command line as described in 
+L<perl>. Most perl scripts, however, do have a first line 
+such as "#!/usr/local/bin/perl". This is known as a shebang 
+(shell-bang) statement and tells the OS shell where to find 
+the perl interpreter. In Plan 9 Perl this statement should be 
+"#!/bin/perl" if you wish to be able to directly invoke the 
+script by its name.
+     Alternatively, you may invoke perl with the command "Perl"
+instead of "perl". This will produce Acme-friendly error
+messages of the form "filename:18".
+
+Some scripts, usually identified with a *.PL extension, are 
+self-configuring and are able to correctly create their own 
+shebang path from config information located in Plan 9 
+Perl. These you won't need to be worried about.
+
+=head2 What's in Plan 9 Perl
+
+Although Plan 9 Perl currently only  provides static 
+loading, it is built with a number of useful extensions. 
+These include Opcode, FileHandle, Fcntl, and POSIX. Expect 
+to see others (and DynaLoading!) in the future.
+
+=head2 What's not in Plan 9 Perl
+
+As mentioned previously, dynamic loading isn't currently 
+available nor is MakeMaker. Both are high-priority items.
+
+=head2 Perl5 Functions not currently supported in Plan 9 Perl
+
+Some, such as C<chown> and C<umask> aren't provided 
+because the concept does not exist within Plan 9. Others,
+such as some of the socket-related functions, simply
+haven't been written yet. Many in the latter category 
+may be supported in the future.
+
+The functions not currently implemented include:
+
+    chown, chroot, dbmclose, dbmopen, getsockopt, 
+    setsockopt, recvmsg, sendmsg, getnetbyname, 
+    getnetbyaddr, getnetent, getprotoent, getservent, 
+    sethostent, setnetent, setprotoent, setservent, 
+    endservent, endnetent, endprotoent, umask
+
+There may be several other functions that have undefined 
+behavior so this list shouldn't be considered complete.
+
+=head2 Signals in Plan 9 Perl
+
+For compatibility with perl scripts written for the Unix 
+environment, Plan 9 Perl uses the POSIX signal emulation
+provided in Plan 9's ANSI POSIX Environment (APE). Signal stacking
+isn't supported. The signals provided are:
+
+    SIGHUP, SIGINT, SIGQUIT, SIGILL, SIGABRT,
+    SIGFPE, SIGKILL, SIGSEGV, SIGPIPE, SIGPIPE, SIGALRM, 
+    SIGTERM, SIGUSR1, SIGUSR2, SIGCHLD, SIGCONT,
+    SIGSTOP, SIGTSTP, SIGTTIN, SIGTTOU
+
+=head1 COMPILING AND INSTALLING PERL ON PLAN 9
+
+WELCOME to Plan 9 Perl, brave soul!
+
+   This is a preliminary alpha version of Plan 9 Perl. Still to be
+implemented are MakeMaker and DynaLoader. Many perl commands are
+missing or currently behave in an inscrutable manner. These gaps will,
+with perseverance and a modicum of luck, be remedied in the near
+future.To install this software:
+
+1. Create the source directories and libraries for perl by running the
+plan9/setup.rc command (i.e., located in the plan9 subdirectory).
+Note: the setup routine assumes that you haven't dearchived these
+files into /sys/src/cmd/perl. After running setup.rc you may delete
+the copy of the source you originally detarred, as source code has now
+been installed in /sys/src/cmd/perl. If you plan on installing perl
+binaries for all architectures, run "setup.rc -a".
+
+2. After making sure that you have adequate privileges to build system
+software, from /sys/src/cmd/perl/5.00301 (adjust version
+appropriately) run:
+
+	mk install
+
+If you wish to install perl versions for all architectures (68020,
+mips, sparc and 386) run:
+
+	mk installall
+
+3. Wait. The build process will take a *long* time because perl
+bootstraps itself. A 75MHz Pentium, 16MB RAM machine takes roughly 30
+minutes to build the distribution from scratch.
+
+=head2 Installing Perl Documentation on Plan 9
+
+This perl distribution comes with a tremendous amount of
+documentation. To add these to the built-in manuals that come with
+Plan 9, from /sys/src/cmd/perl/5.00301 (adjust version appropriately)
+run:
+
+	mk man
+
+To begin your reading, start with:
+
+	man perl
+
+This is a good introduction and will direct you towards other man
+pages that may interest you.
+
+(Note: "mk man" may produce some extraneous noise. Fear not.)
+
+=head1 BUGS
+
+"As many as there are grains of sand on all the beaches of the 
+world . . ." - Carl Sagan
+
+=head1 Revision date
+
+This document was revised 09-October-1996 for Perl 5.003_7.
+
+=head1 AUTHOR
+
+Direct questions, comments, and the unlikely bug report (ahem) direct
+comments toward:
+
+Luther Huffman, lutherh@stratcom.com, 
+Strategic Computer Solutions, Inc.		

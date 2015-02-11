@@ -1,0 +1,382 @@
+=head1 NAME
+
+perl594delta - what is new for perl v5.9.4
+
+=head1 DESCRIPTION
+
+This document describes differences between the 5.9.3 and the 5.9.4
+development releases. See L<perl590delta>, L<perl591delta>, L<perl592delta>
+and L<perl593delta> for the differences between 5.8.0 and 5.9.3.
+
+=head1 Incompatible Changes
+
+=head2 chdir FOO
+
+A bareword argument to chdir() is now recognized as a file handle.
+Earlier releases interpreted the bareword as a directory name.
+(Gisle Aas)
+
+=head2 Handling of pmc files
+
+An old feature of perl was that before C<require> or C<use> look for a
+file with a F<.pm> extension, they will first look for a similar filename
+with a F<.pmc> extension. If this file is found, it will be loaded in
+place of any potentially existing file ending in a F<.pm> extension.
+
+Previously, F<.pmc> files were loaded only if more recent than the
+matching F<.pm> file. Starting with 5.9.4, they'll be always loaded if
+they exist. (This trick is used by Pugs.)
+
+=head2 @- and @+ in patterns
+
+The special arrays C<@-> and C<@+> are no longer interpolated in regular
+expressions. (Sadahiro Tomoyuki)
+
+=head2 $AUTOLOAD can now be tainted
+
+If you call a subroutine by a tainted name, and if it defers to an
+AUTOLOAD function, then $AUTOLOAD will be (correctly) tainted.
+(Rick Delaney)
+
+=head1 Core Enhancements
+
+=head2 state() variables
+
+A new class of variables has been introduced. State variables are similar
+to C<my> variables, but are declared with the C<state> keyword in place of
+C<my>. They're visible only in their lexical scope, but their value is
+persistent: unlike C<my> variables, they're not undefined at scope entry,
+but retain their previous value. (Rafael Garcia-Suarez)
+
+To use state variables, one needs to enable them by using
+
+    use feature "state";
+
+or by using the C<-E> command-line switch in one-liners.
+
+See L<perlsub/"Persistent variables via state()">.
+
+=head2 UNIVERSAL::DOES()
+
+The C<UNIVERSAL> class has a new method, C<DOES()>. It has been added to
+solve semantic problems with the C<isa()> method. C<isa()> checks for
+inheritance, while C<DOES()> has been designed to be overridden when
+module authors use other types of relations between classes (in addition
+to inheritance). (chromatic)
+
+See L<< UNIVERSAL/"$obj->DOES( ROLE )" >>.
+
+=head2 Exceptions in constant folding
+
+The constant folding routine is now wrapped in an exception handler, and
+if folding throws an exception (such as attempting to evaluate 0/0), perl
+now retains the current optree, rather than aborting the whole program.
+(Nicholas Clark, Dave Mitchell)
+
+=head2 Source filters in @INC
+
+It's possible to enhance the mechanism of subroutine hooks in @INC by
+adding a source filter on top of the filehandle opened and returned by the
+hook. This feature was planned a long time ago, but wasn't quite working
+until now. See L<perlfunc/require> for details. (Nicholas Clark)
+
+=head2 MAD
+
+MAD, which stands for I<Misc Attribute Decoration>, is a
+still-in-development work leading to a Perl 5 to Perl 6 converter. To
+enable it, it's necessary to pass the argument C<-Dmad> to Configure. The
+obtained perl isn't binary compatible with a regular perl 5.9.4, and has
+space and speed penalties; moreover not all regression tests still pass
+with it. (Larry Wall, Nicholas Clark)
+
+=head1 Modules and Pragmas
+
+=over 4
+
+=item *
+
+C<encoding::warnings> is now a lexical pragma. (Although on older perls,
+which don't have support for lexical pragmas, it keeps its global
+behaviour.) (Audrey Tang)
+
+=item *
+
+C<threads> is now a dual-life module, also available on CPAN. It has been
+expanded in many ways. A kill() method is available for thread signalling.
+One can get thread status, or the list of running or joinable threads.
+
+A new C<< threads->exit() >> method is used to exit from the application
+(this is the default for the main thread) or from the current thread only
+(this is the default for all other threads). On the other hand, the exit()
+built-in now always causes the whole application to terminate. (Jerry
+D. Hedden)
+
+=back
+
+=head2 New Core Modules
+
+=over 4
+
+=item *
+
+C<Hash::Util::FieldHash>, by Anno Siegel, has been added. This module
+provides support for I<field hashes>: hashes that maintain an association
+of a reference with a value, in a thread-safe garbage-collected way.
+Such hashes are useful to implement inside-out objects.
+
+=item *
+
+C<Module::Build>, by Ken Williams, has been added. It's an alternative to
+C<ExtUtils::MakeMaker> to build and install perl modules.
+
+=item *
+
+C<Module::Load>, by Jos Boumans, has been added. It provides a single
+interface to load Perl modules and F<.pl> files.
+
+=item *
+
+C<Module::Loaded>, by Jos Boumans, has been added. It's used to mark
+modules as loaded or unloaded.
+
+=item *
+
+C<Package::Constants>, by Jos Boumans, has been added. It's a simple
+helper to list all constants declared in a given package.
+
+=item *
+
+C<Win32API::File>, by Tye McQueen, has been added (for Windows builds).
+This module provides low-level access to Win32 system API calls for
+files/dirs.
+
+=back
+
+=head1 Utility Changes
+
+=head2 config_data
+
+C<config_data> is a new utility that comes with C<Module::Build>. It
+provides a command-line interface to the configuration of Perl modules
+that use Module::Build's framework of configurability (that is,
+C<*::ConfigData> modules that contain local configuration information for
+their parent modules.)
+
+=head1 Documentation
+
+=head2 New manpage, perlpragma
+
+The L<perlpragma> manpage documents how to write one's own lexical
+pragmas in pure Perl (something that is possible starting with 5.9.4).
+
+=head2 New manpage, perlreguts
+
+The L<perlreguts> manpage, courtesy of Yves Orton, describes internals of the
+Perl regular expression engine.
+
+=head2 New manpage, perlunitut
+
+The L<perlunitut> manpage is an tutorial for programming with Unicode and
+string encodings in Perl, courtesy of Juerd Waalboer.
+
+=head1 Performance Enhancements
+
+=head2 Memory optimisations
+
+Several internal data structures (typeglobs, GVs, CVs, formats) have been
+restructured to use less memory. (Nicholas Clark)
+
+=head2 UTF-8 cache optimisation
+
+The UTF-8 caching code is now more efficient, and used more often.
+(Nicholas Clark)
+
+=head2 Regular expressions
+
+=over 4
+
+=item Engine de-recursivised
+
+The regular expression engine is no longer recursive, meaning that
+patterns that used to overflow the stack will either die with useful
+explanations, or run to completion, which, since they were able to blow
+the stack before, will likely take a very long time to happen. If you were
+experiencing the occasional stack overflow (or segfault) and upgrade to
+discover that now perl apparently hangs instead, look for a degenerate
+regex. (Dave Mitchell)
+
+=item Single char char-classes treated as literals
+
+Classes of a single character are now treated the same as if the character
+had been used as a literal, meaning that code that uses char-classes as an
+escaping mechanism will see a speedup. (Yves Orton)
+
+=item Trie optimisation of literal string alternations
+
+Alternations, where possible, are optimised into more efficient matching
+structures. String literal alternations are merged into a trie and are
+matched simultaneously.  This means that instead of O(N) time for matching
+N alternations at a given point the new code performs in O(1) time. (Yves
+Orton)
+
+B<Note:> Much code exists that works around perl's historic poor
+performance on alternations. Often the tricks used to do so will disable
+the new optimisations. Hopefully the utility modules used for this purpose
+will be educated about these new optimisations by the time 5.10 is
+released.
+
+=item Aho-Corasick start-point optimisation
+
+When a pattern starts with a trie-able alternation and there aren't
+better optimisations available the regex engine will use Aho-Corasick
+matching to find the start point. (Yves Orton)
+
+=back
+
+=head2 Sloppy stat on Windows
+
+On Windows, perl's stat() function normally opens the file to determine
+the link count and update attributes that may have been changed through
+hard links. Setting ${^WIN32_SLOPPY_STAT} to a true value speeds up
+stat() by not performing this operation. (Jan Dubois)
+
+=head1 Installation and Configuration Improvements
+
+=head2 Relocatable installations
+
+There is now Configure support for creating a relocatable perl tree. If
+you Configure with C<-Duserelocatableinc>, then the paths in @INC (and
+everything else in %Config) can be optionally located via the path of the
+perl executable.
+
+That means that, if the string C<".../"> is found at the start of any
+path, it's substituted with the directory of $^X. So, the relocation can
+be configured on a per-directory basis, although the default with
+C<-Duserelocatableinc> is that everything is relocated. The initial
+install is done to the original configured prefix.
+
+=head2 Ports
+
+Many improvements have been made towards making Perl work correctly on
+z/OS.
+
+Perl has been reported to work on DragonFlyBSD.
+
+=head2 Compilation improvements
+
+All F<ppport.h> files in the XS modules bundled with perl are now
+autogenerated at build time. (Marcus Holland-Moritz)
+
+=head2 New probes
+
+The configuration process now detects whether strlcat() and strlcpy() are
+available.  When they are not available, perl's own version is used (from
+Russ Allbery's public domain implementation).  Various places in the perl
+interpreter now use them. (Steve Peters)
+
+=head2 Windows build improvements
+
+=over 4
+
+=item Building XS extensions
+
+Support for building XS extension modules with the free MinGW compiler has
+been improved in the case where perl itself was built with the Microsoft
+VC++ compiler. (ActiveState)
+
+=item Support for 64-bit compiler
+
+Support for building perl with Microsoft's 64-bit compiler has been
+improved. (ActiveState)
+
+=back
+
+=head1 Selected Bug Fixes
+
+=head2 PERL5SHELL and tainting
+
+On Windows, the PERL5SHELL environment variable is now checked for
+taintedness. (Rafael Garcia-Suarez)
+
+=head2 Using *FILE{IO}
+
+C<stat()> and C<-X> filetests now treat *FILE{IO} filehandles like *FILE
+filehandles. (Steve Peters)
+
+=head2 Overloading and reblessing
+
+Overloading now works when references are reblessed into another class.
+Internally, this has been implemented by moving the flag for "overloading"
+from the reference to the referent, which logically is where it should
+always have been. (Nicholas Clark)
+
+=head2 Overloading and UTF-8
+
+A few bugs related to UTF-8 handling with objects that have
+stringification overloaded have been fixed. (Nicholas Clark)
+
+=head2 eval memory leaks fixed
+
+Traditionally, C<eval 'syntax error'> has leaked badly. Many (but not all)
+of these leaks have now been eliminated or reduced. (Dave Mitchell)
+
+=head2 Random device on Windows
+
+In previous versions, perl would read the file F</dev/urandom> if it
+existed when seeding its random number generator.  That file is unlikely
+to exist on Windows, and if it did would probably not contain appropriate
+data, so perl no longer tries to read it on Windows. (Alex Davies)
+
+=head1 New or Changed Diagnostics
+
+=over 4
+
+=item State variable %s will be reinitialized
+
+One can assign initial values to state variables, but not when they're
+declared as a sub-part of a list assignment. See L<perldiag>.
+
+=back
+
+=head1 Changed Internals
+
+A new file, F<mathoms.c>, contains functions that aren't used anymore in
+the perl core, but remain around because modules out there might
+still use them. They come from a factorization effort: for example, many
+PP functions are now shared for several ops.
+
+The implementation of the special variables $^H and %^H has changed, to
+allow implementing lexical pragmas in pure perl.
+
+=head1 Known Problems
+
+One warning test (number 263 in F<lib/warnings.t>) fails under UTF-8
+locales.
+
+Bytecode tests fail under several platforms. We are considering removing
+support for byteloader and compiler before the 5.10.0 release.
+
+=head1 Reporting Bugs
+
+If you find what you think is a bug, you might check the articles
+recently posted to the comp.lang.perl.misc newsgroup and the perl
+bug database at http://rt.perl.org/rt3/ .  There may also be
+information at http://www.perl.org/ , the Perl Home Page.
+
+If you believe you have an unreported bug, please run the B<perlbug>
+program included with your release.  Be sure to trim your bug down
+to a tiny but sufficient test case.  Your bug report, along with the
+output of C<perl -V>, will be sent off to perlbug@perl.org to be
+analysed by the Perl porting team.
+
+=head1 SEE ALSO
+
+The F<Changes> file for exhaustive details on what changed.
+
+The F<INSTALL> file for how to build Perl.
+
+The F<README> file for general stuff.
+
+The F<Artistic> and F<Copying> files for copyright information.
+
+=cut
