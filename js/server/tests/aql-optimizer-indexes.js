@@ -1816,6 +1816,36 @@ function optimizerIndexesTestSuite () {
 /// @brief test sparse indexes
 ////////////////////////////////////////////////////////////////////////////////
 
+    testSparseHashDynamic : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureHashIndex("value2", { sparse: true });
+      var queries = [
+        "LET a = PASSTHRU(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) || i.value2 == PASSTHRU(null) RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        // must not use an index
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length);
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
     testSparseHashNull : function () {
       AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
 
@@ -2098,6 +2128,36 @@ function optimizerIndexesTestSuite () {
       assertEqual(40, results.json.length);
       assertEqual(40, results.stats.scannedIndex);
       assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistDynamic : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureSkiplist("value2", { sparse: true });
+      var queries = [
+        "LET a = PASSTHRU(null) FOR i IN " + c.name() + " FILTER i.value2 == a RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == PASSTHRU(null) || i.value2 == PASSTHRU(null) RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        // must not use an index
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual(1, results.json.length);
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
