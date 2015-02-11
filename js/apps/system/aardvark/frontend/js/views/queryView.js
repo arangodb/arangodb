@@ -526,6 +526,11 @@
     },
 
     importSelected: function (e) {
+
+      //update queries first, before showing
+      this.getAQL();
+      this.getSystemQueries();
+
       var inputEditor = ace.edit("aqlEditor");
       $.each(this.queries, function (k, v) {
         if ($('#' + e.currentTarget.id).val() === v.name) {
