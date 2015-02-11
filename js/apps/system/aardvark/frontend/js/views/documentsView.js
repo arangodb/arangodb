@@ -1043,7 +1043,7 @@
       }
       result = self.collectionModel.createIndex(postParameter);
       if (result === true) {
-        $('#collectionEditIndexTable tr').remove();
+        $('#collectionEditIndexTable tbody tr').remove();
         self.getIndex();
         self.toggleNewIndexView();
         self.resetIndexForms();
