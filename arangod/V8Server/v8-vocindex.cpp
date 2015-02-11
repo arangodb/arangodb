@@ -199,11 +199,16 @@ static int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
 
 static int ProcessIndexSparseFlag (v8::Isolate* isolate,
                                    v8::Handle<v8::Object> const obj,
-                                   TRI_json_t* json) {
+                                   TRI_json_t* json, 
+                                   bool create) {
   v8::HandleScope scope(isolate);
   if (obj->Has(TRI_V8_ASCII_STRING("sparse"))) {
     bool sparse = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("sparse"), false);
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, sparse));
+  }
+  else if (create) {
+    // not set. now add a default value
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
   }
   return TRI_ERROR_NO_ERROR;
 }
@@ -278,7 +283,7 @@ static int EnhanceJsonIndexHash (v8::Isolate* isolate,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(isolate, obj, json, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, json);
+  ProcessIndexSparseFlag(isolate, obj, json, create);
   ProcessIndexUniqueFlag(isolate, obj, json);
   return res;
 }
@@ -292,7 +297,7 @@ static int EnhanceJsonIndexSkiplist (v8::Isolate* isolate,
                                      TRI_json_t* json,
                                      bool create) {
   int res = ProcessIndexFields(isolate, obj, json, 0, create);
-  ProcessIndexSparseFlag(isolate, obj, json);
+  ProcessIndexSparseFlag(isolate, obj, json, create);
   ProcessIndexUniqueFlag(isolate, obj, json);
   return res;
 }
@@ -864,7 +869,6 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
                          char const* functionName) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-
 
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 

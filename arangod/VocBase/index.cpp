@@ -1859,6 +1859,14 @@ bool IndexComparator (TRI_json_t const* lhs,
     }
   }
 
+  // sparse must be identical if present
+  value = TRI_LookupObjectJson(lhs, "sparse");
+  if (TRI_IsBooleanJson(value)) {
+    if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "sparse"))) {
+      return false;
+    }
+  }
+
 
   if (type == TRI_IDX_TYPE_GEO1_INDEX) {
     // geoJson must be identical if present
