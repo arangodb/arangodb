@@ -1698,6 +1698,582 @@ function optimizerIndexesTestSuite () {
         assertEqual(0, results.stats.scannedIndex);
         assertEqual(0, results.stats.scannedFull);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHash : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("hash", node.index.type);
+          assertFalse(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 2 ], results.json, query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseUniqueHash : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      c.ensureUniqueConstraint("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("hash", node.index.type);
+          assertTrue(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 2 ], results.json, query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashCollisions : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureHashIndex("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("hash", node.index.type);
+          assertFalse(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(20, results.json.length);
+      assertEqual(20, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashCollisionsOr : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureHashIndex("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 9 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("hash", node.index.type);
+          assertFalse(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(40, results.json.length);
+      assertEqual(40, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureHashIndex("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      // must not use an index
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashesNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureHashIndex("value2", { sparse: true });
+      c.ensureHashIndex("value2", { sparse: false });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("hash", node.index.type);
+          assertFalse(node.index.unique);
+          assertFalse(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashMulti : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 && i.value2 == 2 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          if (node.type === "IndexRangeNode") {
+            assertEqual("hash", node.index.type);
+            assertFalse(node.index.unique);
+            assertTrue(node.index.sparse);
+          }
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 2 ], results.json, query);
+        assertEqual(1, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashMultiMissing : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 2 ], results.json, query);
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashMultiNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == null RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 0 ], results.json, query);
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashesMultiNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureHashIndex("value2", "value3", { sparse: true });
+      c.ensureHashIndex("value2", "value3", { sparse: false });
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("hash", node.index.type);
+          assertFalse(node.index.unique);
+          assertFalse(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 0 ], results.json, query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplist : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("skiplist", node.index.type);
+          assertFalse(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 2 ], results.json, query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseUniqueSkiplist : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value } IN " + c.name());
+
+      c.ensureUniqueSkiplist("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("skiplist", node.index.type);
+          assertTrue(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 2 ], results.json, query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistCollisions : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureSkiplist("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("skiplist", node.index.type);
+          assertFalse(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(20, results.json.length);
+      assertEqual(20, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistCollisionsOr : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureSkiplist("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == 2 || i.value2 == 9 RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("skiplist", node.index.type);
+          assertFalse(node.index.unique);
+          assertTrue(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(40, results.json.length);
+      assertEqual(40, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureSkiplist("value2", { sparse: true });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        return node.type;
+      });
+
+      // must not use an index
+      assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(0, results.stats.scannedIndex);
+      assertTrue(results.stats.scannedFull > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistsNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value % 100 } IN " + c.name());
+
+      c.ensureSkiplist("value2", { sparse: true });
+      c.ensureSkiplist("value2", { sparse: false });
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("skiplist", node.index.type);
+          assertFalse(node.index.unique);
+          assertFalse(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual(1, results.json.length);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistMulti : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 && i.value3 == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 && i.value2 == 2 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          if (node.type === "IndexRangeNode") {
+            assertEqual("skiplist", node.index.type);
+            assertFalse(node.index.unique);
+            assertTrue(node.index.sparse);
+          }
+          return node.type;
+        });
+
+        assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 2 ], results.json, query);
+        assertEqual(1, results.stats.scannedIndex);
+        assertEqual(0, results.stats.scannedFull);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistMultiMissing : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == 2 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == 2 RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 2 ], results.json, query);
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistMultiNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3", { sparse: true });
+
+      var queries = [
+        "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value2 == null RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value3 == null RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var nodeTypes = plan.nodes.map(function(node) {
+          return node.type;
+        });
+
+        assertEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 0 ], results.json, query);
+        assertEqual(0, results.stats.scannedIndex);
+        assertTrue(results.stats.scannedFull > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sparse indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplistsMultiNull : function () {
+      AQL_EXECUTE("FOR i IN " + c.name() + " FILTER i.value >= 1 UPDATE i WITH { value2: i.value, value3: i.value } IN " + c.name());
+
+      c.ensureSkiplist("value2", "value3", { sparse: true });
+      c.ensureSkiplist("value2", "value3", { sparse: false });
+
+      var query = "FOR i IN " + c.name() + " FILTER i.value2 == null && i.value3 == null RETURN i.value";
+
+      var plan = AQL_EXPLAIN(query).plan;
+      var nodeTypes = plan.nodes.map(function(node) {
+        if (node.type === "IndexRangeNode") {
+          assertEqual("skiplist", node.index.type);
+          assertFalse(node.index.unique);
+          assertFalse(node.index.sparse);
+        }
+        return node.type;
+      });
+
+      assertNotEqual(-1, nodeTypes.indexOf("IndexRangeNode"), query);
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ 0 ], results.json, query);
+      assertEqual(1, results.stats.scannedIndex);
+      assertEqual(0, results.stats.scannedFull);
     }
 
   };

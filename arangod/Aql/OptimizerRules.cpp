@@ -1845,7 +1845,6 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             
                               if (mustClear) {
                                 indexOrCondition.clear();   // not usable
-                                std::cout << "CANNOT USE SPARSE HASH INDEX\n";
                                 break;
                               }
                             }
