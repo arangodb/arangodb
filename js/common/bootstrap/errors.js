@@ -220,7 +220,7 @@
     "ERROR_GRAPH_INVALID_EDGE"     : { "code" : 1906, "message" : "invalid edge" },
     "ERROR_GRAPH_COULD_NOT_CREATE_EDGE" : { "code" : 1907, "message" : "could not create edge" },
     "ERROR_GRAPH_COULD_NOT_CHANGE_EDGE" : { "code" : 1908, "message" : "could not change edge" },
-    "ERROR_GRAPH_TOO_MANY_ITERATIONS" : { "code" : 1909, "message" : "too many iterations" },
+    "ERROR_GRAPH_TOO_MANY_ITERATIONS" : { "code" : 1909, "message" : "too many iterations - try increasing the value of 'maxIterations'" },
     "ERROR_GRAPH_INVALID_FILTER_RESULT" : { "code" : 1910, "message" : "invalid filter result" },
     "ERROR_GRAPH_COLLECTION_MULTI_USE" : { "code" : 1920, "message" : "multi use of edge collection in edge def" },
     "ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS" : { "code" : 1921, "message" : "edge collection already used in edge def" },

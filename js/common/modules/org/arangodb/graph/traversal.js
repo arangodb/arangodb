@@ -1306,7 +1306,7 @@ ArangoTraverser = function (config) {
     filter: null,
     expander: outboundExpander,
     datasource: null,
-    maxIterations: 10000,
+    maxIterations: 1000000,
     minDepth: 0,
     maxDepth: 256,
     buildVertices: true
