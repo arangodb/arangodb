@@ -1,5 +1,5 @@
 /*jshint strict: true */
-/*global require, fail, assertFalse, assertTrue, assertEqual, assertNotEqual, assertMatch, ArangoAgency */
+/*global require, fail, assertFalse, assertTrue, assertEqual, assertNotEqual, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -82,7 +82,8 @@ function AgencySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testVersion : function () {
-      assertMatch(/^etcd/, agency.version());
+      var agencyVersion = JSON.parse(agency.version());
+      assertEqual(agencyVersion.internalVersion, "2");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
