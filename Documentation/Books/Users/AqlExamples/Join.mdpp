@@ -208,7 +208,8 @@ FOR user IN users
 ```
 
 So, for each user we pick the list of her friends and count them. The ones where
-count equals zero are the lonely people.
+count equals zero are the lonely people. Using *RETURN 1* in the sub-query
+saves even more precious CPU cycles and gives the optimizer more alternatives.
 
 !SUBSECTION Pitfalls
 
