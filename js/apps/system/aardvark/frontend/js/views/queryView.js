@@ -12,8 +12,7 @@
     cachedQuery: "",
 
     initialize: function () {
-      this.getAQL();
-      this.getSystemQueries();
+      this.refreshAQL();
       this.tableDescription.rows = this.customQueries;
     },
 
@@ -33,6 +32,7 @@
       'click #clearInput': 'clearInput',
       'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
+      'mouseover #querySelect': function(){this.refreshAQL(true);},
       'change #querySelect': 'importSelected',
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
@@ -372,8 +372,7 @@
 
     addAQL: function () {
       //update queries first, before showing
-      this.getAQL();
-      this.getSystemQueries();
+      this.refreshAQL(true);
 
       //render options
       this.createCustomQueryModal();
@@ -441,8 +440,7 @@
       e.stopPropagation();
 
       //update queries first, before writing
-      this.getAQL();
-      this.getSystemQueries();
+      this.refreshAQL();
 
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
@@ -525,11 +523,19 @@
       return returnVal;
     },
 
-    importSelected: function (e) {
-
-      //update queries first, before showing
+    refreshAQL: function(select) {
       this.getAQL();
       this.getSystemQueries();
+      this.updateLocalQueries();
+
+      if (select) {
+        var previous = $("#querySelect" ).val();
+        this.renderSelectboxes();
+        $("#querySelect" ).val(previous);
+      }
+    },
+
+    importSelected: function (e) {
 
       var inputEditor = ace.edit("aqlEditor");
       $.each(this.queries, function (k, v) {
