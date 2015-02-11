@@ -6466,7 +6466,15 @@ function AQL_GRAPH_NEIGHBORS (graphName,
   params.maxDepth = options.maxDepth === undefined ? 1 : options.maxDepth;
   params.maxIterations = options.maxIterations;
   params.paths = true;
-  params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+  // add user-defined visitor, if specified
+  if (typeof options.visitor === "string") {
+    params.visitorReturnsResults = options.visitorReturnsResults || false;
+    params.visitor = GET_VISITOR(options.visitor, options);
+  }
+  else {
+    params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
+  }
+  
   var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
