@@ -1,6 +1,8 @@
 v2.4.4 (2015-XX-XX)
 -------------------
 
+* add custom visitor functionality for `GRAPH_NEIGHBORS` function, too
+
 * increased default value of traversal option *maxIterations* to 100 times of its previous
   default value
 
