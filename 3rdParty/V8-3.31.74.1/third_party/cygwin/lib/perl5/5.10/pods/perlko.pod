@@ -1,0 +1,219 @@
+If you read this file _as_is_, just ignore the funny characters you
+see. It is written in the POD format (see perlpod manpage) which is
+specially designed to be readable as is.
+
+This file is in Korean encoded in EUC-KR. 
+
+이 문서를 perldoc을 써서 보지 않고 직접 보는 경우에는 각 부분의
+역할을 표시하기 위해 쓰인 =head, =item, 'L' 등은 무시하십시오.
+이 문서는 따로 perldoc을 쓰지 않고 보더라도 읽는데 별 지장이
+없는 POD 형식으로 짜여 있습니다.  더 자세한 것은 perlpod
+매뉴얼을 참고하십시오. 
+
+=encoding euc-kr
+
+=head1 NAME
+
+perlko - Perl과 한국어 인코딩
+
+=head1 DESCRIPTION
+
+Perl의 세계에 오신 것을 환영합니다 !
+
+
+Perl은 5.8.0판부터 유니코드/ISO 10646에 대한 광범위한 지원을 합니다.
+유니코드 지원의 일환으로 한중일을 비롯한 세계 각국에서
+유니코드 이전에 쓰고 있었고 지금도 널리 쓰이고 있는 수많은 인코딩을
+지원합니다.  유니코드는 전 세계에서 쓰이는 모든 언어를 위한 표기 체계 -
+유럽의 라틴 알파벳, 키릴 알파벳, 그리스 알파벳, 인도와 동남 아시아의
+브라미 계열 스크립트, 아랍 문자, 히브리 문자, 한중일의 한자, 한국어의 한글,
+일본어의 가나, 북미 인디안의 표기 체계 등-를 수용하는 것을 목표로 하고
+있기 때문에 기존에 쓰이던  각 언어 및 국가 그리고 운영 체계에 고유한
+문자 집합과 인코딩에 쓸 수 있는 모든 글자는 물론이고  기존 문자 집합에서
+지원하고 있지 않던 아주 많은 글자를  포함하고 있습니다.
+
+
+Perl은 내부적으로 유니코드를 문자 표현을 위해 사용합니다. 보다 구체적으로
+말하면 Perl 스크립트 안에서  UTF-8 문자열을 쓸 수 있고, 
+각종 함수와 연산자(예를 들어, 정규식, index, substr)가 바이트 단위
+대신 유니코드 글자 단위로 동작합니다. (더 자세한 것은 
+perlunicode 매뉴얼을 참고하십시오.) 유니코드가 널리 보급되기 전에
+널리 쓰이고 있었고, 여전히 널리 쓰이고 있는 각국/각 언어별 인코딩으로
+입출력을 하고 이들 인코딩으로 된 데이터와 문서를 다루는 것을 돕기 위해
+'Encode'가  쓰였습니다. 무엇보다 'Encode'를  써서 수많은 인코딩 사이의
+변환을 쉽게 할 수 있습니다.
+
+'Encode'는 다음과 같은 한국어 인코딩을 지원합니다.
+
+=over 4
+
+=item euc-kr 
+
+  US-ASCII와 KS X 1001을 같이 쓰는 멀티바이트 인코딩 (흔히 완성형이라고
+  불림.) KS X 2901과 RFC 1557 참고.
+
+=item  cp949     
+
+	MS-Windows 9x/ME에서 쓰이는 확장 완성형.  euc-kr에 8,822자의
+	한글 음절을 더한 것임.  alias는 uhc, windows-949, x-windows-949,
+	ks_c_5601-1987. 맨 마지막 이름은 적절하지 않은 이름이지만, Microsoft
+	제품에서 CP949의 의미로 쓰이고 있음.
+
+=item  johab          
+
+	KS X 1001:1998 부록 3에서 규정한 조합형.  문자 레퍼토리는 cp949와
+	마찬가지로 US-ASCII와  KS X 1001에 8,822자의 한글 음절을 더한 것임.
+	인코딩 방식은 전혀 다름. 
+
+=item iso-2022-kr     
+
+	RFC 1557에서 규정한 한국어 인터넷 메일 교환용 인코딩으로 US-ASCII와
+	KS X 1001을 레퍼토리로 하는 점에서 euc-kr과 같지만 인코딩 방식이 다름.
+	1997-8년 경까지 쓰였으나 더 이상 메일 교환에 쓰이지 않음.
+
+=item  ksc5601-raw     
+
+	KS X 1001(KS C 5601)을 GL(즉, MSB를 0으로 한 경우) 에 놓았을 때의
+	인코딩. US-ASCII와 결합하지 않고 단독으로 쓰이는 일은 X11 등에서 글꼴
+	인코딩 (ksc5601.1987-0. '0'은 GL을 의미함.)으로 쓰이는 것을 제외하고는
+	거의 없음. KS C 5601은 1997년 KS X 1001로 이름을 바꾸었음.  1998년에는  두
+	글자 (유로화 부호와 등록 상표 부호)가 더해졌음.
+
+=back
+
+ 몇 가지 사용 예제를 아래에 보입니다. 
+
+예를 들어, euc-kr 인코딩으로 된 파일을 UTF-8로 변환하려면 다음과
+같이 하면 됩니다. 
+
+
+    perl -Mencoding=euc-kr,STDOUT,utf8 -pe1  < file.euckr > file.utf8
+
+역변환은 다음과 같이 할 수 있습니다. 
+
+    perl -Mencoding=utf8,STDOUT,euc-kr -pe1  < file.utf8  > file.euckr
+
+  이런 변환을 좀더 편리하게 할 수 있도록 Encode 모듈을 써서 
+순수하게 Perl로만 쓰인 piconv가 Perl에 들어 있습니다.
+그 이름에서 알 수 있듯이 piconv는 Unix에 있는 iconv를
+모델로 한 것입니다. 그 사용법은 아래와 같습니다.
+
+   piconv -f euc-kr -t utf8 < file.euckr > file.utf8
+   piconv -f utf8 -t euc-kr < file.utf8 > file.euckr
+
+  또, 'PerlIO::encoding' 모듈을 써서 한국어 인코딩을 쓰면서 글자 단위
+(바이트 단위가 아니라) 처리를 쉽게 할 수 있습니다.
+
+  #!/path/to/perl 
+
+  use encoding 'euc-kr', STDIN => 'euc-kr',
+                         STDOUT-> 'euc-kr', STDERR=>'euc-kr';
+
+  print length("가나");        # 2  (큰 따옴표는 글자 단위 처리를 지시)
+  print length('가나');        # 4  (작은 따옴표는 바이트 단위 처리를 지시)
+  print index("한강, 대동강", "염");   # -1 ('염'이 없음)
+  print index('한강, 대동강', '염');   # 7 (8번째와 9번째 바이트가 '염'의
+                                            코드값과 일치함.)
+
+
+=head2 더 자세히 알고 싶으면...
+
+  Perl을 설치하면  대단히 자세한 문서가 같이 따라 오며, 이 문서를 통해
+Perl 전반 뿐 아니라 유니코드 지원, Encode의 사용법 등에 많은 것을
+배울 수 있습니다.  아직 이 문서는 현재 모두 영어로 쓰여 있습니다.
+
+
+=head2 Perl 관련 자료
+
+위에서 언급한  문서 외에도 다음과 같은 자료가 있습니다. 이 목록은 결코
+완전한 것이 아니고 일부 대표적인 것만 모은 것입니다.
+
+=over 4
+
+=item L<http://www.perl.com/>		
+
+   O'Reilly의 Perl 웹 페이지 
+
+=item L<http://www.cpan.org/>
+
+	Comprehensive Perl Archive Network
+
+=item L<http://lists.perl.org/>	
+
+  Perl 메일링 리스트. 많은 리스트 가운데
+  perl-unicode에서 'Encode'에 대해 논의함.
+
+=back
+
+=head2 Perl을 더 깊게 공부하는데 도움을 줄 수 있는 한국어 관련 사이트
+
+=over 4
+
+=item L<http://www.perl.or.kr/>
+
+  Perl 한국 사용자 모임 
+
+=item L<news:han.comp.lang.perl/>
+
+  한국어 Perl 뉴스 그룹
+
+=item L<http://seoul.pm.org/>
+
+  Perl 망거스 (서울)
+
+=item L<http://www.perlmania.or.kr/>
+
+  Home for Korean Perlmanias
+
+=item L<http://www.oreilly.co.kr/perl/>
+
+  O'Reilly에서 나온 한국어 Perl 서적 목록
+
+=item L<http://www.perlschool.net/>
+
+  Perl 기초 강좌 및 소스, 최근 동향, 관련 해외 사이트 링크 
+
+=item L<http://www.perl.co.kr>
+
+  Perl에 관련된 CGI, DB, 연동 등에 대한  정보 및 뉴스 제공
+
+=back 
+
+=head2 유니코드 및 한국어 인코딩 관련 자료
+
+=over 4
+
+=item L<http://www.unicode.org/>
+
+  유니코드 컨소시엄.  
+
+=item L<http://std.dkuug.dk/JTC1/SC2/WG2>
+
+기본적으로 Unicode와 같은 ISO 표준인  ISO/IEC 10646 UCS(Universal
+Character Set)을 만드는  ISO/IEC JTC1/SC2/WG2의 웹 페이지. 
+
+=item L<http://jshin.net/faq/qa8.html>
+
+  한국어 문자 집합 및 인코딩에 대한 안내.
+
+=item L<http://www.cl.cam.ac.uk/~mgk25/unicode.html>
+
+  유닉스/리눅스에서 유니코드와 UTF-8 사용에 대한 문답집(FAQ)
+
+=item L<http://kldp.org/Translations/html/UTF8-Unicode-KLDP/UTF8-Unicode-KLDP.html>
+
+  유닉스/리눅스에서 유니코드와 UTF-8 사용에 대한 문답집(FAQ)의  한국어 번역
+
+=back
+
+=head1 SEE ALSO
+
+L<Encode>, L<Encode::KR>, L<encoding>, L<perluniintro>, L<perlunicode>
+
+
+=head1 AUTHORS
+
+Jarkko Hietaniemi E<lt>jhi@iki.fiE<gt>
+신정식 E<lt>jshin@mailaps.orgE<gt>
+
+=cut
