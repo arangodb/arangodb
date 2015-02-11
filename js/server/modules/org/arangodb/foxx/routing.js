@@ -39,8 +39,10 @@
   var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
   var _ = require("underscore");
   var fs = require("fs");
+  var is = require("org/arangodb/is");
   var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
+  var actions = require("org/arangodb/actions");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -284,6 +286,112 @@
     return preprocess;
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create middleware matchers
+////////////////////////////////////////////////////////////////////////////////
+
+  var createMiddlewareMatchers = function (rt, routes, controller, prefix) {
+    var j, route;
+    for (j = 0;  j < rt.length;  ++j) {
+      route = rt[j];
+      if (route.hasOwnProperty("url")) {
+        route.url.match = arangodb.normalizeURL(prefix + "/" + route.url.match);
+      }
+      route.context = controller;
+      routes.middleware.push(route);
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transform the internal route objects into proper routing callbacks
+////////////////////////////////////////////////////////////////////////////////
+
+  var transformControllerToRoute = function (routeInfo, route, isDevel) {
+    return function (req, res) {
+      var i, errInfo, tmp;
+      try {
+        // Check constraints
+        if (routeInfo.hasOwnProperty("constraints")) {
+          var constraints = routeInfo.constraints;
+          try {
+            _.each({
+              urlParameters: constraints.urlParams,
+              parameters: constraints.queryParams
+            }, function (paramConstraints, paramsPropertyName) {
+              var params = req[paramsPropertyName];
+              _.each(paramConstraints, function (constraint, paramName) {
+                var result = constraint.validate(params[paramName]);
+                params[paramName] = result.value;
+                if (result.error) {
+                  result.error.message = 'Invalid value for "' + paramName + '": ' + result.error.message;
+                  throw result.error;
+                }
+              });
+            });
+          } catch (err) {
+            actions.resultBad(req, res, actions.HTTP_BAD, err.message);
+            return;
+          }
+        }
+        // Apply request checks
+        for (i = 0; i < routeInfo.checks.length; ++i) {
+          routeInfo.checks[i].check(req);
+        }
+        // Add Body Params
+        for (i = 0; i < routeInfo.bodyParams.length; ++i) {
+          tmp = routeInfo.bodyParams[i];
+          req.parameters[tmp.paramName] = tmp.construct(tmp.extract(req));
+        }
+        routeInfo.callback(req, res);
+      } catch (e) {
+        for (i = 0; i < routeInfo.errorResponses.length; ++i) {
+          errInfo = routeInfo.errorResponses[i];
+          if (
+            (typeof errInfo.errorClass === 'string' && e.name === errInfo.errorClass) ||
+            (typeof errInfo.errorClass === 'function' && e instanceof errInfo.errorClass)
+          ) {
+            res.status(errInfo.code);
+            if (is.notExisty(errInfo.errorHandler)) {
+              res.json({error: errInfo.reason});
+            } else {
+              res.json(errInfo.errorHandler(e));
+            }
+            return;
+          }
+        }
+        // Default Error Handler
+        var body = {
+          error: e.message || String(e)
+        };
+        if (isDevel) {
+          body.stack = e.stack;
+        }
+        res.status(500);
+        res.json(body);
+        console.errorLines("Error in foxx route '%s': '%s', Stacktrace: %s",
+          route, e.message || String(e), e.stack || "");
+      }
+    };
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief transform the internal route objects into proper routing callbacks
+////////////////////////////////////////////////////////////////////////////////
+
+  var transformRoutes = function (rt, routes, controller, prefix) {
+    var j, route;
+    for (j = 0;  j < rt.length;  ++j) {
+      route = rt[j];
+      route.action = {
+        callback: transformControllerToRoute(route.action, route.url || "No Route")
+      };
+      if (route.hasOwnProperty("url")) {
+        route.url.match = arangodb.normalizeURL(prefix + "/" + route.url.match);
+      }
+      route.context = controller;
+      routes.routes.push(route);
+    }
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -387,34 +495,15 @@
           for (u = 0;  u < foxxes.length;  ++u) {
             var foxx = foxxes[u];
             var ri = foxx.routingInfo;
-            var rm = [ "routes", "middleware" ];
-
-            var route;
-            var j;
-            var k;
 
             _.extend(routes.models, foxx.models);
 
             p = ri.urlPrefix;
-
-            for (k = 0;  k < rm.length;  ++k) {
-              var key = rm[k];
-
-              if (ri.hasOwnProperty(key)) {
-                var rt = ri[key];
-
-                for (j = 0;  j < rt.length;  ++j) {
-                  route = rt[j];
-
-                  if (route.hasOwnProperty("url")) {
-                    route.url.match = arangodb.normalizeURL(p + "/" + route.url.match);
-                  }
-
-                  route.context = i;
-
-                  routes[key].push(route);
-                }
-              }
+            if (ri.hasOwnProperty("middleware")) {
+              createMiddlewareMatchers(ri.middleware, routes, i, p);
+            }
+            if (ri.hasOwnProperty("routes")) {
+              transformRoutes(ri.routes, routes, i, p, tmpContext.isDevelopment);
             }
           }
         }
