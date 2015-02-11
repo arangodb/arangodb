@@ -1,0 +1,8 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Pacific/Apia) {
+    {-9223372036854775808 45184 0 LMT}
+    {-2855737984 -41216 0 LMT}
+    {-1861878784 -41400 0 SAMT}
+    {-631110600 -39600 0 WST}
+}

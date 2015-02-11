@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Bangui) {
+    {-9223372036854775808 4460 0 LMT}
+    {-1830388460 3600 0 WAT}
+}

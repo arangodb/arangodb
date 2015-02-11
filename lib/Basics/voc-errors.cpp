@@ -216,7 +216,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
-  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
+  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations - try increasing the value of 'maxIterations'");
   REG_ERROR(ERROR_GRAPH_INVALID_FILTER_RESULT, "invalid filter result");
   REG_ERROR(ERROR_GRAPH_COLLECTION_MULTI_USE, "multi use of edge collection in edge def");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");

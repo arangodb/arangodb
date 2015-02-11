@@ -105,6 +105,7 @@ namespace triagens {
           EXPECTATION_FAILED              = 417,
           I_AM_A_TEAPOT                   = 418,
           UNPROCESSABLE_ENTITY            = 422,
+          LOCKED                          = 423,
           PRECONDITION_REQUIRED           = 428,
           TOO_MANY_REQUESTS               = 429,
           REQUEST_HEADER_FIELDS_TOO_LARGE = 431,

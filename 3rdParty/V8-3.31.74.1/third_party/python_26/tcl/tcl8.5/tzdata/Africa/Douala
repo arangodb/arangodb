@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Douala) {
+    {-9223372036854775808 2328 0 LMT}
+    {-1830386328 3600 0 WAT}
+}

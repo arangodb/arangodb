@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Lusaka) {
+    {-9223372036854775808 6788 0 LMT}
+    {-2109289988 7200 0 CAT}
+}

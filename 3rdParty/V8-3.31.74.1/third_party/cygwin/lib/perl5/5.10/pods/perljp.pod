@@ -1,0 +1,206 @@
+If you read this file _as_is_, just ignore the funny characters you
+see. It is written in the POD format (see perlpod manpage) which is
+specially designed to be readable as is.
+
+The following documentation is written in euc-jp encoding.
+
+=encoding euc-jp
+
+=head1 NAME
+
+perljp - 日本語 Perl ガイド
+
+=head1 説明
+
+Perl の世界へようこそ!
+
+Perl 5.8.0 より、Unicodeサポートが大幅に強化され、その結果ラテン文字以外の文字コードのサポートが CJK (中国語、日本語、ハングル)を含めて加わりました。Unicodeは世界中の文字を一つの文字コードで扱うことを目指した標準規格であり、東から西、はたまたその間の文字（ギリシャ文字、キリール文字、アラビア文字、ヘブライ文字、ディーヴァナガーリ文字、などなど）や、これまではOSベンダーが独自に定めていた文字(PCおよびMacintosh)がすでに含まれています。
+
+Perl 自身は Unicode で動作します。Perl スクリプト内の文字列リテラルや正規表現は Unicode を前提としています。そして入出力のためには、これまで使われてきたさまざまな文字コードに対応するモジュール、「 Encode 」が標準装備されており、Unicode とこれらの文字コードの相互変換も簡単に行えるようになっています。
+
+現時点で Encode がサポートする文字コードは以下のとおりです。
+
+  7bit-jis      AdobeStandardEncoding AdobeSymbol       AdobeZdingbat
+  ascii             big5              big5-hkscs        cp1006
+  cp1026            cp1047            cp1250            cp1251
+  cp1252            cp1253            cp1254            cp1255
+  cp1256            cp1257            cp1258            cp37
+  cp424             cp437             cp500             cp737
+  cp775             cp850             cp852             cp855
+  cp856             cp857             cp860             cp861
+  cp862             cp863             cp864             cp865
+  cp866             cp869             cp874             cp875
+  cp932             cp936             cp949             cp950
+  dingbats          euc-cn            euc-jp            euc-kr
+  gb12345-raw       gb2312-raw        gsm0338           hp-roman8
+  hz                iso-2022-jp       iso-2022-jp-1     iso-8859-1
+  iso-8859-10       iso-8859-11       iso-8859-13       iso-8859-14
+  iso-8859-15       iso-8859-16       iso-8859-2        iso-8859-3
+  iso-8859-4        iso-8859-5        iso-8859-6        iso-8859-7
+  iso-8859-8        iso-8859-9        iso-ir-165        jis0201-raw
+  jis0208-raw       jis0212-raw       johab             koi8-f
+  koi8-r            koi8-u            ksc5601-raw       MacArabic
+  MacCentralEurRoman  MacChineseSimp    MacChineseTrad    MacCroatian
+  MacCyrillic       MacDingbats       MacFarsi          MacGreek
+  MacHebrew         MacIcelandic      MacJapanese       MacKorean
+  MacRoman          MacRomanian       MacRumanian       MacSami
+  MacSymbol         MacThai           MacTurkish        MacUkrainian
+  nextstep          posix-bc          shiftjis          symbol
+  UCS-2BE           UCS-2LE           UTF-16            UTF-16BE
+  UTF-16LE          UTF-32            UTF-32BE          UTF-32LE
+  utf8              viscii                              
+
+(全114種類)
+
+例えば、文字コードFOOのファイルをUTF-8に変換するには、以下のようにします。
+
+    perl -Mencoding=FOO,STDOUT,utf8 -pe1 < file.FOO > file.utf8
+
+また、Perlには、全部がPerlで書かれた文字コード変換ユーティリティ、piconvも付属しているので、以下のようにすることもできます。
+
+   piconv -f FOO -t utf8 < file.FOO > file.utf8
+   piconv -f utf8 -t FOO < file.utf8 > file.FOO
+
+=head2 About (jcode.pl|Jcode.pm|JPerl)
+
+5.8以前の、スクリプトがEUC-JPであればリテラルだけは扱うことができました。また、入出力を扱うモジュールとしてはJcode.pmが( http://openlab.jp/Jcode/ )、perl4用のユーティリティとしてはjcode.pl( http://srekcah.org/jcode/ )がそれぞれ存在し、日本語の扱えるCGIでよく利用されていることを御存じの方も少なくないかと思われます。ただし、日本語による正規表現をうまく扱うことは不可能でした。
+
+5.005以前のPerlには、日本語に特化したローカライズ版、Jperlが存在しました( http://homepage2.nifty.com/kipp/perl/jperl/index.html )。また、Mac OS 9.x/Classic用のPerl、MacPerlの日本語版もMacJPerlとして存在してました。( http://world.std.com/~habilis/macjperl/ ).これらでは文字コードとしてEUC-JPに加えShift_JISもそのまま扱うことができ、また日本語による正規表現を扱うことも可能でした。
+
+Perl5.8では、これらの機能がすべてPerl本体だけで実現できる上に、日本語のみならず上記114の文字コードをすべて、しかも同時に扱うことができます。さらに、CPANなどから新しい文字コード用のモジュールを入手することも簡単にできるようになっています。
+
+=over 4
+
+=item *
+
+入出力
+
+以下の例はいづれもShift_JISの入力をEUC-JPに変換して出力します。
+
+  # jcode.pl
+  require "jcode.pl";
+  while(<>){
+    jcode::convert(*_, 'euc', 'sjis');
+    print;
+  }
+  # Jcode.pm
+  use Jcode;
+  while(<>){
+  	print Jcode->new($_, 'sjis')->euc;
+  }
+  # Perl 5.8
+  use Encode;
+  while(<>){
+    from_to($_, 'shiftjis', 'euc-jp');
+    print;
+  }
+  # Perl 5.8 - encoding を利用して
+  use encoding 'euc-jp', STDIN => 'shiftjis';
+  while(<>){
+  	print;
+  }
+
+=item *
+
+Jperl 互換スクリプト
+
+ いわゆる"shebang"を変更するだけで、Jperl用のscriptのほとんどは変更なしに利用可能だと思われます。
+
+   #!/path/to/jperl
+   ↓
+   #!/path/to/perl -Mencoding=euc-jp
+
+ 詳しくは perldoc encoding を参照してください。
+
+=back
+
+=head2 さらに詳しく
+
+Perlには膨大な資料が付属しており、Perlの新機能やUnicodeサポート、そしてEncodeモジュールの使用法などが細かく網羅されています（残念ながら、ほとんど英語ではありますが）。以下のコマンドでそれらの一部を閲覧することが可能です。
+
+  perldoc perlunicode # PerlのUnicodeサポート全般
+  perldoc Encode      # Encodeモジュールに関して
+  perldoc Encode::JP  # うち日本語文字コードに関して
+
+=head2 Perl全般に関する URL
+
+=over 4
+
+=item L<http://www.perl.com/>
+
+Perl ホームページ (O'Reilly and Associates)
+
+=item L<http://www.cpan.org/>
+
+CPAN (Comprehensive Perl Archive Network)
+
+=item L<http://lists.perl.org/>
+
+Perl メーリングリスト集
+
+=back
+
+=head2 Perlの修得に役立つ URL
+
+=over 4
+
+=item L<http://www.oreilly.com.tw/chinese/>
+
+O'Reilly 社のPerl関連書籍(繁体字中国語)
+
+=item L<http://www.oreilly.com.cn/chinese/>
+
+O'Reilly 社のPerl関連書籍(簡体字中国語)
+
+=item L<http://www.oreilly.co.jp/catalog.htm>
+
+オライリー社のPerl関連書籍(日本語)
+
+=back
+
+=head2 Perl ユーザーグループ
+
+=over 4
+
+=item L<http://www.pm.org/groups/asia.html>
+
+中国（中華人民共和国）
+
+=item L<http://www.pm.org/groups/asia.shtml#Japan>
+
+日本
+
+=item L<http://www.pm.org/groups/asia.shtml#Korea%20(Republic%20of)>
+
+韓国（大韓民国）
+
+=item L<http://www.pm.org/groups/asia.shtml#Taiwan>
+
+台湾（中華民国）
+
+=back
+
+=head2 Unicode関連のURL
+
+=over 4
+
+=item L<http://www.unicode.org/>
+
+Unicode コンソーシアム (Unicode規格の選定団体)
+
+=item L<http://www.cl.cam.ac.uk/%7Emgk25/unicode.html>
+
+UTF-8 and Unicode FAQ for Unix/Linux
+
+=item L<http://kldp.org/Translations/html/UTF8-Unicode-KLDP/UTF8-Unicode-KLDP.html>
+
+UTF-8 and Unicode FAQ for Unix/Linux (ハングル訳)
+
+=back
+
+=head1 AUTHORS
+
+Jarkko Hietaniemi E<lt>jhi@iki.fiE<gt>
+Dan Kogai (小飼　弾) E<lt>dankogai@dan.co.jpE<gt>
+
+=cut

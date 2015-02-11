@@ -1,0 +1,67 @@
+If you read this file _as_is_, just ignore the funny characters you
+see.  It is written in the POD format (see pod/perlpod.pod) which is
+specifically designed to be readable as is.
+
+=head1 NAME
+
+README.riscos - Perl version 5 for RISC OS
+
+=head1 DESCRIPTION
+
+This document gives instructions for building Perl for RISC OS. It is
+complicated by the need to cross compile. There is a binary version of
+perl available from L<http://www.cp15.org/perl/> which you may wish to
+use instead of trying to compile it yourself.
+
+=head1 BUILD
+
+You need an installed and working gccsdk cross compiler
+L<http://gccsdk.riscos.info/> and REXEN
+L<http://www.cp15.org/programming/>
+
+Firstly, copy the source and build a native copy of perl for your host
+system.
+Then, in the source to be cross compiled:
+
+=over 4
+
+=item
+
+    $ ./Configure
+
+=item
+
+Select the riscos hint file. The default answers for the rest of the
+questions are usually sufficient.
+
+Note that, if you wish to run Configure non-interactively (see the INSTALL
+document for details), to have it select the correct hint file, you'll
+need to provide the argument -Dhintfile=riscos on the Configure
+command-line.
+
+=item
+
+    $ make miniperl
+
+=item
+
+This should build miniperl and then fail when it tries to run it.
+
+=item
+
+Copy the miniperl executable from the native build done earlier to
+replace the cross compiled miniperl.
+
+=item
+
+    $ make
+
+=item
+
+This will use miniperl to complete the rest of the build.
+
+=back
+
+=head1 AUTHOR
+
+Alex Waugh <alex@alexwaugh.com>
