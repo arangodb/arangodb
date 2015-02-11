@@ -157,6 +157,11 @@
           var host = dispatcher.endpoint;
           host = host.split("//")[1];
           host = host.split(":");
+
+          if (host === 'localhost') {
+            host = '127.0.0.1';
+          }
+
           var user = dispatcher.username;
           var passwd = dispatcher.passwd;
           var template = self.entryTemplate.render({
