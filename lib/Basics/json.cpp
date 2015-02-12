@@ -1131,7 +1131,7 @@ TRI_json_t* TRI_CopyJson (TRI_memory_zone_t* zone,
 /// @brief converts a json object into a number
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t TRI_ToInt64Json (TRI_json_t* json) {
+int64_t TRI_ToInt64Json (TRI_json_t const* json) {
   switch (json->_type) {
     case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:
@@ -1174,7 +1174,7 @@ int64_t TRI_ToInt64Json (TRI_json_t* json) {
 /// @brief converts a json object into a number
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ToDoubleJson (TRI_json_t* json) {
+double TRI_ToDoubleJson (TRI_json_t const* json) {
   switch (json->_type) {
     case TRI_JSON_UNUSED:
     case TRI_JSON_NULL:

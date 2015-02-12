@@ -687,7 +687,7 @@ function updateGlobals() {
           return false;
         }
 
-        users.ensureUniqueConstraint("user");
+        users.ensureUniqueConstraint("user", { sparse: true });
 
         return true;
       }
@@ -1113,7 +1113,7 @@ function updateGlobals() {
           return false;
         }
 
-        aal.ensureUniqueConstraint("name", "version");
+        aal.ensureUniqueConstraint("name", "version", { sparse: true });
 
         return true;
       }

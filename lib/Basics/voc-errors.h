@@ -581,14 +581,9 @@
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
-/// - 10000: @LIT{element not inserted into structure, because key already exists}
-///   Will be returned if the element was not insert because the key already
-///   exists.
-/// - 10001: @LIT{element not inserted into structure, because it already exists}
+/// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
-/// - 10002: @LIT{key not found in structure}
-///   Will be returned if the key was not found in the structure.
-/// - 10003: @LIT{element not found in structure}
+/// - 10001: @LIT{element not found in structure}
 ///   Will be returned if the element was not found in the structure.
 /// - 20000: @LIT{newest version of app already installed}
 ///   newest version of app already installed
@@ -3075,45 +3070,24 @@ void TRI_InitialiseErrorMessages ();
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 10000: RESULT_KEY_EXISTS
-///
-/// element not inserted into structure, because key already exists
-///
-/// Will be returned if the element was not insert because the key already
-/// exists.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_RESULT_KEY_EXISTS                                             (10000)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 10001: RESULT_ELEMENT_EXISTS
+/// @brief 10000: RESULT_ELEMENT_EXISTS
 ///
 /// element not inserted into structure, because it already exists
 ///
 /// Will be returned if the element was not insert because it already exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_RESULT_ELEMENT_EXISTS                                         (10001)
+#define TRI_RESULT_ELEMENT_EXISTS                                         (10000)
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief 10002: RESULT_KEY_NOT_FOUND
-///
-/// key not found in structure
-///
-/// Will be returned if the key was not found in the structure.
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_RESULT_KEY_NOT_FOUND                                          (10002)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief 10003: RESULT_ELEMENT_NOT_FOUND
+/// @brief 10001: RESULT_ELEMENT_NOT_FOUND
 ///
 /// element not found in structure
 ///
 /// Will be returned if the element was not found in the structure.
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10003)
+#define TRI_RESULT_ELEMENT_NOT_FOUND                                      (10001)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 20000: ERROR_APP_ALREADY_EXISTS

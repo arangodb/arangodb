@@ -1238,7 +1238,7 @@ function ReplicationSuite () {
 /// @brief test hash index
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUniqueConstraint : function () {
+    testHashIndex : function () {
       compare(
         function (state) {
           var c = db._create(cn), i;
@@ -1247,10 +1247,11 @@ function ReplicationSuite () {
           for (i = 0; i < 1000; ++i) {
             c.save({ "_key" : "test" + i, "a" : parseInt(i / 2), "b" : i });
           }
+          c.save({ });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(1000, state.count);
+          assertEqual(1001, state.count);
 
           state.idx = c.getIndexes()[1];
         },
@@ -1262,7 +1263,43 @@ function ReplicationSuite () {
           assertEqual(state.idx.id, idx.id);
           assertEqual("hash", state.idx.type);
           assertFalse(state.idx.unique);
-          assertEqual([ "a" ], state.idx.fields);
+          assertFalse(state.idx.sparse);
+          assertEqual([ "a", "b" ], state.idx.fields);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test hash index
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseHashIndex : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+          c.ensureHashIndex("a", "b", { sparse: true });
+
+          for (i = 0; i < 1000; ++i) {
+            c.save({ "_key" : "test" + i, "a" : parseInt(i / 2), "b" : i });
+          }
+          c.save({ });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1001, state.count);
+
+          state.idx = c.getIndexes()[1];
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var idx = db._collection(cn).getIndexes()[1];
+          assertEqual(state.idx.id, idx.id);
+          assertEqual("hash", state.idx.type);
+          assertFalse(state.idx.unique);
+          assertTrue(state.idx.sparse);
+          assertEqual([ "a", "b" ], state.idx.fields);
         }
       );
     },
@@ -1271,7 +1308,7 @@ function ReplicationSuite () {
 /// @brief test unique constraint
 ////////////////////////////////////////////////////////////////////////////////
 
-    testUniqueConstraint2 : function () {
+    testUniqueConstraint : function () {
       compare(
         function (state) {
           var c = db._create(cn), i;
@@ -1284,10 +1321,11 @@ function ReplicationSuite () {
             catch (err) {
             }
           }
+          c.save({ });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(500, state.count);
+          assertEqual(501, state.count);
 
           state.idx = c.getIndexes()[1];
         },
@@ -1299,6 +1337,46 @@ function ReplicationSuite () {
           assertEqual(state.idx.id, idx.id);
           assertEqual("hash", state.idx.type);
           assertTrue(state.idx.unique);
+          assertFalse(state.idx.sparse);
+          assertEqual([ "a" ], state.idx.fields);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique constraint
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseUniqueConstraint : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+          c.ensureUniqueConstraint("a", { sparse: true });
+
+          for (i = 0; i < 1000; ++i) {
+            try {
+              c.save({ "_key" : "test" + i, "a" : parseInt(i / 2) });
+            }
+            catch (err) {
+            }
+          }
+          c.save({ });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(501, state.count);
+
+          state.idx = c.getIndexes()[1];
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var idx = db._collection(cn).getIndexes()[1];
+          assertEqual(state.idx.id, idx.id);
+          assertEqual("hash", state.idx.type);
+          assertTrue(state.idx.unique);
+          assertTrue(state.idx.sparse);
           assertEqual([ "a" ], state.idx.fields);
         }
       );
@@ -1316,11 +1394,12 @@ function ReplicationSuite () {
 
           for (i = 0; i < 1000; ++i) {
             c.save({ "_key" : "test" + i, "a" : parseInt(i / 2), "b" : i });
-          }
+          } 
+          c.save({ });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(1000, state.count);
+          assertEqual(1001, state.count);
 
           state.idx = c.getIndexes()[1];
         },
@@ -1332,6 +1411,42 @@ function ReplicationSuite () {
           assertEqual(state.idx.id, idx.id);
           assertEqual("skiplist", state.idx.type);
           assertFalse(state.idx.unique);
+          assertFalse(state.idx.sparse);
+          assertEqual([ "a", "b" ], state.idx.fields);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testSparseSkiplist : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+          c.ensureSkiplist("a", "b", { sparse: true });
+
+          for (i = 0; i < 1000; ++i) {
+            c.save({ "_key" : "test" + i, "a" : parseInt(i / 2), "b" : i });
+          }
+          c.save({ });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(1001, state.count);
+
+          state.idx = c.getIndexes()[1];
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var idx = db._collection(cn).getIndexes()[1];
+          assertEqual(state.idx.id, idx.id);
+          assertEqual("skiplist", state.idx.type);
+          assertFalse(state.idx.unique);
+          assertTrue(state.idx.sparse);
           assertEqual([ "a", "b" ], state.idx.fields);
         }
       );
@@ -1354,10 +1469,11 @@ function ReplicationSuite () {
             catch (err) {
             }
           }
+          c.save({ });
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(500, state.count);
+          assertEqual(501, state.count);
 
           state.idx = c.getIndexes()[1];
         },
@@ -1369,6 +1485,46 @@ function ReplicationSuite () {
           assertEqual(state.idx.id, idx.id);
           assertEqual("skiplist", state.idx.type);
           assertTrue(state.idx.unique);
+          assertFalse(state.idx.sparse);
+          assertEqual([ "a" ], state.idx.fields);
+        }
+      );
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test unique skiplist
+////////////////////////////////////////////////////////////////////////////////
+
+    testUniqueSparseSkiplist : function () {
+      compare(
+        function (state) {
+          var c = db._create(cn), i;
+          c.ensureUniqueSkiplist("a", { sparse: true });
+
+          for (i = 0; i < 1000; ++i) {
+            try {
+              c.save({ "_key" : "test" + i, "a" : parseInt(i / 2) });
+            }
+            catch (err) {
+            }
+          }
+          c.save({ });
+
+          state.checksum = collectionChecksum(cn);
+          state.count = collectionCount(cn);
+          assertEqual(501, state.count);
+
+          state.idx = c.getIndexes()[1];
+        },
+        function (state) {
+          assertEqual(state.count, collectionCount(cn));
+          assertEqual(state.checksum, collectionChecksum(cn));
+
+          var idx = db._collection(cn).getIndexes()[1];
+          assertEqual(state.idx.id, idx.id);
+          assertEqual("skiplist", state.idx.type);
+          assertTrue(state.idx.unique);
+          assertTrue(state.idx.sparse);
           assertEqual([ "a" ], state.idx.fields);
         }
       );

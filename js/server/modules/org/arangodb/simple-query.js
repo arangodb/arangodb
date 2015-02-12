@@ -29,7 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var internal = require("internal");
-var console = require("console");
 
 var ArangoError = require("org/arangodb").ArangoError;
 
@@ -214,20 +213,21 @@ function normalizeAttributes (obj, prefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function supportsQuery (idx, attributes) {
-  var i, n;
-  var fields;
-
-  fields = idx.fields;
-
-  n = fields.length;
-  for (i = 0; i < n; ++i) {
+  var matches = 0;
+  var fields = idx.fields;
+  var n = fields.length;
+  for (var i = 0; i < n; ++i) {
     var field = fields[i];
     if (attributes.indexOf(field) === -1) {
-      return false;
+      if (idx.type === 'hash') {
+        return false;
+      }
+      break;
     }
+    ++matches;
   }
 
-  return true;
+  return (matches > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,19 +303,19 @@ function isContained (doc, example) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not a unique index can be used
+/// @brief whether or not the example contains null attributes
 ////////////////////////////////////////////////////////////////////////////////
 
-function isUnique (example) {
+function containsNullAttributes (example) {
   var k;
   for (k in example) {
     if (example.hasOwnProperty(k)) {
-      if (example[k] === null) {
-        return false;
+      if (example[k] === null || example[k] === undefined) {
+        return true;
       }
     }
   }
-  return true;
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -414,13 +414,16 @@ function byExample (data) {
     else if (keys.length > 0) {
       // try these index types
       var checks = [
+        { type: "hash", fields: keys, unique: true },
+        { type: "skiplist", fields: keys, unique: true },
         { type: "hash", fields: keys, unique: false },
         { type: "skiplist", fields: keys, unique: false }
       ];
 
-      if (isUnique(example)) {
-        checks.push({ type: "hash", fields: keys, unique: true });
-        checks.push({ type: "skiplist", fields: keys, unique: true });
+      if (containsNullAttributes(example)) {
+        checks.forEach(function(check) {
+          check.sparse = false;
+        });
       }
 
       for (k = 0; k < checks.length; ++k) {
@@ -846,19 +849,18 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
     };
   }
   else {
-    var idx = collection.lookupSkiplist(attribute);
+    var idx = null;
+    var attrs = { type: "skiplist", fields: [ attribute ], unique: true };
+    if (left === undefined || left === null) {
+      attrs.sparse = false;
+    }
 
+    idx = collection.lookupIndex(attrs);
     if (idx === null) {
-      idx = collection.lookupUniqueSkiplist(attribute);
-
-      if (idx !== null) {
-        console.debug("found unique skip-list index %s", idx.id);
-      }
+      attrs.unique = false;
+      idx = collection.lookupIndex(attrs);
     }
-    else {
-      console.debug("found skip-list index %s", idx.id);
-    }
-
+    
     if (idx !== null) {
       var cond = {};
 

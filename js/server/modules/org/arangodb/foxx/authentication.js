@@ -448,7 +448,7 @@ Users.prototype.setup = function (options) {
     db._create(this._collectionName, createOptions);
   }
 
-  this.storage().ensureUniqueConstraint("identifier");
+  this.storage().ensureUniqueConstraint("identifier", { sparse: true });
 };
 
 ////////////////////////////////////////////////////////////////////////////////

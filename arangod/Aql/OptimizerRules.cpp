@@ -1769,12 +1769,8 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                   // enumerate collection node with a IndexRangeNode ... 
 
                   for (size_t i = 0; i < idxs.size(); i++) {
-                    IndexOrCondition indexOrCondition;
-                    indexOrCondition.reserve(validPos.size());
-
-                    for (size_t k = 0; k < validPos.size(); k++) {
-                      indexOrCondition.push_back(std::vector<RangeInfo>());
-                    } 
+                    // initialize all conditions with empty ranges
+                    IndexOrCondition indexOrCondition(validPos.size());
 
                     // ranges must be valid and all comparisons == if hash
                     // index or == followed by a single <, >, >=, or <=
@@ -1795,10 +1791,9 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                             indexOrCondition.clear();   // not usable
                             break;
                           }
-                          else {
-                            indexOrCondition.at(k).push_back(range->second);
-                            handled = true;
-                          }
+
+                          indexOrCondition.at(k).push_back(range->second);
+                          handled = true;
                         }
 
                         if (! handled) {
@@ -1809,25 +1804,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                               indexOrCondition.clear();   // not usable
                               break;
                             }
-                            else {
-                              indexOrCondition.at(k).push_back(range->second);
-                            }
-                          }
-                        }
-                      }
-                    }
-                    else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
-                      //each valid orCondition should match every field of the given index
-                      for (size_t k = 0; k < validPos.size() && !indexOrCondition.empty(); k++) {
-                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
-                        for (size_t j = 0; j < idx->fields.size(); j++) {
-                          auto range = map->find(idx->fields[j]);
 
-                          if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
-                            indexOrCondition.clear();   // not usable
-                            break;
-                          } 
-                          else {
                             indexOrCondition.at(k).push_back(range->second);
                           }
                         }
@@ -1836,17 +1813,18 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                     else if (idx->type == TRI_IDX_TYPE_EDGE_INDEX) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         bool handled = false;
+
                         auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
                         auto range = map->find(std::string(TRI_VOC_ATTRIBUTE_FROM));
+
                         if (range != map->end()) { 
                           if (! range->second.is1ValueRangeInfo()) {
                             indexOrCondition.clear();
                             break; // not usable
                           }
-                          else {
-                            indexOrCondition.at(k).push_back(range->second);
-                            handled = true;
-                          }
+
+                          indexOrCondition.at(k).push_back(range->second);
+                          handled = true;
                         }
 
                         if (! handled) {
@@ -1857,10 +1835,55 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                               indexOrCondition.clear();   // not usable
                               break;
                             }
+
+                            indexOrCondition.at(k).push_back(range->second);
+                          }
+                        }
+                      }
+                    }
+                    else if (idx->type == TRI_IDX_TYPE_HASH_INDEX) {
+                      // each valid orCondition should match every field of the given index
+                      for (size_t k = 0; k < validPos.size() && ! indexOrCondition.empty(); k++) {
+                        auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
+
+                        for (size_t j = 0; j < idx->fields.size(); j++) {
+                          auto range = map->find(idx->fields[j]);
+
+                          if (range == map->end() || ! range->second.is1ValueRangeInfo()) {
+                            indexOrCondition.clear();   // not usable
+                            break;
+                          }
+ 
+                          if (idx->sparse) {
+                            // a sparse hash index must not be used if any of the lookup values is
+                            // either null (null is not contained in a sparse index) or is calculated
+                            // using an expression with unknown result. this is because the expression
+                            // result may be null and using the sparse index then would not allow
+                            // finding the document
+                            bool mustClear = false;
+                            auto const& rib = range->second; 
+
+                            if (rib.isConstant()) {
+                              // value is constant (and an equality because we're looking at a hash index)
+                              auto const& value = rib._lowConst.bound();
+                              if (value.isEmpty() || value.isNull()) {
+                                // lookup value is null. can't use a sparse index.
+                                mustClear = true;
+                              }
+                            }
                             else {
-                              indexOrCondition.at(k).push_back(range->second);
+                              // non-constant lookup value. it might be null, so we can't use the index
+                              mustClear = true;
+                            }
+                          
+                            if (mustClear) {
+                              // not usable
+                              indexOrCondition.clear();   
+                              break; // exit for loop
                             }
                           }
+
+                          indexOrCondition.at(k).push_back(range->second);
                         }
                       }
                     }
@@ -1870,6 +1893,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
 
                         // check if there is a range that contains the first index attribute
                         auto range = map->find(idx->fields[0]);
+
                         if (range == map->end()) { 
                           indexOrCondition.clear();
                           break; // not usable
@@ -1884,25 +1908,60 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
                         size_t j = 0;
                         while (++j < prefixes.at(i) && equality) {
                           range = map->find(idx->fields[j]);
+
                           if (range == map->end()) { 
                             indexOrCondition.clear();
                             handled = true;
                             break; // not usable
                           }
+
                           indexOrCondition.at(k).push_back(range->second);
                           equality = equality && range->second.is1ValueRangeInfo();
                         }
 
                         if (handled) {
-                          // exit the for loop, too. otherwise it will crash because
-                          // indexOrCondition is empty now
-                          break;
+                          break; // exit for loop
                         }
                       }
+
+                      // check if index is sparse and exclude it if required
+                      // a sparse skiplist index must not be used if any of the lookup values is
+                      // either null (null is not contained in a sparse index) or is calculated
+                      // using an expression with unknown result. this is because the expression
+                      // result may be null and using the sparse index then would not allow
+                      // finding the document
+                      if (idx->sparse && ! indexOrCondition.empty()) {
+                        for (size_t k = 0; k < validPos.size() && ! indexOrCondition.empty(); k++) {
+                          auto const map = _rangeInfoMapVec->find(var->name, validPos[k]);
+
+                          for (size_t j = 0; j < idx->fields.size(); j++) {
+                            auto range = map->find(idx->fields[j]);
+
+                            if (range == map->end()) { 
+                              indexOrCondition.clear();
+                              break; // not usable
+                            }
+
+                            auto const& rib = range->second; 
+
+                            // if the lookup value is dynamic, undefined or includes null, then we 
+                            // can't use the index
+                            if (! rib.isConstant() || 
+                                ! rib._lowConst.isDefined() ||
+                                (rib._lowConst.inclusive() && rib._lowConst.bound().isNull())) {
+                              indexOrCondition.clear();
+                              break;
+                            }
+                          }
+                        }
+                      }
+
                     }
+
 
                     // check if there are all positions are non-empty
                     bool isEmpty = indexOrCondition.empty();
+
                     if (! isEmpty) {
                       for (size_t k = 0; k < validPos.size(); k++) {
                         if (indexOrCondition.at(k).empty()) {
