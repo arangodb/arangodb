@@ -99,6 +99,8 @@ var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
 
 var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
+var toArgv = require("internal").toArgv;
+
 var serverCrashed = false;
 
 var optionsDefaults = { "cluster": false,
@@ -155,7 +157,7 @@ function printUsage () {
       else {
         oneFunctionDocumentation = '';
       }
-      if (allTests.indexOf(i) !== -1) {
+      if (allTests.indexOf(i) !== -1) { 
         checkAll = '[x]';
       }
       else {
@@ -1055,23 +1057,46 @@ testFuncs.shell_client = function(options) {
 testFuncs.config = function () {
   var topDir = findTopDir();
   var results = {};
-  var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",
+  var ts = ["arangod",
+            "arangob",
+            "arangodump",
+            "arangoimp",
+            "arangorestore",
             "arangosh"];
+  var args;
   var t;
   var i;
+  print("--------------------------------------------------------------------------------");
+  print("Absolut config tests");
+  print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
     t = ts[i];
+    args = {
+      "configuration" : fs.join(topDir,"etc","arangodb",t+".conf"),
+      "flatCommands"  : ["--help"]
+    };
     results[t] = executeAndWait(fs.join(topDir,"bin",t),
-        ["--configuration", fs.join(topDir,"etc","arangodb",t+".conf"),
-         "--help"]);
-    print("Config test "+t+"...",results[t].status);
+                                toArgv(args));
+    print("Args for [" + t + "]:");
+    print(yaml.safeDump(args));
+    print("Result: " + results[t].status);
   }
+  print("--------------------------------------------------------------------------------");
+  print("relative config tests");
+  print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
     t = ts[i];
+
+    args = {
+      "configuration" : fs.join(topDir,"etc","relative",t+".conf"),
+      "flatCommands"  : ["--help"]
+    };
+
     results[t+"_rel"] = executeAndWait(fs.join(topDir,"bin",t),
-        ["--configuration", fs.join(topDir,"etc","relative",
-                                    t+".conf"), "--help"]);
-    print("Config test "+t+" (relative)...",results[t+"_rel"].status);
+                                       toArgv(args));
+    print("Args for (relative) [" + t + "]:");
+    print(yaml.safeDump(args));
+    print("Result: " + results[t + "_rel"].status);
   }
 
   return results;
