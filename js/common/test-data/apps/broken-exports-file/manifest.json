@@ -1,0 +1,7 @@
+{
+  "name": "broken-exports-file",
+  "version": "0.0.0",
+  "exports": {
+    "broken": "broken-exports.js"
+  }
+}

@@ -1,0 +1,5 @@
+{
+  "name": "malformed-setup-file",
+  "version": "0.0.0",
+  "setup": "broken-setup.js"
+}

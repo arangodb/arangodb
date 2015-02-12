@@ -1,0 +1,7 @@
+{
+  "name": "missing-exports-file",
+  "version": "0.0.0",
+  "exports": {
+    "nope": "no-such-file.js"
+  }
+}

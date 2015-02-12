@@ -319,32 +319,54 @@ function outboundExpander (config, vertex, path) {
   var datasource = config.datasource;
   var connections = [ ];
   var outEdges = datasource.getOutEdges(vertex);
+  var edgeIterator;
 
   if (outEdges.length > 1 && config.sort) {
     outEdges.sort(config.sort);
   }
 
-  outEdges.forEach(function (edge) {
-    try {
-      var v;
-      if (config.buildVertices) {
-        v = datasource.getInVertex(edge);
-      }
-      else {
-        // optimization to save vertex lookups
-        v = { _id: datasource.getEdgeTo(edge) };
-        v._key = v._id.split("/")[1];
-      }
-
-      if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
+  if (config.buildVertices) {
+    if (!config.expandFilter) {
+      edgeIterator = function(edge) {
+        try {
+          var v = datasource.getInVertex(edge);
+          connections.push({ edge: edge, vertex: v });
+        }
+        catch (e) {
+          // continue even in the face of non-existing documents
+        }
+      };
+    } else {
+      edgeIterator = function(edge) {
+        try {
+          var v = datasource.getInVertex(edge);
+          if (config.expandFilter(config, v, edge, path)) {
+            connections.push({ edge: edge, vertex: v });
+          }
+        }
+        catch (e) {
+          // continue even in the face of non-existing documents
+        }
+      };
+    }
+  } else {
+    if (!config.expandFilter) {
+      edgeIterator = function(edge) {
+        var id = datasource.getEdgeTo(edge);
+        var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         connections.push({ edge: edge, vertex: v });
-      }
+      };
+    } else {
+      edgeIterator = function(edge) {
+        var id = datasource.getEdgeTo(edge);
+        var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
+        if (config.expandFilter(config, v, edge, path)) {
+          connections.push({ edge: edge, vertex: v });
+        }
+      };
     }
-    catch (e) {
-      // continue even in the face of non-existing documents
-    }
-  });
-
+  }
+  outEdges.forEach(edgeIterator);
   return connections;
 }
 
@@ -361,27 +383,50 @@ function inboundExpander (config, vertex, path) {
   if (inEdges.length > 1 && config.sort) {
     inEdges.sort(config.sort);
   }
+  var edgeIterator;
 
-  inEdges.forEach(function (edge) {
-    try {
-      var v;
-      if (config.buildVertices) {
-        v = datasource.getOutVertex(edge);
-      }
-      else {
-        // optimization to save vertex lookups
-        v = { _id: datasource.getEdgeFrom(edge) };
-        v._key = v._id.split("/")[1];
-      }
-
-      if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
+  if (config.buildVertices) {
+    if (!config.expandFilter) {
+      edgeIterator = function(edge) {
+        try {
+          var v = datasource.getOutVertex(edge);
+          connections.push({ edge: edge, vertex: v });
+        }
+        catch (e) {
+          // continue even in the face of non-existing documents
+        }
+      };
+    } else {
+      edgeIterator = function(edge) {
+        try {
+          var v = datasource.getOutVertex(edge);
+          if (config.expandFilter(config, v, edge, path)) {
+            connections.push({ edge: edge, vertex: v });
+          }
+        }
+        catch (e) {
+          // continue even in the face of non-existing documents
+        }
+      };
+    }
+  } else {
+    if (!config.expandFilter) {
+      edgeIterator = function(edge) {
+        var id = datasource.getEdgeFrom(edge);
+        var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         connections.push({ edge: edge, vertex: v });
-      }
+      };
+    } else {
+      edgeIterator = function(edge) {
+        var id = datasource.getEdgeFrom(edge);
+        var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
+        if (config.expandFilter(config, v, edge, path)) {
+          connections.push({ edge: edge, vertex: v });
+        }
+      };
     }
-    catch (e) {
-      // continue even in the face of non-existing documents
-    }
-  });
+  }
+  inEdges.forEach(edgeIterator);
 
   return connections;
 }
@@ -399,34 +444,55 @@ function anyExpander (config, vertex, path) {
     edges.sort(config.sort);
   }
 
-  edges.forEach(function (edge) {
-    try {
-      var v;
-      if (config.buildVertices) {
-        v = datasource.getPeerVertex(edge, vertex);
-      }
-      else {
-        // optimization to save vertex lookups
-        v = { };
-        if (datasource.getEdgeFrom(edge) === vertex._id) {
-          v._id = datasource.getEdgeTo(edge);
-          v._key = v._id.split("/")[1];
+  var edgeIterator;
+  if (config.buildVertices) {
+    if (!config.expandFilter) {
+      edgeIterator = function(edge) {
+        try {
+          var v = datasource.getPeerVertex(edge);
+          connections.push({ edge: edge, vertex: v });
         }
-        else if (datasource.getEdgeTo(edge) === vertex._id) {
-          v._id = datasource.getEdgeFrom(edge);
-          v._key = v._id.split("/")[1];
+        catch (e) {
+          // continue even in the face of non-existing documents
         }
-      }
-
-      if (! config.expandFilter || config.expandFilter(config, v, edge, path)) {
+      };
+    } else {
+      edgeIterator = function(edge) {
+        try {
+          var v = datasource.getPeerVertex(edge);
+          if (config.expandFilter(config, v, edge, path)) {
+            connections.push({ edge: edge, vertex: v });
+          }
+        }
+        catch (e) {
+          // continue even in the face of non-existing documents
+        }
+      };
+    }
+  } else {
+    if (!config.expandFilter) {
+      edgeIterator = function(edge) {
+        var id = datasource.getEdgeFrom(edge);
+        if (id === vertex._id) {
+          id = datasource.getEdgeTo(edge);
+        }
+        var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         connections.push({ edge: edge, vertex: v });
-      }
+      };
+    } else {
+      edgeIterator = function(edge) {
+        var id = datasource.getEdgeFrom(edge);
+        if (id === vertex._id) {
+          id = datasource.getEdgeTo(edge);
+        }
+        var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
+        if (config.expandFilter(config, v, edge, path)) {
+          connections.push({ edge: edge, vertex: v });
+        }
+      };
     }
-    catch (e) {
-      // continue even in the face of non-existing documents
-    }
-  });
-
+  }
+  edges.forEach(edgeIterator);
   return connections;
 }
 
@@ -1307,7 +1373,7 @@ ArangoTraverser = function (config) {
     filter: null,
     expander: outboundExpander,
     datasource: null,
-    maxIterations: 1000000,
+    maxIterations: 10000000,
     minDepth: 0,
     maxDepth: 256,
     buildVertices: true

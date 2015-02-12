@@ -1,0 +1,7 @@
+{
+  "name": "malformed-controller-name",
+  "version": "0.0.0",
+  "controllers": {
+    "?": "controller.js"
+  }
+}

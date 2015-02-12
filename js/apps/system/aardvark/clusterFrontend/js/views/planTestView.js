@@ -82,7 +82,7 @@
         host = host.split(":");
 
         if (host === 'localhost') {
-          host = '127.0.0.1'
+          host = '127.0.0.1';
         }
 
         param.hostname = host[0];
@@ -93,7 +93,7 @@
         param.hostname = window.location.hostname;
 
         if (param.hostname === 'localhost') {
-          param.hostname = '127.0.0.1'
+          param.hostname = '127.0.0.1';
         }
 
         param.port = window.location.port;
