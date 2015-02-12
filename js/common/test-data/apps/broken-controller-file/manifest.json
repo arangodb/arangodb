@@ -1,0 +1,7 @@
+{
+  "name": "broken-controller-file",
+  "version": "0.0.0",
+  "controllers": {
+    "/": "broken-controller.js"
+  }
+}

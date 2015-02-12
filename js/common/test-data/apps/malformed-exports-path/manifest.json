@@ -1,0 +1,7 @@
+{
+  "name": "malformed-exports-path",
+  "version": "0.0.0",
+  "exports": {
+    "broken": "/illegal/file/name/"
+  }
+}
