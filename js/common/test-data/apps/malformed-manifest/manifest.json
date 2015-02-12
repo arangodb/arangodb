@@ -1,0 +1,5 @@
+{
+  "name": "malformed-manifest",
+  "version": "0.0.0",
+  "there is a syntax error here": sic!
+}
