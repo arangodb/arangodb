@@ -1,7 +1,7 @@
 /*global require, describe, beforeEach, it, expect, spyOn, createSpy, createSpyObj */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief simple queries
+/// @brief Spec for foxx repository
 ///
 /// @file
 ///
