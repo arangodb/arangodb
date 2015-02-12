@@ -1,6 +1,62 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* added support for sparse hash and skiplist indexes
+
+  Hash and skiplist indexes can optionally be made sparse. Sparse indexes exclude documents
+  in which at least one of the index attributes is either not set or has a value of `null`.
+ 
+  As such documents are excluded from sparse indexes, they may contain fewer documents than
+  their non-sparse counterparts. This enables faster indexing and can lead to reduced memory
+  usage in case the indexed attribute does occur only in some, but not all documents of the 
+  collection. Sparse indexes will also reduce the number of collisions in non-unique hash
+  indexes in case non-existing or optional attributes are indexed.
+
+  In order to create a sparse index, an object with the attribute `sparse` can be added to
+  the index creation commands:
+
+      db.collection.ensureHashIndex(attributeName, { sparse: true }); 
+      db.collection.ensureHashIndex(attributeName1, attributeName2, { sparse: true }); 
+      db.collection.ensureUniqueConstraint(attributeName, { sparse: true }); 
+      db.collection.ensureUniqueConstraint(attributeName1, attributeName2, { sparse: true }); 
+
+      db.collection.ensureSkiplist(attributeName, { sparse: true }); 
+      db.collection.ensureSkiplist(attributeName1, attributeName2, { sparse: true }); 
+      db.collection.ensureUniqueSkiplist(attributeName, { sparse: true }); 
+      db.collection.ensureUniqueSkiplist(attributeName1, attributeName2, { sparse: true }); 
+
+  When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
+  Other indexes than hash and skiplist do not support sparsity.
+
+  As sparse indexes may exclude some documents from the collection, they cannot be used for
+  all types of queries. Sparse hash indexes cannot be used to find documents for which at
+  least one of the indexed attributes has a value of `null`. For example, the following AQL
+  query cannot use a sparse index, even if one was created on attribute `attr`:
+
+      FOR doc In collection 
+        FILTER doc.attr == null 
+        RETURN doc
+
+  If the lookup value is non-constant, a sparse index may or may not be used, depending on
+  the other types of conditions in the query. If the optimizer can safely determine that
+  the lookup value cannot be `null`, a sparse index may be used. When uncertain, the optimizer
+  will not make use of a sparse index in a query in order to produce correct results.
+ 
+  For example, the following queries cannot use a sparse index on `attr` because the optimizer
+  will not know beforehand whether the comparsion values for `doc.attr` will include `null`:
+
+      FOR doc In collection 
+        FILTER doc.attr == SOME_FUNCTION(...) 
+        RETURN doc
+
+      FOR other IN otherCollection 
+        FOR doc In collection 
+          FILTER doc.attr == other.attr 
+          RETURN doc
+
+  Sparse skiplist indexes can be used for sorting if the optimizer can safely detect that the 
+  index range does not include `null` for any of the index attributes. 
+
 * inspection of AQL data-modification queries will now detect if the data-modification part
   of the query can run in lockstep with the data retrieval part of the query, or if the data
   retrieval part must be executed before the data modification can start.
