@@ -132,7 +132,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
         return static_cast<char*>(data);
       }
 
-      V8Buffer* buffer = V8Buffer::unwrap(o);
+      V8Buffer* buffer = unwrap(o);
       if (buffer == nullptr) {
         return nullptr; 
       }
@@ -168,7 +168,7 @@ class V8Buffer : public V8Wrapper<V8Buffer, TRI_V8_BUFFER_CID> {
         return static_cast<size_t>(len);
       }
 
-      V8Buffer* buffer = V8Buffer::unwrap(o);
+      V8Buffer* buffer = unwrap(o);
       if (buffer == nullptr) {
         return 0;  
       }
