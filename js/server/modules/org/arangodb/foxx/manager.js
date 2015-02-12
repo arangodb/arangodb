@@ -78,13 +78,14 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var lookupApp = function(mount) {
-    if (Object.keys(appCache).length === 0) {
-      refillCaches();
+    var dbname = arangodb.db._name();
+    if (!appCache.hasOwnProperty(dbname) || Object.keys(appCache[dbname]).length === 0) {
+      refillCaches(dbname);
     }
-    if (!appCache.hasOwnProperty(mount)) {
+    if (!appCache[dbname].hasOwnProperty(mount)) {
       throw new Error("App not found");
     }
-    return appCache[mount];
+    return appCache[dbname][mount];
   };
 
 
@@ -92,8 +93,8 @@
   /// @brief refills the routing cache
   ////////////////////////////////////////////////////////////////////////////////
 
-  var refillCaches = function() {
-    appCache = {};
+  var refillCaches = function(dbname) {
+    appCache[dbname] = {};
 
     var cursor = utils.getStorage().all();
     var config, app;
@@ -102,7 +103,7 @@
     while (cursor.hasNext()) {
       config = _.clone(cursor.next());
       app = new ArangoApp(config);
-      appCache[app._mount] = app;
+      appCache[dbname][app._mount] = app;
       routes.push(app._mount);
     }
 
@@ -121,11 +122,11 @@
   /// @brief Makes sure all system apps are mounted.
   ////////////////////////////////////////////////////////////////////////////////
 
-  var checkMountedSystemApps = function() {
+  var checkMountedSystemApps = function(dbname) {
     var i, mount;
     for (i = 0; i < usedSystemMountPoints.length; ++i) {
       mount = usedSystemMountPoints[i];
-      if (!appCache[mount]) {
+      if (!appCache[dbname][mount]) {
         // System app not written to collection
         _scanFoxx(mount, {});
         setup(mount);
@@ -359,9 +360,10 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var createApp = function(mount, options, activateDevelopment) {
+    var dbname = arangodb.db._name();
     var config = appConfig(mount, options, activateDevelopment);
     var app = new ArangoApp(config);
-    appCache[mount] = app;
+    appCache[dbname][mount] = app;
     return app;
   };
 
@@ -596,7 +598,8 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
-    delete appCache[mount];
+    var dbname = arangodb.db._name();
+    delete appCache[dbname][mount];
     var app = createApp(mount, options, activateDevelopment);
     utils.getStorage().save(app.toJSON());
     return app;
@@ -717,7 +720,8 @@
     if (!fs.exists(targetPath)) {
       throw "No foxx app found at this location.";
     }
-    delete appCache[mount];
+    var dbname = arangodb.db._name();
+    delete appCache[dbname][mount];
     db._executeTransaction({
       collections: {
         write: collection.name()
@@ -792,8 +796,9 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var initializeFoxx = function() {
-    refillCaches();
-    checkMountedSystemApps();
+    var dbname = arangodb.db._name();
+    refillCaches(dbname);
+    checkMountedSystemApps(dbname);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -801,7 +806,8 @@
   ////////////////////////////////////////////////////////////////////////////////
   
   var mountPoints = function() {
-    return refillCaches();
+    var dbname = arangodb.db._name();
+    return refillCaches(dbname);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
