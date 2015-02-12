@@ -1248,8 +1248,15 @@ std::vector<EnumerateCollectionNode::IndexMatch>
 
   std::vector<IndexMatch> out;
   auto&& indexes = _collection->getIndexes();
+
   for (auto idx : indexes) {
+    if (idx->sparse) {
+      // sparse indexes cannot be used for replacing an EnumerateCollection node
+      continue;
+    }
+
     IndexMatch match = CompareIndex(this, idx, attrs);
+
     if (match.index != nullptr) {
       out.push_back(match);
     }

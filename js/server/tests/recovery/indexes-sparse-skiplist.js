@@ -38,7 +38,7 @@ function runSetup () {
   
   db._drop("UnitTestsRecovery1");
   var c = db._create("UnitTestsRecovery1"), i;
-  c.ensureHashIndex("value");
+  c.ensureSkiplist("value", { sparse: true });
 
   for (i = 0; i < 1000; ++i) {
     c.save({ value: i });
@@ -46,7 +46,7 @@ function runSetup () {
 
   db._drop("UnitTestsRecovery2");
   c = db._create("UnitTestsRecovery2");
-  c.ensureUniqueConstraint("a.value");
+  c.ensureUniqueSkiplist("a.value", { sparse: true });
 
   for (i = 0; i < 1000; ++i) {
     c.save({ a: { value: i } });
@@ -54,7 +54,7 @@ function runSetup () {
   
   db._drop("UnitTestsRecovery3");
   c = db._create("UnitTestsRecovery3");
-  c.ensureHashIndex("a", "b");
+  c.ensureSkiplist("a", "b", { sparse: true });
 
   for (i = 0; i < 500; ++i) {
     c.save({ a: (i % 2) + 1, b: 1 });
@@ -86,34 +86,34 @@ function recoverySuite () {
 /// @brief test whether we can restore the trx data
 ////////////////////////////////////////////////////////////////////////////////
     
-    testIndexesHash : function () {
+    testIndexesSparseSkiplist : function () {
       var c = db._collection("UnitTestsRecovery1"), idx, i;
       idx = c.getIndexes()[1];
       assertFalse(idx.unique);
-      assertFalse(idx.sparse);
+      assertTrue(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       for (i = 0; i < 1000; ++i) {
-        assertEqual(1, c.byExampleHash(idx.id, { value: i }).toArray().length);
+        assertEqual(1, c.byExampleSkiplist(idx.id, { value: i }).toArray().length);
       }
 
       c = db._collection("UnitTestsRecovery2");
       idx = c.getIndexes()[1];
       assertTrue(idx.unique);
-      assertFalse(idx.sparse);
+      assertTrue(idx.sparse);
       assertEqual([ "a.value" ], idx.fields);
       for (i = 0; i < 1000; ++i) {
-        assertEqual(1, c.byExampleHash(idx.id, { "a.value": i }).toArray().length);
+        assertEqual(1, c.byExampleSkiplist(idx.id, { "a.value" : i }).toArray().length);
       }
 
       c = db._collection("UnitTestsRecovery3");
       idx = c.getIndexes()[1];
       assertFalse(idx.unique);
-      assertFalse(idx.sparse);
+      assertTrue(idx.sparse);
       assertEqual([ "a", "b" ], idx.fields);
-      assertEqual(250, c.byExampleHash(idx.id, { a: 1, b: 1 }).toArray().length);
-      assertEqual(250, c.byExampleHash(idx.id, { a: 1, b: 2 }).toArray().length);
-      assertEqual(250, c.byExampleHash(idx.id, { a: 2, b: 1 }).toArray().length);
-      assertEqual(250, c.byExampleHash(idx.id, { a: 2, b: 2 }).toArray().length);
+      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 1, b: 1 }).toArray().length);
+      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 1, b: 2 }).toArray().length);
+      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 2, b: 1 }).toArray().length);
+      assertEqual(250, c.byExampleSkiplist(idx.id, { a: 2, b: 2 }).toArray().length);
     }
         
   };

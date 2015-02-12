@@ -359,13 +359,13 @@ TRI_json_t* TRI_JsonFile (TRI_memory_zone_t*, char const* path, char** error);
 /// @brief converts a json object into a number
 ////////////////////////////////////////////////////////////////////////////////
 
-int64_t TRI_ToInt64Json (TRI_json_t*);
+int64_t TRI_ToInt64Json (TRI_json_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts a json object into a number
 ////////////////////////////////////////////////////////////////////////////////
 
-double TRI_ToDoubleJson (TRI_json_t*);
+double TRI_ToDoubleJson (TRI_json_t const*);
 
 #endif
 
