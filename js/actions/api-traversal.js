@@ -630,7 +630,7 @@ function post_api_traversal(req, res) {
 
   if (json.visitor !== undefined) {
     try {
-      visitor = new Function('config', 'result', 'vertex', 'path', json.visitor);
+      visitor = new Function('config', 'result', 'vertex', 'path', 'connected', json.visitor);
     }
     catch (err4) {
       return badParam(req, res, "invalid visitor function");

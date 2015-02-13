@@ -28,28 +28,28 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "document-handle",
                             "description": "The Handle of the Document. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "rev",
                             "description": "You can conditionally select a document based on a target revision id by using the <em>rev</em> URL parameter. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "lang",
                             "description": "Language of the data. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "format",
                             "description": "False for unformated values (default: true). <br><br>"
                         },
@@ -100,14 +100,14 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "document-handle",
                             "description": "The Handle of the Document. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "rev",
                             "description": "You can conditionally select a document based on a target revision id by using the <em>rev</em> URL parameter. <br><br>"
                         },
@@ -152,28 +152,28 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "document-handle",
                             "description": "Deletes the document identified by <em>document-handle</em>. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "rev",
                             "description": "You can conditionally delete a document based on a target revision id by using the <em>rev</em> URL parameter. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "policy",
                             "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing documents (see replacing documents for more details). <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Wait until document has been sync to disk. <br><br>"
                         },
@@ -222,49 +222,49 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "document-handle",
                             "description": "The Handle of the Document. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "keepNull",
                             "description": "If the intention is to delete existing attributes with the patch command, the URL query parameter <em>keepNull</em> can be used with a value of <em>false</em>. This will modify the behavior of the patch command to remove any attributes from the existing document that are contained in the patch document with an attribute value of <em>null</em>. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Wait until document has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "rev",
                             "description": "You can conditionally patch a document based on a target revision id by using the <em>rev</em> URL parameter. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "policy",
                             "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "lang",
                             "description": "Language of the data. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "format",
                             "description": "False for unformated values (default: true). <br><br>"
                         },
@@ -313,42 +313,42 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "document-handle",
                             "description": "The Handle of the Document. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Wait until document has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "rev",
                             "description": "You can conditionally replace a document based on a target revision id by using the <em>rev</em> URL parameter. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "policy",
                             "description": "To control the update behavior in case there is a revision mismatch, you can use the <em>policy</em> parameter. This is the same as when replacing documents (see replacing documents for more details). <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "lang",
                             "description": "Language of the data. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "format",
                             "description": "False for unformated values (default: true). <br><br>"
                         },
@@ -393,42 +393,42 @@
                         {
                             "dataType": "Json",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "document",
                             "description": "A JSON representation of document. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "true",
+                            "required": true,
                             "name": "collection",
                             "description": "The collection name. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "createCollection",
                             "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Wait until document has been sync to disk. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "lang",
                             "description": "Language of the send data. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "format",
                             "description": "True, if the document contains formatted values (default: true). <br><br>"
                         }

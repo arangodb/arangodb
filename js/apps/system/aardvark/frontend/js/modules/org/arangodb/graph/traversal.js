@@ -449,7 +449,7 @@ function anyExpander (config, vertex, path) {
     if (!config.expandFilter) {
       edgeIterator = function(edge) {
         try {
-          var v = datasource.getPeerVertex(edge);
+          var v = datasource.getPeerVertex(edge, vertex);
           connections.push({ edge: edge, vertex: v });
         }
         catch (e) {
@@ -459,7 +459,7 @@ function anyExpander (config, vertex, path) {
     } else {
       edgeIterator = function(edge) {
         try {
-          var v = datasource.getPeerVertex(edge);
+          var v = datasource.getPeerVertex(edge, vertex);
           if (config.expandFilter(config, v, edge, path)) {
             connections.push({ edge: edge, vertex: v });
           }
