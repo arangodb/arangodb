@@ -267,16 +267,6 @@ typedef struct
 GeoPath;
 
 
-// .............................................................................
-// forward declaration of static functions which are used by the query engine
-// .............................................................................
-
-static int                   GeoIndex_queryMethodCall  (void*, TRI_index_operator_t*, TRI_index_challenge_t*, void*);
-static int                   GeoIndex_freeMethodCall   (void*, void*);
-
-
-
-
 /* =================================================== */
 /*                GeoIndex_Distance routine            */
 /* This is the user-facing routine to compute the      */
@@ -2299,56 +2289,6 @@ int GeoIndex_INDEXVALID(GeoIndex * gi)
 
 #endif
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Assigns a static function call to a function pointer used by Query Engine
-////////////////////////////////////////////////////////////////////////////////
-
-void GeoIndex_assignMethod(void* methodHandle, TRI_index_method_assignment_type_e methodType) {
-
-  switch (methodType) {
-
-    case TRI_INDEX_METHOD_ASSIGNMENT_FREE : {
-      TRI_index_query_free_method_call_t* call = (TRI_index_query_free_method_call_t*)(methodHandle);
-      *call = GeoIndex_freeMethodCall;
-      break;
-    }
-
-    case TRI_INDEX_METHOD_ASSIGNMENT_QUERY : {
-      TRI_index_query_method_call_t* call = (TRI_index_query_method_call_t*)(methodHandle);
-      *call = GeoIndex_queryMethodCall;
-      break;
-    }
-
-    default : {
-      TRI_ASSERT(false);
-    }
-  }
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Implementation of forward declared query engine callback functions
-////////////////////////////////////////////////////////////////////////////////
-
-static int GeoIndex_queryMethodCall(void* theIndex, TRI_index_operator_t* indexOperator,
-                                    TRI_index_challenge_t* challenge, void* data) {
-  GeoIx* geoIndex = (GeoIx*)(theIndex);
-  if (geoIndex == NULL || indexOperator == NULL) {
-    return TRI_ERROR_INTERNAL;
-  }
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
-
-static int GeoIndex_freeMethodCall (void* theIndex, void* data) {
-  GeoIx* geoIndex = (GeoIx*) theIndex;
-  if (geoIndex == NULL) {
-    return TRI_ERROR_INTERNAL;
-  }
-  TRI_ASSERT(false);
-  return TRI_ERROR_NO_ERROR;
-}
 
 size_t GeoIndex_MemoryUsage (void* theIndex) {
   GeoIx* geoIndex = (GeoIx*) theIndex;

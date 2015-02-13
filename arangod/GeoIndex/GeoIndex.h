@@ -97,12 +97,6 @@ GeoCoordinates;
 typedef char GeoIndex;   /* to keep the structure private  */
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Allows one or more call back functions to be assigned
-////////////////////////////////////////////////////////////////////////////////
-
-void GeoIndex_assignMethod (void*, TRI_index_method_assignment_type_e);
-
 size_t GeoIndex_MemoryUsage (void*);
 
 GeoIndex * GeoIndex_new(void);
