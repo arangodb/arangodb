@@ -48,7 +48,9 @@ double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
 size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
 double const ArangoClient::LONG_TIMEOUT               = 86400.0;
-
+#ifdef _WIN32
+bool cygwinShell = false;
+#endif
 namespace {
 #ifdef _WIN32
 bool _newLine () {
@@ -564,24 +566,26 @@ void ArangoClient::_printLine (const string &s) {
 }
 
 void ArangoClient::printLine (const string& s, bool forceNewLine) {
-#ifdef _WIN32
-  // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
-  //fprintf(stdout, "%s\r\n", s.c_str());
-  TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
-  bool hasNewLines = (s.find("\n") != string::npos) | forceNewLine;
-  if (hasNewLines) {
-    for (size_t i = 0; i < subStrings._length; i++) {
-      _printLine(subStrings._buffer[i]);
-      _newLine();
+#if _WIN32
+  if (!cygwinShell) {
+    // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
+    //fprintf(stdout, "%s\r\n", s.c_str());
+    TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
+    bool hasNewLines = (s.find("\n") != string::npos) | forceNewLine;
+    if (hasNewLines) {
+      for (size_t i = 0; i < subStrings._length; i++) {
+        _printLine(subStrings._buffer[i]);
+        _newLine();
+      }
     }
+    else {
+      _printLine(s);
+    }
+    TRI_DestroyVectorString(&subStrings);
   }
-  else {
-    _printLine(s);
-  }
-  TRI_DestroyVectorString(&subStrings);
-#else
-  fprintf(stdout, "%s\n", s.c_str());
+  else
 #endif
+    fprintf(stdout, "%s\n", s.c_str());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
