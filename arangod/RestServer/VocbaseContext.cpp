@@ -97,11 +97,23 @@ bool VocbaseContext::useClusterAuthentication () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return authentication realm
+////////////////////////////////////////////////////////////////////////////////
+
+char const* VocbaseContext::getRealm () const {
+  if (_vocbase == nullptr) {
+    return nullptr;
+  }
+
+  return _vocbase->_name;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the authentication
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::HttpResponseCode VocbaseContext::authenticate () {
-  TRI_ASSERT(_vocbase != 0);
+  TRI_ASSERT(_vocbase != nullptr);
 
   if (! _vocbase->_settings.requireAuthentication) {
     // no authentication required at all
