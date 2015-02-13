@@ -1,0 +1,7 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:America/St_Vincent) {
+    {-9223372036854775808 -14696 0 LMT}
+    {-2524506904 -14696 0 KMT}
+    {-1830369304 -14400 0 AST}
+}

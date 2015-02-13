@@ -1362,13 +1362,19 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
           unique = value->_value._boolean;
         }
 
+        bool sparse = false;
+        value = TRI_LookupObjectJson(v, "sparse");
+        if (TRI_IsBooleanJson(value)) {
+          sparse = value->_value._boolean;
+        }
+
         TRI_idx_iid_t iid = 0;
         value = TRI_LookupObjectJson(v, "id");
         if (TRI_IsStringJson(value)) {
           iid = TRI_UInt64String2(value->_value._string.data, value->_value._string.length - 1);
         }
 
-        TRI_index_t* idx = (TRI_index_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false);
+        TRI_index_t* idx = static_cast<TRI_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_index_t), false));
 
         if (idx == nullptr) {
           continue;
@@ -1377,6 +1383,7 @@ TRI_vector_pointer_t* getIndexesCoordinator (string const& databaseName,
         idx->_iid      = iid;
         idx->_type     = type;
         idx->_unique   = unique;
+        idx->_sparse   = sparse;
 
         TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 

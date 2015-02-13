@@ -131,7 +131,7 @@ AstNode const* RangeInfoBound::getExpressionAst (Ast* ast) const {
     return nullptr;
   }
 
-  // TODO: check who is going to free this node... 
+  // ast will remember the node and delete it
   _expressionAst = new AstNode(ast, _bound);
 
   return _expressionAst;
@@ -346,8 +346,8 @@ void RangeInfoMap::erase (RangeInfo* ri) {
 /// @brief clone
 ////////////////////////////////////////////////////////////////////////////////
         
-RangeInfoMap* RangeInfoMap::clone () {
-  auto rim = new RangeInfoMap();
+RangeInfoMap* RangeInfoMap::clone () const {
+  std::unique_ptr<RangeInfoMap> rim(new RangeInfoMap());
   
   try { 
     for (auto x: _ranges) {
@@ -357,11 +357,10 @@ RangeInfoMap* RangeInfoMap::clone () {
     }
   }
   catch (...) {
-    delete rim;
     throw;
   }
         
-  return rim;
+  return rim.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

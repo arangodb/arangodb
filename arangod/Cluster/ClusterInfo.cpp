@@ -1461,7 +1461,7 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
   string const idString = triagens::basics::StringUtils::itoa(iid);
 
   {
-    TRI_json_t* collectionJson = 0;
+    TRI_json_t* collectionJson = nullptr;
     AgencyCommLocker locker("Plan", "WRITE");
 
     if (! locker.successful()) {
@@ -1556,9 +1556,9 @@ int ClusterInfo::ensureIndexCoordinator (string const& databaseName,
 
     // add index id
     TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE,
-                         newIndex,
-                         "id",
-                         TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
+                          newIndex,
+                          "id",
+                          TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, idString.c_str(), idString.size()));
 
     TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, idx, TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, newIndex));
 

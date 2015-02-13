@@ -6,7 +6,7 @@
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
   ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
-  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS */
+  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS, FE_VERSION_CHECK */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -97,6 +97,13 @@
 
   internal.dispatcherThreads = DISPATCHER_THREADS;
   delete DISPATCHER_THREADS;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief frontendVersionCheck
+////////////////////////////////////////////////////////////////////////////////
+
+  internal.frontendVersionCheck = FE_VERSION_CHECK;
+  delete FE_VERSION_CHECK;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions

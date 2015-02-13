@@ -284,7 +284,7 @@ function SimpleQueryByExampleSuite () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -324,14 +324,18 @@ function SimpleQueryByExampleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testByExampleHash2 : function () {
-      var d1, d2, s;
+      var d1, d2, d3, d4, s;
       var example1 = { "a" : { "b" : true } };
       var example2 = { "a" : { "b" : "foo" } };
+      var example3 = { "a" : { "b" : null } };
+      var example4 = { "c" : 1 };
 
       collection.ensureHashIndex("a.b");
 
       d1 = collection.save(example1);
       d2 = collection.save(example2);
+      d3 = collection.save(example3);
+      d4 = collection.save(example4);
 
       s = collection.firstExample({ "a.b" : true });
       assertEqual(d1._id, s._id);
@@ -339,11 +343,227 @@ function SimpleQueryByExampleSuite () {
       assertEqual(d2._id, s._id);
       s = collection.firstExample({ "a.b" : false });
       assertNull(s);
+      s = collection.firstExample({ "a.b" : null });
+      assertNotNull(s);
+      s = collection.firstExample({ "c" : 1 });
+      assertEqual(d4._id, s._id);
 
       s = collection.firstExample(example1);
       assertEqual(d1._id, s._id);
       s = collection.firstExample(example2);
       assertEqual(d2._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleSparseHash : function () {
+      var d1, d2, d3, d4, s;
+      var example1 = { "a" : { "b" : true } };
+      var example2 = { "a" : { "b" : "foo" } };
+      var example3 = { "a" : { "b" : null } };
+      var example4 = { "c" : 1 };
+
+      collection.ensureHashIndex("a.b", { sparse: true });
+
+      d1 = collection.save(example1);
+      d2 = collection.save(example2);
+      d3 = collection.save(example3);
+      d4 = collection.save(example4);
+
+      s = collection.firstExample({ "a.b" : true });
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample({ "a.b" : "foo" });
+      assertEqual(d2._id, s._id);
+      s = collection.firstExample({ "a.b" : false });
+      assertNull(s);
+      s = collection.firstExample({ "a.b" : null });
+      assertNotNull(s);
+      s = collection.firstExample({ "c" : 1 });
+      assertEqual(d4._id, s._id);
+
+      s = collection.firstExample(example1);
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample(example2);
+      assertEqual(d2._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleSkiplist1 : function () {
+      var d, s;
+      var example = { "a" : { "b" : true, "c" : "foo" }, "d" : true };
+
+      collection.ensureSkiplist("d");
+
+      d = collection.save(example);
+      s = collection.firstExample({ "d" : true });
+      assertEqual(d._id, s._id);
+
+      s = collection.firstExample({ "d" : false });
+      assertNull(s);
+
+      s = collection.firstExample({ "a.b" : true });
+      assertEqual(d._id, s._id);
+
+      s = collection.firstExample({ "a.c" : "foo" });
+      assertEqual(d._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleSkiplist2 : function () {
+      var d1, d2, d3, d4, s;
+      var example1 = { "a" : { "b" : true } };
+      var example2 = { "a" : { "b" : "foo" } };
+      var example3 = { "a" : { "b" : null } };
+      var example4 = { "c" : 1 };
+
+      collection.ensureSkiplist("a.b");
+
+      d1 = collection.save(example1);
+      d2 = collection.save(example2);
+      d3 = collection.save(example3);
+      d4 = collection.save(example4);
+
+      s = collection.firstExample({ "a.b" : true });
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample({ "a.b" : "foo" });
+      assertEqual(d2._id, s._id);
+      s = collection.firstExample({ "a.b" : false });
+      assertNull(s);
+      s = collection.firstExample({ "a.b" : null });
+      assertNotNull(s);
+      s = collection.firstExample({ "c" : 1 });
+      assertEqual(d4._id, s._id);
+
+      s = collection.firstExample(example1);
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample(example2);
+      assertEqual(d2._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample, using indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleSparseSkiplist : function () {
+      var d1, d2, d3, d4, s;
+      var example1 = { "a" : { "b" : true } };
+      var example2 = { "a" : { "b" : "foo" } };
+      var example3 = { "a" : { "b" : null } };
+      var example4 = { "c" : 1 };
+
+      collection.ensureSkiplist("a.b", { sparse: true });
+
+      d1 = collection.save(example1);
+      d2 = collection.save(example2);
+      d3 = collection.save(example3);
+      d4 = collection.save(example4);
+
+      s = collection.firstExample({ "a.b" : true });
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample({ "a.b" : "foo" });
+      assertEqual(d2._id, s._id);
+      s = collection.firstExample({ "a.b" : false });
+      assertNull(s);
+      s = collection.firstExample({ "a.b" : null });
+      assertNotNull(s);
+      s = collection.firstExample({ "c" : 1 });
+      assertEqual(d4._id, s._id);
+
+      s = collection.firstExample(example1);
+      assertEqual(d1._id, s._id);
+      s = collection.firstExample(example2);
+      assertEqual(d2._id, s._id);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleMultipleValues : function () {
+      [ null, 1, 2, true, false, "1", "2", "foo", "barbazbark", [ ] ].forEach(function(v) {
+        for (var i = 0; i < 5; ++i) {
+          collection.save({ value: v });
+        }
+      
+        var result = collection.byExample({ value: v }).toArray();
+        assertEqual(5, result.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleMultipleValuesHashIndex : function () {
+      collection.ensureHashIndex("value");
+
+      [ null, 1, 2, true, false, "1", "2", "foo", "barbazbark", [ ] ].forEach(function(v) {
+        for (var i = 0; i < 5; ++i) {
+          collection.save({ value: v });
+        }
+      
+        var result = collection.byExample({ value: v }).toArray();
+        assertEqual(5, result.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleMultipleValuesSparseHashIndex : function () {
+      collection.ensureHashIndex("value", { sparse: true });
+
+      [ null, 1, 2, true, false, "1", "2", "foo", "barbazbark", [ ] ].forEach(function(v) {
+        for (var i = 0; i < 5; ++i) {
+          collection.save({ value: v });
+        }
+      
+        var result = collection.byExample({ value: v }).toArray();
+        assertEqual(5, result.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleMultipleValuesSkiplist : function () {
+      collection.ensureSkiplist("value");
+
+      [ null, 1, 2, true, false, "1", "2", "foo", "barbazbark", [ ] ].forEach(function(v) {
+        for (var i = 0; i < 5; ++i) {
+          collection.save({ value: v });
+        }
+      
+        var result = collection.byExample({ value: v }).toArray();
+        assertEqual(5, result.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleMultipleValuesSparseSkiplist : function () {
+      collection.ensureSkiplist("value", { sparse: true });
+
+      [ null, 1, 2, true, false, "1", "2", "foo", "barbazbark", [ ] ].forEach(function(v) {
+        for (var i = 0; i < 5; ++i) {
+          collection.save({ value: v });
+        }
+      
+        var result = collection.byExample({ value: v }).toArray();
+        assertEqual(5, result.length);
+      });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1152,6 +1372,75 @@ function SimpleQueryByExampleHashSuite () {
       var d5 = collection.save({ i : 2 });
       var d6 = collection.save({ i : 2, a : 2 });
       var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
+      var d8 = collection.save({ i : null });
+      var d9 = collection.save({ i : null, a: 1 });
+      var s;
+
+      s = collection.byExampleHash(idx, { i : 1 }).toArray().map(id).sort();
+      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
+
+      s = collection.byExampleHash(idx, { i : 2 }).toArray().map(id).sort();
+      assertEqual([d5._id, d6._id, d7._id].sort(), s);
+      
+      s = collection.byExampleHash(idx, { i : null }).toArray().map(id).sort();
+      assertEqual([d8._id, d9._id].sort(), s);
+
+      s = collection.byExampleHash(idx, { i : 9 }).toArray();
+      assertEqual([ ], s);
+
+      try {
+        collection.byExampleHash(idx.id, { j : 2 }).toArray();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
+
+      idx = collection.ensureHashIndex("a.j");
+
+      s = collection.byExampleHash(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+
+      try {
+        collection.byExampleHash(idx.id, { i : 2 }).toArray();
+        fail();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
+
+      try {
+        collection.byExampleHash(idx.id, { j : 2 }).toArray();
+        fail();
+      }
+      catch (err3) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
+      }
+
+      idx = collection.ensureHashIndex("i", "a.j");
+      s = collection.byExampleHash(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+
+      s = collection.byExampleHash(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleObjectSparse : function () {
+      var idx = collection.ensureHashIndex("i", { sparse: true });
+
+      var d1 = collection.save({ i : 1 });
+      var d2 = collection.save({ i : 1, a : { j : 1 } });
+      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
+      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
+      var d5 = collection.save({ i : 2 });
+      var d6 = collection.save({ i : 2, a : 2 });
+      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
+      collection.save({ i : null });
+      collection.save({ i : null, a : 1 });
       var s;
 
       s = collection.byExampleHash(idx, { i : 1 }).toArray().map(id).sort();
@@ -1160,6 +1449,9 @@ function SimpleQueryByExampleHashSuite () {
       s = collection.byExampleHash(idx, { i : 2 }).toArray().map(id).sort();
       assertEqual([d5._id, d6._id, d7._id].sort(), s);
 
+      s = collection.byExampleHash(idx, { i : null }).toArray();
+      assertEqual([ ], s);
+      
       s = collection.byExampleHash(idx, { i : 9 }).toArray();
       assertEqual([ ], s);
 
@@ -1282,6 +1574,75 @@ function SimpleQueryByExampleSkiplistSuite () {
       var d5 = collection.save({ i : 2 });
       var d6 = collection.save({ i : 2, a : 2 });
       var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
+      var d8 = collection.save({ i : null });
+      var d9 = collection.save({ i : null, a : 1 });
+      var s;
+
+      s = collection.byExampleSkiplist(idx, { i : 1 }).toArray().map(id).sort();
+      assertEqual([d1._id, d2._id, d3._id, d4._id].sort(), s);
+
+      s = collection.byExampleSkiplist(idx, { i : 2 }).toArray().map(id).sort();
+      assertEqual([d5._id, d6._id, d7._id].sort(), s);
+      
+      s = collection.byExampleSkiplist(idx, { i : null }).toArray().map(id).sort();
+      assertEqual([d8._id, d9._id ], s);
+
+      s = collection.byExampleSkiplist(idx, { i : 9 }).toArray();
+      assertEqual([ ], s);
+
+      try {
+        collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
+
+      idx = collection.ensureSkiplist("a.j");
+
+      s = collection.byExampleSkiplist(idx.id, { "a.j" : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+
+      try {
+        collection.byExampleSkiplist(idx.id, { i : 2 }).toArray();
+        fail();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
+
+      try {
+        collection.byExampleSkiplist(idx.id, { j : 2 }).toArray();
+        fail();
+      }
+      catch (err3) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err3.errorNum);
+      }
+
+      idx = collection.ensureSkiplist("i", "a.j");
+      s = collection.byExampleSkiplist(idx, { i : 1, "a.j" : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+
+      s = collection.byExampleSkiplist(idx, { "a.j" : 1, i : 1 }).toArray().map(id).sort();
+      assertEqual([d2._id, d3._id].sort(), s);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: byExample
+////////////////////////////////////////////////////////////////////////////////
+
+    testByExampleObjectSparse : function () {
+      var idx = collection.ensureSkiplist("i", { sparse: true });
+
+      var d1 = collection.save({ i : 1 });
+      var d2 = collection.save({ i : 1, a : { j : 1 } });
+      var d3 = collection.save({ i : 1, a : { j : 1, k : 1 } });
+      var d4 = collection.save({ i : 1, a : { j : 2, k : 2 } });
+      var d5 = collection.save({ i : 2 });
+      var d6 = collection.save({ i : 2, a : 2 });
+      var d7 = collection.save({ i : 2, a : { j : 2, k : 2 } });
+      collection.save({ i : null });
+      collection.save({ i : null, a : 1 });
       var s;
 
       s = collection.byExampleSkiplist(idx, { i : 1 }).toArray().map(id).sort();
@@ -1290,6 +1651,9 @@ function SimpleQueryByExampleSkiplistSuite () {
       s = collection.byExampleSkiplist(idx, { i : 2 }).toArray().map(id).sort();
       assertEqual([d5._id, d6._id, d7._id].sort(), s);
 
+      s = collection.byExampleSkiplist(idx, { i : null }).toArray();
+      assertEqual([ ], s);
+      
       s = collection.byExampleSkiplist(idx, { i : 9 }).toArray();
       assertEqual([ ], s);
 
@@ -1527,6 +1891,7 @@ function SimpleQueryRangeSuite () {
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
 
   return {
 
@@ -1536,7 +1901,7 @@ function SimpleQueryRangeSuite () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn);
 
       for (var i = 0;  i < 100;  ++i) {
         collection.save({ age : i });
@@ -1558,12 +1923,110 @@ function SimpleQueryRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRange : function () {
-      var l = collection.range("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12], l);
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
 
-      l = collection.closedRange("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12,13], l);
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
     }
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             basic tests for range
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: range
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQuerySparseRangeSuite () {
+  "use strict";
+  var cn = "UnitTestsCollectionRange";
+  var collection = null;
+  var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
+  var errors = require("org/arangodb").errors;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn);
+
+      for (var i = 0;  i < 100;  ++i) {
+        collection.save({ age : i });
+      }
+
+      collection.ensureSkiplist("age", { sparse: true });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRange : function () {
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      try {
+        l = collection.range("age", null, 13).toArray();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
+
+      try {
+        l = collection.range("age", null, 13).toArray();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeMultipleIndexes : function () {
+      // now we have a sparse and a non-sparse index
+      collection.ensureSkiplist("age", { sparse: false });
+
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
+    }
+
   };
 }
 
@@ -1580,6 +2043,7 @@ function SimpleQueryUniqueRangeSuite () {
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
 
   return {
 
@@ -1589,7 +2053,7 @@ function SimpleQueryUniqueRangeSuite () {
 
     setUp : function () {
       db._drop(cn);
-      collection = db._create(cn, { waitForSync : false });
+      collection = db._create(cn);
 
       for (var i = 0;  i < 100;  ++i) {
         collection.save({ age : i });
@@ -1611,11 +2075,108 @@ function SimpleQueryUniqueRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRange : function () {
-      var l = collection.range("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12], l);
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
 
-      l = collection.closedRange("age", 10, 13).toArray().map(age).sort();
-      assertEqual([10,11,12,13], l);
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
+    }
+  };
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      basic tests for unique range
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test suite: range
+////////////////////////////////////////////////////////////////////////////////
+
+function SimpleQueryUniqueSparseRangeSuite () {
+  "use strict";
+  var cn = "UnitTestsCollectionRange";
+  var collection = null;
+  var age = function(d) { return d.age; };
+  var ageSort = function(l, r) { if (l !== r) { if (l < r) { return -1; } return 1; } return 0; };
+  var errors = require("org/arangodb").errors;
+
+  return {
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up
+////////////////////////////////////////////////////////////////////////////////
+
+    setUp : function () {
+      db._drop(cn);
+      collection = db._create(cn);
+
+      for (var i = 0;  i < 100;  ++i) {
+        collection.save({ age : i });
+      }
+
+      collection.ensureUniqueSkiplist("age", { sparse: true });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tear down
+////////////////////////////////////////////////////////////////////////////////
+
+    tearDown : function () {
+      collection.drop();
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRange : function () {
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      try {
+        l = collection.range("age", null, 13).toArray();
+        fail();
+      }
+      catch (err1) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err1.errorNum);
+      }
+
+      try {
+        l = collection.range("age", null, 13).toArray();
+      }
+      catch (err2) {
+        assertEqual(errors.ERROR_ARANGO_NO_INDEX.code, err2.errorNum);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: range
+////////////////////////////////////////////////////////////////////////////////
+
+    testRangeMultipleIndexes : function () {
+      // now we have a sparse and a non-sparse index
+      collection.ensureUniqueSkiplist("age", { sparse: false });
+
+      var l = collection.range("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", 10, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 10, 11, 12, 13 ], l);
+
+      l = collection.range("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ], l);
+
+      l = collection.closedRange("age", null, 13).toArray().map(age).sort(ageSort);
+      assertEqual([ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13 ], l);
     }
   };
 }
@@ -1645,7 +2206,7 @@ function SimpleQueryAnySuite () {
 
       name = cn + "Empty";
       db._drop(name);
-      collectionEmpty = db._create(name, { waitForSync : false });
+      collectionEmpty = db._create(name);
 
       name = cn + "One";
       db._drop(name);
@@ -1692,7 +2253,9 @@ jsunity.run(SimpleQueryByExampleHashSuite);
 jsunity.run(SimpleQueryByExampleSkiplistSuite);
 jsunity.run(SimpleQueryByExampleEdgeSuite);
 jsunity.run(SimpleQueryRangeSuite);
+jsunity.run(SimpleQuerySparseRangeSuite);
 jsunity.run(SimpleQueryUniqueRangeSuite);
+jsunity.run(SimpleQueryUniqueSparseRangeSuite);
 jsunity.run(SimpleQueryAnySuite);
 
 return jsunity.done();

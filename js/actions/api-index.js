@@ -63,7 +63,9 @@ var API = "_api/index";
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexAllIndexes}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
+///     db[cn].ensureHashIndex("name");
+///     db[cn].ensureSkiplist("price", { sparse: true });
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///
@@ -120,8 +122,8 @@ function get_api_indexes (req, res) {
 /// - *type*: the index type
 ///
 /// All other attributes are type-dependent. For example, some indexes provide
-/// a *unique* flag, whereas others don't. Some indexes can also provide a
-/// selectivity estimate in the *selectivityEstimate* attribute.
+/// *unique* or *sparse* flags, whereas others don't. Some indexes also provide 
+/// a selectivity estimate in the *selectivityEstimate* attribute of the result.
 ///
 /// @RESTRETURNCODES
 ///
@@ -254,7 +256,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewCapConstraint}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = {
@@ -343,7 +345,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateGeoLocation}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "geo", "fields" : [ "b" ] }';
@@ -360,7 +362,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateGeoLatitudeLongitude}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "geo", "fields" : [ "e", "f" ] }';
@@ -389,23 +391,35 @@ function get_api_index (req, res) {
 ///
 /// @RESTDESCRIPTION
 ///
-/// Creates a hash index for the collection *collection-name*, if it
+/// Creates a hash index for the collection *collection-name* if it
 /// does not already exist. The call expects an object containing the index
-/// details.
+/// details. The following attributes can be present in the body of the
+/// request object:
 ///
 /// - *type*: must be equal to *"hash"*.
 ///
-/// - *fields*: An array of attribute paths.
+/// - *fields*: an array of attribute paths.
 ///
-/// - *unique*: If *true*, then create a unique index.
+/// - *unique*: if *true*, then create a unique index.
+///
+/// - *sparse*: if *true*, then create a sparse index.
+///
+/// In a sparse index all documents will be excluded from the index that do not 
+/// contain at least one of the specified index attributes (i.e. *fields*) or that 
+/// have a value of *null* in any of the specified index attributes. Such documents 
+/// will not be indexed, and not be taken into account for uniqueness checks if
+/// the *unique* flag is set.
+///
+/// In a non-sparse index, these documents will be indexed (for non-present
+/// indexed attributes, a value of *null* will be used) and will be taken into
+/// account for uniqueness checks if the *unique* flag is set.
 ///
 /// **Note**: unique indexes on non-shard keys are not supported in a cluster.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a *HTTP 200* is
-/// returned.
+/// If the index already exists, then a *HTTP 200* is returned.
 ///
 /// @RESTRETURNCODE{201}
 /// If the index does not already exist and could be created, then a *HTTP 201*
@@ -426,7 +440,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewUniqueConstraint}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "hash", "unique" : true, "fields" : [ "a", "b" ] }';
@@ -438,15 +452,32 @@ function get_api_index (req, res) {
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
 ///
-/// Creating a hash index:
+/// Creating a non-unique hash index:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewHashIndex}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "hash", "unique" : false, "fields" : [ "a", "b" ] }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Creating a sparse index:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseHashIndex}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = '{ "type": "hash", "unique" : false, "sparse" : true, "fields" : [ "a" ] }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -474,13 +505,26 @@ function get_api_index (req, res) {
 ///
 /// Creates a skip-list index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
-/// details.
+/// details. The following attributes can be present in the body of the
+/// request object:
 ///
 /// - *type*: must be equal to *"skiplist"*.
 ///
 /// - *fields*: an array of attribute paths.
 ///
-/// - *unique*: If *true*, then create a unique index.
+/// - *unique*: if *true*, then create a unique index.
+///
+/// - *sparse*: if *true*, then create a sparse index.
+///
+/// In a sparse index all documents will be excluded from the index that do not 
+/// contain at least one of the specified index attributes (i.e. *fields*) or that 
+/// have a value of *null* in any of the specified index attributes. Such documents 
+/// will not be indexed, and not be taken into account for uniqueness checks if
+/// the *unique* flag is set.
+///
+/// In a non-sparse index, these documents will be indexed (for non-present
+/// indexed attributes, a value of *null* will be used) and will be taken into
+/// account for uniqueness checks if the *unique* flag is set.
 ///
 /// **Note**: unique indexes on non-shard keys are not supported in a cluster.
 ///
@@ -504,15 +548,32 @@ function get_api_index (req, res) {
 ///
 /// @EXAMPLES
 ///
-/// Creating a skiplist:
+/// Creating a skiplist index:
 ///
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewSkiplist}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type": "skiplist", "unique" : false, "fields" : [ "a", "b" ] }';
+///
+///     var response = logCurlRequest('POST', url, body);
+///
+///     assert(response.code === 201);
+///
+///     logJsonResponse(response);
+/// @END_EXAMPLE_ARANGOSH_RUN
+///
+/// Creating a sparse skiplist index:
+///
+/// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateSparseSkiplist}
+///     var cn = "products";
+///     db._drop(cn);
+///     db._create(cn);
+///
+///     var url = "/_api/index?collection=" + cn;
+///     var body = '{ "type": "skiplist", "unique" : false, "sparse" : true, "fields" : [ "a" ] }';
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -540,13 +601,13 @@ function get_api_index (req, res) {
 ///
 /// Creates a fulltext index for the collection *collection-name*, if
 /// it does not already exist. The call expects an object containing the index
-/// details.
+/// details. The following attributes can be present in the body of the
+/// request object:
 ///
 /// - *type*: must be equal to *"fulltext"*.
 ///
 /// - *fields*: an array of attribute names. Currently, the array is limited
-///   to exactly one attribute, so the value of *fields* should look like
-///   this for example: *[ "text" ]*.
+///   to exactly one attribute.
 ///
 /// - *minLength*: Minimum character length of words to index. Will default
 ///   to a server-defined value if unspecified. It is thus recommended to set
@@ -572,7 +633,7 @@ function get_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexCreateNewFulltext}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
 ///     var body = '{ "type" : "fulltext", "fields" : [ "text" ] }';
@@ -612,14 +673,14 @@ function get_api_index (req, res) {
 /// Most indexes (a notable exception being the cap constraint) require the
 /// array of attributes to be indexed in the *fields* attribute of the index
 /// details. Depending on the index type, a single attribute or multiple
-/// attributes may be indexed.
+/// attributes can be indexed.
 ///
 /// Indexing system attributes such as *_id*, *_key*, *_from*, and *_to*
-/// is not supported by any index type. Manually creating an index that
-/// relies on any of these attributes is unsupported.
+/// is not supported for user-defined indexes. Manually creating an index using
+/// any of these attributes will fail with an error.
 ///
 /// Some indexes can be created as unique or non-unique variants. Uniqueness
-/// can be controlled for most indexes by specifying the *unique* in the
+/// can be controlled for most indexes by specifying the *unique* flag in the
 /// index details. Setting it to *true* will create a unique index.
 /// Setting it to *false* or omitting the *unique* attribute will
 /// create a non-unique index.
@@ -631,6 +692,11 @@ function get_api_index (req, res) {
 ///
 /// **Note**: Unique indexes on non-shard keys are not supported in a
 /// cluster.
+///
+/// Hash and skiplist indexes can optionally be created in a sparse
+/// variant. A sparse index will be created if the *sparse* attribute in
+/// the index details is set to *true*. Sparse indexes do not index documents
+/// for which any of the index attributes is either not set or is *null*. 
 ///
 /// @RESTRETURNCODES
 ///
@@ -720,7 +786,7 @@ function post_api_index (req, res) {
 /// @EXAMPLE_ARANGOSH_RUN{RestIndexDeleteUniqueSkiplist}
 ///     var cn = "products";
 ///     db._drop(cn);
-///     db._create(cn, { waitForSync: true });
+///     db._create(cn);
 ///
 ///     var url = "/_api/index/" + db.products.ensureSkiplist("a","b").id;
 ///

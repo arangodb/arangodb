@@ -1,0 +1,6 @@
+# created by tools/tclZIC.tcl - do not edit
+
+set TZData(:Africa/Djibouti) {
+    {-9223372036854775808 10356 0 LMT}
+    {-1846291956 10800 0 EAT}
+}

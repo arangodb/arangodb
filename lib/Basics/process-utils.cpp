@@ -1069,34 +1069,92 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
         triagens::basics::StringUtils::itoa(res);
     }
 #else
-    if (wait) {
-      DWORD result;
-      result = WaitForSingleObject(external->_process, INFINITE);
-      if (result == WAIT_FAILED) {
-        LOG_WARNING("could not wait for subprocess with PID '%ud'",
-                    (unsigned int) external->_pid);
-      status._errorMessage =
-        std::string("could not wait for subprocess with PID '") + 
-        triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) + 
-        std::string("'");
-      }
-    }
-    DWORD exitCode = STILL_ACTIVE;
-    if (! GetExitCodeProcess(external->_process , &exitCode)) {
-      LOG_WARNING("exit status could not be determined for PID '%ud'",
-                  (unsigned int) external->_pid);
-      status._errorMessage =
-        std::string("exit status could not be determined for PID '") + 
-        triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) + 
-        std::string("'");
-    }
-    else {
-      if (exitCode == STILL_ACTIVE) {
-        external->_exitStatus = 0;
+    {
+      char windowsErrorBuf[256];
+      if (wait) {
+        DWORD result;
+        result = WaitForSingleObject(external->_process, INFINITE);
+        if (result == WAIT_FAILED) {
+          FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                        NULL,
+                        GetLastError(),
+                        0,
+                        windowsErrorBuf,
+                        sizeof(windowsErrorBuf), NULL);
+          LOG_WARNING("could not wait for subprocess with PID '%ud': %s",
+                      (unsigned int) external->_pid, windowsErrorBuf);
+          status._errorMessage =
+            std::string("could not wait for subprocess with PID '") + 
+            triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) + 
+            std::string("'") + 
+            windowsErrorBuf;
+          status._exitStatus = GetLastError();
+        }
       }
       else {
-        external->_status = TRI_EXT_TERMINATED;
-        external->_exitStatus = exitCode;
+        bool wantGetExitCode = false;
+        DWORD result;
+        result = WaitForSingleObject(external->_process, 0);
+        switch (result) {
+        case WAIT_ABANDONED:
+          wantGetExitCode = true;
+          LOG_WARNING("WAIT_ABANDONED while waiting for subprocess with PID '%ud'",
+                      (unsigned int)external->_pid);
+
+          break;
+        case WAIT_OBJECT_0:
+          /// this seems to be the exit case - want getExitCodeProcess here.
+          wantGetExitCode = true;
+          LOG_WARNING("WAIT_OBJECT_0 while waiting for subprocess with PID '%ud'",
+                      (unsigned int)external->_pid);
+          break;
+        case WAIT_TIMEOUT:
+          // success - everything went well.
+          external->_exitStatus = 0;
+          break;
+        case WAIT_FAILED:
+          FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                        NULL,
+                        GetLastError(),
+                        0,
+                        windowsErrorBuf,
+                        sizeof(windowsErrorBuf), NULL);
+          LOG_WARNING("could not wait for subprocess with PID '%ud': %s",
+                      (unsigned int)external->_pid, windowsErrorBuf);
+          status._errorMessage =
+            std::string("could not wait for subprocess with PID '") +
+            triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
+            std::string("'") +
+            windowsErrorBuf;
+          status._exitStatus = GetLastError();
+        default:
+          wantGetExitCode = true;
+          LOG_WARNING("unexpected status while waiting for subprocess with PID '%ud'",
+                      (unsigned int)external->_pid);
+
+        }
+
+        if (wantGetExitCode) {
+          DWORD exitCode = STILL_ACTIVE;
+          if (!GetExitCodeProcess(external->_process, &exitCode)) {
+            LOG_WARNING("exit status could not be determined for PID '%ud'",
+                        (unsigned int)external->_pid);
+            status._errorMessage =
+              std::string("exit status could not be determined for PID '") +
+              triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
+              std::string("'");
+          }
+          else {
+            std::cout << "exitCode: " << exitCode;
+            if (exitCode == STILL_ACTIVE) {
+              external->_exitStatus = 0;
+            }
+            else {
+              external->_status = TRI_EXT_TERMINATED;
+              external->_exitStatus = exitCode;
+            }
+          }
+        }
       }
     }
 #endif

@@ -425,9 +425,9 @@ def resturlparam(cargo, r=Regexen()):
     parametersList = parameters(last).split(',')
 
     if parametersList[2] == 'required':
-        required = 'true'
+        required = True
     else:
-        required = 'false'
+        required = False
         
     para = {
         'name': parametersList[0],
@@ -481,9 +481,9 @@ def restbodyparam(cargo, r=Regexen()):
     parametersList = parameters(last).split(',')
 
     if parametersList[2] == 'required':
-        required = 'true'
+        required = True
     else:
-        required = 'false'    
+        required = False
 
     para = {
         'name': parametersList[0],
@@ -505,9 +505,9 @@ def restqueryparam(cargo, r=Regexen()):
     parametersList = parameters(last).split(',')
 
     if parametersList[2] == 'required':
-        required = 'true'
+        required = True
     else:
-        required = 'false'
+        required = False
 
     para = {
         'name': parametersList[0],

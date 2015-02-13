@@ -876,6 +876,7 @@ struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collecti
 
 struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t*,
                                                            TRI_vector_pointer_t const*,
+                                                           int,
                                                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -885,6 +886,7 @@ struct TRI_index_s* TRI_LookupHashIndexDocumentCollection (TRI_document_collecti
 struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t*,
                                                            TRI_idx_iid_t,
                                                            TRI_vector_pointer_t const*,
+                                                           bool,
                                                            bool,
                                                            bool*);
 
@@ -904,6 +906,7 @@ struct TRI_index_s* TRI_EnsureHashIndexDocumentCollection (TRI_document_collecti
 
 struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t*,
                                                                TRI_vector_pointer_t const*,
+                                                               int,
                                                                bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -913,6 +916,7 @@ struct TRI_index_s* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_coll
 struct TRI_index_s* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t*,
                                                                TRI_idx_iid_t,
                                                                TRI_vector_pointer_t const*,
+                                                               bool,
                                                                bool,
                                                                bool*);
 

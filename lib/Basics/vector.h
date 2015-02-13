@@ -191,13 +191,13 @@ void TRI_SetVector (TRI_vector_t* vector, size_t, void const* element);
 /// @brief returns the beginning
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_BeginVector (TRI_vector_t*);
+void* TRI_BeginVector (TRI_vector_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the end (pointer after the last element)
 ////////////////////////////////////////////////////////////////////////////////
 
-void* TRI_EndVector (TRI_vector_t*);
+void* TRI_EndVector (TRI_vector_t const*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   POINTER VECTORS

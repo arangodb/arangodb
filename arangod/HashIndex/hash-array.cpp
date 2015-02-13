@@ -422,7 +422,7 @@ int TRI_InsertKeyHashArray (TRI_hash_array_t* array,
   bool found = (arrayElement->_document != nullptr);
 
   if (found) {
-    return TRI_RESULT_KEY_EXISTS;
+    return TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED;
   }
 
   *arrayElement = *element;

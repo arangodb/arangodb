@@ -37,9 +37,11 @@ var executeExternal = require("internal").executeExternal;
 var killExternal = require("internal").killExternal;
 var statusExternal = require("internal").statusExternal;
 var base64Encode = require("internal").base64Encode;
+var yaml = require("js-yaml");
 
 var fs = require("fs");
 var wait = require("internal").wait;
+var toArgv = require("internal").toArgv;
 
 var exchangePort = require("org/arangodb/cluster/planner").exchangePort;
 var exchangeProtocol = require("org/arangodb/cluster/planner").exchangeProtocol;
@@ -223,32 +225,37 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
       fs.removeDirectoryRecursive(agentDataDir,true);
     }
   }
-  var extEndpoint = getAddrPort(
-                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
-                                       cmd.extPort));
-  var args = ["-data-dir", agentDataDir,
-              "-name", "agent"+cmd.agencyPrefix+cmd.extPort,
-              "-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
-                                               : "0.0.0.0:")+cmd.extPort,
-              "-addr", extEndpoint,
-              "-peer-bind-addr", (cmd.onlyLocalhost ? "127.0.0.1:"
-                                                    : "0.0.0.0:")+cmd.intPort,
-              "-peer-addr", getAddrPort(
-                          exchangePort(dispatchers[cmd.dispatcher].endpoint,
-                                       cmd.intPort))
-              // the following might speed up etcd, but it might also
-              // make it more unstable:
-              // ,"-peer-heartbeat-timeout=10",
-              // "-peer-election-timeout=20"
-             ];
+
+  var instanceName = "agent"+cmd.agencyPrefix+cmd.extPort;
+  var extBind = (cmd.onlyLocalhost ? "127.0.0.1:" : "0.0.0.0:")+cmd.extPort;
+  var extEndpoint = getAddrPort(exchangePort(dispatchers[cmd.dispatcher].endpoint, cmd.extPort));
+  var clusterBind = (cmd.onlyLocalhost ? "127.0.0.1:" : "0.0.0.0:")+cmd.intPort;
+  var clusterEndPoint = getAddrPort(exchangePort(dispatchers[cmd.dispatcher].endpoint, cmd.intPort));
+
+  var clusterUrl = "http://" + clusterBind;
+  var agencyUrl =  "http://" + extBind;
+
+  var args = {
+      "data-dir":               agentDataDir,
+      "name":                   instanceName,
+      "bind-addr":              extBind,
+      "addr":                   extEndpoint,
+      "peer-bind-addr":         clusterBind,
+      "peer-addr":              clusterEndPoint,
+      "initial-cluster-state":  "new",
+      "initial-cluster":        instanceName + "=" + clusterUrl
+      // the following might speed up etcd, but it might also
+      // make it more unstable:
+      // ,"peer-heartbeat-timeout": "10",
+      // "peer-election-timeout": "20"
+  };
   var i;
   if (cmd.peers.length > 0) {
-    args.push("-peers");
     var st = getAddrPort(cmd.peers[0]);
     for (i = 1; i < cmd.peers.length; i++) {
       st = st + "," + getAddrPort(cmd.peers[i]);
     }
-    args.push(st);
+    args.peers = st;
   }
   var agentPath = cmd.agentPath;
   if (agentPath === "") {
@@ -258,20 +265,25 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
     return {"error":true, "isStartAgent": true,
             "errorMessage": "agency binary not found at '" + agentPath + "'"};
   }
-
-  var pid = executeExternal(agentPath, args);
+  var pid = executeExternal(agentPath, toArgv(args));
   var res;
   var count = 0;
   while (++count < 20) {
     wait(0.5);   // Wait a bit to give it time to startup
-    res = download("http://localhost:"+cmd.extPort+"/v2/keys/");
+    res = download(agencyUrl + "/v2/stats/self");
     if (res.code === 200) {
       return {"error":false, "isStartAgent": true, "pid": pid,
               "endpoint": "tcp://"+extEndpoint};
     }
+    res = statusExternal(pid, false);
+    if (res.status !== "RUNNING") {
+      return {"error":true, "isStartAgent": true,
+              "errorMessage": "agency failed to start:\n" + yaml.safeDump({"exit status": res})};
+    }
   }
+  killExternal(pid);
   return {"error":true, "isStartAgent": true,
-          "errorMessage": "agency did not come alive"};
+          "errorMessage": "agency did not come alive on time, giving up."};
 };
 
 launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
@@ -286,7 +298,7 @@ launchActions.sendConfiguration = function (dispatchers, cmd, isRelaunch) {
   if (res === true) {
     return {"error":false, "isSendConfiguration": true};
   }
-  return {"error":true, "isSendConfiguration": true, "suberror": res};
+  return {"error":true, "isSendConfiguration": true, "suberror": res, errorMessage : yaml.safeDump(res)};
 };
 
 launchActions.startServers = function (dispatchers, cmd, isRelaunch) {
@@ -976,7 +988,7 @@ Kickstarter.prototype.launch = function () {
   var cmds = clusterPlan.commands;
   var results = [];
   var cmd;
-
+  var errors = "";
   var error = false;
   var i;
   var res;
@@ -987,6 +999,7 @@ Kickstarter.prototype.launch = function () {
         res = launchActions[cmd.action](dispatchers, cmd, false);
         results.push(res);
         if (res.error === true) {
+          errors += "Launchjob " + cmd.action + " failed: " + res.errorMessage;
           error = true;
           break;
         }
@@ -1031,7 +1044,7 @@ Kickstarter.prototype.launch = function () {
   }
   this.runInfo = results;
   if (error) {
-    return {"error": true, "errorMessage": "some error during launch",
+    return {"error": true, "errorMessage": errors,
             "runInfo": results};
   }
   return {"error": false, "errorMessage": "none",

@@ -12,8 +12,7 @@
     cachedQuery: "",
 
     initialize: function () {
-      this.getAQL();
-      this.getSystemQueries();
+      this.refreshAQL();
       this.tableDescription.rows = this.customQueries;
     },
 
@@ -33,6 +32,7 @@
       'click #clearInput': 'clearInput',
       'click #clearQueryButton': 'clearInput',
       'click #addAQL': 'addAQL',
+      'mouseover #querySelect': function(){this.refreshAQL(true);},
       'change #querySelect': 'importSelected',
       'keypress #aqlEditor': 'aqlShortcuts',
       'click #arangoQueryTable .table-cell0': 'editCustomQuery',
@@ -188,7 +188,7 @@
 
       var sizeBox = $('#querySize');
       sizeBox.empty();
-      [ 100, 250, 500, 1000, 2500, 5000 ].forEach(function (value) {
+      [ 100, 250, 500, 1000, 2500, 5000, 10000 ].forEach(function (value) {
         sizeBox.append('<option value="' + _.escape(value) + '"' +
           (querySize === value ? ' selected' : '') +
           '>' + _.escape(value) + ' results</option>');
@@ -371,6 +371,9 @@
     },
 
     addAQL: function () {
+      //update queries first, before showing
+      this.refreshAQL(true);
+
       //render options
       this.createCustomQueryModal();
       $('#new-query-name').val($('#querySelect').val());
@@ -435,6 +438,10 @@
 
     saveAQL: function (e) {
       e.stopPropagation();
+
+      //update queries first, before writing
+      this.refreshAQL();
+
       var inputEditor = ace.edit("aqlEditor");
       var saveName = $('#new-query-name').val();
       var isUpdate = $('#modalButton1').text() === 'Update';
@@ -516,7 +523,20 @@
       return returnVal;
     },
 
+    refreshAQL: function(select) {
+      this.getAQL();
+      this.getSystemQueries();
+      this.updateLocalQueries();
+
+      if (select) {
+        var previous = $("#querySelect" ).val();
+        this.renderSelectboxes();
+        $("#querySelect" ).val(previous);
+      }
+    },
+
     importSelected: function (e) {
+
       var inputEditor = ace.edit("aqlEditor");
       $.each(this.queries, function (k, v) {
         if ($('#' + e.currentTarget.id).val() === v.name) {

@@ -1,11 +1,14 @@
 /*jshint unused: false */
 /*global require, start_pretty_print */
 
+var yaml = require("js-yaml");
+
 var UnitTest = require("org/arangodb/testing");
 
 var internalMembers = UnitTest.internalMembers;
 var fs = require("fs");
-var print = require("internal").print;
+var internal = require("internal");
+var print = internal.print;
 
 function makePathGeneric (path) {
   "use strict";
@@ -116,50 +119,53 @@ function resultsToXml(results, baseName) {
   }
 }
 
-
 function main (argv) {
   "use strict";
-
   var test = argv[1];
   var options = {};
-  var r;
   if (argv.length >= 3) {
     try {
-      options = JSON.parse(argv[2]);
+      if (argv[2].slice(0,1) === '{') {
+        options = JSON.parse(argv[2]);
+      }
+      else {
+        options = internal.parseArgv(argv, 2);
+      }
     }
     catch (x) {
-      print("failed to parse the json options");
-      print(x);
+      print("failed to parse the json options: " + x.message);
       return -1;
     }
   }
   options.jsonReply = true;
   start_pretty_print();
+  var r = { };
 
   try {
-    r = UnitTest.UnitTest(test,options); 
+    r = UnitTest.UnitTest(test, options) || { };
   }
   catch (x) {
-    print("Caught exception during test execution!");
+    print("caught exception during test execution!");
     print(x.message);
+    print(x.stack);
     print(JSON.stringify(r));
   }
-  fs.write("UNITTEST_RESULT.json",JSON.stringify(r));
-  fs.write("UNITTEST_RESULT_SUMMARY.txt",JSON.stringify(!r.crashed));
+
+  fs.write("UNITTEST_RESULT.json", JSON.stringify(r));
+  fs.write("UNITTEST_RESULT_SUMMARY.txt", JSON.stringify(! r.crashed));
+
   try {
     resultsToXml(r, "UNITTEST_RESULT_");
   }
   catch (x) {
-    print("Exception while serializing status xml!");
+    print("exception while serializing status xml!");
     print(x.message);
     print(JSON.stringify(r));
   }
 
   UnitTest.unitTestPrettyPrintResults(r);
-  if (r.hasOwnProperty("crashed") && (r.crashed)) {
+  if (r.hasOwnProperty("crashed") && r.crashed) {
     return -1;
   }
-  else {
-    return 0;
-  }
+  return 0;
 }

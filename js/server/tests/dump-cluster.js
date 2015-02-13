@@ -232,23 +232,50 @@ function dumpTestSuite () {
       assertFalse(p.waitForSync);
       assertFalse(p.isVolatile);
 
-      assertEqual(6, c.getIndexes().length); 
+      assertEqual(10, c.getIndexes().length); 
       assertEqual("primary", c.getIndexes()[0].type);
+
       assertEqual("hash", c.getIndexes()[1].type);
       assertTrue(c.getIndexes()[1].unique);
+      assertFalse(c.getIndexes()[1].sparse);
       assertEqual([ "a_uc" ], c.getIndexes()[1].fields);
+
       assertEqual("skiplist", c.getIndexes()[2].type);
       assertFalse(c.getIndexes()[2].unique);
+      assertFalse(c.getIndexes()[2].sparse);
       assertEqual([ "a_s1", "a_s2" ], c.getIndexes()[2].fields);
+
       assertFalse(c.getIndexes()[3].unique);
       assertEqual("fulltext", c.getIndexes()[3].type);
       assertEqual([ "a_f" ], c.getIndexes()[3].fields);
+
       assertEqual("geo2", c.getIndexes()[4].type);
       assertEqual([ "a_la", "a_lo" ], c.getIndexes()[4].fields);
       assertFalse(c.getIndexes()[4].unique);
+
       assertEqual("cap", c.getIndexes()[5].type);
       assertEqual(1000, c.getIndexes()[5].size);
       assertEqual(1048576, c.getIndexes()[5].byteSize);
+
+      assertEqual("hash", c.getIndexes()[6].type);
+      assertFalse(c.getIndexes()[6].unique);
+      assertFalse(c.getIndexes()[6].sparse);
+      assertEqual([ "a_h1", "a_h2" ], c.getIndexes()[6].fields);
+
+      assertEqual("skiplist", c.getIndexes()[7].type);
+      assertTrue(c.getIndexes()[7].unique);
+      assertFalse(c.getIndexes()[7].sparse);
+      assertEqual([ "a_su" ], c.getIndexes()[7].fields);
+
+      assertEqual("hash", c.getIndexes()[8].type);
+      assertFalse(c.getIndexes()[8].unique);
+      assertTrue(c.getIndexes()[8].sparse);
+      assertEqual([ "a_hs1", "a_hs2" ], c.getIndexes()[8].fields);
+
+      assertEqual("skiplist", c.getIndexes()[9].type);
+      assertFalse(c.getIndexes()[9].unique);
+      assertTrue(c.getIndexes()[9].sparse);
+      assertEqual([ "a_ss1", "a_ss2" ], c.getIndexes()[9].fields);
 
       assertEqual(0, c.count());
     },
