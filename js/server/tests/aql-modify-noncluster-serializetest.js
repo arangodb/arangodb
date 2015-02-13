@@ -127,7 +127,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -143,7 +143,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
      assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -159,7 +159,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -175,7 +175,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -191,7 +191,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -207,7 +207,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -223,7 +223,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -240,7 +240,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(50, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -256,7 +256,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(99, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -273,7 +273,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(0, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -290,7 +290,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(2, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -307,7 +307,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(0, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -324,7 +324,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(50, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -340,7 +340,7 @@ function ahuacatlRemoveSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(0, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -357,7 +357,7 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(90, edge.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -484,7 +484,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn2 }, this);
 
       assertEqual(101, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -500,7 +500,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -516,7 +516,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn2 }, this);
 
       assertEqual(100, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -532,7 +532,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn1 }, this);
 
       assertEqual(200, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -549,7 +549,7 @@ function ahuacatlInsertSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(100, c2.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -566,7 +566,7 @@ function ahuacatlInsertSuite () {
 
       assertEqual(101, c1.count());
       assertEqual("foobar", c1.document("test").value);
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }
@@ -582,7 +582,7 @@ function ahuacatlInsertSuite () {
       var allresults = getQueryMultiplePlansAndExecutions(query, { "@cn": cn2 }, this);
 
       assertEqual(100, c1.count());
-      for (var i=0; i <  allresults.results.length; i++) {
+      for (var i = 0; i <  allresults.results.length; i++) {
         assertEqual(expected, allresults.results[i].stats,
                     "comparing " + i + " : "  + allresults.results[i].stats);
       }

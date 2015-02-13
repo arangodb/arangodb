@@ -2712,6 +2712,8 @@ bool FilterBlock::getBlock (size_t atLeast, size_t atMost) {
       }
     }
 
+    _engine->_stats.filtered += (cur->size() - _chosen.size());
+
     if (! _chosen.empty()) {
       break;   // OK, there are some docs in the result
     }

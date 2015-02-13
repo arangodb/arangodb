@@ -68,6 +68,7 @@ namespace triagens {
         scannedFull    += summand.scannedFull;
         scannedIndex   += summand.scannedIndex;
         fullCount      += summand.fullCount;
+        filtered       += summand.filtered;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -80,6 +81,7 @@ namespace triagens {
         scannedFull    += newStats.scannedFull    - lastStats.scannedFull;
         scannedIndex   += newStats.scannedIndex   - lastStats.scannedIndex;
         fullCount      += newStats.fullCount      - lastStats.fullCount;
+        filtered       += newStats.filtered       - lastStats.filtered;
       }
 
 
@@ -106,6 +108,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       int64_t scannedIndex; 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of documents filtered away
+////////////////////////////////////////////////////////////////////////////////
+
+      int64_t filtered; 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief total number of results, before applying last limit

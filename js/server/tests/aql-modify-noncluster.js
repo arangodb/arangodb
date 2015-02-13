@@ -44,6 +44,7 @@ var sanitizeStats = function (stats) {
   // for the comparisons
   delete stats.scannedFull;
   delete stats.scannedIndex;
+  delete stats.filtered;
   return stats;
 };
 
