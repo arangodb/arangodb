@@ -213,7 +213,7 @@ function RequestSuite () {
 
     testUrlObject: function () {
       var path = url.parse(buildUrl('/lol'));
-      var res = request.post({url: path});
+      var res = request.post({url: path, timeout: 300});
       expect(res).to.be.a(request.Response);
       var obj = JSON.parse(res.body);
       expect(obj.url).to.equal(path.pathname);
@@ -225,7 +225,7 @@ function RequestSuite () {
 
     test404: function () {
       var url = buildUrlBroken('/lol');
-      var res = request.get(url);
+      var res = request.get(url, {timeout: 300});
       expect(res).to.be.a(request.Response);
       expect(res).to.have.property('message', 'Not Found');
       expect(res).to.have.property('statusCode', 404);
