@@ -1071,6 +1071,7 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
 #else
     {
       char windowsErrorBuf[256];
+      bool wantGetExitCode = wait;
       if (wait) {
         DWORD result;
         result = WaitForSingleObject(external->_process, INFINITE);
@@ -1092,7 +1093,6 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
         }
       }
       else {
-        bool wantGetExitCode = false;
         DWORD result;
         result = WaitForSingleObject(external->_process, 0);
         switch (result) {
@@ -1100,13 +1100,10 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
           wantGetExitCode = true;
           LOG_WARNING("WAIT_ABANDONED while waiting for subprocess with PID '%ud'",
                       (unsigned int)external->_pid);
-
           break;
         case WAIT_OBJECT_0:
           /// this seems to be the exit case - want getExitCodeProcess here.
           wantGetExitCode = true;
-          LOG_WARNING("WAIT_OBJECT_0 while waiting for subprocess with PID '%ud'",
-                      (unsigned int)external->_pid);
           break;
         case WAIT_TIMEOUT:
           // success - everything went well.
@@ -1133,28 +1130,35 @@ TRI_external_status_t TRI_CheckExternalProcess (TRI_external_id_t pid,
                       (unsigned int)external->_pid);
 
         }
-
-        if (wantGetExitCode) {
-          DWORD exitCode = STILL_ACTIVE;
-          if (!GetExitCodeProcess(external->_process, &exitCode)) {
-            LOG_WARNING("exit status could not be determined for PID '%ud'",
-                        (unsigned int)external->_pid);
-            status._errorMessage =
-              std::string("exit status could not be determined for PID '") +
-              triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
-              std::string("'");
+      }
+      if (wantGetExitCode) {
+        DWORD exitCode = STILL_ACTIVE;
+        if (!GetExitCodeProcess(external->_process, &exitCode)) {
+          LOG_WARNING("exit status could not be determined for PID '%ud'",
+                      (unsigned int)external->_pid);
+          status._errorMessage =
+            std::string("exit status could not be determined for PID '") +
+            triagens::basics::StringUtils::itoa(static_cast<int64_t>(external->_pid)) +
+            std::string("'");
+        }
+        else {
+          if (exitCode == STILL_ACTIVE) {
+            external->_exitStatus = 0;
+          }
+          else if (exitCode > 255) {
+            // this should be one of our signals which we mapped...
+            external->_status = TRI_EXT_ABORTED;
+            external->_exitStatus = exitCode - 255;            
           }
           else {
-            std::cout << "exitCode: " << exitCode;
-            if (exitCode == STILL_ACTIVE) {
-              external->_exitStatus = 0;
-            }
-            else {
-              external->_status = TRI_EXT_TERMINATED;
-              external->_exitStatus = exitCode;
-            }
+            external->_status = TRI_EXT_TERMINATED;
+            external->_exitStatus = exitCode;
           }
         }
+      }
+      else
+      {
+        external->_status = TRI_EXT_RUNNING;
       }
     }
 #endif

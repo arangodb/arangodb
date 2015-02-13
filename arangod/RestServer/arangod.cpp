@@ -34,6 +34,7 @@
 #include "Basics/tri-strings.h"
 #include "Rest/InitialiseRest.h"
 #include "RestServer/ArangoServer.h"
+#include <signal.h>
 
 using namespace triagens;
 using namespace triagens::rest;
@@ -79,6 +80,21 @@ static SERVICE_STATUS_HANDLE ServiceStatus;
 
 static void TRI_GlobalEntryFunction ();
 static void TRI_GlobalExitFunction (int, void*);
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief handle fatal SIGNALs; print backtrace,
+///        and rethrow signal for coredumps.
+////////////////////////////////////////////////////////////////////////////////
+void abortHandler(int signum) {
+       TRI_PrintBacktrace();
+#ifdef _WIN32
+       exit(255 + signum);
+#else
+       signal(signum, SIG_DFL);
+       kill(getpid(), signum);
+#endif
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global entry function
