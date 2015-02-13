@@ -5806,7 +5806,13 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
   params.weight = options.weight;
   params.defaultWeight = options.defaultWeight;
   params = SHORTEST_PATH_PARAMS(params);
-  params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
+  // add user-defined visitor, if specified
+  if (typeof options.visitor === "string") {
+    params.visitor = GET_VISITOR(options.visitor, params);
+  }
+  else {
+    params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
+  }
   var result = [], fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options),
     toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
 
