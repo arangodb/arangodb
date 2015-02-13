@@ -206,7 +206,15 @@ bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& HttpHandlerFactory::authenticationRealm (HttpRequest*) const {
+string HttpHandlerFactory::authenticationRealm (HttpRequest* request) const {
+  auto context = request->getRequestContext();
+  if (context != nullptr) {
+    auto realm = context->getRealm();
+
+    if (realm != nullptr) {
+      return _authenticationRealm + "/" + std::string(realm);
+    }
+  }
   return _authenticationRealm;
 }
 
