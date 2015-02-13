@@ -127,11 +127,11 @@ static v8::Handle<v8::Value> IndexRep (v8::Isolate* isolate,
 /// @brief process the fields list and add them to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexFields (v8::Isolate* isolate,
-                        v8::Handle<v8::Object> const obj,
-                        TRI_json_t* json,
-                        int numFields,
-                        bool create) {
+static int ProcessIndexFields (v8::Isolate* isolate,
+                               v8::Handle<v8::Object> const obj,
+                               TRI_json_t* json,
+                               int numFields,
+                               bool create) {
   v8::HandleScope scope(isolate);
   set<string> fields;
 
@@ -178,13 +178,14 @@ int ProcessIndexFields (v8::Isolate* isolate,
 
   return TRI_ERROR_NO_ERROR;
 }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the geojson flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
-                             v8::Handle<v8::Object> const obj,
-                             TRI_json_t* json) {
+static int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
+                                    v8::Handle<v8::Object> const obj,
+                                    TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool geoJson = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("geoJson"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, geoJson));
@@ -193,13 +194,33 @@ int ProcessIndexGeoJsonFlag (v8::Isolate* isolate,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief process the sparse flag and add it to the json
+////////////////////////////////////////////////////////////////////////////////
+
+static int ProcessIndexSparseFlag (v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   TRI_json_t* json, 
+                                   bool create) {
+  v8::HandleScope scope(isolate);
+  if (obj->Has(TRI_V8_ASCII_STRING("sparse"))) {
+    bool sparse = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("sparse"), false);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, sparse));
+  }
+  else if (create) {
+    // not set. now add a default value
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief process the unique flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexUniqueFlag (v8::Isolate* isolate,
-                            v8::Handle<v8::Object> const obj,
-                            TRI_json_t* json,
-                            bool fillConstraint = false) {
+static int ProcessIndexUniqueFlag (v8::Isolate* isolate,
+                                   v8::Handle<v8::Object> const obj,
+                                   TRI_json_t* json,
+                                   bool fillConstraint = false) {
   v8::HandleScope scope(isolate);
   bool unique = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
@@ -214,26 +235,12 @@ int ProcessIndexUniqueFlag (v8::Isolate* isolate,
 /// @brief process the ignoreNull flag and add it to the json
 ////////////////////////////////////////////////////////////////////////////////
 
-int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
-                                v8::Handle<v8::Object> const obj,
-                                TRI_json_t* json) {
+static int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
+                                       v8::Handle<v8::Object> const obj,
+                                       TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool ignoreNull = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("ignoreNull"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the undefined flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-int ProcessIndexUndefinedFlag (v8::Isolate* isolate,
-                               v8::Handle<v8::Object> const obj,
-                               TRI_json_t* json) {
-  v8::HandleScope scope(isolate);
-  bool undefined = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("undefined"), false);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "undefined", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, undefined));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -276,6 +283,7 @@ static int EnhanceJsonIndexHash (v8::Isolate* isolate,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(isolate, obj, json, 0, create);
+  ProcessIndexSparseFlag(isolate, obj, json, create);
   ProcessIndexUniqueFlag(isolate, obj, json);
   return res;
 }
@@ -289,6 +297,7 @@ static int EnhanceJsonIndexSkiplist (v8::Isolate* isolate,
                                      TRI_json_t* json,
                                      bool create) {
   int res = ProcessIndexFields(isolate, obj, json, 0, create);
+  ProcessIndexSparseFlag(isolate, obj, json, create);
   ProcessIndexUniqueFlag(isolate, obj, json);
   return res;
 }
@@ -528,7 +537,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   TRI_ASSERT(collection != nullptr);
   TRI_ASSERT(json != nullptr);
 
@@ -540,11 +548,20 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   TRI_idx_type_e type = TRI_TypeIndex(value->_value._string.data);
 
-  // extract unique
+  // extract unique flag
   bool unique = false;
   value = TRI_LookupObjectJson(json, "unique");
   if (TRI_IsBooleanJson(value)) {
     unique = value->_value._boolean;
+  }
+  
+  // extract sparse flag
+  bool sparse = false;
+  int sparsity = -1; // not set
+  value = TRI_LookupObjectJson(json, "sparse");
+  if (TRI_IsBooleanJson(value)) {
+    sparse = value->_value._boolean;
+    sparsity = sparse ? 1 : 0;
   }
 
   TRI_vector_pointer_t attributes;
@@ -703,12 +720,14 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
         idx = TRI_EnsureHashIndexDocumentCollection(document,
                                                     iid,
                                                     &attributes,
+                                                    sparse,
                                                     unique,
                                                     &created);
       }
       else {
         idx = TRI_LookupHashIndexDocumentCollection(document,
                                                     &attributes,
+                                                    sparsity,
                                                     unique);
       }
 
@@ -728,12 +747,14 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
         idx = TRI_EnsureSkiplistIndexDocumentCollection(document,
                                                         iid,
                                                         &attributes,
+                                                        sparse,
                                                         unique,
                                                         &created);
       }
       else {
         idx = TRI_LookupSkiplistIndexDocumentCollection(document,
                                                         &attributes,
+                                                        sparsity,
                                                         unique);
       }
       break;
@@ -849,7 +870,6 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-
   TRI_vocbase_col_t* collection = TRI_UnwrapClass<TRI_vocbase_col_t>(args.Holder(), WRP_VOCBASE_COL_TYPE);
 
   if (collection == nullptr) {
@@ -864,7 +884,6 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   TRI_json_t* json = nullptr;
   int res = EnhanceIndexJson(args, json, create);
-
 
   if (res == TRI_ERROR_NO_ERROR &&
       ServerState::instance()->isCoordinator()) {

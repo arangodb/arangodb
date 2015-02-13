@@ -1197,7 +1197,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateUniqueConstraint3 : function () {
-      c3.ensureUniqueConstraint("value3");
+      c3.ensureUniqueConstraint("value3", { sparse: true });
       assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPDATE d._key WITH { value3: 1 } IN @@cn", { "@cn": cn3 });
     },
 
@@ -1206,7 +1206,7 @@ function ahuacatlUpdateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testUpdateIgnore1 : function () {
-      c3.ensureUniqueConstraint("value3");
+      c3.ensureUniqueConstraint("value3", { sparse: true });
       var expected = { writesExecuted: 1, writesIgnored: 99 };
       var actual = getModifyQueryResults("FOR d IN @@cn UPDATE d WITH { value3: 1 } IN @@cn OPTIONS { ignoreErrors: true }", { "@cn": cn3 });
 

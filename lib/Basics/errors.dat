@@ -306,7 +306,7 @@ ERROR_GRAPH_COULD_NOT_CHANGE_VERTEX,1905,"could not change vertex","Will be rais
 ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edge id is passed to the server."
 ERROR_GRAPH_COULD_NOT_CREATE_EDGE,1907,"could not create edge","Will be raised when the edge could not be created."
 ERROR_GRAPH_COULD_NOT_CHANGE_EDGE,1908,"could not change edge","Will be raised when the edge could not be changed."
-ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations","Will be raised when too many iterations are done in a graph traversal."
+ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations - try increasing the value of 'maxIterations'","Will be raised when too many iterations are done in a graph traversal."
 ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised when an invalid filter result is returned in a graph traversal."
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
@@ -358,10 +358,8 @@ ERROR_CANNOT_EXTRACT_APPLICATION_ROOT,3003,"unable to extract app root path","Th
 ## results, which are not errors
 ################################################################################
 
-RESULT_KEY_EXISTS,10000,"element not inserted into structure, because key already exists","Will be returned if the element was not insert because the key already exists."
-RESULT_ELEMENT_EXISTS,10001,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
-RESULT_KEY_NOT_FOUND,10002,"key not found in structure","Will be returned if the key was not found in the structure."
-RESULT_ELEMENT_NOT_FOUND,10003,"element not found in structure","Will be returned if the element was not found in the structure."
+RESULT_ELEMENT_EXISTS,10000,"element not inserted into structure, because it already exists","Will be returned if the element was not insert because it already exists."
+RESULT_ELEMENT_NOT_FOUND,10001,"element not found in structure","Will be returned if the element was not found in the structure."
 
 ################################################################################
 ## foxx app update via github

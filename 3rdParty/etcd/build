@@ -1,12 +1,18 @@
-#!/bin/sh -e
+#!/bin/bash -e
 
-if [ ! -h src/github.com/coreos/etcd ]; then
-	mkdir -p src/github.com/coreos/
-	ln -s ../../.. src/github.com/coreos/etcd
-fi
+ORG_PATH="github.com/coreos"
+REPO_PATH="${ORG_PATH}/etcd"
 
-export GOBIN=${PWD}/bin
-export GOPATH=${PWD}
+export GOPATH=${PWD}/gopath
 
-go install github.com/coreos/etcd
-go install github.com/coreos/etcd/bench
+rm -f $GOPATH/src/${REPO_PATH}
+mkdir -p $GOPATH/src/${ORG_PATH}
+ln -s ${PWD} $GOPATH/src/${REPO_PATH}
+
+eval $(go env)
+
+# Static compilation is useful when etcd is run in a container
+CGO_ENABLED=0 go build -a -ldflags '-s' -o bin/etcd ${REPO_PATH}
+CGO_ENABLED=0 go build -a -ldflags '-s' -o bin/etcdctl ${REPO_PATH}/etcdctl
+go build -o bin/etcd-migrate ${REPO_PATH}/tools/etcd-migrate
+go build -o bin/etcd-dump-logs ${REPO_PATH}/tools/etcd-dump-logs

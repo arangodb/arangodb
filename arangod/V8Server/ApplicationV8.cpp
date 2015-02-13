@@ -275,6 +275,7 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
     _useActions(true),
     _developmentMode(false),
     _frontendDevelopmentMode(false),
+    _frontendVersionCheck(true),
     _gcInterval(1000),
     _gcFrequency(10.0),
     _v8Options(""),
@@ -984,6 +985,7 @@ void ApplicationV8::setupOptions (map<string, basics::ProgramOptionsDescription>
 
   options["Hidden Options"]
     ("javascript.frontend-development", &_frontendDevelopmentMode, "allows rebuild frontend assets")
+    ("frontend-version-check", &_frontendVersionCheck, "show new versions in the frontend")
 
     // deprecated options
     ("javascript.action-directory", &DeprecatedPath, "path to the JavaScript action directory (deprecated)")
@@ -1348,6 +1350,7 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
       TRI_AddGlobalVariableVocbase(isolate, localContext,   TRI_V8_ASCII_STRING("DEV_APP_PATH"),        TRI_V8_STD_STRING(_devAppPath));
       TRI_AddGlobalVariableVocbase(isolate, localContext,   TRI_V8_ASCII_STRING("DEVELOPMENT_MODE"),    v8::Boolean::New(isolate, _developmentMode));
       TRI_AddGlobalVariableVocbase(isolate, localContext,   TRI_V8_ASCII_STRING("FE_DEVELOPMENT_MODE"), v8::Boolean::New(isolate, _frontendDevelopmentMode));
+      TRI_AddGlobalVariableVocbase(isolate, localContext,   TRI_V8_ASCII_STRING("FE_VERSION_CHECK"),    v8::Boolean::New(isolate, _frontendVersionCheck));
 
       for (auto j : _definedBooleans) {
         localContext->Global()->ForceSet(TRI_V8_STD_STRING(j.first), v8::Boolean::New(isolate, j.second), v8::ReadOnly);

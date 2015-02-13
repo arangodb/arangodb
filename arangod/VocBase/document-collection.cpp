@@ -3055,6 +3055,7 @@ static int FillIndex (TRI_document_collection_t* document,
 static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t* collection,
                                                        TRI_vector_t const* paths,
                                                        TRI_idx_type_e type,
+                                                       int sparsity,
                                                        bool unique,
                                                        bool allowAnyAttributeOrder) {
   TRI_vector_t* indexPaths = nullptr;
@@ -3066,11 +3067,15 @@ static TRI_index_t* LookupPathIndexDocumentCollection (TRI_document_collection_t
   for (size_t j = 0;  j < collection->_allIndexes._length;  ++j) {
     TRI_index_t* idx = static_cast<TRI_index_t*>(collection->_allIndexes._buffer[j]);
 
+    int indexSparsity = idx->_sparse ? 1 : 0;
+
     // .........................................................................
-    // check if the type of the index matches
+    // check if the type, uniqueness and sparsity of the indexes match
     // .........................................................................
 
-    if (idx->_type != type || idx->_unique != unique) {
+    if (idx->_type != type || 
+        idx->_unique != unique ||
+        (sparsity != -1 && sparsity != indexSparsity)) {
       continue;
     }
 
@@ -3172,11 +3177,11 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
                                                            TRI_vector_pointer_t const*,
                                                            TRI_idx_iid_t,
                                                            bool,
+                                                           bool,
                                                            bool*),
                                    TRI_index_t** dst) {
   TRI_json_t* bv;
   TRI_vector_pointer_t attributes;
-  bool unique;
   size_t fieldCount;
 
   if (dst != nullptr) {
@@ -3192,12 +3197,12 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
 
   // extract the list of fields
   if (fieldCount < 1) {
-    LOG_ERROR("ignoring index %llu, need at least one attribute path",(unsigned long long) iid);
+    LOG_ERROR("ignoring index %llu, need at least one attribute path", (unsigned long long) iid);
 
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  // determine if the hash index is unique or non-unique
+  // determine if the index is unique or non-unique
   bv = TRI_LookupObjectJson(definition, "unique");
 
   if (! TRI_IsBooleanJson(bv)) {
@@ -3205,7 +3210,29 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
     return TRI_set_errno(TRI_ERROR_BAD_PARAMETER);
   }
 
-  unique = bv->_value._boolean;
+  bool unique = bv->_value._boolean;
+
+  // determine sparsity
+  bool sparse = false;
+
+  bv = TRI_LookupObjectJson(definition, "sparse"); 
+
+  if (TRI_IsBooleanJson(bv)) {
+    sparse = bv->_value._boolean;
+  }
+  else {
+    // no sparsity information given for index
+    // now use pre-2.5 defaults: unique hash indexes were sparse, all other indexes were non-sparse
+    bool isHashIndex = false;
+    TRI_json_t const* typeJson = TRI_LookupObjectJson(definition, "type");
+    if (TRI_IsStringJson(typeJson)) {
+      isHashIndex = (strcmp(typeJson->_value._string.data, "hash") == 0);
+    }
+
+    if (isHashIndex && unique) {
+      sparse = true;
+    } 
+  }
 
   // Initialise the vector in which we store the fields on which the hashing
   // will be based.
@@ -3219,7 +3246,7 @@ static int PathBasedIndexFromJson (TRI_document_collection_t* document,
   }
 
   // create the index
-  TRI_index_t* idx = creator(document, &attributes, iid, unique, nullptr);
+  TRI_index_t* idx = creator(document, &attributes, iid, sparse, unique, nullptr);
 
   if (dst != nullptr) {
     *dst = idx;
@@ -4118,6 +4145,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t* document,
                                                        TRI_vector_pointer_t const* attributes,
                                                        TRI_idx_iid_t iid,
+                                                       bool sparse,
                                                        bool unique,
                                                        bool* created) {
   TRI_vector_pointer_t fields;
@@ -4145,7 +4173,8 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
   // a new one.
   // ...........................................................................
 
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, false);
+  int sparsity = sparse ? 1 : 0;
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, sparsity, unique, false);
 
   if (idx != nullptr) {
     TRI_DestroyVector(&paths);
@@ -4165,6 +4194,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
                             iid,
                             &fields,
                             &paths,
+                            sparse,
                             unique);
 
   if (idx == nullptr) {
@@ -4183,6 +4213,7 @@ static TRI_index_t* CreateHashIndexDocumentCollection (TRI_document_collection_t
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_FreeHashIndex(idx);
+    TRI_set_errno(res);
 
     return nullptr;
   }
@@ -4225,6 +4256,7 @@ static int HashIndexFromJson (TRI_document_collection_t* document,
 
 TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* document,
                                                     TRI_vector_pointer_t const* attributes,
+                                                    int sparsity,
                                                     bool unique) {
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4241,7 +4273,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
     return nullptr;
   }
 
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, unique, true);
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_HASH_INDEX, sparsity, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -4257,6 +4289,7 @@ TRI_index_t* TRI_LookupHashIndexDocumentCollection (TRI_document_collection_t* d
 TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* document,
                                                     TRI_idx_iid_t iid,
                                                     TRI_vector_pointer_t const* attributes,
+                                                    bool sparse,
                                                     bool unique,
                                                     bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4268,7 +4301,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
   // given the list of attributes (as strings)
-  TRI_index_t* idx = CreateHashIndexDocumentCollection(document, attributes, iid, unique, created);
+  TRI_index_t* idx = CreateHashIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4306,6 +4339,7 @@ TRI_index_t* TRI_EnsureHashIndexDocumentCollection (TRI_document_collection_t* d
 static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
                                                            TRI_vector_pointer_t const* attributes,
                                                            TRI_idx_iid_t iid,
+                                                           bool sparse,
                                                            bool unique,
                                                            bool* created) {
   TRI_vector_pointer_t fields;
@@ -4332,7 +4366,8 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   // a new one.
   // ...........................................................................
 
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, false);
+  int sparsity = sparse ? 1 : 0;
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity, unique, false);
 
   if (idx != nullptr) {
     TRI_DestroyVector(&paths);
@@ -4347,7 +4382,7 @@ static TRI_index_t* CreateSkiplistIndexDocumentCollection (TRI_document_collecti
   }
 
   // Create the skiplist index
-  idx = TRI_CreateSkiplistIndex(document, iid, &fields, &paths, unique);
+  idx = TRI_CreateSkiplistIndex(document, iid, &fields, &paths, sparse, unique);
 
   if (idx == nullptr) {
     TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
@@ -4406,6 +4441,7 @@ static int SkiplistIndexFromJson (TRI_document_collection_t* document,
 
 TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_vector_pointer_t const* attributes,
+                                                        int sparsity,
                                                         bool unique) {
   TRI_vector_pointer_t fields;
   TRI_vector_t paths;
@@ -4422,7 +4458,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
     return nullptr;
   }
 
-  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, unique, true);
+  TRI_index_t* idx = LookupPathIndexDocumentCollection(document, &paths, TRI_IDX_TYPE_SKIPLIST_INDEX, sparsity, unique, true);
 
   // release memory allocated to vector
   TRI_DestroyVector(&paths);
@@ -4438,6 +4474,7 @@ TRI_index_t* TRI_LookupSkiplistIndexDocumentCollection (TRI_document_collection_
 TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_t* document,
                                                         TRI_idx_iid_t iid,
                                                         TRI_vector_pointer_t const* attributes,
+                                                        bool sparse,
                                                         bool unique,
                                                         bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
@@ -4448,7 +4485,7 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, unique, created);
+  TRI_index_t* idx = CreateSkiplistIndexDocumentCollection(document, attributes, iid, sparse, unique, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4480,8 +4517,8 @@ TRI_index_t* TRI_EnsureSkiplistIndexDocumentCollection (TRI_document_collection_
 // -----------------------------------------------------------------------------
 
 static TRI_index_t* LookupFulltextIndexDocumentCollection (TRI_document_collection_t* document,
-                                                           const char* attributeName,
-                                                           const bool indexSubstrings,
+                                                           char const* attributeName,
+                                                           bool indexSubstrings,
                                                            int minWordLength) {
   TRI_ASSERT(attributeName != nullptr);
 
@@ -4654,9 +4691,7 @@ TRI_index_t* TRI_LookupFulltextIndexDocumentCollection (TRI_document_collection_
                                                         char const* attributeName,
                                                         bool indexSubstrings,
                                                         int minWordLength) {
-  TRI_index_t* idx = LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
-
-  return idx;
+  return LookupFulltextIndexDocumentCollection(document, attributeName, indexSubstrings, minWordLength);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

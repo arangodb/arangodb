@@ -1,0 +1,5 @@
+{
+  "name": "malformed-setup-path",
+  "version": "0.0.0",
+  "setup": "/illegal/file/name/"
+}

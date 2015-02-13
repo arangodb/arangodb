@@ -988,6 +988,7 @@
       var postParameter = {};
       var fields;
       var unique;
+      var sparse;
 
       switch (indexType) {
         case 'Cap':
@@ -1016,10 +1017,12 @@
         case 'Hash':
           fields = $('#newHashFields').val();
           unique = self.checkboxToValue('#newHashUnique');
+          sparse = self.checkboxToValue('#newHashSparse');
           postParameter = {
             type: 'hash',
             fields: self.stringToArray(fields),
-            unique: unique
+            unique: unique,
+            sparse: sparse
           };
           break;
         case 'Fulltext':
@@ -1034,16 +1037,18 @@
         case 'Skiplist':
           fields = $('#newSkiplistFields').val();
           unique = self.checkboxToValue('#newSkiplistUnique');
+          sparse = self.checkboxToValue('#newSkiplistSparse');
           postParameter = {
             type: 'skiplist',
             fields: self.stringToArray(fields),
-            unique: unique
+            unique: unique,
+            sparse: sparse
           };
           break;
       }
       result = self.collectionModel.createIndex(postParameter);
       if (result === true) {
-        $('#collectionEditIndexTable tr').remove();
+        $('#collectionEditIndexTable tbody tr').remove();
         self.getIndex();
         self.toggleNewIndexView();
         self.resetIndexForms();
@@ -1117,12 +1122,14 @@
             (v.selectivityEstimate * 100).toFixed(2) + "%" : 
             "n/a"
           );
+          var sparse = (v.hasOwnProperty("sparse") ? v.sparse : "n/a");
 
           $('#collectionEditIndexTable').append(
             '<tr>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + indexId + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + v.type + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + v.unique + '</th>' +
+            '<th class=' + JSON.stringify(cssClass) + '>' + sparse + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + selectivity + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + fieldString + '</th>' +
             '<th class=' + JSON.stringify(cssClass) + '>' + actionString + '</th>' +

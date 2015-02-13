@@ -52,7 +52,7 @@ function SkipListSuite() {
 
   setUp : function () {
     internal.db._drop(cn);
-    collection = internal.db._create(cn, { waitForSync : false });
+    collection = internal.db._create(cn);
   },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -73,16 +73,17 @@ function SkipListSuite() {
   },
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test: hash index creation
+/// @brief test: index creation
 ////////////////////////////////////////////////////////////////////////////////
 
-    testCreationUniqueConstraint : function () {
+    testCreationUniqueSkiplist : function () {
       var idx = collection.ensureSkiplist("a");
       var id = idx.id;
 
       assertNotEqual(0, id);
       assertEqual("skiplist", idx.type);
       assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
@@ -91,6 +92,67 @@ function SkipListSuite() {
       assertEqual(id, idx.id);
       assertEqual("skiplist", idx.type);
       assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
+      assertEqual(["a"], idx.fields);
+      assertEqual(false, idx.isNewlyCreated);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: index creation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreationSparseUniqueSkiplist : function () {
+      var idx = collection.ensureSkiplist("a", { sparse: true });
+      var id = idx.id;
+
+      assertNotEqual(0, id);
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(true, idx.sparse);
+      assertEqual(["a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      idx = collection.ensureSkiplist("a", { sparse: true });
+
+      assertEqual(id, idx.id);
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(true, idx.sparse);
+      assertEqual(["a"], idx.fields);
+      assertEqual(false, idx.isNewlyCreated);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: index creation
+////////////////////////////////////////////////////////////////////////////////
+
+    testCreationSkiplistMixedSparsity : function () {
+      var idx = collection.ensureSkiplist("a", { sparse: true });
+      var id = idx.id;
+
+      assertNotEqual(0, id);
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(true, idx.sparse);
+      assertEqual(["a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      idx = collection.ensureSkiplist("a", { sparse: false });
+
+      assertNotEqual(id, idx.id);
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
+      assertEqual(["a"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+      id = idx.id;
+
+      idx = collection.ensureSkiplist("a", { sparse: false });
+
+      assertEqual(id, idx.id);
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
       assertEqual(["a"], idx.fields);
       assertEqual(false, idx.isNewlyCreated);
     },
@@ -106,6 +168,7 @@ function SkipListSuite() {
       assertNotEqual(0, id);
       assertEqual("skiplist", idx.type);
       assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
       assertEqual(["a","b"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
 
@@ -114,9 +177,9 @@ function SkipListSuite() {
       assertNotEqual(id, idx.id);
       assertEqual("skiplist", idx.type);
       assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
       assertEqual(["b","a"], idx.fields);
       assertEqual(true, idx.isNewlyCreated);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -128,6 +191,7 @@ function SkipListSuite() {
 
       assertEqual("skiplist", idx.type);
       assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
       assertEqual(["a"].sort(), idx.fields.sort());
       assertEqual(true, idx.isNewlyCreated);
 
@@ -397,6 +461,240 @@ function SkipListSuite() {
           }
         }
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: find documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueriesDocuments : function () {
+      var idx = collection.ensureSkiplist("value");
+
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(false, idx.sparse);
+      assertEqual(["value"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      for (var i = 0; i < 20; ++i) {
+        collection.save({ value: i % 10 });
+      }
+      collection.save({ value: null });
+      collection.save({ value: true });
+      collection.save({ });
+      
+      var result;
+
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", null]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", true]] }).toArray();
+      assertEqual(1, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 0]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 1]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 8]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 9]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 10]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 11]] }).toArray();
+      assertEqual(0, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", null]] }).toArray();
+      assertEqual(23, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", true]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 0]] }).toArray();
+      assertEqual(20, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 1]] }).toArray();
+      assertEqual(18, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 8]] }).toArray();
+      assertEqual(4, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 9]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 10]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 11]] }).toArray();
+      assertEqual(0, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", null]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", true]] }).toArray();
+      assertEqual(20, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 0]] }).toArray();
+      assertEqual(18, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 1]] }).toArray();
+      assertEqual(16, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 8]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 9]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 10]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 11]] }).toArray();
+      assertEqual(0, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", null]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", true]] }).toArray();
+      assertEqual(3, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 0]] }).toArray();
+      assertEqual(5, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 1]] }).toArray();
+      assertEqual(7, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 8]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 9]] }).toArray();
+      assertEqual(23, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 10]] }).toArray();
+      assertEqual(23, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 11]] }).toArray();
+      assertEqual(23, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", null]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", true]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 0]] }).toArray();
+      assertEqual(3, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 1]] }).toArray();
+      assertEqual(5, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 8]] }).toArray();
+      assertEqual(19, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 9]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 10]] }).toArray();
+      assertEqual(23, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 11]] }).toArray();
+      assertEqual(23, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: find documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueriesDocumentsSparse : function () {
+      var idx = collection.ensureSkiplist("value", { sparse: true });
+
+      assertEqual("skiplist", idx.type);
+      assertEqual(false, idx.unique);
+      assertEqual(true, idx.sparse);
+      assertEqual(["value"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      for (var i = 0; i < 20; ++i) {
+        collection.save({ value: i % 10 });
+      }
+      collection.save({ value: null });
+      collection.save({ value: true });
+      collection.save({ });
+      
+      var result;
+
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", null]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", true]] }).toArray();
+      assertEqual(1, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 0]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 1]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 8]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 9]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 10]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["==", 11]] }).toArray();
+      assertEqual(0, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", null]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", true]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 0]] }).toArray();
+      assertEqual(20, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 1]] }).toArray();
+      assertEqual(18, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 8]] }).toArray();
+      assertEqual(4, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 9]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 10]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", 11]] }).toArray();
+      assertEqual(0, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", null]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", true]] }).toArray();
+      assertEqual(20, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 0]] }).toArray();
+      assertEqual(18, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 1]] }).toArray();
+      assertEqual(16, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 8]] }).toArray();
+      assertEqual(2, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 9]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 10]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", 11]] }).toArray();
+      assertEqual(0, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", null]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", true]] }).toArray();
+      assertEqual(1, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 0]] }).toArray();
+      assertEqual(3, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 1]] }).toArray();
+      assertEqual(5, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 8]] }).toArray();
+      assertEqual(19, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 9]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 10]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<=", 11]] }).toArray();
+      assertEqual(21, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", null]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", true]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 0]] }).toArray();
+      assertEqual(1, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 1]] }).toArray();
+      assertEqual(3, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 8]] }).toArray();
+      assertEqual(17, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 9]] }).toArray();
+      assertEqual(19, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 10]] }).toArray();
+      assertEqual(21, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [["<", 11]] }).toArray();
+      assertEqual(21, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", null], ["<=", null ]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", null], ["<=", false ]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", null], ["<", true ]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">=", null], ["<=", true ]] }).toArray();
+      assertEqual(1, result.length);
+
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", null], ["<=", null ]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", null], ["<=", false ]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", null], ["<", true ]] }).toArray();
+      assertEqual(0, result.length);
+      result = collection.byConditionSkiplist(idx.id, { value: [[">", null], ["<=", true ]] }).toArray();
+      assertEqual(1, result.length);
     }
 
   };

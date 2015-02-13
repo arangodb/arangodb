@@ -99,6 +99,8 @@ var Planner = require("org/arangodb/cluster").Planner;
 var Kickstarter = require("org/arangodb/cluster").Kickstarter;
 
 var endpointToURL = require("org/arangodb/cluster/planner").endpointToURL;
+var toArgv = require("internal").toArgv;
+
 var serverCrashed = false;
 
 var optionsDefaults = { "cluster": false,
@@ -155,7 +157,7 @@ function printUsage () {
       else {
         oneFunctionDocumentation = '';
       }
-      if (allTests.indexOf(i) !== -1) {
+      if (allTests.indexOf(i) !== -1) { 
         checkAll = '[x]';
       }
       else {
@@ -247,6 +249,7 @@ function makeAuthorisationHeaders (options) {
 
 function startInstance (protocol, options, addArgs, testname) {
   // protocol must be one of ["tcp", "ssl", "unix"]
+  var startTime = time();
   var topDir = findTopDir();
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
@@ -268,7 +271,7 @@ function startInstance (protocol, options, addArgs, testname) {
     if (addArgs !== undefined) {
       extraargs = extraargs.concat(addArgs);
     }
-    dispatcher = {"endpoint":"tcp://localhost:",
+    dispatcher = {"endpoint":"tcp://127.0.0.1:",
                   "arangodExtraArgs": extraargs,
                   "username": "root",
                   "password": ""};
@@ -294,11 +297,23 @@ function startInstance (protocol, options, addArgs, testname) {
                          "valgrindTestname"       : testname
                         });
     instanceInfo.kickstarter = new Kickstarter(p.getPlan());
-    instanceInfo.kickstarter.launch();
+    var rc = instanceInfo.kickstarter.launch();
+    if (rc.error) {
+      print("Cluster startup failed: " + rc.errorMessage);
+      return false;
+    }
     var runInfo = instanceInfo.kickstarter.runInfo;
     var j = runInfo.length - 1;
     while (j > 0 && runInfo[j].isStartServers === undefined) {
       j--;
+    }
+
+    if ((runInfo.length === 0) ||
+        (runInfo[0].error === true))
+    {
+      var error = new Error();
+      error.errorMessage = yaml.safeDump(runInfo);
+      throw error;
     }
     var roles = runInfo[j].roles;
     var endpoints = runInfo[j].endpoints;
@@ -308,7 +323,7 @@ function startInstance (protocol, options, addArgs, testname) {
   else {   // single instance mode
     // We use the PortFinder to find a free port for our subinstance,
     // to this end, we have to fake a dummy dispatcher:
-    dispatcher = {endpoint: "tcp://localhost:", avoidPorts: {}, id: "me"};
+    dispatcher = {endpoint: "tcp://127.0.0.1:", avoidPorts: {}, id: "me"};
     var pf = new PortFinder([8529 + options.portOffset],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
@@ -363,7 +378,7 @@ function startInstance (protocol, options, addArgs, testname) {
       }
     }
   }
-
+  print("up and Running in " + (time () - startTime) + " seconds");
   return instanceInfo;
 }
 
@@ -664,6 +679,7 @@ function runThere (options, instanceInfo, file) {
   }
   catch (err) {
     r = err;
+      throw(err);
   }
   return r;
 }
@@ -1041,23 +1057,46 @@ testFuncs.shell_client = function(options) {
 testFuncs.config = function () {
   var topDir = findTopDir();
   var results = {};
-  var ts = ["arangod", "arangob", "arangodump", "arangoimp", "arangorestore",
+  var ts = ["arangod",
+            "arangob",
+            "arangodump",
+            "arangoimp",
+            "arangorestore",
             "arangosh"];
+  var args;
   var t;
   var i;
+  print("--------------------------------------------------------------------------------");
+  print("Absolut config tests");
+  print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
     t = ts[i];
+    args = {
+      "configuration" : fs.join(topDir,"etc","arangodb",t+".conf"),
+      "flatCommands"  : ["--help"]
+    };
     results[t] = executeAndWait(fs.join(topDir,"bin",t),
-        ["--configuration", fs.join(topDir,"etc","arangodb",t+".conf"),
-         "--help"]);
-    print("Config test "+t+"...",results[t].status);
+                                toArgv(args));
+    print("Args for [" + t + "]:");
+    print(yaml.safeDump(args));
+    print("Result: " + results[t].status);
   }
+  print("--------------------------------------------------------------------------------");
+  print("relative config tests");
+  print("--------------------------------------------------------------------------------");
   for (i = 0; i < ts.length; i++) {
     t = ts[i];
+
+    args = {
+      "configuration" : fs.join(topDir,"etc","relative",t+".conf"),
+      "flatCommands"  : ["--help"]
+    };
+
     results[t+"_rel"] = executeAndWait(fs.join(topDir,"bin",t),
-        ["--configuration", fs.join(topDir,"etc","relative",
-                                    t+".conf"), "--help"]);
-    print("Config test "+t+" (relative)...",results[t+"_rel"].status);
+                                       toArgv(args));
+    print("Args for (relative) [" + t + "]:");
+    print(yaml.safeDump(args));
+    print("Result: " + results[t + "_rel"].status);
   }
 
   return results;
@@ -1325,7 +1364,7 @@ testFuncs.upgrade = function (options) {
 
   // We use the PortFinder to find a free port for our subinstance,
   // to this end, we have to fake a dummy dispatcher:
-  var dispatcher = {endpoint: "tcp://localhost:", avoidPorts: [], id: "me"};
+  var dispatcher = {endpoint: "tcp://127.0.0.1:", avoidPorts: [], id: "me"};
   var pf = new PortFinder([8529],dispatcher);
   var port = pf.next();
   var args = makeTestingArgs();

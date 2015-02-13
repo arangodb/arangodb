@@ -125,7 +125,7 @@ static void JS_SynchroniseReplication (const v8::FunctionCallbackInfo<v8::Value>
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  if (args.Length() != 1) {
+  if (args.Length() != 1 || ! args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("REPLICATION_SYNCHRONISE(<config>)");
   }
 

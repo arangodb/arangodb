@@ -50,12 +50,14 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
+      Index (Index const&) = delete;
       Index& operator= (Index const&) = delete;
       
       Index (TRI_index_t* idx)
         : id(idx->_iid),
           type(idx->_type),
           unique(idx->_unique),
+          sparse(idx->_sparse),
           fields(),
           internals(idx) {
 
@@ -74,6 +76,7 @@ namespace triagens {
         : id(triagens::basics::StringUtils::uint64(triagens::basics::JsonHelper::checkAndGetStringValue(json, "id"))),
           type(TRI_TypeIndex(triagens::basics::JsonHelper::checkAndGetStringValue(json, "type").c_str())),
           unique(triagens::basics::JsonHelper::checkAndGetBooleanValue(json, "unique")),
+          sparse(triagens::basics::JsonHelper::getBooleanValue(json, "sparse", false)),
           fields(),
           internals(nullptr) {
 
@@ -103,7 +106,8 @@ namespace triagens {
 
         json("type", triagens::basics::Json(TRI_TypeNameIndex(type)))
             ("id", triagens::basics::Json(triagens::basics::StringUtils::itoa(id))) 
-            ("unique", triagens::basics::Json(unique));
+            ("unique", triagens::basics::Json(unique))
+            ("sparse", triagens::basics::Json(sparse));
 
         if (hasSelectivityEstimate()) {
           json("selectivityEstimate", triagens::basics::Json(selectivityEstimate()));
@@ -154,10 +158,13 @@ namespace triagens {
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
-      TRI_idx_iid_t const        id;
-      TRI_idx_type_e const       type;
-      bool const                 unique;
-      std::vector<std::string>   fields;
+      public:
+
+        TRI_idx_iid_t const        id;
+        TRI_idx_type_e const       type;
+        bool const                 unique;
+        bool const                 sparse;
+        std::vector<std::string>   fields;
 
       private:
 

@@ -85,24 +85,6 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* hashIndex,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief creates space for sub-objects in the hash index element
-////////////////////////////////////////////////////////////////////////////////
-
-template<typename T>
-static int AllocateSubObjectsHashIndexElement (TRI_hash_index_t const* idx,
-                                               T* element) {
-
-  TRI_ASSERT_EXPENSIVE(element->_subObjects == nullptr);
-  element->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, KeyEntrySize(idx), false));
-
-  if (element->_subObjects == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief frees space for sub-objects in the hash index element
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -127,12 +109,10 @@ template<typename T>
 static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
                             T* hashElement,
                             TRI_doc_mptr_t const* document) {
-  TRI_shaper_t* shaper;                 // underlying shaper
-  TRI_shaped_json_t shapedObject;       // the sub-object
   TRI_shaped_json_t shapedJson;         // the object behind document
-  TRI_shaped_sub_t shapedSub;           // the relative sub-object
 
-  shaper = hashIndex->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_shaper_t* shaper = hashIndex->base._collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  bool const sparse = hashIndex->base._sparse;
 
   // .............................................................................
   // Assign the document to the TRI_hash_index_element_t structure - so that it
@@ -151,6 +131,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
   int res = TRI_ERROR_NO_ERROR;
 
   size_t const n = NumPaths(hashIndex);
+
   for (size_t j = 0;  j < n;  ++j) {
     TRI_shape_pid_t path = *((TRI_shape_pid_t*)(TRI_AtVector(&hashIndex->_paths, j)));
 
@@ -159,31 +140,37 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
     // field not part of the object
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      shapedSub._sid    = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
-      shapedSub._length = 0;
-      shapedSub._offset = 0;
+      hashElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+      hashElement->_subObjects[j]._length = 0;
+      hashElement->_subObjects[j]._offset = 0;
 
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+      if (sparse) {
+        // no need to continue
+        return res;
+      }
+
+      continue;
     }
 
     // extract the field
-    else {
-      if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
-        // hashElement->fields: memory deallocated in the calling procedure
-        return TRI_ERROR_INTERNAL;
-      }
-
-      if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
-        res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
-      }
-
-      shapedSub._sid    = shapedObject._sid;
-      shapedSub._length = shapedObject._data.length;
-      shapedSub._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
+    TRI_shaped_json_t shapedObject; 
+    if (! TRI_ExecuteShapeAccessor(acc, &shapedJson, &shapedObject)) {
+      return TRI_ERROR_INTERNAL;
     }
 
-    // store the json shaped sub-object -- this is what will be hashed
-    hashElement->_subObjects[j] = shapedSub;
+    if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
+      res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+
+      if (sparse) {
+        // no need to continue
+        return res;
+      }
+    }
+
+    hashElement->_subObjects[j]._sid    = shapedObject._sid;
+    hashElement->_subObjects[j]._length = shapedObject._data.length;
+    hashElement->_subObjects[j]._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
   }
 
   return res;
@@ -202,25 +189,22 @@ static int HashIndexHelperAllocate (TRI_hash_index_t const* hashIndex,
   // will be used for hashing.  Fill the json field list from the document.
   // .............................................................................
 
-  hashElement->_subObjects = nullptr;
-  int res = AllocateSubObjectsHashIndexElement<T>(hashIndex, hashElement);
+  hashElement->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, KeyEntrySize(hashIndex), false));
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // out of memory
-    return res;
+  if (hashElement->_subObjects == nullptr) {
+    return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  res = HashIndexHelper<T>(hashIndex, hashElement, document);
-
-  // .............................................................................
-  // It may happen that the document does not have the necessary attributes to
-  // have particpated within the hash index. If the index is unique, we do not
-  // report an error to the calling procedure, but return a warning instead. If
-  // the index is not unique, we ignore this error.
-  // .............................................................................
-
-  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING && ! hashIndex->base._unique) {
-    res = TRI_ERROR_NO_ERROR;
+  int res = HashIndexHelper<T>(hashIndex, hashElement, document);
+  
+  if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
+    // if the document does not have the indexed attribute or has it, and it is null,
+    // then in case of a sparse index we don't index this document
+    if (! hashIndex->base._sparse) {
+      // in case of a non-sparse index, we index this document
+      res = TRI_ERROR_NO_ERROR;
+    }
+    // and for a sparse index, we return TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING
   }
 
   return res;
@@ -260,10 +244,6 @@ static int HashIndex_insert (TRI_hash_index_t* hashIndex,
 
   if (key._values != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, key._values);
-  }
-
-  if (res == TRI_RESULT_KEY_EXISTS) {
-    return TRI_set_errno(TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED);
   }
 
   return res;
@@ -426,10 +406,9 @@ size_t MemoryHashIndex (TRI_index_t const* idx) {
     return static_cast<size_t>(KeyEntrySize(hashIndex) * hashIndex->_hashArray._nrUsed + 
                                TRI_MemoryUsageHashArray(&hashIndex->_hashArray));
   }
-  else {
-    return static_cast<size_t>(KeyEntrySize(hashIndex) * hashIndex->_hashArrayMulti._nrUsed + 
-                               TRI_MemoryUsageHashArrayMulti(&hashIndex->_hashArrayMulti));
-  }
+
+  return static_cast<size_t>(KeyEntrySize(hashIndex) * hashIndex->_hashArrayMulti._nrUsed + 
+                             TRI_MemoryUsageHashArrayMulti(&hashIndex->_hashArrayMulti));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -444,14 +423,22 @@ static TRI_json_t* JsonHashIndex (TRI_index_t const* idx) {
   TRI_hash_index_t const* hashIndex = (TRI_hash_index_t const*) idx;
   TRI_document_collection_t* document = idx->_collection;
 
-  // .............................................................................
+  // ..........................................................................
   // Allocate sufficent memory for the field list
-  // .............................................................................
+  // ..........................................................................
 
-  char const** fieldList = TRI_FieldListByPathList(document->getShaper(), &hashIndex->_paths);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  char const** fieldList = static_cast<char const**>(TRI_Allocate(TRI_CORE_MEM_ZONE, (sizeof(char*) * hashIndex->_paths._length) , false));
 
-  if (fieldList == nullptr) {
-    return nullptr;
+  for (size_t j = 0; j < hashIndex->_paths._length; ++j) {
+    TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&hashIndex->_paths, j));
+    TRI_shape_path_t const* path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), shape);  // ONLY IN INDEX, PROTECTED by RUNTIME
+
+    if (path == nullptr) {
+      TRI_Free(TRI_CORE_MEM_ZONE, (void*) fieldList);
+
+      return nullptr;
+    }
+    fieldList[j] = ((const char*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
   }
 
   // ..........................................................................
@@ -619,6 +606,7 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid,
                                   TRI_vector_pointer_t* fields,
                                   TRI_vector_t* paths,
+                                  bool sparse,
                                   bool unique) {
   // ...........................................................................
   // Initialize the index and the callback functions
@@ -627,7 +615,7 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
   TRI_hash_index_t* hashIndex = static_cast<TRI_hash_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_hash_index_t), false));
   TRI_index_t* idx = &hashIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, unique, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_HASH_INDEX, document, sparse, unique);
 
   idx->_hasSelectivityEstimate = true;
   idx->selectivityEstimate     = SelectivityEstimateHashIndex;
@@ -672,9 +660,8 @@ TRI_index_t* TRI_CreateHashIndex (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyHashIndex (TRI_index_t* idx) {
-  TRI_hash_index_t* hashIndex;
+  TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
-  hashIndex = (TRI_hash_index_t*) idx;
   if (hashIndex->base._unique) {
     TRI_DestroyHashArray(&hashIndex->_hashArray);
   }

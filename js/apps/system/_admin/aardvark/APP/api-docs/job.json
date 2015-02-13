@@ -24,7 +24,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "job-id",
                             "description": "The async job id. <br><br>"
                         }
@@ -59,7 +59,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "job-id",
                             "description": "The async job id. <br><br>"
                         }
@@ -94,7 +94,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "type",
                             "description": "The type of jobs to delete. type can be: <em> *all</em>: Deletes all jobs results. Currently executing or queued async    jobs will not be stopped by this call. <em> *expired</em>: Deletes expired results. To determine the expiration status of a    result, pass the stamp URL parameter. stamp needs to be a UNIX timestamp,    and all async job results created at a lower timestamp will be deleted. <em> *an actual job-id</em>: In this case, the call will remove the result of the    specified async job. If the job is currently executing or queued, it will not be aborted. <br><br> @RESTQUERYPARAMS <br><br> @RESTPARAM{stamp, number, optional} <br><br> A UNIX timestamp specifying the expiration threshold when type is expired. <br><br>"
                         }
@@ -129,7 +129,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "job-id",
                             "description": "The async job id. <br><br>"
                         }
@@ -160,7 +160,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "true",
+                            "required": true,
                             "name": "type",
                             "description": "The type of jobs to return. The type can be either done or pending. Setting  the type to done will make the method return the ids of already completed async  jobs for which results can be fetched. Setting the type to pending will return  the ids of not yet finished async jobs. <br><br> @RESTQUERYPARAMS <br><br> @RESTPARAM{count, number, optional} <br><br> The maximum number of ids to return per call. If not specified, a  server-defined maximum value will be used. <br><br>"
                         }

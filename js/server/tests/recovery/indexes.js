@@ -1,5 +1,5 @@
 /*jshint strict: true, unused : false */
-/*global require, assertEqual */
+/*global require, assertEqual, assertFalse */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for transactions
 ///
@@ -92,10 +92,14 @@ function recoverySuite () {
 
       assertEqual("primary", idx[0].type);
       assertEqual("hash", idx[1].type);
+      assertFalse(idx[1].unique);
+      assertFalse(idx[1].sparse);
       assertEqual([ "value1" ], idx[1].fields);
       var hash = idx[1];
       
       assertEqual("skiplist", idx[2].type);
+      assertFalse(idx[2].unique);
+      assertFalse(idx[2].sparse);
       assertEqual([ "value2" ], idx[2].fields);
       var skip = idx[2];
       

@@ -90,6 +90,7 @@ function recoverySuite () {
       var c = db._collection("UnitTestsRecovery1"), idx, i;
       idx = c.getIndexes()[1];
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "value" ], idx.fields);
       for (i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExampleHash(idx.id, { value: i }).toArray().length);
@@ -98,6 +99,7 @@ function recoverySuite () {
       c = db._collection("UnitTestsRecovery2");
       idx = c.getIndexes()[1];
       assertTrue(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "a.value" ], idx.fields);
       for (i = 0; i < 1000; ++i) {
         assertEqual(1, c.byExampleHash(idx.id, { "a.value": i }).toArray().length);
@@ -106,6 +108,7 @@ function recoverySuite () {
       c = db._collection("UnitTestsRecovery3");
       idx = c.getIndexes()[1];
       assertFalse(idx.unique);
+      assertFalse(idx.sparse);
       assertEqual([ "a", "b" ], idx.fields);
       assertEqual(250, c.byExampleHash(idx.id, { a: 1, b: 1 }).toArray().length);
       assertEqual(250, c.byExampleHash(idx.id, { a: 1, b: 2 }).toArray().length);

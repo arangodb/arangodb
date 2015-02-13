@@ -1248,8 +1248,15 @@ std::vector<EnumerateCollectionNode::IndexMatch>
 
   std::vector<IndexMatch> out;
   auto&& indexes = _collection->getIndexes();
+
   for (auto idx : indexes) {
+    if (idx->sparse) {
+      // sparse indexes cannot be used for replacing an EnumerateCollection node
+      continue;
+    }
+
     IndexMatch match = CompareIndex(this, idx, attrs);
+
     if (match.index != nullptr) {
       out.push_back(match);
     }
@@ -1636,7 +1643,7 @@ double IndexRangeNode::estimateCost (size_t& nrItems) const {
       totalCost += cost;
     }
 
-    totalCost = (std::max)(static_cast<size_t>(totalCost), static_cast<size_t>(1)); 
+    totalCost = static_cast<double>((std::max)(static_cast<size_t>(totalCost), static_cast<size_t>(1))); 
 
     nrItems = static_cast<size_t>(totalCost);
 

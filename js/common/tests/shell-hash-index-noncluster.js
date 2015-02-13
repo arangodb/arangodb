@@ -52,7 +52,7 @@ function HashIndexSuite() {
 
     setUp : function () {
       internal.db._drop(cn);
-      collection = internal.db._create(cn, { waitForSync : false });
+      collection = internal.db._create(cn);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

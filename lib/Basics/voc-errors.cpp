@@ -216,7 +216,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_GRAPH_INVALID_EDGE, "invalid edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CREATE_EDGE, "could not create edge");
   REG_ERROR(ERROR_GRAPH_COULD_NOT_CHANGE_EDGE, "could not change edge");
-  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations");
+  REG_ERROR(ERROR_GRAPH_TOO_MANY_ITERATIONS, "too many iterations - try increasing the value of 'maxIterations'");
   REG_ERROR(ERROR_GRAPH_INVALID_FILTER_RESULT, "invalid filter result");
   REG_ERROR(ERROR_GRAPH_COLLECTION_MULTI_USE, "multi use of edge collection in edge def");
   REG_ERROR(ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS, "edge collection already used in edge def");
@@ -243,13 +243,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
-  REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "malformed manifest file");
-  REG_ERROR(ERROR_INVALID_APPLICATION_MANIFEST, "manifest file is invalid");
-  REG_ERROR(ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING, "missing manifest attribute");
-  REG_ERROR(ERROR_CANNOT_EXTRACT_APPLICATION_ROOT, "unable to extract app root path");
-  REG_ERROR(RESULT_KEY_EXISTS, "element not inserted into structure, because key already exists");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
-  REG_ERROR(RESULT_KEY_NOT_FOUND, "key not found in structure");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
   REG_ERROR(ERROR_QUEUE_ALREADY_EXISTS, "named queue already exists");
