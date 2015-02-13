@@ -2302,7 +2302,12 @@ int main (int argc, char* args[]) {
   eRunMode runMode = eInteractive;
   // reset the prompt error flag (will determine prompt colors)
   bool promptError = false;
-
+#if _WIN32
+  extern bool cygwinShell;
+  if (getenv("SHELL") != NULL) {
+    cygwinShell = true;
+  }
+#endif
   arangoshEntryFunction();
 
   TRIAGENS_C_INITIALISE(argc, args);
