@@ -32,56 +32,56 @@
                         {
                             "dataType": "String",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "documents",
                             "description": "The body must either be a JSON-encoded array of objects or a string with multiple JSON object separated by newlines. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "true",
+                            "required": true,
                             "name": "type",
                             "description": "Determines how the body of the request will be interpreted. <em>type</em> can have the following values:  <ul class=\"swagger-list\"><li><em>documents</em>: when this type is used, each line in the request body is expected to be an individual JSON-encoded document. Multiple JSON objects in the request body need to be separated by newlines. <li><em>list</em>: when this type is used, the request body must contain a single JSON-encoded array of individual objects to import. <li><em>auto</em>: if set, this will automatically determine the body type (either <em>documents</em> or <em>list</em>)."
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "true",
+                            "required": true,
                             "name": "collection",
                             "description": "The collection name. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "createCollection",
                             "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "overwrite",
                             "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then all data in the collection will be removed prior to the import. Note that any existing index definitions will be preseved. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Wait until documents have been synced to disk before returning. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "complete",
                             "description": "If set to <em>true</em> or <em>yes</em>, it will make the whole import fail if any error occurs. Otherwise the import will continue even if some documents cannot be imported. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "details",
                             "description": "If set to <em>true</em> or <em>yes</em>, the result will include an attribute <em>details</em> with details about documents that could not be imported. <br><br>"
                         }
@@ -124,49 +124,49 @@
                         {
                             "dataType": "String",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "documents",
                             "description": "The body must consist of JSON-encoded arrays of attribute values, with one line per document. The first row of the request must be a JSON-encoded array of attribute names. These attribute names are used for the data in the subsequent lines. <br><br>"
                         },
                         {
                             "dataType": "String",
                             "paramType": "query",
-                            "required": "true",
+                            "required": true,
                             "name": "collection",
                             "description": "The collection name. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "createCollection",
                             "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then the collection is created if it does not yet exist. Other values will be ignored so the collection must be present for the operation to succeed. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "overwrite",
                             "description": "If this parameter has a value of <em>true</em> or <em>yes</em>, then all data in the collection will be removed prior to the import. Note that any existing index definitions will be preseved. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Wait until documents have been synced to disk before returning. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "complete",
                             "description": "If set to <em>true</em> or <em>yes</em>, it will make the whole import fail if any error occurs. Otherwise the import will continue even if some documents cannot be imported. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "query",
-                            "required": "false",
+                            "required": false,
                             "name": "details",
                             "description": "If set to <em>true</em> or <em>yes</em>, the result will include an attribute <em>details</em> with details about documents that could not be imported. <br><br>"
                         }

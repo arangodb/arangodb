@@ -28,7 +28,7 @@
                         {
                             "dataType": "String",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "body",
                             "description": "Contains the <em>collections</em> and <em>action</em>. <br><br>"
                         }

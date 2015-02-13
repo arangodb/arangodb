@@ -58,14 +58,14 @@
                         {
                             "dataType": "Boolean",
                             "paramType": "path",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForSync",
                             "description": "Whether or not the operation should block until the not-yet synchronized data in the write-ahead log was synchronized to disk. <br><br>"
                         },
                         {
                             "dataType": "Boolean",
                             "paramType": "path",
-                            "required": "false",
+                            "required": false,
                             "name": "waitForCollector",
                             "description": "Whether or not the operation should block until the data in the flushed log has been collected by the write-ahead log garbage collector. Note that setting this option to <em>true</em> might block for a long time if there are long-running transactions and the write-ahead log garbage collector cannot finish garbage collection. <br><br>"
                         }
@@ -214,7 +214,7 @@
                     "notes": "<br><br> Returns the statistics information. The returned object contains the statistics figures grouped together according to the description returned by <em>_admin/statistics-description</em>. For instance, to access a figure <em>userTime</em> from the group <em>system</em>, you first select the sub-object describing the group stored in <em>system</em> and in that sub-object the value for <em>userTime</em> is stored in the attribute of the same name. <br><br> In case of a distribution, the returned object contains the total count in <em>count</em> and the distribution list in <em>counts</em>. The sum (or total) of the individual values is returned in <em>sum</em>. <br><br>",
                     "summary": " Read the statistics",
                     "httpMethod": "GET",
-                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_admin/statistics\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"time\" : 1423206457.148811, \n  \"system\" : { \n    \"minorPageFaults\" : 62792, \n    \"majorPageFaults\" : 2766, \n    \"userTime\" : 7.782712, \n    \"systemTime\" : 4.491697, \n    \"numberOfThreads\" : 26, \n    \"residentSize\" : 113577984, \n    \"residentSizePercent\" : 0.026444435119628906, \n    \"virtualSize\" : 5188886528 \n  }, \n  \"client\" : { \n    \"httpConnections\" : 1, \n    \"connectionTime\" : { \n      \"sum\" : 0.0016210079193115234, \n      \"count\" : 1, \n      \"counts\" : [ \n        1, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"totalTime\" : { \n      \"sum\" : 31.34228777885437, \n      \"count\" : 10342, \n      \"counts\" : [ \n        9779, \n        469, \n        52, \n        34, \n        3, \n        3, \n        2 \n      ] \n    }, \n    \"requestTime\" : { \n      \"sum\" : 29.723227977752686, \n      \"count\" : 10342, \n      \"counts\" : [ \n        9785, \n        464, \n        52, \n        33, \n        3, \n        3, \n        2 \n      ] \n    }, \n    \"queueTime\" : { \n      \"sum\" : 0.24193429946899414, \n      \"count\" : 10342, \n      \"counts\" : [ \n        10342, \n        0, \n        0, \n        0, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"ioTime\" : { \n      \"sum\" : 1.3771255016326904, \n      \"count\" : 10342, \n      \"counts\" : [ \n        10341, \n        0, \n        0, \n        1, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"bytesSent\" : { \n      \"sum\" : 3779693, \n      \"count\" : 10342, \n      \"counts\" : [ \n        2675, \n        7516, \n        13, \n        10, \n        128, \n        0 \n      ] \n    }, \n    \"bytesReceived\" : { \n      \"sum\" : 2242892, \n      \"count\" : 10342, \n      \"counts\" : [ \n        8539, \n        1803, \n        0, \n        0, \n        0, \n        0 \n      ] \n    } \n  }, \n  \"http\" : { \n    \"requestsTotal\" : 10343, \n    \"requestsAsync\" : 0, \n    \"requestsGet\" : 3693, \n    \"requestsHead\" : 297, \n    \"requestsPost\" : 4656, \n    \"requestsPut\" : 695, \n    \"requestsPatch\" : 31, \n    \"requestsDelete\" : 971, \n    \"requestsOptions\" : 0, \n    \"requestsOther\" : 0 \n  }, \n  \"server\" : { \n    \"uptime\" : 41.22877621650696, \n    \"physicalMemory\" : 4294967296 \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
+                    "examples": "<br><br><br><br><pre><code class=\"json\">shell> curl --data-binary @- --dump - http://localhost:8529/_admin/statistics\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"time\" : 1423815231.738853, \n  \"system\" : { \n    \"minorPageFaults\" : 55167, \n    \"majorPageFaults\" : 127, \n    \"userTime\" : 8.1, \n    \"systemTime\" : 1.69, \n    \"numberOfThreads\" : 26, \n    \"residentSize\" : 161341440, \n    \"residentSizePercent\" : 0.012814894557720218, \n    \"virtualSize\" : 4034269184 \n  }, \n  \"client\" : { \n    \"httpConnections\" : 1, \n    \"connectionTime\" : { \n      \"sum\" : 0.0004489421844482422, \n      \"count\" : 1, \n      \"counts\" : [ \n        1, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"totalTime\" : { \n      \"sum\" : 26.69895029067993, \n      \"count\" : 9804, \n      \"counts\" : [ \n        9309, \n        370, \n        116, \n        4, \n        2, \n        1, \n        2 \n      ] \n    }, \n    \"requestTime\" : { \n      \"sum\" : 24.834359645843506, \n      \"count\" : 9804, \n      \"counts\" : [ \n        9311, \n        369, \n        116, \n        4, \n        1, \n        1, \n        2 \n      ] \n    }, \n    \"queueTime\" : { \n      \"sum\" : 0.42498040199279785, \n      \"count\" : 9804, \n      \"counts\" : [ \n        9804, \n        0, \n        0, \n        0, \n        0, \n        0, \n        0 \n      ] \n    }, \n    \"ioTime\" : { \n      \"sum\" : 1.439610242843628, \n      \"count\" : 9804, \n      \"counts\" : [ \n        9803, \n        0, \n        0, \n        0, \n        1, \n        0, \n        0 \n      ] \n    }, \n    \"bytesSent\" : { \n      \"sum\" : 3188891, \n      \"count\" : 9804, \n      \"counts\" : [ \n        2535, \n        7203, \n        10, \n        8, \n        48, \n        0 \n      ] \n    }, \n    \"bytesReceived\" : { \n      \"sum\" : 2128218, \n      \"count\" : 9804, \n      \"counts\" : [ \n        8054, \n        1750, \n        0, \n        0, \n        0, \n        0 \n      ] \n    } \n  }, \n  \"http\" : { \n    \"requestsTotal\" : 9805, \n    \"requestsAsync\" : 0, \n    \"requestsGet\" : 3571, \n    \"requestsHead\" : 297, \n    \"requestsPost\" : 4342, \n    \"requestsPut\" : 666, \n    \"requestsPatch\" : 31, \n    \"requestsDelete\" : 898, \n    \"requestsOptions\" : 0, \n    \"requestsOther\" : 0 \n  }, \n  \"server\" : { \n    \"uptime\" : 35.84458112716675, \n    \"physicalMemory\" : 12590149632 \n  }, \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br>",
                     "nickname": "ReadTheStatistics"
                 }
             ],
@@ -247,7 +247,7 @@
                         {
                             "dataType": "Javascript",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "body",
                             "description": "A JSON object containing an attribute <em>tests</em> which lists the files containing the test suites. <br><br>"
                         }
@@ -269,7 +269,7 @@
                         {
                             "dataType": "Javascript",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "body",
                             "description": "The body to be executed. <br><br>"
                         }

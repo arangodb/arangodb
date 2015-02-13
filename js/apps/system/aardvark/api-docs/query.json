@@ -20,7 +20,7 @@
                         {
                             "dataType": "Json",
                             "paramType": "body",
-                            "required": "true",
+                            "required": true,
                             "name": "query",
                             "description": "To validate a query string without executing it, the query string can be passed to the server via an HTTP POST request. <br><br> The query string needs to be passed in the attribute <em>query</em> of a JSON object as the body of the POST request. <br><br>"
                         }

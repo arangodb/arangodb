@@ -20,7 +20,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "false",
+                            "required": false,
                             "name": "user",
                             "description": "The name of the user <br><br>"
                         }
@@ -78,7 +78,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "false",
+                            "required": false,
                             "name": "user",
                             "description": "The name of the user <br><br>"
                         }
@@ -113,7 +113,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "false",
+                            "required": false,
                             "name": "user",
                             "description": "The name of the user <br><br>"
                         }
@@ -144,7 +144,7 @@
                         {
                             "dataType": "String",
                             "paramType": "path",
-                            "required": "false",
+                            "required": false,
                             "name": "user",
                             "description": "The name of the user <br><br>"
                         }
