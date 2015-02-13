@@ -108,6 +108,7 @@ static void TRI_GlobalEntryFunction () {
   int maxOpenFiles = 2048;  // upper hard limit for windows
   int res = 0;
 
+
   // Uncomment this to call this for extended debug information.
   // If you familiar with valgrind ... then this is not like that, however
   // you do get some similar functionality.
@@ -419,6 +420,8 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
 int main (int argc, char* argv[]) {
   int res = 0;
   bool startAsService = false;
+
+  signal(SIGSEGV, abortHandler);
 
 #ifdef _WIN32
 
