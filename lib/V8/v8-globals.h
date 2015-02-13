@@ -165,7 +165,7 @@ static const uint32_t V8DataSlot = 0;
     msg += usage;                                                       \
     TRI_CreateErrorObject(isolate,                                      \
                           TRI_ERROR_BAD_PARAMETER,                      \
-                          msg.c_str());                                 \
+                          msg);                                         \
     return;                                                             \
   } while (0)
 
@@ -218,7 +218,7 @@ static const uint32_t V8DataSlot = 0;
     msg += TRI_LAST_ERROR_STR;                                      \
     TRI_CreateErrorObject(isolate,                                  \
                           TRI_errno(),                              \
-                          msg.c_str());                             \
+                          msg);                                     \
     return;                                                         \
   } while (0)
 
