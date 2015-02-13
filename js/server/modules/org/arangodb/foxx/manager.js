@@ -73,6 +73,16 @@
   // -----------------------------------------------------------------------------
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Trigger reload routing
+  /// Triggers reloading of routes in this as well as all other threads.
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var reloadRouting = function() {
+    executeGlobalContextFunction("reloadRouting");
+    actions.reloadRouting();
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup app in cache
   /// Returns either the app or undefined if it is not cached.
   ////////////////////////////////////////////////////////////////////////////////
@@ -249,14 +259,19 @@
     } catch (err) {
       msg = "Cannot parse app manifest '" + file + "': " + String(err);
       console.errorLines(msg);
-      throw msg;
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+      });
     }
     try {
       checkManifest(file, mf);
     } catch (err) {
-      msg = "Manifest file'" + file + "' is invalid: " + String(err);
-      console.errorLines(msg);
-      throw msg;
+      console.error("Manifest file '%s' is invald: %s", file, err.errorMessage);
+      if (err.hasOwnProperty("stack")) {
+        console.errorLines(err.stack);
+      }
+      throw err;
     }
     return mf;
   };
@@ -316,7 +331,7 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var setupApp = function (app) {
-    return executeAppScript(app, "setup");
+    executeAppScript(app, "setup");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -324,7 +339,7 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var teardownApp = function (app) {
-    return executeAppScript(app, "teardown");
+    executeAppScript(app, "teardown");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -345,11 +360,11 @@
       isSystem: isSystemMount(mount),
       isDevelopment: activateDevelopment || false
     };
-    try {
+    // try {
       result.manifest = validateManifestFile(file);
-    } catch(err) {
-      result.error = err;
-    }
+    // } catch(err) {
+    //   result.error = err;
+    // }
     return result;
   };
 
@@ -400,7 +415,10 @@
     if (invalidOptions.length > 0) {
       // TODO Pretty print
       console.log(invalidOptions);
-      throw "Invalid options";
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
+        errorMessage: JSON.stringify(invalidOptions, undefined, 2)
+      });
     }
     options.path = targetPath;
     var engine = new TemplateEngine(options);
@@ -617,7 +635,7 @@
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var app = _scanFoxx(mount, options);
-    executeGlobalContextFunction("reloadRouting");
+    reloadRouting();
     return app.simpleJSON();
   };
 
@@ -664,17 +682,25 @@
     // Ohterwise move will fail.
     fs.removeDirectory(targetPath);
 
-    if (appInfo === "EMPTY") {
-      // Make Empty app
-      installAppFromGenerator(targetPath, options || {});
-    } else if (/^GIT:/i.test(appInfo)) {
-      installAppFromRemote(buildGithubUrl(appInfo), targetPath);
-    } else if (/^https?:/i.test(appInfo)) {
-      installAppFromRemote(appInfo, targetPath);
-    } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
-      installAppFromLocal(appInfo, targetPath);
-    } else {
-      installAppFromRemote(store.buildUrl(appInfo), targetPath);
+    try {
+      if (appInfo === "EMPTY") {
+        // Make Empty app
+        installAppFromGenerator(targetPath, options || {});
+      } else if (/^GIT:/i.test(appInfo)) {
+        installAppFromRemote(buildGithubUrl(appInfo), targetPath);
+      } else if (/^https?:/i.test(appInfo)) {
+        installAppFromRemote(appInfo, targetPath);
+      } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+        installAppFromLocal(appInfo, targetPath);
+      } else {
+        installAppFromRemote(store.buildUrl(appInfo), targetPath);
+      }
+    } catch (e) {
+      try {
+        fs.removeDirectoryRecursive(targetPath, true);
+      } catch (err) {
+      }
+      throw e;
     }
     db._executeTransaction({
       collections: {
@@ -687,6 +713,7 @@
     if (runSetup) {
       setup(mount);
     }
+    routeApp(app);
     return app;
   };
 
@@ -704,7 +731,7 @@
       [ appInfo, mount ] );
     utils.validateMount(mount);
     var app = _install(appInfo, mount, options, true);
-    executeGlobalContextFunction("reloadRouting");
+    reloadRouting();
     return app.simpleJSON();
   };
 
@@ -749,7 +776,7 @@
       [ mount ] );
     utils.validateMount(mount);
     var app = _uninstall(mount);
-    executeGlobalContextFunction("reloadRouting");
+    reloadRouting();
     return app.simpleJSON();
   };
 
@@ -768,7 +795,7 @@
     utils.validateMount(mount);
     _uninstall(mount, true);
     var app = _install(appInfo, mount, options, true);
-    executeGlobalContextFunction("reloadRouting");
+    reloadRouting();
     return app.simpleJSON();
   };
 
@@ -787,7 +814,7 @@
     utils.validateMount(mount);
     _uninstall(mount, false);
     var app = _install(appInfo, mount, options, false);
-    executeGlobalContextFunction("reloadRouting");
+    reloadRouting();
     return app.simpleJSON();
   };
 
@@ -818,8 +845,7 @@
     var app = lookupApp(mount);
     app.development(activate);
     utils.updateApp(mount, app.toJSON());
-    executeGlobalContextFunction("reloadRouting");
-    actions.reloadRouting();
+    reloadRouting();
     return app;
   };
   
@@ -866,7 +892,7 @@
       require("console").log(invalid);
     }
     utils.updateApp(mount, app.toJSON());
-    executeGlobalContextFunction("reloadRouting");
+    reloadRouting();
     return app.simpleJSON();
   };
 

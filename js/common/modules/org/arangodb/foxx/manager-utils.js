@@ -353,19 +353,36 @@ function listDevelopment() {
 /// @brief validate the mount point of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-function validateMount(mount) {
+function validateMount(mount, internal) {
   'use strict';
   if (mount[0] !== "/") {
-    throw new Error("Mount point is invalid. It has to start with /.");
-  }
-  if (mount[1] === "_") {
-    throw new Error("Mount point is invalid. /_ apps are reserved for internal use.");
+    throw new ArangoError({
+      errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+      errorMessage: "Mountpoint has to start with /."
+    });
   }
   if (!mountRegEx.test(mount)) {
-    throw new Error("Mount point is invalid. It can only contain a-z, A-Z, 0-9 or _.");
+    // Controller routes may be /. Foxxes are not allowed to
+    if (!internal || mount.length !== 1) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Mountpoint can only contain a-z, A-Z, 0-9 or _."
+      });
+    }
   }
-  if (mountAppRegEx.test(mount)) {
-    throw new Error("Mount point is invalid. It is not allowed to contain /app/.");
+  if (!internal) {
+    if (mount[1] === "_") {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "/_ apps are reserved for internal use."
+      });
+    }
+    if (mountAppRegEx.test(mount)) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Mountpoint is not allowed to contain /app/."
+      });
+    }
   }
   return true;
 }

@@ -42,6 +42,10 @@
   var _= require("underscore");
   var utils = require("org/arangodb/foxx/manager-utils");
   var console = require("console");
+  var arangodb = require("org/arangodb");
+  var ArangoError = arangodb.ArangoError;
+  var errors = arangodb.errors;
+  var throwFileNotFound = arangodb.throwFileNotFound;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -296,6 +300,9 @@
     options = options || {};
 
     var full = fs.join(this._root, this._path, filename);
+    if (!fs.exists(full)) {
+      throwFileNotFound("Cannot find file " , filename);
+    }
     var fileContent = fs.read(full);
 
     if (options.hasOwnProperty('transform')) {
@@ -349,14 +356,33 @@
     // would render the function tail invalid
     // adding a newline at the end will create stack traces with a line number
     // one higher than the last line in the script file
+    
+    var fun;
 
-    var fun = internal.executeScript(content, undefined, full);
-
-    if (fun === undefined) {
-      throw new Error("cannot create application script: " + content);
+    try {
+      fun = internal.executeScript(content, undefined, full);
+    } catch(e) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
+        errorMessage: "File: " + filename + " " + errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message + " " + String(e)
+      });
     }
 
-    fun(sandbox);
+    if (fun === undefined) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
+        errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Content: " + content
+      });
+    }
+
+    try {
+      fun(sandbox);
+    } catch (e) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
+        errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Error: " + String(e)
+      });
+    }
   };
 
 
