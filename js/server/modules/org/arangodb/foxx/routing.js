@@ -43,6 +43,7 @@
   var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
   var actions = require("org/arangodb/actions");
+  var utils = require("org/arangodb/foxx/manager-utils");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -472,6 +473,7 @@
     try {
       for (i in controllers) {
         if (controllers.hasOwnProperty(i)) {
+          utils.validateMount(i, true);
           file = controllers[i];
 
           // set up a context for the application start function
