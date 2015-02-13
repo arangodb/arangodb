@@ -177,7 +177,7 @@ namespace triagens {
 /// @brief returns the authentication realm
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string const& authenticationRealm (HttpRequest*) const;
+        virtual std::string authenticationRealm (HttpRequest*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new request
