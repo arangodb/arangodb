@@ -43,11 +43,12 @@ using JsonHelper = triagens::basics::JsonHelper;
 ////////////////////////////////////////////////////////////////////////////////
 
 Json ExecutionStats::toJson () const {
-  Json json(Json::Object);
+  Json json(Json::Object, 5);
   json.set("writesExecuted", Json(static_cast<double>(writesExecuted)));
   json.set("writesIgnored",  Json(static_cast<double>(writesIgnored)));
   json.set("scannedFull",    Json(static_cast<double>(scannedFull)));
   json.set("scannedIndex",   Json(static_cast<double>(scannedIndex)));
+  json.set("filtered",       Json(static_cast<double>(filtered)));
 
   if (fullCount > -1) {
     // fullCount is exceptional. it has a default value of -1 and is
@@ -59,11 +60,12 @@ Json ExecutionStats::toJson () const {
 }
 
 Json ExecutionStats::toJsonStatic () {
-  Json json(Json::Object);
+  Json json(Json::Object, 7);
   json.set("writesExecuted", Json(0.0));
   json.set("writesIgnored",  Json(0.0));
   json.set("scannedFull",    Json(0.0));
   json.set("scannedIndex",   Json(0.0));
+  json.set("filtered",       Json(0.0));
   json.set("fullCount",      Json(-1.0));
   json.set("static",         Json(0.0));
 
@@ -75,18 +77,20 @@ ExecutionStats::ExecutionStats()
    writesIgnored(0),
    scannedFull(0),
    scannedIndex(0),
+   filtered(0),
    fullCount(-1) {
 }
 
 ExecutionStats::ExecutionStats (triagens::basics::Json const& jsonStats) {
   if (! jsonStats.isObject()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an array");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "stats is not an object");
   }
 
   writesExecuted = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "writesExecuted");
   writesIgnored  = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "writesIgnored");
   scannedFull    = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "scannedFull");
   scannedIndex   = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "scannedIndex");
+  filtered       = JsonHelper::checkAndGetNumericValue<int64_t>(jsonStats.json(), "filtered");
 
   // note: fullCount is an optional attribute!
   fullCount      = JsonHelper::getNumericValue<int64_t>(jsonStats.json(), "fullCount", -1);

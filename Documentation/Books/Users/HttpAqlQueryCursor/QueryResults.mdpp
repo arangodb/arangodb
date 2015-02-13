@@ -188,7 +188,8 @@ Content-Type: application/json; charset=utf-8
       "writesExecuted" : 1,
       "writesIgnored" : 0,
       "scannedFull" : 0,
-      "scannedIndex" : 1
+      "scannedIndex" : 1,
+      "filtered" : 0
     },
     "warnings" : []
   },

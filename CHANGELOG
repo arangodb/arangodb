@@ -1,6 +1,13 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* added `filtered` value to AQL query execution statistics
+
+  This value indicates how many documents were filtered by `FilterNode`s in the AQL query.
+  Note that `IndexRangeNode`s can also filter documents by selecting only the required ranges
+  from the index. The `filtered` value will not include the work done by `IndexRangeNode`s, 
+  but only the work performed by `FilterNode`s.
+
 * added support for sparse hash and skiplist indexes
 
   Hash and skiplist indexes can optionally be made sparse. Sparse indexes exclude documents

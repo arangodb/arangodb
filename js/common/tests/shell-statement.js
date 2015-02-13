@@ -457,6 +457,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("writesExecuted"));
       assertTrue(stats.hasOwnProperty("writesIgnored"));
       assertTrue(stats.hasOwnProperty("fullCount"));
+      assertTrue(stats.hasOwnProperty("filtered"));
       assertEqual(50, stats.fullCount);
       var docs = result.toArray();
       assertEqual(2, docs.length);
@@ -483,6 +484,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("writesExecuted"));
       assertTrue(stats.hasOwnProperty("writesIgnored"));
       assertTrue(stats.hasOwnProperty("fullCount"));
+      assertTrue(stats.hasOwnProperty("filtered"));
       assertEqual(12345, stats.fullCount);
       var docs = result.toArray();
       assertEqual(2123, docs.length);
@@ -513,6 +515,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("writesExecuted"));
       assertTrue(stats.hasOwnProperty("writesIgnored"));
       assertTrue(stats.hasOwnProperty("fullCount"));
+      assertTrue(stats.hasOwnProperty("filtered"));
       assertEqual(12345, stats.fullCount);
       var docs = result.toArray();
       assertEqual(0, docs.length);
@@ -537,6 +540,7 @@ function StatementSuite () {
       assertTrue(stats.hasOwnProperty("writesExecuted"));
       assertTrue(stats.hasOwnProperty("writesIgnored"));
       assertFalse(stats.hasOwnProperty("fullCount"));
+      assertTrue(stats.hasOwnProperty("filtered"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////

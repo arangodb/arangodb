@@ -414,7 +414,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   if (debug) {
     require("internal").print("Analysing Query unoptimized: " + query);
   }
-  plans [0] = AQL_EXPLAIN(query, bindVars, paramNone);
+  plans[0] = AQL_EXPLAIN(query, bindVars, paramNone);
   // then all of the ones permuted by by the optimizer.
   if (debug) {
     require("internal").print("Unoptimized Plan (0):");
@@ -423,12 +423,12 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   }
   allPlans = AQL_EXPLAIN(query, bindVars, paramAllPlans);
 
-  for (i=0; i < allPlans.plans.length; i++) {
+  for (i = 0; i < allPlans.plans.length; i++) {
     if (debug) {
-      require("internal").print("Optimized Plan ["+(i+1)+"]:");
+      require("internal").print("Optimized Plan [" + (i + 1) + "]:");
       printYaml(allPlans.plans [i]);
     }
-    plans[i + 1] = {'plan': allPlans.plans[i]};
+    plans[i + 1] = { plan: allPlans.plans[i] };
   }
   // Now execute each of these variations.
   for (i = 0; i < plans.length; i++) {
@@ -450,6 +450,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     // ignore these statistics for comparisons
     delete results[i].stats.scannedFull;
     delete results[i].stats.scannedIndex;
+    delete results[i].stats.filtered;
 
     if (debug) {
       require("internal").print("\n" + i + " DONE\n");
