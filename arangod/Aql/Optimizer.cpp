@@ -483,6 +483,12 @@ void Optimizer::setupRules () {
                removeCollectIntoRule_pass5,
                true);
 
+  // propagate constant attributes in FILTERs
+  registerRule("propagate-constant-attributes",
+               propagateConstantAttributesRule,
+               propagateConstantAttributesRule_pass5,
+               true);
+
   //////////////////////////////////////////////////////////////////////////////
   /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
   //////////////////////////////////////////////////////////////////////////////

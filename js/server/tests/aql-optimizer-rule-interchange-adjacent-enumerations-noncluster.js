@@ -229,7 +229,7 @@ function optimizerRuleTestSuite () {
                   "FOR o IN " + collectionName + " RETURN 1";
 
       var explain = AQL_EXPLAIN(query);
-      assertEqual(256, explain.stats.plansCreated); // default limit enforced by optimizer
+      assertEqual(192, explain.stats.plansCreated); // default limit enforced by optimizer
     },
 
 ////////////////////////////////////////////////////////////////////////////////

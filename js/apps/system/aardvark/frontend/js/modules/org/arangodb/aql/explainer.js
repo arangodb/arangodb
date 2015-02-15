@@ -371,6 +371,11 @@ function processQuery (query, explain) {
     ranges.forEach(function(range) {
       var attr = range.attr;
 
+      if (range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") &&
+          JSON.stringify(range.lowConst.bound) === JSON.stringify(range.highConst.bound)) {
+        range.equality = true;
+      }
+
       if (range.equality) {
         if (range.lowConst.hasOwnProperty("bound")) {
           results.push(buildBound(attr, [ "==", "==" ], range.lowConst));
