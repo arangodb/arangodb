@@ -161,6 +161,9 @@ namespace triagens {
         // remove INTO for COLLECT if appropriate
         removeCollectIntoRule_pass5                = 750,
 
+        // propagate constant attributes in FILTERs
+        propagateConstantAttributesRule_pass5      = 760,
+
 //////////////////////////////////////////////////////////////////////////////
 /// "Pass 6": use indexes if possible for FILTER and/or SORT nodes
 //////////////////////////////////////////////////////////////////////////////
@@ -650,7 +653,7 @@ namespace triagens {
 /// @brief default value for maximal number of plans to produce
 ////////////////////////////////////////////////////////////////////////////////
 
-        static size_t const DefaultMaxNumberOfPlans = 256;
+        static size_t const DefaultMaxNumberOfPlans = 192;
 
     };
 

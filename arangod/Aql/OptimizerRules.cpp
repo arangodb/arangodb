@@ -503,6 +503,268 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                  helper class for propagateConstantAttributesRule
+// -----------------------------------------------------------------------------
+
+class PropagateConstantAttributesHelper {
+
+  public:
+ 
+    PropagateConstantAttributesHelper () 
+      : _constants(),
+        _modified(false) {
+    }
+
+    bool modified () const {
+      return _modified;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspects a plan and propages constant values in expressions
+////////////////////////////////////////////////////////////////////////////////
+
+    void propagateConstants (ExecutionPlan* plan) {
+      std::vector<ExecutionNode*>&& nodes = plan->findNodesOfType(EN::FILTER, true); 
+      
+      for (auto node : nodes) {
+        auto fn = static_cast<FilterNode*>(node);
+
+        auto inVar = fn->getVariablesUsedHere();
+        TRI_ASSERT(inVar.size() == 1);
+                
+        auto setter = plan->getVarSetBy(inVar[0]->id);
+        if (setter != nullptr &&
+            setter->getType() == EN::CALCULATION) {
+          auto cn = static_cast<CalculationNode*>(setter);
+          auto expression = cn->expression();
+
+          if (expression != nullptr) {
+            collectConstantAttributes(const_cast<AstNode*>(expression->node()));
+          }
+        }
+      }
+
+      if (! _constants.empty()) {
+        for (auto node : nodes) {
+          auto fn = static_cast<FilterNode*>(node);
+
+          auto inVar = fn->getVariablesUsedHere();
+          TRI_ASSERT(inVar.size() == 1);
+                  
+          auto setter = plan->getVarSetBy(inVar[0]->id);
+          if (setter != nullptr &&
+              setter->getType() == EN::CALCULATION) {
+            auto cn = static_cast<CalculationNode*>(setter);
+            auto expression = cn->expression();
+
+            if (expression != nullptr) {
+              insertConstantAttributes(const_cast<AstNode*>(expression->node()));
+            }
+          }
+        }
+      }
+    }
+
+  private:
+
+    AstNode const* getConstant (Variable const* variable,
+                                std::string const& attribute) const {
+      auto it = _constants.find(variable);
+
+      if (it == _constants.end()) {
+        return nullptr;
+      }
+
+      auto it2 = (*it).second.find(attribute);
+
+      if (it2 == (*it).second.end()) {
+        return nullptr;
+      }
+
+      return (*it2).second;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspects an expression (recursively) and notes constant attribute
+/// values so they can be propagated later
+////////////////////////////////////////////////////////////////////////////////
+
+    void collectConstantAttributes (AstNode* node) {
+      if (node == nullptr) {
+        return;
+      }
+
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        auto lhs = node->getMember(0); 
+        auto rhs = node->getMember(1); 
+
+        collectConstantAttributes(lhs);
+        collectConstantAttributes(rhs);
+      }
+      else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        auto lhs = node->getMember(0); 
+        auto rhs = node->getMember(1); 
+        
+        if (lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          inspectConstantAttribute(rhs, lhs);
+        }
+        else if (rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          inspectConstantAttribute(lhs, rhs);
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverses an AST part recursively and patches it by inserting
+/// constant values
+////////////////////////////////////////////////////////////////////////////////
+
+    void insertConstantAttributes (AstNode* node) {
+      if (node == nullptr) {
+        return;
+      }
+
+      if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
+        auto lhs = node->getMember(0); 
+        auto rhs = node->getMember(1); 
+
+        insertConstantAttributes(lhs);
+        insertConstantAttributes(rhs);
+      }
+      else if (node->type == NODE_TYPE_OPERATOR_BINARY_EQ) {
+        auto lhs = node->getMember(0); 
+        auto rhs = node->getMember(1); 
+
+        if (! lhs->isConstant() && rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          insertConstantAttribute(node, 1);
+        }
+        if (! rhs->isConstant() && lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+          insertConstantAttribute(node, 0);
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract an attribute and its variable from an attribute access
+/// (e.g. `a.b.c` will return variable `a` and attribute name `b.c.`.
+////////////////////////////////////////////////////////////////////////////////
+
+    bool getAttribute (AstNode const* attribute,
+                       Variable const*& variable,
+                       std::string& name) {
+      TRI_ASSERT(attribute != nullptr && 
+                 attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS);
+      TRI_ASSERT(name.empty());
+
+      while (attribute->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+        char const* attributeName = attribute->getStringValue();
+
+        TRI_ASSERT(attributeName != nullptr);
+        name = std::string(".") + std::string(attributeName) + name;
+        attribute = attribute->getMember(0);
+      }
+
+      if (attribute->type != NODE_TYPE_REFERENCE) {
+        return false;
+      }
+
+      variable = static_cast<Variable const*>(attribute->getData());
+      TRI_ASSERT(variable != nullptr);
+
+      return true;
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief inspect the constant value assigned to an attribute
+/// the attribute value will be stored so it can be inserted for the attribute
+/// later
+////////////////////////////////////////////////////////////////////////////////
+
+    void inspectConstantAttribute (AstNode const* attribute,
+                                   AstNode const* value) {
+      Variable const* variable = nullptr;
+      std::string name;
+
+      if (! getAttribute(attribute, variable, name)) {
+        return;
+      }
+
+      auto it = _constants.find(variable);
+
+      if (it == _constants.end()) {
+        _constants.emplace(std::make_pair(variable, std::unordered_map<std::string, AstNode const*>{ { name, value } }));
+        return;
+      }
+        
+      auto it2 = (*it).second.find(name);
+
+      if (it2 == (*it).second.end()) {
+        // first value for the attribute
+        (*it).second.insert(std::make_pair(name, value));
+      }
+      else {
+        auto previous = (*it2).second;
+
+        if (previous == nullptr) {
+          // we have multiple different values for the attribute. better not use this attribute
+          return;
+        }
+
+        if (TRI_CompareValuesJson(value->computeJson(), previous->computeJson(), true) != 0) {
+          // different value found for an already tracked attribute. better not use this attribute 
+          (*it2).second = nullptr;
+        }
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief patches an AstNode by inserting a constant value into it
+////////////////////////////////////////////////////////////////////////////////
+
+    void insertConstantAttribute (AstNode* parentNode,
+                                  size_t accessIndex) {
+      Variable const* variable = nullptr;
+      std::string name;
+
+      if (! getAttribute(parentNode->getMember(accessIndex), variable, name)) {
+        return;
+      }
+
+      auto constantValue = getConstant(variable, name);
+
+      if (constantValue != nullptr) {
+        parentNode->changeMember(accessIndex, const_cast<AstNode*>(constantValue)); 
+        _modified = true; 
+      }
+    }
+
+    std::unordered_map<Variable const*, std::unordered_map<std::string, AstNode const*>> _constants;
+  
+    bool _modified;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief propagate constant attributes in FILTERs
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::propagateConstantAttributesRule (Optimizer* opt, 
+                                                    ExecutionPlan* plan, 
+                                                    Optimizer::Rule const* rule) {
+  PropagateConstantAttributesHelper helper;
+  helper.propagateConstants(plan);
+
+  bool const modified = helper.modified();
+
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove SORT RAND() if appropriate
 ////////////////////////////////////////////////////////////////////////////////

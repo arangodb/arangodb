@@ -1,6 +1,14 @@
 v2.5.0 (XXXX-XX-XX)
 -------------------
 
+* added optimizer rule `propagate-constant-attributes`
+
+  This rule will look inside `FILTER` conditions for constant value equality comparisons, 
+  and insert the constant values in other places in `FILTER`s. For example, the rule will
+  insert `42` instead of `i.value` in the second `FILTER` of the following query:
+
+      FOR i IN c1 FOR j IN c2 FILTER i.value == 42 FILTER j.value == i.value RETURN 1
+
 * added `filtered` value to AQL query execution statistics
 
   This value indicates how many documents were filtered by `FilterNode`s in the AQL query.

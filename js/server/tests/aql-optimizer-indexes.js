@@ -58,6 +58,88 @@ function optimizerIndexesTestSuite () {
 /// @brief test index usage
 ////////////////////////////////////////////////////////////////////////////////
 
+    testValuePropagation : function () {
+      var queries = [
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == 10 && i.value == j.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == 10 FiLTER i.value == j.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == 10 FiLTER j.value == i.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == j.value && i.value == 10 RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == j.value FILTER i.value == 10 RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 10 FOR j IN " + c.name() + " FILTER i.value == j.value RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER i.value == 10 FOR j IN " + c.name() + " FILTER j.value == i.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER 10 == i.value && i.value == j.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER 10 == i.value FiLTER i.value == j.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER 10 == i.value FiLTER j.value == i.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == j.value && 10 == i.value RETURN i.value",
+        "FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == j.value FILTER 10 == i.value RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 10 == i.value FOR j IN " + c.name() + " FILTER i.value == j.value RETURN i.value",
+        "FOR i IN " + c.name() + " FILTER 10 == i.value FOR j IN " + c.name() + " FILTER j.value == i.value RETURN i.value"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+        var indexNodes = 0;
+        plan.nodes.map(function(node) {
+          if (node.type === "IndexRangeNode") {
+            ++indexNodes;
+          }
+        });
+
+        assertNotEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
+        assertEqual(2, indexNodes);
+
+        var results = AQL_EXECUTE(query);
+        assertEqual([ 10 ], results.json, query);
+        assertEqual(0, results.stats.scannedFull);
+        assertTrue(results.stats.scannedIndex > 0);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testValuePropagationSubquery : function () {
+      var query = "FOR i IN " + c.name() + " FILTER i.value == 10 " +
+                  "LET sub1 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
+                  "LET sub2 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
+                  "LET sub3 = (FOR j IN " + c.name() + " FILTER j.value == i.value RETURN j.value) " +
+                  "RETURN [ i.value, sub1, sub2, sub3 ]";
+
+      var plan = AQL_EXPLAIN(query).plan;
+
+      assertNotEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ [ 10, [ 10 ], [ 10 ], [ 10 ] ] ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
+    testNoValuePropagationSubquery : function () {
+      var query = "LET sub1 = (FOR j IN " + c.name() + " FILTER j.value == 10 RETURN j.value) " +
+                  "LET sub2 = (FOR j IN " + c.name() + " FILTER j.value == 11 RETURN j.value) " +
+                  "LET sub3 = (FOR j IN " + c.name() + " FILTER j.value == 12 RETURN j.value) " +
+                  "RETURN [ sub1, sub2, sub3 ]";
+
+      var plan = AQL_EXPLAIN(query).plan;
+
+      assertEqual(-1, plan.rules.indexOf("propagate-constant-attributes"));
+
+      var results = AQL_EXECUTE(query);
+      assertEqual([ [ [ 10 ], [ 11 ], [ 12 ] ] ], results.json, query);
+      assertEqual(0, results.stats.scannedFull);
+      assertTrue(results.stats.scannedIndex > 0);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test index usage
+////////////////////////////////////////////////////////////////////////////////
+
     testUseIndexSimple : function () {
       var query = "FOR i IN " + c.name() + " FILTER i.value >= 10 SORT i.value LIMIT 10 RETURN i.value";
 
@@ -476,7 +558,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(3, indexNodes);
-      assertEqual(12, explain.stats.plansCreated);
+      assertEqual(18, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
@@ -532,7 +614,7 @@ function optimizerIndexesTestSuite () {
 
       assertEqual(0, collectionNodes);
       assertEqual(20, indexNodes);
-      assertEqual(36, explain.stats.plansCreated);
+      assertEqual(64, explain.stats.plansCreated);
 
       var results = AQL_EXECUTE(query);
       assertEqual(0, results.stats.scannedFull);
