@@ -97,10 +97,11 @@ TRI_shape_t const BasicShapes::_shapeList = {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief hashs the attribute path identifier
+/// @brief hashes the attribute path identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashPidKeyAttributePath (TRI_associative_synced_t* array, void const* key) {
+static uint64_t HashPidKeyAttributePath (TRI_associative_synced_t* array, 
+                                         void const* key) {
   return TRI_FnvHashPointer(key, sizeof(TRI_shape_pid_t));
 }
 
@@ -108,10 +109,9 @@ static uint64_t HashPidKeyAttributePath (TRI_associative_synced_t* array, void c
 /// @brief hashs the attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashPidElementAttributePath (TRI_associative_synced_t* array, void const* element) {
-  TRI_shape_path_t const* e;
-
-  e = (TRI_shape_path_t const*) element;
+static uint64_t HashPidElementAttributePath (TRI_associative_synced_t* array, 
+                                             void const* element) {
+  auto e = static_cast<TRI_shape_path_t const*>(element);
 
   return TRI_FnvHashPointer(&e->_pid, sizeof(TRI_shape_pid_t));
 }
@@ -120,12 +120,11 @@ static uint64_t HashPidElementAttributePath (TRI_associative_synced_t* array, vo
 /// @brief compares an attribute path identifier and an attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, void const* key, void const* element) {
-  TRI_shape_pid_t const* k;
-  TRI_shape_path_t const* e;
-
-  k = (TRI_shape_pid_t const*) key;
-  e = (TRI_shape_path_t const*) element;
+static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, 
+                                      void const* key, 
+                                      void const* element) {
+  auto k = static_cast<TRI_shape_pid_t const*>(key);
+  auto e = static_cast<TRI_shape_path_t const*>(element);
 
   return *k == e->_pid;
 }
@@ -134,7 +133,8 @@ static bool EqualPidKeyAttributePath (TRI_associative_synced_t* array, void cons
 /// @brief looks up an attribute path by identifier
 ////////////////////////////////////////////////////////////////////////////////
 
-static TRI_shape_path_t const* LookupAttributePathByPid (TRI_shaper_t* shaper, TRI_shape_pid_t pid) {
+static TRI_shape_path_t const* LookupAttributePathByPid (TRI_shaper_t* shaper, 
+                                                         TRI_shape_pid_t pid) {
   return static_cast<TRI_shape_path_t const*>(TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByPid, &pid));
 }
 
@@ -142,24 +142,19 @@ static TRI_shape_path_t const* LookupAttributePathByPid (TRI_shaper_t* shaper, T
 /// @brief hashs the attribute path name
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashNameKeyAttributePath (TRI_associative_synced_t* array, void const* key) {
-  char const* k;
-
-  k = (char const*) key;
-
-  return TRI_FnvHashString(k);
+static uint64_t HashNameKeyAttributePath (TRI_associative_synced_t* array, 
+                                          void const* key) {
+  return TRI_FnvHashString(static_cast<char const*>(key));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hashs the attribute path
 ////////////////////////////////////////////////////////////////////////////////
 
-static uint64_t HashNameElementAttributePath (TRI_associative_synced_t* array, void const* element) {
-  char const* e;
-  TRI_shape_path_t const* ee;
-
-  e = (char const*) element;
-  ee = (TRI_shape_path_t const*) element;
+static uint64_t HashNameElementAttributePath (TRI_associative_synced_t* array, 
+                                              void const* element) {
+  char const* e = static_cast<char const*>(element);
+  TRI_shape_path_t const* ee = static_cast<TRI_shape_path_t const*>(element);
 
   return TRI_FnvHashPointer(e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t),
                             ee->_nameLength - 1);
@@ -169,14 +164,12 @@ static uint64_t HashNameElementAttributePath (TRI_associative_synced_t* array, v
 /// @brief compares an attribute name and an attribute
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void const* key, void const* element) {
-  char const* k;
-  char const* e;
-  TRI_shape_path_t const* ee;
-
-  k = (char const*) key;
-  e = (char const*) element;
-  ee = (TRI_shape_path_t const*) element;
+static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, 
+                                       void const* key, 
+                                       void const* element) {
+  char const* k = static_cast<char const*>(key);
+  char const* e = static_cast<char const*>(element);
+  TRI_shape_path_t const* ee = static_cast<TRI_shape_path_t const*>(element);
 
   return TRI_EqualString(k,e + sizeof(TRI_shape_path_t) + ee->_aidLength * sizeof(TRI_shape_aid_t));
 }
@@ -188,27 +181,21 @@ static bool EqualNameKeyAttributePath (TRI_associative_synced_t* array, void con
 static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
                                                     char const* name,
                                                     bool create) {
-  TRI_shape_aid_t* aids;
-  TRI_shape_path_t* result;
-  size_t count;
-  size_t len;
-  size_t total;
   char* buffer;
   char* end;
   char* prev;
   char* ptr;
-  void const* p;
 
   TRI_ASSERT(name != nullptr);
 
-  p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
+  void const* p = TRI_LookupByKeyAssociativeSynced(&shaper->_attributePathsByName, name);
 
   if (p != nullptr) {
     return (TRI_shape_path_t const*) p;
   }
 
-  // create a attribute path
-  len = strlen(name);
+  // create an attribute path
+  size_t len = strlen(name);
 
   // lock the index and check that the element is still missing
   TRI_LockMutex(&shaper->_attributePathLock);
@@ -222,8 +209,8 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   }
 
   // split path into attribute pieces
-  count = 0;
-  aids = static_cast<TRI_shape_aid_t*>(TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false));
+  size_t count = 0;
+  TRI_shape_aid_t* aids = static_cast<TRI_shape_aid_t*>(TRI_Allocate(shaper->_memoryZone, len * sizeof(TRI_shape_aid_t), false));
 
   if (aids == nullptr) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -272,8 +259,8 @@ static TRI_shape_path_t const* FindShapePathByName (TRI_shaper_t* shaper,
   TRI_FreeString(shaper->_memoryZone, buffer);
 
   // create element
-  total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
-  result = static_cast<TRI_shape_path_t*>(TRI_Allocate(shaper->_memoryZone, total, false));
+  size_t total = sizeof(TRI_shape_path_t) + (len + 1) + (count * sizeof(TRI_shape_aid_t));
+  TRI_shape_path_t* result = static_cast<TRI_shape_path_t*>(TRI_Allocate(shaper->_memoryZone, total, false));
 
   if (result == nullptr) {
     TRI_UnlockMutex(&shaper->_attributePathLock);
@@ -416,7 +403,6 @@ void TRI_DestroyShaper (TRI_shaper_t* shaper) {
 
   TRI_DestroyAssociativeSynced(&shaper->_attributePathsByName);
   TRI_DestroyAssociativeSynced(&shaper->_attributePathsByPid);
-
   TRI_DestroyMutex(&shaper->_attributePathLock);
 }
 

@@ -1050,8 +1050,8 @@ void TRI_PrintShape (struct TRI_shaper_s* shaper,
 /// variables passed by reference
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_StringValueShapedJson (const TRI_shape_t* const,
-                                const char*,
+bool TRI_StringValueShapedJson (TRI_shape_t const*,
+                                char const*,
                                 char**,
                                 size_t*);
 
