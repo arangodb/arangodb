@@ -45,56 +45,39 @@
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief name of TRI_shape_path_t
+/// @brief static const information about basic shape types
 ////////////////////////////////////////////////////////////////////////////////
 
-#define TRI_NAME_SHAPE_PATH(path) \
-  (((char const*) path) + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t))
+struct BasicShapes {
+  static TRI_shape_pid_t const TRI_SHAPE_SID_NULL;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_BOOLEAN;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_NUMBER;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_SHORT_STRING;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_LONG_STRING;
+  static TRI_shape_pid_t const TRI_SHAPE_SID_LIST;
+
+  static TRI_shape_t const     _shapeNull;
+  static TRI_shape_t const     _shapeBoolean;
+  static TRI_shape_t const     _shapeNumber;
+  static TRI_shape_t const     _shapeShortString;
+  static TRI_shape_t const     _shapeLongString;
+  static TRI_shape_t const     _shapeList;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief a const which represents an undefined weight
-///
-/// 2^63-1 to indicate that the attribute is weighted to be the lowest possible
-////////////////////////////////////////////////////////////////////////////////
-
-#define TRI_VOC_UNDEFINED_ATTRIBUTE_WEIGHT (-9223372036854775807L)
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global shape ids and pointers
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_basic_shapes_s {
-  TRI_shape_sid_t _sidNull;
-  TRI_shape_sid_t _sidBoolean;
-  TRI_shape_sid_t _sidNumber;
-  TRI_shape_sid_t _sidShortString;
-  TRI_shape_sid_t _sidLongString;
-  TRI_shape_sid_t _sidList;
-
-  TRI_shape_t     _shapeNull;
-  TRI_shape_t     _shapeBoolean;
-  TRI_shape_t     _shapeNumber;
-  TRI_shape_t     _shapeShortString;
-  TRI_shape_t     _shapeLongString;
-  TRI_shape_t     _shapeList;
-}
-TRI_basic_shapes_t;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief json shaper
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct TRI_shaper_s {
-    TRI_shape_aid_t (*findOrCreateAttributeByName) (struct TRI_shaper_s*, char const*);
+  TRI_shape_aid_t (*findOrCreateAttributeByName) (struct TRI_shaper_s*, char const*);
   TRI_shape_aid_t (*lookupAttributeByName) (struct TRI_shaper_s*, char const*);
   char const* (*lookupAttributeId) (struct TRI_shaper_s*, TRI_shape_aid_t);
   TRI_shape_t const* (*findShape) (struct TRI_shaper_s*, TRI_shape_t*, bool);
   TRI_shape_t const* (*lookupShapeId) (struct TRI_shaper_s*, TRI_shape_sid_t);
-  int64_t (*lookupAttributeWeight) (struct TRI_shaper_s*, TRI_shape_aid_t);
   TRI_shape_path_t const* (*lookupAttributePathByPid) (struct TRI_shaper_s*, TRI_shape_pid_t);
   TRI_shape_pid_t (*findOrCreateAttributePathByName) (struct TRI_shaper_s*, char const*);
   TRI_shape_pid_t (*lookupAttributePathByName) (struct TRI_shaper_s*, char const*);
@@ -146,42 +129,24 @@ void TRI_DestroyShaper (TRI_shaper_t* shaper);
 void TRI_FreeShaper (TRI_shaper_t* shaper);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the sid for a basic type
+/// @brief checks whether a shape is of primitive type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e);
+TRI_shape_t const* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a shape is of primitive type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief checks whether a shape is of primitive type
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const*);
+TRI_shape_t const* TRI_LookupBasicShapeShaper (TRI_shape_t const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the first id for user-defined shapes
 ////////////////////////////////////////////////////////////////////////////////
 
 static inline TRI_shape_sid_t TRI_FirstCustomShapeIdShaper (void) {
-  return 7;
+  return BasicShapes::TRI_SHAPE_SID_LIST + 1;
 }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises global basic shape types
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseShaper (void);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown shaper
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownShaper (void);
 
 #endif
 

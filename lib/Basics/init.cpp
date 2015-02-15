@@ -56,7 +56,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
   TRI_InitialiseRandom();
   TRI_InitialiseProcess(argc, argv);
   TRI_InitialiseSockets();
-  TRI_InitialiseShaper();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -64,7 +63,6 @@ void TRI_InitialiseC (int argc, char* argv[]) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ShutdownC () {
-  TRI_ShutdownShaper();
   TRI_ShutdownSockets();
   TRI_ShutdownProcess();
   TRI_ShutdownRandom();

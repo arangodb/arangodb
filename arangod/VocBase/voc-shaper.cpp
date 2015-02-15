@@ -32,6 +32,9 @@
 
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/ReadWriteLock.h"
+#include "Basics/WriteLocker.h"
 #include "Basics/associative.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
@@ -51,23 +54,23 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 typedef struct voc_shaper_s {
-  TRI_shaper_t                 base;
+  TRI_shaper_t                    base;
 
-  TRI_associative_synced_t     _attributeNames;
-  TRI_associative_synced_t     _attributeIds;
-  TRI_associative_synced_t     _shapeDictionary;
-  TRI_associative_synced_t     _shapeIds;
+  TRI_associative_synced_t        _attributeNames;
+  TRI_associative_synced_t        _attributeIds;
+  TRI_associative_synced_t        _shapeDictionary;
+  TRI_associative_synced_t        _shapeIds;
 
-  TRI_associative_pointer_t    _accessors;
+  TRI_associative_pointer_t       _accessors;
 
-  std::atomic<TRI_shape_aid_t> _nextAid;
-  std::atomic<TRI_shape_sid_t> _nextSid;
+  std::atomic<TRI_shape_aid_t>    _nextAid;
+  std::atomic<TRI_shape_sid_t>    _nextSid;
 
-  TRI_document_collection_t*   _collection;
+  TRI_document_collection_t*      _collection;
 
-  triagens::basics::Mutex      _accessorLock;
-  triagens::basics::Mutex      _shapeLock;
-  triagens::basics::Mutex      _attributeLock;
+  triagens::basics::ReadWriteLock _accessorLock;
+  triagens::basics::Mutex         _shapeLock;
+  triagens::basics::Mutex         _attributeLock;
 }
 voc_shaper_t;
 
@@ -86,7 +89,7 @@ static inline TRI_shape_aid_t GetAttributeId (void const* marker) {
     if (p->_type == TRI_DF_MARKER_ATTRIBUTE) {
       return reinterpret_cast<TRI_df_attribute_marker_t const*>(p)->_aid;
     }
-    else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+    if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
       return reinterpret_cast<triagens::wal::attribute_marker_t const*>(p)->_attributeId;
     }
   }
@@ -105,7 +108,7 @@ static inline char const* GetAttributeName (void const* marker) {
     if (p->_type == TRI_DF_MARKER_ATTRIBUTE) {
       return reinterpret_cast<char const*>(p) + sizeof(TRI_df_attribute_marker_t);
     }
-    else if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
+    if (p->_type == TRI_WAL_MARKER_ATTRIBUTE) {
       return reinterpret_cast<char const*>(p) + sizeof(triagens::wal::attribute_marker_t);
     }
   }
@@ -119,7 +122,6 @@ static inline char const* GetAttributeName (void const* marker) {
 
 static uint64_t HashKeyAttributeName (TRI_associative_synced_t* array, void const* key) {
   char const* k = (char const*) key;
-
   return TRI_FnvHashString(k);
 }
 
@@ -234,7 +236,6 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
 static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const* key) {
   TRI_shape_aid_t const* k = static_cast<TRI_shape_aid_t const*>(key);
-
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_aid_t));
 }
 
@@ -244,7 +245,6 @@ static uint64_t HashKeyAttributeId (TRI_associative_synced_t* array, void const*
 
 static uint64_t HashElementAttributeId (TRI_associative_synced_t* array, void const* element) {
   TRI_shape_aid_t aid = GetAttributeId(element);
-
   return TRI_FnvHashPointer(&aid, sizeof(TRI_shape_aid_t));
 }
 
@@ -285,7 +285,6 @@ static uint64_t HashElementShape (TRI_associative_synced_t* array,
   TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
   char const* s = reinterpret_cast<char const*>(shape);
-
   return TRI_FnvHashPointer(s + sizeof(TRI_shape_sid_t), shape->_size - sizeof(TRI_shape_sid_t));
 }
 
@@ -409,7 +408,6 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 static uint64_t HashKeyShapeId (TRI_associative_synced_t* array,
                                 void const* key) {
   TRI_shape_sid_t const* k = static_cast<TRI_shape_sid_t const*>(key);
-
   return TRI_FnvHashPointer(k, sizeof(TRI_shape_sid_t));
 }
 
@@ -421,7 +419,6 @@ static uint64_t HashElementShapeId (TRI_associative_synced_t* array,
                                     void const* element) {
   TRI_shape_t const* shape = static_cast<TRI_shape_t const*>(element);
   TRI_ASSERT(shape != nullptr);
-
   return TRI_FnvHashPointer(&shape->_sid, sizeof(TRI_shape_sid_t));
 }
 
@@ -897,26 +894,45 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
 TRI_shape_access_t const* TRI_FindAccessorVocShaper (TRI_shaper_t* s,
                                                      TRI_shape_sid_t sid,
                                                      TRI_shape_pid_t pid) {
-  TRI_shape_access_t search;
-  search._sid = sid;
-  search._pid = pid;
+  TRI_shape_access_t search = { sid, pid, 0, nullptr };
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
 
-  MUTEX_LOCKER(shaper->_accessorLock);
+  TRI_shape_access_t const* found;
+  {
+    READ_LOCKER(shaper->_accessorLock);
 
-  TRI_shape_access_t const* found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search));
+    found = static_cast<TRI_shape_access_t const*>(TRI_LookupByElementAssociativePointer(&shaper->_accessors, &search));
 
-  if (found == nullptr) {
-    found = TRI_ShapeAccessor(&shaper->base, sid, pid);
-
-    // TRI_ShapeAccessor can return a NULL pointer
     if (found != nullptr) {
-      TRI_InsertElementAssociativePointer(&shaper->_accessors, const_cast<void*>(static_cast<void const*>(found)), true);
+      return found;
     }
   }
 
-  return found;
+  // not found... time for us to create the accessor ourselves!
+  TRI_shape_access_t* accessor = TRI_ShapeAccessor(&shaper->base, sid, pid);
+
+  // TRI_ShapeAccessor can return a NULL pointer
+  if (accessor == nullptr) {
+    return nullptr;
+  }
+
+  // acquire the write-lock and try to insert our own accessor
+  {
+    WRITE_LOCKER(shaper->_accessorLock);
+
+    found = static_cast<TRI_shape_access_t const*>(TRI_InsertElementAssociativePointer(&shaper->_accessors, const_cast<void*>(static_cast<void const*>(accessor)), false));
+  }
+
+  if (found != nullptr) {
+    // someone else inserted the same accessor in the period after we release the read-lock
+    // but before we acquired the write-lock
+    // this is ok, and we can return the concurrently built accessor now
+    TRI_FreeShapeAccessor(accessor);
+    return found;
+  }
+
+  return const_cast<TRI_shape_access_t const*>(accessor);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1158,8 +1174,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
     left._sid = leftObject->_sid;
-    left._data.length = leftObject->_length;
-    left._data.data = const_cast<char*>(leftDocument) + leftObject->_offset;
+    TRI_InspectShapedSub(leftObject, leftDocument, left);
   }
   else {
     left = *leftShaped;
@@ -1168,8 +1183,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   // right is either a shaped json or a shaped sub object
   if (rightDocument != nullptr) {
     right._sid = rightObject->_sid;
-    right._data.length = rightObject->_length;
-    right._data.data = const_cast<char*>(rightDocument) + rightObject->_offset;
+    TRI_InspectShapedSub(rightObject, rightDocument, right);
   }
   else {
     right = *rightShaped;
@@ -1562,6 +1576,79 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   TRI_ASSERT(false);
   return 0; //shut the vc++ up
 }
+
+void TRI_InspectShapedSub (TRI_shaped_sub_t const* element,
+                           char const* shapedJson,
+                           TRI_shaped_json_t& shaped) {
+  if (element->_sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+    shaped._data.data = (char*) &element->_value._data;
+    shaped._data.length = 0;
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
+    shaped._data.data = (char*) &element->_value._data;
+    shaped._data.length = sizeof(TRI_shape_boolean_t);
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
+    shaped._data.data = (char*) &element->_value._data;
+    shaped._data.length = sizeof(TRI_shape_number_t);
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
+    shaped._data.data = (char*) &element->_value._data;
+    shaped._data.length = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
+  } 
+  else {
+    shaped._data.data = const_cast<char*>(shapedJson) + element->_value._position._offset;  // ONLY IN INDEX
+    shaped._data.length = element->_value._position._length; 
+  }
+}
+
+void TRI_InspectShapedSub (TRI_shaped_sub_t const* element,
+                           TRI_doc_mptr_t const* mptr,
+                           char const*& ptr,
+                           size_t& length) {
+  if (element->_sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+    ptr = (char const*) &element->_value._data;
+    length = 0;
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
+    ptr = (char const*) &element->_value._data;
+    length = sizeof(TRI_shape_boolean_t);
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
+    ptr = (char const*) &element->_value._data;
+    length = sizeof(TRI_shape_number_t);
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
+    ptr = (char const*) &element->_value._data;
+    length = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
+  } 
+  else {
+    ptr = mptr->getShapedJsonPtr() + element->_value._position._offset;  // ONLY IN INDEX
+    length = element->_value._position._length; 
+  }
+}
+
+void TRI_FillShapedSub (TRI_shaped_sub_t* element, 
+                        TRI_shaped_json_t const* shapedObject,
+                        char const* ptr) {
+  element->_sid = shapedObject->_sid;
+
+  if (element->_sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
+    memcpy((char*) &element->_value._data, shapedObject->_data.data, sizeof(TRI_shape_boolean_t));
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
+    memcpy((char*) &element->_value._data, shapedObject->_data.data, sizeof(TRI_shape_number_t));
+  } 
+  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
+    memcpy((char*) &element->_value._data, shapedObject->_data.data, sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT);
+  } 
+  else {
+    element->_value._position._length = shapedObject->_data.length;
+    element->_value._position._offset = static_cast<uint32_t>(((char const*) shapedObject->_data.data) - ptr);
+  }
+}                        
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

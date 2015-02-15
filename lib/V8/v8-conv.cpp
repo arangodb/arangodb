@@ -99,7 +99,7 @@ shape_cache_t;
 static int FillShapeValueNull (TRI_shaper_t* shaper,
                                 TRI_shape_value_t* dst) {
   dst->_type = TRI_SHAPE_NULL;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NULL;
   dst->_fixedSized = true;
   dst->_size = 0;
   dst->_value = nullptr;
@@ -117,7 +117,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_BOOLEAN;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -141,7 +141,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_BOOLEAN;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -165,7 +165,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NUMBER;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -189,7 +189,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NUMBER;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -217,7 +217,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
   if (*str == 0) {
     // empty string
     dst->_type = TRI_SHAPE_SHORT_STRING;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_SHORT_STRING;
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -233,7 +233,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
 
     if (size < TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
       dst->_type = TRI_SHAPE_SHORT_STRING;
-      dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
+      dst->_sid = BasicShapes::TRI_SHAPE_SID_SHORT_STRING;
       dst->_fixedSized = true;
       dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -247,7 +247,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
     }
     else {
       dst->_type = TRI_SHAPE_LONG_STRING;
-      dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
+      dst->_sid = BasicShapes::TRI_SHAPE_SID_LONG_STRING;
       dst->_fixedSized = false;
       dst->_size = sizeof(TRI_shape_length_long_string_t) + size + 1;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -300,8 +300,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
 
   if (n == 0) {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
-
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LIST;
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
@@ -522,7 +521,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
   // in-homogeneous
   else {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LIST;
 
     offset =
       sizeof(TRI_shape_length_list_t)

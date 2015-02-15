@@ -63,11 +63,11 @@ static bool ExtractDoubleArray (TRI_shaper_t* shaper,
     *missing = true;
     return false;
   }
-  else if (json._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
+  else if (json._sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
     *result = * (double*) json._data.data;
     return true;
   }
-  else if (json._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
+  else if (json._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
     *missing = true;
     return false;
   }
@@ -116,7 +116,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     // latitude
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 0, &entry);
 
-    if (! ok || entry._sid != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
+    if (! ok || entry._sid != BasicShapes::TRI_SHAPE_SID_NUMBER) {
       return false;
     }
 
@@ -125,7 +125,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
     // longitude
     ok = TRI_AtListShapedJson((const TRI_list_shape_t*) shape, &list, 1, &entry);
 
-    if (! ok || entry._sid != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
+    if (! ok || entry._sid != BasicShapes::TRI_SHAPE_SID_NUMBER) {
       return false;
     }
 
@@ -140,7 +140,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
     hom = (const TRI_homogeneous_list_shape_t*) shape;
 
-    if (hom->_sidEntry != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
+    if (hom->_sidEntry != BasicShapes::TRI_SHAPE_SID_NUMBER) {
       return false;
     }
 
@@ -177,7 +177,7 @@ static bool ExtractDoubleList (TRI_shaper_t* shaper,
 
     hom = (const TRI_homogeneous_sized_list_shape_t*) shape;
 
-    if (hom->_sidEntry != TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER)) {
+    if (hom->_sidEntry != BasicShapes::TRI_SHAPE_SID_NUMBER) {
       return false;
     }
 
@@ -240,25 +240,17 @@ static size_t MemoryGeoIndex (TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
-  TRI_json_t* json;
-  TRI_json_t* fields;
-  TRI_shape_path_t const* path;
-  char const* location;
-
   TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
   TRI_document_collection_t* document = idx->_collection;
 
-  // convert location to string
-  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_location);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  char const* location = TRI_AttributeNameShapePid(document->getShaper(), geo->_location);
 
-  if (path == nullptr) {
+  if (location == nullptr) {
     return nullptr;
   }
 
-  location = TRI_NAME_SHAPE_PATH(path);
-
   // create json
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   if (json == nullptr) {
     return nullptr;
@@ -272,7 +264,7 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
 
-  fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE, 1);
   TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location, strlen(location)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
 
@@ -284,35 +276,25 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
-  TRI_json_t* json;
-  TRI_json_t* fields;
-  TRI_shape_path_t const* path;
-  char const* latitude;
-  char const* longitude;
-
   TRI_geo_index_t const* geo = (TRI_geo_index_t const*) idx;
   TRI_document_collection_t* document = idx->_collection;
 
   // convert latitude to string
-  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_latitude);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  char const* latitude = TRI_AttributeNameShapePid(document->getShaper(), geo->_latitude);
 
-  if (path == nullptr) {
+  if (latitude == nullptr) {
     return nullptr;
   }
-
-  latitude = TRI_NAME_SHAPE_PATH(path);
 
   // convert longitude to string
-  path = document->getShaper()->lookupAttributePathByPid(document->getShaper(), geo->_longitude);  // ONLY IN INDEX, PROTECTED by RUNTIME
+  char const* longitude = TRI_AttributeNameShapePid(document->getShaper(), geo->_longitude);
 
-  if (path == nullptr) {
+  if (longitude == nullptr) {
     return nullptr;
   }
 
-  longitude = TRI_NAME_SHAPE_PATH(path);
-
   // create json
-  json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
+  TRI_json_t* json = TRI_JsonIndex(TRI_CORE_MEM_ZONE, idx);
 
   if (json == nullptr) {
     return nullptr;
@@ -324,7 +306,7 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
 
-  fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+  TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE, 2);
   TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude, strlen(latitude)));
   TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, longitude, strlen(longitude)));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "fields", fields);
