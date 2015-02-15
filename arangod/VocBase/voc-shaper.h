@@ -206,6 +206,19 @@ static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
   }
 }
 
+void TRI_InspectShapedSub (TRI_shaped_sub_t const*,
+                           char const*,
+                           TRI_shaped_json_t&);
+
+void TRI_InspectShapedSub (TRI_shaped_sub_t const*,
+                           TRI_doc_mptr_t const*,
+                           char const*&,
+                           size_t&);
+
+void TRI_FillShapedSub (TRI_shaped_sub_t*, 
+                        TRI_shaped_json_t const*,
+                        char const*);
+
 #endif
 
 // -----------------------------------------------------------------------------

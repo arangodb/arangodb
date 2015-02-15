@@ -43,48 +43,54 @@
 // --SECTION--                                                           GLOBALS
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief basic shape types (shared between all shapers)
-////////////////////////////////////////////////////////////////////////////////
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_NULL          = 1;
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_BOOLEAN       = 2;
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_NUMBER        = 3;
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_SHORT_STRING  = 4;
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_LONG_STRING   = 5;
+TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_LIST          = 6;
+  
+TRI_shape_t const BasicShapes::_shapeNull = { 
+  BasicShapes::TRI_SHAPE_SID_NULL, 
+  TRI_SHAPE_NULL, 
+  sizeof(TRI_null_shape_t), 
+  0 
+};
 
-static TRI_basic_shapes_t BasicShapes;
+TRI_shape_t const BasicShapes::_shapeBoolean = { 
+  BasicShapes::TRI_SHAPE_SID_BOOLEAN, 
+  TRI_SHAPE_BOOLEAN, 
+  sizeof(TRI_boolean_shape_t), 
+  sizeof(TRI_shape_boolean_t) 
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      ARRAY SHAPER
-// -----------------------------------------------------------------------------
+TRI_shape_t const BasicShapes::_shapeNumber = { 
+  BasicShapes::TRI_SHAPE_SID_NUMBER, 
+  TRI_SHAPE_NUMBER, 
+  sizeof(TRI_number_shape_t), 
+  sizeof(TRI_shape_number_t) 
+};
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                     private types
-// -----------------------------------------------------------------------------
+TRI_shape_t const BasicShapes::_shapeShortString = { 
+  BasicShapes::TRI_SHAPE_SID_SHORT_STRING, 
+  TRI_SHAPE_SHORT_STRING, 
+  sizeof(TRI_short_string_shape_t), 
+  sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT 
+};
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief attribute identifier mapping
-////////////////////////////////////////////////////////////////////////////////
+TRI_shape_t const BasicShapes::_shapeLongString = { 
+  BasicShapes::TRI_SHAPE_SID_LONG_STRING, 
+  TRI_SHAPE_LONG_STRING, 
+  sizeof(TRI_long_string_shape_t), 
+  TRI_SHAPE_SIZE_VARIABLE 
+};
 
-typedef struct attribute_2_id_s {
-  TRI_shape_aid_t _aid;         // attribute identifier
-  TRI_shape_size_t _size;       // size of the attribute name in name[] including '\0'
-
-  // char name[]
-}
-attribute_2_id_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief simple, array-based shaper
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct array_shaper_s {
-  TRI_shaper_t base;
-
-  TRI_associative_pointer_t _attributeNames;
-  TRI_vector_pointer_t _attributes;
-
-  TRI_associative_pointer_t _shapeDictionary;
-  TRI_vector_pointer_t _shapes;
-
-  // todo: add attribute weight structure
-}
-array_shaper_t;
+TRI_shape_t const BasicShapes::_shapeList = { 
+  BasicShapes::TRI_SHAPE_SID_LIST, 
+  TRI_SHAPE_LIST, 
+  sizeof(TRI_list_shape_t), 
+  TRI_SHAPE_SIZE_VARIABLE 
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -339,11 +345,8 @@ static TRI_shape_pid_t LookupAttributePathByName (TRI_shaper_t* shaper,
 
 char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper,
                                        TRI_shape_pid_t pid) {
-  TRI_shape_path_t const* path;
-  char const* e;
-
-  path = shaper->lookupAttributePathByPid(shaper, pid);
-  e = (char const*) path;
+  TRI_shape_path_t const* path = shaper->lookupAttributePathByPid(shaper, pid);
+  char const* e = (char const*) path;
 
   return e + sizeof(TRI_shape_path_t) + path->_aidLength * sizeof(TRI_shape_aid_t);
 }
@@ -357,16 +360,14 @@ char const* TRI_AttributeNameShapePid (TRI_shaper_t* shaper,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_InitShaper (TRI_shaper_t* shaper, TRI_memory_zone_t* zone) {
-  int res;
-
   shaper->_memoryZone = zone;
 
-  res = TRI_InitAssociativeSynced(&shaper->_attributePathsByName,
-                                  zone,
-                                  HashNameKeyAttributePath,
-                                  HashNameElementAttributePath,
-                                  EqualNameKeyAttributePath,
-                                  0);
+  int res = TRI_InitAssociativeSynced(&shaper->_attributePathsByName,
+                                      zone,
+                                      HashNameKeyAttributePath,
+                                      HashNameElementAttributePath,
+                                      EqualNameKeyAttributePath,
+                                      0);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
@@ -429,59 +430,31 @@ void TRI_FreeShaper (TRI_shaper_t* shaper) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the sid for a basic type
-////////////////////////////////////////////////////////////////////////////////
-
-TRI_shape_sid_t TRI_LookupBasicSidShaper (TRI_shape_type_e type) {
-  switch (type) {
-    case TRI_SHAPE_NULL:
-      return BasicShapes._sidNull;
-    case TRI_SHAPE_BOOLEAN:
-      return BasicShapes._sidBoolean;
-    case TRI_SHAPE_NUMBER:
-      return BasicShapes._sidNumber;
-    case TRI_SHAPE_SHORT_STRING:
-      return BasicShapes._sidShortString;
-    case TRI_SHAPE_LONG_STRING:
-      return BasicShapes._sidLongString;
-    case TRI_SHAPE_LIST:
-      return BasicShapes._sidList;
-    default: {
-    }
-  }
-
-  LOG_ERROR("encountered an illegal shape type");
-
-  TRI_ASSERT(false);
-  return TRI_SHAPE_ILLEGAL;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether a shape is of primitive type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
+TRI_shape_t const* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
   if (sid >= TRI_FirstCustomShapeIdShaper() || sid == 0) {
     return nullptr;
   }
 
-  if (sid == BasicShapes._sidNull) {
-    return &BasicShapes._shapeNull;
+  if (sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+    return &BasicShapes::_shapeNull;
   }
-  else if (sid == BasicShapes._sidBoolean) {
-    return &BasicShapes._shapeBoolean;
+  else if (sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
+    return &BasicShapes::_shapeBoolean;
   }
-  else if (sid == BasicShapes._sidNumber) {
-    return &BasicShapes._shapeNumber;
+  else if (sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
+    return &BasicShapes::_shapeNumber;
   }
-  else if (sid == BasicShapes._sidShortString) {
-    return &BasicShapes._shapeShortString;
+  else if (sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
+    return &BasicShapes::_shapeShortString;
   }
-  else if (sid == BasicShapes._sidLongString) {
-    return &BasicShapes._shapeLongString;
+  else if (sid == BasicShapes::TRI_SHAPE_SID_LONG_STRING) {
+    return &BasicShapes::_shapeLongString;
   }
-  else if (sid == BasicShapes._sidList) {
-    return &BasicShapes._shapeList;
+  else if (sid == BasicShapes::TRI_SHAPE_SID_LIST) {
+    return &BasicShapes::_shapeList;
   }
 
   return nullptr;
@@ -491,89 +464,27 @@ TRI_shape_t* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
 /// @brief checks whether a shape is of primitive type
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_shape_t* TRI_LookupBasicShapeShaper (TRI_shape_t const* shape) {
+TRI_shape_t const* TRI_LookupBasicShapeShaper (TRI_shape_t const* shape) {
   if (shape->_type == TRI_SHAPE_NULL) {
-    return &BasicShapes._shapeNull;
+    return &BasicShapes::_shapeNull;
   }
   else if (shape->_type == TRI_SHAPE_BOOLEAN) {
-    return &BasicShapes._shapeBoolean;
+    return &BasicShapes::_shapeBoolean;
   }
   else if (shape->_type == TRI_SHAPE_NUMBER) {
-    return &BasicShapes._shapeNumber;
+    return &BasicShapes::_shapeNumber;
   }
   else if (shape->_type == TRI_SHAPE_SHORT_STRING) {
-    return &BasicShapes._shapeShortString;
+    return &BasicShapes::_shapeShortString;
   }
   else if (shape->_type == TRI_SHAPE_LONG_STRING) {
-    return &BasicShapes._shapeLongString;
+    return &BasicShapes::_shapeLongString;
   }
   else if (shape->_type == TRI_SHAPE_LIST) {
-    return &BasicShapes._shapeList;
+    return &BasicShapes::_shapeList;
   }
 
   return nullptr;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises global basic shape types
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitialiseShaper () {
-  TRI_shape_t* shape;
-
-  memset(&BasicShapes, 0, sizeof(TRI_basic_shapes_t));
-
-  // NULL
-  shape = &BasicShapes._shapeNull;
-  shape->_size = sizeof(TRI_null_shape_t);
-  shape->_type = TRI_SHAPE_NULL;
-  shape->_dataSize = 0;
-  shape->_sid = BasicShapes._sidNull = 1;
-
-  // BOOLEAN
-  shape = &BasicShapes._shapeBoolean;
-  shape->_size = sizeof(TRI_boolean_shape_t);
-  shape->_type = TRI_SHAPE_BOOLEAN;
-  shape->_dataSize = sizeof(TRI_shape_boolean_t);
-  shape->_sid = BasicShapes._sidBoolean = 2;
-
-  // NUMBER
-  shape = &BasicShapes._shapeNumber;
-  shape->_size = sizeof(TRI_number_shape_t);
-  shape->_type = TRI_SHAPE_NUMBER;
-  shape->_dataSize = sizeof(TRI_shape_number_t);
-  shape->_sid = BasicShapes._sidNumber = 3;
-
-  // SHORT STRING
-  shape = &BasicShapes._shapeShortString;
-  shape->_size = sizeof(TRI_short_string_shape_t);
-  shape->_type = TRI_SHAPE_SHORT_STRING;
-  shape->_dataSize = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-  shape->_sid = BasicShapes._sidShortString = 4;
-
-  // LONG STRING
-  shape = &BasicShapes._shapeLongString;
-  shape->_size = sizeof(TRI_long_string_shape_t);
-  shape->_type = TRI_SHAPE_LONG_STRING;
-  shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
-  shape->_sid = BasicShapes._sidLongString = 5;
-
-  // LIST
-  shape = &BasicShapes._shapeList;
-  shape->_size = sizeof(TRI_list_shape_t);
-  shape->_type = TRI_SHAPE_LIST;
-  shape->_dataSize = TRI_SHAPE_SIZE_VARIABLE;
-  shape->_sid = BasicShapes._sidList = 6;
-
-  TRI_ASSERT(shape->_sid + 1 == TRI_FirstCustomShapeIdShaper());
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown shaper
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_ShutdownShaper () {
-  // nothing to do
 }
 
 // -----------------------------------------------------------------------------

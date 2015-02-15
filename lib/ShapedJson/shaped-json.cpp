@@ -363,7 +363,7 @@ static int SortShapeValuesFunc (void const* l, void const* r) {
 
 static bool FillShapeValueNull (TRI_shaper_t* shaper, TRI_shape_value_t* dst, TRI_json_t const* json) {
   dst->_type = TRI_SHAPE_NULL;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NULL;
   dst->_fixedSized = true;
   dst->_size = 0;
   dst->_value = 0;
@@ -379,7 +379,7 @@ static bool FillShapeValueBoolean (TRI_shaper_t* shaper, TRI_shape_value_t* dst,
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_BOOLEAN;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   // no need to prefill dst->_value with 0, as it is overwritten directly afterwards
@@ -402,7 +402,7 @@ static bool FillShapeValueNumber (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NUMBER;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = static_cast<TRI_shape_number_t*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
@@ -425,7 +425,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
 
   if (json->_value._string.length <= TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
     dst->_type = TRI_SHAPE_SHORT_STRING;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_SHORT_STRING;
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     // must fill with 0's because the string might be shorter, and we might use the
@@ -444,7 +444,7 @@ static bool FillShapeValueString (TRI_shaper_t* shaper, TRI_shape_value_t* dst, 
   }
   else {
     dst->_type = TRI_SHAPE_LONG_STRING;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LONG_STRING;
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_long_string_t) + json->_value._string.length;
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
@@ -500,8 +500,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
   if (n == 0) {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
-
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LIST;
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
@@ -713,7 +712,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
   // in-homogeneous
   else {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LIST;
 
     offset =
       sizeof(TRI_shape_length_list_t)

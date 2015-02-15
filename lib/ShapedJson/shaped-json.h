@@ -869,8 +869,15 @@ TRI_shaped_json_t;
 
 typedef struct TRI_shaped_sub_s {
   TRI_shape_sid_t _sid;
-  uint32_t _offset;
-  uint32_t _length;
+  union {
+    char _data[8];
+    struct {
+      uint32_t _offset;
+      uint32_t _length;
+    }
+    _position;
+  }
+  _value;
 }
 TRI_shaped_sub_t;
 
