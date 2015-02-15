@@ -27,8 +27,9 @@
 /// @author Copyright 2013-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/random.h"
 #include "skip-list.h"
+#include "Basics/random.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::basics;
 
@@ -50,9 +51,11 @@ static int randomHeight (void) {
   while (true) {   // will be left by return when the right height is found
     uint32_t r = TRI_UInt32Random();
     for (count = 32; count > 0; count--) {
-        if (0 != (r & 1UL) || height == TRI_SKIPLIST_MAX_HEIGHT) return height;
-        r = r >> 1;
-        height++;
+      if (0 != (r & 1UL) || height == TRI_SKIPLIST_MAX_HEIGHT) {
+        return height;
+      }
+      r = r >> 1;
+      height++;
     }
   }
 }
@@ -63,24 +66,32 @@ static int randomHeight (void) {
 ////////////////////////////////////////////////////////////////////////////////
 
 SkipListNode* SkipList::allocNode (int height) {
-  SkipListNode* newNode = new SkipListNode();
-
-  newNode->_doc = nullptr;
-
   if (0 == height) {
-    newNode->_height = randomHeight();
+    height = randomHeight();
   }
-  else {
-    newNode->_height = height;
+
+  // allocate enough memory for skiplist node plus all the next nodes in one go
+  void* ptr = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkipListNode) + sizeof(SkipListNode*) * height, false);
+
+  if (ptr == nullptr) {
+    THROW_OUT_OF_MEMORY_ERROR();
   }
+
+  SkipListNode* newNode;
 
   try {
-    newNode->_next = new SkipListNode*[newNode->_height];
+    // use placement new
+    newNode = new(ptr) SkipListNode();
   }
   catch (...) {
-    delete newNode;
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, ptr);
     throw;
   }
+
+  newNode->_doc = nullptr;
+  newNode->_height = height;
+  newNode->_next = reinterpret_cast<SkipListNode**>(static_cast<char*>(ptr) + sizeof(SkipListNode));
+
   for (int i = 0; i < newNode->_height; i++) {
     newNode->_next[i] = nullptr;
   }
@@ -100,8 +111,11 @@ void SkipList::freeNode (SkipListNode* node) {
   // update memory usage
   _memoryUsed -= sizeof(SkipListNode) +
                  sizeof(SkipListNode*) * node->_height;
-  delete[] node->_next;
-  delete node;
+ 
+  // we have used placement new to construct the skiplist node,
+  // so now we have to manually call its dtor and free the underlying memory
+  node->~SkipListNode();
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, node);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
