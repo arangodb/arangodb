@@ -1,9 +1,0 @@
-arangosh> var graph_module = require("org/arangodb/general-graph");
-arangosh> graph_module._drop("social");
-true
-arangosh> db._collection("female");
-[ArangoCollection 255747542, "female" (type document, status loaded)]
-arangosh> db._collection("male");
-[ArangoCollection 255878614, "male" (type document, status loaded)]
-arangosh> db._collection("relation");
-[ArangoCollection 256009686, "relation" (type edge, status loaded)]
