@@ -211,6 +211,10 @@ function FoxxManagerSuite () {
 
       try {
         fm.uninstall(mountPoint + "1");
+      }
+      catch (err) {
+      }
+      try {
         fm.uninstall(mountPoint + "2");
       }
       catch (err) {
