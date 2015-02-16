@@ -6,13 +6,13 @@ content-type: application/json; charset=utf-8
 { 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "1620719320", 
-    "totalEvents" : 9531, 
-    "time" : "2015-02-16T08:58:57Z" 
+    "lastLogTick" : "1621255638", 
+    "totalEvents" : 9533, 
+    "time" : "2015-02-16T09:39:11Z" 
   }, 
   "server" : { 
-    "version" : "2.5.0-alpha1", 
-    "serverId" : "27426833688090" 
+    "version" : "2.5.0-alpha2", 
+    "serverId" : "69660969078947" 
   }, 
   "clients" : [ ] 
 }
