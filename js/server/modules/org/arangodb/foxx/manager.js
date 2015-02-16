@@ -617,6 +617,9 @@
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
     var dbname = arangodb.db._name();
+    if (_.isEmpty(appCache)) {
+      initializeFoxx();
+    }
     delete appCache[dbname][mount];
     var app = createApp(mount, options, activateDevelopment);
     utils.getStorage().save(app.toJSON());
@@ -692,6 +695,10 @@
         installAppFromRemote(appInfo, targetPath);
       } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
         installAppFromLocal(appInfo, targetPath);
+      } else if (/^uploads\/tmp-/.test(appInfo)) {
+        // Install from upload API
+        appInfo = fs.join(fs.getTempPath(), appInfo);
+        installAppFromLocal(appInfo, targetPath);
       } else {
         installAppFromRemote(store.buildUrl(appInfo), targetPath);
       }
@@ -702,18 +709,39 @@
       }
       throw e;
     }
-    db._executeTransaction({
-      collections: {
-        write: collection.name()
-      },
-      action: function() {
-        app = _scanFoxx(mount, options);
+    try {
+      db._executeTransaction({
+        collections: {
+          write: collection.name()
+        },
+        action: function() {
+          app = _scanFoxx(mount, options);
+        }
+      });
+      if (runSetup) {
+        setup(mount);
       }
-    });
-    if (runSetup) {
-      setup(mount);
+      routeApp(app);
+    } catch (e) {
+      try {
+        fs.removeDirectoryRecursive(targetPath, true);
+      } catch (err) {
+      }
+      try {
+        db._executeTransaction({
+          collections: {
+            write: collection.name()
+          },
+          action: function() {
+            var definition = collection.firstExample({mount: mount});
+            collection.remove(definition._key);
+          }
+        });
+        
+      } catch (err) {
+      }
+      throw e;
     }
-    routeApp(app);
     return app;
   };
 

@@ -469,7 +469,6 @@
     // mount all controllers
     var controllers = app._manifest.controllers;
 
-// TODO better error handling, mark foxx as failed!
     try {
       for (i in controllers) {
         if (controllers.hasOwnProperty(i)) {
@@ -530,6 +529,7 @@
 // -----------------------------------------------------------------------------
 
   exports.routeApp = routeApp;
+  exports.__test_transformControllerToRoute = transformControllerToRoute;
 }());
 
 // -----------------------------------------------------------------------------
