@@ -113,7 +113,6 @@
   * [Production](Foxx/Production/README.md)
     * [Prod-Mode](Foxx/Production/Productionmode.md)
     * [Debugging](Foxx/Production/Debugging.md)
-    * [Moving Apps](Foxx/Production/Move.md)
     * [New Versions](Foxx/Production/Upgrade.md)
   * [Vendor Apps](Foxx/Apps/README.md)
     * [Session Storage](Foxx/Apps/Sessions.md)
