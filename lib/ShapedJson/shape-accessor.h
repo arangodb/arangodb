@@ -49,21 +49,8 @@ typedef struct TRI_shape_access_s {
 
   TRI_shape_sid_t _resultSid;           // resulting shape
   void const** _code;                   // bytecode
-
-  TRI_memory_zone_t* _memoryZone;
 }
 TRI_shape_access_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shape accessor bytecode operations
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-  TRI_SHAPE_AC_DONE       = 1,
-  TRI_SHAPE_AC_OFFSET_FIX = 2,
-  TRI_SHAPE_AC_OFFSET_VAR = 3
-}
-TRI_shape_ac_bc_e;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
