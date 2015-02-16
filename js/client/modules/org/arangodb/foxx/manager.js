@@ -97,7 +97,6 @@
 ////////////////////////////////////////////////////////////////////////////////
   var extractOptions = function (args) {
     var co = extractCommandLineOptions(args);
-
     if (3 < co.args.length) {
       var options = JSON.parse(co.args[3]);
 
@@ -330,14 +329,15 @@
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-  var uninstall = function(mount) {
+  var uninstall = function(mount, options) {
     checkParameter(
-      "uninstall(<mount>)",
+      "uninstall(<mount>, [<options>])",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     var res;
     var req = {
       mount: mount,
+      options: options || {}
     };
     utils.validateMount(mount);
     res = arango.POST("/_admin/foxx/uninstall", JSON.stringify(req));
@@ -548,7 +548,8 @@
              res.mount);
           break;
         case "uninstall":
-          res = uninstall(args[1]);
+          options = extractOptions(args).configuration || {};
+          res = uninstall(args[1], options);
 
           printf("Application %s version %s uninstalled successfully from mount point %s\n",
              res.name,
