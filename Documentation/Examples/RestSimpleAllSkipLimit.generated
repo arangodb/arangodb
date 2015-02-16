@@ -1,0 +1,26 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/all
+{ "collection": "products", "skip": 2, "limit" : 2 }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1319909080", 
+      "_key" : "1319909080", 
+      "_rev" : "1319909080", 
+      "Hello1" : "World1" 
+    }, 
+    { 
+      "_id" : "products/1321219800", 
+      "_key" : "1321219800", 
+      "_rev" : "1321219800", 
+      "Hello5" : "World5" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}

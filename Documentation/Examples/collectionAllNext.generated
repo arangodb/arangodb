@@ -1,0 +1,15 @@
+arangosh> db.five.all().limit(2).toArray();
+[ 
+  { 
+    "_id" : "five/155268824", 
+    "_key" : "155268824", 
+    "_rev" : "155268824", 
+    "name" : "three" 
+  }, 
+  { 
+    "_id" : "five/154875608", 
+    "_key" : "154875608", 
+    "_rev" : "154875608", 
+    "name" : "one" 
+  } 
+]

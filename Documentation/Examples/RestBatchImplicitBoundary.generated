@@ -1,0 +1,17 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/batch
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+
+DELETE /_api/collection/notexisting1 HTTP/1.1
+
+--SomeBoundaryValue
+Content-Type: application/x-arango-batchpart
+
+DELETE /_api/collection/notexisting2 HTTP/1.1
+--SomeBoundaryValue--
+
+
+HTTP/1.1 200 OK
+x-arango-errors: 2
+
+"--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 92\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":1203,\"errorMessage\":\"unknown collection 'notexisting1'\"}\r\n--SomeBoundaryValue\r\nContent-Type: application/x-arango-batchpart\r\n\r\nHTTP/1.1 404 Not Found\r\nContent-Type: application/json; charset=utf-8\r\nContent-Length: 92\r\n\r\n{\"error\":true,\"code\":404,\"errorNum\":1203,\"errorMessage\":\"unknown collection 'notexisting2'\"}\r\n--SomeBoundaryValue--"

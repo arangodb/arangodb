@@ -1,0 +1,10 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/logger-follow?from=1622030040&chunkSize=400
+
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-active: true
+x-arango-replication-checkmore: true
+x-arango-replication-lastincluded: 1622554328
+x-arango-replication-lasttick: 1623340760
+
+"{\"tick\":\"1622226648\",\"type\":2000,\"database\":\"79576\",\"cid\":\"1622161112\",\"collection\":{\"version\":5,\"type\":2,\"cid\":\"1622161112\",\"deleted\":false,\"doCompact\":true,\"maximalSize\":1048576,\"name\":\"products\",\"isVolatile\":false,\"waitForSync\":false}}\n{\"tick\":\"1622554328\",\"type\":2300,\"database\":\"79576\",\"cid\":\"1622161112\",\"tid\":\"0\",\"key\":\"p1\",\"rev\":\"1622488792\",\"data\":{\"_key\":\"p1\",\"_rev\":\"1622488792\",\"name\":\"flux compensator\"}}\n"

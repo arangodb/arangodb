@@ -1,0 +1,54 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> var query = graph._edges({type: "married"});
+arangosh> query.fromVertices([{name: "Alice"}, {name: "Charly"}]).toArray();
+[ 
+  { 
+    "_id" : "female/diana", 
+    "_key" : "diana", 
+    "_rev" : "1022637784", 
+    "name" : "Diana" 
+  }, 
+  { 
+    "_id" : "female/alice", 
+    "_key" : "alice", 
+    "_rev" : "1021916888", 
+    "name" : "Alice" 
+  }, 
+  { 
+    "_id" : "male/bob", 
+    "_key" : "bob", 
+    "_rev" : "1022244568", 
+    "name" : "Bob" 
+  }, 
+  { 
+    "_id" : "male/charly", 
+    "_key" : "charly", 
+    "_rev" : "1022441176", 
+    "name" : "Charly" 
+  }, 
+  { 
+    "_id" : "female/diana", 
+    "_key" : "diana", 
+    "_rev" : "1022637784", 
+    "name" : "Diana" 
+  }, 
+  { 
+    "_id" : "female/alice", 
+    "_key" : "alice", 
+    "_rev" : "1021916888", 
+    "name" : "Alice" 
+  }, 
+  { 
+    "_id" : "male/bob", 
+    "_key" : "bob", 
+    "_rev" : "1022244568", 
+    "name" : "Bob" 
+  }, 
+  { 
+    "_id" : "male/charly", 
+    "_key" : "charly", 
+    "_rev" : "1022441176", 
+    "name" : "Charly" 
+  } 
+]

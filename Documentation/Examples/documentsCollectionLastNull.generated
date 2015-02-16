@@ -1,0 +1,9 @@
+arangosh> db.example.last(1);
+[ 
+  { 
+    "_id" : "example/554186456", 
+    "_key" : "554186456", 
+    "_rev" : "554186456", 
+    "Hello" : "world" 
+  } 
+]

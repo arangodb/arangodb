@@ -1,0 +1,2 @@
+arangosh> db.example.document("example/4472917");
+[ArangoError 1202: document /_api/document/example/4472917 not found]

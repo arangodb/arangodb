@@ -37,7 +37,7 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-./configure --enable-all-in-one-v8 --enable-all-in-one-libev --enable-all-in-one-icu --enable-maintainer-mode --disable-mruby || exit 1
+./configure --enable-maintainer-mode --disable-mruby || exit 1
 make built-sources || exit 1
 make add-maintainer || exit 1
 make add-automagic || exit 1

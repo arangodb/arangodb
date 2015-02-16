@@ -1,0 +1,69 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "indexes" : [ 
+    { 
+      "id" : "products/0", 
+      "type" : "primary", 
+      "unique" : true, 
+      "selectivityEstimate" : 1, 
+      "fields" : [ 
+        "_key" 
+      ] 
+    }, 
+    { 
+      "id" : "products/1313748696", 
+      "type" : "hash", 
+      "unique" : false, 
+      "sparse" : false, 
+      "selectivityEstimate" : 1, 
+      "fields" : [ 
+        "name" 
+      ] 
+    }, 
+    { 
+      "id" : "products/1314010840", 
+      "type" : "skiplist", 
+      "unique" : false, 
+      "sparse" : true, 
+      "fields" : [ 
+        "price" 
+      ] 
+    } 
+  ], 
+  "identifiers" : { 
+    "products/0" : { 
+      "id" : "products/0", 
+      "type" : "primary", 
+      "unique" : true, 
+      "selectivityEstimate" : 1, 
+      "fields" : [ 
+        "_key" 
+      ] 
+    }, 
+    "products/1313748696" : { 
+      "id" : "products/1313748696", 
+      "type" : "hash", 
+      "unique" : false, 
+      "sparse" : false, 
+      "selectivityEstimate" : 1, 
+      "fields" : [ 
+        "name" 
+      ] 
+    }, 
+    "products/1314010840" : { 
+      "id" : "products/1314010840", 
+      "type" : "skiplist", 
+      "unique" : false, 
+      "sparse" : true, 
+      "fields" : [ 
+        "price" 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}
