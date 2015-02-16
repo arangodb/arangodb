@@ -1,5 +1,5 @@
 /*jshint globalstrict: true */
-/*global module, require, describe, beforeEach, afterEach, it, expect, fail, before*/
+/*global module, require, describe, beforeEach, afterEach, it, expect*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Spec for foxx manager
