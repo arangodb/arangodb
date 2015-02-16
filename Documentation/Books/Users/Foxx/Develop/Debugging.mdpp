@@ -24,3 +24,7 @@ Triggering this route and entering the error case will return the specific error
 
     unix>curl -X GET http://localhost:8529/_db/_system/example/failed
 
+!SECTION Errors in logs
+
+Independent of the errors presented in the routes on requests foxxes will always log errors to the log-file if catched by the default error handlers.
+The log entries will always contain stacktraces and error messages.
