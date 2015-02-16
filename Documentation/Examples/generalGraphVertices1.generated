@@ -1,0 +1,41 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_VERTICES("
+........> +"'routeplanner', {}) RETURN e").toArray();
+[ 
+  { 
+    "_id" : "germanCity/Berlin", 
+    "_key" : "Berlin", 
+    "_rev" : "557004504", 
+    "isCapital" : true, 
+    "population" : 3000000 
+  }, 
+  { 
+    "_id" : "germanCity/Hamburg", 
+    "_key" : "Hamburg", 
+    "_rev" : "557397720", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  }, 
+  { 
+    "_id" : "germanCity/Cologne", 
+    "_key" : "Cologne", 
+    "_rev" : "557201112", 
+    "isCapital" : false, 
+    "population" : 1000000 
+  }, 
+  { 
+    "_id" : "frenchCity/Paris", 
+    "_key" : "Paris", 
+    "_rev" : "557987544", 
+    "isCapital" : true, 
+    "population" : 4000000 
+  }, 
+  { 
+    "_id" : "frenchCity/Lyon", 
+    "_key" : "Lyon", 
+    "_rev" : "557790936", 
+    "isCapital" : false, 
+    "population" : 80000 
+  } 
+]

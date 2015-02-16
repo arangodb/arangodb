@@ -1,4 +1,4 @@
-v2.5.0 (XXXX-XX-XX)
+v2.5.0-alpha1 (2015-02-16)
 -------------------
 
 * added optimizer rule `propagate-constant-attributes`

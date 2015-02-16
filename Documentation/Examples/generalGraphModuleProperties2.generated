@@ -1,0 +1,59 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._commonProperties({}, {}, {ignoreProperties: 'population'});
+[ 
+  { 
+    "frenchCity/Lyon" : [ 
+      { 
+        "_id" : "germanCity/Hamburg", 
+        "isCapital" : false 
+      }, 
+      { 
+        "_id" : "germanCity/Cologne", 
+        "isCapital" : false 
+      } 
+    ] 
+  }, 
+  { 
+    "frenchCity/Paris" : [ 
+      { 
+        "_id" : "germanCity/Berlin", 
+        "isCapital" : true 
+      } 
+    ] 
+  }, 
+  { 
+    "germanCity/Berlin" : [ 
+      { 
+        "_id" : "frenchCity/Paris", 
+        "isCapital" : true 
+      } 
+    ] 
+  }, 
+  { 
+    "germanCity/Cologne" : [ 
+      { 
+        "_id" : "germanCity/Hamburg", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      }, 
+      { 
+        "_id" : "frenchCity/Lyon", 
+        "isCapital" : false 
+      } 
+    ] 
+  }, 
+  { 
+    "germanCity/Hamburg" : [ 
+      { 
+        "_id" : "germanCity/Cologne", 
+        "isCapital" : false, 
+        "population" : 1000000 
+      }, 
+      { 
+        "_id" : "frenchCity/Lyon", 
+        "isCapital" : false 
+      } 
+    ] 
+  } 
+]

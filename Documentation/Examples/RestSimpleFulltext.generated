@@ -1,0 +1,26 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/fulltext
+{ "collection": "products", "attribute" : "text", "query" : "word" }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1341077208", 
+      "_key" : "1341077208", 
+      "_rev" : "1341077208", 
+      "text" : "this text also has a word" 
+    }, 
+    { 
+      "_id" : "products/1340880600", 
+      "_key" : "1340880600", 
+      "_rev" : "1340880600", 
+      "text" : "this text contains word" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}

@@ -1,0 +1,32 @@
+arangosh> var a = db.five.all();
+arangosh> while (a.hasNext()) print(a.next());
+{ 
+  "_id" : "five/669005528", 
+  "_key" : "669005528", 
+  "_rev" : "669005528", 
+  "name" : "two" 
+}
+{ 
+  "_id" : "five/669398744", 
+  "_key" : "669398744", 
+  "_rev" : "669398744", 
+  "name" : "four" 
+}
+{ 
+  "_id" : "five/668808920", 
+  "_key" : "668808920", 
+  "_rev" : "668808920", 
+  "name" : "one" 
+}
+{ 
+  "_id" : "five/669202136", 
+  "_key" : "669202136", 
+  "_rev" : "669202136", 
+  "name" : "three" 
+}
+{ 
+  "_id" : "five/669595352", 
+  "_key" : "669595352", 
+  "_rev" : "669595352", 
+  "name" : "five" 
+}

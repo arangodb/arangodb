@@ -1,0 +1,94 @@
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1598306008
+{ 
+  "hello" : "world" 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1598633688"
+location: /_db/_system/_api/document/products/1598306008
+
+{ 
+  "error" : false, 
+  "_id" : "products/1598306008", 
+  "_rev" : "1598633688", 
+  "_key" : "1598306008" 
+}
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1598306008
+{ 
+  "numbers" : { 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3, 
+    "empty" : null 
+  } 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1599223512"
+location: /_db/_system/_api/document/products/1598306008
+
+{ 
+  "error" : false, 
+  "_id" : "products/1598306008", 
+  "_rev" : "1599223512", 
+  "_key" : "1598306008" 
+}
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1598306008
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "1599223512"
+
+{ 
+  "one" : "world", 
+  "hello" : "world", 
+  "numbers" : { 
+    "empty" : null, 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3 
+  }, 
+  "_id" : "products/1598306008", 
+  "_rev" : "1599223512", 
+  "_key" : "1598306008" 
+}
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1598306008?keepNull=false
+{ 
+  "hello" : null, 
+  "numbers" : { 
+    "four" : 4 
+  } 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1599682264"
+location: /_db/_system/_api/document/products/1598306008
+
+{ 
+  "error" : false, 
+  "_id" : "products/1598306008", 
+  "_rev" : "1599682264", 
+  "_key" : "1598306008" 
+}
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1598306008
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "1599682264"
+
+{ 
+  "one" : "world", 
+  "numbers" : { 
+    "empty" : null, 
+    "one" : 1, 
+    "two" : 2, 
+    "three" : 3, 
+    "four" : 4 
+  }, 
+  "_id" : "products/1598306008", 
+  "_rev" : "1599682264", 
+  "_key" : "1598306008" 
+}

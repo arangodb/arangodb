@@ -1,0 +1,74 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1600534232
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "1600534232"
+
+{ 
+  "inhabitants" : { 
+    "china" : 1366980000, 
+    "india" : 1263590000, 
+    "usa" : 319220000 
+  }, 
+  "_id" : "products/1600534232", 
+  "_rev" : "1600534232", 
+  "_key" : "1600534232" 
+}
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1600534232?mergeObjects=true
+{ 
+  "inhabitants" : { 
+    "indonesia" : 252164800, 
+    "brazil" : 203553000 
+  } 
+}
+
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1600534232
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "1601058520"
+
+{ 
+  "inhabitants" : { 
+    "china" : 1366980000, 
+    "india" : 1263590000, 
+    "usa" : 319220000, 
+    "indonesia" : 252164800, 
+    "brazil" : 203553000 
+  }, 
+  "_id" : "products/1600534232", 
+  "_rev" : "1601058520", 
+  "_key" : "1600534232" 
+}
+shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/document/products/1600534232?mergeObjects=false
+{ 
+  "inhabitants" : { 
+    "pakistan" : 188346000 
+  } 
+}
+
+HTTP/1.1 202 Accepted
+content-type: application/json; charset=utf-8
+etag: "1601517272"
+location: /_db/_system/_api/document/products/1600534232
+
+{ 
+  "error" : false, 
+  "_id" : "products/1600534232", 
+  "_rev" : "1601517272", 
+  "_key" : "1600534232" 
+}
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/document/products/1600534232
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+etag: "1601517272"
+
+{ 
+  "inhabitants" : { 
+    "pakistan" : 188346000 
+  }, 
+  "_id" : "products/1600534232", 
+  "_rev" : "1601517272", 
+  "_key" : "1600534232" 
+}
