@@ -1,5 +1,0 @@
-arangosh> col = db.example;
-[ArangoCollection 963012054, "example" (type document, status loaded)]
-arangosh> db._drop(col);
-arangosh> col;
-[ArangoCollection 963012054, "example" (type document, status loaded)]

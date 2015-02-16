@@ -1,2 +1,0 @@
-arangosh> db.example.document("");
-[ArangoError 1205: illegal document handle]
