@@ -617,7 +617,7 @@
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
     var dbname = arangodb.db._name();
-    if (_.isEmpty(appCache)) {
+    if (!appCache.hasOwnProperty(dbname)) {
       initializeFoxx();
     }
     delete appCache[dbname][mount];
@@ -768,26 +768,69 @@
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
 
-  var _uninstall = function(mount) {
-    var app = lookupApp(mount);
+  var _uninstall = function(mount, options) {
+    var dbname = arangodb.db._name();
+    if (!appCache.hasOwnProperty(dbname)) {
+      initializeFoxx();
+    }
+    var app;
+    try {
+      app = lookupApp(mount);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+    }
+    options = options || {};
     var collection = utils.getStorage();
     var targetPath = computeAppPath(mount, true);
-    if (!fs.exists(targetPath)) {
-      throw "No foxx app found at this location.";
+    if (!fs.exists(targetPath) && !options.force) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_NO_FOXX_FOUND.code,
+        errorMessage: errors.ERROR_NO_FOXX_FOUND.message
+      });
     }
-    var dbname = arangodb.db._name();
     delete appCache[dbname][mount];
-    db._executeTransaction({
-      collections: {
-        write: collection.name()
-      },
-      action: function() {
-        var definition = collection.firstExample({mount: mount});
-        collection.remove(definition._key);
+    try {
+      db._executeTransaction({
+        collections: {
+          write: collection.name()
+        },
+        action: function() {
+          var definition = collection.firstExample({mount: mount});
+          collection.remove(definition._key);
+        }
+      });
+    } catch (e) {
+      if (!options.force) {
+        throw e;
       }
-    });
-    _teardown(app);
-    fs.removeDirectoryRecursive(targetPath, true);
+    }
+    try {
+      _teardown(app);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+    }
+    try {
+      fs.removeDirectoryRecursive(targetPath, true);
+    } catch (e) {
+      if (!options.force) {
+        throw e;
+      }
+    }
+    if (options.force && app === undefined) {
+      return {
+        simpleJSON: function() {
+          return {
+            name: "force uninstalled",
+            version: "unknown",
+            mount: mount
+          };
+        }
+      };
+    }
     return app;
   };
 
@@ -797,13 +840,13 @@
   /// TODO: Long Documentation!
   ////////////////////////////////////////////////////////////////////////////////
 
-  var uninstall = function(mount) {
+  var uninstall = function(mount, options) {
     checkParameter(
-      "uninstall(<mount>)",
+      "uninstall(<mount>, [<options>])",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     utils.validateMount(mount);
-    var app = _uninstall(mount);
+    var app = _uninstall(mount, options);
     reloadRouting();
     return app.simpleJSON();
   };
