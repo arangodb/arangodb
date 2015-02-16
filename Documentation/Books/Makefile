@@ -2,8 +2,8 @@ all: build-books
 
 .PHONY: md-files
 
-MDPP_FILES = $(wildcard *.mdpp */*.mdpp */*/*.mdpp)
-MD_FILES = $(wildcard Users/*/*.md)
+MDPP_FILES = $(wildcard Users/*.mdpp Users/*/*.mdpp Users/*/*/*.mdpp)
+MD_FILES = $(wildcard Users/*/*.md Users/*/*/*.md)
 
 md-files:
 	@for file in $(basename $(MDPP_FILES)); do echo "converting $${file}.mdpp"; markdown-pp.py $${file}.mdpp $${file}.md; done

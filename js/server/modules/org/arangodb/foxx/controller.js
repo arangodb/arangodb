@@ -65,10 +65,12 @@ var Controller,
 Controller = function (context, options) {
   'use strict';
   var urlPrefix, baseMiddleware;
+  context.clearComments();
 
   if (is.notExisty(context)) {
     throw new Error("parameter <context> is missing");
   }
+  context.clearComments();
 
   this.routingInfo = {
     routes: []
@@ -101,7 +103,6 @@ Controller = function (context, options) {
         options: {
           name: context.name,
           version: context.version,
-          appId: context.appId,
           mount: context.mount,
           isDevelopment: context.isDevelopment,
           isProduction: context.isProduction,

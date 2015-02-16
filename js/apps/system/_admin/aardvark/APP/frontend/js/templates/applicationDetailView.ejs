@@ -1,0 +1,87 @@
+<script id="applicationDetailView.ejs" type="text/template">
+  <div class="application-detail-view">
+    <div class="headerBar">
+      <div class="headerButtonBar">
+        <ul class="headerButtonList">
+          <li class="enabled">
+            <a id="configure-app" class="headerButton">
+              <span class="icon_arangodb_settings2" title="Configure"></span>
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div class="breadcrumb">
+        <a class="activeBread" href="#applications">Applications</a>
+        &gt;
+        <a class="disabledBread">
+          <%= app.attributes.mount %>
+        </a>
+        <a class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
+          (development)
+        </a>
+      </div>
+    </div>
+    <section class="info">
+      <div class="header">
+        <div class="header-icon-container">
+          <img src="foxxes/thumbnail?mount=<%= app.encodedMount() %>" alt="Icon for App" class="icon" />
+        </div>
+        <div class="header_left">
+          <input type="button" class="open button-success" disabled="true" value="Open" />
+          <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Production':'Development'%>" />
+          <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
+        </div>
+        <div class="header_right">
+          <h3>
+            <%= app.attributes.name %>
+          </h3>
+          <h3>
+            <% if (app.attributes.license) { %>
+              <span class="license"><%= app.attributes.license %></span>
+            <% } %>
+          </h3>
+          <h3>
+            <span class="version"><%= app.attributes.version %></span>
+          </h3>
+          <p class="description"><%= app.attributes.description %></p>
+        </div>
+      </div>
+      <div class="swagger">
+        <iframe src="/_db/<%= db%>/_admin/aardvark/documentation.html?path=<%= encodeURIComponent(app.encodedMount()) %>" name="Documentation"></iframe>
+      </div>
+    </section>
+    <aside class="meta">
+      <dl>
+        <dt>Author</dt>
+        <dd><%= app.attributes.author %></dd>
+        <dt>Contributors</dt>
+        <dd>
+          <% if (app.attributes.contributors && app.attributes.contributors.length > 0) { %>
+          <ul>
+          <% _.each(app.attributes.contributors, function (contributor) { %>
+            <li><a href="mailto:<%= contributor.email %>"><%= contributor.name %></a></li>
+          <% }); %>
+          </ul>
+          <% } else { %>
+          No contributors
+          <% } %>
+        </dd>
+        <dt>Links</dt>
+        <dd>
+          <ul>
+            <% if (!app.attributes.development) { %>
+              <li>
+                <a href="./swagger/<%= encodeURIComponent(encodeURIComponent(app.attributes.mount)) %>" target="_blank">
+                  Download API Documentation
+                </a>
+              </li>
+            <% } %>
+            <% if (app.attributes.repository && app.attributes.repository.type == 'git') { %>
+              <li><a href="<%= app.attributes.repository.url %>" target="_blank">Git Repository</a></li>
+            <% } %>
+          </ul>
+        </dd>
+      </dl>
+    </aside>
+  </div>
+</script>

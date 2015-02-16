@@ -1,0 +1,23 @@
+!CHAPTER Available Debugging mechanisms
+
+We are talking about the development mode for foxx.
+Hence one of the most important parts will be debugging of your foxx.
+We have several mechanisms available to simplify this task.
+During foxx development we assume the following situation:
+You have installed a syntactically valid version of a foxx and want to develop it further.
+You have activated the development mode for this route:
+
+    unix>foxx-manager development /example
+
+Now you apply changes to source of foxx.
+In development mode it is possible that you create a foxx that could not be installed regularly.
+If this is the case and you request any route of it you should
+
+  <dt>Installation error on Mountpoint</dt>
+  <dl>
+    If your application cannot be installed, e.g. it contains syntactic errors, you will get the error description and the stacktrace on any request to a route within the mount point.
+  </dl>
+  <dt>Error Stacktraces on routes</dt>
+  <dl>
+    If your application could be installed but contains an unhandled error on a specific route, the request for this route will return the error message as well as the stacktrace.
+  </dl>
