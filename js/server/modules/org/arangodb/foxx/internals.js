@@ -29,7 +29,6 @@
 
 var _ = require("underscore"),
   is = require("org/arangodb/is"),
-  actions = require("org/arangodb/actions"),
   constructUrlObject,
   constructNickname,
   constructRoute,
