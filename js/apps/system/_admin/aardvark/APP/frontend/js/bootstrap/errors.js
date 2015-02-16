@@ -255,6 +255,7 @@
     "ERROR_FAILED_TO_EXECUTE_SCRIPT" : { "code" : 3005, "message" : "failed to execute script" },
     "ERROR_SYNTAX_ERROR_IN_SCRIPT" : { "code" : 3006, "message" : "syntax error in script" },
     "ERROR_INVALID_MOUNTPOINT"     : { "code" : 3007, "message" : "mountpoint is invalid" },
+    "ERROR_NO_FOXX_FOUND"          : { "code" : 3008, "message" : "No foxx found at this location" },
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10000, "message" : "element not inserted into structure, because it already exists" },
     "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10001, "message" : "element not found in structure" },
     "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" },

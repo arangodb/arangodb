@@ -36,7 +36,7 @@ describe ArangoDB do
     describe "valid App" do
       before(:each) do
         ## Uninstall eventually mounted apps
-        body = JSON.dump({mount: @mount})
+        body = JSON.dump({mount: @mount, options: {force: true}})
         ArangoDB.log_post("#{@prefix}-install-store", "#{@api}/uninstall", :body => body)
       end
 

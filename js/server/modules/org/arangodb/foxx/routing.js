@@ -517,8 +517,10 @@
       return routes;
     }
     catch (err) {
-      console.errorLines(
-        "Cannot compute Foxx application routes: %s", String(err.stack || err));
+      console.error("Cannot compute Foxx application routes: %s", String(err));
+      if (err.hasOwnProperty("stack")) {
+        console.errorLines(err.stack);
+      }
       throw err;
     }
     return null;

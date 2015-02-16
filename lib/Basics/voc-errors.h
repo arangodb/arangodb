@@ -597,6 +597,8 @@
 ///    contains a syntax error: 
 /// - 3007: @LIT{mountpoint is invalid}
 ///   mountpoint is invalid
+/// - 3008: @LIT{No foxx found at this location}
+///   No foxx found at this location
 /// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
@@ -3164,6 +3166,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3008: ERROR_NO_FOXX_FOUND
+///
+/// No foxx found at this location
+///
+/// No foxx found at this location
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NO_FOXX_FOUND                                           (3008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS

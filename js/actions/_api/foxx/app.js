@@ -106,8 +106,9 @@ actions.defineHttp({
     body: true,
     callback: function (body) {
       var mount = body.mount;
+      var options = body.options || {};
 
-      return foxxManager.uninstall(mount);
+      return foxxManager.uninstall(mount, options);
     }
   })
 });
