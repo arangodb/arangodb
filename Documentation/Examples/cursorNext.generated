@@ -1,7 +1,0 @@
-arangosh> db.five.all().next();
-{ 
-  "_id" : "five/245458390", 
-  "_key" : "245458390", 
-  "_rev" : "245458390", 
-  "name" : "five" 
-}

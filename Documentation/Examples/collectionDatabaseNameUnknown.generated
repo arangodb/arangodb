@@ -1,2 +1,0 @@
-arangosh> db._collection("unknown");
-null
