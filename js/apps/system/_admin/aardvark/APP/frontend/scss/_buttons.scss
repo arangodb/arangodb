@@ -1,0 +1,468 @@
+// Bootstrap Buttons
+%bare-btn {
+  @include border-radius(4px);
+  @include box-shadow(0);
+  font-size: 14px;
+  font-weight: 300 !important;
+}
+
+%btn {
+  @extend %bare-btn;
+  border: 0;
+  color: $c-white;
+  margin-left: 10px;
+  padding: 5px 16px;
+}
+
+.button-neutral {
+  @extend %btn;
+  @extend %neutral;
+}
+
+.button-header {
+  @extend %bare-btn;
+  @extend %header;
+  margin-top: 5px;
+}
+
+.button-primary {
+  @extend %btn;
+  @extend %primary;
+}
+
+.button-notification {
+  @extend %btn;
+  @extend %notification;
+}
+
+.button-success {
+  @extend %btn;
+  @extend %positive;
+}
+
+[class^='button-']:disabled,
+[class*=' button-']:disabled {
+  @extend %inactive;
+
+  cursor: not-allowed;
+}
+
+.button-danger {
+  @extend %btn;
+  @extend %negative;
+}
+
+.button-warning {
+  @extend %btn;
+  @extend %warning;
+}
+
+.button-inactive {
+  @extend %btn;
+  @extend %inactive;
+}
+
+.button-close {
+  @extend %btn;
+  @extend %neutral;
+}
+
+.addButton {
+  @extend %clickable;
+  @extend %icon-positive;
+  font-size: 22px;
+  margin-right: 7px;
+  margin-top: 2px;
+  position: relative;
+}
+
+.deleteButton {
+  @extend %clickable;
+  @extend %icon-negative;
+  font-size: 22px;
+  padding-right: 3px;
+  position: relative;
+  top: 3px;
+}
+
+#closeBtnInfoView {
+  margin-left: 0 !important;
+}
+
+
+button.large-distance {
+  margin-left: 12px;
+}
+
+button.short-distance {
+  margin-left: 6px;
+}
+
+ul.headerButtonList {
+  display: inline-block;
+  margin-bottom: 0;
+  margin-left: 0;
+  padding-left: 0 !important;
+
+  li {
+    @extend %pull-right;
+    display: inline;
+  }
+}
+
+button.shutdown {
+  margin-top: 6px;
+  padding: 3px 14px;
+}
+
+%header-button {
+  @extend %clickable;
+  @extend %header;
+  @extend %pull-left;
+  @include border-radius(3px);
+  @include box-shadow(none);
+
+  margin: {
+    left: 5px;
+    right: 5px;
+  }
+  padding: {
+    left: 9px;
+    right: 9px;
+  }
+}
+
+a.headerButton {
+  @extend %header-button;
+
+  height: 17px;
+  margin-top: 2px; 
+  padding: {
+    top: 4px;
+    bottom: 2px;
+  }
+  position: relative;
+  width: 9px;
+
+  .icon_arangodb_filter {
+    top: 3px !important;
+  }
+
+  .icon_arangodb_import {
+    top: 1px !important;
+  }
+
+  .icon_arangodb_checklist {
+    right: 5px;
+    top: 3px !important;
+  }
+
+  .icon_arangodb_arrowleft,
+  .icon_arangodb_arrowright {
+    font-weight: bold;
+  }
+
+  &.activated {
+    background-color: $c-positive-hover;
+    color: $c-white;
+
+    &:hover {
+      background-color: $c-white;
+      color: $c-positive-hover;
+    }
+  }
+  &.disabled {
+    @extend %icon-inactive;
+
+    cursor: not-allowed;
+  }
+}
+
+#exportCollection {
+  i {
+    margin-left: -3px !important;
+  }
+}
+
+#importCollection {
+  i {
+    margin-left: -3px !important;
+    position: relative;
+    top: -1px;
+  }
+}
+
+//Graph Viewer
+
+div.toolbox {
+  @include border-radius(2px);
+  border: 3px solid $c-nav-bg;
+  margin-right: 5px;
+  position: absolute;
+
+  div.gv_action_button {
+    @extend %clickable;
+    background-color: $c-nav-bg;
+    color: $c-white;
+    height: 50px;
+    margin-bottom: 2px;
+    margin-top: 2px;
+    position: relative;
+    text-align: center;
+    width: 50px;
+
+    &.active {
+      background-color: $c-positive;
+    }
+
+    &:first-child {
+      margin-top: 0;
+    }
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+}
+
+%gv-button {
+  left: 0;
+  margin: 0;
+  position: absolute;
+  right: 0;
+}
+
+h6 {
+
+  &.gv_icon_icon {
+    @extend %gv-button;
+    font-size: 22px;
+    top: 6px;
+  }
+
+  &.gv_button_title {
+    @extend %gv-button;
+    bottom: 1px;
+  }
+}
+
+button.graphViewer-icon-button {
+  background-color: transparent;
+  border: 0;
+  height: 20px;
+  margin-left: 5px;
+  margin-top: -2px;
+  padding: 0;
+  width: 20px;
+}
+
+button.graphViewer-icon-button > img {
+  height: 20px;
+  padding-bottom: 10px;
+  width: 20px;
+}
+
+button.gv_dropdown_entry {
+  height: 30px;
+  margin: 4px 4px 4px 30px;
+  width: 160px;
+}
+
+button.gv_context_button {
+  width: 65px;
+}
+
+.btn-icon {
+  background-color: rgb(56, 52, 52);
+  padding: 4px;
+}
+
+button.gv-icon-small {
+  background-size: 16px 16px;
+  height: 16px;
+  width: 16px;
+}
+
+button.gv-icon-small.delete {
+  background-image: url('../img/icon_delete.png');
+}
+
+button.gv-icon-small.add {
+  background-image: url('../img/plus_icon.png');
+}
+
+
+button.gv-icon-btn {
+  @include border-radius(0 !important);
+  background-size: 36px 36px;
+  height: 36px;
+  width: 36px;
+}
+
+button.gv-icon-btn.active {
+  background-color: $c-positive;
+}
+
+button.btn-zoom:hover {
+  background: inherit;
+}
+
+button.btn-zoom {
+  background: none;
+  height: 16px;
+  margin: 0;
+  padding: 0;
+  position: absolute;
+  width: 16px;
+}
+
+button.btn-zoom-top {
+  left: 13px;
+  top: 0;
+}
+
+button.btn-zoom-left {
+  left: 0;
+  top: 12px;
+}
+
+button.btn-zoom-bottom {
+  left: 13px;
+  top: 24px;
+}
+
+button.btn-zoom-right {
+  right: 0;
+  top: 12px;
+}
+
+button.gv-zoom-btn {
+  background-size: 14px 14px;
+  height: 14px;
+  vertical-align: baseline;
+  width: 14px;
+
+  &.pan-right {
+    background-image: url('../img/gv_arrow_right.png');
+  }
+
+  &.pan-left {
+    background-image: url('../img/gv_arrow_left.png');
+  }
+
+  &.pan-top {
+    background-image: url('../img/gv_arrow_top.png');
+  }
+
+  &.pan-bottom {
+    background-image: url('../img/gv_arrow_bottom.png');
+  }
+}
+
+a.pagination-button,
+ul.arango-pagination a {
+  @include border-radius(2px);
+}
+
+.badge,
+.label,
+.btn {
+  text-shadow: none !important;
+}
+
+.thumbnail,
+.navbar-inner {
+  @include border-radius(0);
+  @include box-shadow(0);
+}
+
+.modal-body th.actionCell > button {
+  margin-top: -12px;
+}
+
+button {
+  font-family: 'Open Sans', sans-serif !important;
+}
+
+.btn-old-padding {
+  padding-bottom: 4px !important;
+  padding-top: 4px !important;
+}
+
+// Cluster View
+
+button.btn-overview,
+button.btn-server {
+  margin: 5px;
+}
+
+button.btn-server {
+  width: 120px;
+}
+
+a.button-gui {
+  @extend %header-button;
+  height: auto;
+  margin: {
+    bottom: 0;
+    top: 0;
+  }
+  padding: {
+    top: 1px;
+    bottom: 1px;
+  }
+  position: absolute;
+  right: 2px;
+  text-decoration: none !important;
+  top: 2px;
+  width: auto;
+
+  &.button-gui-disabled {
+    display: none;
+  }
+}
+
+.clusterDownBtn {
+  padding-bottom: 10px;
+  padding-top: 10px;
+  text-align: center;
+
+  %cluster-button {
+    @extend %clickable;
+    @include border-radius(3px);
+
+    background-color: $c-cluster-button-grey;
+    border: 1px solid $c-cluster-button-grey-border;
+    color: $c-cluster-button-grey-fg;
+    font-size: 20px;
+    font-weight: 300;
+    margin: 0;
+    padding: 12px 18px;
+    text-align: center;
+    text-decoration: none !important;
+    width: 250px;
+
+    &:hover {
+      background-color: $c-cluster-button-grey-hover;
+      color: $c-cluster-button-grey-hover-fg;
+      -webkit-transition-delay: 0;
+      -webkit-transition-duration: .2s;
+      -webkit-transition-property: all;
+      -webkit-transition-timing-function: ease-in;
+    }
+  }
+
+  button {
+    @extend %cluster-button;
+
+    &.green {
+      background-color: $c-cluster-button-green;
+      color: $c-white;
+
+      &:hover {
+        background-color: $c-cluster-button-green-hover;
+      }
+    }
+  }
+}
+
