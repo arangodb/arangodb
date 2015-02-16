@@ -225,17 +225,12 @@ namespace triagens {
 
     static TRI_shape_t const* FailureFunction (TRI_shaper_t*, TRI_shape_t*, bool) {
       TRI_ASSERT(false);
-      return 0;
-    }
-
-    static int64_t FailureFunction (TRI_shaper_t*, TRI_shape_aid_t) {
-      TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
 
     static TRI_shape_path_t const* FailureFunction2 (TRI_shaper_t*, TRI_shape_pid_t) {
       TRI_ASSERT(false);
-      return 0;
+      return nullptr;
     }
 
     static TRI_shape_pid_t FailureFunction2 (TRI_shaper_t*, char const*) {
@@ -281,7 +276,6 @@ namespace triagens {
           lookupAttributeId = lookupAttributeIdFunction;
           findShape = FailureFunction;
           lookupShapeId = lookupShapeIdFunction;
-          lookupAttributeWeight = FailureFunction;
           lookupAttributePathByPid = FailureFunction2;
           findOrCreateAttributePathByName = FailureFunction2;
           lookupAttributePathByName = FailureFunction2;
@@ -291,7 +285,7 @@ namespace triagens {
           // nothing to do
         }
 
-        char const* lookupAttributeIdMethod (TRI_shape_aid_t const aid) {
+        char const* lookupAttributeIdMethod (TRI_shape_aid_t const aid) const {
           // binary search in AttributeIds
           TRI_shape_size_t low = 0;
           TRI_shape_size_t high = _numberAttributes;
@@ -322,7 +316,7 @@ namespace triagens {
           }
         }
 
-        TRI_shape_t const* lookupShapeIdMethod (TRI_shape_sid_t const sid) {
+        TRI_shape_t const* lookupShapeIdMethod (TRI_shape_sid_t const sid) const {
           // Is it a builtin basic one?
           if (sid < TRI_FirstCustomShapeIdShaper()) {
             return TRI_LookupSidBasicShapeShaper(sid);

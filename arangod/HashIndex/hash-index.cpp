@@ -76,9 +76,10 @@ static int FillIndexSearchValueByHashIndexElement (TRI_hash_index_t* hashIndex,
   size_t const n = NumPaths(hashIndex);
 
   for (size_t i = 0;  i < n;  ++i) {
-    key->_values[i]._sid         = element->_subObjects[i]._sid;
-    key->_values[i]._data.length = element->_subObjects[i]._length;
-    key->_values[i]._data.data   = const_cast<char*>(ptr + element->_subObjects[i]._offset);
+    auto sid = element->_subObjects[i]._sid;
+    key->_values[i]._sid = sid;
+
+    TRI_InspectShapedSub(&element->_subObjects[i], ptr, key->_values[i]);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -140,11 +141,10 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
 
     // field not part of the object
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
-      hashElement->_subObjects[j]._sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
-      hashElement->_subObjects[j]._length = 0;
-      hashElement->_subObjects[j]._offset = 0;
+      hashElement->_subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL;
 
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
+
       if (sparse) {
         // no need to continue
         return res;
@@ -159,7 +159,7 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
       return TRI_ERROR_INTERNAL;
     }
 
-    if (shapedObject._sid == TRI_LookupBasicSidShaper(TRI_SHAPE_NULL)) {
+    if (shapedObject._sid == BasicShapes::TRI_SHAPE_SID_NULL) {
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
 
       if (sparse) {
@@ -167,10 +167,8 @@ static int HashIndexHelper (TRI_hash_index_t const* hashIndex,
         return res;
       }
     }
-
-    hashElement->_subObjects[j]._sid    = shapedObject._sid;
-    hashElement->_subObjects[j]._length = shapedObject._data.length;
-    hashElement->_subObjects[j]._offset = static_cast<uint32_t>(((char const*) shapedObject._data.data) - ptr);
+ 
+    TRI_FillShapedSub(&hashElement->_subObjects[j], &shapedObject, ptr);
   }
 
   return res;

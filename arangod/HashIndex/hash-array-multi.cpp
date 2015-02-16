@@ -35,6 +35,7 @@
 #include "Basics/fasthash.h"
 #include "HashIndex/hash-index.h"
 #include "VocBase/document-collection.h"
+#include "VocBase/voc-shaper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        COMPARISON
@@ -59,16 +60,16 @@ static bool IsEqualKeyElement (TRI_hash_array_multi_t const* array,
 
     auto length = leftJson->_data.length;
 
-    if (length != rightSub->_length) {
+    char const* rightData;
+    size_t rightLength;
+    TRI_InspectShapedSub(rightSub, right->_document, rightData, rightLength);
+
+    if (length != rightLength) {
       return false;
     }
 
-    if (0 < length) {
-      char const* ptr = right->_document->getShapedJsonPtr() + rightSub->_offset;  // ONLY IN INDEX
-
-      if (memcmp(leftJson->_data.data, ptr, length) != 0) {
-        return false;
-      }
+    if (length > 0 && memcmp(leftJson->_data.data, rightData, length) != 0) {
+      return false;
     }
   }
 
@@ -98,12 +99,15 @@ static uint64_t HashKey (TRI_hash_array_multi_t const* array,
 static uint64_t HashElement (TRI_hash_array_multi_t const* array,
                              TRI_hash_index_element_multi_t const* element) {
   uint64_t hash = 0x0123456789abcdef;
-  char const* ptr = element->_document->getShapedJsonPtr(); // ONLY IN INDEX
 
   for (size_t j = 0;  j < array->_numFields;  j++) {
+    char const* data;
+    size_t length;
+    TRI_InspectShapedSub(&element->_subObjects[j], element->_document, data, length);
+
     // ignore the sid for hashing
     // only hash the data block
-    hash = fasthash64(ptr + element->_subObjects[j]._offset, element->_subObjects[j]._length, hash);
+    hash = fasthash64(data, length, hash);
   }
 
   return hash;

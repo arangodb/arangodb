@@ -97,9 +97,9 @@ shape_cache_t;
 ////////////////////////////////////////////////////////////////////////////////
 
 static int FillShapeValueNull (TRI_shaper_t* shaper,
-                                TRI_shape_value_t* dst) {
+                               TRI_shape_value_t* dst) {
   dst->_type = TRI_SHAPE_NULL;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NULL);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NULL;
   dst->_fixedSized = true;
   dst->_size = 0;
   dst->_value = nullptr;
@@ -117,7 +117,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_BOOLEAN;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -141,7 +141,7 @@ static int FillShapeValueBoolean (TRI_shaper_t* shaper,
   TRI_shape_boolean_t* ptr;
 
   dst->_type = TRI_SHAPE_BOOLEAN;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_BOOLEAN);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_BOOLEAN;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_boolean_t);
   dst->_value = (char*) (ptr = (TRI_shape_boolean_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -165,7 +165,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NUMBER;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -189,7 +189,7 @@ static int FillShapeValueNumber (TRI_shaper_t* shaper,
   TRI_shape_number_t* ptr;
 
   dst->_type = TRI_SHAPE_NUMBER;
-  dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_NUMBER);
+  dst->_sid = BasicShapes::TRI_SHAPE_SID_NUMBER;
   dst->_fixedSized = true;
   dst->_size = sizeof(TRI_shape_number_t);
   dst->_value = (char*) (ptr = (TRI_shape_number_t*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -214,10 +214,10 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
 
   TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, json);
 
-  if (*str == 0) {
+  if (*str == nullptr) {
     // empty string
     dst->_type = TRI_SHAPE_SHORT_STRING;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_SHORT_STRING;
     dst->_fixedSized = true;
     dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
     dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -233,7 +233,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
 
     if (size < TRI_SHAPE_SHORT_STRING_CUT) { // includes '\0'
       dst->_type = TRI_SHAPE_SHORT_STRING;
-      dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_SHORT_STRING);
+      dst->_sid = BasicShapes::TRI_SHAPE_SID_SHORT_STRING;
       dst->_fixedSized = true;
       dst->_size = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, true));
@@ -247,7 +247,7 @@ static int FillShapeValueString (TRI_shaper_t* shaper,
     }
     else {
       dst->_type = TRI_SHAPE_LONG_STRING;
-      dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LONG_STRING);
+      dst->_sid = BasicShapes::TRI_SHAPE_SID_LONG_STRING;
       dst->_fixedSized = false;
       dst->_size = sizeof(TRI_shape_length_long_string_t) + size + 1;
       dst->_value = (ptr = (char*) TRI_Allocate(shaper->_memoryZone, dst->_size, false));
@@ -300,8 +300,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
 
   if (n == 0) {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
-
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LIST;
     dst->_fixedSized = false;
     dst->_size = sizeof(TRI_shape_length_list_t);
     dst->_value = (ptr = static_cast<char*>(TRI_Allocate(shaper->_memoryZone, dst->_size, false)));
@@ -522,7 +521,7 @@ static int FillShapeValueList (v8::Isolate* isolate,
   // in-homogeneous
   else {
     dst->_type = TRI_SHAPE_LIST;
-    dst->_sid = TRI_LookupBasicSidShaper(TRI_SHAPE_LIST);
+    dst->_sid = BasicShapes::TRI_SHAPE_SID_LIST;
 
     offset =
       sizeof(TRI_shape_length_list_t)
@@ -849,12 +848,45 @@ static int FillShapeValueJson (v8::Isolate* isolate,
                                vector<v8::Handle<v8::Object>>& seenObjects,
                                bool create) {
   v8::HandleScope scope(isolate);
+
   if (json->IsRegExp() || json->IsFunction() || json->IsExternal()) {
     LOG_TRACE("shaper failed because regexp/function/external/date object cannot be converted");
     return TRI_ERROR_BAD_PARAMETER;
   }
   
-  if (json->IsObject() && ! json->IsArray()) {
+  if (json->IsNull() || json->IsUndefined()) {
+    return FillShapeValueNull(shaper, dst);
+  }
+
+  if (json->IsBoolean()) {
+    return FillShapeValueBoolean(shaper, dst, json->ToBoolean());
+  }
+
+  if (json->IsBooleanObject()) {
+    return FillShapeValueBoolean(shaper, dst, v8::Handle<v8::BooleanObject>::Cast(json));
+  }
+
+  if (json->IsNumber()) {
+    return FillShapeValueNumber(shaper, dst, json->ToNumber());
+  }
+
+  if (json->IsNumberObject()) {
+    return FillShapeValueNumber(shaper, dst, v8::Handle<v8::NumberObject>::Cast(json));
+  }
+
+  if (json->IsString()) {
+    return FillShapeValueString(shaper, dst, json->ToString());
+  }
+
+  if (json->IsStringObject()) {
+    return FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->ValueOf());
+  }
+
+  else if (json->IsArray()) {
+    return FillShapeValueList(isolate, shaper, dst, v8::Handle<v8::Array>::Cast(json), level, seenHashes, seenObjects, create);
+  }
+
+  if (json->IsObject()) {
     v8::Handle<v8::Object> o = json->ToObject();
     v8::Handle<v8::String> toJsonString = TRI_V8_ASCII_STRING("toJSON");
     if (o->Has(toJsonString)) {
@@ -877,11 +909,8 @@ static int FillShapeValueJson (v8::Isolate* isolate,
     int hash = o->GetIdentityHash();
 
     if (seenHashes.find(hash) != seenHashes.end()) {
-      // LOG_TRACE("found hash %d", hash);
-
       for (auto it = seenObjects.begin();  it != seenObjects.end();  ++it) {
         if (json->StrictEquals(*it)) {
-          LOG_TRACE("found duplicate for hash %d", hash);
           return TRI_ERROR_ARANGO_SHAPER_FAILED;
         }
       }
@@ -891,41 +920,6 @@ static int FillShapeValueJson (v8::Isolate* isolate,
     }
 
     seenObjects.push_back(o);
-  }
-
-  if (json->IsNull() || json->IsUndefined()) {
-    return FillShapeValueNull(shaper, dst);
-  }
-
-  else if (json->IsBoolean()) {
-    return FillShapeValueBoolean(shaper, dst, json->ToBoolean());
-  }
-
-  else if (json->IsBooleanObject()) {
-    return FillShapeValueBoolean(shaper, dst, v8::Handle<v8::BooleanObject>::Cast(json));
-  }
-
-  else if (json->IsNumber()) {
-    return FillShapeValueNumber(shaper, dst, json->ToNumber());
-  }
-
-  else if (json->IsNumberObject()) {
-    return FillShapeValueNumber(shaper, dst, v8::Handle<v8::NumberObject>::Cast(json));
-  }
-
-  else if (json->IsString()) {
-    return FillShapeValueString(shaper, dst, json->ToString());
-  }
-
-  else if (json->IsStringObject()) {
-    return FillShapeValueString(shaper, dst, v8::Handle<v8::StringObject>::Cast(json)->ValueOf());
-  }
-
-  else if (json->IsArray()) {
-    return FillShapeValueList(isolate, shaper, dst, v8::Handle<v8::Array>::Cast(json), level, seenHashes, seenObjects, create);
-  }
-
-  else if (json->IsObject()) {
     int res = FillShapeValueArray(isolate, shaper, dst, json->ToObject(), level, seenHashes, seenObjects, create);
     seenObjects.pop_back();
     // cannot remove hash value from seenHashes because multiple objects might have the same
@@ -958,9 +952,7 @@ static v8::Handle<v8::Value> JsonShapeDataBoolean (v8::Isolate* isolate,
                                                    TRI_shape_t const* shape,
                                                    char const* data,
                                                    size_t size) {
-  bool v;
-
-  v = (* (TRI_shape_boolean_t const*) data) != 0;
+  bool v = (* (TRI_shape_boolean_t const*) data) != 0;
 
   return v8::Boolean::New(isolate, v);
 }
@@ -974,9 +966,7 @@ static v8::Handle<v8::Value> JsonShapeDataNumber (v8::Isolate* isolate,
                                                   TRI_shape_t const* shape,
                                                   char const* data,
                                                   size_t size) {
-  TRI_shape_number_t v;
-
-  v = * (TRI_shape_number_t const*) data;
+  TRI_shape_number_t v = * (TRI_shape_number_t const*) data;
 
   return v8::Number::New(isolate, v);
 }
@@ -990,9 +980,7 @@ static v8::Handle<v8::Value> JsonShapeDataShortString (v8::Isolate* isolate,
                                                        TRI_shape_t const* shape,
                                                        char const* data,
                                                        size_t size) {
-  TRI_shape_length_short_string_t l;
-
-  l = * (TRI_shape_length_short_string_t const*) data;
+  TRI_shape_length_short_string_t l = * (TRI_shape_length_short_string_t const*) data;
   data += sizeof(TRI_shape_length_short_string_t);
 
   return TRI_V8_PAIR_STRING(data, l - 1);
@@ -1007,9 +995,7 @@ static v8::Handle<v8::Value> JsonShapeDataLongString (v8::Isolate* isolate,
                                                       TRI_shape_t const* shape,
                                                       char const* data,
                                                       size_t size) {
-  TRI_shape_length_long_string_t l;
-
-  l = * (TRI_shape_length_long_string_t const*) data;
+  TRI_shape_length_long_string_t l = * (TRI_shape_length_long_string_t const*) data;
   data += sizeof(TRI_shape_length_long_string_t);
 
   return TRI_V8_PAIR_STRING(data, l - 1);
@@ -1448,6 +1434,7 @@ static v8::Handle<v8::Value> JsonShapeData (v8::Isolate* isolate,
     case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
       return JsonShapeDataHomogeneousSizedList(isolate, shaper, shape, data, size);
   }
+
   {
     v8::EscapableHandleScope scope(isolate);
     return scope.Escape<v8::Value>(v8::Null(isolate));
@@ -1853,7 +1840,6 @@ static int ObjectToJson (v8::Isolate* isolate,
       for (auto it : seenObjects) {
         if (parameter->StrictEquals(it)) {
           // object is recursive
-          LOG_TRACE("found duplicate for hash %d", hash);
           TRI_InitNullJson(result);
           return TRI_ERROR_BAD_PARAMETER;
         }
