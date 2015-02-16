@@ -24,6 +24,7 @@
 /// Copyright holder is triAGENS GmbH, Cologne, Germany
 ///
 /// @author Lucas Dohmen
+/// @author Michael Hackstein
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -39,10 +40,7 @@ var RequestContext,
   createBodyParamExtractor,
   createModelInstantiator,
   validateOrThrow,
-  UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError,
-  createErrorBubbleWrap,
-  createBodyParamBubbleWrap,
-  addCheck;
+  UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError;
 
 createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
   'use strict';
@@ -99,48 +97,6 @@ validateOrThrow = function (raw, schema, allowInvalid) {
     throw result.error;
   }
   return result.value;
-};
-
-createBodyParamBubbleWrap = function (handle, extract, paramName, construct) {
-  'use strict';
-  return function (req, res) {
-    var raw = extract(req);
-    req.parameters[paramName] = construct(raw);
-    handle(req, res);
-  };
-};
-
-createErrorBubbleWrap = function (handler, errorClass, code, reason, errorHandler) {
-  'use strict';
-  if (is.notExisty(errorHandler)) {
-    errorHandler = function () {
-      return { error: reason };
-    };
-  }
-
-  return function (req, res) {
-    try {
-      handler(req, res);
-    } catch (e) {
-      if (
-        (typeof errorClass === 'string' && e.name === errorClass) ||
-        (typeof errorClass === 'function' && e instanceof errorClass)
-      ) {
-        res.status(code);
-        res.json(errorHandler(e));
-      } else {
-        throw e;
-      }
-    }
-  };
-};
-
-addCheck = function (handler, check) {
-  'use strict';
-  return function (req, res) {
-    check(req);
-    handler(req, res);
-  };
 };
 
 // Wraps the docs object of a route to add swagger compatible documentation
@@ -577,14 +533,11 @@ extend(RequestContext.prototype, {
       description,
       toJSONSchema(paramName, is.array(type) ? type[0] : type)
     );
-
-    this.route.action.callback = createBodyParamBubbleWrap(
-      this.route.action.callback,
-      createBodyParamExtractor(this.rootElement, paramName, allowInvalid),
-      paramName,
-      construct
-    );
-
+    this.route.action.bodyParams.push({
+      extract: createBodyParamExtractor(this.rootElement, paramName, allowInvalid),
+      paramName: paramName,
+      construct: construct
+    });
     return this;
   },
 
@@ -660,8 +613,12 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   errorResponse: function (errorClass, code, reason, errorHandler) {
     'use strict';
-    var handler = this.route.action.callback;
-    this.route.action.callback = createErrorBubbleWrap(handler, errorClass, code, reason, errorHandler);
+    this.route.action.errorResponses.push({
+      errorClass: errorClass,
+      code: code,
+      reason: reason,
+      errorHandler: errorHandler
+    });
     this.route.docs.errorResponses.push(internal.constructErrorResponseDoc(code, reason));
     return this;
   },
@@ -686,8 +643,9 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check) {
     'use strict';
-    var handler = this.route.action.callback;
-    this.route.action.callback = addCheck(handler, check);
+    this.route.action.checks.push({
+      check: check
+    });
     return this;
   },
 

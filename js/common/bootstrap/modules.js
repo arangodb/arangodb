@@ -151,18 +151,6 @@ function require (path) {
   var Module;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoApp constructor declaration
-////////////////////////////////////////////////////////////////////////////////
-
-  var ArangoApp;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief appDescription declaration
-////////////////////////////////////////////////////////////////////////////////
-
-  var appDescription;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief in-flight modules
 ///
 /// These modules are currently loading and must be cleanup when a cancellation
@@ -1313,6 +1301,21 @@ function require (path) {
       return undefined;
     }
 
+    return fs.join(appPath, '_db', internal.db._name());
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief oldAppPath
+/// Legacy needed for upgrade
+////////////////////////////////////////////////////////////////////////////////
+
+  Module.prototype.oldAppPath = function () {
+    'use strict';
+
+    if (appPath === undefined) {
+      return undefined;
+    }
+
     return fs.join(appPath, 'databases', internal.db._name());
   };
 
@@ -1351,58 +1354,6 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief compareVersions
-////////////////////////////////////////////////////////////////////////////////
-
-  Module.prototype.compareVersions = function (a, b) {
-    'use strict';
-
-    var i;
-
-    if (a === b) {
-      return 0;
-    }
-
-    // error handling
-    if (typeof a !== "string") {
-      return -1;
-    }
-    if (typeof b !== "string") {
-      return 1;
-    }
-
-    var aComponents = a.split(".");
-    var bComponents = b.split(".");
-    var len = Math.min(aComponents.length, bComponents.length);
-
-    // loop while the components are equal
-    for (i = 0; i < len; i++) {
-
-      // A bigger than B
-      if (parseInt(aComponents[i], 10) > parseInt(bComponents[i], 10)) {
-        return 1;
-      }
-
-      // B bigger than A
-      if (parseInt(aComponents[i], 10) < parseInt(bComponents[i], 10)) {
-        return -1;
-      }
-    }
-
-    // If one's a prefix of the other, the longer one is bigger one.
-    if (aComponents.length > bComponents.length) {
-      return 1;
-    }
-
-    if (aComponents.length < bComponents.length) {
-      return -1;
-    }
-
-    // Otherwise they are the same.
-    return 0;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1433,364 +1384,34 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief createApp
+/// @brief createAppModule, is used to create foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createApp = function (appId, options) {
+  Module.prototype.createAppModule = function (app) {
     'use strict';
-
-    var description = appDescription(appId, options);
-
-    if (description === null) {
-      return description;
+    var libpath = fs.join(app._root, app._path);
+    if (app._manifest.hasOwnProperty("lib")) {
+      libpath = fs.join(libpath, app._manifest.lib);
     }
-
-    return new ArangoApp(
-      description.id,
-      description.manifest,
-      description.root,
-      description.path,
-      options
-    );
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                         ArangoApp
-// -----------------------------------------------------------------------------
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoApp constructor
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp = function (id, manifest, root, path, options) {
-    'use strict';
-
-    this._id = id;
-    this._manifest = manifest;
-    this._name = manifest.name;
-    this._version = manifest.version;
-    this._root = root;
-    this._path = path;
-    this._options = options;
-    this._exports = {};
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a manifest file
-////////////////////////////////////////////////////////////////////////////////
-
-  function appManifestAal (appId) {
-    'use strict';
-
-    var doc = null;
-    var re = /^app:([0-9a-zA-Z_\-\.]+):([0-9a-zA-Z_\-\.]+|lastest)$/;
-    var m = re.exec(appId);
-
-    if (m === null) {
-      throw new Error("illegal app identifier '" + appId + "'");
-    }
-
-    var aal = internal.db._collection("_aal");
-
-    if (m[2] === "latest") {
-      var docs = aal.byExample({ type: "app", name: m[1] }).toArray();
-
-      docs.sort(function(a,b) {return module.compareVersions(b.version, a.version);});
-
-      if (0 < docs.length) {
-        doc = docs[0];
-      }
-    }
-    else {
-      doc = aal.firstExample({ type: "app", app: appId });
-    }
-
-    if (doc === null) {
-      return null;
-    }
-
-    var root;
-
-    if (doc.isSystem) {
-      root = module.systemAppPath();
-    }
-    else {
-      root = module.appPath();
-    }
-
-    return {
-      appId: doc.app,
-      root: root,
-      path: doc.path
-    };
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loads a manifest file for development
-////////////////////////////////////////////////////////////////////////////////
-
-  function appManifestDev (appId) {
-    'use strict';
-
-    var re = /dev:([^:]*):(.*)/;
-    var m = re.exec(appId);
-
-    if (m === null) {
-      throw new Error("illegal app identifier '" + appId + "'");
-    }
-
-    return {
-      appId: appId,
-      root: module.devAppPath(),
-      path: m[2]
-    };
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the app path and manifest
-////////////////////////////////////////////////////////////////////////////////
-
-  appDescription = function (appId, options) {
-    'use strict';
-
-    var mp;
-
-    if (appId.substr(0,4) === "app:") {
-      if (typeof appPath === "undefined") {
-        console.error("ignored app '%s', because no app-path is specified", appId);
-        return;
-      }
-
-      mp = appManifestAal(appId);
-    }
-    else if (appId.substr(0,4) === "dev:") {
-      if (! internal.developmentMode) {
-        console.error("ignoring development app '%s'", appId);
-        return null;
-      }
-
-      if (typeof devAppPath === "undefined") {
-        console.error("ignored development app '%s', because no dev-app-path is specified", appId);
-        return;
-      }
-
-      mp = appManifestDev(appId);
-    }
-    else {
-      console.error("cannot load application '%s', unknown type", appId);
-      return null;
-    }
-
-    if (mp === null) {
-      return null;
-    }
-
-    var file = fs.join(mp.root, mp.path, "manifest.json");
-
-    if (! fs.exists(file)) {
-      console.error("manifest file is missing '%s'", file);
-      return null;
-    }
-
-    var manifest;
-
-    try {
-      manifest = JSON.parse(fs.read(file));
-    }
-    catch (err) {
-      console.error("cannot load manifest file '%s': %s - %s",
-                    file,
-                    String(err),
-                    String(err.stack));
-      return null;
-    }
-
-    if (! manifest.hasOwnProperty("name")) {
-      console.error("manifest file '%s' is missing a name attribute", file);
-      return null;
-    }
-
-    if (! manifest.hasOwnProperty("version")) {
-      console.error("manifest file '%s' is missing a version attribute", file);
-      return null;
-    }
-
-    if (appId.substr(0,4) === "dev:") {
-      appId = "dev:" + manifest.name + ":" + mp.path;
-    }
-
-    return {
-      id: mp.appId,
-      root: mp.root,
-      path: mp.path,
-      manifest: manifest,
-      options: options
-    };
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints a package
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype._PRINT = function (context) {
-    'use strict';
-
-    var parent = "";
-
-    if (this._parent !== undefined) {
-      parent = ', parent "' + this._package._parent.id + '"';
-    }
-
-    context.output += '[app "' + this._name + '" (' + this._version + ')]';
-  };
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createAppModule
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.createAppModule = function (appContext, type) {
-    'use strict';
-
-    if (type === undefined) {
-      type = 'lib';
-    }
-
-    var libpath;
-
-    if (this._manifest.hasOwnProperty(type)) {
-      libpath = fs.join(this._root, this._path, this._manifest[type]);
-    }
-    else {
-      libpath = fs.join(this._root, this._path);
-    }
-
     var pkg = new Package("application-package",
-                          {name: "application '" + this._name + "'"},
+                          {name: "application '" + app._name + "'"},
                           undefined,
                           path2FileUri(libpath),
                           false);
 
     pkg._environment = {
-      console: require("org/arangodb/foxx/console")(appContext.mount)
+      console: require("org/arangodb/foxx/console")(app._mount)
     };
 
     return new Module("/application-module",
                       pkg,
-                      appContext,
+                      app._context,
                       "/",
                       path2FileUri(libpath),
                       false);
   };
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief createAppContext
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.createAppContext = function (mount) {
-    'use strict';
-
-    var context = {};
-
-    context.mount = mount;
-    context.name = this._name;
-    context.version = this._version;
-    context.appId = this._id;
-    context.appModule = this.createAppModule(context);
-
-    var prefix = fs.safeJoin(this._root, this._path);
-
-    context.foxxFilename = function (path) {
-      return fs.safeJoin(prefix, path);
-    };
-
-    return context;
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief loadAppScript
-////////////////////////////////////////////////////////////////////////////////
-
-  ArangoApp.prototype.loadAppScript = function (appContext, filename, options) {
-    'use strict';
-
-    options = options || {};
-
-    var full = fs.join(this._root, this._path, filename);
-    var fileContent = fs.read(full);
-
-    if (options.hasOwnProperty('transform')) {
-      fileContent = options.transform(fileContent);
-    }
-    else if (/\.coffee$/.test(filename)) {
-      var cs = require("coffee-script");
-
-      fileContent = cs.compile(fileContent, {bare: true});
-    }
-
-    var sandbox = {};
-    var key;
-
-    if (options.hasOwnProperty('context')) {
-      var context = options.context;
-
-      for (key in context) {
-        if (context.hasOwnProperty(key) && key !== "__myenv__") {
-          sandbox[key] = context[key];
-        }
-      }
-    }
-
-    sandbox.__filename = full;
-    sandbox.__dirname = normalizeModuleName(full + "/..");
-    sandbox.module = appContext.appModule;
-    sandbox.applicationContext = appContext;
-
-    sandbox.require = function (path) {
-      return appContext.appModule.require(path);
-    };
-
-    var content = "(function (__myenv__) {";
-
-    for (key in sandbox) {
-      if (sandbox.hasOwnProperty(key)) {
-        // using `key` like below is not safe (imagine a key named `foo bar`!)
-        // TODO: fix this
-        content += "var " + key + " = __myenv__[" + JSON.stringify(key) + "];";
-      }
-    }
-
-    content += "delete __myenv__;"
-             + "(function () {"
-             + fileContent
-             + "\n}());"
-             + "});";
-    // note: at least one newline character must be used here, otherwise
-    // a script ending with a single-line comment (two forward slashes)
-    // would render the function tail invalid
-    // adding a newline at the end will create stack traces with a line number
-    // one higher than the last line in the script file
-
-    var fun = internal.executeScript(content, undefined, full);
-
-    if (fun === undefined) {
-      throw new Error("cannot create application script: " + content);
-    }
-
-    fun(sandbox);
-  };
-
+  Module.prototype.normalizeModuleName = normalizeModuleName;
 }());
 
 // -----------------------------------------------------------------------------

@@ -1,0 +1,225 @@
+div.tileList {
+  @extend %clear-float;
+  margin-left: -6px;
+  margin-right: -6px;
+
+  & legend {
+    padding-left: 5px;
+  }
+}
+
+$iconsize: 50px;
+
+%tile {
+  @extend %pull-left;
+  @include box-shadow(none);
+
+  background-color: $c-very-transp;
+  font-size: 14px;
+  list-style: none;
+  margin: {
+    bottom: 13px;
+    left: 6px;
+    right: 6px;
+  }
+  position: relative;
+  text-align: center;
+
+  img {
+    &.icon {
+      height: $iconsize;
+      width: $iconsize;
+    }
+  }
+
+  a {
+
+    span {
+
+      &.add-Icon {
+        @extend %pull-left;
+        font-size: 22px;
+        margin-left: 22px;
+        margin-right: 10px;
+        margin-top: -5px;
+        position: relative;
+        right: 4px;
+        top: 2px;
+      }
+
+      &.icon {
+        @extend %clickable;
+        font-size: $iconsize;
+      }
+    }
+
+    svg {
+      @extend %clickable;
+
+      &.icon {
+        height: $iconsize;
+        width: $iconsize;
+      }
+    }
+  }
+
+  svg.tile-icon-svg {
+    cursor: pointer;
+    fill: $c-icon-grey;
+    height: $iconsize;
+    margin-left: 90px;
+    margin-top: 10px;
+    width: $iconsize;
+  }
+
+  span.tile-icon {
+    color: $c-icon-grey;
+    font-size: $iconsize;
+    line-height: 1.2;
+  }
+
+  h5 {
+    background: $c-bar-bg;
+    color: $c-white;
+    font-size: 12px;
+    margin: 0;
+    overflow: hidden !important;
+    padding: 4px 8px;
+    text-overflow: ellipsis !important;
+    white-space: nowrap !important;
+  }
+
+  div.tileSelects {
+    margin-left: 40px;
+    position: relative;
+    z-index: 9999;
+
+    select {
+      float: right;
+      height: 20px;
+      margin-right: 5px;
+      margin-top: 16px;
+      width: 70px;
+    }
+  }
+
+  div.iconSet {
+    position: absolute;
+    right: 5px;
+    top: 5px;
+
+    span {
+      @extend %clickable;
+      @extend %pull-right;
+      font-size: 18px;
+      opacity: .5;
+      padding-left: 7px;
+
+      &:hover {
+        opacity: 1.0;
+      }
+
+      &.disabled {
+        cursor: default;
+        opacity: .2;
+      }
+    }
+  }
+
+  .badge-success {
+    font-weight: 300;
+  }
+
+  .unloaded div {
+    border-bottom: 16px solid $c-unloaded;
+  }
+
+
+  .deleted div {
+    border-bottom: 16px solid $c-state-critical;
+  }
+
+  div.tileBadge {
+    bottom: 29px;
+    font-size: 11px;
+    font-weight: 300;
+    position: absolute;
+    right: 0;
+
+    button {
+      margin: {
+        left: 0;
+        right: 5px;
+      }
+    }
+
+    span {
+      display: inline-block;
+      line-height: 13px;
+
+      div.corneredBadge {
+        border: {
+          left: 17px solid $c-transp;
+          bottom: {
+            style: solid;
+            width: 17px;
+          }
+        }
+        color: #fff;
+        height: 0;
+        padding-left: 4px;
+        padding-right: 9px;
+        
+        &.loading {
+          border-bottom-color: $c-unloaded;
+        }
+
+        &.loaded {
+          border-bottom-color: $c-positive;
+        }
+
+        &.unloaded {
+          border-bottom-color: $c-unloaded;
+        }
+
+        &.development {
+          border-bottom-color: $c-unloaded;
+        }
+      }
+    }
+  }
+}
+
+div {
+
+  & .tile {
+    @extend %tile;
+    height: 100px;
+    width: $tile-width - 12px;
+  }
+
+  & .bigtile {
+    @extend %clickable;
+    @extend %tile;
+    height: 309px;
+    width: 2 * ($tile-width - 12px);
+
+    div.shardContainer {
+      font-size: 30px;
+
+      span {
+        padding: 2px;
+      }
+    }
+  }
+}
+
+.collectionName {
+  bottom: 0;
+  font-weight: 300;
+  left: 0;
+  position: absolute;
+  right: 0;
+  text-align: left;
+}
+

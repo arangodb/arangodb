@@ -29,7 +29,6 @@
 
 var _ = require("underscore"),
   is = require("org/arangodb/is"),
-  actions = require("org/arangodb/actions"),
   constructUrlObject,
   constructNickname,
   constructRoute,
@@ -87,50 +86,34 @@ constructNickname = function (httpMethod, url) {
 
 constructRoute = function (method, route, callback, controller, constraints) {
   'use strict';
-  return {
-    url: constructUrlObject(route, undefined, method),
-    action: {
-      callback: function (req, res) {
-        if (constraints) {
-          try {
-            _.each({
-              urlParameters: constraints.urlParams,
-              parameters: constraints.queryParams
-            }, function (paramConstraints, paramsPropertyName) {
-              var params = req[paramsPropertyName];
-              _.each(paramConstraints, function (constraint, paramName) {
-                var result = constraint.validate(params[paramName]);
-                params[paramName] = result.value;
-                if (result.error) {
-                  result.error.message = 'Invalid value for "' + paramName + '": ' + result.error.message;
-                  throw result.error;
-                }
-              });
-            });
-          } catch (err) {
-            actions.resultBad(req, res, actions.HTTP_BAD, err.message);
-            return;
-          }
-        }
-        _.each(controller.injectors, function (injector, key) {
-          if (_.has(controller.injected, key)) {
-            return;
-          }
-          if (typeof injector === 'function') {
-            controller.injected[key] = injector();
-          } else {
-            controller.injected[key] = injector;
-          }
-        });
-        callback(req, res, controller.injected);
-      }
-    },
-    docs: {
-      parameters: [],
-      errorResponses: [],
-      httpMethod: method.toUpperCase()
-    }
+  var res = {};
+  res.url = constructUrlObject(route, undefined, method);
+  res.docs = {
+    parameters: [],
+    errorResponses: [],
+    httpMethod: method.toUpperCase()
   };
+  res.action = {};
+  res.action.callback = function (req, res) {
+    _.each(controller.injectors, function (injector, key) {
+      if (_.has(controller.injected, key)) {
+        return;
+      }
+      if (typeof injector === 'function') {
+        controller.injected[key] = injector();
+      } else {
+        controller.injected[key] = injector;
+      }
+    });
+    callback(req, res, controller.injected);
+  };
+  if (constraints) {
+    res.action.constraints = constraints;
+  }
+  res.action.errorResponses = [];
+  res.action.bodyParams = [];
+  res.action.checks = [];
+  return res;
 };
 
 constructPathParamDoc = function (paramName, description, dataType, required) {
