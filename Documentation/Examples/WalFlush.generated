@@ -1,1 +1,0 @@
-arangosh> require("internal").wal.flush();
