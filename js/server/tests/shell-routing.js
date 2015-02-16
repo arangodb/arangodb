@@ -1,5 +1,5 @@
-/*jshint strict: true, unused : false */
-/*global require, fail, assertEqual */
+/*jshint globalstrict: true */
+/*global require, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for routing
 ///
@@ -27,9 +27,12 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+"use strict";
 var actions = require("org/arangodb/actions");
-var internal = require("internal");
 var jsunity = require("jsunity");
+
+var flattenRoutingTree = actions.flattenRoutingTree;
+var buildRoutingTree = actions.buildRoutingTree;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
@@ -40,8 +43,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteSingle () {
-  "use strict";
-  var cn = "_routing";
+  var routing;
 
   return {
 
@@ -49,52 +51,52 @@ function routingSuiteSingle () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      var collection;
-      internal.db._drop(cn);
-      collection = internal.db._create(cn, { isSystem: true });
+    setUp: function () {
+      var routes = [{
+        routes: [
+          {
+            url: { match: "/hello/world" },
+            content: "c1"
+          },
 
-      collection.save({
-        url: { match: "/hello/world" },
-        content: "c1"
-      });
+          {
+            url: "/world/hello",
+            content: "c2"
+          },
 
-      collection.save({
-        url: "/world/hello",
-        content: "c2"
-      });
+          {
+            url: "/prefix/hello/*",
+            content: "c3"
+          },
 
-      collection.save({
-        url: "/prefix/hello/*",
-        content: "c3"
-      });
+          {
+            url: { match: "/param/:hello/world", constraint: { hello: "[0-9]+" } },
+            content: "c4"
+          },
 
-      collection.save({
-        url: { match: "/param/:hello/world", constraint: { hello: "[0-9]+" } },
-        content: "c4"
-      });
+          {
+            url: { match: "/opt/:hello?", constraint: { hello: "[0-9]+" }, methods: [ 'get' ] },
+            content: "c5"
+          },
 
-      collection.save({
-        url: { match: "/opt/:hello?", constraint: { hello: "[0-9]+" }, methods: [ 'get' ] },
-        content: "c5"
-      });
+          {
+            url: "/json",
+            content: { contentType: "application/json", body: '{"text": "c6"}' }
+          },
 
-      collection.save({
-        url: "/json",
-        content: { contentType: "application/json", body: '{"text": "c6"}' }
-      });
+          {
+            url: "/p/h/*",
+            content: "p1"
+          },
 
-      collection.save({
-        url: "/p/h/*",
-        content: "p1"
-      });
+          {
+            url: "/p/h",
+            content: "p2"
+          }
+        ]
+      }];
 
-      collection.save({
-        url: "/p/h",
-        content: "p2"
-      });
-
-      actions.reloadRouting();
+      routing = flattenRoutingTree(buildRoutingTree(routes));
     },
       
 ////////////////////////////////////////////////////////////////////////////////
@@ -102,12 +104,10 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRouting: function () {
-      var r = actions.firstRouting('GET', "/hello/world");
-      assertEqual('c1', r.route.route.content);
+      var r = actions.firstRouting('GET', "/hello/world", routing);
 
+      assertEqual('c1', r.route.route.content);
       assertEqual('/hello/world', r.route.path);
-      assertEqual(undefined, r.prefix);
-      assertEqual(undefined, r.suffix);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);
@@ -118,12 +118,10 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingShort: function () {
-      var r = actions.firstRouting('GET', "/world/hello");
-      assertEqual('c2', r.route.route.content);
+      var r = actions.firstRouting('GET', "/world/hello", routing);
 
+      assertEqual('c2', r.route.route.content);
       assertEqual('/world/hello', r.route.path);
-      assertEqual(undefined, r.prefix);
-      assertEqual(undefined, r.suffix);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);
@@ -134,10 +132,10 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingPrefix: function () {
-      var r = actions.firstRouting('GET', "/prefix/hello/world");
-      assertEqual('c3', r.route.route.content);
+      var r = actions.firstRouting('GET', "/prefix/hello/world", routing);
 
-      assertEqual('/prefix/hello(/[^/]+)*', r.route.path);
+      assertEqual('c3', r.route.route.content);
+      assertEqual('/prefix/hello/...', r.route.path);
       assertEqual('/prefix/hello', r.prefix);
       assertEqual(['world'], r.suffix);
 
@@ -150,10 +148,10 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingParameter: function () {
-      var r = actions.firstRouting('GET', "/param/12345/world");
-      assertEqual('c4', r.route.route.content);
+      var r = actions.firstRouting('GET', "/param/12345/world", routing);
 
-      assertEqual('/param/[0-9]+/world', r.route.path);
+      assertEqual('c4', r.route.route.content);
+      assertEqual('/param/<parameters>/world', r.route.path);
       assertEqual(undefined, r.prefix);
       assertEqual(undefined, r.suffix);
 
@@ -169,17 +167,23 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingOptional: function () {
-      var r = actions.firstRouting('GET', "/opt/12345");
-      assertEqual('c5', r.route.route.content);
+      var r = actions.firstRouting('GET', "/opt/12345", routing);
 
-      assertEqual('/opt(/[0-9]+)?', r.route.path);
+      assertEqual('c5', r.route.route.content);
+      assertEqual('/opt/<parameters>', r.route.path);
       assertEqual(undefined, r.prefix);
       assertEqual(undefined, r.suffix);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);
+    },
 
-      r = actions.firstRouting('GET', "/opt");
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: simple routing (optional)
+////////////////////////////////////////////////////////////////////////////////
+
+    testSimpleRoutingOptional2: function () {
+      var r = actions.firstRouting('GET', "/opt", routing);
       assertEqual('c5', r.route.route.content);
     },
 
@@ -188,7 +192,7 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingMethod: function () {
-      var r = actions.firstRouting('HEAD', "/opt/12345");
+      var r = actions.firstRouting('HEAD', "/opt/12345", routing);
       assertEqual(undefined, r.route);
     },
 
@@ -197,16 +201,16 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRoutingNonPrefix: function () {
-      var r = actions.firstRouting('GET', "/p/h");
-      assertEqual('p2', r.route.route.content);
+      var r = actions.firstRouting('GET', "/p/h", routing);
 
+      assertEqual('p2', r.route.route.content);
       assertEqual('/p/h', r.route.path);
       assertEqual(undefined, r.prefix);
       assertEqual(undefined, r.suffix);
 
       r = actions.nextRouting(r);
 
-      assertEqual('/p/h(/[^/]+)*', r.route.path);
+      assertEqual('/p/h/...', r.route.path);
       assertEqual('/p/h', r.prefix);
       assertEqual([], r.suffix);
     },
@@ -216,7 +220,7 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testContentString: function () {
-      var r = actions.firstRouting('GET', "/opt/12345");
+      var r = actions.firstRouting('GET', "/opt/12345", routing);
 
       var req = {};
       var res = {};
@@ -233,7 +237,7 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testContentJson: function () {
-      var r = actions.firstRouting('GET', "/json");
+      var r = actions.firstRouting('GET', "/json", routing);
 
       var req = {};
       var res = {};
@@ -256,8 +260,7 @@ function routingSuiteSingle () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuiteBundle () {
-  "use strict";
-  var cn = "_routing";
+  var routing;
 
   return {
 
@@ -265,11 +268,8 @@ function routingSuiteBundle () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      internal.db._drop(cn);
-      var collection = internal.db._create(cn, { isSystem: true });
-
-      collection.save({
+    setUp: function () {
+      var routes = [{
         middleware: [
           { url: { match: "/*" }, content: "m1" },
           { url: { match: "/hello/*" }, content: "m2" },
@@ -286,38 +286,29 @@ function routingSuiteBundle () {
           { url: { match: "/:name/world" }, content: "c6" },
           { url: { match: "/hello" }, content: "c7" }
         ]
-      });
+      }];
 
-      actions.reloadRouting();
+      routing = flattenRoutingTree(buildRoutingTree(routes));
     },
       
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-    testRoutingCache: function () {
-      var cache = actions.routingCache();
-
-      assertEqual(3, cache.routes.GET.exact.hello.parameters.length);
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: simple routing
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRouting: function () {
-      var r = actions.firstRouting('GET', "/hello/world");
+      var r = actions.firstRouting('GET', "/hello/world", routing);
+
       assertEqual('m1', r.route.route.content);
-      assertEqual('(/[^/]+)*', r.route.path);
+      assertEqual('/...', r.route.path);
 
       // middleware: unspecific to specific
       r = actions.nextRouting(r);
       assertEqual('m4', r.route.route.content);
-      assertEqual('/[^/]+/world', r.route.path);
+      assertEqual('/<parameters>/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m2', r.route.route.content);
-      assertEqual('/hello(/[^/]+)*', r.route.path);
+      assertEqual('/hello/...', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m3', r.route.route.content);
@@ -331,19 +322,19 @@ function routingSuiteBundle () {
       r = actions.nextRouting(r);
       assertEqual('c4', r.route.route.content);
       assertEqual(1, r.route.urlParameters.name);
-      assertEqual('/hello/[a-z]+', r.route.path);
+      assertEqual('/hello/<parameters>', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c2', r.route.route.content);
-      assertEqual('/hello(/[^/]+)*', r.route.path);
+      assertEqual('/hello/...', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c6', r.route.route.content);
-      assertEqual('/[^/]+/world', r.route.path);
+      assertEqual('/<parameters>/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c1', r.route.route.content);
-      assertEqual('(/[^/]+)*', r.route.path);
+      assertEqual('/...', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);
@@ -360,8 +351,7 @@ function routingSuiteBundle () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function routingSuitePrefix () {
-  "use strict";
-  var cn = "_routing";
+  var routing;
 
   return {
 
@@ -369,11 +359,8 @@ function routingSuitePrefix () {
 /// @brief set up
 ////////////////////////////////////////////////////////////////////////////////
 
-    setUp : function () {
-      internal.db._drop(cn);
-      var collection = internal.db._create(cn, { isSystem: true });
-
-      collection.save({
+    setUp: function () {
+      var routes = [{
         urlPrefix: "/test",
 
         middleware: [
@@ -392,38 +379,28 @@ function routingSuitePrefix () {
           { url: { match: "/:name/world" }, content: "c6" },
           { url: { match: "/hello" }, content: "c7" }
         ]
-      });
+      }];
 
-      actions.reloadRouting();
+      routing = flattenRoutingTree(buildRoutingTree(routes));
     },
       
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-    testRoutingCache: function () {
-      var cache = actions.routingCache();
-
-      assertEqual(3, cache.routes.GET.exact.test.exact.hello.parameters.length);
-    },
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test: simple routing
 ////////////////////////////////////////////////////////////////////////////////
 
     testSimpleRouting: function () {
-      var r = actions.firstRouting('GET', "/test/hello/world");
+      var r = actions.firstRouting('GET', "/test/hello/world", routing);
       assertEqual('m1', r.route.route.content);
-      assertEqual('/test(/[^/]+)*', r.route.path);
+      assertEqual('/test/...', r.route.path);
 
       // middleware: unspecific to specific
       r = actions.nextRouting(r);
       assertEqual('m4', r.route.route.content);
-      assertEqual('/test/[^/]+/world', r.route.path);
+      assertEqual('/test/<parameters>/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m2', r.route.route.content);
-      assertEqual('/test/hello(/[^/]+)*', r.route.path);
+      assertEqual('/test/hello/...', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('m3', r.route.route.content);
@@ -437,19 +414,19 @@ function routingSuitePrefix () {
       r = actions.nextRouting(r);
       assertEqual('c4', r.route.route.content);
       assertEqual(2, r.route.urlParameters.name);
-      assertEqual('/test/hello/[a-z]+', r.route.path);
+      assertEqual('/test/hello/<parameters>', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c2', r.route.route.content);
-      assertEqual('/test/hello(/[^/]+)*', r.route.path);
+      assertEqual('/test/hello/...', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c6', r.route.route.content);
-      assertEqual('/test/[^/]+/world', r.route.path);
+      assertEqual('/test/<parameters>/world', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual('c1', r.route.route.content);
-      assertEqual('/test(/[^/]+)*', r.route.path);
+      assertEqual('/test/...', r.route.path);
 
       r = actions.nextRouting(r);
       assertEqual(undefined, r.route);

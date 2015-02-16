@@ -581,6 +581,24 @@
 ///   Will be raised when the client could not write data.
 /// - 2003: @LIT{could not read from server}
 ///   Will be raised when the client could not read data.
+/// - 3000: @LIT{malformed manifest file}
+///   The manifest file is malformed. It is not in a valid JSON format.
+/// - 3001: @LIT{manifest file is invalid}
+///   The manifest file of this application is invalid.
+/// - 3002: @LIT{missing manifest attribute}
+///   The manifest file is incomplete. A required attribute is missing.
+/// - 3003: @LIT{unable to extract app root path}
+///   The root path of the application could not be found.
+/// - 3004: @LIT{invalid foxx options}
+///   The options used to configure the foxx are invalid.
+/// - 3005: @LIT{failed to execute script}
+///   The script provided contains errors.
+/// - 3006: @LIT{syntax error in script}
+///    contains a syntax error: 
+/// - 3007: @LIT{mountpoint is invalid}
+///   mountpoint is invalid
+/// - 3008: @LIT{No foxx found at this location}
+///   No foxx found at this location
 /// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
@@ -3068,6 +3086,96 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_SIMPLE_CLIENT_COULD_NOT_READ                                  (2003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3000: ERROR_MALFORMED_MANIFEST_FILE
+///
+/// malformed manifest file
+///
+/// The manifest file is malformed. It is not in a valid JSON format.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MALFORMED_MANIFEST_FILE                                 (3000)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3001: ERROR_INVALID_APPLICATION_MANIFEST
+///
+/// manifest file is invalid
+///
+/// The manifest file of this application is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_INVALID_APPLICATION_MANIFEST                            (3001)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3002: ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING
+///
+/// missing manifest attribute
+///
+/// The manifest file is incomplete. A required attribute is missing.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING                         (3002)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3003: ERROR_CANNOT_EXTRACT_APPLICATION_ROOT
+///
+/// unable to extract app root path
+///
+/// The root path of the application could not be found.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CANNOT_EXTRACT_APPLICATION_ROOT                         (3003)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3004: ERROR_INVALID_FOXX_OPTIONS
+///
+/// invalid foxx options
+///
+/// The options used to configure the foxx are invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_INVALID_FOXX_OPTIONS                                    (3004)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3005: ERROR_FAILED_TO_EXECUTE_SCRIPT
+///
+/// failed to execute script
+///
+/// The script provided contains errors.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_FAILED_TO_EXECUTE_SCRIPT                                (3005)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3006: ERROR_SYNTAX_ERROR_IN_SCRIPT
+///
+/// syntax error in script
+///
+///  contains a syntax error: 
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_SYNTAX_ERROR_IN_SCRIPT                                  (3006)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3007: ERROR_INVALID_MOUNTPOINT
+///
+/// mountpoint is invalid
+///
+/// mountpoint is invalid
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_INVALID_MOUNTPOINT                                      (3007)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3008: ERROR_NO_FOXX_FOUND
+///
+/// No foxx found at this location
+///
+/// No foxx found at this location
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_NO_FOXX_FOUND                                           (3008)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS

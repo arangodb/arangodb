@@ -238,7 +238,7 @@ sub formatFile ($$$) {
 
     if ($line =~ /^\/\/ outline-regexp:/) {
       if ($isJavaScript == 1) {
-	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
+	$line = '// outline-regexp: "/// @brief\\\\|/// @addtogroup\\\\|/// @page\\\\|/// @startDocuBlock\\\\|// --SECTION--\\\\|/// @\\\\}\\\\|/\\\\*jslint"';
       }
     }
 
@@ -393,7 +393,7 @@ sub formatFile ($$$) {
   print $out "\n";
   print $out "// Local Variables:\n";
   print $out "// mode: outline-minor\n";
-  print $out "// outline-regexp: \"/// \@brief\\\\|/// {\@inheritDoc}\\\\|/// \@page\\\\|// --SECTION--\\\\|/// \@\\\\}\"\n";
+  print $out "// outline-regexp: \"/// \@brief\\\\|/// {\@inheritDoc}\\\\|/// \@page\\\\|/// \@startDocuBlock\\\\|// --SECTION--\\\\|/// \@\\\\}\"\n";
   print $out "// End:\n";
 
   if (! $dryRun) {

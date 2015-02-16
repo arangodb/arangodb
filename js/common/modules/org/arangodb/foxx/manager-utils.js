@@ -1,4 +1,4 @@
-/*global require, exports, module */
+/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB Application Launcher Utilities
@@ -33,10 +33,38 @@ var fs = require("fs");
 var arangodb = require("org/arangodb");
 var db = arangodb.db;
 var download = require("internal").download;
-var checkedFishBowl = false;
 
 var throwFileNotFound = arangodb.throwFileNotFound;
 var throwDownloadError = arangodb.throwDownloadError;
+var errors = arangodb.errors;
+var ArangoError = arangodb.ArangoError;
+var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
+var mountAppRegEx = /\/APP(\/|$)/i;
+
+var getStorage = function() {
+  "use strict";
+  var c = db._collection("_apps");
+  if (c === null) {
+    c = db._create("_apps", {isSystem: true});
+    c.ensureUniqueConstraint("mount");
+  }
+  return c;
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator for mount points
+////////////////////////////////////////////////////////////////////////////////
+
+var compareMounts = function(l, r) {
+  "use strict";
+  var left = l.mount.toLowerCase();
+  var right = r.mount.toLowerCase();
+
+  if (left < right) {
+    return -1;
+  }
+  return 1;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
@@ -236,103 +264,33 @@ function processGithubRepository (source) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the fishbowl collection
-///
-/// this will create the collection if it does not exist. this is better than
-/// needlessly creating the collection for each database in case it is not
-/// used in context of the database.
+/// @brief returns all running Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function getFishbowlStorage () {
+function listJson (showPrefix, onlyDevelopment) {
   'use strict';
 
-  var c = db._collection('_fishbowl');
-  if (c ===  null) {
-    c = db._create('_fishbowl', { isSystem : true });
+  var mounts = getStorage();
+  var cursor;
+  if (onlyDevelopment) {
+    cursor = mounts.byExample({isDevelopment: true});
+  } else {
+    cursor = mounts.all();
   }
-
-  if (c !== null && ! checkedFishBowl) {
-    // ensure indexes
-    c.ensureFulltextIndex("description");
-    c.ensureFulltextIndex("name");
-    checkedFishBowl = true;
-  }
-
-  return c;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all available FOXX applications
-////////////////////////////////////////////////////////////////////////////////
-
-function availableJson() {
-  'use strict';
-
-  var fishbowl = getFishbowlStorage();
-  var cursor = fishbowl.all();
   var result = [];
-
+  var doc, res;
   while (cursor.hasNext()) {
-    var doc = cursor.next();
+    doc = cursor.next();
 
-    var maxVersion = "-";
-    var versions = Object.keys(doc.versions);
-    versions.sort(module.compareVersions);
-    if (versions.length > 0) {
-      versions.reverse();
-      maxVersion = versions[0];
-    }
-
-    var res = {
-      name: doc.name,
-      description: doc.description || "",
-      author: doc.author || "",
-      latestVersion: maxVersion
-    };
-
-    result.push(res);
-  }
-
-  return result;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the aal collection
-////////////////////////////////////////////////////////////////////////////////
-
-function getStorage () {
-  'use strict';
-
-  return db._collection('_aal');
-}
-
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns all installed FOXX applications
-////////////////////////////////////////////////////////////////////////////////
-
-function listJson (showPrefix) {
-  'use strict';
-
-  var aal = getStorage();
-  var cursor = aal.byExample({ type: "mount" });
-  var result = [];
-
-  while (cursor.hasNext()) {
-    var doc = cursor.next();
-
-    var version = doc.app.replace(/^.+:(\d+(\.\d+)*)$/g, "$1");
-
-    var res = {
+    res = {
       mountId: doc._key,
       mount: doc.mount,
-      appId: doc.app,
       name: doc.name,
-      description: doc.description,
-      author: doc.author,
-      system: doc.isSystem ? "yes" : "no",
-      active: doc.active ? "yes" : "no",
-      version: version
+      description: doc.manifest.description,
+      author: doc.manifest.author,
+      system: doc.isSystem || false,
+      development: doc.isDevelopment || false,
+      version: doc.version
     };
 
     if (showPrefix) {
@@ -345,171 +303,183 @@ function listJson (showPrefix) {
   return result;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the fishbowl repository
+/// @brief prints all running Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function getFishbowlUrl () {
-  'use strict';
+function list(onlyDevelopment) {
+  "use strict";
+  var apps = listJson(undefined, onlyDevelopment);
 
-  return "arangodb/foxx-apps";
+  arangodb.printTable(
+    apps.sort(compareMounts),
+    [ "mount", "name", "author", "description", "version", "development" ],
+    {
+      prettyStrings: true,
+      totalString: "%s application(s) found",
+      emptyString: "no applications found",
+      rename: {
+        "mount": "Mount",
+        "name" : "Name",
+        "author" : "Author",
+        "description" : "Description",
+        "version" : "Version",
+        "development" : "Development"
+      }
+    }
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief updates the fishbowl from a zip archive
+/// @brief returns all running Foxx applications in development mode
 ////////////////////////////////////////////////////////////////////////////////
 
-function updateFishbowlFromZip (filename) {
+function listDevelopmentJson (showPrefix) {
   'use strict';
+  return listJson(showPrefix, true);
+}
 
-  var i;
-  var tempPath = fs.getTempPath();
-  var toSave = [ ];
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints all running Foxx applications
+////////////////////////////////////////////////////////////////////////////////
 
-  try {
-    fs.makeDirectoryRecursive(tempPath);
-    var root = fs.join(tempPath, "foxx-apps-master/applications");
+function listDevelopment() {
+  'use strict';
+  return list(true);
+}
 
-    // remove any previous files in the directory
-    fs.listTree(root).forEach(function (file) {
-      if (file.match(/\.json$/)) {
-        try {
-          fs.remove(fs.join(root, file));
-        }
-        catch (ignore) {
-        }
-      }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief validate the mount point of an app
+////////////////////////////////////////////////////////////////////////////////
+
+function validateMount(mount, internal) {
+  'use strict';
+  if (mount[0] !== "/") {
+    throw new ArangoError({
+      errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+      errorMessage: "Mountpoint has to start with /."
     });
-
-    fs.unzipFile(filename, tempPath, false, true);
-
-    if (! fs.exists(root)) {
-      throw new Error("'applications' directory is missing in foxx-apps-master, giving up");
-    }
-
-    var m = fs.listTree(root);
-    var reSub = /(.*)\.json$/;
-    var f, match, app, desc;
-
-    for (i = 0;  i < m.length;  ++i) {
-      f = m[i];
-      match = reSub.exec(f);
-
-      if (match === null) {
-        continue;
-      }
-
-      app = fs.join(root, f);
-
-      try {
-        desc = JSON.parse(fs.read(app));
-      }
-      catch (err1) {
-        arangodb.printf("Cannot parse description for app '" + f + "': %s\n", String(err1));
-        continue;
-      }
-
-      desc._key = match[1];
-
-      if (! desc.hasOwnProperty("name")) {
-        desc.name = match[1];
-      }
-
-      toSave.push(desc);
-    }
-
-    if (toSave.length > 0) {
-      var fishbowl = getFishbowlStorage();
-
-      db._executeTransaction({
-        collections: {
-          write: fishbowl.name()
-        },
-        action: function (params) {
-          var c = require("internal").db._collection(params.collection);
-          c.truncate();
-
-          params.apps.forEach(function(app) {
-            c.save(app);
-          });
-        },
-        params: {
-          apps: toSave,
-          collection: fishbowl.name()
-        }
+  }
+  if (!mountRegEx.test(mount)) {
+    // Controller routes may be /. Foxxes are not allowed to
+    if (!internal || mount.length !== 1) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Mountpoint can only contain a-z, A-Z, 0-9 or _."
       });
-
-      arangodb.printf("Updated local repository information with %d application(s)\n",
-                      toSave.length);
     }
   }
-  catch (err) {
-    if (tempPath !== undefined && tempPath !== "") {
-      try {
-        fs.removeDirectoryRecursive(tempPath);
-      }
-      catch (ignore) {
-      }
+  if (!internal) {
+    if (mount[1] === "_") {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "/_ apps are reserved for internal use."
+      });
     }
-
-    throw err;
+    if (mountAppRegEx.test(mount)) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Mountpoint is not allowed to contain /app/."
+      });
+    }
   }
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief downloads the fishbowl repository
+/// @brief validate an app name and fail if it is invalid
 ////////////////////////////////////////////////////////////////////////////////
 
-function updateFishbowl () {
+function validateAppName (name) {
   'use strict';
 
-  var url = buildGithubUrl(getFishbowlUrl());
-  var filename = fs.getTempFile("downloads", false);
-  var path = fs.getTempFile("zip", false);
-
-  try {
-    var result = download(url, "", {
-      method: "get",
-      followRedirects: true,
-      timeout: 30
-    }, filename);
-
-    if (result.code < 200 || result.code > 299) {
-      throwDownloadError("Github download from '" + url + "' failed with error code " + result.code);
-    }
-
-    updateFishbowlFromZip(filename);
-
-    filename = undefined;
+  if (typeof name === 'string' && name.length > 0) {
+    return;
   }
-  catch (err) {
-    if (filename !== undefined && fs.exists(filename)) {
-      fs.remove(filename);
-    }
 
-    try {
-      fs.removeDirectoryRecursive(path);
-    }
-    catch (ignore) {
-    }
-
-    throw err;
-  }
+  throw new ArangoError({
+    errorNum: errors.ERROR_APPLICATION_INVALID_NAME.code,
+    errorMessage: errors.ERROR_APPLICATION_INVALID_NAME.message
+  });
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the app mounted at this mount point
+////////////////////////////////////////////////////////////////////////////////
+function mountedApp (mount) {
+  "use strict";
+  return getStorage().firstExample({mount: mount});
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Update the app mounted at this mountpoint with the new app
+////////////////////////////////////////////////////////////////////////////////
+function updateApp (mount, update) {
+  "use strict";
+  return getStorage().updateByExample({mount: mount}, update);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief define regex for parameter types
+////////////////////////////////////////////////////////////////////////////////
+var typeToRegex = {
+  "int": /[0-9]+/,
+  "integer": /[0-9]+/,
+  "boolean": /(true)|(false)/,
+  "bool": /(true)|(false)/,
+  "string": /[\w\W]*/
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a zip archive of a foxx app. Returns the absolute path
+////////////////////////////////////////////////////////////////////////////////
+var zipDirectory = function(directory) {
+  "use strict";
+  if (!fs.isDirectory(directory)) {
+    throw directory + " is not a directory.";
+  }
+  var tempFile = fs.getTempFile("zip", false);
+
+  var tree = fs.listTree(directory);
+  var files = [];
+  var i;
+  var filename;
+
+  for (i = 0;  i < tree.length;  ++i) {
+    filename = fs.join(directory, tree[i]);
+
+    if (fs.isFile(filename)) {
+      files.push(tree[i]);
+    }
+  }
+  if (files.length === 0) {
+    throwFileNotFound("Directory '" + String(directory) + "' is empty");
+  }
+  fs.zipFile(tempFile, directory, files);
+  return tempFile;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.updateFishbowl = updateFishbowl;
+exports.mountedApp = mountedApp;
+exports.updateApp = updateApp;
+exports.list = list;
 exports.listJson = listJson;
-exports.getFishbowlStorage = getFishbowlStorage;
-exports.availableJson = availableJson;
+exports.listDevelopment = listDevelopment;
+exports.listDevelopmentJson = listDevelopmentJson;
 exports.buildGithubUrl = buildGithubUrl;
 exports.repackZipFile = repackZipFile;
 exports.processDirectory = processDirectory;
 exports.processGithubRepository = processGithubRepository;
+exports.validateAppName = validateAppName;
+exports.validateMount = validateMount;
+exports.typeToRegex = typeToRegex;
+exports.zipDirectory = zipDirectory;
+exports.getStorage = getStorage;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -1,0 +1,38 @@
+!CHAPTER Available Debugging mechanisms
+
+We are talking about the production mode for foxx.
+We assume that the development process is over and you have a (third-party) client using your API.
+In this case you will most likely want to expose stacktraces or detailed error information to the requesting client.
+This of course restricts the debugging mechanisms for the client and requires to consult the logs.
+Nevertheless the client should see if there is an internal error occurring therefore all foxxes will have the behavior described in the following.
+
+Right now we assume you have the production mode enabled (default after install)
+
+    unix>foxx-manager production /example
+
+!SECTION Errors during install
+
+Malformed foxx applications cannot be installed via the foxx-manager.
+You will get detailed error information if you try to.
+However you might create the following situation:
+
+1. Set a foxx to development mode.
+2. Make it malformed.
+3. Set it to production mode.
+
+In this case all routes of this foxx will create a general, html page for thirdparty clients stating that there was an internal error.
+This page does not contain any information specific for your foxx.
+
+    TODO SCREEEEEEENNNN
+
+!SECTION Errors in routes
+
+If you have an unhandled error in one of your routes the error message will be returned together with an HTTP status code 500.
+It will not contain the stacktrace of your error.
+
+    unix>curl -X GET http://localhost:8529/_db/_system/example/failed
+
+!SECTION Errors in logs
+
+Independent of the errors presented in the routes on requests foxxes will always log errors to the log-file if catched by the default error handlers.
+The log entries will always contain stacktraces and error messages.
