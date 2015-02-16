@@ -9,15 +9,18 @@ You have activated the development mode for this route:
 
     unix>foxx-manager development /example
 
-Now you apply changes to source of foxx.
-In development mode it is possible that you create a foxx that could not be installed regularly.
-If this is the case and you request any route of it you should
+!SECTION Errors during install
 
-  <dt>Installation error on Mountpoint</dt>
-  <dl>
-    If your application cannot be installed, e.g. it contains syntactic errors, you will get the error description and the stacktrace on any request to a route within the mount point.
-  </dl>
-  <dt>Error Stacktraces on routes</dt>
-  <dl>
-    If your application could be installed but contains an unhandled error on a specific route, the request for this route will return the error message as well as the stacktrace.
-  </dl>
+Now you apply changes to the source code of foxx.
+In development mode it is possible that you create a foxx that could not be installed regularly.
+If this is the case and you request any route of it you should receive a detailed error information:
+
+    unix>curl -X GET http://localhost:8529/_db/_system/example/failed
+
+!SECTION Errors in routes
+
+If you have created a foxx that can be regularly installed but has an unhandled error inside a route.
+Triggering this route and entering the error case will return the specific error including a stack trace for you to hunt it down:
+
+    unix>curl -X GET http://localhost:8529/_db/_system/example/failed
+
