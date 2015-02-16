@@ -5,7 +5,7 @@ arangosh> query.next();
 { 
   "_id" : "female/diana", 
   "_key" : "diana", 
-  "_rev" : "647849430", 
+  "_rev" : "644536285", 
   "name" : "Diana" 
 }
 arangosh> query.edges();
@@ -16,7 +16,7 @@ arangosh> query.next();
 { 
   "_id" : "relation/charlyAndDiana", 
   "_key" : "charlyAndDiana", 
-  "_rev" : "648635862", 
+  "_rev" : "645322717", 
   "_from" : "male/charly", 
   "_to" : "female/diana", 
   "type" : "married" 

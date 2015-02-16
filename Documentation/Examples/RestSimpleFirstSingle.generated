@@ -6,9 +6,9 @@ content-type: application/json; charset=utf-8
 
 { 
   "result" : { 
-    "_id" : "products/1354065366", 
-    "_key" : "1354065366", 
-    "_rev" : "1354065366", 
+    "_id" : "products/1352980445", 
+    "_key" : "1352980445", 
+    "_rev" : "1352980445", 
     "i" : 1, 
     "a" : { 
       "k" : 1, 

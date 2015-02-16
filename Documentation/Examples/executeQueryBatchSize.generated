@@ -1,40 +1,40 @@
 arangosh> q = db.users.all(); q.setBatchSize(20); q.execute(); while (q.hasNext()) { print(q.next()); }
 { 
-  "_id" : "users/664888790", 
-  "_key" : "664888790", 
-  "_rev" : "664888790", 
+  "_id" : "users/661575645", 
+  "_key" : "661575645", 
+  "_rev" : "661575645", 
   "name" : "Angela" 
 }
 { 
-  "_id" : "users/664430038", 
-  "_key" : "664430038", 
-  "_rev" : "664430038", 
+  "_id" : "users/661116893", 
+  "_key" : "661116893", 
+  "_rev" : "661116893", 
   "name" : "Gerhard" 
 }
 { 
-  "_id" : "users/664692182", 
-  "_key" : "664692182", 
-  "_rev" : "664692182", 
+  "_id" : "users/661379037", 
+  "_key" : "661379037", 
+  "_rev" : "661379037", 
   "name" : "Helmut" 
 }
 SimpleQueryAll(users)
 arangosh> q = db.users.all(); q.execute(20); while (q.hasNext()) { print(q.next()); }
 { 
-  "_id" : "users/664888790", 
-  "_key" : "664888790", 
-  "_rev" : "664888790", 
+  "_id" : "users/661575645", 
+  "_key" : "661575645", 
+  "_rev" : "661575645", 
   "name" : "Angela" 
 }
 { 
-  "_id" : "users/664430038", 
-  "_key" : "664430038", 
-  "_rev" : "664430038", 
+  "_id" : "users/661116893", 
+  "_key" : "661116893", 
+  "_rev" : "661116893", 
   "name" : "Gerhard" 
 }
 { 
-  "_id" : "users/664692182", 
-  "_key" : "664692182", 
-  "_rev" : "664692182", 
+  "_id" : "users/661379037", 
+  "_key" : "661379037", 
+  "_rev" : "661379037", 
   "name" : "Helmut" 
 }
 SimpleQueryAll(users)
