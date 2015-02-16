@@ -5,42 +5,42 @@ arangosh> graph._neighbors('germanCity/Hamburg', {direction : 'outbound', maxDep
   { 
     "_id" : "germanCity/Cologne", 
     "_key" : "Cologne", 
-    "_rev" : "599025110", 
+    "_rev" : "595711965", 
     "isCapital" : false, 
     "population" : 1000000 
   }, 
   { 
     "_id" : "frenchCity/Lyon", 
     "_key" : "Lyon", 
-    "_rev" : "599614934", 
+    "_rev" : "596301789", 
     "isCapital" : false, 
     "population" : 80000 
   }, 
   { 
     "_id" : "frenchCity/Paris", 
     "_key" : "Paris", 
-    "_rev" : "599811542", 
+    "_rev" : "596498397", 
     "isCapital" : true, 
     "population" : 4000000 
   }, 
   { 
     "_id" : "frenchCity/Paris", 
     "_key" : "Paris", 
-    "_rev" : "599811542", 
+    "_rev" : "596498397", 
     "isCapital" : true, 
     "population" : 4000000 
   }, 
   { 
     "_id" : "frenchCity/Lyon", 
     "_key" : "Lyon", 
-    "_rev" : "599614934", 
+    "_rev" : "596301789", 
     "isCapital" : false, 
     "population" : 80000 
   }, 
   { 
     "_id" : "frenchCity/Lyon", 
     "_key" : "Lyon", 
-    "_rev" : "599614934", 
+    "_rev" : "596301789", 
     "isCapital" : false, 
     "population" : 80000 
   } 

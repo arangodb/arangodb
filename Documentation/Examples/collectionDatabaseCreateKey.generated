@@ -1,23 +1,23 @@
 arangosh> db._create("users", { keyOptions: { type: "autoincrement", offset: 10, increment: 5 } });
-[ArangoCollection 111044054, "users" (type document, status loaded)]
+[ArangoCollection 107010013, "users" (type document, status loaded)]
 arangosh> db.users.save({ name: "user 1" });
 { 
   "error" : false, 
   "_id" : "users/10", 
-  "_rev" : "111371734", 
+  "_rev" : "107337693", 
   "_key" : "10" 
 }
 arangosh> db.users.save({ name: "user 2" });
 { 
   "error" : false, 
   "_id" : "users/15", 
-  "_rev" : "111568342", 
+  "_rev" : "107534301", 
   "_key" : "15" 
 }
 arangosh> db.users.save({ name: "user 3" });
 { 
   "error" : false, 
   "_id" : "users/20", 
-  "_rev" : "111764950", 
+  "_rev" : "107730909", 
   "_key" : "20" 
 }

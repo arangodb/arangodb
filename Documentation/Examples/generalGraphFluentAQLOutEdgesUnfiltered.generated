@@ -6,7 +6,7 @@ arangosh> query.outEdges().toArray();
   { 
     "_id" : "relation/aliceAndBob", 
     "_key" : "aliceAndBob", 
-    "_rev" : "289105366", 
+    "_rev" : "285399005", 
     "_from" : "female/alice", 
     "_to" : "male/bob", 
     "type" : "married" 
@@ -14,7 +14,7 @@ arangosh> query.outEdges().toArray();
   { 
     "_id" : "relation/aliceAndCharly", 
     "_key" : "aliceAndCharly", 
-    "_rev" : "289367510", 
+    "_rev" : "285661149", 
     "_from" : "female/alice", 
     "_to" : "male/charly", 
     "type" : "friend" 
@@ -22,7 +22,7 @@ arangosh> query.outEdges().toArray();
   { 
     "_id" : "relation/bobAndDiana", 
     "_key" : "bobAndDiana", 
-    "_rev" : "289760726", 
+    "_rev" : "286054365", 
     "_from" : "male/bob", 
     "_to" : "female/diana", 
     "type" : "friend" 
