@@ -93,6 +93,9 @@
       refillCaches(dbname);
     }
     if (!appCache[dbname].hasOwnProperty(mount)) {
+      if (!appCache[dbname].hasOwnProperty(mount)) {
+        refillCaches(dbname);
+      }
       throw new Error("App not found");
     }
     return appCache[dbname][mount];
@@ -806,11 +809,13 @@
         throw e;
       }
     }
-    try {
-      _teardown(app);
-    } catch (e) {
-      if (!options.force) {
-        throw e;
+    if (options.teardown !== false && options.teardown !== "false") {
+      try {
+        _teardown(app);
+      } catch (e) {
+        if (!options.force) {
+          throw e;
+        }
       }
     }
     try {
