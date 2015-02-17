@@ -960,7 +960,7 @@
       "configure(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    utils.validateMount(mount);
+    utils.validateMount(mount, true);
     var app = lookupApp(mount);
     var invalid = app.configure(options);
     if (invalid.length > 0) {
@@ -981,9 +981,20 @@
       "configuration(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
-    utils.validateMount(mount);
+    utils.validateMount(mount, true);
     var app = lookupApp(mount);
     return app.getConfiguration();
+  };
+
+  var requireApp = function(mount) {
+    checkParameter(
+      "requireApp(<mount>)",
+      [ [ "Mount path", "string" ] ],
+      [ mount ] );
+    utils.validateMount(mount, true);
+    var app = lookupApp(mount);
+    require("console").log("Exports:", app._exports);
+    return app._exports;
   };
 
 
@@ -1005,6 +1016,7 @@
   exports.production = setProduction;
   exports.configure = configure;
   exports.configuration = configuration;
+  exports.requireApp = requireApp;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Serverside only API
