@@ -83,9 +83,8 @@ GeneralClientConnection* GeneralClientConnection::factory (Endpoint* endpoint,
   else if (endpoint->getEncryption() == Endpoint::ENCRYPTION_SSL) {
     return new SslClientConnection(endpoint, requestTimeout, connectTimeout, numRetries, sslProtocol);
   }
-  else {
-    return 0;
-  }
+    
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
