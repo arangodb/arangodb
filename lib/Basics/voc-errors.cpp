@@ -243,6 +243,15 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_CONNECT, "could not connect to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_WRITE, "could not write to server");
   REG_ERROR(SIMPLE_CLIENT_COULD_NOT_READ, "could not read from server");
+  REG_ERROR(ERROR_MALFORMED_MANIFEST_FILE, "malformed manifest file");
+  REG_ERROR(ERROR_INVALID_APPLICATION_MANIFEST, "manifest file is invalid");
+  REG_ERROR(ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING, "missing manifest attribute");
+  REG_ERROR(ERROR_CANNOT_EXTRACT_APPLICATION_ROOT, "unable to extract app root path");
+  REG_ERROR(ERROR_INVALID_FOXX_OPTIONS, "invalid foxx options");
+  REG_ERROR(ERROR_FAILED_TO_EXECUTE_SCRIPT, "failed to execute script");
+  REG_ERROR(ERROR_SYNTAX_ERROR_IN_SCRIPT, "syntax error in script");
+  REG_ERROR(ERROR_INVALID_MOUNTPOINT, "mountpoint is invalid");
+  REG_ERROR(ERROR_NO_FOXX_FOUND, "No foxx found at this location");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");

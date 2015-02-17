@@ -1,0 +1,83 @@
+.application-detail-view {
+  section.info {
+    float: left;
+    padding: 13px 0 0;
+
+    .header {
+      float: left;
+      height: 200px;
+      margin-bottom: 10px;
+      position: relative;
+
+      div.header-icon-container {
+        height: 160px;
+        left: 0;
+        margin: 0 0 4px;
+        position: absolute;
+        width: 160px;
+
+        img.icon {
+          height: auto;
+          max-height: 160px;
+          max-width: 160px;
+          width: auto;
+        }
+
+      }
+
+      .header_left {
+        left: 170px;
+        position: absolute;
+        width: 120px;
+
+        input.delete {
+          margin-top: (160px - 3 * 30px) / 2;
+        }
+
+        input.switch-mode {
+          margin-top: (160px - 3 * 30px) / 2;
+        }
+      }
+
+      .header_right {
+        left: 300px;
+        padding: 5px;
+        position: relative;
+
+        h3 {
+          float: left;
+          padding-right: 5px;
+        }
+
+        .license,
+        .version {
+          @include border-radius(6px);
+
+          border: 1px solid $c-editor-toolbar;
+          color: $c-editor-toolbar;
+          font-size: .6em;
+          padding: 0 8px;
+          position: relative;
+          top: -2px;
+        }
+
+        .description {
+          clear: left;
+        }
+      }
+    }
+
+    .swagger {
+      iframe {
+        height: 600px;
+        width: 100%;
+      }
+    }
+  }
+
+  aside.meta {
+    clear: right;
+    float: left;
+    width: 200px;
+  }
+}

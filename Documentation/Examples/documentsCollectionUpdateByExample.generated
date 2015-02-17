@@ -1,2 +1,0 @@
-arangosh> db.example.updateByExample({ Hello: "world" }, { Hello: "foo", Hello: "bar" }, false);
-1

@@ -57,23 +57,12 @@ function FoxxManagerSuite () {
 
     return false;
   }
+  var mountPoint = "/itz";
 
   return {
 
     setUp: function () {
       db._useDatabase("_system");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test config
-////////////////////////////////////////////////////////////////////////////////
-
-    testConfig : function () {
-      var data = fm.configJson();
-
-      assertTrue(data.hasOwnProperty("appPath"));
-      assertTrue(data.hasOwnProperty("devAppPath"));
-      assertTrue(data.hasOwnProperty("startupPath"));
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,68 +93,35 @@ function FoxxManagerSuite () {
 /// @brief test available
 ////////////////////////////////////////////////////////////////////////////////
 
-    testFetch : function () {
+    testInstall : function () {
       try {
-        fm.purge("itzpapalotl");
+        fm.uninstall(mountPoint);
       }
       catch (err) {
       }
 
-      fm.update();
-      fm.fetch("github", "jsteemann/itzpapalotl");
-
-      var result = fm.fetchedJson(), i;
+      try {
+        fm.install("git:jsteemann/itzpapalotl", mountPoint);
+      } catch(err) {
+        require("console").log(err);
+        fail(err.errorMessage);
+      }
+      var result = fm.listJson(), i;
 
       for (i = 0; i < result.length; ++i) {
         var entry = result[i];
 
-        if (entry.name === 'itzpapalotl') {
+        if (entry.mount === mountPoint) {
           assertEqual("jsteemann", entry.author);
           assertEqual("itzpapalotl", entry.name);
           assertTrue(entry.hasOwnProperty("description"));
           assertTrue(entry.hasOwnProperty("version"));
-          assertTrue(entry.hasOwnProperty("path"));
+          fm.uninstall(mountPoint);
           return;
         }
-       }
+      }
 
       fail();
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test purge
-////////////////////////////////////////////////////////////////////////////////
-
-    testPurge : function () {
-      try {
-        fm.purge("itzpapalotl");
-      }
-      catch (err) {
-      }
-
-      fm.update();
-      fm.install("itzpapalotl", "/itz1");
-      fm.install("itzpapalotl", "/itz2");
-      fm.install("itzpapalotl", "/itz3");
-
-      fm.purge("itzpapalotl");
-
-      assertFalse(inList(fm.listJson(), "itzpapalotl"));
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test purge
-////////////////////////////////////////////////////////////////////////////////
-
-    testPurgeSystem : function () {
-      fm.update();
-
-      try {
-        fm.purge("aardvark");
-        fail();
-      }
-      catch (err) {
-      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -230,20 +186,20 @@ function FoxxManagerSuite () {
       fm.update();
 
       try {
-        fm.purge("/itzpapalotl");
+        fm.uninstall(mountPoint);
       }
       catch (err) {
       }
 
-      fm.install("itzpapalotl", "/itz");
+      fm.install("itzpapalotl", mountPoint);
       assertTrue(inList(fm.listJson(), "itzpapalotl"));
 
-      var url = '/itz/random';
+      var url = mountPoint + '/random';
       var fetched = arango.GET(url);
 
       assertTrue(fetched.hasOwnProperty("name"));
 
-      fm.uninstall("/itz");
+      fm.uninstall(mountPoint);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,28 +210,32 @@ function FoxxManagerSuite () {
       fm.update();
 
       try {
-        fm.uninstall("/itz1");
-        fm.uninstall("/itz2");
+        fm.uninstall(mountPoint + "1");
+      }
+      catch (err) {
+      }
+      try {
+        fm.uninstall(mountPoint + "2");
       }
       catch (err) {
       }
 
-      fm.install("itzpapalotl", "/itz1");
-      fm.install("itzpapalotl", "/itz2");
+      fm.install("itzpapalotl", mountPoint + "1");
+      fm.install("itzpapalotl", mountPoint + "2");
 
       var url, fetched;
 
-      url  = '/itz1/random';
+      url  = mountPoint + '1/random';
       fetched = arango.GET(url);
       assertTrue(fetched.hasOwnProperty("name"));
 
-      url  = '/itz2/random';
+      url  = mountPoint + '2/random';
       fetched = arango.GET(url);
 
       assertTrue(fetched.hasOwnProperty("name"));
 
-      fm.uninstall("/itz1");
-      fm.uninstall("/itz2");
+      fm.uninstall(mountPoint + "1");
+      fm.uninstall(mountPoint + "2");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,15 +246,15 @@ function FoxxManagerSuite () {
       fm.update();
 
       try {
-        fm.purge("itzpapalotl");
+        fm.uninstall(mountPoint);
       }
       catch (err) {
       }
 
-      fm.install("itzpapalotl", "/itz");
+      fm.install("itzpapalotl", mountPoint);
       assertTrue(inList(fm.listJson(), "itzpapalotl"));
 
-      fm.uninstall("/itz");
+      fm.uninstall(mountPoint);
       assertFalse(inList(fm.listJson(), "itzpapalotl"));
     },
 
@@ -306,14 +266,14 @@ function FoxxManagerSuite () {
       fm.update();
 
       try {
-        fm.uninstall("/itz");
+        fm.uninstall(mountPoint);
       }
       catch (err1) {
       }
 
       try {
         // already uninstalled
-        fm.uninstall("/itz");
+        fm.uninstall(mountPoint);
         fail();
       }
       catch (err2) {
@@ -327,72 +287,13 @@ function FoxxManagerSuite () {
     testUninstallSystem : function () {
       fm.update();
 
-      var doc = db._collection('_aal').firstExample({ type: "mount", name: "aardvark" });
+      var doc = db._collection('_apps').firstExample({ mount: "/_admin/aardvark" });
 
       assertNotNull(doc);
 
       try {
         // cannout uninstall a system app
         fm.uninstall(doc.mount);
-        fail();
-      }
-      catch (err) {
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test unmount
-////////////////////////////////////////////////////////////////////////////////
-
-    testUnmountInstalled : function () {
-      fm.update();
-
-      try {
-        fm.uninstall("/itz");
-      }
-      catch (err) {
-      }
-
-      fm.install("itzpapalotl", "/itz");
-      fm.unmount("/itz");
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test unmount
-////////////////////////////////////////////////////////////////////////////////
-
-    testUnmountUninstalled : function () {
-      fm.update();
-
-      try {
-        fm.uninstall("/itz");
-      }
-      catch (err1) {
-      }
-
-      try {
-        // already unmounted
-        fm.unmount("/itz");
-        fail();
-      }
-      catch (err2) {
-      }
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test unmount
-////////////////////////////////////////////////////////////////////////////////
-
-    testUnmountSystem : function () {
-      fm.update();
-
-      var doc = db._collection('_aal').firstExample({ type: "mount", name: "aardvark" });
-
-      assertNotNull(doc);
-
-      try {
-        // cannout unmount a system app
-        fm.unmount(doc.mount);
         fail();
       }
       catch (err) {

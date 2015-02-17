@@ -1,5 +1,5 @@
 arangosh> c = db.example;
-[ArangoCollection 767809501, "example" (type document, status loaded)]
+[ArangoCollection 757636095, "example" (type document, status loaded)]
 arangosh> c.rename("better-example");
 arangosh> c;
-[ArangoCollection 767809501, "better-example" (type document, status loaded)]
+[ArangoCollection 757636095, "better-example" (type document, status loaded)]

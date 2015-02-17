@@ -3,10 +3,10 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._betweenness();
 [ 
   { 
+    "germanCity/Berlin" : null, 
     "germanCity/Hamburg" : null, 
     "germanCity/Cologne" : null, 
-    "germanCity/Berlin" : null, 
-    "frenchCity/Lyon" : null, 
-    "frenchCity/Paris" : null 
+    "frenchCity/Paris" : null, 
+    "frenchCity/Lyon" : null 
   } 
 ]

@@ -1,6 +1,78 @@
 v2.5.0-alpha3 (2015-02-16)
 -------------------
 
+* front-end: unwanted removal of index table header after creating new index
+
+* fixed issue #1248: chrome: applications filtering not working
+
+* fixed issue #1198: queries remain in aql editor (front-end) if you navigate through different tabs
+
+* Simplify usage of Foxx
+
+  Thanks to our user feedback we learned that Foxx is a powerful, yet rather complicated concept.
+  With this release we tried to make it less complicated while keeping all its strength.
+  That includes a rewrite of the documentation as well as some code changes as listed below:
+
+  * Moved Foxx applications to a different folder.
+
+    The naming convention now is: <app-path>/_db/<dbname>/<mointpoint>/APP
+    Before it was: <app-path>/databases/<dbname>/<appname>:<appversion>
+    This caused some trouble as apps where cached based on name and version and updates did not apply.
+    Hence the path on filesystem and the app's access URL had no relation to one another.
+    Now the path on filesystem is identical to the URL (except for slashes and the appended APP)
+
+  * Rewrite of Foxx routing
+
+    The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
+    This allows us to set the development mode per mountpoint without having to change pathes and hold
+    apps at seperate locations.
+
+  * Foxx Development mode
+
+    The development mode used until 2.4 is gone. It has been replaced by a much more mature version.
+    This includes the deprecation of the javascript.dev-app-path parameter, which is useless since 2.5.
+    Instead of having two separate app directories for production and development, apps now reside in 
+    one place, which is used for production as well as for development.
+    Apps can still be put into development mode, changing their behavior compared to production mode.
+    Development mode apps are still reread from disk at every request, and still they ship more debug 
+    output.
+
+  * Foxx install process
+
+    Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
+    specific mountpoint. These operations have been joined together. You can install an app at one
+    mountpoint, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been 
+    simplified to just:
+
+    * install: get your Foxx app up and running
+    * uninstall: shut it down and erase it from disk
+
+  * Foxx error output
+
+    Until 2.4 the errors produced by Foxx were not optimal. Often, the error message was just
+    `unable to parse manifest` and contained only an internal stack trace.
+    In 2.5 we made major improvements there, including a much more finegrained error output that
+    helps you debug your Foxx apps. The error message printed is now much closer to its source and 
+    should help you track it down.
+
+    Also we added the default handlers for unhandled errors in Foxx apps:
+
+    * You will get a nice internal error page whenever your Foxx app is called but was not installed
+      due to any error
+    * You will get a proper error message when having an uncaught error appears in any app route
+
+    In production mode the messages above will NOT contain any information about your Foxx internals
+    and are safe to be exposed to third party users.
+    In development mode the messages above will contain the stacktrace (if available), making it easier for
+    your in-house devs to track down errors in the application.
+
+* added `console` object to Foxx apps. All Foxx apps now have a console object implementing
+  the familiar Console API in their global scope, which can be used to log diagnostic
+  messages to the database.
+
+* added `org/arangodb/request` module, which provides a simple API for making HTTP requests
+  to external services.
+
 * added optimizer rule `propagate-constant-attributes`
 
   This rule will look inside `FILTER` conditions for constant value equality comparisons, 
@@ -40,13 +112,22 @@ v2.5.0-alpha3 (2015-02-16)
       db.collection.ensureUniqueSkiplist(attributeName, { sparse: true }); 
       db.collection.ensureUniqueSkiplist(attributeName1, attributeName2, { sparse: true }); 
 
-  When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
-  Other indexes than hash and skiplist do not support sparsity.
+  When not explicitly set, the `sparse` attribute defaults to `false` for new indexes. 
+  
+  This causes a change in behavior when creating a unique hash index without specifying the 
+  sparse flag: in 2.4, unique hash indexes were implicitly sparse, always excluding `null` values. 
+  There was no option to control this behavior, and sparsity was neither supported for non-unique
+  hash indexes nor skiplists in 2.4. This implicit sparsity of unique hash indexes was considered
+  an inconsistency, and therefore the behavior was cleaned up in 2.5. As of 2.5, indexes will
+  only be created sparse if sparsity is explicitly requested. Existing unique hash indexes from 2.4 
+  or before will automatically be migrated so they are still sparse after the upgrade to 2.5.
+   
+  Indexes other than hash and skiplist do not support sparsity.
 
-  As sparse indexes may exclude some documents from the collection, they cannot be used for
-  all types of queries. Sparse hash indexes cannot be used to find documents for which at
-  least one of the indexed attributes has a value of `null`. For example, the following AQL
-  query cannot use a sparse index, even if one was created on attribute `attr`:
+  As sparse indexes may exclude some documents, they cannot be used for every type of query. 
+  Sparse hash indexes cannot be used to find documents for which at least one of the indexed 
+  attributes has a value of `null`. For example, the following AQL query cannot use a sparse 
+  index, even if one was created on attribute `attr`:
 
       FOR doc In collection 
         FILTER doc.attr == null 
@@ -157,6 +238,8 @@ v2.5.0-alpha3 (2015-02-16)
 
 v2.4.4 (2015-XX-XX)
 -------------------
+
+* fixed the generation template for foxx apps. It now does not create deprecated functions anymore
 
 * add custom visitor functionality for `GRAPH_NEIGHBORS` function, too
 

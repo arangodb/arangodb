@@ -1,4 +1,4 @@
-/* jshint unused:false */
+/*jshint unused:false */
 /*global require, assertEqual, assertTrue, assertFalse, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -35,6 +35,7 @@ var stub,
   FunctionStub,
   mockConstructor,
   joi = require("joi"),
+  transformRoute = require("org/arangodb/foxx/routing").__test_transformControllerToRoute,
   _ = require("underscore");
 
 // Sorry for Yak Shaving. But I can't take it anymore.
@@ -402,8 +403,9 @@ function ControllerInjectionSpec () {
 
       app.get('/foxx', function () {});
 
-      app.routingInfo.routes[0].action.callback(req, res);
-      app.routingInfo.routes[0].action.callback(req, res);
+      var callback = transformRoute(app.routingInfo.routes[0].action);
+      callback(req, res);
+      callback(req, res);
 
       assertEqual(timesCalled, 1);
     },
@@ -417,8 +419,9 @@ function ControllerInjectionSpec () {
 
       app.get('/foxx', function () {});
 
-      app.routingInfo.routes[0].action.callback(req, res);
-      app.routingInfo.routes[0].action.callback(req, res);
+      var callback = transformRoute(app.routingInfo.routes[0].action);
+      callback(req, res);
+      callback(req, res);
 
       assertEqual(timesCalled, 1);
     },
@@ -434,8 +437,9 @@ function ControllerInjectionSpec () {
 
       app.get('/foxx', function () {});
 
-      app.routingInfo.routes[0].action.callback(req, res);
-      app.routingInfo.routes[0].action.callback(req, res);
+      var callback = transformRoute(app.routingInfo.routes[0].action);
+      callback(req, res);
+      callback(req, res);
 
       assertFalse(wrongFuncCalled);
       assertEqual(timesCalled, 1);
@@ -457,9 +461,10 @@ function ControllerInjectionSpec () {
         });
       });
 
-      app.routingInfo.routes[0].action.callback(req, res);
-      app.routingInfo.routes[0].action.callback(req, res);
-      app.routingInfo.routes[0].action.callback(req, res);
+      var callback = transformRoute(app.routingInfo.routes[0].action);
+      callback(req, res);
+      callback(req, res);
+      callback(req, res);
 
       assertTrue(calledA);
       assertFalse(calledB);
@@ -478,7 +483,8 @@ function ControllerInjectionSpec () {
         called = true;
       });
 
-      app.routingInfo.routes[0].action.callback(req, res);
+      var callback = transformRoute(app.routingInfo.routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -510,7 +516,8 @@ function ControllerInjectionSpec () {
         called = true;
       });
 
-      app.routingInfo.routes[0].action.callback(req, res);
+      var callback = transformRoute(app.routingInfo.routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     }
@@ -787,8 +794,8 @@ function DocumentationAndConstraintsSpec () {
         description: description,
         type: ModelPrototype
       });
-
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();
@@ -814,7 +821,8 @@ function DocumentationAndConstraintsSpec () {
         type: schema
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -839,7 +847,8 @@ function DocumentationAndConstraintsSpec () {
         type: schema
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -861,7 +870,8 @@ function DocumentationAndConstraintsSpec () {
         called = _.isEqual(providedReq.parameters[paramName], {x: 1});
       }).bodyParam(paramName, schema.description(description));
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -886,7 +896,8 @@ function DocumentationAndConstraintsSpec () {
         type: schema
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -912,7 +923,8 @@ function DocumentationAndConstraintsSpec () {
         type: schema
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -937,7 +949,8 @@ function DocumentationAndConstraintsSpec () {
         type: schema.meta({allowInvalid: true})
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
     },
@@ -964,7 +977,8 @@ function DocumentationAndConstraintsSpec () {
       });
 
       try {
-        routes[0].action.callback(req, res);
+        var callback = transformRoute(routes[0].action);
+        callback(req, res);
       } catch(e) {
         thrown = true;
       }
@@ -989,7 +1003,8 @@ function DocumentationAndConstraintsSpec () {
         receivedRawBody = providedReq.rawBody();
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(receivedParam instanceof Model);
       assertEqual(receivedParam.forDB(), {foo: "bar"});
@@ -1012,7 +1027,8 @@ function DocumentationAndConstraintsSpec () {
         receivedRawBody = providedReq.rawBody();
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(receivedParam instanceof Model);
       assertEqual(receivedParam.forDB(), {});
@@ -1044,7 +1060,8 @@ function DocumentationAndConstraintsSpec () {
         type: [ModelPrototype]
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();
@@ -1089,7 +1106,8 @@ function DocumentationAndConstraintsSpec () {
         throw new CustomErrorClass();
       }).errorResponse(CustomErrorClass, code, reason);
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(statusWasCalled);
       assertTrue(jsonWasCalled);
@@ -1119,7 +1137,8 @@ function DocumentationAndConstraintsSpec () {
         }
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(jsonWasCalled);
     },
@@ -1690,7 +1709,8 @@ function FoxxControllerWithRootElement () {
         type: ModelPrototype
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();
@@ -1721,7 +1741,8 @@ function FoxxControllerWithRootElement () {
         type: [ModelPrototype]
       });
 
-      routes[0].action.callback(req, res);
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
 
       assertTrue(called);
       ModelPrototype.assertIsSatisfied();

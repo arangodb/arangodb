@@ -30,6 +30,10 @@
 var Repository,
   Model = require("org/arangodb/foxx/model").Model,
   _ = require("underscore"),
+  arangodb = require("org/arangodb"),
+  ArangoError = arangodb.ArangoError,
+  ArangoCollection = arangodb.ArangoCollection,
+  errors = arangodb.errors,
   extend = require('org/arangodb/extend').extend;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,6 +67,13 @@ var Repository,
 
 Repository = function (collection, opts) {
   'use strict';
+
+  if (! collection instanceof ArangoCollection) {
+    throw new ArangoError({
+      errorNum: errors.ERROR_BAD_PARAMETER.code,
+      errorMessage: "Collection parameter has to be of type ArangoCollection"
+    });
+  }
   this.options = opts || {};
 
 // -----------------------------------------------------------------------------

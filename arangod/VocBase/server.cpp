@@ -470,7 +470,7 @@ static int CreateApplicationDirectory (char const* name,
   }
 
   int res = TRI_ERROR_NO_ERROR;
-  char* path = TRI_Concatenate3File(basePath, "databases", name);
+  char* path = TRI_Concatenate3File(basePath, "_db", name);
 
   if (path != nullptr) {
     if (! TRI_IsDirectory(path)) {
@@ -1500,7 +1500,7 @@ static void DatabaseManager (void* data) {
 
         // remove apps directory for database
         if (database->_isOwnAppsDirectory && strlen(server->_appPath) > 0) {
-          path = TRI_Concatenate3File(server->_appPath, "databases", database->_name);
+          path = TRI_Concatenate3File(server->_appPath, "_db", database->_name);
 
           if (path != nullptr) {
             if (TRI_IsDirectory(path)) {
@@ -1517,7 +1517,7 @@ static void DatabaseManager (void* data) {
 
         // remove dev-apps directory for database
         if (database->_isOwnAppsDirectory && strlen(server->_devAppPath) > 0) {
-          path = TRI_Concatenate3File(server->_devAppPath, "databases", database->_name);
+          path = TRI_Concatenate3File(server->_devAppPath, "_db", database->_name);
 
           if (path != nullptr) {
             if (TRI_IsDirectory(path)) {
@@ -1922,7 +1922,7 @@ int TRI_StartServer (TRI_server_t* server,
   }
 
   // create subdirectories if not yet present
-  res = CreateBaseApplicationDirectory(server->_appPath, "databases");
+  res = CreateBaseApplicationDirectory(server->_appPath, "_db");
 
   // system directory is in a read-only location
 #if 0
@@ -1932,7 +1932,7 @@ int TRI_StartServer (TRI_server_t* server,
 #endif
 
   if (res == TRI_ERROR_NO_ERROR) {
-    res = CreateBaseApplicationDirectory(server->_devAppPath, "databases");
+    res = CreateBaseApplicationDirectory(server->_devAppPath, "_db");
   }
 
   // system directory is in a read-only location
