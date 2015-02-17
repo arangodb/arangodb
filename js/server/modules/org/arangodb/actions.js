@@ -1991,8 +1991,8 @@ function resultException (req, res, err, headers, verbose) {
     showTrace = true;
   }
   else if (verbose || verbose === undefined) {
-    msg = "An error has occurred during execution";
     info.exception = String(err);
+    msg = "An error has occurred during execution: " + info.exception;
     showTrace = true;
   }
   else {
