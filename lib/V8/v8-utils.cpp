@@ -3279,10 +3279,10 @@ static void JS_StatusExternal (const v8::FunctionCallbackInfo<v8::Value>& args) 
   result->Set(TRI_V8_ASCII_STRING("status"), TRI_V8_STRING(status));
 
   if (external._status == TRI_EXT_TERMINATED) {
-    result->Set(TRI_V8_ASCII_STRING("exit"), v8::Number::New(isolate, external._exitStatus));
+    result->Set(TRI_V8_ASCII_STRING("exit"), v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)));
   }
   else if (external._status == TRI_EXT_ABORTED) {
-    result->Set(TRI_V8_ASCII_STRING("signal"), v8::Number::New(isolate, external._exitStatus));
+    result->Set(TRI_V8_ASCII_STRING("signal"), v8::Integer::New(isolate, static_cast<int32_t>(external._exitStatus)));
   }
   if (external._errorMessage.length() > 0) {
     result->Set(TRI_V8_ASCII_STRING("errorMessage"), TRI_V8_STD_STRING(external._errorMessage));
@@ -3420,10 +3420,10 @@ static void JS_ExecuteAndWaitExternal (const v8::FunctionCallbackInfo<v8::Value>
   result->Set(TRI_V8_ASCII_STRING("status"), TRI_V8_ASCII_STRING(status));
 
   if (external_status._status == TRI_EXT_TERMINATED) {
-    result->Set(TRI_V8_ASCII_STRING("exit"), v8::Number::New(isolate, external_status._exitStatus));
+    result->Set(TRI_V8_ASCII_STRING("exit"), v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus)));
   }
   else if (external_status._status == TRI_EXT_ABORTED) {
-    result->Set(TRI_V8_ASCII_STRING("signal"), v8::Number::New(isolate, external_status._exitStatus));
+    result->Set(TRI_V8_ASCII_STRING("signal"), v8::Integer::New(isolate, static_cast<int32_t>(external_status._exitStatus)));
   }
   if (external_status._errorMessage.length() > 0) {
     result->Set(TRI_V8_ASCII_STRING("errorMessage"),

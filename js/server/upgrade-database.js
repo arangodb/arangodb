@@ -1454,7 +1454,7 @@ function updateGlobals() {
           try {
             mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
           } catch (e) {
-            logger.errorLines("Tried to move app " + tmp.app + " but it was not found at app-path" + path +
+            logger.errorLines("Tried to move app " + tmp.app + " but it was not found at app-path " + path +
               " : " +(e.stack || String(e)));
           }
         }
@@ -1484,7 +1484,7 @@ function updateGlobals() {
         try {
           fs.removeDirectoryRecursive(module.oldAppPath(), true);
         } catch(e) {
-          logger.log("Unable to remove old app path %s", module.oldAppPath());
+          logger.warn("Unable to remove old app path " + module.oldAppPath());
         }
         
         // 4. For each mounted app, reinstall appId from zipFile to mount

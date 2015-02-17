@@ -36,6 +36,8 @@
 // -----------------------------------------------------------------------------
 
   var arangodb = require("org/arangodb");
+  var ArangoError = arangodb.ArangoError;
+  var errors = arangodb.errors;
   var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
   var _ = require("underscore");
   var fs = require("fs");
@@ -43,7 +45,8 @@
   var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
   var actions = require("org/arangodb/actions");
-  var utils = require("org/arangodb/foxx/manager-utils");
+
+  var exportCache = {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -379,12 +382,12 @@
 /// @brief transform the internal route objects into proper routing callbacks
 ////////////////////////////////////////////////////////////////////////////////
 
-  var transformRoutes = function (rt, routes, controller, prefix) {
+  var transformRoutes = function (rt, routes, controller, prefix, isDevel) {
     var j, route;
     for (j = 0;  j < rt.length;  ++j) {
       route = rt[j];
       route.action = {
-        callback: transformControllerToRoute(route.action, route.url || "No Route")
+        callback: transformControllerToRoute(route.action, route.url || "No Route", isDevel)
       };
       if (route.hasOwnProperty("url")) {
         route.url.match = arangodb.normalizeURL(prefix + "/" + route.url.match);
@@ -394,9 +397,91 @@
     }
   };
 
+  var routeRegEx = /^(\/:?[a-zA-Z0-9_\-%]+)+\/?$/;
+
+  var validateRoute = function(route) {
+    if (route[0] !== "/") {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Route has to start with /."
+      });
+    }
+    if (!routeRegEx.test(route)) {
+      // Controller routes may be /. Foxxes are not allowed to
+      if (route.length !== 1) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+          errorMessage: "Route parts '" + route + "' may only contain a-z, A-Z, 0-9 or _. But may start with a :"
+        });
+      }
+    }
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an apps exports are already cached
+////////////////////////////////////////////////////////////////////////////////
+
+  var isExported = function(mount) {
+    var dbname = arangodb.db._name();
+    if (!exportCache.hasOwnProperty(dbname)) {
+      exportCache[dbname] = {};
+      return false;
+    }
+    if (!exportCache[dbname].hasOwnProperty(mount)) {
+      return false;
+    }
+    return true;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an apps exports are already cached
+////////////////////////////////////////////////////////////////////////////////
+
+  var setIsExported = function(mount) {
+    var dbname = arangodb.db._name();
+    if (!exportCache.hasOwnProperty(dbname)) {
+      exportCache[dbname] = {};
+    }
+    exportCache[dbname][mount] = true;
+  };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the exports of an app
+////////////////////////////////////////////////////////////////////////////////
+
+  var exportApp = function (app) {
+    if (!app._isDevelopment && isExported(app._mount)) {
+      return app._exports;
+    }
+    var result, context, i, file, tmpContext;
+    app._exports = {};
+    // mount all exports
+    if (app._manifest.hasOwnProperty("exports")) {
+      var exps = app._manifest.exports;
+
+      for (i in exps) {
+        if (exps.hasOwnProperty(i)) {
+          file = exps[i];
+          result = {};
+
+          // TODO ?
+          context = { exports: result };
+
+          tmpContext = {prefix: "/"};
+
+          app.loadAppScript(file, { context: context, appContext: tmpContext });
+
+          app._exports[i] = result;
+        }
+      }
+    }
+    setIsExported(app._mount);
+    return app._exports;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the routes of an app
@@ -444,27 +529,6 @@
     }
 
     var tmpContext, file;
-    var result, context;
-    // mount all exports
-    if (app._manifest.hasOwnProperty("exports")) {
-      var exps = app._manifest.exports;
-
-      for (i in exps) {
-        if (exps.hasOwnProperty(i)) {
-          file = exps[i];
-          result = {};
-
-          // TODO ?
-          context = { exports: result };
-
-          tmpContext = {prefix: "/"};
-
-          app.loadAppScript(file, { context: context, appContext: tmpContext });
-
-          app._exports[i] = result;
-        }
-      }
-    }
 
     // mount all controllers
     var controllers = app._manifest.controllers;
@@ -472,7 +536,7 @@
     try {
       for (i in controllers) {
         if (controllers.hasOwnProperty(i)) {
-          utils.validateMount(i, true);
+          validateRoute(i);
           file = controllers[i];
 
           // set up a context for the application start function
@@ -530,6 +594,7 @@
 // --SECTION--                                                           Exports
 // -----------------------------------------------------------------------------
 
+  exports.exportApp = exportApp;
   exports.routeApp = routeApp;
   exports.__test_transformControllerToRoute = transformControllerToRoute;
 }());

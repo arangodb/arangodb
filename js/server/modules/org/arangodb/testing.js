@@ -428,7 +428,7 @@ function checkInstanceAlive(instanceInfo, options) {
       instanceInfo.exitStatus = res;
       print(instanceInfo);
       if (res.hasOwnProperty('signal') && 
-          ((ress.signal === 11) || (ress.signal === 6)))
+          ((res.signal === 11) || (res.signal === 6)))
       {
         storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
         print("Core dump written; copying arangod to " + 
