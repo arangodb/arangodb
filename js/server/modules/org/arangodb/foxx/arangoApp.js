@@ -47,6 +47,25 @@
   var errors = arangodb.errors;
   var throwFileNotFound = arangodb.throwFileNotFound;
 
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+  var applyDefaultConfig = function(config) {
+    if (config === undefined) {
+      return {};
+    }
+    var res = {};
+    var attr;
+    for (attr in config) {
+      if (config.hasOwnProperty(attr) && config[attr].hasOwnProperty("default")) {
+        res[attr] = config[attr].default;
+      }
+    }
+    return res;
+  };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -137,6 +156,11 @@
     this._isDevelopment = config.isDevelopment || false;
     this._exports = {};
     this._collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
+    // Apply the default configuration and ignore all missing options
+    
+    var cfg = config.options.configuration;
+    this._options.configuration = applyDefaultConfig(this._manifest.configuration);
+    this.configure(cfg);
     this._context = new AppContext(this);
 
     if (! this._manifest.hasOwnProperty("defaultDocument")) {

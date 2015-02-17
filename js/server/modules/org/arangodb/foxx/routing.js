@@ -36,6 +36,8 @@
 // -----------------------------------------------------------------------------
 
   var arangodb = require("org/arangodb");
+  var ArangoError = arangodb.ArangoError;
+  var errors = arangodb.errors;
   var preprocess = require("org/arangodb/foxx/preprocessor").preprocess;
   var _ = require("underscore");
   var fs = require("fs");
@@ -43,7 +45,6 @@
   var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
   var actions = require("org/arangodb/actions");
-  var utils = require("org/arangodb/foxx/manager-utils");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -379,18 +380,38 @@
 /// @brief transform the internal route objects into proper routing callbacks
 ////////////////////////////////////////////////////////////////////////////////
 
-  var transformRoutes = function (rt, routes, controller, prefix) {
+  var transformRoutes = function (rt, routes, controller, prefix, isDevel) {
     var j, route;
     for (j = 0;  j < rt.length;  ++j) {
       route = rt[j];
       route.action = {
-        callback: transformControllerToRoute(route.action, route.url || "No Route")
+        callback: transformControllerToRoute(route.action, route.url || "No Route", isDevel)
       };
       if (route.hasOwnProperty("url")) {
         route.url.match = arangodb.normalizeURL(prefix + "/" + route.url.match);
       }
       route.context = controller;
       routes.routes.push(route);
+    }
+  };
+
+  var routeRegEx = /^(\/:?[a-zA-Z0-9_\-%]+)+\/?$/;
+
+  var validateRoute = function(route) {
+    if (route[0] !== "/") {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Route has to start with /."
+      });
+    }
+    if (!routeRegEx.test(route)) {
+      // Controller routes may be /. Foxxes are not allowed to
+      if (route.length !== 1) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+          errorMessage: "Route parts '" + route + "' may only contain a-z, A-Z, 0-9 or _. But may start with a :"
+        });
+      }
     }
   };
 
@@ -472,7 +493,7 @@
     try {
       for (i in controllers) {
         if (controllers.hasOwnProperty(i)) {
-          utils.validateMount(i, true);
+          validateRoute(i);
           file = controllers[i];
 
           // set up a context for the application start function
