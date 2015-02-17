@@ -1,14 +1,14 @@
 arangosh> a1 = db.example.insert({ a : 1 });
 { 
   "error" : false, 
-  "_id" : "example/493591551", 
-  "_rev" : "493591551", 
-  "_key" : "493591551" 
+  "_id" : "example/493479543", 
+  "_rev" : "493479543", 
+  "_key" : "493479543" 
 }
 arangosh> a2 = db.example.replace("example/3903044", { a : 2 });
 { 
   "error" : false, 
   "_id" : "example/3903044", 
-  "_rev" : "493788159", 
+  "_rev" : "493676151", 
   "_key" : "3903044" 
 }

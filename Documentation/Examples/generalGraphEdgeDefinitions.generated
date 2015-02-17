@@ -1,0 +1,42 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> directed_relation = graph_module._relation("lives_in", "user", "city");
+{ 
+  "collection" : "lives_in", 
+  "from" : [ 
+    "user" 
+  ], 
+  "to" : [ 
+    "city" 
+  ] 
+}
+arangosh> undirected_relation = graph_module._relation("knows", "user", "user");
+{ 
+  "collection" : "knows", 
+  "from" : [ 
+    "user" 
+  ], 
+  "to" : [ 
+    "user" 
+  ] 
+}
+arangosh> edgedefinitions = graph_module._edgeDefinitions(directed_relation, undirected_relation);
+[ 
+  { 
+    "collection" : "lives_in", 
+    "from" : [ 
+      "user" 
+    ], 
+    "to" : [ 
+      "city" 
+    ] 
+  }, 
+  { 
+    "collection" : "knows", 
+    "from" : [ 
+      "user" 
+    ], 
+    "to" : [ 
+      "user" 
+    ] 
+  } 
+]
