@@ -43,6 +43,7 @@
   var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
   var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
   var routeApp = require("org/arangodb/foxx/routing").routeApp;
+  var exportApp = require("org/arangodb/foxx/routing").exportApp;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
   var checkParameter = arangodb.checkParameter;
@@ -993,8 +994,7 @@
       [ mount ] );
     utils.validateMount(mount, true);
     var app = lookupApp(mount);
-    require("console").log("Exports:", app._exports);
-    return app._exports;
+    return exportApp(app);
   };
 
 

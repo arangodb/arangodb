@@ -46,6 +46,8 @@
   var console = require("console");
   var actions = require("org/arangodb/actions");
 
+  var exportCache = {};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -415,9 +417,71 @@
     }
   };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an apps exports are already cached
+////////////////////////////////////////////////////////////////////////////////
+
+  var isExported = function(mount) {
+    var dbname = arangodb.db._name();
+    if (!exportCache.hasOwnProperty(dbname)) {
+      exportCache[dbname] = {};
+      return false;
+    }
+    if (!exportCache[dbname].hasOwnProperty(mount)) {
+      return false;
+    }
+    return true;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if an apps exports are already cached
+////////////////////////////////////////////////////////////////////////////////
+
+  var setIsExported = function(mount) {
+    var dbname = arangodb.db._name();
+    if (!exportCache.hasOwnProperty(dbname)) {
+      exportCache[dbname] = {};
+    }
+    exportCache[dbname][mount] = true;
+  };
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief computes the exports of an app
+////////////////////////////////////////////////////////////////////////////////
+
+  var exportApp = function (app) {
+    if (!app._isDevelopment && isExported(app._mount)) {
+      return app._exports;
+    }
+    var result, context, i, file, tmpContext;
+    app._exports = {};
+    // mount all exports
+    if (app._manifest.hasOwnProperty("exports")) {
+      var exps = app._manifest.exports;
+
+      for (i in exps) {
+        if (exps.hasOwnProperty(i)) {
+          file = exps[i];
+          result = {};
+
+          // TODO ?
+          context = { exports: result };
+
+          tmpContext = {prefix: "/"};
+
+          app.loadAppScript(file, { context: context, appContext: tmpContext });
+
+          app._exports[i] = result;
+        }
+      }
+    }
+    setIsExported(app._mount);
+    return app._exports;
+  };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the routes of an app
@@ -465,27 +529,6 @@
     }
 
     var tmpContext, file;
-    var result, context;
-    // mount all exports
-    if (app._manifest.hasOwnProperty("exports")) {
-      var exps = app._manifest.exports;
-
-      for (i in exps) {
-        if (exps.hasOwnProperty(i)) {
-          file = exps[i];
-          result = {};
-
-          // TODO ?
-          context = { exports: result };
-
-          tmpContext = {prefix: "/"};
-
-          app.loadAppScript(file, { context: context, appContext: tmpContext });
-
-          app._exports[i] = result;
-        }
-      }
-    }
 
     // mount all controllers
     var controllers = app._manifest.controllers;
@@ -551,6 +594,7 @@
 // --SECTION--                                                           Exports
 // -----------------------------------------------------------------------------
 
+  exports.exportApp = exportApp;
   exports.routeApp = routeApp;
   exports.__test_transformControllerToRoute = transformControllerToRoute;
 }());
