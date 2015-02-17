@@ -85,12 +85,12 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
                                           size_t connectRetries,
                                           uint32_t sslProtocol) :
   GeneralClientConnection(endpoint, requestTimeout, connectTimeout, connectRetries),
-  _ssl(0),
-  _ctx(0) {
+  _ssl(nullptr),
+  _ctx(nullptr) {
 
   TRI_invalidatesocket(&_socket);
 
-  SSL_METHOD SSL_CONST* meth = 0;
+  SSL_METHOD SSL_CONST* meth = nullptr;
 
   switch (HttpsServer::protocol_e(sslProtocol)) {
 #ifndef OPENSSL_NO_SSL2
@@ -117,10 +117,10 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
 
   _ctx = SSL_CTX_new(meth);
 
-  if (_ctx) {
+  if (_ctx != nullptr) {
     SSL_CTX_set_cipher_list(_ctx, "ALL");
 
-    const bool sslCache = true;
+    bool sslCache = true;
     SSL_CTX_set_session_cache_mode(_ctx, sslCache ? SSL_SESS_CACHE_SERVER : SSL_SESS_CACHE_OFF);
   }
 }
@@ -132,11 +132,11 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
 SslClientConnection::~SslClientConnection () {
   disconnect();
 
-  if (_ssl) {
+  if (_ssl != nullptr) {
     SSL_free(_ssl);
   }
 
-  if (_ctx) {
+  if (_ctx != nullptr) {
     SSL_CTX_free(_ctx);
   }
 }
@@ -150,7 +150,6 @@ SslClientConnection::~SslClientConnection () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::connectSocket () {
-  const char *pErr;
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif
@@ -158,7 +157,7 @@ bool SslClientConnection::connectSocket () {
   TRI_ASSERT(_endpoint != nullptr);
 
   if (_endpoint->isConnected()) {
-    _endpoint->disconnect();
+    disconnectSocket();
   }
 
   _socket = _endpoint->connect(_connectTimeout, _requestTimeout);
@@ -169,27 +168,26 @@ bool SslClientConnection::connectSocket () {
   }
 
   _ssl = SSL_new(_ctx);
+
   if (_ssl == nullptr) {
     _errorDetails = std::string("failed to create ssl context");
-    _endpoint->disconnect();
-    TRI_invalidatesocket(&_socket);
+    disconnectSocket();
     return false;
   }
 
   if (SSL_set_fd(_ssl, (int) TRI_get_fd_or_handle_of_socket(_socket)) != 1) {
     _errorDetails = std::string("SSL: failed to create context ") + 
       ERR_error_string(ERR_get_error(), NULL);
-    _endpoint->disconnect();
-    SSL_free(_ssl);
-    _ssl = nullptr;
-    TRI_invalidatesocket(&_socket);
+    disconnectSocket();
     return false;
   }
 
   SSL_set_verify(_ssl, SSL_VERIFY_NONE, NULL);
 
   ERR_clear_error();
+
   int ret = SSL_connect(_ssl);
+
   if (ret != 1) {
     int errorDetail;
     int certError;
@@ -200,7 +198,7 @@ bool SslClientConnection::connectSocket () {
       return true;
     }
     else if (errorDetail == SSL_ERROR_SYSCALL) {
-      pErr = STR_ERROR();
+      char const* pErr = STR_ERROR();
       _errorDetails = std::string("SSL: during SSL_connect: ") + std::to_string(errno) + std::string(" - ") + pErr;
     }
     else {
@@ -208,38 +206,37 @@ bool SslClientConnection::connectSocket () {
                                         thread's error queue and removes the
                                         entry. */
       switch(errorDetail) {
-      case 0x1407E086:
-        /* 1407E086:
-           SSL routines:
-           SSL2_SET_CERTIFICATE:
-           certificate verify failed */
-        /* fall-through */
-      case 0x14090086:
-        /* 14090086:
-           SSL routines:
-           SSL3_GET_SERVER_CERTIFICATE:
-           certificate verify failed */
+        case 0x1407E086:
+          /* 1407E086:
+            SSL routines:
+            SSL2_SET_CERTIFICATE:
+            certificate verify failed */
+          /* fall-through */
+        case 0x14090086:
+          /* 14090086:
+            SSL routines:
+            SSL3_GET_SERVER_CERTIFICATE:
+            certificate verify failed */
 
-        certError = SSL_get_verify_result(_ssl);
-        if(certError != X509_V_OK) {
-          _errorDetails = std::string("SSL: certificate problem: ") +
-            X509_verify_cert_error_string(certError);
+          certError = SSL_get_verify_result(_ssl);
+
+          if (certError != X509_V_OK) {
+            _errorDetails = std::string("SSL: certificate problem: ") +
+              X509_verify_cert_error_string(certError);
+          }
+          else {
+            _errorDetails = std::string("SSL: certificate problem, verify that the CA cert is OK.");
+          }
+          break;
+
+        default:
+          char errorBuffer[256];
+          ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
+          _errorDetails = std::string("SSL: ") + errorBuffer;
+          break;
         }
-        else {
-          _errorDetails = std::string("SSL: certificate problem, verify that the CA cert is OK.");
-        }
-        break;
-      default:
-        char errorBuffer[256];
-        ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
-        _errorDetails = std::string("SSL: ") + errorBuffer;
-        break;
-      }
     }
-    _endpoint->disconnect();
-    SSL_free(_ssl);
-    _ssl = 0;
-    TRI_invalidatesocket(&_socket);
+    disconnectSocket();
     return false;
   }
 
@@ -254,9 +251,9 @@ void SslClientConnection::disconnectSocket () {
   _endpoint->disconnect();
   TRI_invalidatesocket(&_socket);
 
-  if (_ssl) {
+  if (_ssl != nullptr) {
     SSL_free(_ssl);
-    _ssl = 0;
+    _ssl = nullptr;
   }
 }
 
@@ -288,7 +285,9 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
 
     int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
     res = select(sockn, readFds, writeFds, NULL, &tv);
-  } while (res == -1 && errno == EINTR);
+  } 
+  while (res == -1 && errno == EINTR);
+
   if (res > 0) {
     return true;
   }
@@ -301,52 +300,56 @@ bool SslClientConnection::prepare (const double timeout, const bool isWrite) con
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SslClientConnection::writeClientConnection (void* buffer, size_t length, size_t* bytesWritten) {
-  const char *pErr;
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif
   *bytesWritten = 0;
 
-  if (_ssl == 0) {
+  if (_ssl == nullptr) {
     return false;
   }
+
   int errorDetail;
   int written = SSL_write(_ssl, buffer, (int) length);
   int err = SSL_get_error(_ssl, written);
   switch (err) {
-  case SSL_ERROR_NONE:
-    *bytesWritten = written;
+    case SSL_ERROR_NONE:
+      *bytesWritten = written;
 
-    return true;
+      return true;
 
-  case SSL_ERROR_ZERO_RETURN:
-    SSL_shutdown(_ssl);
-    break;
+    case SSL_ERROR_ZERO_RETURN:
+      SSL_shutdown(_ssl);
+      break;
 
-  case SSL_ERROR_WANT_READ:
-  case SSL_ERROR_WANT_WRITE:
-  case SSL_ERROR_WANT_CONNECT:
-    break;
-  case SSL_ERROR_SYSCALL:
-    pErr = STR_ERROR();
-    _errorDetails = std::string("SSL: while writing: SYSCALL returned errno = ") +
-      std::to_string(errno) + std::string(" - ") + pErr;
-    break;
-  case SSL_ERROR_SSL:
-    /*  A failure in the SSL library occurred, usually a protocol error.
-        The OpenSSL error queue contains more information on the error. */
-    errorDetail = ERR_get_error();
-    char errorBuffer[256];
-    ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
-    _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
-      
-    break;
-  default:
-    /* a true error */
-    _errorDetails = std::string("SSL: while writing: error ") + std::to_string(err);
-}
+    case SSL_ERROR_WANT_READ:
+    case SSL_ERROR_WANT_WRITE:
+    case SSL_ERROR_WANT_CONNECT:
+      break;
 
-return false;
+    case SSL_ERROR_SYSCALL: {
+      char const* pErr = STR_ERROR();
+      _errorDetails = std::string("SSL: while writing: SYSCALL returned errno = ") +
+        std::to_string(errno) + std::string(" - ") + pErr;
+      break;
+    }
+
+    case SSL_ERROR_SSL:
+      /*  A failure in the SSL library occurred, usually a protocol error.
+          The OpenSSL error queue contains more information on the error. */
+      errorDetail = ERR_get_error();
+      char errorBuffer[256];
+      ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
+      _errorDetails = std::string("SSL: while writing: ") + errorBuffer;
+        
+      break;
+
+    default:
+      /* a true error */
+      _errorDetails = std::string("SSL: while writing: error ") + std::to_string(err);
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -355,7 +358,6 @@ return false;
 
 bool SslClientConnection::readClientConnection (StringBuffer& stringBuffer, 
                                                 bool& connectionClosed) {
-  const char *pErr;
 #ifdef _WIN32
   char windowsErrorBuf[256];
 #endif
@@ -399,8 +401,8 @@ again:
       case SSL_ERROR_WANT_WRITE:
       case SSL_ERROR_WANT_CONNECT:
       case SSL_ERROR_SYSCALL:
-      default:
-        pErr = STR_ERROR();
+      default: {
+        char const* pErr = STR_ERROR();
         int errorDetail = ERR_get_error();
         char errorBuffer[256];
         ERR_error_string_n(errorDetail, errorBuffer, sizeof(errorBuffer));
@@ -410,6 +412,7 @@ again:
         /* unexpected */
         connectionClosed = true;
         return false;
+      }
     }
   }
   while (readable());
