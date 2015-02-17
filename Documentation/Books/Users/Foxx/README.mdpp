@@ -1,177 +1,170 @@
 !CHAPTER Foxx
-!SUBSECTION Build APIs and simple web applications in ArangoDB
 
-Foxx is an easy way to create APIs and simple web applications from within 
-ArangoDB. It is inspired by Sinatra, the classy Ruby web framework. If 
-Foxx is Sinatra, [ArangoDB's Actions](../ArangoActions/README.md) are the corresponding *Rack*. 
-They provide all the HTTP goodness.
+How well maps the Foxx environment to the requirements for a microservice framework.
 
-If you just want to install an existing application, please use the 
-[Foxx Manager](../FoxxManager/README.md). If you want to create your own application, 
-please continue reading.
+<table>
+  <thead>
+    <tr>
+      <th>microservice</th>
+      <th>foxx</th>
+      <th>description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Few lines of Code</td>
+      <td>Little Boilerplate</td>
+      <td>Most of the boilerplate is already handled by the Foxx environment. You can focus on your business logic</td>
+    </tr>
+    <tr>
+      <td>HTTP API</td>
+      <td>Controller</td>
+      <td>The Foxx controller allows to easily define HTTP API routes.</td>
+    </tr>
+    <tr>
+      <td>Independently Deployable</td>
+      <td>Foxx Manager</td>
+      <td>Foxxes run in ArangoDB Coordinators. These are independent from one another. Foxxes can be installed on an arbitrary number of these Coordinators.</td>
+    </tr>
+    <tr>
+      <td>Access other Microservices</td>
+      <td>Requests</td>
+      <td>The Foxx request module offers a simple functionality to contact any other API via HTTP.</td>
+    </tr>
+    <tr>
+      <td>Scalability</td>
+      <td>Sharding</td>
+      <td>The dataset managed by a Foxx micro-service might be too large for a single server. The underlying ArangoDB infrastructure can handle this for you.</td>
+    </tr>
+    <tr>
+      <td>Persistence</td>
+      <td>Repositories</td>
+      <td>Foxx is part of a multi-model database. It has all features to persist data of diverse formats (Graphs, Documents) built-in.</td>
+    </tr>
+    <tr>
+      <td>Reuse Services</td>
+      <td>Arango Store</td>
+      <td>The Arango Store contains several Foxxes. Many of them are general-use services that are required in many applications. You can just reuse the reviewed and tested code of other Foxx users.</td>
+    </tr>
+    <tr>
+      <td>Automated Deployment</td>
+      <td>Foxx Manager</td>
+      <td>The Foxx manager tool allows to trigger installation of new applications. Also there is a native system HTTP API offering this feature. You can use either one as a step in your build automation tool.</td>
+    </tr>
+    <tr>
+      <td>Design for failure</td>
+      <td>Coordinators</td>
+      <td>ArangoDBs cluster setup is designed for failure. You can make use of this feature in your Foxxes.</td>
+    </tr>
+    <tr>
+      <td>Different Languages</td>
+      <td>Connect to other APIs</td>
+      <td>Foxxes are only implemented in JavaScript. However not your entire application has to be written in Foxx. You can connect via HTTP to services in other languages.</td>
+    </tr>
+    <tr>
+      <td>Different Databases</td>
+      <td>Multi-Model</td>
+      <td>In most setups you need different database technologies because you have several data formats. ArangoDB is a multi-model database that server many formats. However if you still need another database you can connect to it via Http.</td>
+    </tr>
+    <tr>
+      <td>Asynchronous Calls</td>
+      <td>Synchronous with multiple contexts</td>
+      <td>Foxx only allows synchronous execution. However it is executed in a multi-threaded fashion, hence blocking one thread is not a problem. Also background tasks are available for long-running tasks that should be executed outside of the request-response cycle.</td>
+    </tr>
+    <tr>
+      <td>Security</td>
+      <td>Authentication and Session</td>
+      <td>Foxx offers internal APIs to handle authentication and manage session data. It is just a handful lines of code and your service is secured.</td>
+    </tr>
+    <tr>
+      <td>Protected API</td>
+      <td>Libraries</td>
+      <td>Sometimes you have sensitive data that is not allowed to ever leave your database. Using libraries in Foxx you can write internal APIs that can only be accessed from the same server and are not exposed to the outside world. Perfect to keep your data inside but still using the paradigm of a microservice for it.</td>
+    </tr>
+    <tr>
+      <td>How To</td>
+      <td>Recipes</td>
+      <td>In ArangoDBs cookbook there are several recipes on how to design a microservice based application with the help of Foxx.</td>
+    </tr>
+    <tr>
+      <td>Maintenance UI</td>
+      <td>Built-in Web server</td>
+      <td>ArangoDB has a built-in Web server, allowing Foxxes to ship a Webpage as their UI. So you can attach a maintanance UI directly to your microservice and have it deployed with it in the same step.</td>
+    </tr>
+    <tr>
+      <td>Easy Setup</td>
+      <td>ArangoDB on Mesos</td>
+      <td>ArangoDB perfectly integrates with the Mesos project, a distributed kernel written for data centers. You can set up and deploy a Mesos instance running ArangoDB and having your microservice on top of it with just a single command.</td>
+    </tr>
+    <tr>
+      <td>Maintenance</td>
+      <td>Marathon</td>
+      <td>If you are running ArangoDB on top of Mesos you can use marathon to keep all your instances alive and scale up or down with just a few clicks. Do not bother with long configuration, that is all handled by the underlying systems.</td>
+    </tr>
+  </tbody>
+</table>
 
-!SUBSECTION Overview
+TODO: Awesome introduction (micro-service framework)
 
-An application built with Foxx is written in JavaScript and deployed to 
-ArangoDB directly. ArangoDB serves this application, you do not need a 
-separate application server.
+!SECTION Foxx in a nutshell
 
-Think of an Foxx app as a typical web app similar to any other web app using
-other technologies. A Foxx app provides one or more URLs, which can either
-be accessed directly from the browser or from a backend application written e.g. in
-Ruby or C#. Other features include:
+This chapter is for the impatient and for the ones that just want to get a quick overview
+of what Foxx is, how it works and how to get it up and running in short time.
+It is tutorial that should be solvable in 10 minutes or less and will guide you to your first
+application giving a few insights on the way.
 
-* *Routing:* Define arbitrary routes namespaced via the *Controllers*
-* *Accesses data:* Direct access to all data in ArangoDB using simple queries, AQL, traversals and more
-* *Manipulates data:* Create new or manipulate existing entries
-* Deliver *static files* like HTML pages, CSS or images directly
+[Read More](Foxx/Nutshell/README.md)
 
-The typical request to a Foxx application will work as follows (only conceptually,
-a lot of the steps are cached in reality):
+!SECTION Install a Foxx Application
 
-1. The request is routed to a Foxx application depending on the mount point 
-2. The according controller of this application is determined (via something called the manifest file)
-3. The request is then routed to a specific handler in this controller
+You would like to get some inspiration from running Applications?
+Or you already have an Application that does what you need?
+This chapter will guide you to get an Application up and running.
 
-The handler will now parse the request. This includes determining all parameters
-from the body (which is typically JSON encoded) to the path parameters of the URL.
-It is then up to you to handle this request and generate a response. In this process
-you will probably access the database. This is done via the *Repository*: This is an
-entity that is responsible for a collection and specifically:
+[Read More](Foxx/Install/README.md)
 
-1. Creating new entries in this collection
-2. Modify or delete existing entries in this collection
-3. Search for entries in this collection
+!SECTION Develop your own Foxx
 
-To represent an entry in this collection it will use a *Model*, which is a wrapper around
-the raw data from the database. Here you can implement helper functions or simple access
-methods.
+Ready to get to bare metal?
+In this chapter you will get to know the details on Foxx development.
+It will explain how to use the development mode and which debugging mechanisms are at hand.
+It introduces the tips and tricks on how to build your own API.
+And presents all libraries that are available from a Foxx Application.
 
-!SUBSECTION Your first Foxx app in 5 minutes
+[Read More](Foxx/Develop/README.md)
 
-Let's build an application that sends a plain-text response 
-"Hello YourName!" for all requests to */dev/my_app/hello/YourName*. 
 
-First, create a directory *apps* somewhere in your filesystem. This will be
-the Foxx application base directory for your database instance. Let's assume 
-from now on that the absolute path for this directory is */home/user/apps*.
-When you have created the directory, create a sub-directory *databases* in it.
+!SECTION Running Foxx Applications in production
 
-Foxx applications are database-specific, and the *databases* sub-directory is
-used to separate the Foxx applications of different databases running in the
-same ArangoDB instance.
+This chapter is dedicated to all the possibilities on how to run a Foxx Application in production.
+It will start with how to leverage it from development to production.
+We will continue with migration of the Application to a newer version.
 
-Let's assume for now that you are working in the default database (*_system*), that
-is used when no [database name](../Glossary/README.html#database_name) is specified otherwise. To use Foxx applications with
-the *_system* database, create a sub-directory *_system* inside the *databases* 
-subdirectory. All Foxx applications for the *_system* database will go into this 
-directory. Note: to add a Foxx application for a different databases than *_system*, 
-use the database's name as the directory name instead of *_system*.
+[Read More](Foxx/Production/README.md)
 
-Finally, we can add a sub-directory *my_app* in the *_system* directory and should
-end up with the following directory layout (starting at */home/user* in our example):
+!SECTION Available Foxx Applications
 
-```
-apps/
-  databases/
-    _system/
-      my_app/
-```
+You do not want to reinvent the wheel?
+We neither, therefore we shared some general-use applications, like user- and session-management.
+This chapter will introduce you some of these applications and will give you an introduction on
+how to use each of them.
+Some of them can be integrated directly in your own applications.
+Others follow the micro-service philosophy and can be added independently.
 
-In the *my_app* directory, create a file named *app.js* and save the following content
-in it:
+[Read More](Foxx/Apps/README.md)
 
-```js
-(function() {
-    "use strict";
+!SECTION Foxx in a cluster
 
-    var Foxx = require("org/arangodb/foxx"),
-        controller = new Foxx.Controller(applicationContext)
+Ready to scale out?
+Want to setup your micro-service based application?
+This chapter will explain what has to be changed to run a Foxx application within a cluster setup.
+It will also explain how to move your application from a single server to an unlimited amount of servers.
 
-    controller.get("/hello/:name", function(req, res) {
-        res.set("Content-Type", "text/plain");
-        res.body = "Hello " + req.params("name");
-    }); 
+[Read More](Foxx/Cluster/README.md)
 
-}());
-```
+!SECTION Advanced features
 
-Beside the *app.js* we need a manifest file. In order to achieve that, we 
-create a file called *manifest.json* in our *my_app* directory with the 
-following content:
-
-```js
-{
-  "name": "my_app",
-  "version": "0.0.1",
-  "author": "me and myself",
-  "controllers": {
-    "/": "app.js"
-  }
-}
-```
-
-You **must** specify a name and a version number for your application, 
-otherwise it won't be loaded into ArangoDB.
-
-You should now have the following files and directories with your 
-application (starting at */home/user* in our example):
-
-```js
-apps/
-  databases/
-    _system/
-      my_app/
-        manifest.json
-        app.js
-```
-
-This is your application, and you're ready to use it.
-
-!SUBSECTION Testing the application
-
-Start ArangoDB as follows:
-
-```js
-$ arangod --javascript.dev-app-path /home/user/apps /tmp/fancy_db
-```
-
-If you chose a different directory name, you need to replace */home/user/apps* 
-with the actual directory name of course. Replace */tmp/fancy_db* with the
-directory your database data is located in.
-
-The command will start the ArangoDB server in a **development mode** using the
-directory */home/user/apps* as the workspace and */tmp/fancy_db* as your
-database directory.  In development mode the server automatically reloads all
-application files on every request, so changes to the underlying files are
-visible instantly. 
-Note: if you use the development mode for the first time or choose a different
-directory for *dev-app-path*, it may be necessary to start ArangoDB with the
-*--upgrade* option once. This will initialize the specified application directory.
-
-**Note**: the development mode is convenient when developing applications but the
-permanent reloading has an impact on performance. Therefore permanent reloading is
-only performed in development mode and not in production mode. Whenever you think 
-your application is ready for production, you can install it using the Foxx manager
-and avoid the overhead of reloading.
-
-Now point your browser to *localhost:8529/dev/my_app/hello/YourName* and you should 
-see "Hello YourName". 
-
-**Note**: the above and all following examples assume that you are using the default 
-database (*_system*).If you use a different database than *_system*, URLs must be 
-changed to include the database name, too. For example, if your database name is 
-*mydb*, the above URL changes to *localhost:8529/_db/mydb/dev/my_app/hello/YourName*. 
-For more information on how to access specific databases, please refer to 
-[Address of a Database](../HttpDatabase/README.md). 
-
-After this short overview, let's get into the details. There are several example
-apps available on Github. You can install them via Foxx manager (covered in the
-chapter on Foxx manager) or simply clone them from [github](https://github.com/arangodb/).
-
-Start with ["hello-foxx"](https://github.com/arangodb/hello-foxx) as it contains
-several basic usage examples. ["aye-aye"](https://github.com/arangodb/aye-aye)
-and ["fugu"](https://github.com/arangodb/aye-aye) are more advanced apps showing how
-to use Backbone, Underscore and Jquery together with Foxx. ["foxx-authentication"](https://github.com/arangodb/foxx-authentication)
-shows how to register users, log in and check permissions.
-
+This chapter will present the more advanced capabilities of Foxx.
+It requires that you know the details presented in the chapters before.
+Here you will learn about foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
+Furthermore you will learn about background and periodical tasks in foxx applications.

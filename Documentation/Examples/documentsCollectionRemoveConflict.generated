@@ -1,20 +1,20 @@
 arangosh> a1 = db.example.insert({ a : 1 });
 { 
   "error" : false, 
-  "_id" : "example/1050597341", 
-  "_rev" : "1050597341", 
-  "_key" : "1050597341" 
+  "_id" : "example/1037671423", 
+  "_rev" : "1037671423", 
+  "_key" : "1037671423" 
 }
 arangosh> a2 = db._replace(a1, { a : 2 });
 { 
   "error" : false, 
-  "_id" : "example/1050597341", 
-  "_rev" : "1050793949", 
-  "_key" : "1050597341" 
+  "_id" : "example/1037671423", 
+  "_rev" : "1037868031", 
+  "_key" : "1037671423" 
 }
 arangosh> db._remove(a1);
 [ArangoError 1200: precondition failed]
 arangosh> db._remove(a1, true);
 true
 arangosh> db._document(a1);
-[ArangoError 1202: document /_api/document/example/1050597341 not found]
+[ArangoError 1202: document /_api/document/example/1037671423 not found]

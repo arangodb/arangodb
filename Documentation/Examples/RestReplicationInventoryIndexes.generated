@@ -9,24 +9,23 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4118493", 
+        "cid" : "7183359", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
-        "name" : "_aal", 
+        "name" : "_apps", 
         "isVolatile" : false, 
-        "waitForSync" : true 
+        "waitForSync" : false 
       }, 
       "indexes" : [ 
         { 
-          "id" : "4446173", 
+          "id" : "7445503", 
           "type" : "hash", 
           "unique" : true, 
-          "sparse" : true, 
+          "sparse" : false, 
           "selectivityEstimate" : 1, 
           "fields" : [ 
-            "name", 
-            "version" 
+            "mount" 
           ] 
         } 
       ] 
@@ -35,7 +34,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "4577245", 
+        "cid" : "4561919", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 4194304, 
@@ -49,7 +48,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2217949", 
+        "cid" : "2202623", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -63,7 +62,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2349021", 
+        "cid" : "2333695", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -77,7 +76,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "2480093", 
+        "cid" : "2464767", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 33554432, 
@@ -91,11 +90,11 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "26662877", 
+        "cid" : "16161791", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
-        "name" : "_sessions", 
+        "name" : "_system_sessions_sessions", 
         "isVolatile" : false, 
         "waitForSync" : false 
       }, 
@@ -105,7 +104,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "448477", 
+        "cid" : "433151", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -115,7 +114,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "710621", 
+          "id" : "695295", 
           "type" : "hash", 
           "unique" : true, 
           "sparse" : true, 
@@ -130,7 +129,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1104074717", 
+        "cid" : "1091148799", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -144,7 +143,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "767809501", 
+        "cid" : "757636095", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -158,7 +157,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1013569501", 
+        "cid" : "999791615", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -172,7 +171,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1013307357", 
+        "cid" : "999529471", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -186,7 +185,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1103157213", 
+        "cid" : "1090231295", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -200,7 +199,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1013831645", 
+        "cid" : "1000053759", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -214,7 +213,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1560401885", 
+        "cid" : "1522179071", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -228,7 +227,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1451612125", 
+        "cid" : "1399167999", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -242,7 +241,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "814208989", 
+        "cid" : "804035583", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -252,7 +251,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "814471133", 
+          "id" : "804297727", 
           "type" : "geo1", 
           "unique" : false, 
           "geoJson" : false, 
@@ -268,7 +267,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1451349981", 
+        "cid" : "1398905855", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -282,7 +281,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1013700573", 
+        "cid" : "999922687", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -296,7 +295,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1601755101", 
+        "cid" : "1563532287", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -306,7 +305,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "1602017245", 
+          "id" : "1563794431", 
           "type" : "hash", 
           "unique" : false, 
           "sparse" : false, 
@@ -316,7 +315,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1602344925", 
+          "id" : "1564122111", 
           "type" : "skiplist", 
           "unique" : true, 
           "sparse" : false, 
@@ -326,7 +325,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1602541533", 
+          "id" : "1564318719", 
           "type" : "cap", 
           "unique" : false, 
           "size" : 500, 
@@ -338,7 +337,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1602738141", 
+        "cid" : "1564515327", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -348,7 +347,7 @@ content-type: application/json; charset=utf-8
       }, 
       "indexes" : [ 
         { 
-          "id" : "1603000285", 
+          "id" : "1564777471", 
           "type" : "fulltext", 
           "unique" : false, 
           "minLength" : 10, 
@@ -357,7 +356,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1603262429", 
+          "id" : "1565039615", 
           "type" : "skiplist", 
           "unique" : false, 
           "sparse" : false, 
@@ -366,7 +365,7 @@ content-type: application/json; charset=utf-8
           ] 
         }, 
         { 
-          "id" : "1603459037", 
+          "id" : "1565236223", 
           "type" : "cap", 
           "unique" : false, 
           "size" : 0, 
@@ -378,7 +377,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1560532957", 
+        "cid" : "1522375679", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -392,7 +391,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1496373213", 
+        "cid" : "1447205887", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -406,7 +405,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 2, 
-        "cid" : "1252906973", 
+        "cid" : "1173789695", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -420,7 +419,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1254283229", 
+        "cid" : "1175165951", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -434,7 +433,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1451743197", 
+        "cid" : "1399299071", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -448,7 +447,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1013438429", 
+        "cid" : "999660543", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -462,7 +461,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1451481053", 
+        "cid" : "1399036927", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -476,7 +475,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1013962717", 
+        "cid" : "1000184831", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -490,7 +489,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1451874269", 
+        "cid" : "1399430143", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -504,7 +503,7 @@ content-type: application/json; charset=utf-8
       "parameters" : { 
         "version" : 5, 
         "type" : 3, 
-        "cid" : "1560664029", 
+        "cid" : "1522506751", 
         "deleted" : false, 
         "doCompact" : true, 
         "maximalSize" : 1048576, 
@@ -517,9 +516,9 @@ content-type: application/json; charset=utf-8
   ], 
   "state" : { 
     "running" : true, 
-    "lastLogTick" : "1602410461", 
-    "totalEvents" : 9558, 
-    "time" : "2015-02-16T10:22:43Z" 
+    "lastLogTick" : "1563597823", 
+    "totalEvents" : 9484, 
+    "time" : "2015-02-17T13:21:01Z" 
   }, 
-  "tick" : "1603590109" 
+  "tick" : "1565367295" 
 }

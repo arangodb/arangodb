@@ -1,0 +1,35 @@
+!CHAPTER Incompatible changes in ArangoDB 2.5
+
+It is recommended to check the following list of incompatible changes **before** 
+upgrading to ArangoDB 2.5, and adjust any client programs if necessary.
+
+
+!SECTION Changed behavior
+
+!SUBSECTION Sparse indexes 
+
+Hash indexes and skiplist indexes can now be created sparse. When not explicitly set, the 
+`sparse` attribute defaults to `false` for new indexes.
+  
+This causes a change in behavior when creating a unique hash index without specifying the 
+sparse flag. The unique hash index will be created in a non-sparse variant in ArangoDB 2.5. 
+
+In 2.4 and before, unique hash indexes were implicitly sparse, always excluding `null` values 
+from the index. There was no option to control this behavior, and sparsity was neither supported 
+for non-unique hash indexes nor skiplists in 2.4. This implicit sparsity of just unique hash 
+indexes was considered an inconsistency, and therefore the behavior was cleaned up in 2.5. 
+
+As of 2.5, indexes will only be created sparse if sparsity is explicitly requested. This may
+require a change in index-creating client code, but only if the client code creates unique hash
+indexes and if they are still intended to be sparse. In this case, the client code should 
+explicitly set the `sparse` flag to `true` when creating a unique hash index.
+
+Existing unique hash indexes from 2.4 or before will automatically be migrated so they are still 
+sparse after the upgrade to 2.5. For the indexes, the `sparse` attribute will be populated
+automatically with a value of `true`.
+
+
+!SECTION Deprecated features
+
+!SECTION Removed features
+
