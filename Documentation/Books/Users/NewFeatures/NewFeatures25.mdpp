@@ -53,12 +53,21 @@ db.collection.ensureUniqueSkiplist(attributeName1, attributeName2, { sparse: tru
 ```
 
 When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
+  
+This causes a change in behavior when creating a unique hash index without specifying the 
+sparse flag: in 2.4, unique hash indexes were implicitly sparse, always excluding `null` values. 
+There was no option to control this behavior, and sparsity was neither supported for non-unique
+hash indexes nor skiplists in 2.4. This implicit sparsity of unique hash indexes was considered
+an inconsistency, and therefore the behavior was cleaned up in 2.5. As of 2.5, indexes will
+only be created sparse if sparsity is explicitly requested. Existing unique hash indexes from 2.4 
+or before will automatically be migrated so they are still sparse after the upgrade to 2.5.
+   
 Other indexes than hash and skiplist do not support sparsity.
 
-As sparse indexes may exclude some documents from the collection, they cannot be used for
-all types of queries. Sparse hash indexes cannot be used to find documents for which at
-least one of the indexed attributes has a value of `null`. For example, the following AQL
-query cannot use a sparse index, even if one was created on attribute `attr`:
+As sparse indexes may exclude some documents, they cannot be used for every type of query.
+Sparse hash indexes cannot be used to find documents for which at least one of the indexed 
+attributes has a value of `null`. For example, the following AQL query cannot use a sparse 
+index, even if one was created on attribute `attr`:
 
     FOR doc In collection 
       FILTER doc.attr == null 

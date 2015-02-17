@@ -229,6 +229,9 @@ Handler::status_t RestBatchHandler::execute () {
       // error
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
       LOG_WARNING("received a corrupted multipart message");
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+      LOG_WARNING("We tried to analyse this:\n %s", _request->body());
+#endif
 
       return status_t(Handler::HANDLER_FAILED);
     }

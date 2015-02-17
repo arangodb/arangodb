@@ -1,4 +1,3 @@
-
 %option reentrant
 %option 8bit
 %option prefix="Aql"
@@ -11,6 +10,10 @@
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
+
+%top{
+#include <stdint.h>
+}
 
 %{
 #include "Basics/Common.h"
@@ -33,7 +36,7 @@ namespace triagens {
 
 #define YY_EXTRA_TYPE triagens::aql::Parser*
 
-#define YY_USER_ACTION yylloc->first_line = yylineno; yylloc->first_column = yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->increaseOffset(yyleng);
+#define YY_USER_ACTION yylloc->first_line = (int) yylineno; yylloc->first_column = (int) yycolumn; yylloc->last_column = (int) (yycolumn + yyleng - 1); yycolumn += (int) yyleng; yyextra->increaseOffset(yyleng);
 
 #define YY_NO_INPUT 1
 
