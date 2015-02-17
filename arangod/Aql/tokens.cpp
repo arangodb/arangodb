@@ -1,5 +1,9 @@
+#line 15 "arangod/Aql/tokens.ll"
+#include <stdint.h>
 
-#line 3 "arangod/Aql/tokens.cpp"
+
+
+#line 7 "arangod/Aql/tokens.cpp"
 
 #define  YY_INT_ALIGNED short int
 

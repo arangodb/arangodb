@@ -1,4 +1,3 @@
-
 %option reentrant
 %option 8bit
 %option prefix="Aql"
@@ -11,6 +10,10 @@
 %x DOUBLE_QUOTE
 %x COMMENT_SINGLE
 %x COMMENT_MULTI
+
+%top{
+#include <stdint.h>
+}
 
 %{
 #include "Basics/Common.h"
