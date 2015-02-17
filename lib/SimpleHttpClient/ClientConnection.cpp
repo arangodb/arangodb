@@ -192,7 +192,8 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
 
     int sockn = (int) (TRI_get_fd_or_handle_of_socket(_socket) + 1);
     res = select(sockn, readFds, writeFds, NULL, &tv);
-  } while (res == -1 && errno == EINTR);
+  } 
+  while (res == -1 && errno == EINTR);
 
   if (res > 0) {
     return true;
@@ -210,12 +211,11 @@ bool ClientConnection::prepare (const double timeout, const bool isWrite) const 
   }
 
   if (res < 0) {
-    const char *pErr;
 #ifdef _WIN32
     char windowsErrorBuf[256];
 #endif
 
-    pErr = STR_ERROR();
+    char const* pErr = STR_ERROR();
     _errorDetails = std::string("during prepare: ") + std::to_string(errno) + std::string(" - ") + pErr;
     
     TRI_set_errno(errno);
