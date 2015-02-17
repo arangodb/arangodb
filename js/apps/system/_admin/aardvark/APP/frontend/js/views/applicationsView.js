@@ -23,8 +23,19 @@
 
     checkBoxes: function (e) {
       //chrome bugfix
-      var clicked = e.currentTarget.id;
-      $('#'+clicked).click();
+
+      var isChromium = window.chrome,
+      vendorName = window.navigator.vendor,
+      clicked = e.currentTarget;
+
+      if (clicked.id === '' || clicked.id === undefined) {
+        if(isChromium !== null && isChromium !== undefined && vendorName === "Google Inc.") {
+          $(clicked).prev().click();
+        }
+      }
+      else {
+        $('#'+clicked.id).click();
+      }
     },
 
     toggleDevel: function() {
