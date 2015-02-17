@@ -1,0 +1,19 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var g = examples.loadGraph("routeplanner");
+arangosh> db._query("FOR e IN GRAPH_DISTANCE_TO("
+........> + "'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Hamburg'}], " +
+........> "'frenchCity/Lyon', " +
+........> "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance]"
+........> ).toArray();
+[ 
+  [ 
+    "germanCity/Cologne", 
+    "frenchCity/Lyon", 
+    700 
+  ], 
+  [ 
+    "germanCity/Hamburg", 
+    "frenchCity/Lyon", 
+    1200 
+  ] 
+]

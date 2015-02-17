@@ -1,0 +1,8 @@
+arangosh> var graph_module = require("org/arangodb/general-graph")
+arangosh> var ed1 = graph_module._relation("myEC1", ["myVC1"], ["myVC2"]);
+arangosh> var graph = graph_module._create("myGraph", [ed1]);
+arangosh> graph._addVertexCollection("myVC3", true);
+arangosh> graph._orphanCollections();
+[ 
+  "myVC3" 
+]

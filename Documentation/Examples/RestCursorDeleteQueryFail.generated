@@ -1,0 +1,12 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"REMOVE 'foo' IN products"}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1202, 
+  "errorMessage" : "document not found (while executing)" 
+}

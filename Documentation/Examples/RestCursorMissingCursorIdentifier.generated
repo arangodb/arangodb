@@ -1,0 +1,11 @@
+shell> curl -X PUT --dump - http://localhost:8529/_api/cursor
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 400, 
+  "errorMessage" : "bad parameter" 
+}

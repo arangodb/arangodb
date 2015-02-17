@@ -1,7 +1,7 @@
 arangosh> db.users.firstExample("name", "Angela");
 { 
-  "_id" : "users/121936895", 
-  "_key" : "121936895", 
-  "_rev" : "121936895", 
+  "_id" : "users/118548087", 
+  "_key" : "118548087", 
+  "_rev" : "118548087", 
   "name" : "Angela" 
 }

@@ -1,0 +1,10 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/endpoint/tcp%3A%2F%2F127.0.0.1%3A8532
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : true, 
+  "error" : false, 
+  "code" : 200 
+}

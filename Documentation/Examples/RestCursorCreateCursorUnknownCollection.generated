@@ -1,0 +1,12 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR u IN unknowncoll LIMIT 2 RETURN u","count":true,"batchSize":2}
+
+HTTP/1.1 404 Not Found
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 404, 
+  "errorNum" : 1203, 
+  "errorMessage" : "collection not found (unknowncoll)" 
+}
