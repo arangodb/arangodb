@@ -379,12 +379,12 @@
 /// @brief transform the internal route objects into proper routing callbacks
 ////////////////////////////////////////////////////////////////////////////////
 
-  var transformRoutes = function (rt, routes, controller, prefix) {
+  var transformRoutes = function (rt, routes, controller, prefix, isDevel) {
     var j, route;
     for (j = 0;  j < rt.length;  ++j) {
       route = rt[j];
       route.action = {
-        callback: transformControllerToRoute(route.action, route.url || "No Route")
+        callback: transformControllerToRoute(route.action, route.url || "No Route", isDevel)
       };
       if (route.hasOwnProperty("url")) {
         route.url.match = arangodb.normalizeURL(prefix + "/" + route.url.match);
