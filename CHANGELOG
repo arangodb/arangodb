@@ -66,6 +66,13 @@ v2.5.0-alpha2 (2015-02-16)
     In development mode the messages above will contain the stacktrace (if available), making it easier for
     your in-house devs to track down errors in the application.
 
+* added `console` object to Foxx apps. All Foxx apps now have a console object implementing
+  the familiar Console API in their global scope, which can be used to log diagnostic
+  messages to the database.
+
+* added `org/arangodb/request` module, which provides a simple API for making HTTP requests
+  to external services.
+
 * added optimizer rule `propagate-constant-attributes`
 
   This rule will look inside `FILTER` conditions for constant value equality comparisons, 

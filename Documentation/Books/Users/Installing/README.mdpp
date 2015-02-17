@@ -2,11 +2,9 @@
 
 This chapter describes how to install ArangoDB under various operation systems.
 
-First of all download and install the corresponding RPM or Debian package or use homebrew on the MacOS X.
-You can find packages for various operation systems at our [install](https://www.arangodb.com/install) section.
+First of all download and install the corresponding RPM or Debian package or use homebrew on MacOS X.
+You can find packages for various operation systems at our [install](https://www.arangodb.com/download) section.
 
-If you don't want to install ArangoDB at the beginning and just want to experiment with the features, you can use our [online demo](https://www.arangodb.com/tryitout).
+In this chapter you will also learn how to compile ArangoDB from scratch.
 
-In this Chapter you will also learn how to Compile ArangoDB from scratch.
-
-You also get help if you want to update your ArangoDB Version to the newest one! 
+You also get help if you want to update your ArangoDB version to the newest one! 
