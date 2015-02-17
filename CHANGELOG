@@ -1,6 +1,12 @@
 v2.5.0-alpha2 (2015-02-16)
 -------------------
 
+* front-end: unwanted removal of index table header after creating new index
+
+* fixed issue #1248: chrome: applications filtering not working
+
+* fixed issue #1198: queries remain in aql editor (front-end) if you navigate through different tabs
+
 * Simplify usage of Foxx
 
   Thanks to our user feedback we learned that Foxx is a powerful, yet rather complicated concept.
@@ -8,7 +14,7 @@ v2.5.0-alpha2 (2015-02-16)
   That includes a rewrite of the documentation as well as some code changes as listed below:
 
   * Moved Foxx applications to a different folder.
-    
+
     The naming convention now is: <app-path>/_db/<dbname>/<mointpoint>/APP
     Before it was: <app-path>/databases/<dbname>/<appname>:<appversion>
     This caused some trouble as apps where cached based on name and version and updates did not apply.
