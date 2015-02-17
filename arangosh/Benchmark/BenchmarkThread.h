@@ -300,7 +300,12 @@ namespace triagens {
 
             _warningCount++;
             if (_warningCount < MaxWarnings) {
-              LOG_WARNING("batch operation failed with HTTP code %d", (int) result->getHttpReturnCode());
+              LOG_WARNING("batch operation failed with HTTP code %d - %s ",
+                          (int) result->getHttpReturnCode(),
+                          result->getHttpReturnMessage().c_str());
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+              LOG_WARNING("We tried to send this:\n %s", batchPayload.c_str());
+#endif
             }
             else if (_warningCount == MaxWarnings) {
               LOG_WARNING("...more warnings...");

@@ -44,7 +44,7 @@ exports.createQuery = createQuery;
 exports.toJSONSchema = toJSONSchema;
 exports.requireApp = function (path) {
   'use strict';
-  return manager.mountedApp(arangodb.normalizeURL('/' + path));
+  return manager.requireApp(arangodb.normalizeURL('/' + path));
 };
 
 // -----------------------------------------------------------------------------
