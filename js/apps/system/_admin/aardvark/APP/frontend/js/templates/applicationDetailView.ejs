@@ -8,6 +8,19 @@
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
+          <li id="app-scripts" class="enabled dropdown app-scripts">
+            <a class="headerButton">
+              <i class="fa fa-file-code-o"></i>
+            </a>
+            <ul class="script-dropdown-menu" id="scripts_dropdown">
+              <li class="dropdown-item">
+                <a id="app-setup" class="tab">Setup</a>
+              </li>
+              <li class="dropdown-item">
+                <a id="app-teardown" class="tab">Teardown</a>
+              </li>
+            </ul>
+          </li>
         </ul>
       </div>
       <div class="breadcrumb">
@@ -21,6 +34,7 @@
         </a>
       </div>
     </div>
+    <div></div>
     <section class="info">
       <div class="header">
         <div class="header-icon-container">
@@ -30,8 +44,6 @@
           <input type="button" class="open button-success" disabled="true" value="Open" />
           <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Production':'Development'%>" />
           <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
-          <input id="app-setup" type="button" class="" value="Setup"/>
-          <input id="app-teardown" type="button" class="" value="Teardown"/>
         </div>
         <div class="header_right">
           <h3>
