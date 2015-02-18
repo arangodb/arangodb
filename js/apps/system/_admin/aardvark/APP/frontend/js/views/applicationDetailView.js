@@ -1,8 +1,7 @@
 /*jshint browser: true */
-/*jshint unused: false */
+/*jshint strict: false, unused: false */
 /*global Backbone, $, window, arangoHelper, templateEngine, Joi, _, modalDialogHelper, alert*/
 (function() {
-  "use strict";
 
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
