@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual, fail */
+/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -198,8 +198,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -208,8 +209,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -218,8 +220,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -230,8 +233,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -247,8 +251,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -257,8 +262,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -267,8 +273,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -279,8 +286,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -296,8 +304,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual(["lat", "lon"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
@@ -305,8 +314,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
@@ -316,8 +326,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
     },
@@ -332,9 +343,10 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
-      assertFalse(idx.geoJson);
+      assertTrue(idx.sparse);
+      assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
@@ -342,40 +354,22 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
-      assertFalse(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("loc", true, true);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
+      assertFalse(idx.isNewlyCreated);
 
       collection.unload();
-
-      idx = collection.ensureGeoConstraint("loc", true, true);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertTrue(idx.ignoreNull);
-      assertTrue(idx.geoJson);
-      assertEqual(["loc"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
 
       idx = collection.ensureGeoConstraint("loc", false);
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -386,8 +380,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.constraint);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -403,8 +398,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -413,8 +409,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertTrue(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -423,8 +420,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertTrue(idx.isNewlyCreated);
@@ -435,8 +433,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(id, idx.id);
       assertEqual("geo1", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertFalse(idx.geoJson);
       assertEqual(["loc"], idx.fields);
       assertFalse(idx.isNewlyCreated);
@@ -452,8 +451,9 @@ function GeoIndexCreationSuite() {
 
       assertNotEqual(0, id);
       assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual(["lat", "lon"], idx.fields);
       assertTrue(idx.isNewlyCreated);
 
@@ -461,8 +461,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
 
@@ -472,28 +473,9 @@ function GeoIndexCreationSuite() {
 
       assertEqual(id, idx.id);
       assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
+      assertFalse(idx.constraint);
       assertTrue(idx.ignoreNull);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertFalse(idx.isNewlyCreated);
-
-      idx = collection.ensureGeoConstraint("lat", "lon", false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
-      assertEqual(["lat", "lon"], idx.fields);
-      assertTrue(idx.isNewlyCreated);
-
-      collection.unload();
-
-      idx = collection.ensureGeoConstraint("lat", "lon", false);
-
-      assertNotEqual(id, idx.id);
-      assertEqual("geo2", idx.type);
-      assertTrue(idx.constraint);
-      assertFalse(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual(["lat", "lon"], idx.fields);
       assertFalse(idx.isNewlyCreated);
     }
@@ -510,7 +492,6 @@ function GeoIndexCreationSuite() {
 
 function GeoIndexErrorHandlingSuite() {
   "use strict";
-  var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -562,300 +543,8 @@ function GeoIndexErrorHandlingSuite() {
       collection.replace(d4, { loc : [ -100, -200 ] });
 
       assertEqual(1, collection.near(0,0).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: error handling index
-////////////////////////////////////////////////////////////////////////////////
-
-    testErrorHandlingConstraintList : function () {
-      collection.ensureGeoConstraint("loc", false);
-
-      var d1 = collection.save({ loc : [ 0, 0 ] });
-
-      try {
-        collection.save({ a : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ loc : null });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ loc : [0] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ loc : [ -100, -200 ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(1, collection.near(0,0).toArray().length);
-
-      try {
-        collection.replace(d1._id, { a : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { loc : null });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { loc : [0] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { loc : [ -100, -200 ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(1, collection.near(0,0).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: error handling index
-////////////////////////////////////////////////////////////////////////////////
-
-    testErrorHandlingConstraintNullList : function () {
-      collection.ensureGeoConstraint("loc", true);
-
-      var d1 = collection.save({ loc : [ 0, 0 ] });
-
-      collection.save({ a : 1 });
-      collection.save({ loc : null });
-
-      try {
-        collection.save({ loc : [0] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ loc : [ -100, -200 ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(1, collection.near(0,0).toArray().length);
-
-      collection.replace(d1._id, { a : 1 });
-      collection.replace(d1._id, { loc : null });
-
-      try {
-        collection.replace(d1._id, { loc : [0] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { loc : [ -100, -200 ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { loc : [ -100, null ] });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { loc : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(0, collection.near(0,0).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: error handling index
-////////////////////////////////////////////////////////////////////////////////
-
-    testErrorHandlingConstraintAttribute : function () {
-      collection.ensureGeoConstraint("lat", "lon", false);
-
-      var d1 = collection.save({ lat : 0, lon : 0 });
-
-      try {
-        collection.save({ a : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ lat : null, lon : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ lat : 0 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ lat : -100, lon : -200 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(1, collection.near(0,0).toArray().length);
-
-      try {
-        collection.replace(d1._id, { a : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { lat : null, lon : 1 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { lat : 0 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { lat : -100, lon : -200 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(1, collection.near(0,0).toArray().length);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: error handling index
-////////////////////////////////////////////////////////////////////////////////
-
-    testErrorHandlingConstraintNullList2 : function () {
-      collection.ensureGeoConstraint("lat", "lon", true);
-
-      var d1 = collection.save({ lat : 0, lon : 0 });
-
-      collection.save({ a : 1 });
-      collection.save({ lat : null, lon : 1 });
-      collection.save({ lat : 1, lon : null });
-
-      try {
-        collection.save({ lat : "Hello", lon : 10 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.save({ lat : -100, lon : -200 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(1, collection.near(0,0).toArray().length);
-
-      collection.replace(d1._id, { a : 1 });
-      collection.replace(d1._id, { lat : null });
-
-      try {
-        collection.replace(d1._id, { lat : "Hello" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { lat : -100, lon : -200 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { lat : -100, lon : "Hello" });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      try {
-        collection.replace(d1._id, { lat : "Hello", lon : 10 });
-        fail();
-      }
-      catch (err) {
-        assertEqual(ERRORS.ERROR_ARANGO_GEO_INDEX_VIOLATED.code, err.errorNum);
-      }
-
-      assertEqual(0, collection.near(0,0).toArray().length);
     }
+
   };
 }
 

@@ -1,0 +1,3 @@
+/*start BaseA*/
+var first = function firstFunction(){};
+/*end BaseA*/

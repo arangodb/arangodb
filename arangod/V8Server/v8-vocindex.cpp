@@ -219,28 +219,10 @@ static int ProcessIndexSparseFlag (v8::Isolate* isolate,
 
 static int ProcessIndexUniqueFlag (v8::Isolate* isolate,
                                    v8::Handle<v8::Object> const obj,
-                                   TRI_json_t* json,
-                                   bool fillConstraint = false) {
+                                   TRI_json_t* json) {
   v8::HandleScope scope(isolate);
   bool unique = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("unique"), false);
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-  if (fillConstraint) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, unique));
-  }
-
-  return TRI_ERROR_NO_ERROR;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief process the ignoreNull flag and add it to the json
-////////////////////////////////////////////////////////////////////////////////
-
-static int ProcessIndexIgnoreNullFlag (v8::Isolate* isolate,
-                                       v8::Handle<v8::Object> const obj,
-                                       TRI_json_t* json) {
-  v8::HandleScope scope(isolate);
-  bool ignoreNull = ExtractBoolFlag(isolate, obj, TRI_V8_ASCII_STRING("ignoreNull"), false);
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, ignoreNull));
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -254,8 +236,12 @@ static int EnhanceJsonIndexGeo1 (v8::Isolate* isolate,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(isolate, obj, json, 1, create);
-  ProcessIndexUniqueFlag(isolate, obj, json, true);
-  ProcessIndexIgnoreNullFlag(isolate, obj, json);
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  }
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
   ProcessIndexGeoJsonFlag(isolate, obj, json);
   return res;
 }
@@ -269,8 +255,13 @@ static int EnhanceJsonIndexGeo2 (v8::Isolate* isolate,
                                  TRI_json_t* json,
                                  bool create) {
   int res = ProcessIndexFields(isolate, obj, json, 2, create);
-  ProcessIndexUniqueFlag(isolate, obj, json, true);
-  ProcessIndexIgnoreNullFlag(isolate, obj, json);
+  if (ServerState::instance()->isCoordinator()) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  }
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "sparse", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, true));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "unique", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  ProcessIndexGeoJsonFlag(isolate, obj, json);
   return res;
 }
 
@@ -642,12 +633,6 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
 
       TRI_ASSERT(attributes._length == 1);
 
-      bool ignoreNull = false;
-      TRI_json_t* value = TRI_LookupObjectJson(json, "ignoreNull");
-      if (TRI_IsBooleanJson(value)) {
-        ignoreNull = value->_value._boolean;
-      }
-
       bool geoJson = false;
       value = TRI_LookupObjectJson(json, "geoJson");
       if (TRI_IsBooleanJson(value)) {
@@ -659,16 +644,12 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
                                                     iid,
                                                     (char const*) TRI_AtVectorPointer(&attributes, 0),
                                                     geoJson,
-                                                    unique,
-                                                    ignoreNull,
                                                     &created);
       }
       else {
         idx = TRI_LookupGeoIndex1DocumentCollection(document,
                                                     (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                     geoJson,
-                                                     unique,
-                                                     ignoreNull);
+                                                    geoJson);
       }
       break;
     }
@@ -682,27 +663,17 @@ static void EnsureIndexLocal (const v8::FunctionCallbackInfo<v8::Value>& args,
       
       TRI_ASSERT(attributes._length == 2);
 
-      bool ignoreNull = false;
-      TRI_json_t const* value = TRI_LookupObjectJson(json, "ignoreNull");
-      if (TRI_IsBooleanJson(value)) {
-        ignoreNull = value->_value._boolean;
-      }
-
       if (create) {
         idx = TRI_EnsureGeoIndex2DocumentCollection(document,
                                                     iid,
                                                     (char const*) TRI_AtVectorPointer(&attributes, 0),
                                                     (char const*) TRI_AtVectorPointer(&attributes, 1),
-                                                    unique,
-                                                    ignoreNull,
                                                     &created);
       }
       else {
         idx = TRI_LookupGeoIndex2DocumentCollection(document,
                                                     (char const*) TRI_AtVectorPointer(&attributes, 0),
-                                                    (char const*) TRI_AtVectorPointer(&attributes, 1),
-                                                     unique,
-                                                     ignoreNull);
+                                                    (char const*) TRI_AtVectorPointer(&attributes, 1));
       }
       break;
     }

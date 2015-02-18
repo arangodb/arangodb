@@ -99,7 +99,6 @@ typedef struct TRI_index_s {
 
   TRI_vector_string_t _fields;
   bool _unique;
-  bool _ignoreNull;
   bool _sparse;
   bool _hasSelectivityEstimate;
 

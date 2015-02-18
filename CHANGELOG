@@ -1,6 +1,13 @@
 v2.5.0-alpha4 (2015-02-17)
 -------------------
 
+* V8: Upgrade to version 3.31.74.1
+
+* etcd: Upgrade to version 2.0 - This requires go 1.3 to compile at least.
+
+* refuse to startup if ICU wasn't initialized, this will i.e. prevent errors from being printed, 
+  and libraries from being loaded.
+
 * front-end: unwanted removal of index table header after creating new index
 
 * fixed issue #1248: chrome: applications filtering not working
@@ -36,6 +43,10 @@ v2.5.0-alpha4 (2015-02-17)
     Apps can still be put into development mode, changing their behavior compared to production mode.
     Development mode apps are still reread from disk at every request, and still they ship more debug 
     output.
+
+    This change has also made the startup options `--javascript.frontend-development-mode` and 
+    `--javascript.dev-app-path` obsolete. The former option will not have any effect when set, and the
+    latter option is only read and used during the upgrade to 2.5 and does not have any effects later.
 
   * Foxx install process
 
@@ -112,6 +123,14 @@ v2.5.0-alpha4 (2015-02-17)
       db.collection.ensureUniqueSkiplist(attributeName, { sparse: true }); 
       db.collection.ensureUniqueSkiplist(attributeName1, attributeName2, { sparse: true }); 
 
+  Note that in place of the above specialized index creation commands, it is recommended to use
+  the more general index creation command `ensureIndex`:
+
+  ```js
+  db.collection.ensureIndex({ type: "hash", sparse: true, unique: true, fields: [ attributeName ] });
+  db.collection.ensureIndex({ type: "skiplist", sparse: false, unique: false, fields: [ "a", "b" ] });
+  ```
+
   When not explicitly set, the `sparse` attribute defaults to `false` for new indexes. 
   
   This causes a change in behavior when creating a unique hash index without specifying the 
@@ -122,7 +141,18 @@ v2.5.0-alpha4 (2015-02-17)
   only be created sparse if sparsity is explicitly requested. Existing unique hash indexes from 2.4 
   or before will automatically be migrated so they are still sparse after the upgrade to 2.5.
    
-  Indexes other than hash and skiplist do not support sparsity.
+  Geo indexes are implicitly sparse, meaning documents without the indexed location attribute or
+  containing invalid location coordinate values will be excluded from the index automatically. This
+  is also a change when compared to pre-2.5 behavior, when documents with missing or invalid
+  coordinate values may have caused errors on insertion when the geo index' `unique` flag was set
+  and its `ignoreNull` flag was not. 
+  
+  This was confusing and has been rectified in 2.5. The method `ensureGeoConstaint()` now does the 
+  same as `ensureGeoIndex()`. Furthermore, the attributes `constraint`, `unique`, `ignoreNull` and 
+  `sparse` flags are now completely ignored when creating geo indexes.
+
+  The same is true for fulltext indexes. There is no need to specify non-uniqueness or sparsity for 
+  geo or fulltext indexes. They will always be non-unique and sparse.
 
   As sparse indexes may exclude some documents, they cannot be used for every type of query. 
   Sparse hash indexes cannot be used to find documents for which at least one of the indexed 
@@ -234,6 +264,30 @@ v2.5.0-alpha4 (2015-02-17)
   this was not enforced when registering a user function. Enforcing the AQL user functions to be contained
   inside functions prevents functions from doing some unexpected things that may have led to undefined
   behavior.
+
+* Windows service uninstalling: only remove service if it points to the currently running binary,
+  or --force was specified.
+
+* Windows (debug only): print stacktraces on crash and run minidump
+
+* Windows (cygwin): if you run arangosh in a cygwin shell or via ssh we will detect this and use
+  the appropriate output functions.
+
+* Windows: improve process management
+
+* fix ipv6 reverse ip lookups - so far we only did ipv4 addresses.
+
+* improve join documentation, add outer join example
+
+* run jslint for unit tests too, to prevent "memory leaks" by global js objects with native code.
+
+* fix error logging for exceptions - we wouldn't log the exception message itself so far.
+
+* improve error reporting in the http client (windows & *nix)
+
+* improve error reports in cluster
+
+* Standard Errors can now contain custom messages.
 
 
 v2.4.4 (2015-XX-XX)

@@ -42,7 +42,6 @@
   var _ = require("underscore");
   var fs = require("fs");
   var is = require("org/arangodb/is");
-  var frontendDevelopmentMode = require("internal").frontendDevelopmentMode;
   var console = require("console");
   var actions = require("org/arangodb/actions");
 
@@ -177,25 +176,6 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates development asset action
-////////////////////////////////////////////////////////////////////////////////
-
-  var buildDevelopmentAssetRoute = function(app, path, basePath, asset) {
-    return {
-      url: { match: path },
-      action: {
-        callback: function (req, res) {
-          var c = buildFileAsset(app, path, basePath, asset);
-
-          res.contentType = c.contentType;
-          res.body = c.body;
-        }
-      }
-    };
-  };
-
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief generates asset action
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -238,13 +218,7 @@
           normalized = arangodb.normalizeURL("/" + path);
 
           if (asset.hasOwnProperty('files')) {
-            if (frontendDevelopmentMode) {
-              route = buildDevelopmentAssetRoute(app, normalized, basePath, asset);
-            }
-            else {
-              route = buildAssetRoute(app, normalized, basePath, asset);
-            }
-
+            route = buildAssetRoute(app, normalized, basePath, asset);
             routes.routes.push(route);
           }
         }

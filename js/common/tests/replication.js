@@ -773,9 +773,10 @@ function ReplicationLoggerSuite () {
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
-      assertEqual(true, entry.index.unique);
-      assertEqual(true, entry.index.constraint);
+      assertEqual(false, entry.index.unique);
+      assertEqual(false, entry.index.constraint);
       assertEqual(true, entry.index.ignoreNull);
+      assertEqual(true, entry.index.sparse);
       assertEqual([ "a", "b" ], entry.index.fields);
     },
 
@@ -799,9 +800,10 @@ function ReplicationLoggerSuite () {
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo2", entry.index.type);
-      assertEqual(true, entry.index.unique);
-      assertEqual(true, entry.index.constraint);
-      assertEqual(false, entry.index.ignoreNull);
+      assertEqual(false, entry.index.unique);
+      assertEqual(false, entry.index.constraint);
+      assertEqual(true, entry.index.ignoreNull);
+      assertEqual(true, entry.index.sparse);
       assertEqual([ "a", "b" ], entry.index.fields);
     },
 
@@ -825,8 +827,10 @@ function ReplicationLoggerSuite () {
       assertEqual(c._id, entry.cid);
       assertEqual(idx.id.replace(/^.*\//, ''), entry.index.id);
       assertEqual("geo1", entry.index.type);
-      assertEqual(true, entry.index.unique);
-      assertEqual(true, entry.index.constraint);
+      assertEqual(false, entry.index.unique);
+      assertEqual(false, entry.index.constraint);
+      assertEqual(true, entry.index.ignoreNull);
+      assertEqual(true, entry.index.sparse);
       assertEqual([ "a" ], entry.index.fields);
     },
 

@@ -155,6 +155,44 @@
       });
 
     });
+
+    it("should be able to trigger setup", function() {
+      var testMount = "/this/is_/a/test/mount";
+      var data = true;
+      var myFoxx = new window.Foxx({
+        mount: testMount
+      });
+      spyOn($, "ajax").andCallFake(function(opts) {
+        expect(opts.url).toEqual("/_admin/aardvark/foxxes/setup?mount=" + myFoxx.encodedMount());
+        expect(opts.type).toEqual("PATCH");
+        expect(opts.success).toEqual(jasmine.any(Function));
+        expect(opts.error).toEqual(jasmine.any(Function));
+        opts.success(data);
+      });
+      myFoxx.setup(function(result) {
+        expect(result).toEqual(data);
+      });
+      expect($.ajax).toHaveBeenCalled();
+    });
+
+    it("should be able to trigger teardown", function() {
+      var testMount = "/this/is_/a/test/mount";
+      var data = true;
+      var myFoxx = new window.Foxx({
+        mount: testMount
+      });
+      spyOn($, "ajax").andCallFake(function(opts) {
+        expect(opts.url).toEqual("/_admin/aardvark/foxxes/teardown?mount=" + myFoxx.encodedMount());
+        expect(opts.type).toEqual("PATCH");
+        expect(opts.success).toEqual(jasmine.any(Function));
+        expect(opts.error).toEqual(jasmine.any(Function));
+        opts.success(data);
+      });
+      myFoxx.teardown(function(result) {
+        expect(result).toEqual(data);
+      });
+      expect($.ajax).toHaveBeenCalled();
+    });
   });
 
 }());
