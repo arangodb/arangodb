@@ -6,18 +6,24 @@ This is an introduction to ArangoDB's hash indexes.
 
 It is possible to define a hash index on one or more attributes (or paths) of a
 document. This hash index is then used in queries to locate documents in O(1)
-operations. If the hash is unique, then no two documents are allowed to have the
+operations. If the hash index is unique, then no two documents are allowed to have the
 same set of attribute values.
+
+Creating a new document or updating a document will fail if the uniqueness is violated. 
+If the index is declared sparse, a document will be excluded from the index and no 
+uniqueness checks will be performed if any index attribute value is not set or has a value 
+of `null`. 
 
 !SECTION Accessing Hash Indexes from the Shell
 
-`ensureUniqueConstraint(field1, field2, ..., fieldn)`
+`collection.ensureUniqueConstraint(field1, field2, ..., fieldn)`
 
-Creates a unique hash index on all documents using field1, field2, ... as attribute paths. At least one attribute path must be given.
+Creates a unique hash index on all documents using *field1*, *field2*, ... as attribute paths. 
+At least one attribute path must be given. The index will be non-sparse by default.
 
-When a unique constraint is in effect for a collection, then all documents which contain the given attributes must differ in the attribute values. Creating a new document or updating a document will fail, if the uniqueness is violated. If any attribute value is null for a document, this document is ignored by the index.
+To create a sparse index, use the following command:
 
-Note that non-existing attribute paths in a document are treated as if the value were null.
+`collection.ensureUniqueConstraint(field1, field2, ..., fieldn, { sparse: true })`
 
 In case that the index was successfully created, the index identifier is returned.
 
@@ -44,11 +50,14 @@ arangosh> db.four.save({ a : 1 });
 { "_id" : "four/2196023", "_key" : "2196023", "_rev" : "2196023" }
 ```
 
-`ensureHashIndex(field1, field2, ..., fieldn)`
+`collection.ensureHashIndex(field1, field2, ..., fieldn)`
 
-Creates a non-unique hash index on all documents using field1, field2, ... as attribute paths. At least one attribute path must be given.
+Creates a non-unique hash index on all documents using *field1*, *field2*, ... as attribute paths. 
+At least one attribute path must be given. The index will be non-sparse by default.
 
-Note that non-existing attribute paths in a document are treated as if the value were null.
+To create a sparse index, use the following command:
+
+`collection.ensureHashIndex(field1, field2, ..., fieldn, { sparse: true })`
 
 In case that the index was successfully created, the index identifier is returned.
 
@@ -68,12 +77,13 @@ arangosh> db.test.save({ a : null });
 { "_id" : "test/6708823", "_key" : "6708823", "_rev" : "6708823" }
 ```
 
-<!--
-@anchor IndexHashShellEnsureUniqueConstraint
-@copydetails JSF_ArangoCollection_prototype_ensureUniqueConstraint
+Note that in addition to the two specialized index creation methods, there is also the
+general method `collection.ensureIndex`, which can be used to create indexes of any type
+and also supports uniqueness and sparsity:
 
-@CLEARPAGE
-@anchor IndexHashShellEnsureHashIndex
-@copydetails JSF_ArangoCollection_prototype_ensureHashIndex
+*Examples*
 
--->
+```
+arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a" ], sparse: true });
+arangosh> db.test.ensureIndex({ type: "hash", fields: [ "a", "b" ], unique: true });
+```
