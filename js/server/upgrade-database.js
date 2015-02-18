@@ -68,6 +68,9 @@ function updateGlobals() {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief for development mode
+/// probably this will never be used anymore, as Foxx apps can be toggled 
+/// individually between production and development mode, and not the whole
+/// server
 ////////////////////////////////////////////////////////////////////////////////
 
     var MODE_DEVELOPMENT = 1001;
@@ -405,14 +408,7 @@ function updateGlobals() {
     function upgradeDatabase () {
 
       // mode
-      var mode;
-
-      if (internal.developmentMode) {
-        mode = MODE_DEVELOPMENT;
-      }
-      else {
-        mode = MODE_PRODUCTION;
-      }
+      var mode = MODE_PRODUCTION;
 
       // cluster
       var cluster;
@@ -522,127 +518,6 @@ function updateGlobals() {
 // -----------------------------------------------------------------------------
 // --SECTION--                                             upgrade or init tasks
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moveProductionApps
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name:        "moveProductionApps",
-      description: "move Foxx apps into per-database directory",
-
-      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_LOCAL ],
-      database:    [ DATABASE_UPGRADE ],
-
-      task: function () {
-        var dir = module.appPath();
-
-        if (! fs.exists(dir)) {
-          logger.error("apps directory '" + dir + "' does not exist.");
-          return false;
-        }
-
-        // we only need to move apps in the _system database
-        if (db._name() !== '_system') {
-          return true;
-        }
-
-        if (! module.basePaths().appPath) {
-          logger.error("no app-path has been specified.");
-          return false;
-        }
-
-        var files = fs.list(module.basePaths().appPath), i, n = files.length;
-
-        for (i = 0; i < n; ++i) {
-          var found = files[i];
-
-          if (found === '' ||
-              found === 'system' ||
-              found === 'databases' ||
-              found === 'aardvark' ||
-              found[0] === '.') {
-            continue;
-          }
-
-          var src = fs.join(module.basePaths().appPath, found);
-
-          if (! fs.isDirectory(src)) {
-            continue;
-          }
-
-          // we found a directory, now move it
-          var dst = fs.join(dir, found);
-          logger.log("renaming directory '" + src + "' to '" + dst + "'");
-
-          // fs.move() will throw if moving doesn't work
-          fs.move(src, dst);
-        }
-
-        return true;
-      }
-    });
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief moveDevApps
-////////////////////////////////////////////////////////////////////////////////
-
-    addTask({
-      name:        "moveDevApps",
-      description: "move Foxx development apps into per-database directory",
-
-      mode:        [ MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_LOCAL ],
-      database:    [ DATABASE_UPGRADE, DATABASE_EXISTING ],
-
-      task: function () {
-        var dir = module.devAppPath();
-
-        if (! fs.exists(dir)) {
-          logger.error("dev apps directory '" + dir + "' does not exist.");
-          return false;
-        }
-
-        // we only need to move apps in the _system database
-        if (db._name() !== '_system') {
-          return true;
-        }
-
-        if (! module.basePaths().devAppPath) {
-          logger.error("no dev-app-path has been specified.");
-          return false;
-        }
-
-        var files = fs.list(module.basePaths().devAppPath), i, n = files.length;
-        for (i = 0; i < n; ++i) {
-          var found = files[i];
-
-          if (found === '' ||
-              found === 'system' ||
-              found === 'databases' ||
-              found === 'aardvark' ||
-              found[0] === '.') {
-            continue;
-          }
-
-          var src = fs.join(module.basePaths().devAppPath, found);
-
-          if (! fs.isDirectory(src)) {
-            continue;
-          }
-
-          // we found a directory, now move it
-          var dst = fs.join(dir, found);
-          logger.log("renaming directory '" + src + "' to '" + dst + "'");
-
-          // fs.move() will throw if moving doesn't work
-          fs.move(src, dst);
-        }
-
-        return true;
-      }
-    });
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setupUsers

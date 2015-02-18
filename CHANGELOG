@@ -44,6 +44,10 @@ v2.5.0-alpha2 (2015-02-16)
     Development mode apps are still reread from disk at every request, and still they ship more debug 
     output.
 
+    This change has also made the startup options `--javascript.frontend-development-mode` and 
+    `--javascript.dev-app-path` obsolete. The former option will not have any effect when set, and the
+    latter option is only read and used during the upgrade to 2.5 and does not have any effects later.
+
   * Foxx install process
 
     Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a

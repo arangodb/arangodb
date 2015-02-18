@@ -697,14 +697,6 @@ static int OpenDatabases (TRI_server_t* server,
       break;
     }
 
-    res = CreateApplicationDirectory(databaseName, server->_devAppPath);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseName);
-      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      break;
-    }
-
     // .............................................................................
     // open the database and scan collections in it
     // .............................................................................
@@ -1515,23 +1507,6 @@ static void DatabaseManager (void* data) {
           }
         }
 
-        // remove dev-apps directory for database
-        if (database->_isOwnAppsDirectory && strlen(server->_devAppPath) > 0) {
-          path = TRI_Concatenate3File(server->_devAppPath, "_db", database->_name);
-
-          if (path != nullptr) {
-            if (TRI_IsDirectory(path)) {
-              LOG_TRACE("removing dev-app directory '%s' of database '%s'",
-                        path,
-                        database->_name);
-
-              TRI_RemoveDirectory(path);
-            }
-
-            TRI_Free(TRI_CORE_MEM_ZONE, path);
-          }
-        }
-
         path = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, database->_path);
 
         TRI_DestroyVocBase(database);
@@ -1588,7 +1563,6 @@ int TRI_InitServer (TRI_server_t* server,
                     void* applicationEndpointServer,
                     char const* basePath,
                     char const* appPath,
-                    char const* devAppPath,
                     TRI_vocbase_defaults_t const* defaults,
                     bool disableAppliers,
                     bool iterateMarkersOnOpen) {
@@ -1650,19 +1624,6 @@ int TRI_InitServer (TRI_server_t* server,
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  server->_devAppPath = TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, devAppPath);
-
-  if (server->_devAppPath == nullptr) {
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_databasePath);
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_basePath);
-
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-
   // .............................................................................
   // server defaults
   // .............................................................................
@@ -1716,7 +1677,6 @@ void TRI_DestroyServer (TRI_server_t* server) {
     TRI_DestroyAssociativePointer(&server->_coordinatorDatabases);
     TRI_DestroyAssociativePointer(&server->_databases);
 
-    TRI_Free(TRI_CORE_MEM_ZONE, server->_devAppPath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_appPath);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_serverIdFilename);
     TRI_Free(TRI_CORE_MEM_ZONE, server->_lockFilename);
@@ -1901,26 +1861,6 @@ int TRI_StartServer (TRI_server_t* server,
     }
   }
 
-  if (server->_devAppPath != nullptr &&
-      strlen(server->_devAppPath) > 0 &&
-      ! TRI_IsDirectory(server->_devAppPath)) {
-    if (! performUpgrade) {
-      LOG_ERROR("specified --javascript.dev-app-path directory '%s' does not exist. "
-                "Please start again with --upgrade option to create it.",
-                server->_devAppPath);
-      return TRI_ERROR_BAD_PARAMETER;
-    }
-
-    res = TRI_CreateDirectory(server->_devAppPath);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      LOG_ERROR("unable to create --javascript.dev-app-path directory '%s': %s",
-                server->_devAppPath,
-                TRI_errno_string(res));
-      return res;
-    }
-  }
-
   // create subdirectories if not yet present
   res = CreateBaseApplicationDirectory(server->_appPath, "_db");
 
@@ -1928,17 +1868,6 @@ int TRI_StartServer (TRI_server_t* server,
 #if 0
   if (res == TRI_ERROR_NO_ERROR) {
     res = CreateBaseApplicationDirectory(server->_appPath, "system");
-  }
-#endif
-
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = CreateBaseApplicationDirectory(server->_devAppPath, "_db");
-  }
-
-  // system directory is in a read-only location
-#if 0
-  if (res == TRI_ERROR_NO_ERROR) {
-    res = CreateBaseApplicationDirectory(server->_devAppPath, "system");
   }
 #endif
 
@@ -2113,7 +2042,6 @@ int TRI_CreateCoordinatorDatabaseServer (TRI_server_t* server,
 
   // TODO: create application directories??
 //  CreateApplicationDirectory(vocbase->_name, server->_appPath);
-//  CreateApplicationDirectory(vocbase->_name, server->_devAppPath);
 
   // increase reference counter
   TRI_UseVocBase(vocbase);
@@ -2233,7 +2161,6 @@ int TRI_CreateDatabaseServer (TRI_server_t* server,
 
   // create application directories
   CreateApplicationDirectory(vocbase->_name, server->_appPath);
-  CreateApplicationDirectory(vocbase->_name, server->_devAppPath);
 
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
     TRI_ReloadAuthInfo(vocbase);
