@@ -8,8 +8,8 @@ upgrading to ArangoDB 2.5, and adjust any client programs if necessary.
 
 !SUBSECTION Sparse indexes 
 
-Hash indexes and skiplist indexes can now be created sparse. When not explicitly set, the 
-`sparse` attribute defaults to `false` for new indexes.
+Hash indexes and skiplist indexes can now be created in a sparse variant. 
+When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
   
 This causes a change in behavior when creating a unique hash index without specifying the 
 sparse flag. The unique hash index will be created in a non-sparse variant in ArangoDB 2.5. 
@@ -19,14 +19,29 @@ from the index. There was no option to control this behavior, and sparsity was n
 for non-unique hash indexes nor skiplists in 2.4. This implicit sparsity of just unique hash 
 indexes was considered an inconsistency, and therefore the behavior was cleaned up in 2.5. 
 
-As of 2.5, indexes will only be created sparse if sparsity is explicitly requested. This may
-require a change in index-creating client code, but only if the client code creates unique hash
-indexes and if they are still intended to be sparse. In this case, the client code should 
-explicitly set the `sparse` flag to `true` when creating a unique hash index.
+As of 2.5, hash and skiplist indexes will only be created sparse if sparsity is explicitly requested. 
+This may require a change in index-creating client code, but only if the client code creates 
+unique hash indexes and if they are still intended to be sparse. In this case, the client code 
+should explicitly set the `sparse` flag to `true` when creating a unique hash index.
 
 Existing unique hash indexes from 2.4 or before will automatically be migrated so they are still 
-sparse after the upgrade to 2.5. For the indexes, the `sparse` attribute will be populated
-automatically with a value of `true`.
+sparse after the upgrade to 2.5. For these indexes, the `sparse` attribute will be populated
+automatically with a value of `true`. 
+  
+Geo indexes are implicitly sparse, meaning documents without the indexed location attribute or
+containing invalid location coordinate values will be excluded from the index automatically. This
+is also a change when compared to pre-2.5 behavior, when documents with missing or invalid
+coordinate values may have caused errors on insertion when the geo index' `unique` flag was set
+and its `ignoreNull` flag was not. 
+
+This was confusing and has been rectified in 2.5. The method `ensureGeoConstaint()` now does the 
+same as `ensureGeoIndex()`. Furthermore, the attributes `constraint`, `unique`, `ignoreNull` and 
+`sparse` flags are now completely ignored when creating geo indexes. Client index creation code
+therefore does not need to set the `ignoreNull` or `constraint` attributes when creating a geo
+index.
+
+The same is true for fulltext indexes. There is no need to specify non-uniqueness or sparsity for 
+geo or fulltext indexes. They will always be non-unique and sparse. 
 
 
 !SECTION Deprecated features

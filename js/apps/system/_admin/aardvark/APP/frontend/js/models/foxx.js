@@ -3,6 +3,29 @@
 (function() {
   "use strict";
 
+  var sendRequest = function (foxx, callback, type, part, body) {
+    var req = {
+      contentType: "application/json",
+      processData: false,
+      success: function(data) {
+        callback(data);
+      },
+      error: function(err) {
+        callback(err);
+      }
+    };
+    req.type = type;
+    if (part && part !== "") {
+      req.url = "/_admin/aardvark/foxxes/" + part + "?mount=" + foxx.encodedMount();
+    } else {
+      req.url = "/_admin/aardvark/foxxes?mount=" + foxx.encodedMount();
+    }
+    if (body !== undefined) {
+      req.data = JSON.stringify(body);
+    }
+    $.ajax(req);
+  };
+
   window.Foxx = Backbone.Model.extend({
     idAttribute: 'mount',
 
@@ -27,49 +50,15 @@
     },
 
     destroy: function(callback) {
-      $.ajax({
-        type: "DELETE",
-        url: "/_admin/aardvark/foxxes?mount=" + this.encodedMount(),
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          callback(data);
-        },
-        error: function(err) {
-          callback(err);
-        }
-      });
+      sendRequest(this, callback, "DELETE");
     },
 
     getConfiguration: function(callback) {
-      $.ajax({
-        type: "GET",
-        url: "/_admin/aardvark/foxxes/config?mount=" + this.encodedMount(),
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          callback(data);
-        },
-        error: function(err) {
-          callback(err);
-        }
-      });
+      sendRequest(this, callback, "GET", "config");
     },
 
     setConfiguration: function(data, callback) {
-      $.ajax({
-        type: "PATCH",
-        url: "/_admin/aardvark/foxxes/config?mount=" + this.encodedMount(),
-        data: JSON.stringify(data),
-        contentType: "application/json",
-        processData: false,
-        success: function(data) {
-          callback(data);
-        },
-        error: function(err) {
-          callback(err);
-        }
-      });
+      sendRequest(this, callback, "PATCH", "config", data);
     },
 
     toggleDevelopment: function(activate, callback) {
@@ -87,6 +76,14 @@
           callback(err);
         }
       });
+    },
+
+    setup: function(callback) {
+      sendRequest(this, callback, "PATCH", "setup");
+    },
+
+    teardown: function(callback) {
+      sendRequest(this, callback, "PATCH", "teardown");
     },
 
     isSystem: function() {

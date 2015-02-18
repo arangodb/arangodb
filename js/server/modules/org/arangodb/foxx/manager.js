@@ -94,8 +94,9 @@
       refillCaches(dbname);
     }
     if (!appCache[dbname].hasOwnProperty(mount)) {
+      refillCaches(dbname);
       if (!appCache[dbname].hasOwnProperty(mount)) {
-        refillCaches(dbname);
+        return appCache[dbname][mount];
       }
       throw new Error("App not found");
     }
@@ -417,7 +418,6 @@
       invalidOptions.push("options.collectionNames has to be an array.");
     }
     if (invalidOptions.length > 0) {
-      // TODO Pretty print
       console.log(invalidOptions);
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
@@ -615,15 +615,23 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Initializes the appCache and fills it initially for each db.
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var initCache = function () {
+    var dbname = arangodb.db._name();
+    if (!appCache.hasOwnProperty(dbname)) {
+      initializeFoxx();
+    }
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Internal scanFoxx function. Check scanFoxx.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
     var dbname = arangodb.db._name();
-    if (!appCache.hasOwnProperty(dbname)) {
-      initializeFoxx();
-    }
     delete appCache[dbname][mount];
     var app = createApp(mount, options, activateDevelopment);
     utils.getStorage().save(app.toJSON());
@@ -641,6 +649,7 @@
       "scanFoxx(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    initCache();
     var app = _scanFoxx(mount, options);
     reloadRouting();
     return app.simpleJSON();
@@ -660,6 +669,7 @@
 
     var old = lookupApp(mount);
     var collection = utils.getStorage();
+    initCache();
     db._executeTransaction({
       collections: {
         write: collection.name()
@@ -713,6 +723,7 @@
       }
       throw e;
     }
+    initCache();
     try {
       db._executeTransaction({
         collections: {
@@ -725,7 +736,10 @@
       if (runSetup) {
         setup(mount);
       }
+      // Validate Routing
       routeApp(app);
+      // Validate Exports
+      exportApp(app);
     } catch (e) {
       try {
         fs.removeDirectoryRecursive(targetPath, true);

@@ -643,8 +643,9 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("geo2", idx.type);
-      assertTrue(idx.unique);
-      assertFalse(idx.ignoreNull);
+      assertFalse(idx.unique);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -663,8 +664,9 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("geo2", idx.type);
-      assertTrue(idx.unique);
+      assertFalse(idx.unique);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -683,9 +685,10 @@ function getIndexesEdgesSuite() {
       var idx = res[2];
 
       assertEqual("geo1", idx.type);
-      assertTrue(idx.unique);
+      assertFalse(idx.unique);
       assertTrue(idx.geoJson);
       assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -706,7 +709,8 @@ function getIndexesEdgesSuite() {
       assertEqual("geo1", idx.type);
       assertFalse(idx.unique);
       assertTrue(idx.geoJson);
-      assertFalse(idx.ignoreNull);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual([ "lat" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));
@@ -726,7 +730,8 @@ function getIndexesEdgesSuite() {
 
       assertEqual("geo2", idx.type);
       assertFalse(idx.unique);
-      assertFalse(idx.ignoreNull);
+      assertTrue(idx.ignoreNull);
+      assertTrue(idx.sparse);
       assertEqual([ "lat", "lon" ], idx.fields);
       assertTrue(idx.hasOwnProperty("id"));
       assertEqual(collection.name(), idx.id.substr(0, collection.name().length));

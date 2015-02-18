@@ -2,6 +2,7 @@
 /*jshint strict: false, unused: false */
 /*global Backbone, $, window, arangoHelper, templateEngine, Joi, _, modalDialogHelper, alert*/
 (function() {
+
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
 
@@ -11,7 +12,14 @@
       'click .open': 'openApp',
       'click .delete': 'deleteApp',
       'click #configure-app': 'showConfigureDialog',
-      'click #app-switch-mode': 'toggleDevelopment'
+      'click #app-switch-mode': 'toggleDevelopment',
+      'click #app-setup': 'setup',
+      'click #app-teardown': 'teardown',
+      "click #app-scripts": "toggleScripts",
+    },
+
+    toggleScripts: function() {
+      $("#scripts_dropdown").toggle(200);
     },
 
     updateConfig: function() {
@@ -28,13 +36,25 @@
     toggleDevelopment: function() {
       this.model.toggleDevelopment(!this.model.isDevelopment(), function() {
         if (this.model.isDevelopment()) {
-          $("#app-switch-mode").val("Production");
+          $("#app-switch-mode").val("Set Pro");
           $("#app-development-indicator").css("display", "inline");
         } else {
-          $("#app-switch-mode").val("Development");
+          $("#app-switch-mode").val("Set Dev");
           $("#app-development-indicator").css("display", "none");
         }
       }.bind(this));
+    },
+
+    setup: function() {
+      this.model.setup(function(data) {
+
+      });
+    },
+
+    teardown: function() {
+      this.model.teardown(function(data) {
+
+      });
     },
 
     render: function() {

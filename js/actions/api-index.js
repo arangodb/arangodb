@@ -314,22 +314,14 @@ function get_api_index (req, res) {
 ///   followed by latitude. This corresponds to the format described in
 ///   http://geojson.org/geojson-spec.html#positions
 ///
-/// - *constraint*: If *constraint* is *true*, then a geo-spatial
-///   constraint is created. The constraint is a non-unique variant of the index.
-///   **Note**: It is also possible to set the *unique* attribute instead of
-///   the *constraint* attribute.
-///
-/// - *ignoreNull*: If a geo-spatial constraint is created and
-///   *ignoreNull* is true, then documents with a null in *location* or at
-///   least one null in *latitude* or *longitude* are ignored.
-///
-/// **Note**: Unique indexes on non-shard keys are not supported in a cluster.
+/// Geo indexes are always sparse, meaning that documents that do not contain
+/// the index attributes or have non-numeric values in the index attributes
+/// will not be indexed.
 ///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
-/// If the index already exists, then a *HTTP 200* is
-/// returned.
+/// If the index already exists, then a *HTTP 200* is returned.
 ///
 /// @RESTRETURNCODE{201}
 /// If the index does not already exist and could be created, then a *HTTP 201*
@@ -348,7 +340,10 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "geo", "fields" : [ "b" ] }';
+///     var body = { 
+///       type: "geo", 
+///       fields : [ "b" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -365,7 +360,10 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "geo", "fields" : [ "e", "f" ] }';
+///     var body = { 
+///       type: "geo", 
+///       fields: [ "e", "f" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -443,7 +441,11 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "hash", "unique" : true, "fields" : [ "a", "b" ] }';
+///     var body = { 
+///       type: "hash", 
+///       unique: true, 
+///       fields : [ "a", "b" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -460,7 +462,11 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "hash", "unique" : false, "fields" : [ "a", "b" ] }';
+///     var body = { 
+///       type: "hash", 
+///       unique: false, 
+///       fields: [ "a", "b" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -477,7 +483,12 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "hash", "unique" : false, "sparse" : true, "fields" : [ "a" ] }';
+///     var body = { 
+///       type: "hash", 
+///       unique: false, 
+///       sparse: true, 
+///       fields: [ "a" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -556,7 +567,11 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "skiplist", "unique" : false, "fields" : [ "a", "b" ] }';
+///     var body = { 
+///       type: "skiplist", 
+///       unique: false, 
+///       fields: [ "a", "b" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -573,7 +588,12 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type": "skiplist", "unique" : false, "sparse" : true, "fields" : [ "a" ] }';
+///     var body = { 
+///       type: "skiplist", 
+///       unique: false, 
+///       sparse: true, 
+///       fields: [ "a" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -636,7 +656,10 @@ function get_api_index (req, res) {
 ///     db._create(cn);
 ///
 ///     var url = "/_api/index?collection=" + cn;
-///     var body = '{ "type" : "fulltext", "fields" : [ "text" ] }';
+///     var body = { 
+///       type: "fulltext", 
+///       fields: [ "text" ] 
+///     };
 ///
 ///     var response = logCurlRequest('POST', url, body);
 ///
@@ -687,6 +710,7 @@ function get_api_index (req, res) {
 ///
 /// **Note**: The following index types do not support uniqueness, and using
 /// the *unique* attribute with these types may lead to an error:
+///
 /// - cap constraints
 /// - fulltext indexes
 ///
@@ -742,20 +766,9 @@ function post_api_index (req, res) {
     body.collection = name;
   }
 
-  // fill "unique" attribute from "constraint" attribute to be downward-compatible
-  // with old geo index API
-  if (body.hasOwnProperty("constraint") && ! body.hasOwnProperty("unique")) {
-    body.unique = body.constraint;
-  }
-
   // create the index
   var index = collection.ensureIndex(body);
-  if (index.isNewlyCreated) {
-    actions.resultOk(req, res, actions.HTTP_CREATED, index);
-  }
-  else {
-    actions.resultOk(req, res, actions.HTTP_OK, index);
-  }
+  actions.resultOk(req, res, index.isNewlyCreated ? actions.HTTP_CREATED : actions.HTTP_OK, index);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,13 +1,14 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global $, arangoHelper, jasmine, nv, d3, describe, beforeEach, afterEach, it, spyOn, expect*/
+/*global $, arangoHelper, jasmine, nv, d3, describe, beforeEach, afterEach, it, spyOn, expect */
+/*global this.options, this.options.database, this.options.database.findWhere */
 
 (function () {
   "use strict";
 
   describe("The dashboard view", function () {
 
-    var view, dyGraphConfigDummy, modalDummy, d3ChartDummy;
+    var view, dyGraphConfigDummy, modalDummy, d3ChartDummy, databaseDummy;
 
     beforeEach(function () {
       window.App = {
@@ -15,6 +16,8 @@
           throw "This should be a spy";
         }
       };
+      window.CreateDummyForObject(window, "ArangoDatabase");
+      databaseDummy = new window.ArangoDatabase();
       dyGraphConfigDummy = {
         getDetailChartConfig: function () {
           return {
@@ -168,8 +171,7 @@
 
       };
 
-
-      view = new window.DashboardView({dygraphConfig: dyGraphConfigDummy});
+      view = new window.DashboardView({dygraphConfig: dyGraphConfigDummy, database: databaseDummy});
     });
 
     afterEach(function () {
@@ -1281,7 +1283,10 @@
     it("render without modal and no updating", function () {
       var jQueryDummy = {
         html: function () {
-
+        },
+        remove: function () {
+        },
+        append: function () {
         }
       };
       spyOn(view, "startUpdating");
@@ -1298,10 +1303,18 @@
         jQueryDummy
       );
       spyOn(jQueryDummy, "html");
+      spyOn(jQueryDummy, "remove");
+      spyOn(jQueryDummy, "append");
+      spyOn(databaseDummy, "findWhere").andCallFake(function() {
+        return true;
+      });
+
       view.isUpdating = false;
+      view.authorized = true;
       view.render(false);
 
       expect(window.$).toHaveBeenCalledWith(view.el);
+
       expect(view.startUpdating).toHaveBeenCalled();
       expect(view.getStatistics).toHaveBeenCalled();
       expect(view.prepareDygraphs).toHaveBeenCalled();
@@ -1318,7 +1331,10 @@
     it("render without modal and updating", function () {
       var jQueryDummy = {
         html: function () {
-
+        },
+        remove: function() {
+        },
+        append: function() {
         }
       };
       spyOn(view, "startUpdating");
@@ -1335,8 +1351,14 @@
       spyOn(window, "$").andReturn(
         jQueryDummy
       );
+      spyOn(databaseDummy, "findWhere").andCallFake(function() {
+        return true;
+      });
       spyOn(jQueryDummy, "html");
+      spyOn(jQueryDummy, "remove");
+      spyOn(jQueryDummy, "append");
       view.isUpdating = true;
+      view.authorized = true;
       view.render(false);
 
       expect(window.$).toHaveBeenCalledWith(view.el);

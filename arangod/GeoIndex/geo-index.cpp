@@ -258,11 +258,10 @@ static TRI_json_t* JsonGeo1Index (TRI_index_t const* idx) {
 
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "geoJson", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->_geoJson));
 
-  // "constraint" and "unique" are identical for geo indexes.
-  // we return "constraint" just for downwards-compatibility
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_ignoreNull));
+  // "constraint" is always false as of ArangoDB 2.5
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+  // "ignoreNull" is always true as of ArangoDB 2.5
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE, 1);
   TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, location, strlen(location)));
@@ -300,11 +299,10 @@ static TRI_json_t* JsonGeo2Index (TRI_index_t const* idx) {
     return nullptr;
   }
 
-  // "constraint" and "unique" are identical for geo indexes.
-  // we return "constraint" just for downwards-compatibility
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, idx->_unique));
-
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, geo->base._ignoreNull));
+  // "constraint" is always false as of ArangoDB 2.5
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "constraint", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
+  // "ignoreNull" is always true as of ArangoDB 2.5
+  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "ignoreNull", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, true));
 
   TRI_json_t* fields = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE, 2);
   TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, fields, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, latitude, strlen(latitude)));
@@ -351,23 +349,12 @@ static int InsertGeoIndex (TRI_index_t* idx,
   }
 
   if (! ok) {
-    if (idx->_unique) {
-      if (idx->_ignoreNull && missing) {
-        return TRI_ERROR_NO_ERROR;
-      }
-      else {
-        return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
-      }
-    }
-    else {
-      return TRI_ERROR_NO_ERROR;
-    }
+    return TRI_ERROR_NO_ERROR;
   }
 
   // and insert into index
   gc.latitude = latitude;
   gc.longitude = longitude;
-
   gc.data = CONST_CAST(doc);
 
   res = GeoIndex_insert(geo->_geoIndex, &gc);
@@ -380,13 +367,8 @@ static int InsertGeoIndex (TRI_index_t* idx,
     return TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
   }
   else if (res == -3) {
-    if (idx->_unique) {
-      LOG_DEBUG("illegal geo-coordinates, ignoring entry");
-      return TRI_set_errno(TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED);
-    }
-    else {
-      return TRI_ERROR_NO_ERROR;
-    }
+    LOG_DEBUG("illegal geo-coordinates, ignoring entry");
+    return TRI_ERROR_NO_ERROR;
   }
   else if (res < 0) {
     return TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -428,7 +410,6 @@ static int RemoveGeoIndex (TRI_index_t* idx,
   if (ok) {
     gc.latitude = latitude;
     gc.longitude = longitude;
-
     gc.data = CONST_CAST(doc);
 
     // ignore non-existing elements in geo-index
@@ -450,9 +431,7 @@ TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
                                   TRI_idx_iid_t iid,
                                   char const* locationName,
                                   TRI_shape_pid_t location,
-                                  bool geoJson,
-                                  bool unique,
-                                  bool ignoreNull) {
+                                  bool geoJson) {
   char* ln;
 
   TRI_geo_index_t* geo = static_cast<TRI_geo_index_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_geo_index_t), false));
@@ -460,9 +439,7 @@ TRI_index_t* TRI_CreateGeo1Index (TRI_document_collection_t* document,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, false, unique);
-  idx->_ignoreNull = ignoreNull;
-
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO1_INDEX, document, true, false);
   idx->memory   = MemoryGeoIndex;
   idx->json     = JsonGeo1Index;
   idx->insert   = InsertGeoIndex;
@@ -498,9 +475,7 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
                                   char const* latitudeName,
                                   TRI_shape_pid_t latitude,
                                   char const* longitudeName,
-                                  TRI_shape_pid_t longitude,
-                                  bool unique,
-                                  bool ignoreNull) {
+                                  TRI_shape_pid_t longitude) {
   char* lat;
   char* lon;
 
@@ -509,9 +484,7 @@ TRI_index_t* TRI_CreateGeo2Index (TRI_document_collection_t* document,
 
   TRI_InitVectorString(&idx->_fields, TRI_CORE_MEM_ZONE);
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, false, unique); 
-  idx->_ignoreNull = ignoreNull;
-
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_GEO2_INDEX, document, true, false); 
   idx->memory   = MemoryGeoIndex;
   idx->json     = JsonGeo2Index;
   idx->insert   = InsertGeoIndex;

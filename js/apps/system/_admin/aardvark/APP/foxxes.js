@@ -192,6 +192,26 @@
     res.json(FoxxManager.configure(mount, data));
   }).queryParam("mount", mountPoint);
 
+  /** Trigger setup script for an app
+   *
+   * Used to trigger the setup script of an app
+   */
+  controller.patch("/setup", function(req, res) {
+    var mount = validateMount(req);
+    res.json(FoxxManager.setup(mount));
+  }).queryParam("mount", mountPoint);
+
+  /** Trigger teardown script for an app
+   *
+   * Used to trigger the teardown script of an app
+   */
+  controller.patch("/teardown", function(req, res) {
+    var mount = validateMount(req);
+    res.json(FoxxManager.teardown(mount));
+  }).queryParam("mount", mountPoint);
+
+
+
   /** Activate/Deactivate development mode for an app
    *
    * Used to toggle between production and development mode

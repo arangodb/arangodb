@@ -436,11 +436,11 @@ TRI_json_t* TRI_JsonIndex (TRI_memory_zone_t* zone,
     TRI_Insert3ObjectJson(zone, json, "type", TRI_CreateStringCopyJson(zone, TRI_TypeNameIndex(idx->_type), strlen(TRI_TypeNameIndex(idx->_type))));
     TRI_Insert3ObjectJson(zone, json, "unique", TRI_CreateBooleanJson(zone, idx->_unique));
 
-    if (idx->_type == TRI_IDX_TYPE_HASH_INDEX ||
-        idx->_type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
+    if (idx->_type != TRI_IDX_TYPE_CAP_CONSTRAINT) {
       // only show sparse flag for these index types, as it can't be set on others
       TRI_Insert3ObjectJson(zone, json, "sparse", TRI_CreateBooleanJson(zone, idx->_sparse));
     }
+
     if (idx->_hasSelectivityEstimate) { 
       TRI_Insert3ObjectJson(zone, json, "selectivityEstimate", TRI_CreateNumberJson(zone, idx->selectivityEstimate(idx)));
     }
@@ -1783,7 +1783,7 @@ TRI_index_t* TRI_CreateFulltextIndex (TRI_document_collection_t* document,
 
   idx = &fulltextIndex->base;
 
-  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, false, false);
+  TRI_InitIndex(idx, iid, TRI_IDX_TYPE_FULLTEXT_INDEX, document, true, false);
 
   idx->memory   = MemoryFulltextIndex;
   idx->json     = JsonFulltextIndex;
@@ -1871,20 +1871,6 @@ bool IndexComparator (TRI_json_t const* lhs,
     value = TRI_LookupObjectJson(lhs, "geoJson");
     if (TRI_IsBooleanJson(value)) {
       if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "geoJson"))) {
-        return false;
-      }
-    }
-    value = TRI_LookupObjectJson(lhs, "ignoreNull");
-    if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "ignoreNull"))) {
-        return false;
-      }
-    }
-  }
-  else if (type == TRI_IDX_TYPE_GEO2_INDEX) {
-    value = TRI_LookupObjectJson(lhs, "ignoreNull");
-    if (TRI_IsBooleanJson(value)) {
-      if (! TRI_CheckSameValueJson(value, TRI_LookupObjectJson(rhs, "ignoreNull"))) {
         return false;
       }
     }

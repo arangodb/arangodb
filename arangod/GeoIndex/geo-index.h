@@ -50,8 +50,6 @@ TRI_index_t* TRI_CreateGeo1Index (struct TRI_document_collection_t*,
                                   TRI_idx_iid_t,
                                   char const*,
                                   TRI_shape_pid_t,
-                                  bool,
-                                  bool,
                                   bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +61,7 @@ TRI_index_t* TRI_CreateGeo2Index (struct TRI_document_collection_t*,
                                   char const*,
                                   TRI_shape_pid_t ,
                                   char const*,
-                                  TRI_shape_pid_t,
-                                  bool,
-                                  bool);
+                                  TRI_shape_pid_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frees the memory allocated, but does not free the pointer

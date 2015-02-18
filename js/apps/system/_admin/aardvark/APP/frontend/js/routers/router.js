@@ -62,6 +62,10 @@
       window.progressView = new window.ProgressView();
       var self = this;
 
+      this.ArangoDatabase = new window.ArangoDatabase([],{
+        shouldFetchUser: false
+      });
+
       this.currentDB = new window.CurrentDatabase();
       this.currentDB.fetch({
         async: false
@@ -79,10 +83,7 @@
       this.footerView = new window.FooterView();
       this.notificationList = new window.NotificationCollection();
       this.naviView = new window.NavigationView({
-        database: new window.ArangoDatabase(
-          [],
-          {shouldFetchUser: true}
-        ),
+        database: this.ArangoDatabase,
         currentDB: this.currentDB,
         notificationCollection: self.notificationList,
         userCollection: this.userCollection
@@ -207,12 +208,8 @@
         if (! this.databaseView) {
           this.databaseView = new window.databaseView({
             users: this.userCollection,
-            collection: new window.ArangoDatabase(
-              [],
-              {
-                shouldFetchUser: false
-              })
-            });
+            collection: this.ArangoDatabase
+          });
           }
           this.databaseView.render();
           this.naviView.selectMenuItem('databases-menu');
@@ -229,7 +226,8 @@
         this.naviView.selectMenuItem('dashboard-menu');
         if (this.dashboardView === undefined) {
           this.dashboardView = new window.DashboardView({
-            dygraphConfig: window.dygraphConfig
+            dygraphConfig: window.dygraphConfig,
+            database: this.ArangoDatabase
           });
         }
         this.dashboardView.render();
@@ -275,6 +273,9 @@
         }
         if (this.graphManagementView) {
           this.graphManagementView.handleResize($("#content").width());
+        }
+        if (this.queryView) {
+          this.queryView.resize();
         }
       },
 

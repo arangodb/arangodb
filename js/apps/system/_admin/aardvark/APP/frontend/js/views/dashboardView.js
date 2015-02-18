@@ -445,8 +445,7 @@
             callback();
           }
           self.updateCharts();
-        }
-      );
+      });
     },
 
     getHistoryStatistics: function (figure) {
@@ -710,10 +709,24 @@
       }
       this.startUpdating();
     }.bind(this);
-    this.getStatistics(callback);
 
-
-
+    //check if user has _system permission
+    var authorized = this.options.database.findWhere({name: "_system"});
+    if (authorized === undefined) {
+      $('.contentDiv').remove();
+      $('.headerBar').remove();
+      $('.dashboard-headerbar').remove();
+      $('.dashboard-row').remove();
+      $('#content').append(
+        '<div style="color: red">You do not have permission to view this page.</div>'
+      );
+      $('#content').append(
+        '<div style="color: red">You can switch to \'_system\' to see the dashboard.</div>'
+      );
+    }
+    else {
+      this.getStatistics(callback);
+    }
   }
 });
 }());
