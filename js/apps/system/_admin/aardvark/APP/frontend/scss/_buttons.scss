@@ -162,6 +162,12 @@ a.headerButton {
     font-weight: bold;
   }
 
+  .fa-file-code-o {
+    left: -2px;
+    position: relative;
+    top: -3px;
+  }
+
   &.activated {
     background-color: $c-positive-hover;
     color: $c-white;

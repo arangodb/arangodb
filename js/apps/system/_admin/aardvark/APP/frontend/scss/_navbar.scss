@@ -127,6 +127,28 @@ ul.user-dropdown-menu {
   @extend %dropdown-menu;
 }
 
+ul.script-dropdown-menu {
+  @extend %dropdown-menu;
+
+  li.dropdown-item {
+    @extend %clickable;
+
+    margin-left: 0;
+
+    a {
+      display: block;
+
+      &:hover {
+        color: $c-white;
+      }
+    }
+
+    &:hover {
+      background-color: $c-positive;
+    }
+  }
+}
+
 ul.gv-dropdown-menu {
   @extend %dropdown-menu;
   @include border-radius(0);

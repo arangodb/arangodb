@@ -14,7 +14,12 @@
       'click #configure-app': 'showConfigureDialog',
       'click #app-switch-mode': 'toggleDevelopment',
       'click #app-setup': 'setup',
-      'click #app-teardown': 'teardown'
+      'click #app-teardown': 'teardown',
+      "click #app-scripts": "toggleScripts",
+    },
+
+    toggleScripts: function() {
+      $("#scripts_dropdown").toggle(200);
     },
 
     updateConfig: function() {
