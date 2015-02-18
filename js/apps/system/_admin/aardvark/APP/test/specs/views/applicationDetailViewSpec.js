@@ -378,7 +378,7 @@
         opts.success();
       });
       view.render();
-      expect($(button).val()).toEqual("Setup");
+      expect($(button).text()).toEqual("Setup");
       $(button).click();
       expect(appDummy.setup).toHaveBeenCalledWith(jasmine.any(Function));
     });
@@ -390,7 +390,7 @@
         opts.success();
       });
       view.render();
-      expect($(button).val()).toEqual("Teardown");
+      expect($(button).text()).toEqual("Teardown");
       $(button).click();
       expect(appDummy.teardown).toHaveBeenCalledWith(jasmine.any(Function));
     });
