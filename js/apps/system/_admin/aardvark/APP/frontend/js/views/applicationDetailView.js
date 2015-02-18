@@ -36,10 +36,10 @@
     toggleDevelopment: function() {
       this.model.toggleDevelopment(!this.model.isDevelopment(), function() {
         if (this.model.isDevelopment()) {
-          $("#app-switch-mode").val("Production");
+          $("#app-switch-mode").val("Set Pro");
           $("#app-development-indicator").css("display", "inline");
         } else {
-          $("#app-switch-mode").val("Development");
+          $("#app-switch-mode").val("Set Dev");
           $("#app-development-indicator").css("display", "none");
         }
       }.bind(this));
