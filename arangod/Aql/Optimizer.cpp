@@ -106,7 +106,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
                             std::vector<std::string> const& rulesSpecification,
                             bool inspectSimplePlans) {
   if (! inspectSimplePlans &&
-      ! ExecutionEngine::isCoordinator() && 
+      ! triagens::arango::ServerState::instance()->isCoordinator() && 
       plan->isDeadSimple()) {
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
@@ -533,7 +533,7 @@ void Optimizer::setupRules () {
                moveCalculationsDownRule_pass9,
                true);
 
-  if (ExecutionEngine::isCoordinator()) {
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // distribute operations in cluster
     registerRule("scatter-in-cluster",
                  scatterInClusterRule,
