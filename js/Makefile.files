@@ -107,10 +107,10 @@ jslint:
 jshint: jslint
 
 gitjslint:
-	if test "`git status --short | grep '^.[MAU] .*js$$' | wc -l`" -eq 0; then \
+	if test "`git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$$' | wc -l`" -eq 0; then \
 		exit 0; \
 	fi
-	for file in ` git status --short | grep '^.[MAU] .*js$$' | cut -d " " -f 3`; do \
+	for file in ` git status --short | grep '^\(.[MAU]\|[MAU].\) .*js$$' | cut -d " " -f 3`; do \
 	        bin/arangosh --jslint $$file || exit 1; \
 	 done
 
