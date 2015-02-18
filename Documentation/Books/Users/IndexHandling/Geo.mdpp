@@ -4,33 +4,43 @@
 
 This is an introduction to ArangoDB's geo indexes.
 
-ArangoDB uses Hilbert curves to implement geo-spatial indexes. See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
+ArangoDB uses Hilbert curves to implement geo-spatial indexes. 
+See this [blog](https://www.arangodb.com/2012/03/31/using-hilbert-curves-and-polyhedrons-for-geo-indexing)
 for details.
 
 A geo-spatial index assumes that the latitude is between -90 and 90 degree and
 the longitude is between -180 and 180 degree. A geo index will ignore all
 documents which do not fulfill these requirements.
 
-A geo-spatial constraint makes the same assumptions, but documents not
-fulfilling these requirements are rejected.
-
 !SECTION Accessing Geo Indexes from the Shell
 
-`collection.ensureGeoIndex( location)`
+`collection.ensureGeoIndex(location)`
 
-Creates a geo-spatial index on all documents using location as path to the coordinates. The value of the attribute must be an array with at least two numeric values. The array must contain the latitude (first value) and the longitude (second value). All documents, which do not have the attribute path or with value that are not suitable, are ignored.
+Creates a geo-spatial index on all documents using *location* as path 
+to the coordinates. The value of the attribute must be an array with at 
+least two numeric values. The array must contain the latitude (first value) 
+and the longitude (second value). 
+
+All documents, which do not have the attribute path or have a non-conforming
+value in it are excluded from the index.
+
+A geo index is implicitly sparse, and there is no way to control its sparsity.
 
 In case that the index was successfully created, the index identifier is returned.
 
-`collection.ensureGeoIndex( location, true)`
+`collection.ensureGeoIndex(location, true)`
 
-As above which the exception, that the order within the array is longitude followed by latitude. This corresponds to the format described in
+As above which the exception, that the order within the array is longitude followed 
+by latitude. This corresponds to the format described in
 
 http://geojson.org/geojson-spec.html
 
-`collection.ensureGeoIndex( latitude, longitude)`
+`collection.ensureGeoIndex(latitude, longitude)`
 
-Creates a geo-spatial index on all documents using latitude and longitude as paths the latitude and the longitude. The value of the attribute latitude and of the attribute longitude must a double. All documents, which do not have the attribute paths or which values are not suitable, are ignored.
+Creates a geo-spatial index on all documents using *latitude* and *longitude* as paths
+to the latitude and the longitude. The values of the attributes *latitude* and
+*longitude* must be numeric. All documents, which do not have the attribute paths or 
+have non-conforming values in the index attributes are excluded from the index.
 
 In case that the index was successfully created, the index identifier is returned.
 
@@ -51,18 +61,18 @@ arangosh> for (i = -90;  i <= 90;  i += 10) {
 arangosh> db.geo.count();
 703
 	
-arangosh> db.geo.near(0,0).limit(3).toArray();
+arangosh> db.geo.near(0, 0).limit(3).toArray();
 [ 
   { "_id" : "geo/24861164", "_key" : "24861164", "_rev" : "24861164", "name" : "Name/0/0", "loc" : [ 0, 0 ] },
   { "_id" : "geo/24926700", "_key" : "24926700", "_rev" : "24926700", "name" : "Name/0/10", "loc" : [ 0, 10 ] },
   { "_id" : "geo/22436332", "_key" : "22436332", "_rev" : "22436332", "name" : "Name/-10/0", "loc" : [ -10, 0 ] }
 ]
 
-arangosh> db.geo.near(0,0).count();
+arangosh> db.geo.near(0, 0).count();
 100
 ```
 
-Create an geo index for a hash array attribute:
+Create a geo index for a hash array attribute:
 	
 ```
 arangosh> db.geo2.ensureGeoIndex("location.latitude", "location.longitude");
@@ -74,7 +84,7 @@ arangosh> for (i = -90;  i <= 90;  i += 10) {
             }
           }
 	
-arangosh> db.geo2.near(0,0).limit(3).toArray();
+arangosh> db.geo2.near(0, 0).limit(3).toArray();
 [
   {
     "_id" : "geo2/72964588",
@@ -100,37 +110,35 @@ arangosh> db.geo2.near(0,0).limit(3).toArray();
 ]
 ```
 
-`collection.ensureGeoConstraint( location, ignore-null)`
+`collection.geo(location-attribute)`
 
-`collection.ensureGeoConstraint( location, true, ignore-null)`
+Looks up a geo index defined on attribute *location-attribute*.
 
-`collection.ensureGeoConstraint( latitude, longitude, ignore-null)`
-
-Works like ensureGeoIndex but requires that the documents contain a valid geo definition. If ignore-null is true, then documents with a null in location or at least one null in latitude or longitude are ignored.
-
-`collection.geo( location-attribute)`
-
-Looks up a geo index defined on attribute location-attribute.
-
-Returns a geo index object if an index was found. The near or within operators can then be used to execute a geo-spatial query on this particular index.
+Returns a geo index object if an index was found. The `near` or `within` operators 
+can then be used to execute a geo-spatial query on this particular index.
 
 This is useful for collections with multiple defined geo indexes.
 
-`collection.geo( location-attribute, true)`
+`collection.geo(location-attribute, true)`
 
-Looks up a geo index on a compound attribute location-attribute.
+Looks up a geo index on a compound attribute *location-attribute*.
 
-Returns a geo index object if an index was found. The near or within operators can then be used to execute a geo-spatial query on this particular index.
+Returns a geo index object if an index was found. The `near` or `within` operators 
+can then be used to execute a geo-spatial query on this particular index.
 
-`collection.geo( latitude-attribute, longitude-attribute)`
+`collection.geo(latitude-attribute, longitude-attribute)`
 
-Looks up a geo index defined on the two attributes latitude-attribute and longitude-attribute.
+Looks up a geo index defined on the two attributes *latitude-attribute* 
+and *longitude-attribute*.
 
-Returns a geo index object if an index was found. The near or within operators can then be used to execute a geo-spatial query on this particular index.
+Returns a geo index object if an index was found. The `near` or `within` operators 
+can then be used to execute a geo-spatial query on this particular index.
 
 *Examples*
 
-Assume you have a location stored as array in the attribute *home* and a destination stored in the attribute *work*. Then you can use the geo operator to select which geo-spatial attributes (and thus which index) to use in a near query.
+Assume you have a location stored as array in the attribute *home* and a destination 
+stored in the attribute *work*. Then you can use the `geo` operator to select which 
+geo-spatial attributes (and thus which index) to use in a `near` query.
 	
 ```
 arangosh> for (i = -90;  i <= 90;  i += 10) {
@@ -166,64 +174,79 @@ arangosh> db.complex.geo("work").near(0, 170).limit(5).toArray();
 ]
 ```
 
-`collection.near( latitude, longitude)`
+`collection.near(latitude, longitude)`
 
-The returned array is sorted according to the distance, with the nearest document to the coordinate ( latitude, longitude) coming first. If there are near documents of equal distance, documents are chosen randomly from this set until the limit is reached. It is possible to change the limit using the limit operator.
+The returned array is sorted according to the distance, with the nearest 
+document to the coordinate *(latitude, longitude)* coming first. If there 
+are near documents of equal distance, documents are chosen randomly from 
+this set until the limit is reached. It is possible to change the limit 
+using the `limit` operator.
 
-In order to use the near operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo operator to select a particular index.
+In order to use the `near` operator, a geo index must be defined for the collection. 
+This index also defines which attribute holds the coordinates for the document. 
+If you have more then one geo-spatial index, you can use the `geo` operator to select 
+a particular index.
 
-*Note*
-near does not support negative skips. However, you can still use limit followed to skip.
+*Note*: `near` does not support negative skips. However, you can still use 
+`limit` followed to skip.
 
-`collection.near( latitude, longitude).limit( limit)`
+`collection.near(latitude, longitude).limit(limit)`
 
-Limits the result to limit documents instead of the default 100.
+Limits the result to `limit` documents instead of the default 100.
 
-`Note`
+*Note*: unlike with multiple explicit limits, `limit` will raise the implicit default 
+limit imposed by within.
 
-Unlike with multiple explicit limits, limit will raise the implicit default limit imposed by within.
-collection.near( latitude, longitude).distance()
-This will add an attribute distance to all documents returned, which contains the distance between the given point and the document in meter.
+`collection.near(latitude, longitude).distance()`
 
-`collection.near( latitude, longitude).distance( name)`
+This will add an attribute named `distance` to all documents returned, which contains 
+the distance between the given point and the document in meters.
 
-This will add an attribute name to all documents returned, which contains the distance between the given point and the document in meter.
+`collection.near(latitude, longitude).distance(name)`
+
+This will add an attribute named `name` to all documents returned, which contains the 
+distance between the given point and the document in meters.
 
 *Examples*
 
-To get the nearst two locations:
+To get the nearest two locations:
 	
 ```
-arangosh> db.geo.near(0,0).limit(2).toArray();
+arangosh> db.geo.near(0, 0).limit(2).toArray();
 [ 
   { "_id" : "geo/24773376", "_key" : "24773376", "_rev" : "24773376", "name" : "Name/0/0", "loc" : [ 0, 0 ] }, 
   { "_id" : "geo/22348544", "_key" : "22348544", "_rev" : "22348544", "name" : "Name/-10/0", "loc" : [ -10, 0 ] } 
 ]
 ```
 
-If you need the distance as well, then you can use the distance operator:
+If you need the distance as well, then you can use the `distance` operator:
 
 ```	
-arangosh> db.geo.near(0,0).distance().limit(2).toArray();
+arangosh> db.geo.near(0, 0).distance().limit(2).toArray();
 [ 
   { "_id" : geo/24773376", "_key" : "24773376", "_rev" : "24773376", "distance" : 0, "name" : "Name/0/0", "loc" : [ 0, 0 ] },
   { "_id" : geo/22348544", "_key" : "22348544", "_rev" : "22348544", "distance" : 1111949.3, "name" : "Name/-10/0", "loc" : [ -10, 0 ] } 
 ]
 ```
 
-`collection.within( latitude, longitude, radius)`
+`collection.within(latitude, longitude, radius)`
 
-This will find all documents within a given radius around the coordinate ( latitude, longitude). The returned array is sorted by distance, beginning with the nearest document.
+This will find all documents within a given radius around the coordinate *(latitude, longitude)*. 
+The returned array is sorted by distance, beginning with the nearest document.
 
-In order to use the within operator, a geo index must be defined for the collection. This index also defines which attribute holds the coordinates for the document. If you have more then one geo-spatial index, you can use the geo operator to select a particular index.
+In order to use the `within` operator, a geo index must be defined for the collection. 
+This index also defines which attribute holds the coordinates for the document. 
+If you have more then one geo-spatial index, you can use the `geo` operator to select a particular index.
 
-`collection.within( latitude, longitude, radius).distance()`
+`collection.within(latitude, longitude, radius).distance()`
 
-This will add an attribute _distance to all documents returned, which contains the distance between the given point and the document in meter.
+This will add an attribute named `distance` to all documents returned, which contains the 
+distance between the given point and the document in meters.
 
-`collection.within( latitude, longitude, radius).distance( name)`
+`collection.within(latitude, longitude, radius).distance(name)`
 
-This will add an attribute name to all documents returned, which contains the distance between the given point and the document in meter.
+This will add an attribute named `name` to all documents returned, which contains the 
+distance between the given point and the document in meters.
 
 *Examples*
 

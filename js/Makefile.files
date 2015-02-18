@@ -57,7 +57,7 @@ JAVASCRIPT_JSLINT = \
 	`find @srcdir@/js/common/modules/org -name "*.js"` \
 	`find @srcdir@/js/client/modules -name "*.js"` \
 	`find @srcdir@/js/server/modules -name "*.js"` \
-	`find @srcdir@/js/server/tests -name "*.js"` \
+	`find @srcdir@/js/server/tests -name "*.js" | grep -v "ranges-combined"` \
 	`find @srcdir@/js/common/tests -name "*.js"` \
 	`find @srcdir@/js/client/tests -name "*.js"` \
 	\
