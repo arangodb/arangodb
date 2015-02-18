@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
+/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {
@@ -654,7 +654,6 @@
       },
 
       preparePlanNodeEntry: function(node, parentCost) {
-        console.log(node);
         var json = {
           estimatedCost: node.estimatedCost,
           estimatedNrItems: node.estimatedNrItems,
