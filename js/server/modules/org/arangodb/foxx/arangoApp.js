@@ -91,7 +91,6 @@
     this.isProduction = ! app._isDevelopment;
     this.manifest = app._manifest;
 
-    this.appModule = module.createAppModule(app);
   };
 
   AppContext.prototype.foxxFilename = function (path) {
@@ -162,6 +161,7 @@
     this._options.configuration = applyDefaultConfig(this._manifest.configuration);
     this.configure(cfg);
     this._context = new AppContext(this);
+    this._context.appModule = module.createAppModule(this);
 
     if (! this._manifest.hasOwnProperty("defaultDocument")) {
       this._manifest.defaultDocument = "index.html";
