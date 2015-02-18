@@ -1,6 +1,13 @@
 v2.5.0-alpha2 (2015-02-16)
 -------------------
 
+* V8: Upgrade to version 3.31.74.1
+
+* etcd: Upgrade to version 2.0 - This requires go 1.3 to compile at least.
+
+* refuse to startup if ICU wasn't initialized, this will i.e. prevent errors from being printed, 
+  and libraries from being loaded.
+
 * front-end: unwanted removal of index table header after creating new index
 
 * fixed issue #1248: chrome: applications filtering not working
@@ -234,6 +241,30 @@ v2.5.0-alpha2 (2015-02-16)
   this was not enforced when registering a user function. Enforcing the AQL user functions to be contained
   inside functions prevents functions from doing some unexpected things that may have led to undefined
   behavior.
+
+* Windows service uninstalling: only remove service if it points to the currently running binary,
+  or --force was specified.
+
+* Windows (debug only): print stacktraces on crash and run minidump
+
+* Windows (cygwin): if you run arangosh in a cygwin shell or via ssh we will detect this and use
+  the appropriate output functions.
+
+* Windows: improve process management
+
+* fix ipv6 reverse ip lookups - so far we only did ipv4 addresses.
+
+* improve join documentation, add outer join example
+
+* run jslint for unit tests too, to prevent "memory leaks" by global js objects with native code.
+
+* fix error logging for exceptions - we wouldn't log the exception message itself so far.
+
+* improve error reporting in the http client (windows & *nix)
+
+* improve error reports in cluster
+
+* Standard Errors can now contain custom messages.
 
 
 v2.4.4 (2015-XX-XX)
