@@ -417,7 +417,6 @@
       invalidOptions.push("options.collectionNames has to be an array.");
     }
     if (invalidOptions.length > 0) {
-      // TODO Pretty print
       console.log(invalidOptions);
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_FOXX_OPTIONS.code,
@@ -725,7 +724,10 @@
       if (runSetup) {
         setup(mount);
       }
+      // Validate Routing
       routeApp(app);
+      // Validate Exports
+      exportApp(app);
     } catch (e) {
       try {
         fs.removeDirectoryRecursive(targetPath, true);
