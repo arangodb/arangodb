@@ -1,7 +1,7 @@
 arangosh> db.example.first();
 { 
-  "_id" : "example/516875895", 
-  "_key" : "516875895", 
-  "_rev" : "516875895", 
+  "_id" : "example/522053979", 
+  "_key" : "522053979", 
+  "_rev" : "522053979", 
   "Hello" : "world" 
 }
