@@ -81,7 +81,6 @@
       "click #documents_prev"      : "prevDocuments",
       "click #documents_next"      : "nextDocuments",
       "click #confirmDeleteBtn"    : "confirmDelete",
-      "keyup #createEdge"          : "listenKey",
       "click .key"                 : "nop",
       "keyup"                      : "returnPressedHandler",
       "keydown .queryline input"   : "filterValueKeydown",
@@ -149,9 +148,6 @@
     },
     nop: function(event) {
       event.stopPropagation();
-    },
-
-    listenKey: function (e) {
     },
 
     resetView: function () {
@@ -868,7 +864,7 @@
     },
 
     drawTable: function() {
-      this.tableView.setElement(this.$(this.table)).render();
+      this.tableView.setElement($(this.table)).render();
 
       // we added some icons, so we need to fix their tooltips
       arangoHelper.fixTooltips(".icon_arangodb, .arangoicon", "top");
@@ -901,7 +897,7 @@
 
     render: function() {
       $(this.el).html(this.template.render({}));
-      this.tableView.setElement(this.$(this.table)).drawLoading();
+      this.tableView.setElement($(this.table)).drawLoading();
 
       this.collectionContext = this.collectionsStore.getPosition(
         this.collection.collectionID
