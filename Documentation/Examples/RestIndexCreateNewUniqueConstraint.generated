@@ -1,11 +1,18 @@
 shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
-{ "type": "hash", "unique" : true, "fields" : [ "a", "b" ] }
+{ 
+  "type" : "hash", 
+  "unique" : true, 
+  "fields" : [ 
+    "a", 
+    "b" 
+  ] 
+}
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1235150455", 
+  "id" : "products/1240066395", 
   "type" : "hash", 
   "unique" : true, 
   "sparse" : false, 

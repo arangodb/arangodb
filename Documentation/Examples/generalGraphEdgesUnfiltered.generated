@@ -5,7 +5,7 @@ arangosh> graph._edges().toArray();
   { 
     "_id" : "relation/aliceAndBob", 
     "_key" : "aliceAndBob", 
-    "_rev" : "660399735", 
+    "_rev" : "665905499", 
     "_from" : "female/alice", 
     "_to" : "male/bob", 
     "type" : "married" 
@@ -13,7 +13,7 @@ arangosh> graph._edges().toArray();
   { 
     "_id" : "relation/aliceAndCharly", 
     "_key" : "aliceAndCharly", 
-    "_rev" : "660661879", 
+    "_rev" : "666167643", 
     "_from" : "female/alice", 
     "_to" : "male/charly", 
     "type" : "friend" 
@@ -21,7 +21,7 @@ arangosh> graph._edges().toArray();
   { 
     "_id" : "relation/bobAndDiana", 
     "_key" : "bobAndDiana", 
-    "_rev" : "661055095", 
+    "_rev" : "666560859", 
     "_from" : "male/bob", 
     "_to" : "female/diana", 
     "type" : "friend" 
@@ -29,7 +29,7 @@ arangosh> graph._edges().toArray();
   { 
     "_id" : "relation/charlyAndDiana", 
     "_key" : "charlyAndDiana", 
-    "_rev" : "660858487", 
+    "_rev" : "666364251", 
     "_from" : "male/charly", 
     "_to" : "female/diana", 
     "type" : "married" 

@@ -1,15 +1,22 @@
 shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
-{ "type": "geo", "fields" : [ "e", "f" ] }
+{ 
+  "type" : "geo", 
+  "fields" : [ 
+    "e", 
+    "f" 
+  ] 
+}
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1234626167", 
+  "id" : "products/1239542107", 
   "type" : "geo2", 
   "unique" : false, 
+  "sparse" : true, 
   "constraint" : false, 
-  "ignoreNull" : false, 
+  "ignoreNull" : true, 
   "fields" : [ 
     "e", 
     "f" 

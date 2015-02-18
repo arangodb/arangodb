@@ -12,7 +12,7 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 
 HTTP/1.1 201 Created
 content-type: application/json
-etag: 1458300535
+etag: 1449716059
 
 { 
   "error" : false, 
@@ -44,6 +44,6 @@ etag: 1458300535
     ], 
     "orphanCollections" : [ ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1458300535" 
+    "_rev" : "1449716059" 
   } 
 }

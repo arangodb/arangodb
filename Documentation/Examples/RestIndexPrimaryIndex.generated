@@ -7,6 +7,7 @@ content-type: application/json; charset=utf-8
   "id" : "products/0", 
   "type" : "primary", 
   "unique" : true, 
+  "sparse" : false, 
   "selectivityEstimate" : 1, 
   "fields" : [ 
     "_key" 
