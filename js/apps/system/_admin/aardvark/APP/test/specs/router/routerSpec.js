@@ -528,7 +528,8 @@
           "DashboardView",
           "dashboard-menu",
           {
-            dygraphConfig: window.dygraphConfig
+            dygraphConfig: window.dygraphConfig,
+            database: databaseDummy
           },
           {
           },

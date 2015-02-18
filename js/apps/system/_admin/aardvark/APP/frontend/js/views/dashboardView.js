@@ -711,7 +711,7 @@
     }.bind(this);
 
     //check if user has _system permission
-    var authorized = window.App.naviView.options.database.findWhere({name: "_system"});
+    var authorized = this.options.database.findWhere({name: "_system"});
     if (authorized === undefined) {
       $('.contentDiv').remove();
       $('.headerBar').remove();
