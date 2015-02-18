@@ -216,13 +216,19 @@ function findTopDir () {
   return topDir;
 }
 
+function findAppDir () {
+  return fs.join(fs.getTempPath(), "js", "apps");
+}
+
 function makeTestingArgs () {
   var topDir = findTopDir();
+  var appDir = findAppDir();
+  fs.makeDirectoryRecursive(appDir, true);
   return [ "--configuration",                  "none",
            "--server.keyfile",       fs.join(topDir, "UnitTests", "server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
-           "--javascript.app-path",            fs.join(topDir, "js", "apps"),
+           "--javascript.app-path",            fs.join(fs.getTempPath(), "js", "apps"),
            "--javascript.startup-directory",   fs.join(topDir, "js"),
            "--ruby.modules-path", fs.join(topDir,"mr", "common", "modules"),
            "--server.threads",                 "20",
@@ -568,6 +574,11 @@ function cleanupDBDirectories(options) {
     }
     cleanupDirectories = [];
   }
+}
+
+function cleanUpAppFolder() {
+  var path = findAppDir();
+  fs.removeDirectoryRecursive(path, true);
 }
 
 function makePathUnix (path) {
@@ -1767,6 +1778,7 @@ function UnitTest (which, options) {
         allok = false;
       }
       results.all_ok = allok;
+      cleanUpAppFolder();
     }
     results.all_ok = allok;
     results.crashed = serverCrashed;
@@ -1806,7 +1818,7 @@ function UnitTest (which, options) {
     r.ok = ok;
     results.all_ok = ok;
     results.crashed = serverCrashed;
-
+    cleanUpAppFolder();
     if (allok) {
       cleanupDBDirectories(options);
     }
