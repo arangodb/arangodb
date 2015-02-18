@@ -1,4 +1,4 @@
-/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual, fail */
+/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -492,7 +492,6 @@ function GeoIndexCreationSuite() {
 
 function GeoIndexErrorHandlingSuite() {
   "use strict";
-  var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
