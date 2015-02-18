@@ -1,0 +1,6 @@
+/*start AUsingBaseA*/
+/**
+ * @depend BaseA.js
+ */
+var second = function secondFunction(){};
+/*end AUsingBaseA*/
