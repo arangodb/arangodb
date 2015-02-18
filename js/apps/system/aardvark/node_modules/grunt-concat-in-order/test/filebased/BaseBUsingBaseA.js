@@ -1,0 +1,6 @@
+/*start BaseBUsingBaseA*/
+/**
+ * @depend AUsingBaseA.js
+ */
+var third = function thirdFunction(){};
+/*end  BaseBUsingBaseA*/

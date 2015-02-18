@@ -25,6 +25,7 @@
   <div id="queryContent">
     <ul class="arango-tab">
       <li><a href="#result" data-toggle="pill" id="result-switch">Result</a></li>
+      <li><a href="#explain" data-toggle="pill" id="explain-switch">Explain</a></li>
       <li><a href="#query" data-toggle="pill" id="query-switch">Query</a></li>
       <li><a href="#customs" data-toggle="pill" id="customs-switch">My Queries</a></li>
     </ul>
@@ -60,6 +61,7 @@
             <div>
 
               <button id="submitQueryButton" class="button-success query-button">Submit</button>
+              <button id="explainQueryButton" class="button-success query-button">Explain</button>
               <button id="clearQueryButton" class="button-close query-button">Clear</button>
               <div class="styled-select">
                 <select id="querySelect" class="query-select"/>
@@ -74,13 +76,30 @@
 
       </div>
     </div>
+
+    <div class="tab-content" id="tabContentExplain">
+
+      <div class="tab-pane" id="explain">
+        <div id="editorLabel" class="editor-label"></div>
+        <div id="outputToolbar" class="query-toolbar output-toolbar">
+        </div>
+        <div class="explain-warnings"></div>
+        <div class="contentDiv query-output">
+          <svg id="explainOutput" class="explain-tree"></svg>
+        </div>
+      </div>
+
+    </div>
+
     <div class="tab-content" id="tabContentResult">
 
       <div class="tab-pane" id="result">
         <div id="editorLabel" class="editor-label"></div>
         <div id="outputToolbar" class="query-toolbar output-toolbar">
+          <!--
           <span class="icon_arangodb icon_arangodb_trash queryTooltips tooltip-margin" title="Clear" id="clearOutput"></span>
           <span class="icon_arangodb icon_arangodb_arrow1 queryTooltips" title="Unfold" id="bigOutput"></span>
+          -->
         </div>
         <div id="queryOutput" class="contentDiv query-output">
         </div>
