@@ -709,23 +709,21 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
     body = {
       type : "geo",
       fields : [ lat ],
-      geoJson : lon,
-      constraint : false
+      geoJson : lon
     };
   }
   else if (lon === undefined) {
     body = {
       type : "geo",
       fields : [ lat ],
-      geoJson : false,
-      constraint : false
+      geoJson : false
     };
   }
   else {
     body = {
       type : "geo",
       fields : [ lat, lon ],
-      constraint : false
+      geoJson: false
     };
   }
 
@@ -738,55 +736,11 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures a geo constraint
+/// since ArangoDB 2.5, this is just a redirection to ensureGeoIndex
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
-  var body;
-
-  // only two parameter
-  if (ignoreNull === undefined) {
-    ignoreNull = lon;
-
-    if (typeof ignoreNull !== "boolean") {
-      throw "usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>)"
-          + " or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)";
-    }
-
-    body = {
-      type : "geo",
-      fields : [ lat ],
-      geoJson : false,
-      constraint : true,
-      ignoreNull : ignoreNull
-    };
-  }
-
-  // three parameter
-  else {
-    if (typeof lon === "boolean") {
-      body = {
-        type : "geo",
-        fields : [ lat ],
-        geoJson : lon,
-        constraint : true,
-        ignoreNull : ignoreNull
-      };
-    }
-    else {
-      body = {
-        type : "geo",
-        fields : [ lat, lon ],
-        constraint : true,
-        ignoreNull : ignoreNull
-      };
-    }
-  }
-
-  var requestResult = this._database._connection.POST(this._indexurl(), JSON.stringify(body));
-
-  arangosh.checkRequestResult(requestResult);
-
-  return requestResult;
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
+  return this.ensureGeoIndex(lat, lon);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

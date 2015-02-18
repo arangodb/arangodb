@@ -52,7 +52,16 @@ db.collection.ensureUniqueSkiplist(attributeName, { sparse: true });
 db.collection.ensureUniqueSkiplist(attributeName1, attributeName2, { sparse: true }); 
 ```
 
-When not explicitly set, the `sparse` attribute defaults to `false` for new indexes.
+Note that in place of the above specialized index creation commands, it is recommended to use
+the more general index creation command `ensureIndex`:
+
+```js
+db.collection.ensureIndex({ type: "hash", sparse: true, unique: true, fields: [ attributeName ] });
+db.collection.ensureIndex({ type: "skiplist", sparse: false, unique: false, fields: [ "a", "b" ] });
+```
+
+When not explicitly set, the `sparse` attribute defaults to `false` for new hash or 
+skiplist indexes.
   
 This causes a change in behavior when creating a unique hash index without specifying the 
 sparse flag: in 2.4, unique hash indexes were implicitly sparse, always excluding `null` values. 
@@ -61,8 +70,18 @@ hash indexes nor skiplists in 2.4. This implicit sparsity of unique hash indexes
 an inconsistency, and therefore the behavior was cleaned up in 2.5. As of 2.5, indexes will
 only be created sparse if sparsity is explicitly requested. Existing unique hash indexes from 2.4 
 or before will automatically be migrated so they are still sparse after the upgrade to 2.5.
-   
-Other indexes than hash and skiplist do not support sparsity.
+
+Geo indexes are implicitly sparse, meaning documents without the indexed location attribute or
+containing invalid location coordinate values will be excluded from the index automatically. This
+is also a change when compared to pre-2.5 behavior, when documents with missing or invalid
+coordinate values may have caused errors on insertion when the geo index' `unique` flag was set
+and its `ignoreNull` flag was not. This was confusing and has been rectified in 2.5. The method
+`ensureGeoConstaint()` now does the same as `ensureGeoIndex()`. Furthermore, the attributes
+`constraint`, `unique`, `ignoreNull` and `sparse` flags are now completely ignored when creating
+geo indexes.
+
+The same is true for fulltext indexes. There is no need to specify non-uniqueness or sparsity for 
+geo or fulltext indexes.
 
 As sparse indexes may exclude some documents, they cannot be used for every type of query.
 Sparse hash indexes cannot be used to find documents for which at least one of the indexed 

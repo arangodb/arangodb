@@ -1201,6 +1201,10 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 /// All documents which do not have the attribute paths or which values
 /// are not suitable, are ignored.
 ///
+/// Geo indexes are always sparse, meaning that documents with do not contain
+/// the index attributes or have non-numeric values in the index attributes
+/// will not be indexed.
+///
 /// In case that the index was successfully created, an object with the index
 /// details, including the index-identifier, is returned.
 ///
@@ -1248,57 +1252,23 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo constraint exists
 /// @startDocuBlock collectionEnsureGeoConstraint
-/// `collection.ensureGeoConstraint(location, ignore-null)`
+/// `collection.ensureGeoConstraint(location)`
 ///
-/// `collection.ensureGeoConstraint(location, true, ignore-null)`
+/// `collection.ensureGeoConstraint(location, true)`
 ///
-/// `collection.ensureGeoConstraint(latitude, longitude, ignore-null)`
+/// `collection.ensureGeoConstraint(latitude, longitude)`
 ///
-/// Works like *ensureGeoIndex* but requires that the documents contain
-/// a valid geo definition. If *ignore-null* is true, then documents with
-/// a null in *location* or at least one null in *latitude* or
-/// *longitude* are ignored.
+/// Since ArangoDB 2.5, this method is an alias for *ensureGeoIndex* since 
+/// geo indexes are always sparse, meaning that documents that do not contain
+/// the index attributes or have non-numeric values in the index attributes
+/// will not be indexed.
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon, ignoreNull) {
+ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
   "use strict";
 
-  // only two parameter
-  if (ignoreNull === undefined) {
-    ignoreNull = lon;
-
-    if (typeof ignoreNull !== "boolean") {
-      throw "usage: ensureGeoConstraint(<lat>, <lon>, <ignore-null>)"
-          + " or ensureGeoConstraint(<lat>, <geo-json>, <ignore-null>)";
-    }
-
-    return this.ensureIndex({
-      type : "geo1",
-      fields : [ lat ],
-      geoJson : false,
-      unique : true,
-      ignoreNull : ignoreNull
-    });
-  }
-
-  // three parameter
-  if (typeof lon === "boolean") {
-    return this.ensureIndex({
-      type : "geo1",
-      fields : [ lat ],
-      geoJson : lon,
-      unique : true,
-      ignoreNull : ignoreNull
-    });
-  }
-
-  return this.ensureIndex({
-    type : "geo2",
-    fields : [ lat, lon ],
-    unique : true,
-    ignoreNull : ignoreNull
-  });
+  return this.ensureGeoIndex(lat, lon);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
