@@ -1329,8 +1329,7 @@ function updateGlobals() {
           try {
             mapAppZip[tmp.app] = fmUtils.zipDirectory(path);
           } catch (e) {
-            logger.errorLines("Tried to move app " + tmp.app + " but it was not found at app-path " + path +
-              " : " +(e.stack || String(e)));
+            logger.warn("Tried to move app " + tmp.app + " but it was not found at app-path " + path);
           }
         }
 
@@ -1341,16 +1340,13 @@ function updateGlobals() {
         var i;
         if (devPath !== "") {
           appsToZip = fs.list(devPath);
-          logger.warn("Dev Path: " + JSON.stringify(devPath));
-          logger.warn("Apps To Zip: " + JSON.stringify(appsToZip));
           for (i = 0; i < appsToZip.length; ++i) {
             path = fs.join(devPath, appsToZip[i]);
             if (fs.exists(path) && fs.isDirectory(path)) {
               try {
                 mapDevAppZip[appsToZip[i]] = fmUtils.zipDirectory(path);
               } catch (e) {
-                logger.errorLines("Tried to move app " + appsToZip[i] + " but it was not found at dev-app-path" + path +
-                  " : " + (e.stack || String(e)));
+                logger.warn("Tried to move dev app " + tmp.app + " but it was not found at dev-app-path " + path);
               }
             }
           }
