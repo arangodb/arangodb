@@ -3196,7 +3196,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
                                          Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (ExecutionEngine::isCoordinator()) {
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator. now look in the plan for nodes of type
     // EnumerateCollectionNode and IndexRangeNode
     std::vector<ExecutionNode::NodeType> const types = { 
@@ -3316,7 +3316,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
                                             Optimizer::Rule const* rule) {
   bool wasModified = false;
 
-  if (ExecutionEngine::isCoordinator()) {
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator, we replace the root if it is a modification node
     
     // only replace if it is the last node in the plan

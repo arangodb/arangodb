@@ -1050,7 +1050,7 @@ bool IndexRangeBlock::initRanges () {
         
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isRunningInCluster()) {
+        if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
           for (auto e : _allVariableBoundExpressions) {
             e->invalidate();
           }
@@ -1684,7 +1684,7 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
           int errorCode = resolve(json->_value._string.data, documentCid, documentKey);
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
-            bool const isCluster = ExecutionEngine::isRunningInCluster();
+            bool const isCluster = triagens::arango::ServerState::instance()->isRunningInCluster();
 
             if (! isCluster && documentCid == _collection->documentCollection()->_info._cid) {
               // only continue lookup if the id value is syntactically correct and
@@ -2498,7 +2498,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       [&]() -> void { 
         // must invalidate the expression now as we might be called from
         // different threads
-        if (ExecutionEngine::isRunningInCluster()) {
+        if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
           _expression->invalidate();
         }
         _engine->getQuery()->exitContext(); 
@@ -3763,7 +3763,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                  nullptr,
                                  ep->_options.waitForSync);
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
-            ExecutionEngine::isDBServer()) {
+            triagens::arango::ServerState::instance()->isDBserver()) {
           auto* node = static_cast<RemoveNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             // Ignore document not found on the DBserver:
@@ -4081,7 +4081,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
         }
 
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
-            ExecutionEngine::isDBServer()) {
+            triagens::arango::ServerState::instance()->isDBserver()) {
           auto* node = static_cast<UpdateNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             // Ignore document not found on the DBserver:
@@ -4198,7 +4198,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         // all exceptions are caught in _trx->update()
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
         if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
-            ExecutionEngine::isDBServer()) {
+            triagens::arango::ServerState::instance()->isDBserver()) {
           auto* node = static_cast<ReplaceNode const*>(getPlanNode());
           if (! node->getOptions().ignoreDocumentNotFound) {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;
@@ -5560,8 +5560,8 @@ RemoteBlock::RemoteBlock (ExecutionEngine* engine,
     _queryId(queryId) {
 
   TRI_ASSERT(! queryId.empty());
-  TRI_ASSERT_EXPENSIVE((ExecutionEngine::isCoordinator() && ownName.empty()) ||
-                       (! ExecutionEngine::isCoordinator() && ! ownName.empty()));
+  TRI_ASSERT_EXPENSIVE((triagens::arango::ServerState::instance()->isCoordinator() && ownName.empty()) ||
+                       (! triagens::arango::ServerState::instance()->isCoordinator() && ! ownName.empty()));
 }
 
 RemoteBlock::~RemoteBlock () {

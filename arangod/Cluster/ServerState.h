@@ -52,20 +52,19 @@ namespace triagens {
 /// @brief an enum describing the roles a server can have
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef enum {
+        enum RoleEnum : int {
           ROLE_UNDEFINED = 0,  // initial value
           ROLE_SINGLE,         // is set when cluster feature is off
           ROLE_PRIMARY,
           ROLE_SECONDARY,
           ROLE_COORDINATOR
-        }
-        RoleEnum;
+        };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief an enum describing the possible states a server can have
 ////////////////////////////////////////////////////////////////////////////////
 
-        typedef enum {
+        enum StateEnum {
           STATE_UNDEFINED = 0,         // initial value
           STATE_STARTUP,               // used by all roles
           STATE_SERVINGASYNC,          // primary only
@@ -77,8 +76,7 @@ namespace triagens {
           STATE_LOSTPRIMARY,           // secondary only
           STATE_SERVING,               // coordinator only
           STATE_SHUTDOWN               // used by all roles
-        }
-        StateEnum;
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -401,6 +399,22 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically fetches the server role
+////////////////////////////////////////////////////////////////////////////////
+  
+        RoleEnum loadRole () {
+          return static_cast<RoleEnum>(_role.load(std::memory_order_consume));
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief atomically stores the server role
+////////////////////////////////////////////////////////////////////////////////
+  
+        void storeRole (RoleEnum role) {
+          _role.store(role, std::memory_order_release);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief determine the server role
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -549,7 +563,7 @@ namespace triagens {
 /// @brief the server role
 ////////////////////////////////////////////////////////////////////////////////
 
-        RoleEnum _role;
+        std::atomic<int> _role;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the current state
