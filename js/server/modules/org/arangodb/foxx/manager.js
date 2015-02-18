@@ -94,8 +94,9 @@
       refillCaches(dbname);
     }
     if (!appCache[dbname].hasOwnProperty(mount)) {
+      refillCaches(dbname);
       if (!appCache[dbname].hasOwnProperty(mount)) {
-        refillCaches(dbname);
+        return appCache[dbname][mount];
       }
       throw new Error("App not found");
     }
