@@ -818,8 +818,6 @@ TRI_index_t* TRI_EnsureCapConstraintDocumentCollection (TRI_document_collection_
 
 struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t*,
                                                            char const*,
-                                                           bool,
-                                                           bool,
                                                            bool);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -830,9 +828,7 @@ struct TRI_index_s* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collecti
 
 struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t*,
                                                            char const*,
-                                                           char const*,
-                                                           bool,
-                                                           bool);
+                                                           char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ensures that a geo index exists, list style
@@ -841,8 +837,6 @@ struct TRI_index_s* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collecti
 struct TRI_index_s* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t*,
                                                            TRI_idx_iid_t,
                                                            char const*,
-                                                           bool,
-                                                           bool,
                                                            bool,
                                                            bool*);
 
@@ -854,8 +848,6 @@ struct TRI_index_s* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collecti
                                                            TRI_idx_iid_t,
                                                            char const*,
                                                            char const*,
-                                                           bool,
-                                                           bool,
                                                            bool*);
 
 // -----------------------------------------------------------------------------

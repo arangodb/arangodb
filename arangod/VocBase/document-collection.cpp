@@ -3710,8 +3710,6 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
                                                       char const* latitude,
                                                       char const* longitude,
                                                       bool geoJson,
-                                                      bool unique,
-                                                      bool ignoreNull,
                                                       TRI_idx_iid_t iid,
                                                       bool* created) {
   TRI_index_t* idx;
@@ -3757,10 +3755,10 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   // check, if we know the index
   if (location != nullptr) {
-    idx = TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson, unique, ignoreNull);
+    idx = TRI_LookupGeoIndex1DocumentCollection(document, location, geoJson);
   }
   else if (longitude != nullptr && latitude != nullptr) {
-    idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude, unique, ignoreNull);
+    idx = TRI_LookupGeoIndex2DocumentCollection(document, latitude, longitude);
   }
   else {
     TRI_set_errno(TRI_ERROR_INTERNAL);
@@ -3780,14 +3778,14 @@ static TRI_index_t* CreateGeoIndexDocumentCollection (TRI_document_collection_t*
 
   // create a new index
   if (location != nullptr) {
-    idx = TRI_CreateGeo1Index(document, iid, location, loc, geoJson, unique, ignoreNull);
+    idx = TRI_CreateGeo1Index(document, iid, location, loc, geoJson);
 
     LOG_TRACE("created geo-index for location '%s': %ld",
               location,
               (unsigned long) loc);
   }
   else if (longitude != nullptr && latitude != nullptr) {
-    idx = TRI_CreateGeo2Index(document, iid, latitude, lat, longitude, lon, unique, ignoreNull);
+    idx = TRI_CreateGeo2Index(document, iid, latitude, lat, longitude, lon);
 
     LOG_TRACE("created geo-index for location '%s': %ld, %ld",
               location,
@@ -3837,8 +3835,6 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
   TRI_json_t* type;
   TRI_json_t* bv;
   TRI_json_t* fld;
-  bool unique;
-  bool ignoreNull;
   char const* typeStr;
   size_t fieldCount;
 
@@ -3859,31 +3855,6 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
   if (fld == nullptr) {
     return TRI_errno();
-  }
-
-  // extract unique
-  unique = false;
-  // first try "unique" attribute
-  bv = TRI_LookupObjectJson(definition, "unique");
-
-  if (bv != nullptr && bv->_type == TRI_JSON_BOOLEAN) {
-    unique = bv->_value._boolean;
-  }
-  else {
-    // then "constraint"
-    bv = TRI_LookupObjectJson(definition, "constraint");
-
-    if (TRI_IsBooleanJson(bv)) {
-      unique = bv->_value._boolean;
-    }
-  }
-
-  // extract ignore null
-  ignoreNull = false;
-  bv = TRI_LookupObjectJson(definition, "ignoreNull");
-
-  if (TRI_IsBooleanJson(bv)) {
-    ignoreNull = bv->_value._boolean;
   }
 
   // list style
@@ -3907,8 +3878,6 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
                                         nullptr,
                                         nullptr,
                                         geoJson,
-                                        unique,
-                                        ignoreNull,
                                         iid,
                                         nullptr);
 
@@ -3937,8 +3906,6 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
                                              lat->_value._string.data,
                                              lon->_value._string.data,
                                              false,
-                                             unique,
-                                             ignoreNull,
                                              iid,
                                              nullptr);
 
@@ -3973,9 +3940,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
 TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* document,
                                                     char const* location,
-                                                    bool geoJson,
-                                                    bool unique,
-                                                    bool ignoreNull) {
+                                                    bool geoJson) {
   TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shape_pid_t loc = shaper->lookupAttributePathByName(shaper, location);
@@ -3993,11 +3958,8 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
       TRI_geo_index_t* geo = (TRI_geo_index_t*) idx;
 
       if (geo->_location != 0 && geo->_location == loc &&
-          geo->_geoJson == geoJson &&
-          idx->_unique == unique) {
-        if (! unique || geo->base._ignoreNull == ignoreNull) {
-          return idx;
-        }
+          geo->_geoJson == geoJson) {
+        return idx;
       }
     }
   }
@@ -4011,9 +3973,7 @@ TRI_index_t* TRI_LookupGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
 TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* document,
                                                     char const* latitude,
-                                                    char const* longitude,
-                                                    bool unique,
-                                                    bool ignoreNull) {
+                                                    char const* longitude) {
   TRI_shaper_t* shaper = document->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   TRI_shape_pid_t lat = shaper->lookupAttributePathByName(shaper, latitude);
@@ -4034,11 +3994,8 @@ TRI_index_t* TRI_LookupGeoIndex2DocumentCollection (TRI_document_collection_t* d
       if (geo->_latitude != 0 &&
           geo->_longitude != 0 &&
           geo->_latitude == lat &&
-          geo->_longitude == lon &&
-          idx->_unique == unique) {
-        if (! unique || geo->base._ignoreNull == ignoreNull) {
-          return idx;
-        }
+          geo->_longitude == lon) {
+        return idx;
       }
     }
   }
@@ -4054,8 +4011,6 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
                                                     TRI_idx_iid_t iid,
                                                     char const* location,
                                                     bool geoJson,
-                                                    bool unique,
-                                                    bool ignoreNull,
                                                     bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
@@ -4065,7 +4020,7 @@ TRI_index_t* TRI_EnsureGeoIndex1DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, unique, ignoreNull, iid, created);
+  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, location, nullptr, nullptr, geoJson, iid, created);
 
   if (idx != nullptr) {
     if (created) {
@@ -4096,8 +4051,6 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
                                                     TRI_idx_iid_t iid,
                                                     char const* latitude,
                                                     char const* longitude,
-                                                    bool unique,
-                                                    bool ignoreNull,
                                                     bool* created) {
   TRI_ReadLockReadWriteLock(&document->_vocbase->_inventoryLock);
 
@@ -4107,7 +4060,7 @@ TRI_index_t* TRI_EnsureGeoIndex2DocumentCollection (TRI_document_collection_t* d
 
   TRI_WRITE_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, unique, ignoreNull, iid, created);
+  TRI_index_t* idx = CreateGeoIndexDocumentCollection(document, nullptr, latitude, longitude, false, iid, created);
 
   if (idx != nullptr) {
     if (created) {
