@@ -370,6 +370,30 @@
       });
 
     });
+
+    it("should trigger the setup script", function() {
+      var button = "#app-setup";
+      spyOn(appDummy, "setup").andCallThrough();
+      spyOn($, "ajax").andCallFake(function(opts) {
+        opts.success();
+      });
+      view.render();
+      expect($(button).val()).toEqual("Setup");
+      $(button).click();
+      expect(appDummy.setup).toHaveBeenCalledWith(jasmine.any(Function));
+    });
+
+    it("should trigger the teardown script", function() {
+      var button = "#app-teardown";
+      spyOn(appDummy, "teardown").andCallThrough();
+      spyOn($, "ajax").andCallFake(function(opts) {
+        opts.success();
+      });
+      view.render();
+      expect($(button).val()).toEqual("Teardown");
+      $(button).click();
+      expect(appDummy.teardown).toHaveBeenCalledWith(jasmine.any(Function));
+    });
     /*
     describe("edit a foxx", function() {
 
