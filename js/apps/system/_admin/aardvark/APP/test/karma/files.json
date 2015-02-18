@@ -3,6 +3,7 @@
     { "pattern": "frontend/js/templates/*.ejs", "served": true, "included": false, "watched": true},
     { "pattern": "clusterFrontend/js/templates/*.ejs", "served": true, "included": false, "watched": true},
     "test/mocks/activateTest.js",
+    "test/mocks/createDummy.js",
     "test/specs/graphViewer/helper/eventHelper.js",
     "test/specs/graphViewer/helper/objectsHelper.js",
     "test/specs/graphViewer/helper/mocks.js",
