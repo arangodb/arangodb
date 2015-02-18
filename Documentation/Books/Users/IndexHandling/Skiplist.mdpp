@@ -5,16 +5,26 @@
 
 This is an introduction to ArangoDB's skiplists.
 
-It is possible to define a skip-list index on one or more attributes (or paths)
-of a documents. This skip-list is then used in queries to locate documents
-within a given range. If the skip-list is unique, then no two documents are
+It is possible to define a skiplist index on one or more attributes (or paths)
+of a documents. This skiplist is then used in queries to locate documents
+within a given range. If the skiplist is unique, then no two documents are
 allowed to have the same set of attribute values.
+
+Creating a new document or updating a document will fail if the uniqueness is violated. 
+If the skiplist index is declared sparse, a document will be excluded from the index and no 
+uniqueness checks will be performed if any index attribute value is not set or has a value 
+of `null`. 
 
 !SECTION Accessing Skiplist Indexes from the Shell
 
-`ensureUniqueSkiplist(field1, field2, ..., fieldn)`
+`collection.ensureUniqueSkiplist(field1, field2, ..., fieldn)`
 
-Creates a skiplist index on all documents using attributes as paths to the fields. At least one attribute must be given. All documents, which do not have the attribute path or with one or more values that are not suitable, are ignored.
+Creates a unique skiplist index on all documents using *field1*, *field2*, ... as attribute paths.
+At least one attribute path must be given. The index will be non-sparse by default.
+
+To create a sparse index, use the following command:
+
+`collection.ensureUniqueSkiplist(field1, field2, ..., fieldn, { sparse: true })`
 
 In case that the index was successfully created, the index identifier is returned.
 
@@ -54,9 +64,14 @@ stacktrace: [ArangoError 1210: cannot save document: unique constraint violated]
 at (arango):1:8
 ```
 
-`ensureSkiplist(field1, field2, ..., fieldn)`
+`collection.ensureSkiplist(field1, field2, ..., fieldn)`
 
-Creates a multi skiplist index on all documents using attributes as paths to the fields. At least one attribute must be given. All documents, which do not have the attribute path or with one or more values that are not suitable, are ignored.
+Creates a non-unique skiplist index on all documents using *field1*, *field2*, ... as attribute paths.
+At least one attribute path must be given. The index will be non-sparse by default.
+
+To create a sparse index, use the following command:
+
+`collection.ensureSkiplist(field1, field2, ..., fieldn, { sparse: true })`
 
 In case that the index was successfully created, the index identifier is returned.
 
@@ -76,11 +91,13 @@ arangosh> db.names.save({ "first" : "Tom" });
 { "_id" : "names/43118724", "_key" : "43118724", "_rev" : "43118724" }
 ```
 
-<!--
-@anchor IndexSkiplistShellEnsureUniqueSkiplist
-@copydetails JSF_ArangoCollection_prototype_ensureUniqueSkiplist
+Note that in addition to the two specialized index creation methods, there is also the
+general method `collection.ensureIndex`, which can be used to create indexes of any type
+and also supports uniqueness and sparsity:
 
-@CLEARPAGE
-@anchor IndexSkiplistShellEnsureSkiplist
-@copydetails JSF_ArangoCollection_prototype_ensureSkiplist
--->
+*Examples*
+
+```
+arangosh> db.test.ensureIndex({ type: "skiplist", fields: [ "a" ], sparse: true });
+arangosh> db.test.ensureIndex({ type: "skiplist", fields: [ "a", "b" ], unique: true });
+```
