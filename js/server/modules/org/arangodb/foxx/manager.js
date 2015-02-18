@@ -614,15 +614,23 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Initializes the appCache and fills it initially for each db.
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var initCache = function () {
+    var dbname = arangodb.db._name();
+    if (!appCache.hasOwnProperty(dbname)) {
+      initializeFoxx();
+    }
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Internal scanFoxx function. Check scanFoxx.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
     var dbname = arangodb.db._name();
-    if (!appCache.hasOwnProperty(dbname)) {
-      initializeFoxx();
-    }
     delete appCache[dbname][mount];
     var app = createApp(mount, options, activateDevelopment);
     utils.getStorage().save(app.toJSON());
@@ -640,6 +648,7 @@
       "scanFoxx(<mount>)",
       [ [ "Mount path", "string" ] ],
       [ mount ] );
+    initCache();
     var app = _scanFoxx(mount, options);
     reloadRouting();
     return app.simpleJSON();
@@ -659,6 +668,7 @@
 
     var old = lookupApp(mount);
     var collection = utils.getStorage();
+    initCache();
     db._executeTransaction({
       collections: {
         write: collection.name()
@@ -712,6 +722,7 @@
       }
       throw e;
     }
+    initCache();
     try {
       db._executeTransaction({
         collections: {
