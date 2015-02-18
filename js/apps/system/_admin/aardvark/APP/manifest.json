@@ -130,7 +130,7 @@
 
     "app.js": {
       "files": [
-        "frontend/build/app.js"
+        "frontend/build/app.min.js"
       ]
     },
 
