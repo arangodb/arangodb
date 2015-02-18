@@ -5142,6 +5142,10 @@ pre.gv-object-view {
 .foxx-store-row .foxx-version {
   font-weight: 400; }
 
+#new-app-mount {
+  margin-right: 24px;
+  width: 360px; }
+
 .navlogo .stat_cpu {
   height: 26px;
   margin-top: 1px;

@@ -513,22 +513,6 @@ namespace triagens {
         std::string _defaultLanguage;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief development mode
-/// @startDocuBlock developmentMode
-/// `--development-mode`
-///
-/// Specifying this option will start the server in development mode. The
-/// development mode forces reloading of all actions and Foxx applications on
-/// every HTTP request. This is very resource-intensive and slow, but makes
-/// developing server-side actions and Foxx applications much easier.
-///
-/// **WARNING**: Never use this option in production.
-/// @endDocuBlock
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _developmentMode; /* variable is only used for documentation generation */
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief the server
 ////////////////////////////////////////////////////////////////////////////////
 

@@ -317,6 +317,10 @@ func (w *WAL) sync() error {
 			return err
 		}
 	}
+        
+        if value := os.Getenv("ETCD_NONO_WAL_SYNC"); value == "1" {
+                return nil
+        }
 	return w.f.Sync()
 }
 
