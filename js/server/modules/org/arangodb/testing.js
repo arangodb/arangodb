@@ -578,7 +578,11 @@ function cleanupDBDirectories(options) {
 
 function cleanUpAppFolder() {
   var path = findAppDir();
-  fs.removeDirectoryRecursive(path, true);
+  try {
+    fs.removeDirectoryRecursive(path, true);
+  } catch(e) {
+    // May not exist for various tests
+  }
 }
 
 function makePathUnix (path) {
