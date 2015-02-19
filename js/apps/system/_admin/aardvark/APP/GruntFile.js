@@ -1,6 +1,7 @@
 (function() {
   "use strict";
 
+  var vName = Date.now();
   module.exports = function(grunt) {
 
     grunt.initConfig({
@@ -46,7 +47,11 @@
             "frontend/js/lib/highlight.7.3.pack.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.js",
-            "frontend/src/ace.js"
+            "frontend/src/ace.js",
+            "frontend/src/theme-textmate.js",
+            "frontend/src/mode-json.js",
+            "frontend/src/mode-aql.js"
+
           ],
           graphViewer: [
             "frontend/js/graphViewer/graph/*",
@@ -101,7 +106,7 @@
             "frontend/scss/cluster.scss"
           ],
           js: [
-            "clusterFrontend/js/*"
+            "clusterFrontend/js/**"
           ]
         }
       },
@@ -127,7 +132,6 @@
         }
       },
 
-      
       concat_in_order: {
         default: {
           files: {
@@ -147,6 +151,72 @@
               return [];
             }
           }
+        },
+        sharedLibs: {
+          src: [
+            "frontend/js/lib/jquery-2.1.0.min.js",
+            "frontend/js/lib/underscore.js",
+            "frontend/js/lib/backbone.js",
+            "frontend/js/lib/bootstrap.js"
+          ],
+          dest: 'build/sharedLibs.js',
+          options: {
+            extractRequired: function () {
+              return [];
+            },
+            extractDeclared: function () {
+              return [];
+            }
+          }
+        },
+        jsCluster: {
+          src: [
+            "frontend/js/arango/arango.js",
+            "clusterFrontend/js/models/*",
+            "clusterFrontend/js/collections/*",
+            "frontend/js/models/arangoDocument.js",
+            "frontend/js/models/arangoStatistics.js",
+            "frontend/js/models/arangoStatisticsDescription.js",
+            "frontend/js/collections/_paginatedCollection.js",
+            "frontend/js/collections/arangoStatisticsCollection.js",
+            "frontend/js/collections/arangoDocuments.js",
+            "frontend/js/arango/templateEngine.js",
+            "frontend/js/views/footerView.js",
+            "frontend/js/views/dashboardView.js",
+            "frontend/js/views/modalView.js",
+            "frontend/js/config/dygraphConfig.js",
+            "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
+            "clusterFrontend/js/views/*",
+            "clusterFrontend/js/routers/*",
+          ],
+          dest: 'clusterFrontend/build/cluster.js'
+        },
+        htmlCluster: {
+          src: [ 
+            "frontend/html/start.html.part",
+            "clusterFrontend/html/head.html.part",
+            "frontend/js/templates/dashboardView.ejs",
+            "frontend/js/templates/modalBase.ejs",
+            "frontend/js/templates/footerView.ejs",
+            "frontend/js/templates/modalGraph.ejs",
+            "frontend/js/templates/lineChartDetailView.ejs",
+            "clusterFrontend/js/templates/*.ejs",
+            "frontend/html/body.html.part",
+            "clusterFrontend/html/scripts.html.part",
+            "frontend/html/end.html.part"
+          ],
+          dest: 'clusterFrontend/build/cluster.html'
+        },
+        htmlStandalone: {
+          src: [
+            "frontend/html/start.html.part",
+            "frontend/html/head.html.part",
+            "frontend/js/templates/*.ejs",
+            "frontend/html/body.html.part",
+            "frontend/build/scripts.html.part",
+            "frontend/html/end.html.part"
+          ],
+          dest: 'frontend/build/standalone.html' 
         },
         coverage: {
           files: {
@@ -171,6 +241,18 @@
         }
       },
 
+      replace: {
+        scripts: {
+          src: "frontend/html/scripts.html.part",
+          dest: "frontend/build/scripts.html.part",
+          replacements: [{
+            from: "__VERSION",
+            to: vName
+          }]
+        }
+      },
+
+
       jshint: {
         options: {
           laxbreak: true
@@ -191,36 +273,65 @@
       watch: {
         sass: {
           files: [
-            'frontend/scss/{,*/}*.{scss,sass}', 
-            'clusterFrontend/scss/{,*/}*.{scss,sass}', 
+            'frontend/scss/{,*/}*.{scss,sass}',
+            'clusterFrontend/scss/{,*/}*.{scss,sass}',
           ],
           tasks: ['sass:dev']
         },
         concat_in_order: {
           files: [
-            'frontend/js/{,*/}*.js'
+            'frontend/js/{,*/}*.js',
+            'clusterFrontend/js/{,*/}*.js'
           ],
-          tasks: ['concat_in_order:default']
+          tasks: [
+            'concat_in_order:sharedLibs',
+            'concat_in_order:default',
+            'concat_in_order:jsCluster',
+          ]
+        },
+        html: {
+          files: [
+            'frontend/html/*',
+            'clusterFrontend/html/*'
+          ],
+          tasks: [
+            'concat_in_order:htmlCluster',
+            'concat_in_order:htmlStandalone'
+          ]
         }
       }
     });
 
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
+    grunt.loadNpmTasks('grunt-text-replace');
 
     grunt.registerTask('default', [
       'sass:dev',
+      'replace',
+      'concat_in_order:sharedLibs',
       'concat_in_order:default',
+      'concat_in_order:jsCluster',
+      'concat_in_order:htmlCluster',
+      'concat_in_order:htmlStandalone',
       'watch'
     ]);
 
     grunt.registerTask('deploy', [
       'sass:dist',
+      'concat_in_order:sharedLibs',
       'concat_in_order:default',
+      'concat_in_order:jsCluster',
+      'concat_in_order:htmlCluster',
+      'concat_in_order:htmlStandalone',
       'uglify:dist'
     ]);
 
     grunt.registerTask('coverage', [
       'concat_in_order:coverage'
+    ]);
+
+    grunt.registerTask('peter', [
+      'concat_in_order:default',
     ]);
 
   };
