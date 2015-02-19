@@ -188,30 +188,6 @@ ExecutionEngine::~ExecutionEngine () {
   }
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// @brief whether or not we are a coordinator
-////////////////////////////////////////////////////////////////////////////////
-       
-bool ExecutionEngine::isCoordinator () {
-  return triagens::arango::ServerState::instance()->isCoordinator();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// @brief whether or not we are a db server
-////////////////////////////////////////////////////////////////////////////////
-       
-bool ExecutionEngine::isDBServer () {
-  return triagens::arango::ServerState::instance()->isDBserver();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// @brief whether or not we are a running in a cluster
-////////////////////////////////////////////////////////////////////////////////
-       
-bool ExecutionEngine::isRunningInCluster () {
-  return triagens::arango::ServerState::instance()->isRunningInCluster();
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                     walker class for ExecutionNode to instanciate
 // -----------------------------------------------------------------------------
@@ -928,7 +904,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 
     ExecutionBlock* root = nullptr;
 
-    if (isCoordinator()) {
+    if (triagens::arango::ServerState::instance()->isCoordinator()) {
       // instanciate the engine on the coordinator
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
@@ -1095,7 +1071,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
     return engine;
   }
   catch (...) {
-    if (! isCoordinator()) {
+    if (! triagens::arango::ServerState::instance()->isCoordinator()) {
       delete engine;
     }
     throw;

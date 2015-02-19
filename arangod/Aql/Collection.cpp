@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
+#include "Cluster/ServerState.h"
 #include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -81,7 +82,7 @@ Collection::~Collection () {
 
 size_t Collection::count () const {
   if (numDocuments == UNINITIALIZED) {
-    if (ExecutionEngine::isCoordinator()) {
+    if (triagens::arango::ServerState::instance()->isCoordinator()) {
       // cluster case
       uint64_t result;
       int res = triagens::arango::countOnCoordinator(vocbase->_name, name, result); 
@@ -217,7 +218,7 @@ void Collection::fillIndexes () const {
     return;
   }
 
-  if (ExecutionEngine::isCoordinator()) {
+  if (triagens::arango::ServerState::instance()->isCoordinator()) {
     fillIndexesCoordinator();
     return;
   }
@@ -225,7 +226,8 @@ void Collection::fillIndexes () const {
   // must have a collection  
   TRI_ASSERT(collection != nullptr);
 
-  if (ExecutionEngine::isDBServer() && documentCollection()->_info._planId > 0) {
+  if (triagens::arango::ServerState::instance()->isDBserver() && 
+      documentCollection()->_info._planId > 0) {
     fillIndexesDBServer();
     return;
   }

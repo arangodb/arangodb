@@ -98,28 +98,26 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int TypeWeight (TRI_json_t const* value) {
-  if (value == nullptr) {
-    return 0;
+  if (value != nullptr) {
+    switch (value->_type) {
+      case TRI_JSON_BOOLEAN:
+        return 1;
+      case TRI_JSON_NUMBER:
+        return 2;
+      case TRI_JSON_STRING:
+      case TRI_JSON_STRING_REFERENCE:
+        // a string reference has the same weight as a regular string
+        return 3;
+      case TRI_JSON_ARRAY:
+        return 4;
+      case TRI_JSON_OBJECT:
+        return 5;
+      case TRI_JSON_NULL:
+      case TRI_JSON_UNUSED:
+        break;
+    }
   }
-
-  switch (value->_type) {
-    case TRI_JSON_BOOLEAN:
-      return 1;
-    case TRI_JSON_NUMBER:
-      return 2;
-    case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE:
-      // a string reference has the same weight as a regular string
-      return 3;
-    case TRI_JSON_ARRAY:
-      return 4;
-    case TRI_JSON_OBJECT:
-      return 5;
-    case TRI_JSON_NULL:
-    case TRI_JSON_UNUSED:
-    default:
-      return 0;
-  }
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
