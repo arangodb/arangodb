@@ -15,9 +15,10 @@ ArangoDB and shouldn't be used if possible.
 * Foxx: the signature of method `requestContext.queryParam()` has changed. `requestContext.queryParam({type: "string"})` does not work anymore. Please use `requestContext.queryParam({type: joi.string()})` instead.
 * Foxx: the signature of method `requestContext.pathParam()` has changed. `requestContext.pathParam({type: "string"})` does not work anymore. Please use `requestContext.pathParam({type: joi.string()})` instead.
 * Foxx: method `Model#toJSONSchema(id)` is deprecated, it will raise a warning if you use it. Please use `Foxx.toJSONSchema(id, model)` instead.
-* Graphs: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` have been removed entirely. Please use module `org/arangodb/general-graph` instead.
 * General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are no longer available. Both functions have been unified to `_relation`.
-* HTTP API: The api `_api/graph` has been removed entirely. Please use the general graph api `_api/gharial` instead.
+
+* Graphs: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint` are deprecated. Please use module `org/arangodb/general-graph` instead.
+* HTTP API: The api `_api/graph` is deprecated. Please use the general graph api `_api/gharial` instead.
 
 
 ## 2.6
