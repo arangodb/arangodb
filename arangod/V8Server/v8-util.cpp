@@ -56,7 +56,7 @@ v8::Handle<v8::Value> V8TickId (v8::Isolate* isolate, TRI_voc_tick_t tick) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) tick, (char*) &buffer);
 
-  return TRI_V8_PAIR_STRING((const char*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING((char const*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -67,7 +67,7 @@ v8::Handle<v8::Value> V8RevisionId (v8::Isolate* isolate, TRI_voc_rid_t rid) {
   char buffer[21];
   size_t len = TRI_StringUInt64InPlace((uint64_t) rid, (char*) &buffer);
 
-  return TRI_V8_PAIR_STRING((const char*) buffer, (int) len);
+  return TRI_V8_PAIR_STRING((char const*) buffer, (int) len);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -98,7 +98,7 @@ static bool ParseDocumentHandle (v8::Handle<v8::Value> const arg,
   // the handle must always be an ASCII string. These is no need to normalise it first
   v8::String::Utf8Value str(arg);
 
-  if (*str == 0) {
+  if (*str == nullptr) {
     return false;
   }
 
@@ -153,14 +153,14 @@ bool ExtractDocumentHandle (v8::Isolate* isolate,
     v8::Handle<v8::Object> obj = val->ToObject();
     TRI_GET_GLOBAL_STRING(_IdKey);
     TRI_GET_GLOBAL_STRING(_KeyKey);
-    if (obj->Has(_IdKey)) {
+    if (obj->HasRealNamedProperty(_IdKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_IdKey);
 
       if (! ParseDocumentHandle(didVal, collectionName, key)) {
         return false;
       }
     }
-    else if (obj->Has(_KeyKey)) {
+    else if (obj->HasRealNamedProperty(_KeyKey)) {
       v8::Handle<v8::Value> didVal = obj->Get(_KeyKey);
 
       if (! ParseDocumentHandle(didVal, collectionName, key)) {
@@ -172,7 +172,7 @@ bool ExtractDocumentHandle (v8::Isolate* isolate,
     }
 
     TRI_GET_GLOBAL_STRING(_RevKey);
-    if (! obj->Has(_RevKey)) {
+    if (! obj->HasRealNamedProperty(_RevKey)) {
       return true;
     }
 

@@ -888,7 +888,7 @@ static int FillShapeValueJson (v8::Isolate* isolate,
 
   if (json->IsObject()) {
     v8::Handle<v8::Object> o = json->ToObject();
-    v8::Handle<v8::String> toJsonString = TRI_V8_ASCII_STRING("toJSON");
+    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
     if (o->Has(toJsonString)) {
       v8::Handle<v8::Value> func = o->Get(toJsonString);
       if (func->IsFunction()) {
@@ -1804,7 +1804,7 @@ static int ObjectToJson (v8::Isolate* isolate,
     v8::Handle<v8::Object> o = parameter->ToObject();
 
     // first check if the object has a "toJSON" function
-    v8::Handle<v8::String> toJsonString = TRI_V8_ASCII_STRING("toJSON");
+    v8::Handle<v8::String> toJsonString = TRI_V8_PAIR_STRING("toJSON", 6);
     if (o->Has(toJsonString)) {
       // call it if yes
       v8::Handle<v8::Value> func = o->Get(toJsonString);
