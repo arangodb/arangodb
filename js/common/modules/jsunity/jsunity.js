@@ -1,3 +1,5 @@
+/* jshint evil: true, strict: false */
+/* global require, exports */
 //<%
 /**
  * jsUnity Universal JavaScript Testing Framework v0.6
@@ -46,7 +48,9 @@ var jsUnity = exports.jsUnity = (function () {
     assertException: function (fn, message) {
       counter++;
       try {
-        fn instanceof Function && fn();
+        if (fn instanceof Function) {
+          fn();
+        }
       } catch (e) {
         return;
       }
@@ -227,7 +231,7 @@ var jsUnity = exports.jsUnity = (function () {
   function empty() {}
   
   function plural(cnt, unit) {
-    return cnt + " " + unit + (cnt == 1 ? "" : "s");
+    return cnt + " " + unit + (cnt === 1 ? "" : "s");
   }
 
   function splitFunction(fn) {
@@ -265,7 +269,7 @@ var jsUnity = exports.jsUnity = (function () {
       
       if (!obj[token]
           && (fn = probeInside(token))
-          && fn != probeOutside(token)) {
+          && fn !== probeOutside(token)) {
 
         obj[token] = fn;
       }
@@ -297,8 +301,8 @@ var jsUnity = exports.jsUnity = (function () {
           break;
         case "string":
           var fn;
-          
-          if (fn = probeOutside(item)) {
+          fn = probeOutside(item);
+          if (typeof (fn) !== 'undefined') {
             obj[item] = fn;
           }
         }
@@ -340,17 +344,17 @@ var jsUnity = exports.jsUnity = (function () {
     level: "info"
   };
 
+  var streamLoglevel = function (strLevel, numLevel) {
+    return function (s) {
+      if (numLevel >= logLevels[this.level] ) {
+        this.write(s, strLevel);
+      }
+    };
+  };
   for (var level in logLevels) {
-    logStream[level] = (function () {
-      var strLevel = level;
-      var numLevel = logLevels[level];
-
-      return function (s) {
-        if (numLevel >= logLevels[this.level] ) {
-          this.write(s, strLevel);
-        }
-      };
-    })();
+    if (logLevels.hasOwnProperty(level)) {
+      logStream[level] = streamLoglevel(level, logLevels[level]);
+    }
   }
 
   var tapStream = {
@@ -419,7 +423,9 @@ var jsUnity = exports.jsUnity = (function () {
       scope = scope || this.env.defaultScope;
 
       for (var fn in jsUnity.assertions) {
-        scope[fn] = jsUnity.assertions[fn];
+        if (jsUnity.assertions.hasOwnProperty(fn)) {
+          scope[fn] = jsUnity.assertions[fn];
+        }
       }
     },
 
@@ -444,15 +450,26 @@ var jsUnity = exports.jsUnity = (function () {
       }
     },
 
+
     run: function () {
+      var getFixtureUtil = function (fnName, suite) {
+        var fn = suite[fnName];
+        
+        return fn
+          ? function (testName) {
+            fn.call(suite.scope, testName);
+          }
+        : empty;
+      };
       var results = new jsUnity.TestResults();
 
       var suiteNames = [];
       var start = jsUnity.env.getDate();
 
       for (var i = 0; i < arguments.length; i++) {
+        var suite;
         try {
-          var suite = jsUnity.compile(arguments[i]);
+          suite = jsUnity.compile(arguments[i]);
         } catch (e) {
           this.log.error("Invalid test suite: " + e);
           return false;
@@ -466,18 +483,9 @@ var jsUnity = exports.jsUnity = (function () {
         suiteNames.push(suite.suiteName);
         results.total += cnt;
         
-        function getFixtureUtil(fnName) {
-          var fn = suite[fnName];
-          
-          return fn
-            ? function (testName) {
-              fn.call(suite.scope, testName);
-            }
-          : empty;
-        }
         
-        var setUp = getFixtureUtil("setUp");
-        var tearDown = getFixtureUtil("tearDown");
+        var setUp = getFixtureUtil("setUp", suite);
+        var tearDown = getFixtureUtil("tearDown", suite);
 
         for (var j = 0; j < cnt; j++) {
           var test = suite.tests[j];
@@ -496,7 +504,7 @@ var jsUnity = exports.jsUnity = (function () {
             tearDown(test.name); // if tearDown above throws exc, will call again!
 
             if (e.stack !== undefined) {
-              this.results.fail(j + 1, test.name, String(e.stack));
+              this.results.fail(j + 1, test.name, e + " - " + String(e.stack));
             }
             else {
               this.results.fail(j + 1, test.name, e);
