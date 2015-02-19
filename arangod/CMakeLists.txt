@@ -226,7 +226,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/apps/system/_admin
-  DESTINATION share/arangodb/js
+  DESTINATION share/arangodb/js/apps/system
   REGEX "/node_modules/" EXCLUDE
   REGEX "/test/" EXCLUDE
   REGEX "/test_data/" EXCLUDE
@@ -235,7 +235,7 @@ install(
 
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/apps/system/_api ${PROJECT_SOURCE_DIR}/js/apps/system/_system
-  DESTINATION share/arangodb/js
+  DESTINATION share/arangodb/js/apps/system
   REGEX "/test/" EXCLUDE
   REGEX "/test_data/" EXCLUDE
   PATTERN "_db" EXCLUDE)
