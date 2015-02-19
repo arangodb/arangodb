@@ -1,16 +1,16 @@
-shell> curl -X PUT --header 'If-Match: "1515168045"' --data-binary @- --dump - http://localhost:8529/_api/document/products/1514840365
+shell> curl -X PUT --header 'If-Match: "1518886419"' --data-binary @- --dump - http://localhost:8529/_api/document/products/1518558739
 {"other":"content"}
 
 HTTP/1.1 412 Precondition Failed
 content-type: application/json; charset=utf-8
-etag: "1514840365"
+etag: "1518558739"
 
 { 
   "error" : true, 
   "code" : 412, 
   "errorNum" : 1200, 
   "errorMessage" : "precondition failed", 
-  "_id" : "products/1514840365", 
-  "_rev" : "1514840365", 
-  "_key" : "1514840365" 
+  "_id" : "products/1518558739", 
+  "_rev" : "1518558739", 
+  "_key" : "1518558739" 
 }
