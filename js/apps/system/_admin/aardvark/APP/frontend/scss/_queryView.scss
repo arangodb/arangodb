@@ -328,3 +328,17 @@
 .queryImport {
   margin-bottom: 10px;
 }
+
+svg.explain-tree {
+  width: 100%;
+
+  .node text {
+    font-size: 14px;
+  }
+
+  .link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px;
+  }
+}

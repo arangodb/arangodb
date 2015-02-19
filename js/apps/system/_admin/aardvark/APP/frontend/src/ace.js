@@ -69,7 +69,7 @@ var _require = function(parentId, module, callback) {
         for (var i = 0, l = module.length; i < l; ++i) {
             var dep = lookup(parentId, module[i]);
             if (!dep && _require.original)
-                return _require.original.apply(window, arguments);
+                return _require.original(module, callback);
             params.push(dep);
         }
         if (callback) {
@@ -79,7 +79,7 @@ var _require = function(parentId, module, callback) {
     else if (typeof module === 'string') {
         var payload = lookup(parentId, module);
         if (!payload && _require.original)
-            return _require.original.apply(window, arguments);
+          return _require.original(module, callback);
 
         if (callback) {
             callback();
@@ -89,7 +89,7 @@ var _require = function(parentId, module, callback) {
     }
     else {
         if (_require.original)
-            return _require.original.apply(window, arguments);
+          return _require.original(module, callback);
     }
 };
 

@@ -1,0 +1,68 @@
+{
+  "author": {
+    "name": "mklabs"
+  },
+  "name": "tiny-lr-fork",
+  "description": "Tiny LiveReload server, background-friendly",
+  "version": "0.0.5",
+  "homepage": "https://github.com/mklabs/tiny-lr",
+  "repository": {
+    "url": "git://github.com/mklabs/tiny-lr.git"
+  },
+  "bin": {
+    "tiny-lr-fork": "./bin/tiny-lr"
+  },
+  "main": "./lib",
+  "scripts": {
+    "prepublish:": "npm test",
+    "test": "mocha --reporter list",
+    "test-debug": "DEBUG=tinylr:* mocha --reporter list",
+    "test-debug-all": "DEBUG=* mocha --reporter list"
+  },
+  "dependencies": {
+    "qs": "~0.5.2",
+    "faye-websocket": "~0.4.3",
+    "noptify": "~0.0.3",
+    "debug": "~0.7.0"
+  },
+  "devDependencies": {
+    "mocha": "~1.7.1",
+    "request": "~2.12.0",
+    "supertest": "~0.4.2",
+    "express": "~3.0.6",
+    "connect": "~2.7.2"
+  },
+  "config": {
+    "test_port": "9001"
+  },
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/mklabs/tiny-lr/blob/master/LICENSE-MIT"
+    }
+  ],
+  "bugs": {
+    "url": "https://github.com/mklabs/tiny-lr/issues"
+  },
+  "_id": "tiny-lr-fork@0.0.5",
+  "dist": {
+    "shasum": "1e99e1e2a8469b736ab97d97eefa98c71f76ed0a",
+    "tarball": "http://registry.npmjs.org/tiny-lr-fork/-/tiny-lr-fork-0.0.5.tgz"
+  },
+  "_from": "tiny-lr-fork@0.0.5",
+  "_npmVersion": "1.4.3",
+  "_npmUser": {
+    "name": "shama",
+    "email": "kyle@dontkry.com"
+  },
+  "maintainers": [
+    {
+      "name": "shama",
+      "email": "kyle@dontkry.com"
+    }
+  ],
+  "directories": {},
+  "_shasum": "1e99e1e2a8469b736ab97d97eefa98c71f76ed0a",
+  "_resolved": "https://registry.npmjs.org/tiny-lr-fork/-/tiny-lr-fork-0.0.5.tgz",
+  "readme": "ERROR: No README data found!"
+}

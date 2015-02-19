@@ -1,7 +1,7 @@
 // Karma configuration
 // Generated on Thu Jul 04 2013 11:39:34 GMT+0200 (CEST)
 
-filesJSON = require("./files.json");
+filesJSON = require("./files_coverage.json");
 
 module.exports = function(karma) {
 
@@ -25,14 +25,7 @@ module.exports = function(karma) {
 
     preprocessors: {
       'test/karma/files.json': ['html2js'],
-      'clusterFrontend/js/**/**.js': ['coverage'],
-      'frontend/js/arango/**.js': ['coverage'],
-      'frontend/js/collections/**.js': ['coverage'],
-      'frontend/js/config/**.js': ['coverage'],
-      'frontend/js/graphViewer/**/**.js': ['coverage'],
-      'frontend/js/models/**.js': ['coverage'],
-      'frontend/js/routers/**.js': ['coverage'],
-      'frontend/js/views/**.js': ['coverage']
+      'frontend/build/app.test.js': ['coverage']
     },
 
     // test results reporter to use

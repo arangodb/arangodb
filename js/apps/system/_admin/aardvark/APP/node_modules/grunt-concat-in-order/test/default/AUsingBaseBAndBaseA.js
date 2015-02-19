@@ -1,0 +1,6 @@
+/*start AUsingBaseBAndBaseA*/
+framwork.require('module.BaseB');
+framwork.require('module.BaseA');
+framework.declare('module.UsingBaseBAndBaseA');
+var forth = function fourthFunction(){};
+/*end AUsingBaseBAnddBaseA*/

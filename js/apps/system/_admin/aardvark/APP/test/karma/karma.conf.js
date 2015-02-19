@@ -2,7 +2,7 @@
 // Generated on Thu Jul 04 2013 11:39:34 GMT+0200 (CEST)
 
 filesJSON = require("./files.json");
-filesJSON.files.push('test/specJSLint/jsLintSpec.js');
+// filesJSON.files.push('test/specJSLint/jsLintSpec.js');
 
 module.exports = function(karma) {
 

@@ -354,18 +354,18 @@
       it("should switch to production if in development", function() {
         appDummy.set("development", true);
         view.render();
-        expect($(switchButton).val()).toEqual("Production");
+        expect($(switchButton).val()).toEqual("Set Pro");
         $(switchButton).click();
-        expect($(switchButton).val()).toEqual("Development");
+        expect($(switchButton).val()).toEqual("Set Dev");
         expect(appDummy.toggleDevelopment).toHaveBeenCalledWith(false, jasmine.any(Function));
       });
 
       it("should switch to development if in production", function() {
         appDummy.set("development", false);
         view.render();
-        expect($(switchButton).val()).toEqual("Development");
+        expect($(switchButton).val()).toEqual("Set Dev");
         $(switchButton).click();
-        expect($(switchButton).val()).toEqual("Production");
+        expect($(switchButton).val()).toEqual("Set Pro");
         expect(appDummy.toggleDevelopment).toHaveBeenCalledWith(true, jasmine.any(Function));
       });
 
