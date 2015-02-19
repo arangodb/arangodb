@@ -604,7 +604,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
         v8::Handle<v8::Array> props = v8Headers->GetPropertyNames();
 
         for (uint32_t i = 0; i < props->Length(); i++) {
-          v8::Handle<v8::Value> key = props->Get(v8::Integer::New(isolate, i));
+          v8::Handle<v8::Value> key = props->Get(i);
           headerFields[TRI_ObjectToString(key)] = TRI_ObjectToString(v8Headers->Get(key));
         }
       }
@@ -657,7 +657,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       outfile = TRI_ObjectToString(args[3]);
     }
 
-    if (outfile == "") {
+    if (outfile.empty()) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid value provided for outfile");
     }
 
@@ -716,6 +716,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
               url.c_str());
 
     Endpoint* ep = Endpoint::clientFactory(endpoint);
+
     if (ep == nullptr) {
       TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid URL");
     }
@@ -739,21 +740,21 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // send the actual request
     SimpleHttpResult* response = client->request(method,
                                                 relative,
-                                                (body.size() > 0 ? body.c_str() : 0),
+                                                (body.size() > 0 ? body.c_str() : nullptr),
                                                 body.size(),
                                                 headerFields);
 
-    int returnCode;
+    int returnCode = 500; // set a default
     string returnMessage;
 
-    if (! response || ! response->isComplete()) {
+    if (response == nullptr || ! response->isComplete()) {
       // save error message
       returnMessage = client->getErrorMessage();
       returnCode = 500;
 
       delete client;
 
-      if (response && response->getHttpReturnCode() > 0) {
+      if (response != nullptr && response->getHttpReturnCode() > 0) {
         returnCode = response->getHttpReturnCode();
       }
     }
@@ -771,7 +772,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
         delete response;
         delete connection;
-        connection = 0;
+        connection = nullptr;
         delete ep;
 
         if (! found) {
