@@ -1,6 +1,8 @@
 v2.5.0-alpha2 (2015-02-16)
 -------------------
 
+* front-end: dashboard tries not to (re)load statistics if user has no access
+
 * V8: Upgrade to version 3.31.74.1
 
 * etcd: Upgrade to version 2.0 - This requires go 1.3 to compile at least.
