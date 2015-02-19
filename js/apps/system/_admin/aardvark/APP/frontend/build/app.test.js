@@ -17718,7 +17718,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
+/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {
@@ -17739,9 +17739,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #result-switch": "switchTab",
       "click #query-switch": "switchTab",
       'click #customs-switch': "switchTab",
-      'click #explain-switch': "switchTab",
+//      'click #explain-switch': "switchTab",
       'click #submitQueryButton': 'submitQuery',
-      'click #explainQueryButton': 'explainQuery',
+//      'click #explainQueryButton': 'explainQuery',
       'click #commentText': 'commentText',
       'click #uncommentText': 'uncommentText',
       'click #undoText': 'undoText',
@@ -18372,7 +18372,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       },
 
       preparePlanNodeEntry: function(node, parentCost) {
-        console.log(node);
         var json = {
           estimatedCost: node.estimatedCost,
           estimatedNrItems: node.estimatedNrItems,
@@ -18389,7 +18388,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         }
         return json;
       },
-
+      /*
       drawTree: function() {
         var treeHeight = 0;
         var heatmap = this.heatmap.bind(this);
@@ -18480,11 +18479,13 @@ window.ArangoUsers = Backbone.Collection.extend({
           .attr("d", diagonal);
 
       },
+      */
 
       resize: function() {
-        this.drawTree();
+        // this.drawTree();
       },
 
+      /*
       showExplainPlan: function(plan) {
         $("svg#explainOutput").html();
         var nodes = plan.nodes;
@@ -18496,11 +18497,15 @@ window.ArangoUsers = Backbone.Collection.extend({
           this.drawTree();
         }
       },
+      */
 
+     /*
       showExplainWarnings: function(warnings) {
         $(".explain-warnings").html(this.warningTemplate.render({warnings: warnings}));
       },
+      */
 
+      /*
       fillExplain: function(callback) {
         var self = this;
         $("svg#explainOutput").html();
@@ -18524,6 +18529,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           }
         });
       },
+      */
 
       fillResult: function(callback) {
         var self = this;
@@ -18582,19 +18588,21 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       submitQuery: function () {
         var outputEditor = ace.edit("queryOutput");
-        this.fillExplain();
+        // this.fillExplain();
         this.fillResult(this.switchTab.bind(this, "result-switch"));
         outputEditor.resize();
         var inputEditor = ace.edit("aqlEditor");
         this.deselect(inputEditor);
       },
 
+      /*
       explainQuery: function() {
         this.fillExplain(this.switchTab.bind(this, "explain-switch"));
         this.execPending = true;
         var inputEditor = ace.edit("aqlEditor");
         this.deselect(inputEditor);
       },
+      */
 
       // This function changes the focus onto the tab that has been clicked
       // it can be given an event-object or the id of the tab to switch to
