@@ -668,7 +668,10 @@ am__installdirs = "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" \
 	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" \
 	"$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" \
 	"$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" \
-	"$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSdir)" \
+	"$(DESTDIR)$(pkgdataACTIONSdir)" \
+	"$(DESTDIR)$(pkgdataAPPSADMINdir)" \
+	"$(DESTDIR)$(pkgdataAPPSAPIdir)" \
+	"$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" \
 	"$(DESTDIR)$(pkgdataCLIENTdir)" \
 	"$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataMRUBYdir)" \
 	"$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataSERVERdir)"
@@ -881,7 +884,8 @@ man8dir = $(mandir)/man8
 NROFF = nroff
 MANS = $(dist_man_MANS)
 DATA = $(arangosysconf_DATA) $(nobase_pkgdata_DATA) \
-	$(nobase_pkgdataACTIONS_DATA) $(nobase_pkgdataAPPS_DATA) \
+	$(nobase_pkgdataACTIONS_DATA) $(nobase_pkgdataAPPSADMIN_DATA) \
+	$(nobase_pkgdataAPPSAPI_DATA) $(nobase_pkgdataAPPSSYSTEM_DATA) \
 	$(nobase_pkgdataCLIENT_DATA) $(nobase_pkgdataCOMMON_DATA) \
 	$(nobase_pkgdataMRUBY_DATA) $(nobase_pkgdataNODE_DATA) \
 	$(nobase_pkgdataSERVER_DATA)
@@ -1298,6 +1302,9 @@ pkgdataSERVERdir = $(datadir)/arangodb
 pkgdataCLIENTdir = $(datadir)/arangodb
 pkgdataNODEdir = $(datadir)/arangodb
 pkgdataAPPSdir = $(datadir)/arangodb
+pkgdataAPPSADMINdir = $(datadir)/arangodb
+pkgdataAPPSAPIdir = $(datadir)/arangodb
+pkgdataAPPSSYSTEMdir = $(datadir)/arangodb
 pkgdataMRUBYdir = $(datadir)/arangodb
 nobase_pkgdata_DATA = 
 nobase_pkgdataACTIONS_DATA = $(shell find @srcdir@/js/actions -name "*.js" -print)
@@ -1305,7 +1312,11 @@ nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
 nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
-nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+
+# note: we want to exclude node_modules from aardvark because they are only needed by grunt and not to run aardvark
+nobase_pkgdataAPPSADMIN_DATA = $(shell find @srcdir@/js/apps/system/_admin -type f "(" -path "*/node_modules/*" -o -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+nobase_pkgdataAPPSAPI_DATA = $(shell find @srcdir@/js/apps/system/_api -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+nobase_pkgdataAPPSSYSTEM_DATA = $(shell find @srcdir@/js/apps/system/_system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
 @ENABLE_MRUBY_TRUE@nobase_pkgdataMRUBY_DATA = \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
 @ENABLE_MRUBY_TRUE@	$(shell find @srcdir@/mr/common -name "*.rb" -print) 
@@ -7729,12 +7740,12 @@ uninstall-nobase_pkgdataACTIONSDATA:
 	@list='$(nobase_pkgdataACTIONS_DATA)'; test -n "$(pkgdataACTIONSdir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
 	dir='$(DESTDIR)$(pkgdataACTIONSdir)'; $(am__uninstall_files_from_dir)
-install-nobase_pkgdataAPPSDATA: $(nobase_pkgdataAPPS_DATA)
+install-nobase_pkgdataAPPSADMINDATA: $(nobase_pkgdataAPPSADMIN_DATA)
 	@$(NORMAL_INSTALL)
-	@list='$(nobase_pkgdataAPPS_DATA)'; test -n "$(pkgdataAPPSdir)" || list=; \
+	@list='$(nobase_pkgdataAPPSADMIN_DATA)'; test -n "$(pkgdataAPPSADMINdir)" || list=; \
 	if test -n "$$list"; then \
-	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSdir)'"; \
-	  $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSdir)" || exit 1; \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSADMINdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSADMINdir)" || exit 1; \
 	fi; \
 	$(am__nobase_list) | while read dir files; do \
 	  xfiles=; for file in $$files; do \
@@ -7742,17 +7753,65 @@ install-nobase_pkgdataAPPSDATA: $(nobase_pkgdataAPPS_DATA)
 	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
 	  test -z "$$xfiles" || { \
 	    test "x$$dir" = x. || { \
-	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSdir)/$$dir'"; \
-	      $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSdir)/$$dir"; }; \
-	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataAPPSdir)/$$dir'"; \
-	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataAPPSdir)/$$dir" || exit $$?; }; \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSADMINdir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSADMINdir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataAPPSADMINdir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataAPPSADMINdir)/$$dir" || exit $$?; }; \
 	done
 
-uninstall-nobase_pkgdataAPPSDATA:
+uninstall-nobase_pkgdataAPPSADMINDATA:
 	@$(NORMAL_UNINSTALL)
-	@list='$(nobase_pkgdataAPPS_DATA)'; test -n "$(pkgdataAPPSdir)" || list=; \
+	@list='$(nobase_pkgdataAPPSADMIN_DATA)'; test -n "$(pkgdataAPPSADMINdir)" || list=; \
 	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
-	dir='$(DESTDIR)$(pkgdataAPPSdir)'; $(am__uninstall_files_from_dir)
+	dir='$(DESTDIR)$(pkgdataAPPSADMINdir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataAPPSAPIDATA: $(nobase_pkgdataAPPSAPI_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataAPPSAPI_DATA)'; test -n "$(pkgdataAPPSAPIdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSAPIdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSAPIdir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSAPIdir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSAPIdir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataAPPSAPIdir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataAPPSAPIdir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataAPPSAPIDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataAPPSAPI_DATA)'; test -n "$(pkgdataAPPSAPIdir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataAPPSAPIdir)'; $(am__uninstall_files_from_dir)
+install-nobase_pkgdataAPPSSYSTEMDATA: $(nobase_pkgdataAPPSSYSTEM_DATA)
+	@$(NORMAL_INSTALL)
+	@list='$(nobase_pkgdataAPPSSYSTEM_DATA)'; test -n "$(pkgdataAPPSSYSTEMdir)" || list=; \
+	if test -n "$$list"; then \
+	  echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSSYSTEMdir)'"; \
+	  $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" || exit 1; \
+	fi; \
+	$(am__nobase_list) | while read dir files; do \
+	  xfiles=; for file in $$files; do \
+	    if test -f "$$file"; then xfiles="$$xfiles $$file"; \
+	    else xfiles="$$xfiles $(srcdir)/$$file"; fi; done; \
+	  test -z "$$xfiles" || { \
+	    test "x$$dir" = x. || { \
+	      echo " $(MKDIR_P) '$(DESTDIR)$(pkgdataAPPSSYSTEMdir)/$$dir'"; \
+	      $(MKDIR_P) "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)/$$dir"; }; \
+	    echo " $(INSTALL_DATA) $$xfiles '$(DESTDIR)$(pkgdataAPPSSYSTEMdir)/$$dir'"; \
+	    $(INSTALL_DATA) $$xfiles "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)/$$dir" || exit $$?; }; \
+	done
+
+uninstall-nobase_pkgdataAPPSSYSTEMDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(nobase_pkgdataAPPSSYSTEM_DATA)'; test -n "$(pkgdataAPPSSYSTEMdir)" || list=; \
+	$(am__nobase_strip_setup); files=`$(am__nobase_strip)`; \
+	dir='$(DESTDIR)$(pkgdataAPPSSYSTEMdir)'; $(am__uninstall_files_from_dir)
 install-nobase_pkgdataCLIENTDATA: $(nobase_pkgdataCLIENT_DATA)
 	@$(NORMAL_INSTALL)
 	@list='$(nobase_pkgdataCLIENT_DATA)'; test -n "$(pkgdataCLIENTdir)" || list=; \
@@ -8096,7 +8155,7 @@ check: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) check-am
 all-am: Makefile $(LIBRARIES) $(PROGRAMS) $(SCRIPTS) $(MANS) $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSdir)" "$(DESTDIR)$(pkgdataCLIENTdir)" "$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataMRUBYdir)" "$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataSERVERdir)"; do \
+	for dir in "$(DESTDIR)$(bindir)" "$(DESTDIR)$(sbindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(pkglibexecdir)" "$(DESTDIR)$(man1dir)" "$(DESTDIR)$(man8dir)" "$(DESTDIR)$(arangosysconfdir)" "$(DESTDIR)$(pkgdatadir)" "$(DESTDIR)$(pkgdataACTIONSdir)" "$(DESTDIR)$(pkgdataAPPSADMINdir)" "$(DESTDIR)$(pkgdataAPPSAPIdir)" "$(DESTDIR)$(pkgdataAPPSSYSTEMdir)" "$(DESTDIR)$(pkgdataCLIENTdir)" "$(DESTDIR)$(pkgdataCOMMONdir)" "$(DESTDIR)$(pkgdataMRUBYdir)" "$(DESTDIR)$(pkgdataNODEdir)" "$(DESTDIR)$(pkgdataSERVERdir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -8240,7 +8299,9 @@ info-am:
 
 install-data-am: install-arangosysconfDATA install-data-local \
 	install-man install-nobase_pkgdataACTIONSDATA \
-	install-nobase_pkgdataAPPSDATA \
+	install-nobase_pkgdataAPPSADMINDATA \
+	install-nobase_pkgdataAPPSAPIDATA \
+	install-nobase_pkgdataAPPSSYSTEMDATA \
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataMRUBYDATA install-nobase_pkgdataNODEDATA \
@@ -8297,7 +8358,9 @@ ps-am:
 uninstall-am: uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man \
 	uninstall-nobase_pkgdataACTIONSDATA \
-	uninstall-nobase_pkgdataAPPSDATA \
+	uninstall-nobase_pkgdataAPPSADMINDATA \
+	uninstall-nobase_pkgdataAPPSAPIDATA \
+	uninstall-nobase_pkgdataAPPSSYSTEMDATA \
 	uninstall-nobase_pkgdataCLIENTDATA \
 	uninstall-nobase_pkgdataCOMMONDATA \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataMRUBYDATA \
@@ -8325,7 +8388,9 @@ uninstall-man: uninstall-man1 uninstall-man8
 	install-exec-hook install-html install-html-am install-info \
 	install-info-am install-man install-man1 install-man8 \
 	install-nobase_pkgdataACTIONSDATA \
-	install-nobase_pkgdataAPPSDATA \
+	install-nobase_pkgdataAPPSADMINDATA \
+	install-nobase_pkgdataAPPSAPIDATA \
+	install-nobase_pkgdataAPPSSYSTEMDATA \
 	install-nobase_pkgdataCLIENTDATA \
 	install-nobase_pkgdataCOMMONDATA install-nobase_pkgdataDATA \
 	install-nobase_pkgdataMRUBYDATA install-nobase_pkgdataNODEDATA \
@@ -8338,7 +8403,9 @@ uninstall-man: uninstall-man1 uninstall-man8
 	uninstall-am uninstall-arangosysconfDATA uninstall-binPROGRAMS \
 	uninstall-binSCRIPTS uninstall-man uninstall-man1 \
 	uninstall-man8 uninstall-nobase_pkgdataACTIONSDATA \
-	uninstall-nobase_pkgdataAPPSDATA \
+	uninstall-nobase_pkgdataAPPSADMINDATA \
+	uninstall-nobase_pkgdataAPPSAPIDATA \
+	uninstall-nobase_pkgdataAPPSSYSTEMDATA \
 	uninstall-nobase_pkgdataCLIENTDATA \
 	uninstall-nobase_pkgdataCOMMONDATA \
 	uninstall-nobase_pkgdataDATA uninstall-nobase_pkgdataMRUBYDATA \
@@ -9289,8 +9356,8 @@ swagger:
 	(python \
             @srcdir@/Documentation/Scripts/generateSwaggerApi.py \
                 @srcdir@ \
-                @srcdir@/js/apps/system/aardvark/api-docs api-docs \
-        ) > @srcdir@/js/apps/system/aardvark/api-docs.json	
+                @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs api-docs \
+        ) > @srcdir@/js/apps/system/_admin/aardvark/APP/api-docs.json	
 
 ################################################################################
 ### @brief generate examples
