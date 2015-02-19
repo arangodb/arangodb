@@ -1,4 +1,4 @@
-v2.5.0-alpha5 (2015-02-18)
+v2.5.0-alpha6 (2015-02-18)
 -------------------
 
 * front-end: dashboard tries not to (re)load statistics if user has no access

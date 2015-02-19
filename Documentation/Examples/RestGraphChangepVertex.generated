@@ -5,13 +5,13 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1192421723
+etag: 1190764845
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1192421723", 
+    "_rev" : "1190764845", 
     "optional1" : "vertexPatch" 
   }, 
   "error" : false, 
@@ -24,13 +24,13 @@ shell> curl -X PATCH --data-binary @- --dump - http://localhost:8529/_api/graph/
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1192946011
+etag: 1191289133
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1192946011", 
+    "_rev" : "1191289133", 
     "optional1" : null 
   }, 
   "error" : false, 

@@ -53,7 +53,7 @@ content-type: application/json; charset=utf-8
           ], 
           "index" : { 
             "type" : "hash", 
-            "id" : "1172957531", 
+            "id" : "1171890477", 
             "unique" : false, 
             "sparse" : false, 
             "selectivityEstimate" : 1, 

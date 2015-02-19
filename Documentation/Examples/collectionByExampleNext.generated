@@ -1,8 +1,8 @@
 arangosh> var a = db.users.byExample( {"name" : "Angela" } );
 arangosh> while (a.hasNext()) print(a.next());
 { 
-  "_id" : "users/785836379", 
-  "_key" : "785836379", 
-  "_rev" : "785836379", 
+  "_id" : "users/783261997", 
+  "_key" : "783261997", 
+  "_rev" : "783261997", 
   "name" : "Angela" 
 }
