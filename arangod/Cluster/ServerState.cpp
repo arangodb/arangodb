@@ -60,10 +60,12 @@ ServerState::ServerState ()
     _address(),
     _authentication(),
     _lock(),
-    _role(ROLE_UNDEFINED),
+    _role(),
     _state(STATE_UNDEFINED),
     _initialised(false),
     _clusterEnabled(false) {
+    
+  storeRole(ROLE_UNDEFINED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,14 +223,17 @@ std::string ServerState::getAuthentication () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::flush () {
-  WRITE_LOCKER(_lock);
+  {
+    WRITE_LOCKER(_lock);
 
-  if (_id.empty()) {
-    return;
+    if (_id.empty()) {
+      return;
+    }
+
+    _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
   }
 
-  _address = ClusterInfo::instance()->getTargetServerEndpoint(_id);
-  _role = determineRole(_localInfo, _id);
+  storeRole(determineRole(_localInfo, _id));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -236,8 +241,9 @@ void ServerState::flush () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::isCoordinator () {
-  READ_LOCKER(_lock);
-  return (_role == ServerState::ROLE_COORDINATOR);
+  auto role = loadRole();
+
+  return (role == ServerState::ROLE_COORDINATOR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,9 +252,10 @@ bool ServerState::isCoordinator () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::isDBserver () {
-  READ_LOCKER(_lock);
-  return (_role == ServerState::ROLE_PRIMARY ||
-          _role == ServerState::ROLE_SECONDARY);
+  auto role = loadRole();
+
+  return (role == ServerState::ROLE_PRIMARY ||
+          role == ServerState::ROLE_SECONDARY);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -256,10 +263,11 @@ bool ServerState::isDBserver () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ServerState::isRunningInCluster () {
-  READ_LOCKER(_lock);
-  return (_role == ServerState::ROLE_PRIMARY ||
-          _role == ServerState::ROLE_SECONDARY ||
-          _role == ServerState::ROLE_COORDINATOR);
+  auto role = loadRole();
+  
+  return (role == ServerState::ROLE_PRIMARY ||
+          role == ServerState::ROLE_SECONDARY ||
+          role == ServerState::ROLE_COORDINATOR);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -271,10 +279,10 @@ ServerState::RoleEnum ServerState::getRole () {
   std::string info;
 
   {
-    READ_LOCKER(_lock);
-    if (_role != ServerState::ROLE_UNDEFINED ||
-        ! _clusterEnabled) {
-      return _role;
+    auto role = loadRole();
+    
+    if (role != ServerState::ROLE_UNDEFINED || ! _clusterEnabled) {
+      return role;
     }
 
     info = _localInfo;
@@ -304,14 +312,11 @@ ServerState::RoleEnum ServerState::getRole () {
 
   // role not yet set
   RoleEnum role = determineRole(info, id);
-  std::string roleSt = roleToString(role);
+  std::string roleString = roleToString(role);
 
-  LOG_DEBUG("Found my role: %s", roleSt.c_str());
+  LOG_DEBUG("Found my role: %s", roleString.c_str());
 
-  {
-    WRITE_LOCKER(_lock);
-    _role = role;
-  }
+  storeRole(role);
 
   return role;
 }
@@ -321,8 +326,7 @@ ServerState::RoleEnum ServerState::getRole () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ServerState::setRole (RoleEnum role) {
-  WRITE_LOCKER(_lock);
-  _role = role;
+  storeRole(role);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -451,6 +455,7 @@ ServerState::StateEnum ServerState::getState () {
 
 void ServerState::setState (StateEnum state) {
   bool result = false;
+  auto role = loadRole();
 
   WRITE_LOCKER(_lock);
 
@@ -458,19 +463,19 @@ void ServerState::setState (StateEnum state) {
     return;
   }
 
-  if (_role == ROLE_PRIMARY) {
+  if (role == ROLE_PRIMARY) {
     result = checkPrimaryState(state);
   }
-  else if (_role == ROLE_SECONDARY) {
+  else if (role == ROLE_SECONDARY) {
     result = checkSecondaryState(state);
   }
-  else if (_role == ROLE_COORDINATOR) {
+  else if (role == ROLE_COORDINATOR) {
     result = checkCoordinatorState(state);
   }
 
   if (result) {
     LOG_INFO("changing state of %s server from %s to %s",
-             ServerState::roleToString(_role).c_str(),
+             ServerState::roleToString(role).c_str(),
              ServerState::stateToString(_state).c_str(),
              ServerState::stateToString(state).c_str());
 
@@ -478,7 +483,7 @@ void ServerState::setState (StateEnum state) {
   }
   else {
     LOG_ERROR("invalid state transition for %s server from %s to %s",
-              ServerState::roleToString(_role).c_str(),
+              ServerState::roleToString(role).c_str(),
               ServerState::stateToString(_state).c_str(),
               ServerState::stateToString(state).c_str());
   }
