@@ -13,7 +13,6 @@ table.dataTable thead th {
 	border-bottom: 1px solid black;
 	font-weight: bold;
 	cursor: pointer;
-	*cursor: hand;
 }
 
 table.dataTable tfoot th {
@@ -48,7 +47,6 @@ table.dataTable tr.even td.sorting_3 { background-color: #F9F9FF; }
 .dataTables_wrapper {
 	position: relative;
 	clear: both;
-	*zoom: 1;
 }
 
 
@@ -94,7 +92,6 @@ table.dataTable tr.even td.sorting_3 { background-color: #F9F9FF; }
 	height: 19px;
 	float: left;
 	cursor: pointer;
-	*cursor: hand;
 	color: #111 !important;
 }
 .paginate_disabled_previous:hover,
@@ -153,7 +150,6 @@ table.dataTable tr.even td.sorting_3 { background-color: #F9F9FF; }
 	padding: 2px 5px;
 	margin: 0 3px;
 	cursor: pointer;
-	*cursor: hand;
 	color: #333 !important;
 }
 
@@ -215,7 +211,6 @@ table.dataTable thead td:active {
 }
 
 .dataTables_scrollBody {
-	*margin-top: -1px;
 	-webkit-overflow-scrolling: touch;
 }
 
