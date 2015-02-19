@@ -63,6 +63,7 @@ function FoxxManagerSuite () {
 
     setUp: function () {
       db._useDatabase("_system");
+      fm.update();
     },
 
 ////////////////////////////////////////////////////////////////////////////////
