@@ -1,6 +1,13 @@
 !CHAPTER Foxx
 
-How well maps the Foxx environment to the requirements for a microservice framework.
+In the recent movements of software development many companies of all sizes talk about
+moving away from large monolithic applications and switch over to a microservice based
+software architecture.
+Because it yields many benefits in terms of scaling and zero-downtime.
+
+During the design of foxx we followed the concepts and ideas of microservices.
+Our baseline is the definition by Martin Fowler and James Lewis given in their [microservice article](http://martinfowler.com/articles/microservices.html).
+The following table lists a mapping of microservice concepts and how they can be realized within foxx:
 
 <table>
   <thead>
@@ -104,7 +111,15 @@ How well maps the Foxx environment to the requirements for a microservice framew
   </tbody>
 </table>
 
-TODO: Awesome introduction (micro-service framework)
+As you can see most concepts of microservices are natively available in foxx plus several additions that easy your development
+process.
+That is why we like to call foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
+on top of ArangoDB.
+
+If this short introduction has piqued your interest you can find more details in the sections below.
+We recommend to start with Foxx in a nutshell which gives a really quick introduction in how to
+create and use your first foxx.
+All other sections will give very detailed informations about the features available and a peak behind the curtains.
 
 !SECTION Foxx in a nutshell
 

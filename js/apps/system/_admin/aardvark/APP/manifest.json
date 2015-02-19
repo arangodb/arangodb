@@ -46,7 +46,7 @@
         "frontend/html/documentation.html"
       ]
     },
-    
+
     "documentation.js": {
       "files": [
         "frontend/js/lib/jquery-2.1.0.min.js",
@@ -66,59 +66,19 @@
 
     "standalone.html": {
       "files": [
-        "frontend/html/start.html.part",
-        "frontend/html/head.html.part",
-        "frontend/js/templates/aboutView.ejs",
-        "frontend/js/templates/apiView.ejs",
-        "frontend/js/templates/appDocumentationView.ejs",
-        "frontend/js/templates/applicationsView.ejs",
-        "frontend/js/templates/applicationDetailView.ejs",
-        "frontend/js/templates/applicationListView.ejs",
-        "frontend/js/templates/arangoTabbar.ejs",
-        "frontend/js/templates/arangoTable.ejs",
-        "frontend/js/templates/collectionsItemView.ejs",
-        "frontend/js/templates/collectionsView.ejs",
-        "frontend/js/templates/databaseView.ejs",
-        "frontend/js/templates/dbSelectionView.ejs",
-        "frontend/js/templates/documentsView.ejs",
-        "frontend/js/templates/documentView.ejs",
-        "frontend/js/templates/editListEntryView.ejs",
-        "frontend/js/templates/footerView.ejs",
-        "frontend/js/templates/foxxActiveView.ejs",
-        "frontend/js/templates/graphManagementView.ejs",
-        "frontend/js/templates/graphViewGroupByEntry.ejs",
-        "frontend/js/templates/lineChartDetailView.ejs",
-        "frontend/js/templates/loginView.ejs",
-        "frontend/js/templates/modalBase.ejs",
-        "frontend/js/templates/modalApplicationMount.ejs",
-        "frontend/js/templates/modalCollectionInfo.ejs",
-        "frontend/js/templates/modalDeleteConfirmation.ejs",
-        "frontend/js/templates/modalDownloadFoxx.ejs",
-        "frontend/js/templates/modalFoxxDevPath.ejs",
-        "frontend/js/templates/modalGraph.ejs",
-        "frontend/js/templates/modalGraphTable.ejs",
-        "frontend/js/templates/modalNewVersion.ejs",
-        "frontend/js/templates/modalTable.ejs",
-        "frontend/js/templates/edgeDefinitionTable.ejs",
-        "frontend/js/templates/modalHotkeys.ejs",
-        "frontend/js/templates/navigationView.ejs",
-        "frontend/js/templates/dashboardView.ejs",
-        "frontend/js/templates/logsView.ejs",
-        "frontend/js/templates/notificationItem.ejs",
-        "frontend/js/templates/notificationView.ejs",
-        "frontend/js/templates/queryView.ejs",
-        "frontend/js/templates/warningList.ejs",
-        "frontend/js/templates/shellView.ejs",
-        "frontend/js/templates/progressBase.ejs",
-        "frontend/js/templates/statisticBarView.ejs",
-        "frontend/js/templates/testView.ejs",
-        "frontend/js/templates/userBarView.ejs",
-        "frontend/js/templates/userManagementView.ejs",
-        "frontend/js/templates/tableView.ejs",
-        "frontend/js/templates/loadingTableView.ejs",
-        "frontend/html/body.html.part",
-        "frontend/html/scripts.html.part",
-        "frontend/html/end.html.part"
+        "frontend/build/standalone.html"
+      ]
+    },
+
+    "cluster.html": {
+      "files": [
+        "clusterFrontend/build/cluster.html"
+      ]
+    },
+
+    "cluster.js": {
+      "files": [
+        "clusterFrontend/build/cluster.js"
       ]
     },
 
@@ -128,18 +88,15 @@
       ]
     },
 
-    "app.js": {
+    "sharedLibs.js": {
       "files": [
-        "frontend/build/app.min.js"
+        "frontend/build/app.js"
       ]
     },
 
-    "sharedLibs.js": {
+    "app.js": {
       "files": [
-        "frontend/js/lib/jquery-2.1.0.min.js",
-        "frontend/js/lib/underscore.js",
-        "frontend/js/lib/backbone.js",
-        "frontend/js/lib/bootstrap.js"
+        "frontend/build/app.js"
       ]
     },
 
@@ -195,83 +152,11 @@
       ]
     },
 
-    "cluster.html": {
-      "files": [
-        "frontend/html/start.html.part",
-        "clusterFrontend/html/head.html.part",
-        "frontend/js/templates/footerView.ejs",
-        "frontend/js/templates/dashboardView.ejs",
-        "frontend/js/templates/modalBase.ejs",
-        "frontend/js/templates/modalGraph.ejs",
-        "frontend/js/templates/lineChartDetailView.ejs",
-        "clusterFrontend/js/templates/clusterDown.ejs",
-        "clusterFrontend/js/templates/clusterUnreachable.ejs",
-        "clusterFrontend/js/templates/detailView.ejs",
-        "clusterFrontend/js/templates/loginModal.ejs",
-        "clusterFrontend/js/templates/modalDashboardDummy.ejs",
-        "clusterFrontend/js/templates/planScenarioSelector.ejs",
-        "clusterFrontend/js/templates/serverEntry.ejs",
-        "clusterFrontend/js/templates/showCluster.ejs",
-        "clusterFrontend/js/templates/showShards.ejs",
-        "clusterFrontend/js/templates/shutdownButtonView.ejs",
-        "clusterFrontend/js/templates/symmetricPlan.ejs",
-        "clusterFrontend/js/templates/testPlan.ejs",
-        "clusterFrontend/js/templates/waitModal.ejs",
-        "frontend/html/body.html.part",
-        "clusterFrontend/html/scripts.html.part",
-        "frontend/html/end.html.part"
-       ]
-    },
-
     "css/cluster.css": {
         "files": [
          "frontend/scss/cluster.css",
          "frontend/scss/generated.css"
         ]
-    },
-
-    "cluster.js": {
-      "files": [
-        "frontend/js/arango/arango.js",
-        "clusterFrontend/js/models/clusterCollection.js",
-        "clusterFrontend/js/models/clusterCoordinator.js",
-        "clusterFrontend/js/models/clusterDatabase.js",
-        "clusterFrontend/js/models/clusterPlan.js",
-        "clusterFrontend/js/models/clusterServer.js",
-        "clusterFrontend/js/models/clusterShard.js",
-        "clusterFrontend/js/models/clusterType.js",
-        "clusterFrontend/js/collections/_automaticRetryCollection.js",
-        "clusterFrontend/js/collections/arangoClusterStatisticsCollection.js",
-        "clusterFrontend/js/collections/clusterCollections.js",
-        "clusterFrontend/js/collections/clusterCoordinators.js",
-        "clusterFrontend/js/collections/clusterDatabases.js",
-        "clusterFrontend/js/collections/clusterServers.js",
-        "clusterFrontend/js/collections/clusterShards.js",
-        "frontend/js/models/arangoDocument.js",
-        "frontend/js/models/arangoStatistics.js",
-        "frontend/js/models/arangoStatisticsDescription.js",
-        "frontend/js/collections/_paginatedCollection.js",
-        "frontend/js/collections/arangoStatisticsCollection.js",
-        "frontend/js/collections/arangoDocuments.js",
-        "frontend/js/arango/templateEngine.js",
-        "frontend/js/views/footerView.js",
-        "frontend/js/views/dashboardView.js",
-        "frontend/js/views/modalView.js",
-        "frontend/js/config/dygraphConfig.js",
-        "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
-        "clusterFrontend/js/views/clusterDownView.js",
-        "clusterFrontend/js/views/clusterUnreachableView.js",
-        "clusterFrontend/js/views/dbServerDashboardView.js",
-        "clusterFrontend/js/views/loginModalView.js",
-        "clusterFrontend/js/views/planScenarioSelectorView.js",
-        "clusterFrontend/js/views/planSymmetricView.js",
-        "clusterFrontend/js/views/planTestView.js",
-        "clusterFrontend/js/views/showClusterView.js",
-        "clusterFrontend/js/views/showShardsView.js",
-        "clusterFrontend/js/views/shutdownButtonView.js",
-        "clusterFrontend/js/routers/clusterRouter.js",
-        "clusterFrontend/js/routers/startApp.js"
-      ]
     }
   },
 
@@ -282,7 +167,7 @@
     "/fonts": "frontend/fonts",
     "/img" : "frontend/img",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
-    "/" : "frontend/src"
+    "/worker-json.js" : "frontend/src/worker-json.js"
   },
 
   "lib": "."

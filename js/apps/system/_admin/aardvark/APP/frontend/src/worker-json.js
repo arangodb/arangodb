@@ -1438,6 +1438,12 @@ var Document = function(text) {
     this.applyDeltas = function(deltas) {
         for (var i=0; i<deltas.length; i++) {
             var delta = deltas[i];
+            if (!delta.hasOwnProperty("range") || 
+                !delta.range.hasOwnProperty("start") || 
+                !delta.range.hasOwnProperty("end")
+            ) {
+              return;
+            }
             var range = Range.fromPoints(delta.range.start, delta.range.end);
 
             if (delta.action == "insertLines")
@@ -1453,7 +1459,12 @@ var Document = function(text) {
     this.revertDeltas = function(deltas) {
         for (var i=deltas.length-1; i>=0; i--) {
             var delta = deltas[i];
-
+            if (!delta.hasOwnProperty("range") || 
+                !delta.range.hasOwnProperty("start") || 
+                !delta.range.hasOwnProperty("end")
+            ) {
+              return;
+            }
             var range = Range.fromPoints(delta.range.start, delta.range.end);
 
             if (delta.action == "insertLines")

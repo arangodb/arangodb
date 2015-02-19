@@ -1321,6 +1321,7 @@ function reloadRouting () {
 
   RoutingTree = {};
   RoutingList = {};
+  foxxManager._resetCache();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

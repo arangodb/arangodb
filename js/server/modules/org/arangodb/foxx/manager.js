@@ -84,6 +84,14 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Resets the app cache
+  ////////////////////////////////////////////////////////////////////////////////
+  
+  var resetCache = function () {
+    appCache = {};
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief lookup app in cache
   /// Returns either the app or undefined if it is not cached.
   ////////////////////////////////////////////////////////////////////////////////
@@ -139,13 +147,16 @@
 
   var checkMountedSystemApps = function(dbname) {
     var i, mount;
+    var collection = utils.getStorage();
     for (i = 0; i < usedSystemMountPoints.length; ++i) {
       mount = usedSystemMountPoints[i];
-      if (!appCache[dbname][mount]) {
-        // System app not written to collection
-        _scanFoxx(mount, {});
-        setup(mount);
+      delete appCache[dbname][mount];
+      var definition = collection.firstExample({mount: mount});
+      if (definition !== null) {
+        collection.remove(definition._key);
       }
+      _scanFoxx(mount, {});
+      setup(mount);
     }
   };
 
@@ -676,7 +687,9 @@
       },
       action: function() {
         var definition = collection.firstExample({mount: mount});
-        collection.remove(definition._key);
+        if (definition !== null) {
+          collection.remove(definition._key);
+        }
         _scanFoxx(mount, old._options, old._isDevelopment);
       }
     });
@@ -1031,6 +1044,7 @@
   exports.configure = configure;
   exports.configuration = configuration;
   exports.requireApp = requireApp;
+  exports._resetCache = resetCache;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Serverside only API
