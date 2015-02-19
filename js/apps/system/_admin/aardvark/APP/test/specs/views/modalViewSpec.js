@@ -421,6 +421,7 @@
                 buttons = [],
                 cbs = {
                     callback: function () {
+                      throw "Should by a spy";
                     }
                 },
                 btn,
@@ -429,17 +430,18 @@
             e.which = 13;
             e.keyCode = 13;
 
-            spyOn(cbs, "callback").andCallThrough();
+            spyOn(cbs, "callback");
             btnObj = testee.createSuccessButton(title, cbs.callback);
             buttons.push(btnObj);
             testShow(buttons);
             btn = $(".button-" + btnObj.type, $(div));
 
 
-            spyOn($.fn, "click");
+            spyOn($.fn, "click").andCallThrough();
             $(testee.el).trigger(e);
 
             expect($.fn.click).toHaveBeenCalled();
+            expect(cbs.callback).toHaveBeenCalled();
         });
 
         it("should call function bind function for view.el input", function () {
@@ -447,8 +449,10 @@
                 btnObj = {},
                 title = "Save",
                 buttons = [],
+                textField = [],
                 cbs = {
                     callback: function () {
+                      throw "Should be a spy";
                     }
                 },
                 btn,
@@ -458,19 +462,22 @@
 
             testee.enabledHotkey = false;
 
-            spyOn(cbs, "callback").andCallThrough();
+            spyOn(cbs, "callback");
             btnObj = testee.createSuccessButton(title, cbs.callback);
             buttons.push(btnObj);
+            textField.push(
+              testee.createTextEntry("dontcare", "ABC", "asd")
+            );
 
-            testShow(buttons);
-            $('.modal-body').html('<input type="text" id="dontcare" value="asd">ABC</input>');
+            testShow(buttons, textField);
 
             btn = $(".button-" + btnObj.type, $(div));
 
-            spyOn($.fn, "click");
-            $("input").trigger(e);
+            spyOn($.fn, "click").andCallThrough();
+            $("#dontcare").trigger(e);
 
             expect($.fn.click).toHaveBeenCalled();
+            expect(cbs.callback).toHaveBeenCalled();
         });
 
         it("should call function bind function for view.el select", function () {
@@ -478,8 +485,10 @@
                 btnObj = {},
                 title = "Save",
                 buttons = [],
+                select = [],
                 cbs = {
                     callback: function () {
+                      throw "Should be a spy";
                     }
                 },
                 btn,
@@ -489,19 +498,25 @@
 
 
             testee.enabledHotkey = false;
-            spyOn(cbs, "callback").andCallThrough();
+            spyOn(cbs, "callback");
             btnObj = testee.createSuccessButton(title, cbs.callback);
             buttons.push(btnObj);
+            
+            select.push(
+              testee.createSelectEntry("dontcare", "Choose", false, undefined, 
+                testee.createOptionEntry("option1")
+              )
+            );
 
-            testShow(buttons);
-            $('.modal-body').html('<select name="top5" size="3"><option>Heino</option></select>');
+            testShow(buttons, select);
 
             btn = $(".button-" + btnObj.type, $(div));
 
-            spyOn($.fn, "click");
+            spyOn($.fn, "click").andCallThrough();
             $("select").trigger(e);
 
             expect($.fn.click).toHaveBeenCalled();
+            expect(cbs.callback).toHaveBeenCalled();
         });
 
         /*it("test focused button navigation (direction right)", function() {

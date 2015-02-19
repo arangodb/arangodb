@@ -1,0 +1,26 @@
+/*start BaseA*/
+var first = function firstFunction(){};
+/*end BaseA*/
+
+/*start AUsingBaseA*/
+/**
+ * @depend BaseA.js
+ */
+var second = function secondFunction(){};
+/*end AUsingBaseA*/
+
+/*start BaseBUsingBaseA*/
+/**
+ * @depend AUsingBaseA.js
+ */
+var third = function thirdFunction(){};
+/*end  BaseBUsingBaseA*/
+
+/*start AUsingBaseBAndBaseA*/
+/**
+ * @depend BaseBUsingBaseA.js
+ * @depend BaseA.js
+ *
+ */
+var forth = function fourthFunction(){};
+/*end AUsingBaseBAnddBaseA*/

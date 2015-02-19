@@ -1,0 +1,73 @@
+{
+  "name": "cli",
+  "description": "A tool for rapidly building command line apps",
+  "version": "0.6.5",
+  "homepage": "http://github.com/chriso/cli",
+  "keywords": [
+    "cli",
+    "command line",
+    "opts",
+    "parseopt",
+    "opt",
+    "args",
+    "console",
+    "argsparse",
+    "optparse",
+    "daemon",
+    "autocomplete",
+    "command",
+    "autocompletion"
+  ],
+  "author": {
+    "name": "Chris O'Hara",
+    "email": "cohara87@gmail.com"
+  },
+  "main": "cli.js",
+  "bugs": {
+    "url": "http://github.com/chriso/cli/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/chriso/cli.git"
+  },
+  "dependencies": {
+    "glob": "~ 3.2.1",
+    "exit": "0.1.2"
+  },
+  "contributors": [
+    {
+      "name": "Douglas Meyer"
+    }
+  ],
+  "engines": {
+    "node": ">=0.2.5"
+  },
+  "licenses": [
+    {
+      "type": "MIT"
+    }
+  ],
+  "gitHead": "18eca8df3813a399b2998dcb58e9a21af63caf4c",
+  "_id": "cli@0.6.5",
+  "scripts": {},
+  "_shasum": "f4edda12dfa8d56d726b43b0b558e089b0d2a85c",
+  "_from": "cli@>=0.6.0 <0.7.0",
+  "_npmVersion": "2.0.0",
+  "_npmUser": {
+    "name": "cohara87",
+    "email": "cohara87@gmail.com"
+  },
+  "maintainers": [
+    {
+      "name": "cohara87",
+      "email": "cohara87@gmail.com"
+    }
+  ],
+  "dist": {
+    "shasum": "f4edda12dfa8d56d726b43b0b558e089b0d2a85c",
+    "tarball": "http://registry.npmjs.org/cli/-/cli-0.6.5.tgz"
+  },
+  "directories": {},
+  "_resolved": "https://registry.npmjs.org/cli/-/cli-0.6.5.tgz",
+  "readme": "ERROR: No README data found!"
+}

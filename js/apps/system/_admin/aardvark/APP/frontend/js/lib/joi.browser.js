@@ -3594,7 +3594,18 @@ var SPECIALS = '()<>[]:;@\\,."';
 
 // matches valid IPv4 addresses from the end of a string
 var IPv4_REGEX = /\b(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)$/;
-var IPv6_REGEX = /^[a-fA-F\d]{0,4}$/, IPv6_REGEX_TEST = IPv6_REGEX.test.bind(IPv6_REGEX);
+
+
+// ---- Modification -----
+// Removed for Karma tests
+var IPv6_REGEX = /^[a-fA-F\d]{0,4}$/;
+var IPv6_REGEX_TEST;
+if (!window.hasOwnProperty("TEST_BUILD")) {
+  IPv6_REGEX_TEST = IPv6_REGEX.test.bind(IPv6_REGEX);
+}
+
+//
+// ---- End of Modification -----
 
 /**
  * Get the largest number in the array.

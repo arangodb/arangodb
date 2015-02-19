@@ -5781,6 +5781,15 @@ pre.gv-object-view {
 .queryImport {
   margin-bottom: 10px; }
 
+svg.explain-tree {
+  width: 100%; }
+  svg.explain-tree .node text {
+    font-size: 14px; }
+  svg.explain-tree .link {
+    fill: none;
+    stroke: #ccc;
+    stroke-width: 1.5px; }
+
 .display-none {
   display: none; }
 
