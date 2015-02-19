@@ -498,8 +498,8 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 /// `FoxxController#summary(description)`
 ///
-/// Set the summary for this route in the documentation. Can't be longer than 60.
-/// characters
+/// Set the summary for this route in the documentation. Can't be longer than
+/// 8192 characters
 ////////////////////////////////////////////////////////////////////////////////
 
   summary: function (summary) {
