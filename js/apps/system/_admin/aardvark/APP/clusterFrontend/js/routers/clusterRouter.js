@@ -68,6 +68,7 @@ arangoDatabase, btoa, _*/
     initialize: function () {
       this.footerView = new window.FooterView();
       this.footerView.render();
+
       var self = this;
       this.dygraphConfig = window.dygraphConfig;
       window.modalView = new window.ModalView();
