@@ -111,7 +111,7 @@
     * [Model](Foxx/Develop/Model.md)
     * [Queries](Foxx/Develop/Queries.md)
     * [Background Tasks](Foxx/Develop/Queues.md)
-    * [Console API](Foxx/FoxxConsole.md)
+    * [Console API](Foxx/Develop/Console.md)
     * [Metainformation](Foxx/Develop/Manifest.md)
   * [Production](Foxx/Production/README.md)
     * [Prod-Mode](Foxx/Production/Productionmode.md)
