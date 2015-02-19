@@ -249,6 +249,9 @@ pkgdataSERVERdir = $(datadir)/arangodb
 pkgdataCLIENTdir = $(datadir)/arangodb
 pkgdataNODEdir = $(datadir)/arangodb
 pkgdataAPPSdir = $(datadir)/arangodb
+pkgdataAPPSADMINdir = $(datadir)/arangodb
+pkgdataAPPSAPIdir = $(datadir)/arangodb
+pkgdataAPPSSYSTEMdir = $(datadir)/arangodb
 pkgdataMRUBYdir = $(datadir)/arangodb
 
 nobase_pkgdata_DATA =
@@ -258,7 +261,12 @@ nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
 nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
 nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
-nobase_pkgdataAPPS_DATA = $(shell find @srcdir@/js/apps/system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+
+# note: we want to exclude node_modules from aardvark because they are only needed by grunt and not to run aardvark
+nobase_pkgdataAPPSADMIN_DATA = $(shell find @srcdir@/js/apps/system/_admin -type f "(" -path "*/node_modules/*" -o -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+nobase_pkgdataAPPSAPI_DATA = $(shell find @srcdir@/js/apps/system/_api -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+nobase_pkgdataAPPSSYSTEM_DATA = $(shell find @srcdir@/js/apps/system/_system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
+
 
 if ENABLE_MRUBY
 
