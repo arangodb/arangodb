@@ -792,6 +792,7 @@
       initializeFoxx();
     }
     var app;
+    options = options || {};
     try {
       app = lookupApp(mount);
     } catch (e) {
@@ -799,7 +800,6 @@
         throw e;
       }
     }
-    options = options || {};
     var collection = utils.getStorage();
     var targetPath = computeAppPath(mount, true);
     if (!fs.exists(targetPath) && !options.force) {
@@ -884,7 +884,7 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
-    _uninstall(mount, true);
+    _uninstall(mount, {teardown: true});
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
@@ -903,7 +903,7 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
-    _uninstall(mount, false);
+    _uninstall(mount, {teardown: false});
     var app = _install(appInfo, mount, options, false);
     reloadRouting();
     return app.simpleJSON();
