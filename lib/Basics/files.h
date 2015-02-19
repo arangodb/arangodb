@@ -156,7 +156,10 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path);
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile (char const* old, char const* filename);
+int TRI_RenameFile (char const* old,
+                    char const* filename,
+                    long *systemError = nullptr,
+                    std::string *systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unlinks a file
