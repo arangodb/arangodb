@@ -6,7 +6,7 @@ arangosh> query.toVertices({name: "Bob"}).toArray();
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "678881627", 
+    "_rev" : "676831533", 
     "name" : "Bob" 
   } 
 ]

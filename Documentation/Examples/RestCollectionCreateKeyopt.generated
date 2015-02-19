@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/testCollectionUsers
 
 { 
-  "id" : "1371269467", 
+  "id" : "1369547053", 
   "name" : "testCollectionUsers", 
   "waitForSync" : false, 
   "isVolatile" : false, 
