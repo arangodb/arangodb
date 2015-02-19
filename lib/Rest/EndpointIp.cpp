@@ -93,9 +93,9 @@ EndpointIp::EndpointIp (const Endpoint::EndpointType type,
                         const std::string& host,
                         const uint16_t port)
   : Endpoint(type, domainType, encryption, specification, listenBacklog),
-    _reuseAddress(reuseAddress),
     _host(host),
-    _port(port) {
+    _port(port),
+    _reuseAddress(reuseAddress) {
 
   TRI_ASSERT(domainType == DOMAIN_IPV4 || domainType == Endpoint::DOMAIN_IPV6);
 }
@@ -274,7 +274,7 @@ TRI_socket_t EndpointIp::connectSocket (const struct addrinfo* aip,
 
 TRI_socket_t EndpointIp::connect (double connectTimeout,
                                   double requestTimeout) {
-  struct addrinfo* result = 0;
+  struct addrinfo* result = nullptr;
   struct addrinfo* aip;
   struct addrinfo hints;
   int error;
@@ -317,7 +317,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
       }
     }
 
-    if (result != 0) {
+    if (result != nullptr) {
       freeaddrinfo(result);
     }
 
@@ -326,7 +326,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
 
 
   // Try all returned addresses until one works
-  for (aip = result; aip != NULL; aip = aip->ai_next) {
+  for (aip = result; aip != nullptr; aip = aip->ai_next) {
     // try to bind the address info pointer
     listenSocket = connectSocket(aip, connectTimeout, requestTimeout);
     if (TRI_isvalidsocket(listenSocket)) {
@@ -343,7 +343,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout,
 #else
 
 TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) {
-  struct addrinfo* result = 0;
+  struct addrinfo* result = nullptr;
   struct addrinfo* aip;
   struct addrinfo hints;
   int error;
@@ -367,7 +367,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
   if (error != 0) {
     _errorMessage = std::string("getaddrinfo for host '") +  _host + std::string("': ") + gai_strerror(error);
 
-    if (result != 0) {
+    if (result != nullptr) {
       freeaddrinfo(result);
     }
     return listenSocket;
@@ -375,7 +375,7 @@ TRI_socket_t EndpointIp::connect (double connectTimeout, double requestTimeout) 
 
 
   // Try all returned addresses until one works
-  for (aip = result; aip != NULL; aip = aip->ai_next) {
+  for (aip = result; aip != nullptr; aip = aip->ai_next) {
     // try to bind the address info pointer
     listenSocket = connectSocket(aip, connectTimeout, requestTimeout);
     if (TRI_isvalidsocket(listenSocket)) {
