@@ -130,7 +130,7 @@
 
     "app.js": {
       "files": [
-        "frontend/build/app.min.js"
+        "frontend/build/app.js"
       ]
     },
 
@@ -282,7 +282,10 @@
     "/fonts": "frontend/fonts",
     "/img" : "frontend/img",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
-    "/" : "frontend/src"
+    "/theme-textmate.js": "frontend/src/theme-textmate.js",
+    "/mode-json.js": "frontend/src/mode-json.js",
+    "/mode-aql.js": "frontend/src/mode-aql.js",
+    "/worker-json.js" : "frontend/src/worker-json.js"
   },
 
   "lib": "."
