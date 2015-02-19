@@ -192,7 +192,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
                              int listenBacklog,
                              bool reuseAddress) {
   if (specification.size() < 7) {
-    return 0;
+    return nullptr;
   }
 
   if (listenBacklog > 0 && type == ENDPOINT_CLIENT) {
@@ -220,7 +220,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     }
     else {
       // invalid protocol
-      return 0;
+      return nullptr;
     }
   }
 
@@ -242,13 +242,13 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     // no unix socket for windows
   else if (StringUtils::isPrefix(domainType, "unix://")) {
     // unix socket
-    return 0;
+    return nullptr;
   }
 #endif
 
   else if (! StringUtils::isPrefix(domainType, "tcp://")) {
     // invalid type
-    return 0;
+    return nullptr;
   }
 
   // tcp/ip or ssl
@@ -284,7 +284,7 @@ Endpoint* Endpoint::factory (const Endpoint::EndpointType type,
     }
 
     // invalid address specification
-    return 0;
+    return nullptr;
   }
 
   // ipv4
