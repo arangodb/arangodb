@@ -228,3 +228,80 @@ The following AQL functions were added in 2.5:
 * `SHA1(value)`: generates an SHA1 hash of `value`
 * `RANDOM_TOKEN(length)`: generates a random string value of the specified length
 
+!SECTION Simplify Foxx usage
+
+Thanks to our user feedback we learned that Foxx is a powerful, yet rather complicated concept.
+With 2.5 we made it less complicated while keeping all its strength.
+That includes a rewrite of the documentation as well as some code changes as follows:
+
+!SUBSECTION Moved Foxx applications to a different folder.
+
+Until 2.4 foxx apps were stored in the following folder structure:
+`<app-path>/databases/<dbname>/<appname>:<appversion>`.
+This caused some trouble as apps where cached based on name and version and updates did not apply.
+Also the path on filesystem and the app's access URL had no relation to one another.
+Now the path on filesystem is identical to the URL (except the appended APP):
+`<app-path>/_db/<dbname>/<mointpoint>/APP`
+
+!SUBSECTION Rewrite of Foxx routing
+
+The routing of Foxx has been exposed to major internal changes we adjusted because of user feedback.
+This allows us to set the development mode per mountpoint without having to change paths and hold
+apps at seperate locations.
+
+!SUBSECTION Foxx Development mode
+
+The development mode used until 2.4 is gone. It has been replaced by a much more mature version.
+This includes the deprecation of the javascript.dev-app-path parameter, which is useless since 2.5.
+Instead of having two separate app directories for production and development, apps now reside in 
+one place, which is used for production as well as for development.
+Apps can still be put into development mode, changing their behavior compared to production mode.
+Development mode apps are still reread from disk at every request, and still they ship more debug 
+output.
+
+This change has also made the startup options `--javascript.frontend-development-mode` and 
+`--javascript.dev-app-path` obsolete. The former option will not have any effect when set, and the
+latter option is only read and used during the upgrade to 2.5 and does not have any effects later.
+
+!SUBSECTION Foxx install process
+
+Installing Foxx apps has been a two step process: import them into ArangoDB and mount them at a
+specific mountpoint. These operations have been joined together. You can install an app at one
+mountpoint, that's it. No fetch, mount, unmount, purge cycle anymore. The commands have been 
+simplified to just:
+
+* install: get your Foxx app up and running
+* uninstall: shut it down and erase it from disk
+
+!SUBSECTION Foxx error output
+
+Until 2.4 the errors produced by Foxx were not optimal. Often, the error message was just
+`unable to parse manifest` and contained only an internal stack trace.
+In 2.5 we made major improvements there, including a much more fine grained error output that
+helps you debug your Foxx apps. The error message printed is now much closer to its source and 
+should help you track it down.
+
+Also we added the default handlers for unhandled errors in Foxx apps:
+
+* You will get a nice internal error page whenever your Foxx app is called but was not installed
+  due to any error
+* You will get a proper error message when having an uncaught error appears in any app route
+
+In production mode the messages above will NOT contain any information about your Foxx internals
+and are safe to be exposed to third party users.
+In development mode the messages above will contain the stacktrace (if available), making it easier for
+your in-house devs to track down errors in the application.
+
+!SUBSECTION Foxx console
+
+We added a `console` object to Foxx apps. All Foxx apps now have a console object implementing
+the familiar Console API in their global scope, which can be used to log diagnostic
+messages to the database. This console also allows to read the error output of one specific foxx.
+
+!SUBSECTION Foxx requests
+We added `org/arangodb/request` module, which provides a simple API for making HTTP requests
+to external services. This is enables Foxx to be directly part of a micro service architecture.
+
+
+
+
