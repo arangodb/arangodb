@@ -3449,7 +3449,7 @@ static void JS_KillExternal (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Handle<v8::String> pidname = TRI_V8_ASCII_STRING("pid");
   
   // extract the arguments
-  if (args.Length() != 1) {
+  if (args.Length() != 1 || ! args[0]->IsObject()) {
     TRI_V8_THROW_EXCEPTION_USAGE("killExternal(<external-identifier>)");
   }
 
