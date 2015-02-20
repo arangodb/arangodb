@@ -586,9 +586,6 @@ int TRI_CreateDirectory (char const* path,
       if (systemErrorStr != nullptr) {
         *systemErrorStr = std::string("Failed to create directory [") + path + "] " + TRI_GET_ERRORBUF;
       }
-      if (systemError != nullptr) {
-        *systemError = errno;
-      }
 #ifndef _WIN32
       if (res == ENOENT) {
         res = TRI_ERROR_FILE_NOT_FOUND;
@@ -610,6 +607,9 @@ int TRI_CreateDirectory (char const* path,
         res = TRI_ERROR_FORBIDDEN;
       }
 #endif
+      if (systemError != nullptr) {
+        *systemError = errno;
+      }
       else {
         // an unknown error type. will be translated into system error below
         res = TRI_ERROR_NO_ERROR;
