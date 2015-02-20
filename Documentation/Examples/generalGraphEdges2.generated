@@ -5,49 +5,49 @@ arangosh> db._query("FOR e IN GRAPH_EDGES("
 ........> ).toArray();
 [ 
   { 
-    "_id" : "germanHighway/578444819", 
-    "_key" : "578444819", 
-    "_rev" : "578444819", 
+    "_id" : "germanHighway/578446786", 
+    "_key" : "578446786", 
+    "_rev" : "578446786", 
     "_from" : "germanCity/Hamburg", 
     "_to" : "germanCity/Cologne", 
     "distance" : 500 
   }, 
   { 
-    "_id" : "internationalHighway/579886611", 
-    "_key" : "579886611", 
-    "_rev" : "579886611", 
+    "_id" : "internationalHighway/579888578", 
+    "_key" : "579888578", 
+    "_rev" : "579888578", 
     "_from" : "germanCity/Cologne", 
     "_to" : "frenchCity/Lyon", 
     "distance" : 700 
   }, 
   { 
-    "_id" : "internationalHighway/580083219", 
-    "_key" : "580083219", 
-    "_rev" : "580083219", 
+    "_id" : "internationalHighway/580085186", 
+    "_key" : "580085186", 
+    "_rev" : "580085186", 
     "_from" : "germanCity/Cologne", 
     "_to" : "frenchCity/Paris", 
     "distance" : 550 
   }, 
   { 
-    "_id" : "internationalHighway/579493395", 
-    "_key" : "579493395", 
-    "_rev" : "579493395", 
+    "_id" : "internationalHighway/579495362", 
+    "_key" : "579495362", 
+    "_rev" : "579495362", 
     "_from" : "germanCity/Hamburg", 
     "_to" : "frenchCity/Paris", 
     "distance" : 900 
   }, 
   { 
-    "_id" : "frenchHighway/578772499", 
-    "_key" : "578772499", 
-    "_rev" : "578772499", 
+    "_id" : "frenchHighway/578774466", 
+    "_key" : "578774466", 
+    "_rev" : "578774466", 
     "_from" : "frenchCity/Paris", 
     "_to" : "frenchCity/Lyon", 
     "distance" : 550 
   }, 
   { 
-    "_id" : "internationalHighway/579690003", 
-    "_key" : "579690003", 
-    "_rev" : "579690003", 
+    "_id" : "internationalHighway/579691970", 
+    "_key" : "579691970", 
+    "_rev" : "579691970", 
     "_from" : "germanCity/Hamburg", 
     "_to" : "frenchCity/Lyon", 
     "distance" : 1300 

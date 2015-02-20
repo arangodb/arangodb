@@ -6,13 +6,13 @@ arangosh> query.neighbors().toArray();
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "530603539", 
+    "_rev" : "530539970", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "530800147", 
+    "_rev" : "530736578", 
     "name" : "Charly" 
   } 
 ]
