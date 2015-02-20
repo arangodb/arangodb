@@ -931,7 +931,7 @@ int TRI_RenameFile (char const* old, char const* filename, long *systemError, st
       *systemErrorStr = windowsErrorBuf;
     }
     LOG_TRACE("cannot rename file from '%s' to '%s': %d - %s",
-              old, filename, (int) errorCode, windowsErrorBuf);
+              old, filename, (int) errno, windowsErrorBuf);
     res = -1;
   }
   else {
