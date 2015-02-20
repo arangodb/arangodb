@@ -434,7 +434,7 @@
     var fs = exports;
     // File system moving directories fallback function
     exports.move = function(source, target) {
-      if (fs.isDirectory(source)) {
+      if (fs.isDirectory(source) && !fs.exists(target)) {
         // File systems cannot move directories correctly
         var tempFile = fs.getTempFile("zip", false);
         var tree = fs.listTree(source);
