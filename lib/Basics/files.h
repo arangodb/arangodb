@@ -96,13 +96,17 @@ int TRI_MTimeFile (char const* path, int64_t* mtime);
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory (char const* path);
+int TRI_CreateRecursiveDirectory (char const* path,
+                                  long *systemError = nullptr,
+                                  std::string *systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory (char const* path);
+int TRI_CreateDirectory (char const* path,
+                         long *systemError = nullptr,
+                         std::string *systemErrorStr = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory

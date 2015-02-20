@@ -187,6 +187,9 @@
 #define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
+#define TRI_SYSTEM_ERROR()              strerror(errno)
+#define TRI_ERRORBUF                    {}
+#define TRI_GET_ERRORBUF                strerror(errno)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sockets
@@ -199,6 +202,7 @@
 #define TRI_CLOSE_SOCKET                TRI_closesocket
 #define TRI_READ_SOCKET(a,b,c,d)        TRI_readsocket((a), (b), (c), (d))
 #define TRI_WRITE_SOCKET(a,b,c,d)       TRI_writesocket((a), (b), (c), (d))
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief user and group types
@@ -337,6 +341,9 @@
 #define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
+#define TRI_SYSTEM_ERROR()              strerror(errno)
+#define TRI_ERRORBUF                    {}
+#define TRI_GET_ERRORBUF                strerror(errno)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sockets
@@ -501,6 +508,9 @@
 #define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
+#define TRI_SYSTEM_ERROR()              strerror(errno)
+#define TRI_ERRORBUF                    {}
+#define TRI_GET_ERRORBUF                strerror(errno)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sockets
@@ -719,6 +729,23 @@ typedef unsigned char bool;
 #define TRI_stat_t                      struct _stat64
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
+
+#define TRI_ERRORBUF                    char windowsErrorBuf[256]
+#define TRI_GET_ERRORBUF                windowsErrorBuf
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Return system error string
+/// macro requires ERRORBUF to instanciate its buffer before.
+////////////////////////////////////////////////////////////////////////////////
+#define TRI_SYSTEM_ERROR()                      \
+  windowsErrorBuf;                              \
+  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,     \
+                NULL,                           \
+                GetLastError(),                 \
+                0,                              \
+                windowsErrorBuf,                \
+                sizeof(windowsErrorBuf), NULL); \
+  errno = GetLastError()
+
 
 #define STDIN_FILENO  0
 #define STDOUT_FILENO 1
