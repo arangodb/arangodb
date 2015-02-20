@@ -894,7 +894,7 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile (char const* old, char const* filename) {
+int TRI_RenameFile (char const* old, char const* filename, long *systemError, std::string *systemErrorStr) {
   int res;
 
 #ifdef _WIN32
@@ -903,6 +903,20 @@ int TRI_RenameFile (char const* old, char const* filename) {
 
   if (! moveResult) {
     DWORD errorCode = GetLastError();
+    if (systemError != nullptr) {
+      *systemError = errorCode;
+    }
+    if (systemErrorStr != nullptr) {
+      char windowsErrorBuf[256];
+      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
+                    NULL,
+                    GetLastError(),
+                    0,
+                    windowsErrorBuf,
+                    sizeof(windowsErrorBuf), NULL);
+
+      *systemErrorStr = windowsErrorBuf;
+    }
     LOG_TRACE("cannot rename file from '%s' to '%s': %d", old, filename, (int) errorCode);
     res = -1;
   }
@@ -914,6 +928,12 @@ int TRI_RenameFile (char const* old, char const* filename) {
 #endif
 
   if (res != 0) {
+    if (systemError != nullptr) {
+      *systemError = errno;
+    }
+    if (systemErrorStr != nullptr) {
+      *systemErrorStr = TRI_LAST_ERROR_STR;
+    }
     LOG_TRACE("cannot rename file from '%s' to '%s': %s", old, filename, TRI_LAST_ERROR_STR);
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }

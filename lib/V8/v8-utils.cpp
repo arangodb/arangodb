@@ -1879,7 +1879,7 @@ static void JS_MTime (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief renames a file
-/// @startDocuBlock JS_Move
+/// @startDocuBlock JS_MoveFile
 /// `fs.move(source, destination)`
 ///
 /// Moves *source* to destination. Failure to move the file, or
@@ -1889,7 +1889,7 @@ static void JS_MTime (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-static void JS_Move (const v8::FunctionCallbackInfo<v8::Value>& args) {
+static void JS_MoveFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
@@ -1914,11 +1914,21 @@ static void JS_Move (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // source is a file, destination is a directory. this is unsupported
     TRI_V8_THROW_EXCEPTION_PARAMETER("cannot move source file into destination directory");
   }
+  std::string systemErrorStr;
+  long errorNo;
 
-  int res = TRI_RenameFile(source.c_str(), destination.c_str());
+  int res = TRI_RenameFile(source.c_str(), destination.c_str(), &errorNo, &systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_MESSAGE(res, "cannot move file");
+    std::string errMsg = "cannot move file [" +
+      source +
+      "] to [" +
+      destination +
+      " ] : " + 
+      std::to_string(errorNo) + 
+      ": " + 
+      systemErrorStr;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errMsg);
   }
 
   TRI_V8_RETURN_UNDEFINED();
@@ -4121,7 +4131,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST"), JS_List);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"), JS_MakeDirectory);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_Move);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_MoveFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MTIME"), JS_MTime);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE_DIRECTORY"), JS_RemoveDirectory);
