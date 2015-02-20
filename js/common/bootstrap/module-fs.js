@@ -406,12 +406,17 @@
         subPart += exports.pathSeparator;
       }
       subPart += s;
-
-      try {
-        // directory may already exist
-        exports.makeDirectory(subPart);
-      }
-      catch (err) {
+      if (subPart.length > 0) {
+        try {
+          // directory may already exist
+          exports.makeDirectory(subPart);
+        }
+        catch (err) {
+          if (err.errorNum !==
+              require("internal").errors.ERROR_FILE_EXISTS.code) {
+            throw(err);
+          }
+        }
       }
     });
   };
