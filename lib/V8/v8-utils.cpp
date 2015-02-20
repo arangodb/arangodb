@@ -1401,10 +1401,11 @@ static void JS_MakeDirectory (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
 
-  int res = TRI_CreateDirectory(*name);
+  std::string systemErrorStr;
+  int res = TRI_CreateDirectory(*name, nullptr, &systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION(res);
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
   }
 
   TRI_V8_RETURN_UNDEFINED();
