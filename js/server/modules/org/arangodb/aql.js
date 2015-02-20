@@ -56,6 +56,29 @@ var UserFunctions = { };
 ////////////////////////////////////////////////////////////////////////////////
 
 var DefaultVisitors = {
+  "_AQL::HASATTRIBUTESVISITOR" : {
+    visitorReturnsResults: true,
+    func: function (config, result, vertex, path) {
+      if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+        var i;
+        if (config.data.type === 'any') {
+          for (i = 0; i < config.data.attributes.length; ++i) {
+            if (vertex.hasOwnProperty(config.data.attributes[i])) {
+              break;
+            }
+          }
+        }
+        else {
+          for (i = 0; i < config.data.attributes.length; ++i) {
+            if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+              return;
+            }
+          }
+        }
+        return CLONE({ vertex: vertex, path: path });
+      }
+    }
+  },
   "_AQL::PROJECTINGVISITOR" : {
     visitorReturnsResults: true,
     func: function (config, result, vertex) {
