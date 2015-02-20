@@ -512,7 +512,10 @@ int TRI_MTimeFile (char const* path, int64_t* mtime) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory (char const* path) {
+int TRI_CreateRecursiveDirectory (char const* path,
+                                  long *systemError,
+                                  std::string *systemErrorStr) {
+  TRI_ERRORBUF;
   char* copy;
   char* p;
   char* s;
@@ -528,12 +531,18 @@ int TRI_CreateRecursiveDirectory (char const* path) {
 
         *p = '\0';
         m = TRI_MKDIR(copy, 0777);
-
+        TRI_SYSTEM_ERROR();
         *p = TRI_DIR_SEPARATOR_CHAR;
         s = p + 1;
 
         if (m != 0 && errno != EEXIST) {
           res = errno;
+          if (systemErrorStr != nullptr) {
+            *systemErrorStr = std::string("Failed to create directory [") + path + "] " + TRI_GET_ERRORBUF;
+          }
+          if (systemError != nullptr) {
+            *systemError = errno;
+          }
           break;
         }
       }
@@ -558,7 +567,10 @@ int TRI_CreateRecursiveDirectory (char const* path) {
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory (char const* path) {
+int TRI_CreateDirectory (char const* path,
+                         long *systemError,
+                         std::string *systemErrorStr) {
+  TRI_ERRORBUF;
   int res;
 
   // reset error flag
@@ -568,8 +580,16 @@ int TRI_CreateDirectory (char const* path) {
 
   if (res != TRI_ERROR_NO_ERROR) {
     // check errno
+    TRI_SYSTEM_ERROR();
     res = errno;
     if (res != TRI_ERROR_NO_ERROR) {
+      if (systemErrorStr != nullptr) {
+        *systemErrorStr = std::string("Failed to create directory [") + path + "] " + TRI_GET_ERRORBUF;
+      }
+      if (systemError != nullptr) {
+        *systemError = errno;
+      }
+#ifndef _WIN32
       if (res == ENOENT) {
         res = TRI_ERROR_FILE_NOT_FOUND;
       }
@@ -579,6 +599,17 @@ int TRI_CreateDirectory (char const* path) {
       else if (res == EPERM) {
         res = TRI_ERROR_FORBIDDEN;
       }
+#else
+      if (res == ERROR_PATH_NOT_FOUND) {
+        res = TRI_ERROR_FILE_NOT_FOUND;
+      }
+      else if (res == ERROR_ALREADY_EXISTS) {
+        res = TRI_ERROR_FILE_EXISTS;
+      }
+      else if (res == EPERM) {
+        res = TRI_ERROR_FORBIDDEN;
+      }
+#endif
       else {
         // an unknown error type. will be translated into system error below
         res = TRI_ERROR_NO_ERROR;
@@ -896,28 +927,22 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
 
 int TRI_RenameFile (char const* old, char const* filename, long *systemError, std::string *systemErrorStr) {
   int res;
-
+  TRI_ERRORBUF;
 #ifdef _WIN32
   BOOL moveResult = 0;
   moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (! moveResult) {
-    DWORD errorCode = GetLastError();
+    TRI_SYSTEM_ERROR();
+
     if (systemError != nullptr) {
-      *systemError = errorCode;
+      *systemError = errno;
     }
     if (systemErrorStr != nullptr) {
-      char windowsErrorBuf[256];
-      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
-                    NULL,
-                    GetLastError(),
-                    0,
-                    windowsErrorBuf,
-                    sizeof(windowsErrorBuf), NULL);
-
       *systemErrorStr = windowsErrorBuf;
     }
-    LOG_TRACE("cannot rename file from '%s' to '%s': %d", old, filename, (int) errorCode);
+    LOG_TRACE("cannot rename file from '%s' to '%s': %d - %s",
+              old, filename, (int) errno, windowsErrorBuf);
     res = -1;
   }
   else {
