@@ -589,7 +589,7 @@ int TRI_CreateDirectory (char const* path,
       if (systemError != nullptr) {
         *systemError = errno;
       }
-
+#ifndef _WIN32
       if (res == ENOENT) {
         res = TRI_ERROR_FILE_NOT_FOUND;
       }
@@ -599,6 +599,17 @@ int TRI_CreateDirectory (char const* path,
       else if (res == EPERM) {
         res = TRI_ERROR_FORBIDDEN;
       }
+#else
+      if (res == ERROR_PATH_NOT_FOUND) {
+        res = TRI_ERROR_FILE_NOT_FOUND;
+      }
+      else if (res == ERROR_ALREADY_EXISTS) {
+        res = TRI_ERROR_FILE_EXISTS;
+      }
+      else if (res == EPERM) {
+        res = TRI_ERROR_FORBIDDEN;
+      }
+#endif
       else {
         // an unknown error type. will be translated into system error below
         res = TRI_ERROR_NO_ERROR;
