@@ -148,6 +148,12 @@ instead.
     The following custom visitor functions are predefined and can be used by specifying the function
     name in the *visitor* attribute:
 
+    - *"_AQL::HASATTRIBUTESVISITOR"*: this visitor will produce an object if it contains the
+      attributes specified in *data.attributes* for each visited vertex. If *data.type* is *"all"*,
+      then the object will only be returned if all specified attributes are present in the vertex,
+      if *data.type* is *"any"*, the object will be returned if the vertex contains any of the
+      specified attributes.
+
     - *"_AQL::PROJECTINGVISITOR"*: this visitor will produce an object with the attributes 
       specified in *data.attributes* for each visited vertex. This can be used to create a 
       projection of each visited vertex' document.
