@@ -430,7 +430,37 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   if (typeof FS_MOVE !== "undefined") {
-    exports.move = FS_MOVE;
+    var move = FS_MOVE;
+    var fs = exports;
+    // File system moving directories fallback function
+    exports.move = function(source, target) {
+      if (fs.isDirectory(source)) {
+        // File systems cannot move directories correctly
+        var tempFile = fs.getTempFile("zip", false);
+        var tree = fs.listTree(source);
+        var files = [];
+        var i;
+        var filename;
+        for (i = 0;  i < tree.length;  ++i) {
+          filename = fs.join(source, tree[i]);
+          if (fs.isFile(filename)) {
+            files.push(tree[i]);
+          }
+        }
+        var res;
+        if (files.length === 0) {
+          res = fs.makeDirectory(target);
+          fs.removeDirectoryRecursive(source, true);
+        } else {
+          fs.zipFile(tempFile, source, files);
+          res = fs.unzipFile(tempFile, target, false, true);
+          fs.remove(tempFile);
+          fs.removeDirectoryRecursive(source, true);
+        }
+        return res;
+      }
+      return move(source, target);
+    };
     delete FS_MOVE;
   }
 
