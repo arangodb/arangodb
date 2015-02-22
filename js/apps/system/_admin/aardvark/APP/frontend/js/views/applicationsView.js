@@ -105,15 +105,19 @@
     },
 
     installFoxxFromStore: function(e) {
-      var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-      var toInstall = $(e.currentTarget).attr("appId");
-      var version = $(e.currentTarget).attr("appVersion");
-      this.collection.installFromStore({name: toInstall, version: version}, mount, this.installCallback.bind(this));
+      if (window.modalView.modalTestAll()) {
+        var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+        var toInstall = $(e.currentTarget).attr("appId");
+        var version = $(e.currentTarget).attr("appVersion");
+        this.collection.installFromStore({name: toInstall, version: version}, mount, this.installCallback.bind(this));
+      }
     },
 
     installFoxxFromZip: function(files, data) {
-      var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-      this.collection.installFromZip(data.filename, mount, this.installCallback.bind(this));
+      if (window.modalView.modalTestAll()) {
+        var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+        this.collection.installFromZip(data.filename, mount, this.installCallback.bind(this));
+      }
     },
 
     installCallback: function(result) {
@@ -133,29 +137,31 @@
     },
 
     installFoxxFromGithub: function() {
-      var url, version, mount;
+      if (window.modalView.modalTestAll()) {
+        var url, version, mount;
 
-      //fetch needed information, need client side verification
-      //remove name handling on server side because not needed
-      mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-      url = window.arangoHelper.escapeHtml($('#repository').val());
-      version = window.arangoHelper.escapeHtml($('#tag').val());
+        //fetch needed information, need client side verification
+        //remove name handling on server side because not needed
+        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+        url = window.arangoHelper.escapeHtml($('#repository').val());
+        version = window.arangoHelper.escapeHtml($('#tag').val());
 
-      if (version === '') {
-        version = "master";
+        if (version === '') {
+          version = "master";
+        }
+        var info = {
+          url: window.arangoHelper.escapeHtml($('#repository').val()),
+          version: window.arangoHelper.escapeHtml($('#tag').val())
+        };
+
+        try {
+          Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
+        } catch (e) {
+          return;
+        }
+        //send server req through collection
+        this.collection.installFromGithub(info, mount, this.installCallback.bind(this));
       }
-      var info = {
-        url: window.arangoHelper.escapeHtml($('#repository').val()),
-        version: window.arangoHelper.escapeHtml($('#tag').val())
-      };
-
-      try {
-        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
-      } catch (e) {
-        return;
-      }
-      //send server req through collection
-      this.collection.installFromGithub(info, mount, this.installCallback.bind(this));
     },
 
     /* potential error handling
@@ -170,23 +176,22 @@
     }
     */
 
-
-    /// NEW CODE
-
     generateNewFoxxApp: function() {
-      var mount;
-      mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-      var info = {
-        name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-        collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
-          return window.arangoHelper.escapeHtml(d.text);
-        }),
-//        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-        author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
-        license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
-        description: window.arangoHelper.escapeHtml($("#new-app-description").val())
-      };
-      this.collection.generate(info, mount, this.installCallback.bind(this));
+      if (window.modalView.modalTestAll()) {
+        var mount;
+        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+        var info = {
+          name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+          collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
+            return window.arangoHelper.escapeHtml(d.text);
+          }),
+  //        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+          author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
+          license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
+          description: window.arangoHelper.escapeHtml($("#new-app-description").val())
+        };
+        this.collection.generate(info, mount, this.installCallback.bind(this));
+      }
     },
 
     addAppAction: function() {
