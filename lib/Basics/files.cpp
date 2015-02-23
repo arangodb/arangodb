@@ -515,7 +515,6 @@ int TRI_MTimeFile (char const* path, int64_t* mtime) {
 int TRI_CreateRecursiveDirectory (char const* path,
                                   long &systemError,
                                   std::string &systemErrorStr) {
-  TRI_ERRORBUF;
   char* copy;
   char* p;
   char* s;
