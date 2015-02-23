@@ -1,4 +1,0 @@
-/*start AUsingBaseA*/
-framwork.require('module.BaseA');
-var second = function secondFunction(){};
-/*end AUsingBaseA*/
