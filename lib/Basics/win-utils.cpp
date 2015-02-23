@@ -26,12 +26,12 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+#include <errno.h>
 
 #include <io.h>
 
 #include "win-utils.h"
 
-#include <errno.h>
 #include <windows.h>
 #include <string.h>
 #include <malloc.h>
@@ -394,7 +394,7 @@ void TRI_FixIcuDataEnv () {
 
 long mapGetlastErrorToErrno(DWORD error) {
   switch (error) {
-  case ERROR_INVALID_FUNCTION: return EBADRQC;
+  case ERROR_INVALID_FUNCTION: return EINVAL;
   case ERROR_FILE_NOT_FOUND: return ENOENT;
   case ERROR_PATH_NOT_FOUND: return ENOENT;
   case ERROR_TOO_MANY_OPEN_FILES: return EMFILE;
@@ -405,7 +405,7 @@ long mapGetlastErrorToErrno(DWORD error) {
   case ERROR_OUTOFMEMORY: return ENOMEM;
   case ERROR_INVALID_DRIVE: return ENODEV;
   case ERROR_NOT_SAME_DEVICE: return EXDEV;
-  case ERROR_NO_MORE_FILES: return ENMFILE;
+  case ERROR_NO_MORE_FILES: return ENFILE;
   case ERROR_WRITE_PROTECT: return EROFS;
   case ERROR_BAD_UNIT: return ENODEV;
   case ERROR_SHARING_VIOLATION: return EACCES;
@@ -414,10 +414,10 @@ long mapGetlastErrorToErrno(DWORD error) {
   case ERROR_HANDLE_EOF: return ENODATA;
   case ERROR_HANDLE_DISK_FULL: return ENOSPC;
   case ERROR_NOT_SUPPORTED: return ENOSYS;
-  case ERROR_REM_NOT_LIST: return ENONET;
-  case ERROR_DUP_NAME: return ENOTUNIQ;
-  case ERROR_BAD_NETPATH: return ENOSHARE;
-  case ERROR_BAD_NET_NAME: return ENOSHARE;
+  case ERROR_REM_NOT_LIST: return ENFILE;
+  case ERROR_DUP_NAME: return EEXIST;
+  case ERROR_BAD_NETPATH: return EBADF;
+  case ERROR_BAD_NET_NAME: return EBADF;
   case ERROR_FILE_EXISTS: return EEXIST;
   case ERROR_CANNOT_MAKE: return EPERM;
   case ERROR_INVALID_PARAMETER: return EINVAL;
@@ -444,11 +444,11 @@ long mapGetlastErrorToErrno(DWORD error) {
   case ERROR_BAD_PIPE: return EINVAL;
   case ERROR_PIPE_BUSY: return EBUSY;
   case ERROR_NO_DATA: return EPIPE;
-  case ERROR_PIPE_NOT_CONNECTED: return ECOMM;
+  case ERROR_PIPE_NOT_CONNECTED: return EPIPE;
   case ERROR_MORE_DATA: return EAGAIN;
   case ERROR_DIRECTORY: return ENOTDIR;
   case ERROR_PIPE_CONNECTED: return EBUSY;
-  case ERROR_PIPE_LISTENING: return ECOMM;
+  case ERROR_PIPE_LISTENING: return EPIPE;
   case ERROR_NO_TOKEN: return EINVAL;
   case ERROR_PROCESS_ABORTED: return EFAULT;
   case ERROR_BAD_DEVICE: return ENODEV;
@@ -468,7 +468,7 @@ long mapGetlastErrorToErrno(DWORD error) {
   case ERROR_POSSIBLE_DEADLOCK: return EDEADLOCK;
   case ERROR_CRC: return EIO;
   case ERROR_NEGATIVE_SEEK: return EINVAL;
-  case ERROR_NOT_READY: return ENOMEDIUM;
+  case ERROR_NOT_READY: return EBADF;
   case ERROR_DISK_FULL: return ENOSPC;
   case ERROR_NOACCESS: return EFAULT;
   case ERROR_FILE_INVALID: return ENXIO;
