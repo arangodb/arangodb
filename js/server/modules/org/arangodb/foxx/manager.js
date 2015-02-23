@@ -44,6 +44,7 @@
   var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
   var routeApp = require("org/arangodb/foxx/routing").routeApp;
   var exportApp = require("org/arangodb/foxx/routing").exportApp;
+  var invalidateExportCache  = require("org/arangodb/foxx/routing").invalidateExportCache;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
   var checkParameter = arangodb.checkParameter;
@@ -89,6 +90,7 @@
   
   var resetCache = function () {
     appCache = {};
+    invalidateExportCache();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
