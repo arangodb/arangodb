@@ -440,16 +440,17 @@ static int CreateBaseApplicationDirectory (char const* basePath,
 
   if (path != nullptr) {
     if (! TRI_IsDirectory(path)) {
-      res = TRI_CreateDirectory(path);
+      std::string errorMessage;
+      long systemError;
+      res = TRI_CreateDirectory(path, systemError, errorMessage);
 
       if (res == TRI_ERROR_NO_ERROR) {
         LOG_INFO("created base application directory '%s'",
                  path);
       }
       else {
-        LOG_ERROR("unable to create base application directory '%s': %s",
-                  path,
-                  TRI_errno_string(res));
+        LOG_ERROR("unable to create base application directory %s",
+                  errorMessage.c_str());
       }
     }
 
@@ -474,7 +475,9 @@ static int CreateApplicationDirectory (char const* name,
 
   if (path != nullptr) {
     if (! TRI_IsDirectory(path)) {
-      res = TRI_CreateDirectory(path);
+      long systemError;
+      std::string errorMessage;
+      res = TRI_CreateDirectory(path, systemError, errorMessage);
 
       if (res == TRI_ERROR_NO_ERROR) {
         if (triagens::wal::LogfileManager::instance()->isInRecovery()) {
@@ -492,13 +495,13 @@ static int CreateApplicationDirectory (char const* name,
         LOG_INFO("unable to create application directory '%s' for database '%s': %s",
                  path,
                  name,
-                 TRI_errno_string(res));
+                 errorMessage.c_str());
       }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
                   path,
                   name,
-                  TRI_errno_string(res));
+                  errorMessage.c_str());
       }
     }
 
@@ -1178,10 +1181,15 @@ static int CreateDatabaseDirectory (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+  std::string errorMessage;
+  long systemError;
+  
+  res = TRI_CreateDirectory(file, systemError, errorMessage);
 
-  res = TRI_CreateDirectory(file);
-
-  if (res != TRI_ERROR_NO_ERROR) {
+  if (res != TRI_ERROR_NO_ERROR){
+    if (res != TRI_ERROR_FILE_EXISTS) {
+      LOG_ERROR("failed to create database directory: %s", errorMessage.c_str());
+    }
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
     TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
 
@@ -1800,12 +1808,14 @@ int TRI_StartServer (TRI_server_t* server,
   // .............................................................................
 
   if (! TRI_IsDirectory(server->_databasePath)) {
-    res = TRI_CreateDirectory(server->_databasePath);
+    long systemError;
+    std::string errorMessage;
+    res = TRI_CreateDirectory(server->_databasePath, systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("unable to create database directory '%s': %s",
                 server->_databasePath,
-                TRI_errno_string(res));
+                errorMessage.c_str());
 
       return TRI_ERROR_ARANGO_DATADIR_NOT_WRITABLE;
     }
@@ -1851,12 +1861,14 @@ int TRI_StartServer (TRI_server_t* server,
       return TRI_ERROR_BAD_PARAMETER;
     }
 
-    res = TRI_CreateDirectory(server->_appPath);
+    long systemError;
+    std::string errorMessage;
+    res = TRI_CreateDirectory(server->_appPath, systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("unable to create --javascript.app-path directory '%s': %s",
                 server->_appPath,
-                TRI_errno_string(res));
+                errorMessage.c_str());
       return res;
     }
   }
