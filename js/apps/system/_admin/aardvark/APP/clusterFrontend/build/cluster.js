@@ -2875,7 +2875,8 @@ window.StatisticsCollection = Backbone.Collection.extend({
       var tests = _.map(this._validators, function(v) {
         return v();
       });
-      if (_.any(tests)) {
+      var invalid = _.any(tests);
+      if (invalid) {
         $('.modal-footer .button-success')
           .prop('disabled', true)
           .addClass('disabled');
@@ -2884,6 +2885,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
           .prop('disabled', false)
           .removeClass('disabled');
       }
+      return !invalid;
     },
 
     clearValidators: function() {

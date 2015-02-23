@@ -280,8 +280,13 @@
     },
 
     getCachedQuery: function() {
-      var query =  JSON.parse(localStorage.getItem("cachedQuery"));
-      return query;
+      if(typeof(Storage) !== "undefined") {
+        var cache = localStorage.getItem("cachedQuery");
+        if (cache !== undefined) {
+          var query = JSON.parse(cache);
+          return query;
+        }
+      }
     },
 
     setCachedQuery: function(query) {
@@ -475,10 +480,6 @@
         }
 
         if (! isUpdate) {
-          //this.customQueries.push({
-          // name: saveName,
-          // value: content
-          //});
           this.collection.add({
             name: saveName,
             value: content
