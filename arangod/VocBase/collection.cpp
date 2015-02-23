@@ -1053,13 +1053,17 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
   }
 
   // create directory
-  int res = TRI_CreateDirectory(filename);
+  std::string errorMessage;
+  long systemError;
+  int res = TRI_CreateDirectory(filename, systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot create collection '%s' in directory '%s': %s",
+    LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
               parameters->_name,
               path,
-              TRI_errno_string(res));
+              TRI_errno_string(res),
+              systemError,
+              errorMessage.c_str());
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
