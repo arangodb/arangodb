@@ -41,6 +41,7 @@ var ArangoError = arangodb.ArangoError;
 var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
 var mountAppRegEx = /\/APP(\/|$)/i;
 var mountNumberRegEx = /^\/[\d\-%]/;
+var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
 var getStorage = function() {
   "use strict";
@@ -487,6 +488,7 @@ exports.validateMount = validateMount;
 exports.typeToRegex = typeToRegex;
 exports.zipDirectory = zipDirectory;
 exports.getStorage = getStorage;
+exports.pathRegex = pathRegex;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
