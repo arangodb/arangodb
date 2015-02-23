@@ -720,7 +720,7 @@
         installAppFromRemote(buildGithubUrl(appInfo), targetPath);
       } else if (/^https?:/i.test(appInfo)) {
         installAppFromRemote(appInfo, targetPath);
-      } else if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+      } else if (utils.pathRegex.test(appInfo)) {
         installAppFromLocal(appInfo, targetPath);
       } else if (/^uploads\/tmp-/.test(appInfo)) {
         // Install from upload API
