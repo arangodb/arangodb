@@ -23,6 +23,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git://github.com/triagens/arangodb.git"
+    "url": "git://github.com/arangodb/arangodb.git"
   }
 }
