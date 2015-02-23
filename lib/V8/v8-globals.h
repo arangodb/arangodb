@@ -110,6 +110,9 @@ static const uint32_t V8DataSlot = 0;
 #define TRI_V8_CURRENT_GLOBALS_AND_SCOPE                                              \
   TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(isolate->GetData(V8DataSlot)); \
   v8::HandleScope scope(isolate);                                                     \
+  do { \
+    \
+  } \
   while (0)
 
 ////////////////////////////////////////////////////////////////////////////////
