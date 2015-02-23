@@ -31,6 +31,7 @@
 
 #include "win-utils.h"
 
+#include <errno.h>
 #include <windows.h>
 #include <string.h>
 #include <malloc.h>
