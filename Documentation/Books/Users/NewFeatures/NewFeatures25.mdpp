@@ -302,6 +302,3 @@ messages to the database. This console also allows to read the error output of o
 We added `org/arangodb/request` module, which provides a simple API for making HTTP requests
 to external services. This is enables Foxx to be directly part of a micro service architecture.
 
-
-
-

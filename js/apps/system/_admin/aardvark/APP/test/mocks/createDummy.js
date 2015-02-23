@@ -5,7 +5,7 @@
   "use strict";
 
   var dummyFunction = function() {
-    throw new Error("Function " + this + " Should be a spy");
+    throw new Error("Function " + this + " should be a spy");
   };
 
   // Create a Dummy implementation of the object with
@@ -17,7 +17,6 @@
   window.CreateDummyForObject = function(par, objName) {
     var dummy = {};
     var fcts = _.functions(par[objName].prototype);
-    
     var i;
     for (i = 0; i < fcts.length; ++i) {
       dummy[fcts[i]] = dummyFunction.bind(fcts[i]);

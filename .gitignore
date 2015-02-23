@@ -99,6 +99,7 @@ js/apps/*
 !js/apps/system/_admin/aardvark/APP/frontend/build/*
 !js/apps/system/_admin/aardvark/APP/clusterFrontend/build
 !js/apps/system/_admin/aardvark/APP/clusterFrontend/build/*
+js/apps/system/_admin/aardvark/APP/node_modules/*
 
 3rdParty/etcd/src/
 Documentation/Books/allComments.txt

@@ -82,9 +82,9 @@ simplified to just:
 
 !SECTION Removed features
 
-* Startup switch `--javascript.frontend-development-mode`: It's major purpose was internal development
-anyways. Now the web frontend can be set to development mode similar to any other foxx app.
-* Startup switch `--javascript.dev-app-path`: Was used for the development mode of foxx. This is
+* Startup switch `--javascript.frontend-development-mode`: Its major purpose was internal development
+anyway. Now the web frontend can be set to development mode similar to any other foxx app.
+* Startup switch `--javascript.dev-app-path`: Was used for the development mode of Foxx. This is
 integrated with the normal app-path now and can be triggered on app level. The second app-path is
 superfluous.
 * Foxx: `controller.collection`: Please use `appContext.collection` instead.
@@ -95,6 +95,4 @@ superfluous.
 * Foxx: `requestContext.pathParam({type: string})`: Please use `requestContext.pathParam({type: joi})` instead.
 * Graph: The modules `org/arangodb/graph` and `org/arangodb/graph-blueprint`: Please use module `org/arangodb/general-graph` instead. NOTE: This does not mean we do not support blueprints any more. General graph covers everything the graph--blueprint did, plus many more features.
 * General-Graph: In the module `org/arangodb/general-graph` the functions `_undirectedRelation` and `_directedRelation` are no longer available. Both functions have been unified to `_relation`.
-
-
 
