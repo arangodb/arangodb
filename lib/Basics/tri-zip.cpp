@@ -165,7 +165,6 @@ static int ExtractCurrentFile (unzFile uf,
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
       // strip filename so we only have the directory name
       char* dir = TRI_Dirname(d);
-      TRI_Free(TRI_CORE_MEM_ZONE, d);
       err = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
       if ((err != TRI_ERROR_NO_ERROR) && 
           (err != TRI_ERROR_FILE_EXISTS) ) {
