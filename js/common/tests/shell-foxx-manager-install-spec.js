@@ -252,7 +252,6 @@ describe("Foxx Manager install", function() {
   });
 
   describe("success with", function() {
-
     it("a minimal app", function() {
       try {
         FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), "/unittest/broken");
@@ -261,6 +260,109 @@ describe("Foxx Manager install", function() {
       }
       FoxxManager.uninstall("/unittest/broken");
     });
+  });
+
+  describe("should not install on invalid mountpoint", function() {
+
+    it("starting with _", function() {
+      var mount = "/_disallowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("starting with %", function() {
+      var mount = "/%disallowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("starting with a number", function() {
+      var mount = "/3disallowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("starting with app/", function() {
+      var mount = "/app";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("containing /app/", function() {
+      var mount = "/unittest/app/test";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("containing a .", function() {
+      var mount = "/dis.allowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("containing a whitespace", function() {
+      var mount = "/disal lowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("starting with ?", function() {
+      var mount = "/disal?lowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
+
+    it("starting with :", function() {
+      var mount = "/disa:llowed";
+      try {
+        FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), mount);
+        expect(true).toBeFalsy("Installed app at invalid mountpoint.");
+        FoxxManager.uninstall(mount);
+      } catch(e) {
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+      }
+    });
 
   });
+
 });

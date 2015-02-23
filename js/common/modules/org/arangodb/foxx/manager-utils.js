@@ -40,6 +40,7 @@ var errors = arangodb.errors;
 var ArangoError = arangodb.ArangoError;
 var mountRegEx = /^(\/[a-zA-Z0-9_\-%]+)+$/;
 var mountAppRegEx = /\/APP(\/|$)/i;
+var mountNumberRegEx = /^\/[\d\-%]/;
 
 var getStorage = function() {
   "use strict";
@@ -375,6 +376,12 @@ function validateMount(mount, internal) {
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
         errorMessage: "/_ apps are reserved for internal use."
+      });
+    }
+    if (mountNumberRegEx.test(mount)) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
+        errorMessage: "Mointpoints are not allowed to start with a number, - or %."
       });
     }
     if (mountAppRegEx.test(mount)) {
