@@ -426,6 +426,7 @@ function CompactionSuite () {
         if (fig["alive"]["count"] === 0) {
           break;
         }
+        require("internal").wait(0.1);
       }
      
       assertEqual(0, c1.count());
