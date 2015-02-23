@@ -75,6 +75,14 @@
   // -----------------------------------------------------------------------------
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Searches through a tree of files and returns true for all app roots
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var filterAppRoots = function(folder) {
+    return /APP$/i.test(folder);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Trigger reload routing
   /// Triggers reloading of routes in this as well as all other threads.
   ////////////////////////////////////////////////////////////////////////////////
@@ -321,6 +329,16 @@
     var list = mount.split("/");
     list.push("APP");
     return fs.join.apply(this, list);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief transforms a sub-path to a mount point
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var transformPathToMount = function(path) {
+    var list = path.split(fs.pathSeparator);
+    list.pop();
+    return "/" + list.join("/");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -930,6 +948,7 @@
 
   var initializeFoxx = function() {
     var dbname = arangodb.db._name();
+    syncWithFolder();
     refillCaches(dbname);
     checkMountedSystemApps(dbname);
   };
@@ -1016,6 +1035,10 @@
     return app.getConfiguration();
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Require the exports defined on the mount point
+  ////////////////////////////////////////////////////////////////////////////////
+
   var requireApp = function(mount) {
     checkParameter(
       "requireApp(<mount>)",
@@ -1026,6 +1049,32 @@
     return exportApp(app);
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Syncs the apps in ArangoDB with the applications stored on disc
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var syncWithFolder = function() {
+    var dbname = arangodb.db._name();
+    appCache = appCache || {};
+    appCache[dbname] = {};
+    var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
+    var i, l = folders.length;
+    var mount;
+    var collection = utils.getStorage();
+    var transAction = function() {
+      mount = transformPathToMount(folders[i]);
+      _scanFoxx(mount);
+    };
+    for (i = 0; i < l; ++i) {
+      db._executeTransaction({
+        collections: {
+          write: collection.name()
+        },
+        action: transAction
+      });
+      setup(mount);
+    }
+  };
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           exports
@@ -1035,6 +1084,7 @@
   /// @brief Exports
   ////////////////////////////////////////////////////////////////////////////////
 
+  exports.syncWithFolder = syncWithFolder;
   exports.install = install;
   exports.setup = setup;
   exports.teardown = teardown;
