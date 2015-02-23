@@ -2027,12 +2027,12 @@ int TRI_GetTempName (char const* directory,
   RemoveTrailingSeparator(dir);
 
   res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
-  if ((res == TRI_ERROR_FILE_EXISTS) ||
-      (res == TRI_ERROR_NO_ERROR)) {
+  if ((res != TRI_ERROR_FILE_EXISTS) &&
+      (res != TRI_ERROR_NO_ERROR)) {
     return res;
   }
   if (! TRI_IsDirectory(dir)) {
-    errorMessage = std::string(dir) + "exists and is not a directory!";
+    errorMessage = std::string(dir) + " exists and is not a directory!";
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
     return TRI_ERROR_CANNOT_CREATE_DIRECTORY;
   }
