@@ -1159,9 +1159,11 @@ static void JS_GetTempFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   char* result = 0;
-
-  if (TRI_GetTempName(p, &result, create) != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("could not create temp file");
+  long systemError;
+  std::string errorMessage;
+  if (TRI_GetTempName(p, &result, create, systemError, errorMessage) != TRI_ERROR_NO_ERROR) {
+    errorMessage = std::string("could not create temp file: ") + errorMessage;
+    TRI_V8_THROW_EXCEPTION_INTERNAL(errorMessage);
   }
 
   const string tempfile(result);

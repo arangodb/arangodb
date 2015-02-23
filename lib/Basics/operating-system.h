@@ -736,6 +736,8 @@ typedef unsigned char bool;
 /// @brief Return system error string
 /// macro requires ERRORBUF to instanciate its buffer before.
 ////////////////////////////////////////////////////////////////////////////////
+long mapGetlastErrorToErrno(DWORD error);
+
 #define TRI_SYSTEM_ERROR()                      \
   windowsErrorBuf;                              \
   FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,     \
@@ -744,7 +746,7 @@ typedef unsigned char bool;
                 0,                              \
                 windowsErrorBuf,                \
                 sizeof(windowsErrorBuf), NULL); \
-  errno = GetLastError()
+  errno = mapGetlastErrorToErrno(GetLastError())
 
 
 #define STDIN_FILENO  0
