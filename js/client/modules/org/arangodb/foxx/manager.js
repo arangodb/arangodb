@@ -304,7 +304,7 @@
       [ appInfo, mount ] );
 
     utils.validateMount(mount);
-    if (/^((\/)|(\.\/)|(\.\.\/))/.test(appInfo)) {
+    if (utils.pathRegex.test(appInfo)) {
       appInfo = moveAppToServer(appInfo);
     }
     var res;
