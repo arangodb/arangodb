@@ -1159,9 +1159,11 @@ static void JS_GetTempFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   char* result = 0;
-
-  if (TRI_GetTempName(p, &result, create) != TRI_ERROR_NO_ERROR) {
-    TRI_V8_THROW_EXCEPTION_INTERNAL("could not create temp file");
+  long systemError;
+  std::string errorMessage;
+  if (TRI_GetTempName(p, &result, create, systemError, errorMessage) != TRI_ERROR_NO_ERROR) {
+    errorMessage = std::string("could not create temp file: ") + errorMessage;
+    TRI_V8_THROW_EXCEPTION_INTERNAL(errorMessage);
   }
 
   const string tempfile(result);
@@ -1400,9 +1402,9 @@ static void JS_MakeDirectory (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (*name == nullptr) {
     TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
   }
-
+  long systemError = 0;
   std::string systemErrorStr;
-  int res = TRI_CreateDirectory(*name, nullptr, &systemErrorStr);
+  int res = TRI_CreateDirectory(*name, systemError, systemErrorStr);
 
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
@@ -1452,14 +1454,14 @@ static void JS_UnzipFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
     password = TRI_ObjectToString(args[4]);
     p = password.c_str();
   }
-
-  int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p);
+  std::string errMsg;
+  int res = TRI_UnzipFile(filename.c_str(), outPath.c_str(), skipPaths, overwrite, p, errMsg);
 
   if (res == TRI_ERROR_NO_ERROR) {
     TRI_V8_RETURN_TRUE();
   }
 
-  TRI_V8_THROW_EXCEPTION(res);
+  TRI_V8_THROW_EXCEPTION_MESSAGE(res, errMsg);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

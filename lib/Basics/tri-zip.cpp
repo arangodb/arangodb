@@ -53,16 +53,21 @@ static int ExtractCurrentFile (unzFile uf,
                                const char* outPath,
                                const bool skipPaths,
                                const bool overwrite,
-                               const char* password) {
+                               const char* password,
+                               std::string &errorMessage) {
   char filenameInZip[256];
   char* filenameWithoutPath;
   char* fullPath;
   char* p;
   FILE *fout;
   unz_file_info64 fileInfo;
+  long systemError;
+  int err;
 
   filenameInZip[0] = '\0';
-  if (unzGetCurrentFileInfo64(uf, &fileInfo, filenameInZip, sizeof(filenameInZip), NULL, 0, NULL, 0) != UNZ_OK) {
+  err = unzGetCurrentFileInfo64(uf, &fileInfo, filenameInZip, sizeof(filenameInZip), NULL, 0, NULL, 0);
+  if(err != UNZ_OK) {
+    errorMessage = std::string("Failed to get file info for ") + filenameInZip + ": " + std::to_string(err);
     return TRI_ERROR_INTERNAL;
   }
 
@@ -96,7 +101,12 @@ static int ExtractCurrentFile (unzFile uf,
   if (*filenameWithoutPath == '\0') {
     if (! skipPaths) {
       fullPath = TRI_Concatenate2File(outPath, filenameInZip);
-      TRI_CreateRecursiveDirectory(fullPath);
+      err = TRI_CreateRecursiveDirectory(fullPath, systemError, errorMessage);
+      if ((err != TRI_ERROR_NO_ERROR) && 
+          (err != TRI_ERROR_FILE_EXISTS) ) {
+        TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
+        return err;
+      }
       TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
     }
   }
@@ -112,7 +122,9 @@ static int ExtractCurrentFile (unzFile uf,
       writeFilename = filenameWithoutPath;
     }
 
-    if (unzOpenCurrentFilePassword(uf, password) != UNZ_OK) {
+    err = unzOpenCurrentFilePassword(uf, password);
+    if (err != UNZ_OK) {
+      errorMessage = "failed to authenticate the password in the zip: " + std::to_string(err);
       return TRI_ERROR_INTERNAL;
     }
 
@@ -121,6 +133,7 @@ static int ExtractCurrentFile (unzFile uf,
 
     if (! overwrite && TRI_ExistsFile(fullPath)) {
       TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
+      errorMessage = std::string("not allowed to overwrite file ") + fullPath;
       return TRI_ERROR_CANNOT_OVERWRITE_FILE;
     }
 
@@ -128,13 +141,18 @@ static int ExtractCurrentFile (unzFile uf,
     fout = fopen(fullPath, "wb");
 
     // cannot write to outfile. this may be due to the target directory missing
-    if (fout == NULL && ! skipPaths && filenameWithoutPath != (char*) filenameInZip) {
+    if (fout == nullptr && ! skipPaths && filenameWithoutPath != (char*) filenameInZip) {
       char c = *(filenameWithoutPath - 1);
       *(filenameWithoutPath - 1) = '\0';
 
       // create target directory recursively
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
-      TRI_CreateRecursiveDirectory(d);
+      err = TRI_CreateRecursiveDirectory(d, systemError, errorMessage);
+      if ((err != TRI_ERROR_NO_ERROR) && 
+          (err != TRI_ERROR_FILE_EXISTS) ) {
+        TRI_Free(TRI_CORE_MEM_ZONE, d);
+        return err;
+      }
       TRI_Free(TRI_CORE_MEM_ZONE, d);
 
       *(filenameWithoutPath - 1) = c;
@@ -147,16 +165,22 @@ static int ExtractCurrentFile (unzFile uf,
       char* d = TRI_Concatenate2File(outPath, filenameInZip);
       // strip filename so we only have the directory name
       char* dir = TRI_Dirname(d);
+      err = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+      if ((err != TRI_ERROR_NO_ERROR) && 
+          (err != TRI_ERROR_FILE_EXISTS) ) {
+        TRI_Free(TRI_CORE_MEM_ZONE, d);
+        TRI_Free(TRI_CORE_MEM_ZONE, dir);
+        return err;
+      }
       TRI_Free(TRI_CORE_MEM_ZONE, d);
-      TRI_CreateRecursiveDirectory(dir);
       TRI_Free(TRI_CORE_MEM_ZONE, dir);
       // try again
       fout = fopen(fullPath, "wb");
     }
 
-    TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
-
     if (fout == NULL) {
+      errorMessage = std::string("failed to open file for writing: ") + fullPath + " - " + strerror(errno);
+      TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
       return TRI_ERROR_CANNOT_WRITE_FILE;
     }
 
@@ -164,15 +188,18 @@ static int ExtractCurrentFile (unzFile uf,
       int result = unzReadCurrentFile(uf, buffer, (unsigned int) bufferSize);
 
       if (result < 0) {
+        errorMessage = std::string("failed to write file ") + fullPath + " - " + strerror(errno);
         fclose(fout);
-
+        TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
         return TRI_ERROR_CANNOT_WRITE_FILE;
       }
 
       if (result > 0) {
         if (fwrite(buffer, result, 1, fout) != 1) {
+    
+          errorMessage = std::string("failed to write file ") + fullPath + " - " + strerror(errno);
+          TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
           fclose(fout);
-
           return TRI_set_errno(TRI_ERROR_SYS_ERROR);
         }
       }
@@ -181,6 +208,7 @@ static int ExtractCurrentFile (unzFile uf,
         break;
       }
     }
+    TRI_Free(TRI_CORE_MEM_ZONE, fullPath);
 
     fclose(fout);
   }
@@ -200,24 +228,33 @@ static int UnzipFile (unzFile uf,
                       const char* outPath,
                       const bool skipPaths,
                       const bool overwrite,
-                      const char* password) {
+                      const char* password,
+                      std::string &errorMessage) {
   unz_global_info64 gi;
   uLong i;
   int res = TRI_ERROR_NO_ERROR;
+  int err;
 
-  if (unzGetGlobalInfo64(uf, &gi) != UNZ_OK) {
+  err = unzGetGlobalInfo64(uf, &gi);
+  if(err!= UNZ_OK) {
+    errorMessage = "Failed to get info: " + std::to_string(err);
     return TRI_ERROR_INTERNAL;
   }
 
   for (i = 0; i < gi.number_entry; i++) {
-    res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password);
+    res = ExtractCurrentFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
       break;
     }
 
     if ((i + 1) < gi.number_entry) {
-      if (unzGoToNextFile(uf) != UNZ_OK) {
+      err = unzGoToNextFile(uf);
+      if (err == UNZ_END_OF_LIST_OF_FILE) {
+        break;
+      }
+      else if (err != UNZ_OK) {
+        errorMessage = "Failed to jump to next file: " + std::to_string(err);
         res = TRI_ERROR_INTERNAL;
         break;
       }
@@ -386,7 +423,8 @@ int TRI_UnzipFile (const char* filename,
                    const char* outPath,
                    const bool skipPaths,
                    const bool overwrite,
-                   const char* password) {
+                   const char* password,
+                   std::string &errorMessage) {
   unzFile uf;
 #ifdef USEWIN32IOAPI
   zlib_filefunc64_def ffunc;
@@ -409,8 +447,12 @@ int TRI_UnzipFile (const char* filename,
 #else
   uf = unzOpen64(filename);
 #endif
+  if (uf == nullptr) {
+    errorMessage = std::string("unable to open zip file ") + filename;
+    return TRI_ERROR_INTERNAL;
+  }
 
-  res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password);
+  res = UnzipFile(uf, buffer, bufferSize, outPath, skipPaths, overwrite, password, errorMessage);
 
   unzClose(uf);
 

@@ -97,16 +97,16 @@ int TRI_MTimeFile (char const* path, int64_t* mtime);
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateRecursiveDirectory (char const* path,
-                                  long *systemError = nullptr,
-                                  std::string *systemErrorStr = nullptr);
+                                  long &systemError,
+                                  std::string &systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CreateDirectory (char const* path,
-                         long *systemError = nullptr,
-                         std::string *systemErrorStr = nullptr);
+                         long &systemError,
+                         std::string &systemErrorStr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an empty directory
@@ -298,7 +298,11 @@ char* TRI_GetTempPath (void);
 /// @brief get a temporary file name
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_GetTempName (char const*, char**, const bool);
+int TRI_GetTempName (char const*,
+                     char**,
+                     const bool createFile,
+                     long &systemError,
+                     std::string &errorMessage);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the user-defined temp path, with a fallback to the system's

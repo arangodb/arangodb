@@ -40,13 +40,15 @@ using namespace triagens::basics;
 
 struct CFilesSetup {
   CFilesSetup () : _directory(TRI_UNKNOWN_MEM_ZONE) {
+    long systemError;
+    std::string errorMessage;
     BOOST_TEST_MESSAGE("setup files");
 
     _directory.appendText("/tmp/arangotest-");
     _directory.appendInteger((uint64_t) TRI_microtime());
     _directory.appendInteger((uint32_t) TRI_UInt32Random());
 
-    TRI_CreateDirectory(_directory.c_str());
+    TRI_CreateDirectory(_directory.c_str(), systemError, errorMessage);
   }
 
   ~CFilesSetup () {
