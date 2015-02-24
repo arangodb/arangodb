@@ -67,6 +67,7 @@
     "/_system/cerberus", // Password recovery.
     "/_api/gharial", // General_Graph API.
     "/_system/sessions", // Sessions.
+    "/_system/users", // Users.
     "/_system/simple-auth" // Authentication.
   ];
 
@@ -113,10 +114,10 @@
     }
     if (!appCache[dbname].hasOwnProperty(mount)) {
       refillCaches(dbname);
-      if (!appCache[dbname].hasOwnProperty(mount)) {
+      if (appCache[dbname].hasOwnProperty(mount)) {
         return appCache[dbname][mount];
       }
-      throw new Error("App not found");
+      throw new Error("App not found at: " + mount);
     }
     return appCache[dbname][mount];
   };
