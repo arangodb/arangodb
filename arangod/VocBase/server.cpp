@@ -503,6 +503,7 @@ static int CreateApplicationDirectory (char const* name,
                  path,
                  name,
                  errorMessage.c_str());
+        res = TRI_ERROR_NO_ERROR;
       }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
