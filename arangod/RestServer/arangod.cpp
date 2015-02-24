@@ -104,21 +104,22 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
 {
 #if HAVE_BACKTRACE
 
-  if (e != nullptr) {
-    LOG_WARNING("Unhandled exeption: %d", e->ExceptionRecord->ExceptionCode);
+  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
+    LOG_FATAL("Unhandled exeption: %d", e->ExceptionRecord->ExceptionCode);
   }
   else {
-    LOG_WARNING("Unhandled exeption witout ExceptionCode!");
+    LOG_FATAL("Unhandled exeption witout ExceptionCode!");
   }
 
   std::string bt;
   TRI_GetBacktrace(bt);
-  LOG_WARNING(bt.c_str());
+  std::cout < bt;
+  LOG_FATAL(bt.c_str());
 
   std::string miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename += "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
-  LOG_WARNING("writing minidump: %s", miniDumpFilename.c_str());
+  LOG_FATAL("writing minidump: %s", miniDumpFilename.c_str());
   HANDLE hFile = CreateFile(miniDumpFilename.c_str(),
                             GENERIC_WRITE,
                             FILE_SHARE_READ,
@@ -126,7 +127,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
                             FILE_ATTRIBUTE_NORMAL, 0);
 
   if(hFile == INVALID_HANDLE_VALUE) {
-    LOG_WARNING("could not open minidump file : %ld", GetLastError());
+    LOG_FATAL("could not open minidump file : %ld", GetLastError());
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
@@ -150,7 +151,13 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
       hFile = NULL;
   }
 #endif
-    return EXCEPTION_CONTINUE_SEARCH; 
+  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
+    LOG_FATAL("Unhandled exeption: %d - will crash now.", e->ExceptionRecord->ExceptionCode);
+  }
+  else {
+    LOG_FATAL("Unhandled exeption witout ExceptionCode - will crash now.!");
+  }
+  return EXCEPTION_CONTINUE_SEARCH; 
 }
 #endif
 
