@@ -387,10 +387,12 @@
     try {
       fun = internal.executeScript(content, undefined, full);
     } catch(e) {
-      throw new ArangoError({
+      var err = new ArangoError({
         errorNum: errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: "File: " + filename + " " + errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message + " " + String(e)
       });
+      err.stack = e.stack;
+      throw err;
     }
 
     if (fun === undefined) {
@@ -403,10 +405,12 @@
     try {
       fun(sandbox);
     } catch (e) {
-      throw new ArangoError({
+      var err = new ArangoError({
         errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
         errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Error: " + String(e)
       });
+      err.stack = e.stack;
+      throw err;
     }
   };
 
