@@ -905,7 +905,12 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex* skiplistIndex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const* skiplistIndex) {
-  return sizeof(SkiplistIndex) + skiplistIndex->skiplist->memoryUsage();
+  size_t const elementSize = skiplistIndex->_numFields * 
+                             (sizeof(TRI_skiplist_index_element_t) + sizeof(TRI_shaped_sub_t));
+
+  return sizeof(SkiplistIndex) + 
+         skiplistIndex->skiplist->memoryUsage() +
+         skiplistIndex->skiplist->getNrUsed() * elementSize;
 }
 
 // -----------------------------------------------------------------------------
