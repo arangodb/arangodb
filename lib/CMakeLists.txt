@@ -58,6 +58,7 @@ add_library(
     Basics/fasthash.cpp
     Basics/files.cpp
     Basics/FileUtils.cpp
+    Basics/fpconv.cpp
     Basics/hashes.cpp
     Basics/init.cpp
     Basics/InitialiseBasics.cpp

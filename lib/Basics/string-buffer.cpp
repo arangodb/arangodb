@@ -28,8 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "string-buffer.h"
-#include <stdlib.h>
 #include "Basics/conversions.h"
+#include "Basics/fpconv.h"
 #include "Zip/zip.h"
 
 // -----------------------------------------------------------------------------
@@ -1282,10 +1282,7 @@ int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
-  // IEEE754 NaN values have an interesting property that we can exploit...
-  // if the architecture does not use IEEE754 values then this shouldn't do
-  // any harm either
-  if (attr != attr) {
+  if (std::isnan(attr)) {
     return TRI_AppendStringStringBuffer(self, "NaN");
   }
 
@@ -1296,182 +1293,16 @@ int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
     return TRI_AppendStringStringBuffer(self, "-inf");
   }
 
-  int res = Reserve(self, 1);
+  int res = Reserve(self, 24);
 
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
 
-  if (attr < 0.0) {
-    AppendChar(self, '-');
-    attr = -attr;
-  }
-  else if (attr == 0.0) {
-    AppendChar(self, '0');
-    return TRI_ERROR_NO_ERROR;
-  }
+  int length = fpconv_dtoa(attr, self->_current); 
+  self->_current += static_cast<size_t>(length);
 
-  if (((double)((uint32_t) attr)) == attr) {
-    return TRI_AppendUInt32StringBuffer(self, (uint32_t) attr);
-  }
-  else if (attr < (double) 429496U) {
-    uint32_t smll;
-
-    smll = (uint32_t)(attr * 10000.0);
-
-    if (((double) smll) == attr * 10000.0) {
-      uint32_t ep;
-
-      TRI_AppendUInt32StringBuffer(self, smll / 10000);
-
-      ep = smll % 10000;
-
-      if (ep != 0) {
-        size_t pos;
-        char a1;
-        char a2;
-        char a3;
-        char a4;
-
-        pos = 0;
-
-        res = Reserve(self, 6);
-
-        if (res != TRI_ERROR_NO_ERROR) {
-          return res;
-        }
-
-        AppendChar(self, '.');
-
-        if ((ep / 1000L) % 10 != 0)  pos = 1;
-        a1 = (char) ((ep / 1000L) % 10 + '0');
-
-        if ((ep / 100L) % 10 != 0)  pos = 2;
-        a2 = (char) ((ep / 100L) % 10 + '0');
-
-        if ((ep / 10L) % 10 != 0)  pos = 3;
-        a3 = (char) ((ep / 10L) % 10 + '0');
-
-        if (ep % 10 != 0)  pos = 4;
-        a4 = (char) (ep % 10 + '0');
-
-        AppendChar(self, a1);
-        if (pos > 1) { AppendChar(self, a2); }
-        if (pos > 2) { AppendChar(self, a3); }
-        if (pos > 3) { AppendChar(self, a4); }
-
-      }
-
-      return TRI_ERROR_NO_ERROR;
-    }
-  }
-
-  // we do not habe a small integral number nor small decimal number with only a few decimal digits
-
-  // there at most 16 significant digits, first find out if we have an integer value
-  if (10000000000000000.0 < attr) {
-    size_t n;
-
-    n = 0;
-
-    while (10000000000000000.0 < attr) {
-      attr /= 10.0;
-      ++n;
-    }
-
-    res = TRI_AppendUInt64StringBuffer(self, (uint64_t) attr);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    res = Reserve(self, n);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    for (;  0 < n;  --n) {
-      AppendChar(self, '0');
-    }
-
-    return TRI_ERROR_NO_ERROR;
-  }
-
-
-  // very small, i. e. less than 1
-  else if (attr < 1.0) {
-    size_t n;
-
-    n = 0;
-
-    while (attr < 1.0) {
-      attr *= 10.0;
-      ++n;
-
-      // should not happen, so it must be almost 0
-      if (n > 400) {
-        return TRI_AppendUInt32StringBuffer(self, 0);
-      }
-    }
-
-    res = Reserve(self, n + 2);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    AppendChar(self, '0');
-    AppendChar(self, '.');
-
-    for (--n;  0 < n;  --n) {
-      AppendChar(self, '0');
-    }
-
-    attr = 10000000000000000.0 * attr;
-
-    return TRI_AppendUInt64StringBuffer(self, (uint64_t) attr);
-  }
-
-
-  // somewhere in between
-  else {
-    uint64_t m;
-    double d;
-    size_t n;
-
-    m = (uint64_t) attr;
-    d = attr - m;
-    n = 0;
-
-    TRI_AppendUInt64StringBuffer(self, m);
-
-    while (d < 1.0) {
-      d *= 10.0;
-      ++n;
-
-      // should not happen, so it must be almost 0
-      if (n > 400) {
-        return TRI_ERROR_NO_ERROR;
-      }
-    }
-
-    res = Reserve(self, n + 1);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    AppendChar(self, '.');
-
-    for (--n;  0 < n;  --n) {
-      AppendChar(self, '0');
-    }
-
-    d = 10000000000000000.0 * d;
-
-    return TRI_AppendUInt64StringBuffer(self, (uint64_t) d);
-  }
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------

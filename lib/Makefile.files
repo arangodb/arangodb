@@ -25,6 +25,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/fasthash.cpp \
 	lib/Basics/files.cpp \
 	lib/Basics/FileUtils.cpp \
+	lib/Basics/fpconv.cpp \
 	lib/Basics/hashes.cpp \
 	lib/Basics/init.cpp \
 	lib/Basics/InitialiseBasics.cpp \
