@@ -704,12 +704,12 @@ BOOST_AUTO_TEST_CASE (tst_doubles) {
   value = n * n * n * n;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("3575783498001355000000", sb._buffer);
-  
+  BOOST_CHECK_EQUAL("3575783498001355400000", sb._buffer);
+
   value *= -1.0;
   TRI_ClearStringBuffer(&sb);
   TRI_AppendDoubleStringBuffer(&sb, value);
-  BOOST_CHECK_EQUAL("-3575783498001355000000", sb._buffer);
+  BOOST_CHECK_EQUAL("-3575783498001355400000", sb._buffer);
 
   TRI_DestroyStringBuffer(&sb);
 }

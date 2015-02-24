@@ -512,12 +512,13 @@ int TRI_MTimeFile (char const* path, int64_t* mtime) {
 /// @brief creates a directory, recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateRecursiveDirectory (char const* path) {
+int TRI_CreateRecursiveDirectory (char const* path,
+                                  long &systemError,
+                                  std::string &systemErrorStr) {
   char* copy;
   char* p;
   char* s;
   int res;
-  int m;
 
   res = TRI_ERROR_NO_ERROR;
   p = s = copy = TRI_DuplicateString(path);
@@ -527,13 +528,14 @@ int TRI_CreateRecursiveDirectory (char const* path) {
       if (p - s > 0) {
 
         *p = '\0';
-        m = TRI_MKDIR(copy, 0777);
-
-        *p = TRI_DIR_SEPARATOR_CHAR;
-        s = p + 1;
-
-        if (m != 0 && errno != EEXIST) {
-          res = errno;
+        res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
+        if ((res == TRI_ERROR_FILE_EXISTS) ||
+            (res == TRI_ERROR_NO_ERROR)) {
+          res = TRI_ERROR_NO_ERROR;
+          *p = TRI_DIR_SEPARATOR_CHAR;
+          s = p + 1;
+        }
+        else {
           break;
         }
       }
@@ -541,11 +543,12 @@ int TRI_CreateRecursiveDirectory (char const* path) {
     p++;
   }
 
-  if (res == TRI_ERROR_NO_ERROR && (p - s > 0)) {
-    m = TRI_MKDIR(copy, 0777);
-
-    if (m != 0 && errno != EEXIST) {
-      res = errno;
+  if (((res == TRI_ERROR_FILE_EXISTS) ||
+       (res == TRI_ERROR_NO_ERROR))
+      && (p - s > 0)) {
+    res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
+    if (res == TRI_ERROR_FILE_EXISTS) {
+      res = TRI_ERROR_NO_ERROR;
     }
   }
 
@@ -558,7 +561,10 @@ int TRI_CreateRecursiveDirectory (char const* path) {
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CreateDirectory (char const* path) {
+int TRI_CreateDirectory (char const* path,
+                         long& systemError,
+                         std::string& systemErrorStr) {
+  TRI_ERRORBUF;
   int res;
 
   // reset error flag
@@ -566,32 +572,29 @@ int TRI_CreateDirectory (char const* path) {
 
   res = TRI_MKDIR(path, 0777);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // check errno
-    res = errno;
-    if (res != TRI_ERROR_NO_ERROR) {
-      if (res == ENOENT) {
-        res = TRI_ERROR_FILE_NOT_FOUND;
-      }
-      else if (res == EEXIST) {
-        res = TRI_ERROR_FILE_EXISTS;
-      }
-      else if (res == EPERM) {
-        res = TRI_ERROR_FORBIDDEN;
-      }
-      else {
-        // an unknown error type. will be translated into system error below
-        res = TRI_ERROR_NO_ERROR;
-      }
-    }
-
-    // if errno doesn't indicate an error, return a system error
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_ERROR_SYS_ERROR;
-    }
+  if (res == TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
-  return res;
+  // check errno
+  TRI_SYSTEM_ERROR();
+  res = errno;
+  if (res != TRI_ERROR_NO_ERROR) {
+    systemErrorStr = std::string("Failed to create directory [") + path + "] " + TRI_GET_ERRORBUF;
+    systemError = res;
+
+    if (res == ENOENT) {
+      return TRI_ERROR_FILE_NOT_FOUND;
+    }
+    if (res == EEXIST) {
+      return TRI_ERROR_FILE_EXISTS;
+    }
+    if (res == EPERM) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+  
+  return TRI_ERROR_SYS_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -599,9 +602,7 @@ int TRI_CreateDirectory (char const* path) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveEmptyDirectory (char const* filename) {
-  int res;
-
-  res = TRI_RMDIR(filename);
+  int res = TRI_RMDIR(filename);
 
   if (res != 0) {
     LOG_TRACE("cannot remove directory '%s': %s", filename, TRI_LAST_ERROR_STR);
@@ -896,28 +897,22 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
 
 int TRI_RenameFile (char const* old, char const* filename, long *systemError, std::string *systemErrorStr) {
   int res;
-
+  TRI_ERRORBUF;
 #ifdef _WIN32
   BOOL moveResult = 0;
   moveResult = MoveFileExA(old, filename, MOVEFILE_COPY_ALLOWED | MOVEFILE_REPLACE_EXISTING);
 
   if (! moveResult) {
-    DWORD errorCode = GetLastError();
+    TRI_SYSTEM_ERROR();
+
     if (systemError != nullptr) {
-      *systemError = errorCode;
+      *systemError = errno;
     }
     if (systemErrorStr != nullptr) {
-      char windowsErrorBuf[256];
-      FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,
-                    NULL,
-                    GetLastError(),
-                    0,
-                    windowsErrorBuf,
-                    sizeof(windowsErrorBuf), NULL);
-
       *systemErrorStr = windowsErrorBuf;
     }
-    LOG_TRACE("cannot rename file from '%s' to '%s': %d", old, filename, (int) errorCode);
+    LOG_TRACE("cannot rename file from '%s' to '%s': %d - %s",
+              old, filename, (int) errno, windowsErrorBuf);
     res = -1;
   }
   else {
@@ -2005,10 +2000,13 @@ char* TRI_GetTempPath () {
 
 int TRI_GetTempName (char const* directory,
                      char** result,
-                     const bool createFile) {
+                     const bool createFile,
+                     long &systemError,
+                     std::string &errorMessage) {
   char* dir;
   char* temp;
   int tries;
+  int res;
 
   temp = TRI_GetUserTempPath();
 
@@ -2024,9 +2022,14 @@ int TRI_GetTempName (char const* directory,
   // remove trailing PATH_SEPARATOR
   RemoveTrailingSeparator(dir);
 
-  TRI_CreateRecursiveDirectory(dir);
-
+  res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
+  if ((res != TRI_ERROR_FILE_EXISTS) &&
+      (res != TRI_ERROR_NO_ERROR)) {
+    TRI_Free(TRI_CORE_MEM_ZONE, dir);
+    return res;
+  }
   if (! TRI_IsDirectory(dir)) {
+    errorMessage = std::string(dir) + " exists and is not a directory!";
     TRI_Free(TRI_CORE_MEM_ZONE, dir);
     return TRI_ERROR_CANNOT_CREATE_DIRECTORY;
   }
@@ -2051,6 +2054,7 @@ int TRI_GetTempName (char const* directory,
     TRI_Free(TRI_CORE_MEM_ZONE, tempName);
 
     if (TRI_ExistsFile(filename)) {
+      errorMessage = std::string("Tempfile already exists! ") + filename;
       TRI_Free(TRI_CORE_MEM_ZONE, filename);
     }
     else {

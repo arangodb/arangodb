@@ -79,9 +79,12 @@ Handler::status_t RestUploadHandler::execute () {
   }
 
   char* filename = nullptr;
+  std::string errorMessage;
+  long systemError;
 
-  if (TRI_GetTempName("uploads", &filename, false) != TRI_ERROR_NO_ERROR) {
-    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, "could not generate temp file");
+  if (TRI_GetTempName("uploads", &filename, false, systemError, errorMessage) != TRI_ERROR_NO_ERROR) {
+    errorMessage = "could not generate temp file: " + errorMessage;
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL, errorMessage);
     return status_t(Handler::HANDLER_FAILED);
   }
 
