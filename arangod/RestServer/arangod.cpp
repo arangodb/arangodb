@@ -103,7 +103,6 @@ void abortHandler(int signum) {
 LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
 {
 #if HAVE_BACKTRACE
-  TRI_PrintBacktrace();
 
   if (e != nullptr) {
     LOG_WARNING("Unhandled exeption: %d", e->ExceptionRecord->ExceptionCode);
@@ -112,10 +111,14 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
     LOG_WARNING("Unhandled exeption witout ExceptionCode!");
   }
 
+  std::string bt;
+  TRI_GetBacktrace(bt);
+  LOG_WARNING(bt.c_str());
+
   std::string miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename += "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
-
+  LOG_WARNING("writing minidump: %s", miniDumpFilename.c_str());
   HANDLE hFile = CreateFile(miniDumpFilename.c_str(),
                             GENERIC_WRITE,
                             FILE_SHARE_READ,
@@ -123,6 +126,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
                             FILE_ATTRIBUTE_NORMAL, 0);
 
   if(hFile == INVALID_HANDLE_VALUE) {
+    LOG_WARNING("could not open minidump file : %ld", GetLastError());
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
