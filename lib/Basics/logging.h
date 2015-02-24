@@ -318,9 +318,6 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
   } while (0)
 
-
-#define LOG_FATAL(...) while (0)
-
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
