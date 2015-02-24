@@ -452,17 +452,17 @@ am__lib_libarango_a_SOURCES_DIST = lib/Basics/application-exit.cpp \
 	lib/Basics/csv.cpp lib/Basics/debugging.cpp \
 	lib/Basics/error.cpp lib/Basics/Exceptions.cpp \
 	lib/Basics/fasthash.cpp lib/Basics/files.cpp \
-	lib/Basics/FileUtils.cpp lib/Basics/hashes.cpp \
-	lib/Basics/init.cpp lib/Basics/InitialiseBasics.cpp \
-	lib/Basics/json.cpp lib/Basics/json-utilities.cpp \
-	lib/Basics/JsonHelper.cpp lib/Basics/levenshtein.cpp \
-	lib/Basics/linked-list.cpp lib/Basics/locks-macos.cpp \
-	lib/Basics/locks-posix.cpp lib/Basics/logging.cpp \
-	lib/Basics/memory.cpp lib/Basics/memory-map-posix.cpp \
-	lib/Basics/mimetypes.cpp lib/Basics/Mutex.cpp \
-	lib/Basics/MutexLocker.cpp lib/Basics/Nonce.cpp \
-	lib/Basics/prime-numbers.cpp lib/Basics/process-utils.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/FileUtils.cpp lib/Basics/fpconv.cpp \
+	lib/Basics/hashes.cpp lib/Basics/init.cpp \
+	lib/Basics/InitialiseBasics.cpp lib/Basics/json.cpp \
+	lib/Basics/json-utilities.cpp lib/Basics/JsonHelper.cpp \
+	lib/Basics/levenshtein.cpp lib/Basics/linked-list.cpp \
+	lib/Basics/locks-macos.cpp lib/Basics/locks-posix.cpp \
+	lib/Basics/logging.cpp lib/Basics/memory.cpp \
+	lib/Basics/memory-map-posix.cpp lib/Basics/mimetypes.cpp \
+	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
+	lib/Basics/Nonce.cpp lib/Basics/prime-numbers.cpp \
+	lib/Basics/process-utils.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp lib/Basics/ReadWriteLock.cpp \
@@ -516,6 +516,7 @@ am_lib_libarango_a_OBJECTS =  \
 	lib/Basics/lib_libarango_a-fasthash.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-files.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-FileUtils.$(OBJEXT) \
+	lib/Basics/lib_libarango_a-fpconv.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-hashes.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-init.$(OBJEXT) \
 	lib/Basics/lib_libarango_a-InitialiseBasics.$(OBJEXT) \
@@ -682,6 +683,7 @@ PROGRAMS = $(bin_PROGRAMS) $(noinst_PROGRAMS) $(sbin_PROGRAMS)
 am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 	UnitTests/Basics/conversions-test.cpp \
 	UnitTests/Basics/csv-test.cpp UnitTests/Basics/files-test.cpp \
+	UnitTests/Basics/fpconv-test.cpp \
 	UnitTests/Basics/json-test.cpp \
 	UnitTests/Basics/json-utilities-test.cpp \
 	UnitTests/Basics/hashes-test.cpp \
@@ -703,6 +705,7 @@ am__UnitTests_basics_suite_SOURCES_DIST = UnitTests/Basics/Runner.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-conversions-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-csv-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-files-test.$(OBJEXT) \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-fpconv-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-json-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-json-utilities-test.$(OBJEXT) \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/UnitTests_basics_suite-hashes-test.$(OBJEXT) \
@@ -1331,17 +1334,17 @@ lib_libarango_a_SOURCES = lib/Basics/application-exit.cpp \
 	lib/Basics/csv.cpp lib/Basics/debugging.cpp \
 	lib/Basics/error.cpp lib/Basics/Exceptions.cpp \
 	lib/Basics/fasthash.cpp lib/Basics/files.cpp \
-	lib/Basics/FileUtils.cpp lib/Basics/hashes.cpp \
-	lib/Basics/init.cpp lib/Basics/InitialiseBasics.cpp \
-	lib/Basics/json.cpp lib/Basics/json-utilities.cpp \
-	lib/Basics/JsonHelper.cpp lib/Basics/levenshtein.cpp \
-	lib/Basics/linked-list.cpp lib/Basics/locks-macos.cpp \
-	lib/Basics/locks-posix.cpp lib/Basics/logging.cpp \
-	lib/Basics/memory.cpp lib/Basics/memory-map-posix.cpp \
-	lib/Basics/mimetypes.cpp lib/Basics/Mutex.cpp \
-	lib/Basics/MutexLocker.cpp lib/Basics/Nonce.cpp \
-	lib/Basics/prime-numbers.cpp lib/Basics/process-utils.cpp \
-	lib/Basics/ProgramOptions.cpp \
+	lib/Basics/FileUtils.cpp lib/Basics/fpconv.cpp \
+	lib/Basics/hashes.cpp lib/Basics/init.cpp \
+	lib/Basics/InitialiseBasics.cpp lib/Basics/json.cpp \
+	lib/Basics/json-utilities.cpp lib/Basics/JsonHelper.cpp \
+	lib/Basics/levenshtein.cpp lib/Basics/linked-list.cpp \
+	lib/Basics/locks-macos.cpp lib/Basics/locks-posix.cpp \
+	lib/Basics/logging.cpp lib/Basics/memory.cpp \
+	lib/Basics/memory-map-posix.cpp lib/Basics/mimetypes.cpp \
+	lib/Basics/Mutex.cpp lib/Basics/MutexLocker.cpp \
+	lib/Basics/Nonce.cpp lib/Basics/prime-numbers.cpp \
+	lib/Basics/process-utils.cpp lib/Basics/ProgramOptions.cpp \
 	lib/Basics/ProgramOptionsDescription.cpp lib/Basics/random.cpp \
 	lib/Basics/RandomGenerator.cpp lib/Basics/ReadLocker.cpp \
 	lib/Basics/ReadUnlocker.cpp lib/Basics/ReadWriteLock.cpp \
@@ -1778,6 +1781,7 @@ CLIENT_OPT := \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/conversions-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/csv-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/files-test.cpp \
+@ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/fpconv-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/json-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/json-utilities-test.cpp \
 @ENABLE_MAINTAINER_MODE_TRUE@	UnitTests/Basics/hashes-test.cpp \
@@ -2674,6 +2678,9 @@ lib/Basics/lib_libarango_a-files.$(OBJEXT):  \
 lib/Basics/lib_libarango_a-FileUtils.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
+lib/Basics/lib_libarango_a-fpconv.$(OBJEXT):  \
+	lib/Basics/$(am__dirstamp) \
+	lib/Basics/$(DEPDIR)/$(am__dirstamp)
 lib/Basics/lib_libarango_a-hashes.$(OBJEXT):  \
 	lib/Basics/$(am__dirstamp) \
 	lib/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -3241,6 +3248,9 @@ UnitTests/Basics/UnitTests_basics_suite-csv-test.$(OBJEXT):  \
 UnitTests/Basics/UnitTests_basics_suite-files-test.$(OBJEXT):  \
 	UnitTests/Basics/$(am__dirstamp) \
 	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
+UnitTests/Basics/UnitTests_basics_suite-fpconv-test.$(OBJEXT):  \
+	UnitTests/Basics/$(am__dirstamp) \
+	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
 UnitTests/Basics/UnitTests_basics_suite-json-test.$(OBJEXT):  \
 	UnitTests/Basics/$(am__dirstamp) \
 	UnitTests/Basics/$(DEPDIR)/$(am__dirstamp)
@@ -3555,6 +3565,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-conversions-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-csv-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-files-test.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-hashes-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-json-test.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-json-utilities-test.Po@am__quote@
@@ -3756,6 +3767,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-error.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-fasthash.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-files.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-hashes.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-init.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/Basics/$(DEPDIR)/lib_libarango_a-json-utilities.Po@am__quote@
@@ -5906,6 +5918,20 @@ lib/Basics/lib_libarango_a-FileUtils.obj: lib/Basics/FileUtils.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-FileUtils.obj `if test -f 'lib/Basics/FileUtils.cpp'; then $(CYGPATH_W) 'lib/Basics/FileUtils.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/FileUtils.cpp'; fi`
 
+lib/Basics/lib_libarango_a-fpconv.o: lib/Basics/fpconv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-fpconv.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Tpo -c -o lib/Basics/lib_libarango_a-fpconv.o `test -f 'lib/Basics/fpconv.cpp' || echo '$(srcdir)/'`lib/Basics/fpconv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/fpconv.cpp' object='lib/Basics/lib_libarango_a-fpconv.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-fpconv.o `test -f 'lib/Basics/fpconv.cpp' || echo '$(srcdir)/'`lib/Basics/fpconv.cpp
+
+lib/Basics/lib_libarango_a-fpconv.obj: lib/Basics/fpconv.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-fpconv.obj -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Tpo -c -o lib/Basics/lib_libarango_a-fpconv.obj `if test -f 'lib/Basics/fpconv.cpp'; then $(CYGPATH_W) 'lib/Basics/fpconv.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/fpconv.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-fpconv.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='lib/Basics/fpconv.cpp' object='lib/Basics/lib_libarango_a-fpconv.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o lib/Basics/lib_libarango_a-fpconv.obj `if test -f 'lib/Basics/fpconv.cpp'; then $(CYGPATH_W) 'lib/Basics/fpconv.cpp'; else $(CYGPATH_W) '$(srcdir)/lib/Basics/fpconv.cpp'; fi`
+
 lib/Basics/lib_libarango_a-hashes.o: lib/Basics/hashes.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(lib_libarango_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT lib/Basics/lib_libarango_a-hashes.o -MD -MP -MF lib/Basics/$(DEPDIR)/lib_libarango_a-hashes.Tpo -c -o lib/Basics/lib_libarango_a-hashes.o `test -f 'lib/Basics/hashes.cpp' || echo '$(srcdir)/'`lib/Basics/hashes.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) lib/Basics/$(DEPDIR)/lib_libarango_a-hashes.Tpo lib/Basics/$(DEPDIR)/lib_libarango_a-hashes.Po
@@ -7053,6 +7079,20 @@ UnitTests/Basics/UnitTests_basics_suite-files-test.obj: UnitTests/Basics/files-t
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/files-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-files-test.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-files-test.obj `if test -f 'UnitTests/Basics/files-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/files-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/files-test.cpp'; fi`
+
+UnitTests/Basics/UnitTests_basics_suite-fpconv-test.o: UnitTests/Basics/fpconv-test.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-fpconv-test.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-fpconv-test.o `test -f 'UnitTests/Basics/fpconv-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/fpconv-test.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Tpo UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/fpconv-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-fpconv-test.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-fpconv-test.o `test -f 'UnitTests/Basics/fpconv-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/fpconv-test.cpp
+
+UnitTests/Basics/UnitTests_basics_suite-fpconv-test.obj: UnitTests/Basics/fpconv-test.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-fpconv-test.obj -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-fpconv-test.obj `if test -f 'UnitTests/Basics/fpconv-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/fpconv-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/fpconv-test.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Tpo UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-fpconv-test.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='UnitTests/Basics/fpconv-test.cpp' object='UnitTests/Basics/UnitTests_basics_suite-fpconv-test.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o UnitTests/Basics/UnitTests_basics_suite-fpconv-test.obj `if test -f 'UnitTests/Basics/fpconv-test.cpp'; then $(CYGPATH_W) 'UnitTests/Basics/fpconv-test.cpp'; else $(CYGPATH_W) '$(srcdir)/UnitTests/Basics/fpconv-test.cpp'; fi`
 
 UnitTests/Basics/UnitTests_basics_suite-json-test.o: UnitTests/Basics/json-test.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(UnitTests_basics_suite_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT UnitTests/Basics/UnitTests_basics_suite-json-test.o -MD -MP -MF UnitTests/Basics/$(DEPDIR)/UnitTests_basics_suite-json-test.Tpo -c -o UnitTests/Basics/UnitTests_basics_suite-json-test.o `test -f 'UnitTests/Basics/json-test.cpp' || echo '$(srcdir)/'`UnitTests/Basics/json-test.cpp
