@@ -1385,10 +1385,12 @@ int main (int argc, char* argv[]) {
   }
 
   if (! isDirectory) {
-    int res = TRI_CreateDirectory(OutputDirectory.c_str());
+    long systemError;
+    std::string errorMessage;
+    int res = TRI_CreateDirectory(OutputDirectory.c_str(),systemError, errorMessage);
 
     if (res != TRI_ERROR_NO_ERROR) {
-      cerr << "unable to create output directory '" << OutputDirectory << "': " << string(TRI_errno_string(res)) << endl;
+      cerr << "unable to create output directory '" << OutputDirectory << "': " << errorMessage << endl;
       TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
     }
   }

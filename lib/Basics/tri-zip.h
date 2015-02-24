@@ -58,7 +58,8 @@ int TRI_UnzipFile (const char*,
                    const char*,
                    const bool,
                    const bool,
-                   const char*);
+                   const char*,
+                   std::string &errorMessage);
 
 #endif
 

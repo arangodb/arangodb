@@ -54,7 +54,7 @@ describe("Foxx Manager", function() {
   it("should be able to install all apps from appstore", function() {
     var mount = "/unittest/testApps";
     try { 
-      FoxxManager.uninstall(mount);
+      FoxxManager.uninstall(mount, { force: true });
     } catch(e) {
     }
     var list = FoxxManager.availableJson();
@@ -67,7 +67,7 @@ describe("Foxx Manager", function() {
       } catch(e) {
         expect(e).toBeUndefined("Could not install " + app.name);
         try {
-          FoxxManager.uninstall(mount);
+          FoxxManager.uninstall(mount, { force: true });
         } catch(err) {
         }
       }

@@ -88,7 +88,6 @@ int TRI_OPEN_WIN32 (const char* filename, int openFlags);
 
 void TRI_sleep (unsigned long);
 
-
 // .............................................................................
 // there is no usleep (micro sleep) in windows, so we create one here
 // .............................................................................
@@ -100,6 +99,12 @@ void TRI_usleep (unsigned long);
 ////////////////////////////////////////////////////////////////////////////////
  
 void TRI_FixIcuDataEnv ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a Windows error to a *nix system error
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_MapSystemError (DWORD);
 
 #endif
 
