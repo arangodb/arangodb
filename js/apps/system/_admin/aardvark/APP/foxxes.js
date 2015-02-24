@@ -92,7 +92,7 @@
         url = content.url,
         version = content.version,
         mount = validateMount(req);
-    installApp(res, "git:" + url + "/" + version, mount);
+    installApp(res, "git:" + url + ":" + (version || "master"), mount);
   }).queryParam("mount", mountPoint);
 
   /** Generate a new foxx
