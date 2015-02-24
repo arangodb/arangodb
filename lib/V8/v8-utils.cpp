@@ -2396,9 +2396,8 @@ static void JS_RemoveRecursiveDirectory (const v8::FunctionCallbackInfo<v8::Valu
 #else
     if (! TRI_EqualString2(path.c_str(), tempPath, strlen(tempPath))) {
 #endif
-      TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
-
       std::string errorMessage = std::string("directory to be removed [") + path + "] is outside of temporary path [" + tempPath + "]";
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tempPath);
       TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
     }
 
