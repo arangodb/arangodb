@@ -116,7 +116,7 @@ uint32_t TRI_UInt32Random (void) {
 
 #ifdef _WIN32
   unsigned int number;
-  auto err = rand_s(&number);^
+  auto err = rand_s(&number);
   if (err == 0) {
     return number;
   }
