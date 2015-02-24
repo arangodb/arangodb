@@ -662,10 +662,25 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
+    options = options || { };
     var dbname = arangodb.db._name();
     delete appCache[dbname][mount];
     var app = createApp(mount, options, activateDevelopment);
-    utils.getStorage().save(app.toJSON());
+    try {
+      utils.getStorage().save(app.toJSON());
+    }
+    catch (err) {
+      if (! options.replace ||
+          err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+        throw err;
+      }
+      var old = utils.getStorage().firstExample({ mount: mount });
+      if (old === null) {
+        throw new Error("Could not find app for mountpoint '" + mount + "'.");
+      }
+      var manifest = app.toJSON().manifest;
+      utils.getStorage().update(old, { manifest: manifest });
+    }
     return app;
   };
 
@@ -732,6 +747,7 @@
     // Ohterwise move will fail.
     fs.removeDirectory(targetPath);
 
+    initCache();
     try {
       if (appInfo === "EMPTY") {
         // Make Empty app
@@ -756,7 +772,6 @@
       }
       throw e;
     }
-    initCache();
     try {
       db._executeTransaction({
         collections: {
@@ -1063,7 +1078,7 @@
     var collection = utils.getStorage();
     var transAction = function() {
       mount = transformPathToMount(folders[i]);
-      _scanFoxx(mount);
+      _scanFoxx(mount, { replace: true });
     };
     for (i = 0; i < l; ++i) {
       db._executeTransaction({
