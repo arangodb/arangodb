@@ -1,0 +1,42 @@
+arangosh> db.example.insert({"a" : { "one" : 1, "two" : 2, "three" : 3 }, "b" : { }});
+{ 
+  "error" : false, 
+  "_id" : "example/637806755", 
+  "_rev" : "637806755", 
+  "_key" : "637806755" 
+}
+arangosh> db.example.update("example/20774803", {"a" : { "four" : 4 }, "b" : { "b1" : 1 }});
+{ 
+  "error" : false, 
+  "_id" : "example/20774803", 
+  "_rev" : "638331043", 
+  "_key" : "20774803" 
+}
+arangosh> db.example.document("example/20774803");
+{ 
+  "a" : { 
+    "four" : 4 
+  }, 
+  "b" : { 
+    "b1" : 1 
+  }, 
+  "_id" : "example/20774803", 
+  "_rev" : "638331043", 
+  "_key" : "20774803" 
+}
+arangosh> db.example.update("example/20774803", { "a" : { "one" : null }, "b" : null }, false, false);
+{ 
+  "error" : false, 
+  "_id" : "example/20774803", 
+  "_rev" : "638658723", 
+  "_key" : "20774803" 
+}
+arangosh> db.example.document("example/20774803");
+{ 
+  "a" : { 
+    "four" : 4 
+  }, 
+  "_id" : "example/20774803", 
+  "_rev" : "638658723", 
+  "_key" : "20774803" 
+}

@@ -1,0 +1,12 @@
+arangosh> require("internal").wal.properties({ allowOverSizeEntries: true, logfileSize: 32 * 1024 * 1024 });
+{ 
+  "allowOversizeEntries" : true, 
+  "logfileSize" : 33554432, 
+  "historicLogfiles" : 10, 
+  "reserveLogfiles" : 1, 
+  "syncInterval" : 100, 
+  "throttleWait" : 15000, 
+  "throttleWhenPending" : 0, 
+  "error" : false, 
+  "code" : 200 
+}

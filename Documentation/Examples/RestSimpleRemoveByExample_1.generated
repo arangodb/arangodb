@@ -1,0 +1,11 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/remove-by-example
+{ "collection": "products", "example" : { "a" : { "j" : 1 } },"waitForSync": true, "limit": 2 }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "deleted" : 1, 
+  "error" : false, 
+  "code" : 200 
+}

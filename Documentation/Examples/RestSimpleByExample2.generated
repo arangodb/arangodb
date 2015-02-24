@@ -1,0 +1,33 @@
+shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/simple/by-example
+{ "collection": "products", "example" : { "a.j" : 1 } }
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1270884515", 
+      "_key" : "1270884515", 
+      "_rev" : "1270884515", 
+      "i" : 1, 
+      "a" : { 
+        "k" : 1, 
+        "j" : 1 
+      } 
+    }, 
+    { 
+      "_id" : "products/1271212195", 
+      "_key" : "1271212195", 
+      "_rev" : "1271212195", 
+      "i" : 1, 
+      "a" : { 
+        "j" : 1 
+      } 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "error" : false, 
+  "code" : 201 
+}

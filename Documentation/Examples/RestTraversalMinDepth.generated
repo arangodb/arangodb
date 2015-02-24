@@ -1,0 +1,106 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/traversal
+{ "startVertex": "persons/alice", "graphName" : "knows_graph", "direction" : "outbound", "minDepth" : 2}
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : { 
+    "visited" : { 
+      "vertices" : [ 
+        { 
+          "_id" : "persons/charlie", 
+          "_key" : "charlie", 
+          "_rev" : "1327311011", 
+          "name" : "Charlie" 
+        }, 
+        { 
+          "_id" : "persons/dave", 
+          "_key" : "dave", 
+          "_rev" : "1327507619", 
+          "name" : "Dave" 
+        } 
+      ], 
+      "paths" : [ 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1327966371", 
+              "_key" : "1327966371", 
+              "_rev" : "1327966371", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1328162979", 
+              "_key" : "1328162979", 
+              "_rev" : "1328162979", 
+              "_from" : "persons/bob", 
+              "_to" : "persons/charlie" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1326852259", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1327048867", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/charlie", 
+              "_key" : "charlie", 
+              "_rev" : "1327311011", 
+              "name" : "Charlie" 
+            } 
+          ] 
+        }, 
+        { 
+          "edges" : [ 
+            { 
+              "_id" : "knows/1327966371", 
+              "_key" : "1327966371", 
+              "_rev" : "1327966371", 
+              "_from" : "persons/alice", 
+              "_to" : "persons/bob" 
+            }, 
+            { 
+              "_id" : "knows/1328359587", 
+              "_key" : "1328359587", 
+              "_rev" : "1328359587", 
+              "_from" : "persons/bob", 
+              "_to" : "persons/dave" 
+            } 
+          ], 
+          "vertices" : [ 
+            { 
+              "_id" : "persons/alice", 
+              "_key" : "alice", 
+              "_rev" : "1326852259", 
+              "name" : "Alice" 
+            }, 
+            { 
+              "_id" : "persons/bob", 
+              "_key" : "bob", 
+              "_rev" : "1327048867", 
+              "name" : "Bob" 
+            }, 
+            { 
+              "_id" : "persons/dave", 
+              "_key" : "dave", 
+              "_rev" : "1327507619", 
+              "name" : "Dave" 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

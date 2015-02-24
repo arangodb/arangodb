@@ -1,0 +1,5 @@
+arangosh> col = db.example;
+[ArangoCollection 997206179, "example" (type document, status loaded)]
+arangosh> col.drop();
+arangosh> col;
+[ArangoCollection 997206179, "example" (type document, status deleted)]

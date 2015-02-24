@@ -1,0 +1,91 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query
+{ "query" : "FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n" }
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "bindVars" : [ 
+    "name" 
+  ], 
+  "collections" : [ 
+    "products" 
+  ], 
+  "ast" : [ 
+    { 
+      "type" : "root", 
+      "subNodes" : [ 
+        { 
+          "type" : "for", 
+          "subNodes" : [ 
+            { 
+              "type" : "variable", 
+              "name" : "p", 
+              "id" : 0 
+            }, 
+            { 
+              "type" : "collection", 
+              "name" : "products" 
+            } 
+          ] 
+        }, 
+        { 
+          "type" : "filter", 
+          "subNodes" : [ 
+            { 
+              "type" : "compare ==", 
+              "subNodes" : [ 
+                { 
+                  "type" : "attribute access", 
+                  "name" : "name", 
+                  "subNodes" : [ 
+                    { 
+                      "type" : "reference", 
+                      "name" : "p", 
+                      "id" : 0 
+                    } 
+                  ] 
+                }, 
+                { 
+                  "type" : "parameter", 
+                  "name" : "name" 
+                } 
+              ] 
+            } 
+          ] 
+        }, 
+        { 
+          "type" : "limit", 
+          "subNodes" : [ 
+            { 
+              "type" : "value", 
+              "value" : 0 
+            }, 
+            { 
+              "type" : "value", 
+              "value" : 2 
+            } 
+          ] 
+        }, 
+        { 
+          "type" : "return", 
+          "subNodes" : [ 
+            { 
+              "type" : "attribute access", 
+              "name" : "n", 
+              "subNodes" : [ 
+                { 
+                  "type" : "reference", 
+                  "name" : "p", 
+                  "id" : 0 
+                } 
+              ] 
+            } 
+          ] 
+        } 
+      ] 
+    } 
+  ], 
+  "error" : false, 
+  "code" : 200 
+}

@@ -1,0 +1,32 @@
+shell> curl -X PUT --dump - http://localhost:8529/_api/replication/applier-start
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "state" : { 
+    "running" : true, 
+    "lastAppliedContinuousTick" : null, 
+    "lastProcessedContinuousTick" : null, 
+    "lastAvailableContinuousTick" : null, 
+    "progress" : { 
+      "time" : "2015-02-23T09:46:34Z", 
+      "message" : "applier created", 
+      "failedConnects" : 0 
+    }, 
+    "totalRequests" : 0, 
+    "totalFailedConnects" : 0, 
+    "totalEvents" : 0, 
+    "totalOperationsExcluded" : 0, 
+    "lastError" : { 
+      "errorNum" : 0 
+    }, 
+    "time" : "2015-02-23T09:47:24Z" 
+  }, 
+  "server" : { 
+    "version" : "2.5.0-beta1", 
+    "serverId" : "238013579765399" 
+  }, 
+  "endpoint" : "tcp://127.0.0.1:8529", 
+  "database" : "_system" 
+}

@@ -1,0 +1,7 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("social");
+arangosh> var query = graph._vertices();
+arangosh> while (query.hasNext()) {
+........>   var entry = query.next();
+........>   // Do something with the entry
+........> }

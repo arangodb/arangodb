@@ -1,0 +1,24 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ 
+  "type" : "fulltext", 
+  "fields" : [ 
+    "text" 
+  ] 
+}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/1245194403", 
+  "type" : "fulltext", 
+  "unique" : false, 
+  "sparse" : true, 
+  "minLength" : 2, 
+  "fields" : [ 
+    "text" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}
