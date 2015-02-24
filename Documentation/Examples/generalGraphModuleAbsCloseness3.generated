@@ -4,8 +4,8 @@ arangosh> graph._absoluteCloseness({}, {startVertexCollectionRestriction : 'germ
 ........> direction : 'outbound', weight : 'distance'});
 [ 
   { 
-    "germanCity/Berlin" : 3550, 
     "germanCity/Hamburg" : 2600, 
+    "germanCity/Berlin" : 3550, 
     "germanCity/Cologne" : 1250 
   } 
 ]

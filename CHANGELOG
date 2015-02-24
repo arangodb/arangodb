@@ -1,11 +1,7 @@
-v2.5.0 (XXXX-XX-XX)
--------------------
+v2.5.0-beta2 (2015-02-23)
+-------------------------
 
 * fixed issue #1230: API: document/col-name/_key and cursor return different floats
-
-
-v2.5.0-beta1 (2015-02-23)
--------------------------
 
 * front-end: dashboard tries not to (re)load statistics if user has no access
 
