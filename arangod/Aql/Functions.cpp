@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Functions.h"
+#include "Basics/fpconv.h"
 #include "Basics/JsonHelper.h"
 #include "Utils/Exception.h"
 
@@ -115,38 +116,48 @@ AqlValue Functions::Length (triagens::arango::AqlTransaction* trx,
   if (json != nullptr) {
     switch (json->_type) {
       case TRI_JSON_UNUSED:
-      case TRI_JSON_NULL:
+      case TRI_JSON_NULL: {
         length = strlen("null"); 
         break;
+      }
 
-      case TRI_JSON_BOOLEAN:
+      case TRI_JSON_BOOLEAN: {
         length = (json->_value._boolean ? strlen("true") : strlen("false"));
         break;
+      }
 
-      case TRI_JSON_NUMBER:
-        try {
-          std::string toString = std::to_string(json->_value._number);
-          length = toString.size();
+      case TRI_JSON_NUMBER: {
+        if (std::isnan(json->_value._number) ||
+            ! std::isfinite(json->_value._number)) {
+          // invalid value
+          length = strlen("null");
         }
-        catch (...) {
+        else {
+          // convert to a string representation of the number
+          char buffer[24];
+          length = static_cast<size_t>(fpconv_dtoa(json->_value._number, buffer));
         }
         break;
+      }
 
       case TRI_JSON_STRING:
-      case TRI_JSON_STRING_REFERENCE:
+      case TRI_JSON_STRING_REFERENCE: {
         // return number of characters (not bytes) in string
         length = TRI_CharLengthUtf8String(json->_value._string.data);
         break;
+      }
 
-      case TRI_JSON_OBJECT:
+      case TRI_JSON_OBJECT: {
         // return number of attributes
         length = json->_value._objects._length / 2;
         break;
+      }
 
-      case TRI_JSON_ARRAY:
+      case TRI_JSON_ARRAY: {
         // return list length
         length = TRI_LengthArrayJson(json);
         break;
+      }
     }
   }
 

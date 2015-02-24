@@ -29,8 +29,9 @@
 
 #include "conversions.h"
 
-#include "Basics/tri-strings.h"
+#include "Basics/fpconv.h"
 #include "Basics/string-buffer.h"
+#include "Basics/tri-strings.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                          public functions for string to something
@@ -715,9 +716,10 @@ char* TRI_StringUInt64 (uint64_t attr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from double
+/// @brief convert to string from double (currently not used)
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 char* TRI_StringDouble (double value) {
   TRI_string_buffer_t buffer;
 
@@ -726,6 +728,7 @@ char* TRI_StringDouble (double value) {
 
   return buffer._buffer;
 }
+#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to hex string from uint32, using the specified buffer.
