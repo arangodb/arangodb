@@ -722,7 +722,7 @@
         installAppFromRemote(appInfo, targetPath);
       } else if (utils.pathRegex.test(appInfo)) {
         installAppFromLocal(appInfo, targetPath);
-      } else if (/^uploads\/tmp-/.test(appInfo)) {
+      } else if (/^uploads[\/\\]tmp-/.test(appInfo)) {
         // Install from upload API
         appInfo = fs.join(fs.getTempPath(), appInfo);
         installAppFromLocal(appInfo, targetPath);
