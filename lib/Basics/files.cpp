@@ -556,9 +556,10 @@ int TRI_CreateRecursiveDirectory (char const* path,
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a directory
 ////////////////////////////////////////////////////////////////////////////////
+
 int TRI_CreateDirectory (char const* path,
-                         long &systemError,
-                         std::string &systemErrorStr) {
+                         long& systemError,
+                         std::string& systemErrorStr) {
   TRI_ERRORBUF;
   int res;
 
@@ -567,36 +568,29 @@ int TRI_CreateDirectory (char const* path,
 
   res = TRI_MKDIR(path, 0777);
 
-  if (res != TRI_ERROR_NO_ERROR) {
-    // check errno
-    TRI_SYSTEM_ERROR();
-    res = errno;
-    if (res != TRI_ERROR_NO_ERROR) {
-      systemErrorStr = std::string("Failed to create directory [") + path + "] " + TRI_GET_ERRORBUF;
-
-      if (res == ENOENT) {
-        res = TRI_ERROR_FILE_NOT_FOUND;
-      }
-      else if (res == EEXIST) {
-        res = TRI_ERROR_FILE_EXISTS;
-      }
-      else if (res == EPERM) {
-        res = TRI_ERROR_FORBIDDEN;
-      }
-      else {
-        res = TRI_ERROR_INTERNAL;
-      }
-      systemError = errno;
-        // an unknown error type. will be translated into system error below
-    }
-
-    // if errno doesn't indicate an error, return a system error
-    if (res == TRI_ERROR_NO_ERROR) {
-      res = TRI_ERROR_SYS_ERROR;
-    }
+  if (res == TRI_ERROR_NO_ERROR) {
+    return res;
   }
 
-  return res;
+  // check errno
+  TRI_SYSTEM_ERROR();
+  res = errno;
+  if (res != TRI_ERROR_NO_ERROR) {
+    systemErrorStr = std::string("Failed to create directory [") + path + "] " + TRI_GET_ERRORBUF;
+    systemError = res;
+
+    if (res == ENOENT) {
+      return TRI_ERROR_FILE_NOT_FOUND;
+    }
+    if (res == EEXIST) {
+      return TRI_ERROR_FILE_EXISTS;
+    }
+    if (res == EPERM) {
+      return TRI_ERROR_FORBIDDEN;
+    }
+  }
+  
+  return TRI_ERROR_SYS_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -604,9 +598,7 @@ int TRI_CreateDirectory (char const* path,
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_RemoveEmptyDirectory (char const* filename) {
-  int res;
-
-  res = TRI_RMDIR(filename);
+  int res = TRI_RMDIR(filename);
 
   if (res != 0) {
     LOG_TRACE("cannot remove directory '%s': %s", filename, TRI_LAST_ERROR_STR);
@@ -2029,6 +2021,7 @@ int TRI_GetTempName (char const* directory,
   res = TRI_CreateRecursiveDirectory(dir, systemError, errorMessage);
   if ((res != TRI_ERROR_FILE_EXISTS) &&
       (res != TRI_ERROR_NO_ERROR)) {
+    TRI_Free(TRI_CORE_MEM_ZONE, dir);
     return res;
   }
   if (! TRI_IsDirectory(dir)) {
