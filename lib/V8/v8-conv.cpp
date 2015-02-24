@@ -378,7 +378,6 @@ static int FillShapeValueList (v8::Isolate* isolate,
 
     shape->base._size = sizeof(TRI_homogeneous_sized_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_SIZED_LIST;
-    shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
@@ -452,7 +451,6 @@ static int FillShapeValueList (v8::Isolate* isolate,
 
     shape->base._size = sizeof(TRI_homogeneous_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_LIST;
-    shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
     // if found returns non-NULL, it will free the shape!!
@@ -737,7 +735,6 @@ static int FillShapeValueArray (v8::Isolate* isolate,
 
   a->base._type = TRI_SHAPE_ARRAY;
   a->base._size = (TRI_shape_size_t) totalSize;
-  a->base._dataSize = (v == 0) ? total : TRI_SHAPE_SIZE_VARIABLE;
 
   a->_fixedEntries = f;
   a->_variableEntries = v;

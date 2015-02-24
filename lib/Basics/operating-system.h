@@ -187,7 +187,7 @@
 #define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
-#define TRI_SYSTEM_ERROR()              strerror(errno)
+#define TRI_SYSTEM_ERROR()              {}
 #define TRI_ERRORBUF                    {}
 #define TRI_GET_ERRORBUF                strerror(errno)
 
@@ -341,7 +341,7 @@
 #define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
-#define TRI_SYSTEM_ERROR()              strerror(errno)
+#define TRI_SYSTEM_ERROR()              {}
 #define TRI_ERRORBUF                    {}
 #define TRI_GET_ERRORBUF                strerror(errno)
 
@@ -508,7 +508,7 @@
 #define TRI_stat_t                      struct stat
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
-#define TRI_SYSTEM_ERROR()              strerror(errno)
+#define TRI_SYSTEM_ERROR()              {}
 #define TRI_ERRORBUF                    {}
 #define TRI_GET_ERRORBUF                strerror(errno)
 
@@ -732,21 +732,20 @@ typedef unsigned char bool;
 
 #define TRI_ERRORBUF                    char windowsErrorBuf[256]
 #define TRI_GET_ERRORBUF                windowsErrorBuf
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Return system error string
 /// macro requires ERRORBUF to instanciate its buffer before.
 ////////////////////////////////////////////////////////////////////////////////
-long mapGetlastErrorToErrno(DWORD error);
 
 #define TRI_SYSTEM_ERROR()                      \
-  windowsErrorBuf;                              \
   FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM,     \
                 NULL,                           \
                 GetLastError(),                 \
                 0,                              \
                 windowsErrorBuf,                \
                 sizeof(windowsErrorBuf), NULL); \
-  errno = mapGetlastErrorToErrno(GetLastError())
+  errno = TRI_MapSystemError(GetLastError())
 
 
 #define STDIN_FILENO  0
