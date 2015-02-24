@@ -8,5 +8,5 @@ content-type: application/json; charset=utf-8
   "error" : true, 
   "code" : 500, 
   "errorNum" : 1909, 
-  "errorMessage" : "too many iterations" 
+  "errorMessage" : "too many iterations - try increasing the value of 'maxIterations'" 
 }

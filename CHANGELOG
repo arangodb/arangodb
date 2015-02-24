@@ -1,4 +1,4 @@
-v2.4.4 (2015-XX-XX)
+v2.4.4 (2015-02-24)
 -------------------
 
 * fixed the generation template for foxx apps. It now does not create deprecated functions anymore
