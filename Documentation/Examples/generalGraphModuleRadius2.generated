@@ -1,0 +1,6 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._radius({weight : 'distance'});
+[ 
+  850 
+]

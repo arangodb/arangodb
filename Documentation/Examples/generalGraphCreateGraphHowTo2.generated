@@ -1,0 +1,9 @@
+arangosh> graph._addVertexCollection("shop");
+arangosh> graph._addVertexCollection("customer");
+arangosh> graph._addVertexCollection("pet");
+arangosh> graph;
+[ Graph myGraph EdgeDefinitions: [ ] VertexCollections: [ 
+  "shop", 
+  "customer", 
+  "pet" 
+] ]

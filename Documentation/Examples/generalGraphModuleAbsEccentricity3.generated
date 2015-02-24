@@ -1,0 +1,11 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._absoluteEccentricity({}, {startVertexCollectionRestriction : 'germanCity',
+........> direction : 'outbound', weight : 'distance'});
+[ 
+  { 
+    "germanCity/Berlin" : 1200, 
+    "germanCity/Hamburg" : 1200, 
+    "germanCity/Cologne" : 700 
+  } 
+]

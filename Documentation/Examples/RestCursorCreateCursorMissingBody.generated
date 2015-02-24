@@ -1,0 +1,11 @@
+shell> curl -X POST --dump - http://localhost:8529/_api/cursor
+
+HTTP/1.1 400 Bad Request
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : true, 
+  "code" : 400, 
+  "errorNum" : 1502, 
+  "errorMessage" : "query is empty" 
+}

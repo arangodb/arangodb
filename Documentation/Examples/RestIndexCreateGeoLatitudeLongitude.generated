@@ -1,0 +1,27 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ 
+  "type" : "geo", 
+  "fields" : [ 
+    "e", 
+    "f" 
+  ] 
+}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/1242245283", 
+  "type" : "geo2", 
+  "unique" : false, 
+  "sparse" : true, 
+  "constraint" : false, 
+  "ignoreNull" : true, 
+  "fields" : [ 
+    "e", 
+    "f" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}

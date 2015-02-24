@@ -1,0 +1,13 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> graph_module._undirectedRelation("marriage", ["female", "male"]);
+{ 
+  "collection" : "marriage", 
+  "from" : [ 
+    "female", 
+    "male" 
+  ], 
+  "to" : [ 
+    "female", 
+    "male" 
+  ] 
+}
