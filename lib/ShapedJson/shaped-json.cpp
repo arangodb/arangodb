@@ -88,38 +88,44 @@ void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent)
 
   switch (shape->_type) {
     case TRI_SHAPE_NULL:
-      printf("%*sNULL sid: %u\n", indent, "",
-             (unsigned int) shape->_sid);
+      printf("%*sNULL sid: %u, data size: %u\n", indent, "",
+             (unsigned int) shape->_sid,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_BOOLEAN:
-      printf("%*sBOOLEAN sid: %u\n", indent, "",
-             (unsigned int) shape->_sid);
+      printf("%*sBOOLEAN sid: %u, data size: %u\n", indent, "",
+             (unsigned int) shape->_sid,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_NUMBER:
-      printf("%*sNUMBER sid: %u\n", indent, "",
-             (unsigned int) shape->_sid);
+      printf("%*sNUMBER sid: %u, data size: %u\n", indent, "",
+             (unsigned int) shape->_sid,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_SHORT_STRING:
-      printf("%*sSHORT STRING sid: %u\n", indent, "",
-             (unsigned int) shape->_sid);
+      printf("%*sSHORT STRING sid: %u, data size: %u\n", indent, "",
+             (unsigned int) shape->_sid,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_LONG_STRING:
-      printf("%*sLONG STRING sid: %u\n", indent, "",
-             (unsigned int) shape->_sid);
+      printf("%*sLONG STRING sid: %u, data size: %u\n", indent, "",
+             (unsigned int) shape->_sid,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_ARRAY:
       array = (TRI_array_shape_t const*) shape;
       n = array->_fixedEntries + array->_variableEntries;
 
-      printf("%*sARRAY sid: %u, fixed: %u, variable: %u\n", indent, "",
+      printf("%*sARRAY sid: %u, fixed: %u, variable: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
              (unsigned int) array->_fixedEntries,
-             (unsigned int) array->_variableEntries);
+             (unsigned int) array->_variableEntries,
+             (unsigned int) shape->_dataSize);
 
       ptr = (char const*) shape;
       ptr += sizeof(TRI_array_shape_t);
@@ -169,25 +175,28 @@ void TRI_PrintShape (TRI_shaper_t* shaper, TRI_shape_t const* shape, int indent)
       break;
 
     case TRI_SHAPE_LIST:
-      printf("%*sLIST sid: %u\n", indent, "",
-             (unsigned int) shape->_sid);
+      printf("%*sLIST sid: %u, data size: %u\n", indent, "",
+             (unsigned int) shape->_sid,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_HOMOGENEOUS_LIST:
       homList = (TRI_homogeneous_list_shape_t const*) shape;
 
-      printf("%*sHOMOGENEOUS LIST sid: %u, entry sid: %u\n", indent, "",
+      printf("%*sHOMOGENEOUS LIST sid: %u, entry sid: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
-             (unsigned int) homList->_sidEntry);
+             (unsigned int) homList->_sidEntry,
+             (unsigned int) shape->_dataSize);
       break;
 
     case TRI_SHAPE_HOMOGENEOUS_SIZED_LIST:
       homSizedList = (TRI_homogeneous_sized_list_shape_t const*) shape;
 
-      printf("%*sHOMOGENEOUS SIZED LIST sid: %u, entry sid: %u, entry size: %u\n", indent, "",
+      printf("%*sHOMOGENEOUS SIZED LIST sid: %u, entry sid: %u, entry size: %u, data size: %u\n", indent, "",
              (unsigned int) shape->_sid,
              (unsigned int) homSizedList->_sidEntry,
-             (unsigned int) homSizedList->_sizeEntry);
+             (unsigned int) homSizedList->_sizeEntry,
+             (unsigned int) shape->_dataSize);
       break;
   }
 }
@@ -562,6 +571,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     shape->base._size = sizeof(TRI_homogeneous_sized_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_SIZED_LIST;
+    shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
     shape->_sizeEntry = l;
 
@@ -630,6 +640,7 @@ static bool FillShapeValueList (TRI_shaper_t* shaper,
 
     shape->base._size = sizeof(TRI_homogeneous_list_shape_t);
     shape->base._type = TRI_SHAPE_HOMOGENEOUS_LIST;
+    shape->base._dataSize = TRI_SHAPE_SIZE_VARIABLE;
     shape->_sidEntry = s;
 
     // note: if 'found' is not a nullptr, the shaper will have freed variable 'shape'!
@@ -906,6 +917,8 @@ static bool FillShapeValueArray (TRI_shaper_t* shaper,
 
   a->base._type = TRI_SHAPE_ARRAY;
   a->base._size = i;
+  a->base._dataSize = (v == 0) ? total : TRI_SHAPE_SIZE_VARIABLE;
+
   a->_fixedEntries = f;
   a->_variableEntries = v;
 
