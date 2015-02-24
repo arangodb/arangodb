@@ -1395,11 +1395,12 @@ testFuncs.upgrade = function (options) {
   result.first = executeAndWait(fs.join("bin","arangod"), args);
 
   if (result.first !== 0 && !options.force) {
+    print("not removing " + tmpDataDir);
     return result;
   }
   result.second = executeAndWait(fs.join("bin","arangod"), args);
 
-  fs.removeDirectoryRecursive(tmpDataDir);
+  cleanupDirectories.push(tmpDataDir);
 
   return result;
 };
