@@ -26,6 +26,7 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
+
 #include <errno.h>
 
 #include <io.h>
@@ -391,89 +392,92 @@ void TRI_FixIcuDataEnv () {
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a Windows error to a *nix system error
+////////////////////////////////////////////////////////////////////////////////
 
-long mapGetlastErrorToErrno(DWORD error) {
+int TRI_MapSystemError (DWORD error) {
   switch (error) {
-  case ERROR_INVALID_FUNCTION: return EINVAL;
-  case ERROR_FILE_NOT_FOUND: return ENOENT;
-  case ERROR_PATH_NOT_FOUND: return ENOENT;
-  case ERROR_TOO_MANY_OPEN_FILES: return EMFILE;
-  case ERROR_ACCESS_DENIED: return EACCES;
-  case ERROR_INVALID_HANDLE: return EBADF;
-  case ERROR_NOT_ENOUGH_MEMORY: return ENOMEM;
-  case ERROR_INVALID_DATA: return EINVAL;
-  case ERROR_OUTOFMEMORY: return ENOMEM;
-  case ERROR_INVALID_DRIVE: return ENODEV;
-  case ERROR_NOT_SAME_DEVICE: return EXDEV;
-  case ERROR_NO_MORE_FILES: return ENFILE;
-  case ERROR_WRITE_PROTECT: return EROFS;
-  case ERROR_BAD_UNIT: return ENODEV;
-  case ERROR_SHARING_VIOLATION: return EACCES;
-  case ERROR_LOCK_VIOLATION: return EACCES;
-  case ERROR_SHARING_BUFFER_EXCEEDED: return ENOLCK;
-  case ERROR_HANDLE_EOF: return ENODATA;
-  case ERROR_HANDLE_DISK_FULL: return ENOSPC;
-  case ERROR_NOT_SUPPORTED: return ENOSYS;
-  case ERROR_REM_NOT_LIST: return ENFILE;
-  case ERROR_DUP_NAME: return EEXIST;
-  case ERROR_BAD_NETPATH: return EBADF;
-  case ERROR_BAD_NET_NAME: return EBADF;
-  case ERROR_FILE_EXISTS: return EEXIST;
-  case ERROR_CANNOT_MAKE: return EPERM;
-  case ERROR_INVALID_PARAMETER: return EINVAL;
-  case ERROR_NO_PROC_SLOTS: return EAGAIN;
-  case ERROR_BROKEN_PIPE: return EPIPE;
-  case ERROR_OPEN_FAILED: return EIO;
-  case ERROR_NO_MORE_SEARCH_HANDLES: return ENFILE;
-  case ERROR_CALL_NOT_IMPLEMENTED: return ENOSYS;
-  case ERROR_INVALID_NAME: return ENOENT;
-  case ERROR_WAIT_NO_CHILDREN: return ECHILD;
-  case ERROR_CHILD_NOT_COMPLETE: return EBUSY;
-  case ERROR_DIR_NOT_EMPTY: return ENOTEMPTY;
-  case ERROR_SIGNAL_REFUSED: return EIO;
-  case ERROR_BAD_PATHNAME: return ENOENT;
-  case ERROR_SIGNAL_PENDING: return EBUSY;
-  case ERROR_MAX_THRDS_REACHED: return EAGAIN;
-  case ERROR_BUSY: return EBUSY;
-  case ERROR_ALREADY_EXISTS: return EEXIST;
-  case ERROR_NO_SIGNAL_SENT: return EIO;
-  case ERROR_FILENAME_EXCED_RANGE: return ENAMETOOLONG;
-  case ERROR_META_EXPANSION_TOO_LONG: return EINVAL;
-  case ERROR_INVALID_SIGNAL_NUMBER: return EINVAL;
-  case ERROR_THREAD_1_INACTIVE: return EINVAL;
-  case ERROR_BAD_PIPE: return EINVAL;
-  case ERROR_PIPE_BUSY: return EBUSY;
-  case ERROR_NO_DATA: return EPIPE;
-  case ERROR_PIPE_NOT_CONNECTED: return EPIPE;
-  case ERROR_MORE_DATA: return EAGAIN;
-  case ERROR_DIRECTORY: return ENOTDIR;
-  case ERROR_PIPE_CONNECTED: return EBUSY;
-  case ERROR_PIPE_LISTENING: return EPIPE;
-  case ERROR_NO_TOKEN: return EINVAL;
-  case ERROR_PROCESS_ABORTED: return EFAULT;
-  case ERROR_BAD_DEVICE: return ENODEV;
-  case ERROR_BAD_USERNAME: return EINVAL;
-  case ERROR_NOT_CONNECTED: return ENOLINK;
-  case ERROR_OPEN_FILES: return EAGAIN;
-  case ERROR_ACTIVE_CONNECTIONS: return EAGAIN;
-  case ERROR_DEVICE_IN_USE: return EAGAIN;
-  case ERROR_INVALID_AT_INTERRUPT_TIME: return EINTR;
-  case ERROR_IO_DEVICE: return EIO;
-  case ERROR_NOT_OWNER: return EPERM;
-  case ERROR_END_OF_MEDIA: return ENOSPC;
-  case ERROR_EOM_OVERFLOW: return ENOSPC;
-  case ERROR_BEGINNING_OF_MEDIA: return ESPIPE;
-  case ERROR_SETMARK_DETECTED: return ESPIPE;
-  case ERROR_NO_DATA_DETECTED: return ENOSPC;
-  case ERROR_POSSIBLE_DEADLOCK: return EDEADLOCK;
-  case ERROR_CRC: return EIO;
-  case ERROR_NEGATIVE_SEEK: return EINVAL;
-  case ERROR_NOT_READY: return EBADF;
-  case ERROR_DISK_FULL: return ENOSPC;
-  case ERROR_NOACCESS: return EFAULT;
-  case ERROR_FILE_INVALID: return ENXIO;
-  default: return EINVAL;
-      }
+    case ERROR_INVALID_FUNCTION: return EINVAL;
+    case ERROR_FILE_NOT_FOUND: return ENOENT;
+    case ERROR_PATH_NOT_FOUND: return ENOENT;
+    case ERROR_TOO_MANY_OPEN_FILES: return EMFILE;
+    case ERROR_ACCESS_DENIED: return EACCES;
+    case ERROR_INVALID_HANDLE: return EBADF;
+    case ERROR_NOT_ENOUGH_MEMORY: return ENOMEM;
+    case ERROR_INVALID_DATA: return EINVAL;
+    case ERROR_OUTOFMEMORY: return ENOMEM;
+    case ERROR_INVALID_DRIVE: return ENODEV;
+    case ERROR_NOT_SAME_DEVICE: return EXDEV;
+    case ERROR_NO_MORE_FILES: return ENFILE;
+    case ERROR_WRITE_PROTECT: return EROFS;
+    case ERROR_BAD_UNIT: return ENODEV;
+    case ERROR_SHARING_VIOLATION: return EACCES;
+    case ERROR_LOCK_VIOLATION: return EACCES;
+    case ERROR_SHARING_BUFFER_EXCEEDED: return ENOLCK;
+    case ERROR_HANDLE_EOF: return ENODATA;
+    case ERROR_HANDLE_DISK_FULL: return ENOSPC;
+    case ERROR_NOT_SUPPORTED: return ENOSYS;
+    case ERROR_REM_NOT_LIST: return ENFILE;
+    case ERROR_DUP_NAME: return EEXIST;
+    case ERROR_BAD_NETPATH: return EBADF;
+    case ERROR_BAD_NET_NAME: return EBADF;
+    case ERROR_FILE_EXISTS: return EEXIST;
+    case ERROR_CANNOT_MAKE: return EPERM;
+    case ERROR_INVALID_PARAMETER: return EINVAL;
+    case ERROR_NO_PROC_SLOTS: return EAGAIN;
+    case ERROR_BROKEN_PIPE: return EPIPE;
+    case ERROR_OPEN_FAILED: return EIO;
+    case ERROR_NO_MORE_SEARCH_HANDLES: return ENFILE;
+    case ERROR_CALL_NOT_IMPLEMENTED: return ENOSYS;
+    case ERROR_INVALID_NAME: return ENOENT;
+    case ERROR_WAIT_NO_CHILDREN: return ECHILD;
+    case ERROR_CHILD_NOT_COMPLETE: return EBUSY;
+    case ERROR_DIR_NOT_EMPTY: return ENOTEMPTY;
+    case ERROR_SIGNAL_REFUSED: return EIO;
+    case ERROR_BAD_PATHNAME: return ENOENT;
+    case ERROR_SIGNAL_PENDING: return EBUSY;
+    case ERROR_MAX_THRDS_REACHED: return EAGAIN;
+    case ERROR_BUSY: return EBUSY;
+    case ERROR_ALREADY_EXISTS: return EEXIST;
+    case ERROR_NO_SIGNAL_SENT: return EIO;
+    case ERROR_FILENAME_EXCED_RANGE: return ENAMETOOLONG;
+    case ERROR_META_EXPANSION_TOO_LONG: return EINVAL;
+    case ERROR_INVALID_SIGNAL_NUMBER: return EINVAL;
+    case ERROR_THREAD_1_INACTIVE: return EINVAL;
+    case ERROR_BAD_PIPE: return EINVAL;
+    case ERROR_PIPE_BUSY: return EBUSY;
+    case ERROR_NO_DATA: return EPIPE;
+    case ERROR_PIPE_NOT_CONNECTED: return EPIPE;
+    case ERROR_MORE_DATA: return EAGAIN;
+    case ERROR_DIRECTORY: return ENOTDIR;
+    case ERROR_PIPE_CONNECTED: return EBUSY;
+    case ERROR_PIPE_LISTENING: return EPIPE;
+    case ERROR_NO_TOKEN: return EINVAL;
+    case ERROR_PROCESS_ABORTED: return EFAULT;
+    case ERROR_BAD_DEVICE: return ENODEV;
+    case ERROR_BAD_USERNAME: return EINVAL;
+    case ERROR_NOT_CONNECTED: return ENOLINK;
+    case ERROR_OPEN_FILES: return EAGAIN;
+    case ERROR_ACTIVE_CONNECTIONS: return EAGAIN;
+    case ERROR_DEVICE_IN_USE: return EAGAIN;
+    case ERROR_INVALID_AT_INTERRUPT_TIME: return EINTR;
+    case ERROR_IO_DEVICE: return EIO;
+    case ERROR_NOT_OWNER: return EPERM;
+    case ERROR_END_OF_MEDIA: return ENOSPC;
+    case ERROR_EOM_OVERFLOW: return ENOSPC;
+    case ERROR_BEGINNING_OF_MEDIA: return ESPIPE;
+    case ERROR_SETMARK_DETECTED: return ESPIPE;
+    case ERROR_NO_DATA_DETECTED: return ENOSPC;
+    case ERROR_POSSIBLE_DEADLOCK: return EDEADLOCK;
+    case ERROR_CRC: return EIO;
+    case ERROR_NEGATIVE_SEEK: return EINVAL;
+    case ERROR_NOT_READY: return EBADF;
+    case ERROR_DISK_FULL: return ENOSPC;
+    case ERROR_NOACCESS: return EFAULT;
+    case ERROR_FILE_INVALID: return ENXIO;
+    default: return EINVAL;
+  }
 }
 
 // -----------------------------------------------------------------------------
