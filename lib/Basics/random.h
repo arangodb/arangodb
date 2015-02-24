@@ -30,6 +30,11 @@
 #ifndef ARANGODB_BASICS_C_RANDOM_H
 #define ARANGODB_BASICS_C_RANDOM_H 1
 
+#ifdef _WIN32
+#define _CRT_RAND_S
+#endif
+
+
 #include "Basics/Common.h"
 
 // -----------------------------------------------------------------------------
