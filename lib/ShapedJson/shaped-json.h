@@ -276,6 +276,7 @@ typedef struct TRI_shape_s {
   TRI_shape_sid_t    _sid;
   TRI_shape_type_t   _type;
   TRI_shape_size_t   _size;     // total size of the shape
+  TRI_shape_size_t   _dataSize; // in case of fixed sized shaped or TRI_SHAPE_SIZE_VARIABLE
 }
 TRI_shape_t;
 
@@ -316,6 +317,11 @@ TRI_shape_value_t;
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_null_shape_t)</td>
 ///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always 0</td>
+///   </tr>
 /// </table>
 ///
 /// There is no corresponding shaped JSON object.
@@ -347,6 +353,11 @@ TRI_null_shape_t;
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_boolean_shape_t)</td>
+///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always sizeof(TRI_shape_boolean_t)</td>
 ///   </tr>
 /// </table>
 ///
@@ -388,6 +399,11 @@ TRI_boolean_shape_t;
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_number_shape_t)</td>
 ///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always sizeof(TRI_shape_number_t)</td>
+///   </tr>
 /// </table>
 ///
 /// The memory layout of the corresponding shaped JSON is as follows
@@ -427,6 +443,11 @@ TRI_number_shape_t;
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_short_string_shape_t)</td>
+///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always sizeof(TRI_shape_length_short_string_t) + @c TRI_SHAPE_SHORT_STRING_CUT</td>
 ///   </tr>
 /// </table>
 ///
@@ -472,6 +493,11 @@ TRI_short_string_shape_t;
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_long_string_shape_t)</td>
+///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always @c TRI_SHAPE_SIZE_VARIABLE</td>
 ///   </tr>
 /// </table>
 ///
@@ -524,6 +550,11 @@ TRI_long_string_shape_t;
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
 ///     <td>total size of the shape</td>
+///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>eitder @c TRI_SHAPE_SIZE_VARIABLE or tde size of tde data for fixed sized arrays</td>
 ///   </tr>
 ///   <tr>
 ///     <td>@c TRI_shape_size_t</td>
@@ -618,6 +649,11 @@ TRI_array_shape_t;
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_list_shape_t)</td>
 ///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always @c TRI_SHAPE_SIZE_VARIABLE</td>
+///   </tr>
 /// </table>
 ///
 /// The memory layout of the corresponding shaped JSON is as follows
@@ -686,6 +722,11 @@ TRI_list_shape_t;
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_list_shape_t)</td>
+///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always @c TRI_SHAPE_SIZE_VARIABLE</td>
 ///   </tr>
 ///   <tr>
 ///     <td>@c TRI_shape_sid_t</td>
@@ -757,6 +798,11 @@ TRI_homogeneous_list_shape_t;
 ///     <td>@c TRI_shape_size_t</td>
 ///     <td>_size</td>
 ///     <td>total size of the shape, always sizeof(TRI_list_shape_t)</td>
+///   </tr>
+///   <tr>
+///     <td>@c TRI_shape_size_t</td>
+///     <td>_dataSize</td>
+///     <td>always @c TRI_SHAPE_SIZE_VARIABLE</td>
 ///   </tr>
 ///   <tr>
 ///     <td>@c TRI_shape_sid_t</td>
