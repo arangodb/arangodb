@@ -456,6 +456,58 @@ describe ArangoDB do
         doc.parsed_response['code'].should eq(400)
         doc.parsed_response['errorNum'].should eq(1501)
       end
+      
+    end
+
+################################################################################
+## floating points
+################################################################################
+
+    context "fetching floating-point values:" do
+      before do
+        @cn = "users"
+        ArangoDB.drop_collection(@cn)
+        @cid = ArangoDB.create_collection(@cn, false)
+
+        ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"_key\" : \"big\", \"value\" : 4e+262 }")
+        ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"_key\" : \"neg\", \"value\" : -4e262 }")
+        ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"_key\" : \"pos\", \"value\" : 4e262 }")
+        ArangoDB.post("/_api/document?collection=#{@cid}", :body => "{ \"_key\" : \"small\", \"value\" : 4e-262 }")
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+
+      it "fetching via cursor" do
+        cmd = api
+        body = "{ \"query\" : \"FOR u IN #{@cn} SORT u._key RETURN u.value\" }"
+        doc = ArangoDB.log_post("#{prefix}-float", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        result = doc.parsed_response['result']
+        result.length.should eq(4)
+        result[0].should eq(4e262);
+        result[1].should eq(-4e262);
+        result[2].should eq(4e262);
+        result[3].should eq(4e-262);
+        
+        doc = ArangoDB.get("/_api/document/#{@cid}/big")
+        doc.parsed_response['value'].should eq(4e262)
+        
+        doc = ArangoDB.get("/_api/document/#{@cid}/neg")
+        doc.parsed_response['value'].should eq(-4e262)
+
+        doc = ArangoDB.get("/_api/document/#{@cid}/pos")
+        doc.parsed_response['value'].should eq(4e262)
+
+        doc = ArangoDB.get("/_api/document/#{@cid}/small")
+        doc.parsed_response['value'].should eq(4e-262)
+      end
     end
 
   end
