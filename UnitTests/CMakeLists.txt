@@ -40,6 +40,7 @@ add_executable(
     Basics/conversions-test.cpp
     Basics/csv-test.cpp
     Basics/files-test.cpp
+    Basics/fpconv-test.cpp
     Basics/json-test.cpp
     Basics/json-utilities-test.cpp
     Basics/hashes-test.cpp

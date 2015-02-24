@@ -338,6 +338,7 @@ UnitTests_basics_suite_SOURCES = \
 	UnitTests/Basics/conversions-test.cpp \
 	UnitTests/Basics/csv-test.cpp \
 	UnitTests/Basics/files-test.cpp \
+	UnitTests/Basics/fpconv-test.cpp \
 	UnitTests/Basics/json-test.cpp \
 	UnitTests/Basics/json-utilities-test.cpp \
 	UnitTests/Basics/hashes-test.cpp \

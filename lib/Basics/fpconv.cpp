@@ -295,7 +295,7 @@ static int filter_special(double fp, char* dest)
     }
 
     if(bits & fracmask) {
-        dest[0] = 'n'; dest[1] = 'a'; dest[2] = 'n';
+        dest[0] = 'N'; dest[1] = 'a'; dest[2] = 'N';
 
     } else {
         dest[0] = 'i'; dest[1] = 'n'; dest[2] = 'f';
