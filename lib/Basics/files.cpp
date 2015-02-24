@@ -531,6 +531,7 @@ int TRI_CreateRecursiveDirectory (char const* path,
         res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
         if ((res == TRI_ERROR_FILE_EXISTS) ||
             (res == TRI_ERROR_NO_ERROR)) {
+          res = TRI_ERROR_NO_ERROR;
           *p = TRI_DIR_SEPARATOR_CHAR;
           s = p + 1;
         }
@@ -546,6 +547,9 @@ int TRI_CreateRecursiveDirectory (char const* path,
        (res == TRI_ERROR_NO_ERROR))
       && (p - s > 0)) {
     res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
+    if (res == TRI_ERROR_FILE_EXISTS) {
+      res = TRI_ERROR_NO_ERROR;
+    }
   }
 
   TRI_Free(TRI_CORE_MEM_ZONE, copy);
