@@ -53,43 +53,37 @@ TRI_shape_pid_t const BasicShapes::TRI_SHAPE_SID_LIST          = 6;
 TRI_shape_t const BasicShapes::_shapeNull = { 
   BasicShapes::TRI_SHAPE_SID_NULL, 
   TRI_SHAPE_NULL, 
-  sizeof(TRI_null_shape_t), 
-  0 
+  sizeof(TRI_null_shape_t)
 };
 
 TRI_shape_t const BasicShapes::_shapeBoolean = { 
   BasicShapes::TRI_SHAPE_SID_BOOLEAN, 
   TRI_SHAPE_BOOLEAN, 
-  sizeof(TRI_boolean_shape_t), 
-  sizeof(TRI_shape_boolean_t) 
+  sizeof(TRI_boolean_shape_t) 
 };
 
 TRI_shape_t const BasicShapes::_shapeNumber = { 
   BasicShapes::TRI_SHAPE_SID_NUMBER, 
   TRI_SHAPE_NUMBER, 
-  sizeof(TRI_number_shape_t), 
-  sizeof(TRI_shape_number_t) 
+  sizeof(TRI_number_shape_t) 
 };
 
 TRI_shape_t const BasicShapes::_shapeShortString = { 
   BasicShapes::TRI_SHAPE_SID_SHORT_STRING, 
   TRI_SHAPE_SHORT_STRING, 
-  sizeof(TRI_short_string_shape_t), 
-  sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT 
+  sizeof(TRI_short_string_shape_t) 
 };
 
 TRI_shape_t const BasicShapes::_shapeLongString = { 
   BasicShapes::TRI_SHAPE_SID_LONG_STRING, 
   TRI_SHAPE_LONG_STRING, 
-  sizeof(TRI_long_string_shape_t), 
-  TRI_SHAPE_SIZE_VARIABLE 
+  sizeof(TRI_long_string_shape_t) 
 };
 
 TRI_shape_t const BasicShapes::_shapeList = { 
   BasicShapes::TRI_SHAPE_SID_LIST, 
   TRI_SHAPE_LIST, 
-  sizeof(TRI_list_shape_t), 
-  TRI_SHAPE_SIZE_VARIABLE 
+  sizeof(TRI_list_shape_t) 
 };
 
 // -----------------------------------------------------------------------------
