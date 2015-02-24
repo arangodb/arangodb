@@ -93,6 +93,8 @@ Controller = function (context, options) {
   this.routingInfo.urlPrefix = urlPrefix;
   this.collectionPrefix = context.collectionPrefix;
 
+  this.extensions = {};
+
   baseMiddleware = new BaseMiddleware();
 
   this.routingInfo.middleware = [
@@ -152,7 +154,9 @@ extend(Controller.prototype, {
     'use strict';
     var constraints = {queryParams: {}, urlParams: {}},
       newRoute = internal.constructRoute(method, route, callback, this, constraints),
-      requestContext = new RequestContext(this.allRoutes, this.models, newRoute, this.rootElement, constraints),
+      requestContext = new RequestContext(
+        this.allRoutes, this.models, newRoute, this.rootElement, constraints, this.extensions
+      ),
       summary,
       undocumentedBody;
 
@@ -767,7 +771,28 @@ extend(Controller.prototype, {
     }
     var sessions = require("org/arangodb/foxx/sessions");
     return this[method](route, sessions.createDestroySessionHandler(this.getSessions(), opts));
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_controller_destroySession
+///
+/// `FoxxController#extend(extensions)`
+///
+/// @EXAMPLES
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+  extend: function(extensions) {
+    'use strict';
+    var attr;
+    for (attr in extensions) {
+      if (extensions.hasOwnProperty(attr)) {
+        this.extensions[attr] = extensions[attr];
+      }
+    }
   }
+
 });
 
 exports.Controller = Controller;
