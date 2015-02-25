@@ -124,6 +124,9 @@ pack-dmg-cmake:
 
 	${MAKE} ${BUILT_SOURCES}
 
+	test -d bin || mkdir bin
+	make bin/etcd-arango
+
 	cd Build && ${MAKE}
 
 	cd Build && cpack \
@@ -168,6 +171,9 @@ pack-macosx-cmake:
 	${MAKE} .mruby-build-64
 
 	${MAKE} ${BUILT_SOURCES}
+
+	test -d bin || mkdir bin
+	make bin/etcd-arango
 
 	cd Build && ${MAKE}
 	cd Build && ${MAKE} install DESTDIR=${PACK_DESTDIR}

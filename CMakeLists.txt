@@ -240,13 +240,8 @@ set(TRI_RESOURCEDIR "resources")
 ### @brief TRI_BINDIR
 ################################################################################
 
-if (MSVC)
-  set(TRI_BINDIR_INSTALL "bin")
-  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-else ()
-  set(TRI_BINDIR_INSTALL "bin")
-  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-endif ()
+set(TRI_BINDIR_INSTALL "bin")
+set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
 
 ################################################################################
 ### @brief TRI_SBINDIR
@@ -638,6 +633,15 @@ add_subdirectory(arangod)
 
 if (USE_MRUBY)
   add_subdirectory(arangoirb)
+endif ()
+
+################################################################################
+### @brief etcd
+################################################################################
+
+if (DARWIN)
+  install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
+          DESTINATION ${TRI_BINDIR_INSTALL})
 endif ()
 
 ## -----------------------------------------------------------------------------
