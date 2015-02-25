@@ -42,13 +42,24 @@ describe("Foxx Manager", function() {
   describe("using different dbs", function() {
 
     beforeEach(function() {
-      arango.reconnect(originalEndpoint, "tmpFMDB", "root", "");
+      arango.reconnect(originalEndpoint, "_system", "root", "");
+      try {
+        db._dropDatabase("tmpFMDB");
+      }
+      catch (err) {
+      }
+      try {
+        db._dropDatabase("tmpFMDB2");
+      }
+      catch (err) {
+      }
+
       db._createDatabase("tmpFMDB");
       db._createDatabase("tmpFMDB2");
     });
 
     afterEach(function() {
-      arango.reconnect(originalEndpoint, "tmpFMDB", "root", "");
+      arango.reconnect(originalEndpoint, "_system", "root", "");
       db._dropDatabase("tmpFMDB");
       db._dropDatabase("tmpFMDB2");
     });
