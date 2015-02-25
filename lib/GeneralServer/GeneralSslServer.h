@@ -102,10 +102,11 @@ namespace triagens {
               meth = SSLv2_method();
               break;
 #endif
+#ifndef OPENSSL_NO_SSL3_METHOD
             case SSL_V3:
               meth = SSLv3_method();
               break;
-
+#endif
             case SSL_V23:
               meth = SSLv23_method();
               break;

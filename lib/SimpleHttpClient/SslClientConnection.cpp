@@ -98,10 +98,11 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
       meth = SSLv2_method();
       break;
 #endif
+#ifndef OPENSSL_NO_SSL3_METHOD
     case HttpsServer::SSL_V3:
       meth = SSLv3_method();
       break;
-
+#endif
     case HttpsServer::SSL_V23:
       meth = SSLv23_method();
       break;
@@ -381,6 +382,8 @@ again:
       TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
       return false;
     }
+
+    ERR_clear_error();
 
     int lenRead = SSL_read(_ssl, stringBuffer.end(), READBUFFER_SIZE - 1);
 
