@@ -117,7 +117,10 @@
       if (appCache[dbname].hasOwnProperty(mount)) {
         return appCache[dbname][mount];
       }
-      throw new Error("App not found at: " + mount);
+      throw new ArangoError({
+        errorNum: errors.ERROR_APP_NOT_FOUND.code,
+        errorMessage: "App not found at: " + mount
+      });
     }
     return appCache[dbname][mount];
   };
