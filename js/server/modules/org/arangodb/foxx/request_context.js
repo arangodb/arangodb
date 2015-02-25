@@ -184,7 +184,7 @@ extend(SwaggerDocs.prototype, {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route, rootElement, constraints) {
+RequestContext = function (executionBuffer, models, route, rootElement, constraints, extensions) {
   'use strict';
   this.route = route;
   this.typeToRegex = {
@@ -199,6 +199,18 @@ RequestContext = function (executionBuffer, models, route, rootElement, constrai
   this.docs.addNickname(route.docs.httpMethod, route.url.match);
 
   executionBuffer.applyEachFunction(this);
+  var attr;
+  var extensionWrapper = function(scope, func) {
+    return function() {
+      func.apply(this, arguments);
+      return this;
+    }.bind(scope);
+  };
+  for (attr in extensions) {
+    if (extensions.hasOwnProperty(attr)) {
+      this[attr] = extensionWrapper(this, extensions[attr]);
+    }
+  }
 };
 
 extend(RequestContext.prototype, {

@@ -449,8 +449,15 @@ static int CreateBaseApplicationDirectory (char const* basePath,
                  path);
       }
       else {
-        LOG_ERROR("unable to create base application directory %s",
-                  errorMessage.c_str());
+        if ((res != TRI_ERROR_FILE_EXISTS) || (! TRI_IsDirectory(path))) {
+          LOG_ERROR("unable to create base application directory %s",
+                    errorMessage.c_str());
+        }
+        else {
+          LOG_INFO("otherone created base application directory '%s'",
+                   path);
+          res = TRI_ERROR_NO_ERROR;
+        }
       }
     }
 
@@ -496,6 +503,7 @@ static int CreateApplicationDirectory (char const* name,
                  path,
                  name,
                  errorMessage.c_str());
+        res = TRI_ERROR_NO_ERROR;
       }
       else {
         LOG_ERROR("unable to create application directory '%s' for database '%s': %s",
