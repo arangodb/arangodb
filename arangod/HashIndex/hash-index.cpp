@@ -568,6 +568,12 @@ static int SizeHintHashIndex (TRI_index_t* idx,
                               size_t size) {
   TRI_hash_index_t* hashIndex = (TRI_hash_index_t*) idx;
 
+  if (idx->_sparse) {
+    // for sparse indexes, we assume that we will have less index entries
+    // than if the index would be fully populated
+    size /= 5;
+  }
+
   if (hashIndex->base._unique) {
     TRI_ResizeHashArray(&hashIndex->_hashArray, size);
   }
