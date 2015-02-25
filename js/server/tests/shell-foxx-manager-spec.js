@@ -31,6 +31,8 @@
 "use strict";
 
 var FoxxManager = require("org/arangodb/foxx/manager");
+var arangodb = require("org/arangodb");
+var errors = arangodb.errors;
 
 describe("Foxx Manager", function() {
 
@@ -61,14 +63,48 @@ describe("Foxx Manager", function() {
     var i, app, l = list.length;
     for (i = 0; i < l; ++i) {
       app = list[i];
-      try {
-        FoxxManager.install(app.name, mount);
-        FoxxManager.uninstall(mount);
-      } catch(e) {
-        expect(e).toBeUndefined("Could not install " + app.name);
+      if (app.name === "sessions-example-app") {
+        // Requires oauth2 to be installed
         try {
-          FoxxManager.uninstall(mount, { force: true });
+          FoxxManager.uninstall("/oauth2", { force: true });
         } catch(err) {
+        }
+        try {
+          FoxxManager.install(app.name, mount);
+          expect(true).toBeFalsy("Installing sessions-example-app should require oauth2");
+        } catch(e) {
+          expect(e.errorNum).toEqual(errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code);
+          try {
+            FoxxManager.install("oauth2", "/oauth2");
+          } catch(err) {
+            expect(e).toBeUndefined("Could not install oauth2");
+            continue;
+          }
+          try {
+            FoxxManager.install(app.name, mount);
+            FoxxManager.uninstall(mount);
+          } catch(err2) {
+            expect(err2).toBeUndefined("Could not install " + app.name);
+            try {
+              FoxxManager.uninstall(mount, { force: true });
+            } catch(err) {
+            }
+          }
+          try {
+            FoxxManager.uninstall("/oauth2", {force: true});
+          } catch(err) {
+          }
+        }
+      } else {
+        try {
+          FoxxManager.install(app.name, mount);
+          FoxxManager.uninstall(mount);
+        } catch(e) {
+          expect(e).toBeUndefined("Could not install " + app.name);
+          try {
+            FoxxManager.uninstall(mount, { force: true });
+          } catch(err) {
+          }
         }
       }
     }
