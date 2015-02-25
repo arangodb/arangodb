@@ -599,6 +599,8 @@
 ///   mountpoint is invalid
 /// - 3008: @LIT{No foxx found at this location}
 ///   No foxx found at this location
+/// - 3009: @LIT{App not found}
+///   No app found at this mountpoint
 /// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
@@ -3176,6 +3178,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_NO_FOXX_FOUND                                           (3008)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3009: ERROR_APP_NOT_FOUND
+///
+/// App not found
+///
+/// No app found at this mountpoint
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APP_NOT_FOUND                                           (3009)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS
