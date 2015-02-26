@@ -45,9 +45,13 @@ static inline uint64_t InitialSize () {
   return 251;
 }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the index
+////////////////////////////////////////////////////////////////////////////////
+
+static inline bool ShouldResize (TRI_primary_index_t const* idx) { 
+  return (idx->_nrAlloc < idx->_nrUsed + idx->_nrUsed);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resizes the index
@@ -149,6 +153,30 @@ int TRI_InitPrimaryIndex (TRI_primary_index_t* idx) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief resizes the index
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_ResizePrimaryIndex (TRI_primary_index_t* idx,
+                            size_t targetSize) {
+  if (! ResizePrimaryIndex(idx, (uint64_t) (2 * targetSize + 1), false)) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief resize the index to a good size if too small
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_AutoResizePrimaryIndex (TRI_primary_index_t* idx) {
+  if (ShouldResize(idx) &&
+      ! ResizePrimaryIndex(idx, (uint64_t) (2 * idx->_nrAlloc + 1), false)) {
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief destroys an index, but does not free the pointer
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -204,7 +232,7 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
                                void const** found) {
   *found = nullptr;
 
-  if (idx->_nrAlloc < 2 * idx->_nrUsed) {
+  if (ShouldResize(idx)) {
     // check for out-of-memory
     if (! ResizePrimaryIndex(idx, (uint64_t) (2 * idx->_nrAlloc + 1), false)) {
       return TRI_ERROR_OUT_OF_MEMORY;
@@ -239,6 +267,33 @@ int TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
   ++idx->_nrUsed;
 
   return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a key/element to the index
+/// this is a special, optimized (read: reduced) variant of the above insert
+/// function 
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_InsertKeyPrimaryIndex (TRI_primary_index_t* idx,
+                                TRI_doc_mptr_t const* header) {
+  uint64_t const n = idx->_nrAlloc;
+  uint64_t i, k;
+
+  i = k = header->_hash % n;
+
+  for (; i < n && idx->_table[i] != nullptr && IsDifferentKeyElement(header, idx->_table[i]); ++i);
+  if (i == n) {
+    for (i = 0; i < k && idx->_table[i] != nullptr && IsDifferentKeyElement(header, idx->_table[i]); ++i);
+  }
+
+  TRI_ASSERT_EXPENSIVE(i < n);
+
+  TRI_ASSERT_EXPENSIVE(idx->_table[i] == nullptr);
+
+  // add a new element to the associative idx
+  idx->_table[i] = (void*) header;
+  ++idx->_nrUsed;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

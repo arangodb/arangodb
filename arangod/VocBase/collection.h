@@ -31,9 +31,7 @@
 #define ARANGODB_VOC_BASE_COLLECTION_H 1
 
 #include "Basics/Common.h"
-
 #include "Basics/vector.h"
-
 #include "VocBase/datafile.h"
 #include "VocBase/vocbase.h"
 
@@ -176,6 +174,7 @@ typedef struct TRI_col_info_s {
   TRI_voc_cid_t      _planId;          // cluster-wide collection identifier
   TRI_voc_rid_t      _revision;        // last revision id written
   TRI_voc_size_t     _maximalSize;     // maximal size of memory mapped file
+  int64_t            _initialCount;    // initial count, used when loading a collection
 
   char               _name[TRI_COL_PATH_LENGTH];  // name of the collection
   struct TRI_json_t* _keyOptions;      // options for key creation
@@ -202,7 +201,7 @@ struct TRI_collection_t {
   TRI_col_state_e      _state;       // state of the collection
   int                  _lastError;   // last (critical) error
 
-  char* _directory;                  // directory of the collection
+  char*                _directory;   // directory of the collection
 
   TRI_vector_pointer_t _datafiles;   // all datafiles
   TRI_vector_pointer_t _journals;    // all journals

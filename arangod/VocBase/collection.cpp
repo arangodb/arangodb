@@ -34,6 +34,7 @@
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/json.h"
+#include "Basics/JsonHelper.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "VocBase/document-collection.h"
@@ -226,20 +227,16 @@ static TRI_voc_tick_t GetDatafileId (const char* path) {
 static void InitCollection (TRI_vocbase_t* vocbase,
                             TRI_collection_t* collection,
                             char* directory,
-                            const TRI_col_info_t* const info) {
-  TRI_ASSERT(collection);
-
-  memset(collection, 0, sizeof(TRI_collection_t));
+                            TRI_col_info_t const* info) {
+  TRI_ASSERT(collection != nullptr);
 
   TRI_CopyCollectionInfo(&collection->_info, info);
 
-  collection->_vocbase = vocbase;
-
-  collection->_state = TRI_COL_STATE_WRITE;
+  collection->_vocbase   = vocbase;
+  collection->_tickMax   = 0;
+  collection->_state     = TRI_COL_STATE_WRITE;
   collection->_lastError = 0;
-
   collection->_directory = directory;
-  collection->_tickMax = 0;
 
   TRI_InitVectorPointer(&collection->_datafiles, TRI_UNKNOWN_MEM_ZONE);
   TRI_InitVectorPointer(&collection->_journals, TRI_UNKNOWN_MEM_ZONE);
@@ -725,6 +722,8 @@ static void FreeDatafilesVector (TRI_vector_pointer_t* const vector) {
 static bool IterateDatafilesVector (const TRI_vector_pointer_t* const files,
                                     bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                     void* data) {
+  TRI_ASSERT(iterator != nullptr);
+
   size_t const n = files->_length;
 
   for (size_t i = 0;  i < n;  ++i) {
@@ -770,6 +769,8 @@ static bool CloseDataFiles (const TRI_vector_pointer_t* const files) {
 static bool IterateFiles (TRI_vector_string_t* vector,
                           bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                           void* data) {
+  TRI_ASSERT(iterator != nullptr);
+
   size_t const n = vector->_length;
 
   for (size_t i = 0; i < n ; ++i) {
@@ -793,17 +794,21 @@ static bool IterateFiles (TRI_vector_string_t* vector,
 /// @brief fills the collection parameters from the json info passed
 ////////////////////////////////////////////////////////////////////////////////
 
-static void FillParametersFromJson (TRI_col_info_t* parameter,
+static void FillParametersFromJson (TRI_col_info_t* parameters,
                                     TRI_json_t const* json) {
-  TRI_ASSERT(parameter != nullptr);
+  TRI_ASSERT(parameters != nullptr);
   TRI_ASSERT(TRI_IsObjectJson(json));
 
+  // init with defaults
+  memset(parameters, 0, sizeof(TRI_col_info_t));
+  parameters->_initialCount = -1;
+        
   // convert json
   size_t const n = json->_value._objects._length;
 
   for (size_t i = 0;  i < n;  i += 2) {
-    TRI_json_t* key = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, i));
-    TRI_json_t* value = static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, i + 1));
+    auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i));
+    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i + 1));
 
     if (! TRI_IsStringJson(key)) {
       continue;
@@ -811,51 +816,54 @@ static void FillParametersFromJson (TRI_col_info_t* parameter,
 
     if (value->_type == TRI_JSON_NUMBER) {
       if (TRI_EqualString(key->_value._string.data, "version")) {
-        parameter->_version = (TRI_col_version_t) value->_value._number;
+        parameters->_version = static_cast<TRI_col_version_t>(value->_value._number);
       }
       else if (TRI_EqualString(key->_value._string.data, "type")) {
-        parameter->_type = (TRI_col_type_e) (int) value->_value._number;
+        parameters->_type = (TRI_col_type_e) (int) value->_value._number;
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
-        parameter->_cid = (TRI_voc_cid_t) value->_value._number;
+        parameters->_cid = static_cast<TRI_voc_cid_t>(value->_value._number);
       }
       else if (TRI_EqualString(key->_value._string.data, "planId")) {
-        parameter->_planId = (TRI_voc_cid_t) value->_value._number;
+        parameters->_planId = static_cast<TRI_voc_cid_t>(value->_value._number);
       }
       else if (TRI_EqualString(key->_value._string.data, "maximalSize")) {
-        parameter->_maximalSize = (TRI_voc_size_t) value->_value._number;
+        parameters->_maximalSize = static_cast<TRI_voc_size_t>(value->_value._number);
+      }
+      else if (TRI_EqualString(key->_value._string.data, "count")) {
+        parameters->_initialCount = static_cast<int64_t>(value->_value._number);
       }
     }
     else if (TRI_IsStringJson(value)) {
       if (TRI_EqualString(key->_value._string.data, "name")) {
-        TRI_CopyString(parameter->_name, value->_value._string.data, sizeof(parameter->_name) - 1);
+        TRI_CopyString(parameters->_name, value->_value._string.data, sizeof(parameters->_name) - 1);
 
-        parameter->_isSystem = TRI_IsSystemNameCollection(parameter->_name);
+        parameters->_isSystem = TRI_IsSystemNameCollection(parameters->_name);
       }
       else if (TRI_EqualString(key->_value._string.data, "cid")) {
-        parameter->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
+        parameters->_cid = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
       else if (TRI_EqualString(key->_value._string.data, "planId")) {
-        parameter->_planId = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
+        parameters->_planId = (TRI_voc_cid_t) TRI_UInt64String(value->_value._string.data);
       }
     }
     else if (value->_type == TRI_JSON_BOOLEAN) {
       if (TRI_EqualString(key->_value._string.data, "deleted")) {
-        parameter->_deleted = value->_value._boolean;
+        parameters->_deleted = value->_value._boolean;
       }
       else if (TRI_EqualString(key->_value._string.data, "doCompact")) {
-        parameter->_doCompact = value->_value._boolean;
+        parameters->_doCompact = value->_value._boolean;
       }
       else if (TRI_EqualString(key->_value._string.data, "isVolatile")) {
-        parameter->_isVolatile = value->_value._boolean;
+        parameters->_isVolatile = value->_value._boolean;
       }
       else if (TRI_EqualString(key->_value._string.data, "waitForSync")) {
-        parameter->_waitForSync = value->_value._boolean;
+        parameters->_waitForSync = value->_value._boolean;
       }
     }
     else if (value->_type == TRI_JSON_OBJECT) {
       if (TRI_EqualString(key->_value._string.data, "keyOptions")) {
-        parameter->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
+        parameters->_keyOptions = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
       }
     }
   }
@@ -872,37 +880,40 @@ static void FillParametersFromJson (TRI_col_info_t* parameter,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_InitCollectionInfo (TRI_vocbase_t* vocbase,
-                             TRI_col_info_t* parameter,
+                             TRI_col_info_t* parameters,
                              char const* name,
                              TRI_col_type_e type,
                              TRI_voc_size_t maximalSize,
                              TRI_json_t* keyOptions) {
-  TRI_ASSERT(parameter);
-  memset(parameter, 0, sizeof(TRI_col_info_t));
+  TRI_ASSERT(parameters != nullptr);
 
-  parameter->_version       = TRI_COL_VERSION;
-  parameter->_type          = type;
-  parameter->_cid           = 0;
-  parameter->_planId        = 0;
-  parameter->_revision      = 0;
-
-  parameter->_deleted       = false;
-  parameter->_doCompact     = true;
-  parameter->_isVolatile    = false;
-  parameter->_isSystem      = false;
-  parameter->_maximalSize   = (TRI_voc_size_t) ((maximalSize / PageSize) * PageSize);
-  if (parameter->_maximalSize == 0 && maximalSize != 0) {
-    parameter->_maximalSize = (TRI_voc_size_t) PageSize;
+  // init with defaults
+  parameters->_version       = TRI_COL_VERSION;
+  parameters->_type          = type;
+  parameters->_cid           = 0;
+  parameters->_planId        = 0;
+  parameters->_revision      = 0;
+  parameters->_maximalSize   = static_cast<TRI_voc_size_t>((maximalSize / PageSize) * PageSize);
+  if (parameters->_maximalSize == 0 && maximalSize != 0) {
+    parameters->_maximalSize = static_cast<TRI_voc_size_t>(PageSize);
   }
-  parameter->_waitForSync   = vocbase->_settings.defaultWaitForSync;
+  parameters->_initialCount  = -1;
+ 
+  // fill name with 0 bytes  
+  memset(parameters->_name, 0, sizeof(parameters->_name));
+  TRI_CopyString(parameters->_name, name, sizeof(parameters->_name) - 1);
 
-  parameter->_keyOptions    = nullptr;
+  parameters->_keyOptions    = nullptr;
 
   if (keyOptions != nullptr) {
-    parameter->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
+    parameters->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
   }
 
-  TRI_CopyString(parameter->_name, name, sizeof(parameter->_name) - 1);
+  parameters->_deleted       = false;
+  parameters->_doCompact     = true;
+  parameters->_isVolatile    = false;
+  parameters->_isSystem      = false;
+  parameters->_waitForSync   = vocbase->_settings.defaultWaitForSync;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -920,7 +931,7 @@ void TRI_FromJsonCollectionInfo (TRI_col_info_t* dst,
 
 void TRI_CopyCollectionInfo (TRI_col_info_t* dst, 
                              TRI_col_info_t const* src) {
-  TRI_ASSERT(dst);
+  TRI_ASSERT(dst != nullptr);
   memset(dst, 0, sizeof(TRI_col_info_t));
 
   dst->_version       = src->_version;
@@ -928,13 +939,10 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst,
   dst->_cid           = src->_cid;
   dst->_planId        = src->_planId;
   dst->_revision      = src->_revision;
-
-  dst->_deleted       = src->_deleted;
-  dst->_doCompact     = src->_doCompact;
-  dst->_isSystem      = src->_isSystem;
-  dst->_isVolatile    = src->_isVolatile;
   dst->_maximalSize   = src->_maximalSize;
-  dst->_waitForSync   = src->_waitForSync;
+  dst->_initialCount  = src->_initialCount;
+  
+  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name) - 1);
 
   if (src->_keyOptions) {
     dst->_keyOptions  = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, src->_keyOptions);
@@ -943,7 +951,11 @@ void TRI_CopyCollectionInfo (TRI_col_info_t* dst,
     dst->_keyOptions  = nullptr;
   }
 
-  TRI_CopyString(dst->_name, src->_name, sizeof(dst->_name) - 1);
+  dst->_deleted       = src->_deleted;
+  dst->_doCompact     = src->_doCompact;
+  dst->_isSystem      = src->_isSystem;
+  dst->_isVolatile    = src->_isVolatile;
+  dst->_waitForSync   = src->_waitForSync;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1212,12 +1224,11 @@ int TRI_IterateJsonIndexesCollectionInfo (TRI_vocbase_col_t* collection,
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
-  TRI_json_t* json;
   char* cidString;
   char* planIdString;
 
   // create a json info object
-  json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
+  TRI_json_t* json = TRI_CreateObjectJson(TRI_CORE_MEM_ZONE, 9);
 
   if (json == nullptr) {
     return nullptr;
@@ -1248,6 +1259,10 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
     TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "planId",     TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, planIdString, strlen(planIdString)));
   }
 
+  if (info->_initialCount >= 0) {
+    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "count",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_initialCount));
+  }
+
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "deleted",      TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_deleted));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "doCompact",    TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, info->_doCompact));
   TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, json, "maximalSize",  TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) info->_maximalSize));
@@ -1275,16 +1290,12 @@ TRI_json_t* TRI_CreateJsonCollectionInfo (TRI_col_info_t const* info) {
 int TRI_LoadCollectionInfo (char const* path,
                             TRI_col_info_t* parameter,
                             bool versionWarning) {
-  TRI_json_t* json;
-  char* filename;
-  char* error = nullptr;
-
   memset(parameter, 0, sizeof(TRI_col_info_t));
   parameter->_doCompact  = true;
   parameter->_isVolatile = false;
 
   // find parameter file
-  filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
+  char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
 
   if (filename == nullptr) {
     LOG_ERROR("cannot load parameter info for collection '%s', out of memory", path);
@@ -1297,7 +1308,8 @@ int TRI_LoadCollectionInfo (char const* path,
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE);
   }
 
-  json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
+  char* error = nullptr;
+  TRI_json_t* json = TRI_JsonFile(TRI_CORE_MEM_ZONE, filename, &error);
 
   if (! TRI_IsObjectJson(json)) {
     if (json != nullptr) {
@@ -1344,15 +1356,11 @@ int TRI_LoadCollectionInfo (char const* path,
 int TRI_SaveCollectionInfo (char const* path,
                             TRI_col_info_t const* info,
                             bool forceSync) {
-  TRI_json_t* json;
-  char* filename;
-  bool ok;
-
-  filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
-  json = TRI_CreateJsonCollectionInfo(info);
+  char* filename = TRI_Concatenate2File(path, TRI_VOC_PARAMETER_FILE);
+  TRI_json_t* json = TRI_CreateJsonCollectionInfo(info);
 
   // save json info to file
-  ok = TRI_SaveJson(filename, json, forceSync);
+  bool ok = TRI_SaveJson(filename, json, forceSync);
   TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
 
   int res;
@@ -1378,15 +1386,15 @@ int TRI_SaveCollectionInfo (char const* path,
 
 int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
                               TRI_collection_t* collection,
-                              TRI_col_info_t const* parameter,
+                              TRI_col_info_t const* parameters,
                               bool doSync) {
 
   TRI_LOCK_JOURNAL_ENTRIES_DOC_COLLECTION((TRI_document_collection_t*) collection);
 
-  if (parameter != nullptr) {
-    collection->_info._doCompact   = parameter->_doCompact;
-    collection->_info._maximalSize = parameter->_maximalSize;
-    collection->_info._waitForSync = parameter->_waitForSync;
+  if (parameters != nullptr) {
+    collection->_info._doCompact   = parameters->_doCompact;
+    collection->_info._maximalSize = parameters->_maximalSize;
+    collection->_info._waitForSync = parameters->_waitForSync;
 
     // the following collection properties are intentionally not updated as updating
     // them would be very complicated:
@@ -1413,12 +1421,11 @@ int TRI_UpdateCollectionInfo (TRI_vocbase_t* vocbase,
 int TRI_RenameCollection (TRI_collection_t* collection,
                           char const* name) {
   TRI_col_info_t newInfo;
-  int res;
 
   TRI_CopyCollectionInfo(&newInfo, &collection->_info);
   TRI_CopyString(newInfo._name, name, sizeof(newInfo._name) - 1);
 
-  res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, true);
+  int res = TRI_SaveCollectionInfo(collection->_directory, &newInfo, true);
 
   TRI_FreeCollectionInfoOptions(&newInfo);
 
@@ -1440,6 +1447,8 @@ int TRI_RenameCollection (TRI_collection_t* collection,
 bool TRI_IterateCollection (TRI_collection_t* collection,
                             bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                             void* data) {
+  TRI_ASSERT(iterator != nullptr);
+
   TRI_vector_pointer_t* datafiles = TRI_CopyVectorPointer(TRI_UNKNOWN_MEM_ZONE, &collection->_datafiles);
 
   if (datafiles == nullptr) {
@@ -1821,11 +1830,12 @@ int TRI_UpgradeCollection20 (TRI_vocbase_t* vocbase,
 bool TRI_IterateTicksCollection (const char* const path,
                                  bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                                  void* data) {
+  TRI_ASSERT(iterator != nullptr);
 
   TRI_col_file_structure_t structure = ScanCollectionDirectory(path);
-  bool result;
-
   LOG_TRACE("iterating ticks of journal '%s'", path);
+  
+  bool result;
 
   if (structure._journals._length == 0) {
     // no journal found for collection. should not happen normally, but if
