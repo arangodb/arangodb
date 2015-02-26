@@ -236,7 +236,13 @@ namespace triagens {
           static const std::string boundary = "XXXarangob-benchmarkXXX";
 
           StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
-
+          int ret = batchPayload.reserve(numOperations * 1024);
+          if (ret != TRI_ERROR_NO_ERROR) {
+            LOG_FATAL_AND_EXIT("Failed to reserve %lu bytes for %lu batch operations: %d",
+                               numOperations * 1024,
+                               numOperations,
+                               ret);
+          }
           for (unsigned long i = 0; i < numOperations; ++i) {
             // append boundary
             batchPayload.appendText("--" + boundary + "\r\n");
