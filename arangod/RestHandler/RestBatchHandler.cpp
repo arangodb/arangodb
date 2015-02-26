@@ -48,8 +48,7 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestBatchHandler::RestBatchHandler (HttpRequest* request)
-  : RestVocbaseBaseHandler(request),
-    _partContentType(HttpRequest::getPartContentType()) {
+  : RestVocbaseBaseHandler(request) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -354,7 +353,7 @@ Handler::status_t RestBatchHandler::execute () {
 
     // append the boundary for this subpart
     _response->body().appendText(boundary + "\r\nContent-Type: ");
-    _response->body().appendText(_partContentType);
+    _response->body().appendText(triagens::rest::HttpRequest::BatchContentType);
 
     if (helper.contentId != 0) {
       // append content-id
@@ -446,7 +445,7 @@ bool RestBatchHandler::getBoundaryHeader (string* result) {
   // "Content-Type: multipart/form-data; boundary=<boundary goes here>"
   vector<string> parts = StringUtils::split(contentType, ';');
 
-  if (parts.size() != 2 || parts[0] != HttpRequest::getMultipartContentType().c_str()) {
+  if (parts.size() != 2 || parts[0] != HttpRequest::MultiPartContentType) {
     // content-type is not formatted as expected
     return false;
   }
@@ -611,13 +610,13 @@ bool RestBatchHandler::extractPart (SearchHelper* helper) {
         string value(colon, eol - colon);
         StringUtils::trimInPlace(value);
 
-        if (_partContentType == value) {
+        if (triagens::rest::HttpRequest::BatchContentType == value) {
           hasTypeHeader = true;
         }
         else {
           LOG_WARNING("unexpected content-type '%s' for multipart-message. expected: '%s'",
                       value.c_str(),
-                      _partContentType.c_str());
+                      triagens::rest::HttpRequest::BatchContentType.c_str());
         }
       }
       else if ("content-id" == key) {
