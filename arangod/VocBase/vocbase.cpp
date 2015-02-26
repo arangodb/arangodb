@@ -262,7 +262,7 @@ static bool UnloadCollectionCallback (TRI_collection_t* col,
 
   TRI_document_collection_t* document = collection->_collection;
 
-  int res = TRI_CloseDocumentCollection(document);
+  int res = TRI_CloseDocumentCollection(document, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("failed to close collection '%s': %s",
@@ -332,7 +332,7 @@ static bool DropCollectionCallback (TRI_collection_t* col,
   if (collection->_collection != nullptr) {
     TRI_document_collection_t* document = collection->_collection;
 
-    res = TRI_CloseDocumentCollection(document);
+    res = TRI_CloseDocumentCollection(document, false);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("failed to close collection '%s': %s",
@@ -629,7 +629,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
   if (collection == nullptr) {
     TRI_WRITE_UNLOCK_COLLECTIONS_VOCBASE(vocbase);
 
-    TRI_CloseDocumentCollection(document);
+    TRI_CloseDocumentCollection(document, false);
     TRI_FreeDocumentCollection(document);
     // TODO: does the collection directory need to be removed?
     return nullptr;
