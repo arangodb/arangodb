@@ -2229,15 +2229,15 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
       }
 
       // update collection
-      TRI_col_info_t newParameter;
+      TRI_col_info_t newParameters;
 
-      newParameter._doCompact   = doCompact;
-      newParameter._maximalSize = maximalSize;
-      newParameter._waitForSync = waitForSync;
+      newParameters._doCompact   = doCompact;
+      newParameters._maximalSize = maximalSize;
+      newParameters._waitForSync = waitForSync;
 
       // try to write new parameter to file
       bool doSync = base->_vocbase->_settings.forceSyncProperties;
-      int res = TRI_UpdateCollectionInfo(base->_vocbase, base, &newParameter, doSync);
+      int res = TRI_UpdateCollectionInfo(base->_vocbase, base, &newParameters, doSync);
 
       if (res != TRI_ERROR_NO_ERROR) {
         ReleaseCollection(collection);

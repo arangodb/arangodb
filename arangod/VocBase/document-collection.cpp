@@ -1055,7 +1055,9 @@ typedef struct open_iterator_state_s {
   TRI_vocbase_t*             _vocbase;
   uint64_t                   _deletions;
   uint64_t                   _documents;
+  int64_t                    _initialCount;
   uint32_t                   _trxCollections;
+  uint32_t                   _numOps;
   bool                       _trxPrepared;
 }
 open_iterator_state_t;
@@ -1092,39 +1094,11 @@ static int OpenIteratorNoteFailedTransaction (open_iterator_state_t const* state
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief update dead counter and size values for an obsolete marker
-////////////////////////////////////////////////////////////////////////////////
-
-static void TrackDeadMarker (TRI_df_marker_t const* marker,
-                             TRI_datafile_t const* datafile,
-                             open_iterator_state_t* state) {
-  // TODO: decide whether we can get rid of old transaction markers or not
-  return;
-  /*
-  if (state->_fid != datafile->_fid) {
-    TRI_document_collection_t* document = state->_document;
-
-    state->_fid = datafile->_fid;
-    state->_dfi = TRI_FindDatafileInfoDocumentCollection(document, datafile->_fid, true);
-  }
-
-  if (state->_dfi != nullptr) {
-    state->_dfi->_numberDead++;
-    state->_dfi->_sizeDead += (int64_t) TRI_DF_ALIGN_BLOCK(marker->_size);
-  }
-  */
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief apply an insert/update operation when opening a collection
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenIteratorApplyInsert (open_iterator_state_t* state,
-                                    open_iterator_operation_t* operation) {
-
-  TRI_doc_mptr_t const* found;
-  TRI_voc_key_t key;
-
+                                    open_iterator_operation_t const* operation) {
   TRI_document_collection_t* document = state->_document;
 
   TRI_df_marker_t const* marker = operation->_marker;
@@ -1140,6 +1114,9 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
 #ifdef TRI_ENABLE_LOGGER
 #ifdef TRI_ENABLE_MAINTAINER_MODE
+  
+#if 0
+  // currently disabled because it is too chatty in trace mode
   if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     LOG_TRACE("document: fid %llu, key %s, rid %llu, _offsetJson %lu, _offsetKey %lu",
               (unsigned long long) operation->_fid,
@@ -1161,23 +1138,24 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 
   }
 #endif
+
+#endif
 #endif
 
-  key = ((char*) d) + d->_offsetKey;
+  TRI_voc_key_t key = ((char*) d) + d->_offsetKey;
   document->_keyGenerator->track(key);
 
   ++state->_documents;
 
   // no primary index lock required here because we are the only ones reading from the index ATM
-  found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
+  TRI_doc_mptr_t const* found = static_cast<TRI_doc_mptr_t const*>(TRI_LookupByKeyPrimaryIndex(&document->_primaryIndex, key));
 
   // it is a new entry
   if (found == nullptr) {
     TRI_doc_mptr_t* header;
-    int res;
 
     // get a header
-    res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, &header);
+    int res = CreateHeader(document, (TRI_doc_document_key_marker_t*) marker, operation->_fid, &header);
 
     if (res != TRI_ERROR_NO_ERROR) {
       LOG_ERROR("out of memory");
@@ -1188,14 +1166,37 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
     TRI_ASSERT(header != nullptr);
 
     // insert into primary index
-    res = InsertPrimaryIndex(document, header, false);
+    if (state->_initialCount != -1) {
+      // we know how many documents there will be, at least approximately...
+      // the index was likely already allocated to be big enough for this number of documents
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      // insertion failed
-      LOG_ERROR("inserting document into indexes failed");
-      document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
+      if (state->_documents % 100 == 0) {
+        // to be on the safe size, we still need to check if the index will burst from time to time
+        res = TRI_AutoResizePrimaryIndex(&document->_primaryIndex);
+      
+        if (res != TRI_ERROR_NO_ERROR) {
+          // insertion failed
+          LOG_ERROR("inserting document into indexes failed");
+          document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
 
-      return res;
+          return res;
+        }
+      }
+      
+      // we can now use an optimized insert method
+      TRI_InsertKeyPrimaryIndex(&document->_primaryIndex, header);
+    }
+    else {
+      // use regular insert method
+      res = InsertPrimaryIndex(document, header, false);
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        // insertion failed
+        LOG_ERROR("inserting document into indexes failed");
+        document->_headersPtr->release(header, true);  // ONLY IN OPENITERATOR
+
+        return res;
+      }
     }
 
     document->_numberDocuments++;
@@ -1210,20 +1211,17 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
   // it is an update, but only if found has a smaller revision identifier
   else if (found->_rid < d->_rid ||
            (found->_rid == d->_rid && found->_fid <= operation->_fid)) {
-    TRI_doc_mptr_t* newHeader;
-    TRI_doc_mptr_copy_t oldData;
-    TRI_doc_datafile_info_t* dfi;
-
     // save the old data
-    oldData = *found;
+    TRI_doc_mptr_copy_t oldData = *found;
 
-    newHeader = static_cast<TRI_doc_mptr_t*>(CONST_CAST(found));
+    TRI_doc_mptr_t* newHeader = static_cast<TRI_doc_mptr_t*>(CONST_CAST(found));
 
     // update the header info
     UpdateHeader(operation->_fid, marker, newHeader, found);
     document->_headersPtr->moveBack(newHeader, &oldData);  // ONLY IN OPENITERATOR
 
     // update the datafile info
+    TRI_doc_datafile_info_t* dfi;
     if (oldData._fid == state->_fid) {
       dfi = state->_dfi;
     }
@@ -1268,7 +1266,7 @@ static int OpenIteratorApplyInsert (open_iterator_state_t* state,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenIteratorApplyRemove (open_iterator_state_t* state,
-                                    open_iterator_operation_t* operation) {
+                                    open_iterator_operation_t const* operation) {
 
   TRI_df_marker_t const* marker;
   TRI_doc_deletion_key_marker_t const* d;
@@ -1358,7 +1356,7 @@ static int OpenIteratorApplyRemove (open_iterator_state_t* state,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenIteratorApplyOperation (open_iterator_state_t* state,
-                                       open_iterator_operation_t* operation) {
+                                       open_iterator_operation_t const* operation) {
   if (operation->_type == TRI_VOC_DOCUMENT_OPERATION_REMOVE) {
     return OpenIteratorApplyRemove(state, operation);
   }
@@ -1377,9 +1375,9 @@ static int OpenIteratorApplyOperation (open_iterator_state_t* state,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenIteratorAddOperation (open_iterator_state_t* state,
-                                     const TRI_voc_document_operation_e type,
+                                     TRI_voc_document_operation_e type,
                                      TRI_df_marker_t const* marker,
-                                     const TRI_voc_fid_t fid) {
+                                     TRI_voc_fid_t fid) {
   open_iterator_operation_t operation;
   operation._type   = type;
   operation._marker = marker;
@@ -1660,7 +1658,6 @@ static int OpenIteratorHandleBeginMarker (TRI_df_marker_t const* marker,
   }
 
   OpenIteratorStartTransaction(state, m->_tid, (uint32_t) m->_numCollections);
-  TrackDeadMarker(marker, datafile, state);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1688,7 +1685,6 @@ static int OpenIteratorHandleCommitMarker (TRI_df_marker_t const* marker,
   else {
     OpenIteratorCommitTransaction(state);
   }
-  TrackDeadMarker(marker, datafile, state);
 
   // reset transaction id
   state->_tid = 0;
@@ -1719,7 +1715,6 @@ static int OpenIteratorHandlePrepareMarker (TRI_df_marker_t const* marker,
   else {
     OpenIteratorPrepareTransaction(state);
   }
-  TrackDeadMarker(marker, datafile, state);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1744,7 +1739,6 @@ static int OpenIteratorHandleAbortMarker (TRI_df_marker_t const* marker,
   }
 
   OpenIteratorAbortTransaction(state);
-  TrackDeadMarker(marker, datafile, state);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1756,13 +1750,22 @@ static int OpenIteratorHandleAbortMarker (TRI_df_marker_t const* marker,
 static bool OpenIterator (TRI_df_marker_t const* marker,
                           void* data,
                           TRI_datafile_t* datafile) {
-  int res;
-
   TRI_document_collection_t* document = static_cast<open_iterator_state_t*>(data)->_document;
+  TRI_voc_tick_t tick = marker->_tick;
+
+  int res;
 
   if (marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
       marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     res = OpenIteratorHandleDocumentMarker(marker, datafile, (open_iterator_state_t*) data);
+    
+    if (datafile->_dataMin == 0) {
+      datafile->_dataMin = tick;
+    }
+
+    if (tick > datafile->_dataMax) {
+      datafile->_dataMax = tick;
+    }
   }
   else if (marker->_type == TRI_DOC_MARKER_KEY_DELETION) {
     res = OpenIteratorHandleDeletionMarker(marker, datafile, (open_iterator_state_t*) data);
@@ -1790,27 +1793,12 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
     res = TRI_ERROR_NO_ERROR;
   }
 
-  TRI_voc_tick_t tick = marker->_tick;
-
   if (datafile->_tickMin == 0) {
     datafile->_tickMin = tick;
   }
 
   if (tick > datafile->_tickMax) {
     datafile->_tickMax = tick;
-  }
-
-  // set tick values for data markers (document/edge), too
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT ||
-      marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
-
-    if (datafile->_dataMin == 0) {
-      datafile->_dataMin = tick;
-    }
-
-    if (tick > datafile->_dataMax) {
-      datafile->_dataMax = tick;
-    }
   }
 
   if (tick > document->_tickMax) {
@@ -2041,9 +2029,7 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
   }
 
   TRI_DestroyAssociativePointer(&document->_datafileInfo);
-
   TRI_DestroyBarrierList(&document->_barrierList);
-
   TRI_DestroyCollection(document);
 }
 
@@ -2157,10 +2143,12 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int IterateMarkersCollection (TRI_collection_t* collection) {
-  open_iterator_state_t openState;
+  auto document = reinterpret_cast<TRI_document_collection_t*>(collection);
 
   // initialise state for iteration
-  openState._document       = reinterpret_cast<TRI_document_collection_t*>(collection);
+  open_iterator_state_t openState;
+  openState._document       = document;
+  openState._vocbase        = collection->_vocbase;
   openState._tid            = 0;
   openState._trxPrepared    = false;
   openState._trxCollections = 0;
@@ -2168,7 +2156,17 @@ static int IterateMarkersCollection (TRI_collection_t* collection) {
   openState._documents      = 0;
   openState._fid            = 0;
   openState._dfi            = nullptr;
-  openState._vocbase        = collection->_vocbase;
+  openState._initialCount   = -1;
+
+  if (collection->_info._initialCount != -1) {
+    int res = TRI_ResizePrimaryIndex(&document->_primaryIndex, static_cast<size_t>(collection->_info._initialCount * 1.1));
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    openState._initialCount = collection->_info._initialCount;
+  }
 
   int res = TRI_InitVector2(&openState._operations, TRI_UNKNOWN_MEM_ZONE, sizeof(open_iterator_operation_t), OpenIteratorBufferSize);
 
@@ -2273,7 +2271,7 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
   document->_keyGenerator = keyGenerator;
 
-  // save the parameter block (within create, no need to lock)
+  // save the parameters block (within create, no need to lock)
   bool doSync = vocbase->_settings.forceSyncProperties;
   int res = TRI_SaveCollectionInfo(collection->_directory, parameters, doSync);
 
@@ -2933,7 +2931,18 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 /// @brief closes an open collection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_CloseDocumentCollection (TRI_document_collection_t* document) {
+int TRI_CloseDocumentCollection (TRI_document_collection_t* document,
+                                 bool updateStats) {
+
+  if (! document->_info._deleted &&
+      document->_info._initialCount != static_cast<int64_t>(document->_primaryIndex._nrUsed)) {
+    // update the document count
+    document->_info._initialCount = document->_primaryIndex._nrUsed;
+    
+    bool doSync = document->_vocbase->_settings.forceSyncProperties;
+    TRI_SaveCollectionInfo(document->_directory, &document->_info, doSync);
+  }
+
   // closes all open compactors, journals, datafiles
   int res = TRI_CloseCollection(document);
 

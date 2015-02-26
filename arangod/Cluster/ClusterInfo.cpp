@@ -711,20 +711,25 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
 
 TRI_col_info_t ClusterInfo::getCollectionProperties (CollectionInfo const& collection) {
   TRI_col_info_t info;
-
-  info._type        = collection.type();
-  info._cid         = collection.id();
-  info._revision    = 0; // TODO
-  info._maximalSize = collection.journalSize();
+ 
+  info._version      = TRI_COL_VERSION; 
+  info._type         = collection.type();
+  info._cid          = collection.id();
+  info._revision     = 0; // TODO
+  info._maximalSize  = collection.journalSize();
+  info._initialCount = -1;
 
   const std::string name = collection.name();
+  memset(info._name, 0, sizeof(info._name));
   memcpy(info._name, name.c_str(), name.size());
-  info._deleted     = collection.deleted();
-  info._doCompact   = collection.doCompact();
-  info._isSystem    = collection.isSystem();
-  info._isVolatile  = collection.isVolatile();
-  info._waitForSync = collection.waitForSync();
-  info._keyOptions = collection.keyOptions();
+  
+  info._keyOptions   = collection.keyOptions();
+
+  info._deleted      = collection.deleted();
+  info._doCompact    = collection.doCompact();
+  info._isSystem     = collection.isSystem();
+  info._isVolatile   = collection.isVolatile();
+  info._waitForSync  = collection.waitForSync();
 
   return info;
 }
@@ -1108,13 +1113,13 @@ int ClusterInfo::createCollectionCoordinator (string const& databaseName,
                                               string const& collectionID,
                                               uint64_t numberOfShards,
                                               TRI_json_t const* json,
-                                              string& errorMsg, double timeout) {
+                                              string& errorMsg, 
+                                              double timeout) {
   AgencyComm ac;
 
   const double realTimeout = getTimeout(timeout);
   const double endTime = TRI_microtime() + realTimeout;
   const double interval = getPollInterval();
-
   {
     AgencyCommLocker locker("Plan", "WRITE");
 
