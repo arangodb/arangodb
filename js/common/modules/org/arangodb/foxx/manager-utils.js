@@ -255,11 +255,19 @@ function processGithubRepository (source) {
       source.removeFile = true;
     }
     else {
-      throwDownloadError("Could not download from repository '" + url + "'");
+      var msg = "Could not download from repository '" + url + "'";
+      if (result.hasOwnProperty('message')) {
+        msg += " message: " + result.message;
+      }
+      throwDownloadError(msg);
     }
   }
   catch (err) {
-    throwDownloadError("Could not download from repository '" + url + "': " + String(err));
+    var msg = "Could not download from repository '" + url + "': " + String(err);
+    if (err.hasOwnProperty('message')) {
+      msg += " message: " + err.message;
+    }
+    throwDownloadError(msg);
   }
 
   repackZipFile(source);
