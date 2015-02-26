@@ -51,7 +51,11 @@ static char const* EMPTY_STR = "";
 // --SECTION--                                                 class HttpRequest
 // -----------------------------------------------------------------------------
 
-const int32_t HttpRequest::MinCompatibility = 10300L;
+int32_t const HttpRequest::MinCompatibility = 10300L;
+  
+std::string const HttpRequest::BatchContentType = "application/x-arango-batchpart";
+  
+std::string const HttpRequest::MultiPartContentType = "multipart/form-data";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -1388,26 +1392,6 @@ HttpRequest::HttpRequestType HttpRequest::translateMethod (const string& method)
 void HttpRequest::appendMethod (HttpRequestType method, StringBuffer* buffer) {
   buffer->appendText(translateMethod(method));
   buffer->appendChar(' ');
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the expected content-type for a subpart
-////////////////////////////////////////////////////////////////////////////////
-
-const string& HttpRequest::getPartContentType () {
-  static const string contentType = "application/x-arango-batchpart";
-
-  return contentType;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the expected content-type for a multipart message
-////////////////////////////////////////////////////////////////////////////////
-
-const string& HttpRequest::getMultipartContentType () {
-  static const string contentType = "multipart/form-data";
-
-  return contentType;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
