@@ -384,9 +384,12 @@ endif
 ### @brief CONVENIENCE TARGET TO EXECUTE A SINGLE TEST ON SERVER AND CLIENT
 ################################################################################
 
-.PHONY: unittests-single
+.PHONY: unittests-single-server unittests-single-client unittests-single
 
 unittests-single:
+	$(MAKE) unittests-single-server unittests-single-client TEST=$(TEST)
+
+unittests-single-server:
 	@echo
 	@echo "================================================================================"
 	@echo "<< SERVER TEST ($(TEST))"
@@ -399,16 +402,19 @@ unittests-single:
 	$(VALGRIND) @builddir@/bin/arangod "$(VOCDIR)" $(SERVER_OPT) --server.endpoint "tcp://$(VOCHOST):$(VOCPORT)" --javascript.unit-tests $(TEST) || test "x$(FORCE)" == "x1"
 
 	@rm -rf "$(VOCDIR)"
+	@echo
 
-	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint unix://$(VOCDIR)/arango.sock --server.disable-authentication true" PROTO=unix
-
+unittests-single-client:
 	@echo
 	@echo "================================================================================"
 	@echo "<< SHELL CLIENT TEST ($(TEST))"
 	@echo "================================================================================"
 	@echo
+	
+	@rm -rf "$(VOCDIR)"
+	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=unix
 
-	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint unix://$(VOCDIR)/arango.sock --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
+	$(VALGRIND) @builddir@/bin/arangosh $(CLIENT_OPT) --server.username "$(USERNAME)" --server.password "$(PASSWORD)" --server.endpoint tcp://$(VOCHOST):$(VOCPORT) --javascript.unit-test $(TEST) || test "x$(FORCE)" == "x1"
 	sleep 2
 	kill `cat $(PIDFILE)`
 
@@ -416,8 +422,6 @@ unittests-single:
 	@if [ "$(VALGRIND)" != "" ]; then sleep 60; fi
 
 	@rm -rf "$(VOCDIR)"
-	@echo
-
 	@echo
 
 ################################################################################

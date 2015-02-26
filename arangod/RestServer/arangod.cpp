@@ -100,25 +100,25 @@ void abortHandler(int signum) {
 
 #ifdef _WIN32
 #include <DbgHelp.h>
-LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
-{
+LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e) {
 #if HAVE_BACKTRACE
 
-  if (e != nullptr) {
-    LOG_WARNING("Unhandled exeption: %d", e->ExceptionRecord->ExceptionCode);
+  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
+    LOG_ERROR("Unhandled exception: %d", (int) e->ExceptionRecord->ExceptionCode);
   }
   else {
-    LOG_WARNING("Unhandled exeption witout ExceptionCode!");
+    LOG_ERROR("Unhandled exception witout ExceptionCode!");
   }
 
   std::string bt;
   TRI_GetBacktrace(bt);
-  LOG_WARNING(bt.c_str());
+  std::cout << bt << std::endl;
+  LOG_ERROR(bt.c_str());
 
   std::string miniDumpFilename = TRI_GetTempPath();
 
   miniDumpFilename += "\\minidump_" + std::to_string(GetCurrentProcessId()) + ".dmp";
-  LOG_WARNING("writing minidump: %s", miniDumpFilename.c_str());
+  LOG_ERROR("writing minidump: %s", miniDumpFilename.c_str());
   HANDLE hFile = CreateFile(miniDumpFilename.c_str(),
                             GENERIC_WRITE,
                             FILE_SHARE_READ,
@@ -126,7 +126,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
                             FILE_ATTRIBUTE_NORMAL, 0);
 
   if(hFile == INVALID_HANDLE_VALUE) {
-    LOG_WARNING("could not open minidump file : %ld", GetLastError());
+    LOG_ERROR("could not open minidump file : %lu", GetLastError());
     return EXCEPTION_CONTINUE_SEARCH;
   }
 
@@ -145,12 +145,18 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e)
                     NULL,
                     NULL);
 
-  if(hFile) {
-      CloseHandle(hFile);
-      hFile = NULL;
+  if (hFile) {
+    CloseHandle(hFile);
+    hFile = NULL;
   }
 #endif
-    return EXCEPTION_CONTINUE_SEARCH; 
+  if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
+    LOG_ERROR("Unhandled exception: %d - will crash now.", (int) e->ExceptionRecord->ExceptionCode);
+  }
+  else {
+    LOG_ERROR("Unhandled exception without ExceptionCode - will crash now.!");
+  }
+  return EXCEPTION_CONTINUE_SEARCH; 
 }
 #endif
 
@@ -168,7 +174,7 @@ static void TRI_GlobalEntryFunction () {
 
 
   // Uncomment this to call this for extended debug information.
-  // If you familiar with valgrind ... then this is not like that, however
+  // If you familiar with Valgrind ... then this is not like that, however
   // you do get some similar functionality.
 
   // res = initialiseWindows(TRI_WIN_INITIAL_SET_DEBUG_FLAG, 0);
@@ -210,14 +216,12 @@ static void TRI_GlobalEntryFunction() {
 #ifdef _WIN32
 
 static void TRI_GlobalExitFunction (int exitCode, void* data) {
-  int res = 0;
-
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
   // ...........................................................................
 
-  res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
+  int res = finaliseWindows(TRI_WIN_FINAL_WSASTARTUP_FUNCTION_CALL, 0);
 
   if (res != 0) {
     exit(EXIT_FAILURE);

@@ -1,5 +1,5 @@
 /*jshint globalstrict: true */
-/*global module, require, describe, beforeEach, afterEach, it, expect, arango*/
+/*global module, require, describe, beforeEach, afterEach, it, expect*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Spec for foxx manager
@@ -34,32 +34,45 @@ var FoxxManager = require("org/arangodb/foxx/manager");
 var fs = require("fs");
 var db = require("internal").db;
 var basePath = fs.makeAbsolute(fs.join(module.startupPath(), "common", "test-data", "apps"));
+var arango = require("org/arangodb").arango;
+var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 
 describe("Foxx Manager", function() {
 
   describe("using different dbs", function() {
 
     beforeEach(function() {
-      db._useDatabase("_system");
+      arango.reconnect(originalEndpoint, "_system", "root", "");
+      try {
+        db._dropDatabase("tmpFMDB");
+      }
+      catch (err) {
+      }
+      try {
+        db._dropDatabase("tmpFMDB2");
+      }
+      catch (err) {
+      }
+
       db._createDatabase("tmpFMDB");
       db._createDatabase("tmpFMDB2");
     });
 
     afterEach(function() {
-      db._useDatabase("_system");
+      arango.reconnect(originalEndpoint, "_system", "root", "");
       db._dropDatabase("tmpFMDB");
       db._dropDatabase("tmpFMDB2");
     });
 
     it("should allow to install apps on same mountpoint", function() {
       var download = require("internal").download;
-      db._useDatabase("tmpFMDB");
+      arango.reconnect(originalEndpoint, "tmpFMDB", "root", "");
       try {
         FoxxManager.install(fs.join(basePath, "itzpapalotl"), "/unittest");
       } catch(e) {
         expect(true).toBeFalsy("Could not install a minimal valid app in one DB.");
       }
-      db._useDatabase("tmpFMDB2");
+      arango.reconnect(originalEndpoint, "tmpFMDB2", "root", "");
       try {
         FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), "/unittest");
       } catch(e) {

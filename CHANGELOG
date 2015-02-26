@@ -1,11 +1,13 @@
-v2.5.0-alpha2 (2015-02-16)
---------------------------
+v2.6.0 (XXXX-XX-XX)
+-------------------
 
 * fixed issue #1230: API: document/col-name/_key and cursor return different floats
 
 
 v2.5.0-beta1 (2015-02-23)
 -------------------------
+
+* fixed issue #1256: agency binary not found #1256 
 
 * front-end: dashboard tries not to (re)load statistics if user has no access
 
@@ -30,7 +32,7 @@ v2.5.0-beta1 (2015-02-23)
 
   * Moved Foxx applications to a different folder.
 
-    The naming convention now is: <app-path>/_db/<dbname>/<mointpoint>/APP
+    The naming convention now is: <app-path>/_db/<dbname>/<mountpoint>/APP
     Before it was: <app-path>/databases/<dbname>/<appname>:<appversion>
     This caused some trouble as apps where cached based on name and version and updates did not apply.
     Hence the path on filesystem and the app's access URL had no relation to one another.

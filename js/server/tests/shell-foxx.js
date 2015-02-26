@@ -1750,6 +1750,245 @@ function FoxxControllerWithRootElement () {
   };
 }
 
+function ExtendFoxxControllerSpec () {
+  "use strict";
+  var app, routes;
+
+  return {
+    setUp: function () {
+      app = new FoxxController(fakeContext);
+      routes = app.routingInfo.routes;
+    },
+
+    testDocumentationBodyParameterInExtension: function() {
+      var paramName = stub(),
+        description = stub(),
+        ModelPrototype = stub(),
+        jsonSchema = { id: 'a', required: [], properties: {} };
+      allow(ModelPrototype)
+        .toReceive("toJSONSchema")
+        .andReturn(jsonSchema);
+
+      app.extend({
+        "extension": function() {
+          this.bodyParam(paramName, {
+            description: description,
+            type: ModelPrototype
+          });
+        }
+      });
+
+      app.get("/foxx", function () {
+        //nothing
+      }).extension();
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].name, paramName);
+      assertEqual(routes[0].docs.parameters[0].paramType, "body");
+      assertEqual(routes[0].docs.parameters[0].description, description);
+      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+    },
+
+    testFunctionalityBodyParameterInExtension: function() {
+      var req = { parameters: {} },
+        res = {},
+        paramName = stub(),
+        description = stub(),
+        requestBody = stub(),
+        ModelPrototype = stub(),
+        jsonSchemaId = stub(),
+        called = false;
+
+      allow(req)
+        .toReceive("body")
+        .andReturn(requestBody);
+
+      ModelPrototype = mockConstructor(requestBody);
+      ModelPrototype.toJSONSchema = function () { return { id: jsonSchemaId }; };
+
+      app.extend({
+        "extension": function() {
+          this.bodyParam(paramName, {
+            description: description,
+            type: ModelPrototype
+          });
+        }
+      });
+
+      app.get('/foxx', function (providedReq) {
+        called = (providedReq.parameters[paramName] instanceof ModelPrototype);
+      }).extension();
+
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
+
+      assertTrue(called);
+      ModelPrototype.assertIsSatisfied();
+    },
+
+    testPathParameterInExtension: function() {
+      var constraint = joi.number().integer().description("Id of the Foxx"),
+          context;
+
+      app.extend({
+        "extension": function() {
+          this.pathParam("id", {
+            type: constraint
+          });
+        }
+      });
+
+      context = app.get('/foxx/:id', function () {
+        //nothing
+      }).extension();
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].url.constraint.id, "/[0-9]+/");
+      assertEqual(routes[0].docs.parameters[0].paramType, "path");
+      assertEqual(routes[0].docs.parameters[0].name, "id");
+      assertEqual(routes[0].docs.parameters[0].description, "Id of the Foxx");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(context.constraints.urlParams, {id: constraint});
+    },
+
+    testQueryParamterInExtension: function () {
+      var constraint = joi.number().integer().description("The value of an a"),
+      context;
+
+      app.extend({
+        "extension": function() {
+            this.queryParam("a", {
+            type: constraint
+          });
+        }
+      });
+
+      context = app.get('/foxx', function () {
+        //nothing
+      }).extension();
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.parameters[0].paramType, "query");
+      assertEqual(routes[0].docs.parameters[0].name, "a");
+      assertEqual(routes[0].docs.parameters[0].description, "The value of an a");
+      assertEqual(routes[0].docs.parameters[0].dataType, "integer");
+      assertEqual(routes[0].docs.parameters[0].required, false);
+      assertEqual(routes[0].docs.parameters[0].allowMultiple, false);
+      assertEqual(context.constraints.queryParams, {a: constraint});
+    },
+
+    testDocumentationErrorResponseInExtension: function () {
+      var CustomErrorClass = function () {};
+
+      app.extend({
+        "extension": function() {
+          this.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
+        }
+      });
+
+      app.get('/foxx', function () {
+        //nothing
+      }).extension();
+
+      assertEqual(routes.length, 1);
+      assertEqual(routes[0].docs.errorResponses.length, 1);
+      assertEqual(routes[0].docs.errorResponses[0].code, 400);
+      assertEqual(routes[0].docs.errorResponses[0].reason, "I don't understand a word you're saying");
+    },
+
+    testFunctionalityErrorResponseInExtension: function () {
+      var CustomErrorClass = function () {},
+        req = {},
+        res,
+        code = 400,
+        reason = "This error was really... something!",
+        statusWasCalled = false,
+        jsonWasCalled = false,
+        passedRequestAndResponse = false;
+
+      res = {
+        status: function (givenCode) {
+          statusWasCalled = (givenCode === code);
+        },
+        json: function (givenBody) {
+          jsonWasCalled = (givenBody.error === reason);
+        }
+      };
+
+      app.extend({
+        "extension": function() {
+          this.errorResponse(CustomErrorClass, code, reason);
+        }
+      });
+
+      app.get('/foxx', function (providedReq, providedRes) {
+        if (providedReq === req && providedRes === res) {
+          passedRequestAndResponse = true;
+        }
+        throw new CustomErrorClass();
+      }).extension();
+      
+      var callback = transformRoute(routes[0].action);
+      callback(req, res);
+
+      assertTrue(statusWasCalled);
+      assertTrue(jsonWasCalled);
+      assertTrue(passedRequestAndResponse);
+    },
+
+    testExtensionIsChainable: function () {
+      var constraint = joi.number().integer().description("The value of an a"),
+      context;
+
+      app.extend({
+        "extension": function() {
+          this.queryParam("a", {
+            type: constraint
+          });
+        }
+      });
+
+      context = app.get('/foxx', function () {
+        //nothing
+      }).extension()
+      .queryParam("b", {
+        type: constraint
+      });
+
+      assertEqual(context.constraints.queryParams, {a: constraint, b: constraint});
+      context = app.get('/foxx2', function () {
+        //nothing
+      })
+      .queryParam("b", {
+        type: constraint
+      })
+      .extension();
+
+      assertEqual(context.constraints.queryParams, {a: constraint, b: constraint});
+    },
+
+    testExtensionUsingParams: function () {
+      var constraint = joi.number().integer().description("The value of an a"),
+      context;
+
+      app.extend({
+        "extension": function(name, type) {
+          this.queryParam(name, {
+            type: type
+          });
+        }
+      });
+
+      context = app.get('/foxx', function () {
+        //nothing
+      }).extension("a", constraint);
+
+      assertEqual(context.constraints.queryParams, {a: constraint});
+    }
+
+  };
+}
+
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(ControllerInjectionSpec);

@@ -1,0 +1,20 @@
+arangosh> var examples = require("org/arangodb/graph-examples/example-graph.js");
+arangosh> var graph = examples.loadGraph("routeplanner");
+arangosh> graph._countCommonProperties({}, {});
+[ 
+  { 
+    "frenchCity/Lyon" : 2 
+  }, 
+  { 
+    "frenchCity/Paris" : 1 
+  }, 
+  { 
+    "germanCity/Berlin" : 1 
+  }, 
+  { 
+    "germanCity/Cologne" : 2 
+  }, 
+  { 
+    "germanCity/Hamburg" : 2 
+  } 
+]

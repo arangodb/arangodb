@@ -1,0 +1,25 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/index?collection=products
+{ 
+  "type" : "skiplist", 
+  "unique" : false, 
+  "sparse" : true, 
+  "fields" : [ 
+    "a" 
+  ] 
+}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "id" : "products/1244735651", 
+  "type" : "skiplist", 
+  "unique" : false, 
+  "sparse" : true, 
+  "fields" : [ 
+    "a" 
+  ], 
+  "isNewlyCreated" : true, 
+  "error" : false, 
+  "code" : 201 
+}

@@ -1,0 +1,6 @@
+arangosh> var rel = graph_module._relation("isCustomer", ["shop"], ["customer"]);
+arangosh> graph._extendEdgeDefinitions(rel);
+arangosh> graph;
+[ Graph myGraph EdgeDefinitions: [ 
+  "isCustomer: [shop] -> [customer]" 
+] VertexCollections: [ ] ]

@@ -1,0 +1,14 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=links
+[ "_from", "_to", "name" ]
+[ "products/123", "products/234", "some name" ]
+[ "products/332", "products/abc", "other name" ]
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : false, 
+  "created" : 2, 
+  "errors" : 0, 
+  "empty" : 0 
+}

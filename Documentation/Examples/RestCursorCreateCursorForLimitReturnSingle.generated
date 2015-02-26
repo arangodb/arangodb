@@ -1,0 +1,36 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/cursor
+{"query":"FOR p IN products LIMIT 2 RETURN p","count":true,"batchSize":2}
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "result" : [ 
+    { 
+      "_id" : "products/1094199459", 
+      "_key" : "1094199459", 
+      "_rev" : "1094199459", 
+      "hello1" : "world1" 
+    }, 
+    { 
+      "_id" : "products/1094527139", 
+      "_key" : "1094527139", 
+      "_rev" : "1094527139", 
+      "hello2" : "world1" 
+    } 
+  ], 
+  "hasMore" : false, 
+  "count" : 2, 
+  "extra" : { 
+    "stats" : { 
+      "writesExecuted" : 0, 
+      "writesIgnored" : 0, 
+      "scannedFull" : 2, 
+      "scannedIndex" : 0, 
+      "filtered" : 0 
+    }, 
+    "warnings" : [ ] 
+  }, 
+  "error" : false, 
+  "code" : 201 
+}

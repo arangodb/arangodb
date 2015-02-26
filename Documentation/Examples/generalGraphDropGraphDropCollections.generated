@@ -1,0 +1,9 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> graph_module._drop("social", true);
+true
+arangosh> db._collection("female");
+null
+arangosh> db._collection("male");
+null
+arangosh> db._collection("relation");
+null

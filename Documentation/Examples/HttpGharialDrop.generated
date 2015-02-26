@@ -1,0 +1,10 @@
+shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/gharial/social
+
+HTTP/1.1 200 OK
+content-type: application/json
+
+{ 
+  "error" : false, 
+  "code" : 200, 
+  "removed" : true 
+}
