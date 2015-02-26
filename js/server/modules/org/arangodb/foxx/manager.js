@@ -44,6 +44,7 @@
   var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
   var routeApp = require("org/arangodb/foxx/routing").routeApp;
   var exportApp = require("org/arangodb/foxx/routing").exportApp;
+  var invalidateExportCache  = require("org/arangodb/foxx/routing").invalidateExportCache;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
   var checkParameter = arangodb.checkParameter;
@@ -66,12 +67,21 @@
     "/_system/cerberus", // Password recovery.
     "/_api/gharial", // General_Graph API.
     "/_system/sessions", // Sessions.
+    "/_system/users", // Users.
     "/_system/simple-auth" // Authentication.
   ];
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private functions
   // -----------------------------------------------------------------------------
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Searches through a tree of files and returns true for all app roots
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var filterAppRoots = function(folder) {
+    return /APP$/i.test(folder);
+  };
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief Trigger reload routing
@@ -89,6 +99,7 @@
   
   var resetCache = function () {
     appCache = {};
+    invalidateExportCache();
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -103,10 +114,13 @@
     }
     if (!appCache[dbname].hasOwnProperty(mount)) {
       refillCaches(dbname);
-      if (!appCache[dbname].hasOwnProperty(mount)) {
+      if (appCache[dbname].hasOwnProperty(mount)) {
         return appCache[dbname][mount];
       }
-      throw new Error("App not found");
+      throw new ArangoError({
+        errorNum: errors.ERROR_APP_NOT_FOUND.code,
+        errorMessage: "App not found at: " + mount
+      });
     }
     return appCache[dbname][mount];
   };
@@ -319,6 +333,16 @@
     var list = mount.split("/");
     list.push("APP");
     return fs.join.apply(this, list);
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief transforms a sub-path to a mount point
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var transformPathToMount = function(path) {
+    var list = path.split(fs.pathSeparator);
+    list.pop();
+    return "/" + list.join("/");
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -642,10 +666,25 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var _scanFoxx = function(mount, options, activateDevelopment) {
+    options = options || { };
     var dbname = arangodb.db._name();
     delete appCache[dbname][mount];
     var app = createApp(mount, options, activateDevelopment);
+    try {
     utils.getStorage().save(app.toJSON());
+    }
+    catch (err) {
+      if (! options.replace ||
+          err.errorNum !== errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code) {
+        throw err;
+      }
+      var old = utils.getStorage().firstExample({ mount: mount });
+      if (old === null) {
+        throw new Error("Could not find app for mountpoint '" + mount + "'.");
+      }
+      var manifest = app.toJSON().manifest;
+      utils.getStorage().update(old, { manifest: manifest });
+    }
     return app;
   };
 
@@ -712,6 +751,7 @@
     // Ohterwise move will fail.
     fs.removeDirectory(targetPath);
 
+    initCache();
     try {
       if (appInfo === "EMPTY") {
         // Make Empty app
@@ -736,7 +776,6 @@
       }
       throw e;
     }
-    initCache();
     try {
       db._executeTransaction({
         collections: {
@@ -928,6 +967,7 @@
 
   var initializeFoxx = function() {
     var dbname = arangodb.db._name();
+    syncWithFolder();
     refillCaches(dbname);
     checkMountedSystemApps(dbname);
   };
@@ -1014,6 +1054,10 @@
     return app.getConfiguration();
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Require the exports defined on the mount point
+  ////////////////////////////////////////////////////////////////////////////////
+
   var requireApp = function(mount) {
     checkParameter(
       "requireApp(<mount>)",
@@ -1024,6 +1068,32 @@
     return exportApp(app);
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Syncs the apps in ArangoDB with the applications stored on disc
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var syncWithFolder = function() {
+    var dbname = arangodb.db._name();
+    appCache = appCache || {};
+    appCache[dbname] = {};
+    var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
+    var i, l = folders.length;
+    var mount;
+    var collection = utils.getStorage();
+    var transAction = function() {
+      mount = transformPathToMount(folders[i]);
+      _scanFoxx(mount, { replace: true });
+    };
+    for (i = 0; i < l; ++i) {
+      db._executeTransaction({
+        collections: {
+          write: collection.name()
+        },
+        action: transAction
+      });
+      setup(mount);
+    }
+  };
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                           exports
@@ -1033,6 +1103,7 @@
   /// @brief Exports
   ////////////////////////////////////////////////////////////////////////////////
 
+  exports.syncWithFolder = syncWithFolder;
   exports.install = install;
   exports.setup = setup;
   exports.teardown = teardown;

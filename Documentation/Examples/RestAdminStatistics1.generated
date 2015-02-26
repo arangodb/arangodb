@@ -1,0 +1,125 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_admin/statistics
+
+HTTP/1.1 200 OK
+content-type: application/json; charset=utf-8
+
+{ 
+  "time" : 1424684829.707911, 
+  "system" : { 
+    "minorPageFaults" : 57279, 
+    "majorPageFaults" : 2910, 
+    "userTime" : 7.274074, 
+    "systemTime" : 4.557473, 
+    "numberOfThreads" : 28, 
+    "residentSize" : 162291712, 
+    "residentSizePercent" : 0.03778648376464844, 
+    "virtualSize" : 5116907520 
+  }, 
+  "client" : { 
+    "httpConnections" : 1, 
+    "connectionTime" : { 
+      "sum" : 0.0015668869018554688, 
+      "count" : 1, 
+      "counts" : [ 
+        1, 
+        0, 
+        0, 
+        0 
+      ] 
+    }, 
+    "totalTime" : { 
+      "sum" : 25.4695987701416, 
+      "count" : 10674, 
+      "counts" : [ 
+        10184, 
+        413, 
+        34, 
+        38, 
+        4, 
+        0, 
+        1 
+      ] 
+    }, 
+    "requestTime" : { 
+      "sum" : 23.66250491142273, 
+      "count" : 10674, 
+      "counts" : [ 
+        10197, 
+        401, 
+        34, 
+        37, 
+        4, 
+        0, 
+        1 
+      ] 
+    }, 
+    "queueTime" : { 
+      "sum" : 0.32120800018310547, 
+      "count" : 10674, 
+      "counts" : [ 
+        10672, 
+        2, 
+        0, 
+        0, 
+        0, 
+        0, 
+        0 
+      ] 
+    }, 
+    "ioTime" : { 
+      "sum" : 1.4858858585357666, 
+      "count" : 10674, 
+      "counts" : [ 
+        10671, 
+        2, 
+        0, 
+        1, 
+        0, 
+        0, 
+        0 
+      ] 
+    }, 
+    "bytesSent" : { 
+      "sum" : 3939808, 
+      "count" : 10674, 
+      "counts" : [ 
+        2796, 
+        7713, 
+        21, 
+        12, 
+        132, 
+        0 
+      ] 
+    }, 
+    "bytesReceived" : { 
+      "sum" : 2314675, 
+      "count" : 10674, 
+      "counts" : [ 
+        8837, 
+        1837, 
+        0, 
+        0, 
+        0, 
+        0 
+      ] 
+    } 
+  }, 
+  "http" : { 
+    "requestsTotal" : 10675, 
+    "requestsAsync" : 0, 
+    "requestsGet" : 3818, 
+    "requestsHead" : 339, 
+    "requestsPost" : 4751, 
+    "requestsPut" : 730, 
+    "requestsPatch" : 31, 
+    "requestsDelete" : 1006, 
+    "requestsOptions" : 0, 
+    "requestsOther" : 0 
+  }, 
+  "server" : { 
+    "uptime" : 35.26790189743042, 
+    "physicalMemory" : 4294967296 
+  }, 
+  "error" : false, 
+  "code" : 200 
+}

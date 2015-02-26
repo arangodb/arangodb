@@ -1,0 +1,2 @@
+arangosh> db.users.count();
+0

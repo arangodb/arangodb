@@ -38,6 +38,11 @@
 * https://github.com/antirez/linenoise
 * [free as-is license](https://github.com/antirez/linenoise/blob/master/LICENSE)
 
+### fpconv_dtoa
+
+* https://github.com/night-shift/fpconv/
+* [MIT license](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
+
 ## Programs
 
 ### CoreOS etcd

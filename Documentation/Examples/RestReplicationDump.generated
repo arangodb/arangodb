@@ -1,0 +1,8 @@
+shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/dump?collection=testCollection
+
+HTTP/1.1 200 OK
+content-type: application/x-arango-dump; charset=utf-8
+x-arango-replication-checkmore: false
+x-arango-replication-lastincluded: 1552623779
+
+"{\"tick\":\"1551968419\",\"type\":2300,\"key\":\"123456\",\"rev\":\"1551902883\",\"data\":{\"_key\":\"123456\",\"_rev\":\"1551902883\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"1552427171\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"1552361635\"}\n{\"tick\":\"1552623779\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"1552558243\"}\n"

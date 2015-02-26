@@ -4209,6 +4209,11 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("STARTUP_PATH"), TRI_V8_STD_STRING(startupPath));
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("PATH_SEPARATOR"), TRI_V8_ASCII_STRING(TRI_DIR_SEPARATOR_STR));
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VALGRIND"), RUNNING_ON_VALGRIND > 0 ? v8::True(isolate) : v8::False(isolate));
+#ifdef COVERAGE
+  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::True(isolate));
+#else
+  TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("COVERAGE"), v8::False(isolate));
+#endif
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("VERSION"), TRI_V8_ASCII_STRING(TRI_VERSION));
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("CONNECTION_TIME_DISTRIBUTION"), DistributionList(isolate, TRI_ConnectionTimeDistributionVectorStatistics));

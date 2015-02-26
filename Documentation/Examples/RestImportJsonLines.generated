@@ -1,0 +1,16 @@
+shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/import?collection=products&type=documents
+{ "_key": "abc", "value1": 25, "value2": "test", "allowed": true }
+{ "_key": "foo", "name": "baz" }
+
+{ "name": { "detailed": "detailed name", "short": "short name" } }
+
+
+HTTP/1.1 201 Created
+content-type: application/json; charset=utf-8
+
+{ 
+  "error" : false, 
+  "created" : 3, 
+  "errors" : 0, 
+  "empty" : 1 
+}

@@ -1,0 +1,5 @@
+arangosh> var graph_module = require("org/arangodb/general-graph");
+arangosh> graph = graph_module._graph("social");
+[ Graph social EdgeDefinitions: [ 
+  "relation: [female, male] -> [female, male]" 
+] VertexCollections: [ ] ]

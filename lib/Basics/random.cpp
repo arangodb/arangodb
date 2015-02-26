@@ -114,6 +114,14 @@ uint32_t TRI_UInt32Random (void) {
 
 #else
 
+#ifdef _WIN32
+  unsigned int number;
+  auto err = rand_s(&number);
+  if (err == 0) {
+    return number;
+  }
+#endif
+
   uint32_t l1;
   uint32_t l2;
   uint32_t l3;
@@ -125,7 +133,6 @@ uint32_t TRI_UInt32Random (void) {
   l4 = TRI_random();
 
   return ((l1 & 0xFF) << 24) | ((l2 & 0xFF) << 16) | ((l3 & 0xFF) << 8) | (l4 & 0xFF);
-
 #endif
 }
 

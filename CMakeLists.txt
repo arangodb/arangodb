@@ -167,6 +167,15 @@ if (USE_VISTA_LOCKS)
   add_definitions("-DTRI_WINDOWS_VISTA_LOCKS=1")
 endif ()
 
+################################################################################
+### @brief etcd
+################################################################################
+
+if (DARWIN)
+  install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
+          DESTINATION ${TRI_BINDIR_INSTALL})
+endif ()
+
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       DIRECTORIES
 ## -----------------------------------------------------------------------------
@@ -266,13 +275,8 @@ if (USE_RELATIVE)
   ### @brief TRI_BINDIR
   ################################################################################
 
-  if (MSVC)
-    set(TRI_BINDIR_INSTALL "bin")
-    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-  else ()
-    set(TRI_BINDIR_INSTALL "bin")
-    set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
-  endif ()
+  set(TRI_BINDIR_INSTALL "bin")
+  set(TRI_BINDIR "${CMAKE_INSTALL_PREFIX}/bin")
 
   ################################################################################
   ### @brief TRI_SBINDIR
