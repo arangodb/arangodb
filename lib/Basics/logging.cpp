@@ -880,7 +880,7 @@ static void LogThread (char const* func,
 
   if (n == -1) {
     std::string message("format string is corrupt: [");
-    message += fmt + std::string("]");
+    message += fmt + std::string("] - GenerateMessage failed");
     TRI_GetBacktrace(message);
     disarmFormatString(message);
     TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
@@ -916,7 +916,7 @@ static void LogThread (char const* func,
     if (m == -1) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
       std::string message("format string is corrupt: [");
-      message += fmt + std::string("]");
+      message += fmt + std::string("] ");
       TRI_GetBacktrace(message);
       disarmFormatString(message);
       TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
