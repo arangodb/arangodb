@@ -558,16 +558,12 @@ static bool FixDatafile (TRI_datafile_t* datafile,
 
 static bool CheckDatafile (TRI_datafile_t* datafile,
                            bool ignoreFailures) {
-  TRI_voc_size_t currentSize;
-  char* end;
-  char* ptr;
-
   // this function must not be called for non-physical datafiles
   TRI_ASSERT(datafile->isPhysical(datafile));
 
-  ptr = datafile->_data;
-  end = datafile->_data + datafile->_currentSize;
-  currentSize = 0;
+  char* ptr = datafile->_data;
+  char* end = datafile->_data + datafile->_currentSize;
+  TRI_voc_size_t currentSize = 0;
 
   if (datafile->_currentSize == 0) {
     LOG_WARNING("current size is 0 in read-only datafile '%s', trying to fix", datafile->getName(datafile));
@@ -575,9 +571,14 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
     end = datafile->_data + datafile->_maximalSize;
   }
 
+  TRI_voc_tick_t maxTick = 0;
+  
+  auto updateTick = [] (TRI_voc_tick_t maxTick) -> void {
+    TRI_UpdateTickServer(maxTick);
+  };
+
   while (ptr < end) {
     TRI_df_marker_t* marker = (TRI_df_marker_t*) ptr;
-    size_t size;
 
 #ifdef DEBUG_DATAFILE
     LOG_TRACE("MARKER: size %lu, tick %lx, crc %lx, type %u",
@@ -595,6 +596,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
       datafile->_currentSize = currentSize;
       datafile->_next = datafile->_data + datafile->_currentSize;
 
+      updateTick(maxTick);
+
       return true;
     }
 
@@ -608,6 +611,8 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
                   datafile->getName(datafile),
                   (unsigned long) marker->_size,
                   (unsigned long) sizeof(TRI_df_marker_t));
+      
+      updateTick(maxTick);
 
       return false;
     }
@@ -636,6 +641,9 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
                       datafile->getName(datafile),
                       (int) marker->_type,
                       (unsigned long) marker->_size);
+      
+          updateTick(maxTick);
+
           return false;
         }
       }
@@ -655,14 +663,19 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
           datafile->_state = TRI_DF_STATE_OPEN_ERROR;
 
           LOG_WARNING("crc mismatch found in datafile '%s'", datafile->getName(datafile));
+      
+          updateTick(maxTick);
+
           return false;
         }
       }
     }
 
-    TRI_UpdateTickServer(marker->_tick);
+    if (marker->_tick > maxTick) {
+      maxTick = marker->_tick;
+    }
 
-    size = TRI_DF_ALIGN_BLOCK(marker->_size);
+    size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);
     currentSize += (TRI_voc_size_t) size;
 
     if (marker->_type == TRI_DF_MARKER_FOOTER) {
@@ -674,12 +687,14 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
       datafile->_currentSize = currentSize;
       datafile->_next = datafile->_data + datafile->_currentSize;
 
+      updateTick(maxTick);
       return true;
     }
 
     ptr += size;
   }
 
+  updateTick(maxTick);
   return true;
 }
 
@@ -690,16 +705,13 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
 ////////////////////////////////////////////////////////////////////////////////
 
 static uint64_t GetNumericFilenamePart (const char* filename) {
-  char const* pos1;
-  char const* pos2;
-
-  pos1 = strrchr(filename, '.');
+  char const* pos1 = strrchr(filename, '.');
 
   if (pos1 == nullptr) {
     return 0;
   }
 
-  pos2 = strrchr(filename, '-');
+  char const* pos2 = strrchr(filename, '-');
 
   if (pos2 == nullptr || pos2 > pos1) {
     return 0;
@@ -1369,12 +1381,14 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 void TRI_UpdateTicksDatafile (TRI_datafile_t* datafile,
                               TRI_df_marker_t const* marker) {
   TRI_df_marker_type_e type = (TRI_df_marker_type_e) marker->_type;
-  TRI_voc_tick_t tick = marker->_tick;
   
   if (type != TRI_DF_MARKER_HEADER && 
       type != TRI_DF_MARKER_FOOTER &&
       type != TRI_COL_MARKER_HEADER) {
-    // every marker but headers / footers count
+    // every marker but headers / footers counts
+
+    TRI_voc_tick_t tick = marker->_tick;
+
     if (datafile->_tickMin == 0) {
       datafile->_tickMin = tick;
     }
@@ -1489,6 +1503,8 @@ int TRI_WriteCrcElementDatafile (TRI_datafile_t* datafile,
 bool TRI_IterateDatafile (TRI_datafile_t* datafile,
                           bool (*iterator)(TRI_df_marker_t const*, void*, TRI_datafile_t*),
                           void* data) {
+  TRI_ASSERT(iterator != nullptr);
+
   LOG_TRACE("iterating over datafile '%s', fid: %llu",
             datafile->getName(datafile),
             (unsigned long long) datafile->_fid);
@@ -1503,6 +1519,7 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
 
   while (ptr < end) {
     TRI_df_marker_t const* marker = reinterpret_cast<TRI_df_marker_t const*>(ptr);
+
     if (marker->_size == 0) {
       return true;
     }
@@ -1510,12 +1527,8 @@ bool TRI_IterateDatafile (TRI_datafile_t* datafile,
     // update the tick statistics
     TRI_UpdateTicksDatafile(datafile, marker);
 
-    if (iterator != nullptr) {
-      bool result = iterator(marker, data, datafile);
-
-      if (! result) {
-        return false;
-      }
+    if (! iterator(marker, data, datafile)) {
+      return false;
     }
 
     size_t size = TRI_DF_ALIGN_BLOCK(marker->_size);

@@ -930,14 +930,14 @@ static void EnsureIndex (const v8::FunctionCallbackInfo<v8::Value>& args,
 static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Value>& args,
                                          TRI_col_type_e collectionType,
                                          std::string const& databaseName,
-                                         TRI_col_info_t& parameter,
+                                         TRI_col_info_t& parameters,
                                          TRI_vocbase_t* vocbase) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
   string const name = TRI_ObjectToString(args[0]);
 
-  if (! TRI_IsAllowedNameCollection(parameter._isSystem, name.c_str())) {
+  if (! TRI_IsAllowedNameCollection(parameters._isSystem, name.c_str())) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_ILLEGAL_NAME);
   }
 
@@ -1070,12 +1070,12 @@ static void CreateCollectionCoordinator (const v8::FunctionCallbackInfo<v8::Valu
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "name",        TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, name.c_str(), name.size()));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type",        TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) collectionType));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "status",      TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (int) TRI_VOC_COL_STATUS_LOADED));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._deleted));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._doCompact));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isSystem));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._isVolatile));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameter._waitForSync));
-  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameter._maximalSize));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "deleted",     TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._deleted));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "doCompact",   TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._doCompact));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isSystem",    TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._isSystem));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "isVolatile",  TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._isVolatile));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "waitForSync", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, parameters._waitForSync));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "journalSize", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, parameters._maximalSize));
 
   TRI_json_t* keyOptions = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
   if (keyOptions != nullptr) {
@@ -1608,7 +1608,7 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
   string const name = TRI_ObjectToString(args[0]);
 
   // extract the parameters
-  TRI_col_info_t parameter;
+  TRI_col_info_t parameters;
   TRI_voc_cid_t cid = 0;
 
   if (2 <= args.Length()) {
@@ -1639,48 +1639,48 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
     }
 
     // TRI_InitCollectionInfo will copy keyOptions
-    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, keyOptions);
+    TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, keyOptions);
 
     if (keyOptions != nullptr) {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keyOptions);
     }
 
     if (p->Has(TRI_V8_ASCII_STRING("planId"))) {
-      parameter._planId = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true);
+      parameters._planId = TRI_ObjectToUInt64(p->Get(TRI_V8_ASCII_STRING("planId")), true);
     }
 
     TRI_GET_GLOBAL_STRING(WaitForSyncKey);
     if (p->Has(WaitForSyncKey)) {
-      parameter._waitForSync = TRI_ObjectToBoolean(p->Get(WaitForSyncKey));
+      parameters._waitForSync = TRI_ObjectToBoolean(p->Get(WaitForSyncKey));
     }
 
     TRI_GET_GLOBAL_STRING(DoCompactKey);
     if (p->Has(DoCompactKey)) {
-      parameter._doCompact = TRI_ObjectToBoolean(p->Get(DoCompactKey));
+      parameters._doCompact = TRI_ObjectToBoolean(p->Get(DoCompactKey));
     }
     else {
       // default value for compaction
-      parameter._doCompact = true;
+      parameters._doCompact = true;
     }
 
     TRI_GET_GLOBAL_STRING(IsSystemKey);
     if (p->Has(IsSystemKey)) {
-      parameter._isSystem = TRI_ObjectToBoolean(p->Get(IsSystemKey));
+      parameters._isSystem = TRI_ObjectToBoolean(p->Get(IsSystemKey));
     }
 
     TRI_GET_GLOBAL_STRING(IsVolatileKey);
     if (p->Has(IsVolatileKey)) {
 #ifdef TRI_HAVE_ANONYMOUS_MMAP
-      parameter._isVolatile = TRI_ObjectToBoolean(p->Get(IsVolatileKey));
+      parameters._isVolatile = TRI_ObjectToBoolean(p->Get(IsVolatileKey));
 #else
-      TRI_FreeCollectionInfoOptions(&parameter);
+      TRI_FreeCollectionInfoOptions(&parameters);
       TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections are not supported on this platform");
 #endif
     }
 
-    if (parameter._isVolatile && parameter._waitForSync) {
+    if (parameters._isVolatile && parameters._waitForSync) {
       // the combination of waitForSync and isVolatile makes no sense
-      TRI_FreeCollectionInfoOptions(&parameter);
+      TRI_FreeCollectionInfoOptions(&parameters);
       TRI_V8_THROW_EXCEPTION_PARAMETER("volatile collections do not support the waitForSync option");
     }
     
@@ -1692,23 +1692,23 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   }
   else {
-    TRI_InitCollectionInfo(vocbase, &parameter, name.c_str(), collectionType, effectiveSize, nullptr);
+    TRI_InitCollectionInfo(vocbase, &parameters, name.c_str(), collectionType, effectiveSize, nullptr);
   }
 
 
   if (ServerState::instance()->isCoordinator()) {
-    CreateCollectionCoordinator(args, collectionType, vocbase->_name, parameter, vocbase);
-    TRI_FreeCollectionInfoOptions(&parameter);
+    CreateCollectionCoordinator(args, collectionType, vocbase->_name, parameters, vocbase);
+    TRI_FreeCollectionInfoOptions(&parameters);
 
     return;
   }
 
   TRI_vocbase_col_t const* collection = TRI_CreateCollectionVocBase(vocbase,
-                                                                    &parameter,
+                                                                    &parameters,
                                                                     cid, 
                                                                     true);
 
-  TRI_FreeCollectionInfoOptions(&parameter);
+  TRI_FreeCollectionInfoOptions(&parameters);
 
   if (collection == nullptr) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_errno(), "cannot create collection");
@@ -1722,7 +1722,6 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 
   TRI_V8_RETURN(result);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a new document or edge collection
