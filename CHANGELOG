@@ -8,6 +8,8 @@ v2.4.4 (2015-02-24)
 * increased default value of traversal option *maxIterations* to 100 times of its previous
   default value
 
+* fixed issue #1256: agency binary not found #1256 
+
 
 v2.4.3 (2015-02-06)
 -------------------
