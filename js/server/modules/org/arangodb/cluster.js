@@ -175,7 +175,7 @@ function writeLocked (lockInfo, cb, args) {
   if (ttl === undefined) {
     ttl = 10;
   }
-  if (require("internal").coverage) {
+  if (require("internal").coverage || require("internal").valgrind) {
     ttl *= 10;
     timeout *= 10;
   }
