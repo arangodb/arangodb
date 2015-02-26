@@ -872,19 +872,26 @@ static void LogThread (char const* func,
     len = strftime(buffer, 32, "%Y-%m-%dT%H:%M:%S ", &tb);
   }
 
-
+  errno = TRI_ERROR_NO_ERROR;
   va_copy(ap2, ap);
   n = GenerateMessage(buffer + len, sizeof(buffer) - len, &offset, func, file, line, level, processId, threadId, fmt, ap2);
   va_end(ap2);
 
-
   if (n == -1) {
-    std::string message("format string is corrupt: [");
-    message += fmt + std::string("]");
-    TRI_GetBacktrace(message);
-    disarmFormatString(message);
-    TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
-    return;
+#ifdef _WIN32
+    if (errno != EINVAL) {
+      n = sizeof(buffer) * 2;
+    }
+    else 
+#endif
+    {
+      std::string message("format string is corrupt: [");
+      message += fmt + std::string("] - GenerateMessage failed");
+      TRI_GetBacktrace(message);
+      disarmFormatString(message);
+      TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
+      return;
+    }
   }
   if (n < (int) (sizeof(buffer) - len)) {
     // static buffer was big enough
@@ -909,18 +916,28 @@ static void LogThread (char const* func,
       memcpy(p, buffer, len);
     }
 
+    errno = TRI_ERROR_NO_ERROR;
     va_copy(ap2, ap);
     m = GenerateMessage(p + len, n + 1, &offset, func, file, line, level, processId, threadId, fmt, ap2);
     va_end(ap2);
 
     if (m == -1) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
-      std::string message("format string is corrupt: [");
-      message += fmt + std::string("]");
-      TRI_GetBacktrace(message);
-      disarmFormatString(message);
-      TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
-      return;
+#ifdef _WIN32
+      if ((errno != EINVAL) && (n * 2 < maxSize)) {
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
+        n *=  2;
+      }
+      else 
+#endif
+      {      
+        TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
+        std::string message("format string is corrupt: [");
+        message += fmt + std::string("] ");
+        TRI_GetBacktrace(message);
+        disarmFormatString(message);
+        TRI_Log(func, file, line, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, message.c_str());
+        return;
+      }
     }
     else if (m > n) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, p);
