@@ -7,6 +7,8 @@ v2.6.0 (XXXX-XX-XX)
 v2.5.0-beta1 (2015-02-23)
 -------------------------
 
+* fixed issue #1256: agency binary not found #1256 
+
 * front-end: dashboard tries not to (re)load statistics if user has no access
 
 * V8: Upgrade to version 3.31.74.1
