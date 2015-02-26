@@ -248,7 +248,7 @@ namespace triagens {
             batchPayload.appendText("--" + boundary + "\r\n");
             // append content-type, this will also begin the body
             batchPayload.appendText("Content-Type: ", 14);
-            batchPayload.appendText(rest::HttpRequest::getPartContentType());
+            batchPayload.appendText(rest::HttpRequest::BatchContentType);
             batchPayload.appendText("\r\n\r\n", 4);
 
             // everything else (i.e. part request header & body) will get into the body
@@ -278,7 +278,7 @@ namespace triagens {
           batchPayload.appendText("--" + boundary + "--\r\n");
 
           _headers.erase("Content-Type");
-          _headers["Content-Type"] = rest::HttpRequest::getMultipartContentType() +
+          _headers["Content-Type"] = rest::HttpRequest::MultiPartContentType +
                                      "; boundary=" + boundary;
 
           double start = TRI_microtime();
