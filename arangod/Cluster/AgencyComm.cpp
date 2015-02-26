@@ -396,7 +396,7 @@ std::list<AgencyEndpoint*> AgencyComm::_globalEndpoints;
 
 AgencyConnectionOptions AgencyComm::_globalConnectionOptions = {
   15.0,  // connectTimeout
-  3.0,   // requestTimeout
+  9.0,   // requestTimeout
   5.0,   // lockTimeout
   3      // numRetries
 };
