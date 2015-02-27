@@ -170,17 +170,17 @@ namespace triagens {
           }
         }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                         virtual protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual bool processRead () = 0;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                         virtual protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reads data from the socket
@@ -254,14 +254,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void completedWriteBuffer (bool& closed) {
-          _writeBuffer = 0;
+          _writeBuffer = nullptr;
 
 #ifdef TRI_ENABLE_FIGURES
-          if (_writeBufferStatistics != 0) {
+          if (_writeBufferStatistics != nullptr) {
             _writeBufferStatistics->_writeEnd = TRI_StatisticsTime();
 
             TRI_ReleaseRequestStatistics(_writeBufferStatistics);
-            _writeBufferStatistics = 0;
+            _writeBufferStatistics = nullptr;
           }
 #endif
 
