@@ -82,8 +82,8 @@ namespace triagens {
         explicit
         GeneralServerDispatcher (Scheduler* scheduler, double keepAliveTimeout)
           : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
-            _dispatcher(0),
-            _jobManager(0) {
+            _dispatcher(nullptr),
+            _jobManager(nullptr) {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,24 +170,29 @@ namespace triagens {
             response = handler->getResponse();
           }
 
-          if (response != nullptr) {
-            GeneralAsyncCommTask<S, HF, CT>* atask
-              = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
+          if (response == nullptr) {
+            delete handler;
+            LOG_ERROR("cannot get any response");
 
-            if (atask != nullptr) {
-              handler->RequestStatisticsAgent::transfer(atask);
+            return;
+          }
 
-              atask->handleResponse(response);
-            }
-            else {
-              LOG_ERROR("expected a GeneralAsyncCommTask, giving up");
-            }
+          GeneralAsyncCommTask<S, HF, CT>* atask
+            = dynamic_cast<GeneralAsyncCommTask<S, HF, CT>*>(task);
+
+          if (atask != nullptr) {
+            handler->RequestStatisticsAgent::transfer(atask);
+
+            atask->handleResponse(response);
+          
+            delete handler;
+              
+            atask->processRead();
           }
           else {
-            LOG_ERROR("cannot get any response");
+            delete handler;
+            LOG_ERROR("expected a GeneralAsyncCommTask, giving up");
           }
-
-          delete handler;
         }
 
 // -----------------------------------------------------------------------------
