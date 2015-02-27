@@ -32,17 +32,16 @@
 #define ARANGODB_HTTP_SERVER_HTTP_COMM_TASK_H 1
 
 #include "Basics/Common.h"
-
-#include "GeneralServer/GeneralCommTask.h"
-
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
-
-#include "Scheduler/ListenTask.h"
+#include "GeneralServer/GeneralCommTask.h"
+#include "GeneralServer/GeneralServerDispatcher.h"
 #include "HttpServer/HttpHandler.h"
 #include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/AsyncJobServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "Scheduler/ListenTask.h"
 #include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
@@ -313,7 +312,7 @@ namespace triagens {
 // --SECTION--                                           GeneralCommTask methods
 // -----------------------------------------------------------------------------
 
-      protected:
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
@@ -711,12 +710,17 @@ namespace triagens {
           return true;
         }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                 protected GeneralCommTask methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
         void addResponse (HttpResponse* response) {
-
           // CORS response handling
           if (! this->_origin.empty()) {
             // the request contained an Origin header. We have to send back the
