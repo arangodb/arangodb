@@ -244,19 +244,25 @@ pack-win32-relative:
 pack-win64-relative:
 	$(MAKE) pack-winXX BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USER_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
 
+win64-relative:
+	$(MAKE) winXX-cmake BITS=64 TARGET="Visual Studio 12 Win64" MOREOPTS='-D "USE_RELATIVE=ON" -D "USER_MAINTAINER_MODE=ON" -D "USE_BACKTRACE=ON"'
+	$(MAKE) winXX-build BITS=64
+
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
-	${MAKE} pack-winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
+	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
+	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
 	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
-	${MAKE} pack-winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
+	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
+	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
-pack-winXX-cmake: checkcmake
+winXX-cmake: checkcmake
 	cd Build$(BITS) && cmake \
 		-G "$(TARGET)" \
 		-D "ARANGODB_VERSION=${VERSION}" \
@@ -270,9 +276,10 @@ pack-winXX-cmake: checkcmake
 		$(MOREOPTS) \
 		..
 
-pack-winXX-build:
+winXX-build:
 	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
+packXX:
 	cd Build$(BITS) && cpack -G NSIS
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
