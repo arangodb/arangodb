@@ -10,7 +10,7 @@ content-type: application/json; charset=utf-8
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-02-24T21:13:28Z", 
+      "time" : "2015-02-27T15:29:34Z", 
       "message" : "applier created", 
       "failedConnects" : 0 
     }, 
@@ -21,11 +21,11 @@ content-type: application/json; charset=utf-8
     "lastError" : { 
       "errorNum" : 0 
     }, 
-    "time" : "2015-02-24T21:14:45Z" 
+    "time" : "2015-02-27T15:30:23Z" 
   }, 
   "server" : { 
-    "version" : "2.5.0-beta2", 
-    "serverId" : "133413899684423" 
+    "version" : "2.5.0-beta3", 
+    "serverId" : "54159340936119" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 
