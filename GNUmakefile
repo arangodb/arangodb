@@ -230,7 +230,7 @@ pack-arm-cmake:
 ### @brief Windows 64-bit bundle
 ################################################################################
 
-.PHONY: pack-win32 pack-winXX pack-winXX-cmake
+.PHONY: pack-win32 pack-winXX winXX-cmake
 
 pack-win32:
 	$(MAKE) pack-winXX BITS=32 TARGET="Visual Studio 12"
@@ -251,14 +251,14 @@ win64-relative:
 pack-winXX:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
-	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`"
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Release
 	${MAKE} packXX BITS="$(BITS)"
 
 pack-winXX-MOREOPTS:
 	rm -rf Build$(BITS) && mkdir Build$(BITS)
 
-	${MAKE} pack-winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
+	${MAKE} winXX-cmake BITS="$(BITS)" TARGET="$(TARGET)" VERSION="`awk '{print substr($$3,2,length($$3)-2);}' build.h`" MOREOPTS=$(MOREOPTS)
 	${MAKE} winXX-build BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 	${MAKE} packXX BITS="$(BITS)" TARGET="$(TARGET)" BUILD_TARGET=Debug
 
