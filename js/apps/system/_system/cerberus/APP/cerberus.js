@@ -17,7 +17,7 @@
         path = path.slice(0, path.length - 2).join("/");
 
         if (username) {
-            res.set("Location", path + "/changePassword.html" + "?n=" + username + "&t=" + token);
+            res.set("Location", path + "/changePassword.html" + "?n=" + username.user + "&t=" + token);
         } else {
             res.set("Location", path + "/invalid.html");
         }
