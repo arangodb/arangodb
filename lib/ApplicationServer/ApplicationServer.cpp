@@ -959,7 +959,14 @@ bool ApplicationServer::readConfigurationFile () {
     char* d = TRI_LocateConfigDirectory();
 
     if (d != 0) {
-      string sysDir = string(d) + _systemConfigFile;
+      string sysDir = string(d);
+      
+      if ((sysDir.length() > 0) && 
+          (sysDir[sysDir.length() - 1] != TRI_DIR_SEPARATOR_CHAR)) {
+        sysDir += TRI_DIR_SEPARATOR_CHAR;
+      }
+      sysDir += _systemConfigFile;
+
       string localSysDir = sysDir + ".local";
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, d);
