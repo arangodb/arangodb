@@ -4,6 +4,6 @@ arangosh> graph.male.save({name: "Floyd", _key: "floyd"});
 { 
   "error" : false, 
   "_id" : "male/floyd", 
-  "_rev" : "677851890", 
+  "_rev" : "676603429", 
   "_key" : "floyd" 
 }
