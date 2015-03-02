@@ -11979,9 +11979,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (this.model.isDevelopment()) {
           $("#app-switch-mode").val("Set Pro");
           $("#app-development-indicator").css("display", "inline");
+          $("#app-development-path").css("display", "inline");
         } else {
           $("#app-switch-mode").val("Set Dev");
           $("#app-development-indicator").css("display", "none");
+          $("#app-development-path").css("display", "none");
         }
       }.bind(this));
     },
@@ -14707,9 +14709,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a href="#collections" class="activeBread">Collections</a>'+
-        '  >  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '  >  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
@@ -15680,7 +15682,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a class="activeBread" href="#collections">Collections</a>'+
-        '  &gt;  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );
