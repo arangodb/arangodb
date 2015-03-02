@@ -127,15 +127,15 @@ div.headerBar > div.headerButtonBar {
 
   // Disabled breadcrumb
   .disabledBread {
-    padding-left: 5px;
     color: $c-white;
     float: left;
+    padding-left: 5px;
   }
 
   .activeBread {
-    padding-left: 5px;
     color: $c-breadcrumb-a-active-bread;
     float: left;
+    padding-left: 5px;
   }
 }
 
