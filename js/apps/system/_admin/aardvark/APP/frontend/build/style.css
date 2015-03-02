@@ -4597,11 +4597,19 @@ div.headerBar > div.headerButtonBar {
   margin: 4px 0;
   margin-bottom: 0 !important; }
 
-div.headerBar > div.breadcrumb {
-  padding-left: 5px !important; }
-
-div.breadcrumb a.disabledBread {
-  color: #fff; }
+.breadcrumb {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 0; }
+  .breadcrumb .disabledBread {
+    padding-left: 5px;
+    color: #fff;
+    float: left; }
+  .breadcrumb .activeBread {
+    padding-left: 5px;
+    color: #b9d375;
+    float: left; }
 
 .arangoHeader {
   font-weight: 400; }
@@ -6367,15 +6375,6 @@ table .sorting {
   display: none;
   margin-top: -3px;
   padding-right: 10px; }
-
-.breadcrumb {
-  background: transparent;
-  border: 0;
-  border-radius: 0;
-  padding: 8px 0; }
-
-.breadcrumb a.activeBread {
-  color: #b9d375; }
 
 .documents-size {
   float: right;
