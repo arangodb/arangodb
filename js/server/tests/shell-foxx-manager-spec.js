@@ -100,7 +100,7 @@ describe("Foxx Manager", function() {
           FoxxManager.install(app.name, mount);
           FoxxManager.uninstall(mount);
         } catch(e) {
-          expect(e).toBeUndefined("Could not install " + app.name);
+          expect(e).toBeUndefined("Could not install " + app.name + " - \n" + e.stack);
           try {
             FoxxManager.uninstall(mount, { force: true });
           } catch(err) {
