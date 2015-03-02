@@ -25,13 +25,16 @@
       </div>
       <div class="breadcrumb">
         <a class="activeBread" href="#applications">Applications</a>
-        &gt;
-        <a class="disabledBread">
+        <span class="disabledBread">&gt;</span>
+        <span class="disabledBread">
           <%= app.attributes.mount %>
-        </a>
-        <a class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
-          (development)
-        </a>
+        </span>
+        <span class="disabledBread" id="app-development-indicator" style="display:<%=app.get('development')?'inline':'none' %>;">
+          (development) Location: 
+        </span>
+        <span class="disabledBread" id="app-development-path" style="display:<%=app.get('development')?'inline':'none' %>;">
+          <%= app.get("path")%>
+        </span>
       </div>
     </div>
     <div></div>

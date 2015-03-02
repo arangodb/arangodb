@@ -132,7 +132,7 @@
 
     "css/sass.css": {
       "files": [
-        "frontend/scss/generated.css"
+        "frontend/build/style.css"
       ]
     },
 
