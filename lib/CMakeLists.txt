@@ -211,20 +211,6 @@ add_library(
     SimpleHttpClient/SimpleHttpResult.cpp
 )
 
-################################################################################
-### @brief LIB_ARANGO_MRUBY
-################################################################################
-
-if (USE_MRUBY)
-  add_library(
-      ${LIB_ARANGO_MRUBY}
-      STATIC
-      MRuby/MRLoader.cpp
-      MRuby/MRLineEditor.cpp
-      MRuby/mr-utils.cpp
-  )
-endif ()
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
 ## -----------------------------------------------------------------------------
