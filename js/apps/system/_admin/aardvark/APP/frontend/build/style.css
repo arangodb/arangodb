@@ -4604,13 +4604,13 @@ div.headerBar > div.headerButtonBar {
   border-radius: 0;
   padding: 8px 0; }
   .breadcrumb .disabledBread {
-    padding-left: 5px;
     color: #fff;
-    float: left; }
+    float: left;
+    padding-left: 5px; }
   .breadcrumb .activeBread {
-    padding-left: 5px;
     color: #b9d375;
-    float: left; }
+    float: left;
+    padding-left: 5px; }
 
 .arangoHeader {
   font-weight: 400; }
