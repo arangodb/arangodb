@@ -195,19 +195,6 @@ lib_libarango_v8_a_SOURCES = \
 
 
 ################################################################################
-### @brief library "libarango.a", Ruby part
-################################################################################
-
-if ENABLE_MRUBY
-
-lib_libarango_mruby_a_SOURCES = \
-	lib/MRuby/MRLoader.cpp \
-	lib/MRuby/MRLineEditor.cpp \
-	lib/MRuby/mr-utils.cpp
-
-endif
-
-################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
 ################################################################################
 
