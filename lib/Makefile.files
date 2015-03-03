@@ -62,6 +62,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/terminal-utils-posix.cpp \
 	lib/Basics/terminal-utils.cpp \
 	lib/Basics/Thread.cpp \
+	lib/Basics/ThreadPool.cpp \
 	lib/Basics/threads-posix.cpp \
 	lib/Basics/Timing.cpp \
 	lib/Basics/tri-strings.cpp \

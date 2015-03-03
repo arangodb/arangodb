@@ -1577,6 +1577,7 @@ TRI_server_t* TRI_CreateServer () {
 
 int TRI_InitServer (TRI_server_t* server,
                     void* applicationEndpointServer,
+                    void* indexPool,
                     char const* basePath,
                     char const* appPath,
                     TRI_vocbase_defaults_t const* defaults,
@@ -1591,6 +1592,8 @@ int TRI_InitServer (TRI_server_t* server,
 
   // c++ object, may be null in console mode
   server->_applicationEndpointServer = applicationEndpointServer;
+
+  server->_indexPool                 = indexPool;
 
   // .............................................................................
   // set up paths and filenames
