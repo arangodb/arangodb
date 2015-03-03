@@ -955,7 +955,7 @@
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a class="activeBread" href="#collections">Collections</a>'+
-        '  &gt;  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );

@@ -4014,7 +4014,9 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
 bool TRI_SingleRunGarbageCollectionV8 (v8::Isolate* isolate,
                                        int idleTimeInMs) {
   isolate->LowMemoryNotification();
-  return isolate->IdleNotification(idleTimeInMs);
+  bool rc = isolate->IdleNotification(idleTimeInMs);
+  isolate->RunMicrotasks();
+  return rc;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

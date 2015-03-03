@@ -60,6 +60,7 @@ var optionsDocumentation = [
   '   - `skipAql`: if set to true the AQL tests are skipped',
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
+  '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -777,7 +778,22 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
     args = args.concat(addArgs);
   }
   var arangosh = fs.join("bin","arangosh");
-  return executeAndWait(arangosh, args);
+  var result;
+  var rc = executeAndWait(arangosh, args);
+  try {
+    result = JSON.parse(fs.read("testresult.json"));
+  }
+  catch(x) {
+    return rc;
+  }
+  if ((typeof(result[0]) === 'object') && 
+      result[0].hasOwnProperty('status')) {
+    return result[0];
+  }
+  else {
+    // Jasmine tests...
+    return rc;
+  }
 }
 
 function runArangoshCmd (options, instanceInfo, cmds) {
@@ -1228,6 +1244,9 @@ testFuncs.http_server = function (options) {
 };
 
 testFuncs.ssl_server = function (options) {
+  if (options.hasOwnProperty('skipSsl')) {
+    return {};
+  }
   return rubyTests(options, true);
 };
 

@@ -33,10 +33,12 @@
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Basics/ThreadPool.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/geo-index.h"
 #include "HashIndex/hash-index.h"
+#include "RestServer/ArangoServer.h"
 #include "ShapedJson/shape-accessor.h"
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
@@ -1817,30 +1819,6 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief fill the internal (non-user-definable) indexes
-/// currently, this will only fill edge indexes
-////////////////////////////////////////////////////////////////////////////////
-
-static int FillInternalIndexes (TRI_document_collection_t* document) {
-  int res = TRI_ERROR_NO_ERROR;
-
-  for (size_t i = 0;  i < document->_allIndexes._length;  ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
-
-    if (idx->_type == TRI_IDX_TYPE_EDGE_INDEX) {
-      int r = FillIndex(document, idx);
-
-      if (r != TRI_ERROR_NO_ERROR) {
-        // return first error, but continue
-        res = r;
-      }
-    }
-  }
-
-  return res;
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief iterator for index open
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2590,8 +2568,7 @@ size_t TRI_DocumentIteratorDocumentCollection (TransactionBase const*,
 int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
                                          TRI_json_t const* json,
                                          TRI_index_t** idx) {
-  TRI_ASSERT(json != nullptr);
-  TRI_ASSERT(json->_type == TRI_JSON_OBJECT);
+  TRI_ASSERT(TRI_IsObjectJson(json));
 
   if (idx != nullptr) {
     *idx = nullptr;
@@ -2610,7 +2587,7 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   TRI_json_t const* iis = TRI_LookupObjectJson(json, "id");
 
   TRI_idx_iid_t iid;
-  if (iis != nullptr && iis->_type == TRI_JSON_NUMBER) {
+  if (TRI_IsNumberJson(iis)) {
     iid = (TRI_idx_iid_t) iis->_value._number;
   }
   else if (TRI_IsStringJson(iis)) {
@@ -2672,25 +2649,11 @@ int TRI_FromJsonIndexDocumentCollection (TRI_document_collection_t* document,
   else if (TRI_EqualString(typeStr, "edge")) {
     // we should never get here, as users cannot create their own edge indexes
     LOG_ERROR("logic error. there should never be a JSON file describing an edges index");
+    return TRI_ERROR_INTERNAL;
   }
 
-  else if (TRI_EqualString(typeStr, "priorityqueue") ||
-           TRI_EqualString(typeStr, "bitarray")) {
-    LOG_WARNING("index type '%s' is not supported in this version of ArangoDB and is ignored", typeStr);
-    return TRI_ERROR_NO_ERROR;
-  }
-
-  // .........................................................................
-  // oops, unknown index type
-  // .........................................................................
-
-  else {
-    LOG_ERROR("ignoring unknown index type '%s' for index %llu",
-              typeStr,
-              (unsigned long long) iid);
-  }
-
-  return TRI_ERROR_INTERNAL;
+  LOG_WARNING("index type '%s' is not supported in this version of ArangoDB and is ignored", typeStr);
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2819,18 +2782,105 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t* document,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper struct for filling indexes
+////////////////////////////////////////////////////////////////////////////////
+
+class IndexFiller {
+  public:
+    IndexFiller (TRI_document_collection_t* document,
+                 TRI_index_t* idx,
+                 std::function<void(int)> callback) 
+      : _document(document),
+        _idx(idx),
+        _callback(callback) {
+    }
+
+    void operator() () {
+      TransactionBase trx(true);
+      int res = TRI_ERROR_INTERNAL;
+
+      try {
+        res = FillIndex(_document, _idx);
+      }
+      catch (...) {
+      }
+
+      _callback(res);
+    }
+
+  private:
+
+    TRI_document_collection_t* _document;
+    TRI_index_t*               _idx;
+    std::function<void(int)>   _callback;
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief fill the additional (non-primary) indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillIndexesDocumentCollection (TRI_document_collection_t* document) {
-  // fill internal indexes (this is, the edges index at the moment)
-  FillInternalIndexes(document);
+int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
+                                       TRI_document_collection_t* document) {
+  auto old = document->useSecondaryIndexes();
 
-  // fill user-defined secondary indexes
-  TRI_collection_t* collection = reinterpret_cast<TRI_collection_t*>(document);
-  TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+  // turn filling of secondary indexes off. we're now only interested in getting
+  // the indexes' definition. we'll fill them below ourselves.
+  document->useSecondaryIndexes(false);
 
-  return TRI_ERROR_NO_ERROR;
+  try {
+    TRI_collection_t* collection = reinterpret_cast<TRI_collection_t*>(document);
+    TRI_IterateIndexCollection(collection, OpenIndexIterator, collection);
+    document->useSecondaryIndexes(old);
+  }
+  catch (...) {
+    document->useSecondaryIndexes(old);
+    return TRI_ERROR_INTERNAL;
+  }
+ 
+  
+  // now actually fill the secondary indexes
+  std::atomic<size_t> numFilled(1); // primary index is already filled
+  std::atomic<int> result(TRI_ERROR_NO_ERROR);
+  auto indexPool = document->_vocbase->_server->_indexPool;
+
+  auto callback = [&numFilled, &result] (int res) -> void {
+    ++numFilled;
+    // update the error code
+    if (res != TRI_ERROR_NO_ERROR) {
+      int expected = TRI_ERROR_NO_ERROR;
+      result.compare_exchange_strong(expected, res, std::memory_order_acquire);
+    }
+  };
+
+  // distribute the work to index threads plus this thread
+  size_t const n = document->_allIndexes._length;
+  
+  for (size_t i = 1;  i < n;  ++i) {
+    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+
+    // index threads must come first, otherwise this thread will block the loop and
+    // prevent distribution to threads
+    if (indexPool != nullptr && i != (n - 1)) {
+      // move task into thread pool
+      IndexFiller indexTask(document, idx, callback);
+      static_cast<triagens::basics::ThreadPool*>(indexPool)->enqueue(indexTask);
+    }
+    else { 
+      // fill index in this thread
+      int res = FillIndex(document, idx);
+      ++numFilled;
+      if (res != TRI_ERROR_NO_ERROR) {
+        int expected = TRI_ERROR_NO_ERROR;
+        result.compare_exchange_strong(expected, res, std::memory_order_acquire);
+      }
+    }
+  }
+
+  while (numFilled < n) {
+    usleep(10000);
+  }
+  
+  return result.load();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2921,7 +2971,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
   TRI_InitVocShaper(document->getShaper());  // ONLY in OPENCOLLECTION, PROTECTED by fake trx here
 
   if (! triagens::wal::LogfileManager::instance()->isInRecovery()) {
-    TRI_FillIndexesDocumentCollection(document);
+    TRI_FillIndexesDocumentCollection(col, document);
   }
 
   return document;
@@ -3014,6 +3064,10 @@ static TRI_json_t* ExtractFields (TRI_json_t const* json,
 static int FillIndex (TRI_document_collection_t* document,
                       TRI_index_t* idx) {
 
+  if (! document->useSecondaryIndexes()) {
+    return TRI_ERROR_NO_ERROR;
+  }
+
   void** ptr = document->_primaryIndex._table;
   void** end = ptr + document->_primaryIndex._nrAlloc;
 
@@ -3029,11 +3083,9 @@ static int FillIndex (TRI_document_collection_t* document,
 #endif
 
   for (;  ptr < end;  ++ptr) {
-    TRI_doc_mptr_t const* p = static_cast<TRI_doc_mptr_t const*>(*ptr);
+    TRI_doc_mptr_t const* mptr = static_cast<TRI_doc_mptr_t const*>(*ptr);
 
-    if (p != nullptr) {
-      TRI_doc_mptr_t const* mptr = p;
-
+    if (mptr != nullptr) {
       int res = idx->insert(idx, mptr, false);
 
       if (res != TRI_ERROR_NO_ERROR) {
@@ -3868,10 +3920,8 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
 
   // list style
   if (TRI_EqualString(typeStr, "geo1")) {
-    bool geoJson;
-
     // extract geo json
-    geoJson = false;
+    bool geoJson = false;
     bv = TRI_LookupObjectJson(definition, "geoJson");
 
     if (TRI_IsBooleanJson(bv)) {
@@ -3936,7 +3986,7 @@ static int GeoIndexFromJson (TRI_document_collection_t* document,
     TRI_ASSERT(false);
   }
 
-  return 0; // shut the vc++ up
+  return TRI_ERROR_NO_ERROR; // shut the vc++ up
 }
 
 // -----------------------------------------------------------------------------

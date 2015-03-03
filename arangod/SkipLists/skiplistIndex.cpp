@@ -65,21 +65,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 static int CompareKeyElement (TRI_shaped_json_t const* left,
-                              TRI_skiplist_index_element_t* right,
+                              TRI_skiplist_index_element_t const* right,
                               size_t rightPosition,
                               TRI_shaper_t* shaper) {
-  int result;
-
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
-  result = TRI_CompareShapeTypes(nullptr,
-                                 nullptr,
-                                 left,
-                                 shaper,
-                                 right->_document->getShapedJsonPtr(),
-                                 &right->_subObjects[rightPosition],
-                                 nullptr,
-                                 shaper);
+
+  auto rightSubobjects = SkiplistIndex_Subobjects(right);
+
+  int result = TRI_CompareShapeTypes(nullptr,
+                                     nullptr,
+                                     left,
+                                     shaper,
+                                     right->_document->getShapedJsonPtr(),
+                                     &rightSubobjects[rightPosition],
+                                     nullptr,
+                                     shaper);
 
   // ...........................................................................
   // In the above function CompareShapeTypes we use strcmp which may
@@ -102,20 +103,23 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
 /// @brief compares elements, version with proper types
 ////////////////////////////////////////////////////////////////////////////////
 
-static int CompareElementElement (TRI_skiplist_index_element_t* left,
+static int CompareElementElement (TRI_skiplist_index_element_t const* left,
                                   size_t leftPosition,
-                                  TRI_skiplist_index_element_t* right,
+                                  TRI_skiplist_index_element_t const* right,
                                   size_t rightPosition,
                                   TRI_shaper_t* shaper) {
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
+  
+  auto leftSubobjects = SkiplistIndex_Subobjects(left);
+  auto rightSubobjects = SkiplistIndex_Subobjects(right);
 
   int result = TRI_CompareShapeTypes(left->_document->getShapedJsonPtr(),
-                                     &left->_subObjects[leftPosition],
+                                     &leftSubobjects[leftPosition],
                                      nullptr,
                                      shaper,
                                      right->_document->getShapedJsonPtr(),
-                                     &right->_subObjects[rightPosition],
+                                     &rightSubobjects[rightPosition],
                                      nullptr,
                                      shaper);
 
@@ -145,8 +149,8 @@ static int CmpElmElm (void* sli,
                       void* right,
                       triagens::basics::SkipListCmpType cmptype) {
 
-  TRI_skiplist_index_element_t* leftElement = static_cast<TRI_skiplist_index_element_t*>(left);
-  TRI_skiplist_index_element_t* rightElement = static_cast<TRI_skiplist_index_element_t*>(right);
+  auto leftElement = static_cast<TRI_skiplist_index_element_t const*>(left);
+  auto rightElement = static_cast<TRI_skiplist_index_element_t const*>(right);
   TRI_shaper_t* shaper;
 
   TRI_ASSERT(nullptr != left);
@@ -163,14 +167,12 @@ static int CmpElmElm (void* sli,
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
   shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
-  int compareResult;
-
   for (size_t j = 0;  j < skiplistindex->_numFields;  j++) {
-    compareResult = CompareElementElement(leftElement,
-                                          j,
-                                          rightElement,
-                                          j,
-                                          shaper);
+    int compareResult = CompareElementElement(leftElement,
+                                              j,
+                                              rightElement,
+                                              j,
+                                              shaper);
 
     if (compareResult != 0) {
       return compareResult;
@@ -190,8 +192,8 @@ static int CmpElmElm (void* sli,
   }
 
   // We break this tie in the key comparison by looking at the key:
-  compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->_document),    // ONLY IN INDEX, PROTECTED by RUNTIME
-                         TRI_EXTRACT_MARKER_KEY(rightElement->_document));  // ONLY IN INDEX, PROTECTED by RUNTIME
+  int compareResult = strcmp(TRI_EXTRACT_MARKER_KEY(leftElement->_document),    // ONLY IN INDEX, PROTECTED by RUNTIME
+                             TRI_EXTRACT_MARKER_KEY(rightElement->_document));  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   if (compareResult < 0) {
     return -1;
@@ -209,15 +211,14 @@ static int CmpElmElm (void* sli,
 static int CmpKeyElm (void* sli,
                       void* left,
                       void* right) {
-  TRI_skiplist_index_key_t* leftKey = static_cast<TRI_skiplist_index_key_t*>(left);
-  TRI_skiplist_index_element_t* rightElement = static_cast<TRI_skiplist_index_element_t*>(right);
-  TRI_shaper_t* shaper;
+  auto leftKey = static_cast<TRI_skiplist_index_key_t const*>(left);
+  auto rightElement = static_cast<TRI_skiplist_index_element_t const*>(right);
 
   TRI_ASSERT(nullptr != left);
   TRI_ASSERT(nullptr != right);
 
   SkiplistIndex* skiplistindex = static_cast<SkiplistIndex*>(sli);
-  shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
+  TRI_shaper_t* shaper = skiplistindex->_collection->getShaper();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
   // Note that the key might contain fewer fields than there are indexed
   // attributes, therefore we only run the following loop to
@@ -238,27 +239,8 @@ static int CmpKeyElm (void* sli,
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeElm (void* e) {
-  TRI_skiplist_index_element_t* element = static_cast<TRI_skiplist_index_element_t*>(e);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element->_subObjects);
+  auto element = static_cast<TRI_skiplist_index_element_t*>(e);
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
-}
-
-static int CopyElement (SkiplistIndex* skiplistindex,
-                        TRI_skiplist_index_element_t* leftElement,
-                        TRI_skiplist_index_element_t* rightElement) {
-  TRI_ASSERT(nullptr != leftElement && nullptr != rightElement);
-
-  leftElement->_document   = rightElement->_document;
-  leftElement->_subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields, false));
-
-  if (leftElement->_subObjects == nullptr) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  memcpy(leftElement->_subObjects, rightElement->_subObjects,
-         sizeof(TRI_shaped_sub_t) * skiplistindex->_numFields);
-
-  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -843,53 +825,40 @@ TRI_skiplist_iterator_t* SkiplistIndex_find (
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts a data element into a unique skip list
+/// @brief inserts a data element into the skip list
+/// ownership for the element is transferred to the index
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex_insert (SkiplistIndex* skiplistIndex,
                           TRI_skiplist_index_element_t* element) {
-  TRI_skiplist_index_element_t* copy = static_cast<TRI_skiplist_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_skiplist_index_element_t), false));
-
-  if (nullptr == copy) {
-    return TRI_ERROR_OUT_OF_MEMORY;
-  }
-
-  int res = CopyElement(skiplistIndex, copy, element);
+  int res = skiplistIndex->skiplist->insert(element);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
-    return res;
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
   }
 
-  res = skiplistIndex->skiplist->insert(copy);
-
-  if (res != TRI_ERROR_NO_ERROR) {
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy->_subObjects);
-    TRI_Free(TRI_UNKNOWN_MEM_ZONE, copy);
-    return res;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removes an entry from the skip list
+/// ownership for the element is transferred to the index
 ////////////////////////////////////////////////////////////////////////////////
 
 int SkiplistIndex_remove (SkiplistIndex* skiplistIndex,
                           TRI_skiplist_index_element_t* element) {
-  int result;
+  int res = skiplistIndex->skiplist->remove(element);
 
-  result = skiplistIndex->skiplist->remove(element);
+  TRI_Free(TRI_UNKNOWN_MEM_ZONE, element);
 
-  if (result == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
+  if (res == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) {
     // This is for the case of a rollback in an aborted transaction.
     // We silently ignore the fact that the document was not there.
     // This could also be useful for the case of a sparse index.
     return TRI_ERROR_NO_ERROR;
   }
 
-  return result;
+  return res;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -905,12 +874,9 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex* skiplistIndex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const* skiplistIndex) {
-  size_t const elementSize = skiplistIndex->_numFields * 
-                             (sizeof(TRI_skiplist_index_element_t) + sizeof(TRI_shaped_sub_t));
-
   return sizeof(SkiplistIndex) + 
          skiplistIndex->skiplist->memoryUsage() +
-         skiplistIndex->skiplist->getNrUsed() * elementSize;
+         skiplistIndex->skiplist->getNrUsed() * SkiplistIndex_ElementSize(skiplistIndex);
 }
 
 // -----------------------------------------------------------------------------

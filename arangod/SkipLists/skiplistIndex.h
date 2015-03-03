@@ -66,9 +66,9 @@ typedef struct {
 TRI_skiplist_index_key_t;
 
 typedef struct {
-  TRI_shaped_sub_t* _subObjects;    // list of shaped json objects which the
-                                    // collection should know about
   struct TRI_doc_mptr_t* _document; // master document pointer
+  // note: the index element also contains a list of shaped subs as follows
+  // TRI_shaped_sub_t* _subObjects; 
 }
 TRI_skiplist_index_element_t;
 
@@ -165,6 +165,30 @@ uint64_t SkiplistIndex_getNrUsed (SkiplistIndex*);
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t SkiplistIndex_memoryUsage (SkiplistIndex const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the memory size of a skiplist index element
+////////////////////////////////////////////////////////////////////////////////
+
+inline size_t SkiplistIndex_ElementSize (SkiplistIndex const* idx) {
+  return sizeof(TRI_doc_mptr_t*) + (sizeof(TRI_shaped_sub_t) * idx->_numFields);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base address for the shaped subs inside an element
+////////////////////////////////////////////////////////////////////////////////
+  
+inline TRI_shaped_sub_t const* SkiplistIndex_Subobjects (TRI_skiplist_index_element_t const* element) {
+  return reinterpret_cast<TRI_shaped_sub_t const*>(reinterpret_cast<char const*>(element) + sizeof(TRI_doc_mptr_t*));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the base address for the shaped subs inside an element
+////////////////////////////////////////////////////////////////////////////////
+  
+inline TRI_shaped_sub_t* SkiplistIndex_Subobjects (TRI_skiplist_index_element_t* element) {
+  return reinterpret_cast<TRI_shaped_sub_t*>(reinterpret_cast<char*>(element) + sizeof(TRI_doc_mptr_t*));
+}
 
 #endif
 

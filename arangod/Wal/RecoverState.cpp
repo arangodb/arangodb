@@ -1637,7 +1637,7 @@ int RecoverState::fillIndexes () {
     // activate secondary indexes
     document->useSecondaryIndexes(true);
 
-    int res = TRI_FillIndexesDocumentCollection(document);
+    int res = TRI_FillIndexesDocumentCollection(collection, document);
 
     if (res != TRI_ERROR_NO_ERROR) {
       return res;

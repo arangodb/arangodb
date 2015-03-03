@@ -45,13 +45,42 @@
   var fs = require("fs");
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
 
+  controller.extend({
+    installer: function() {
+      this.queryParam("mount", mountPoint);
+      this.queryParam("upgrade", {type: joi.boolean().optional().description(
+        "Trigger to upgrade the app installed at the mountpoint. Triggers setup."
+      )});
+      this.queryParam("replace", {type: joi.boolean().optional().description(
+        "Trigger to replace the app installed at the mountpoint. Triggers teardown and setup."
+      )});
+    }
+  });
+
   // ------------------------------------------------------------
   // SECTION                                              install
   // ------------------------------------------------------------
 
-  var installApp = function(res, appInfo, mount, options) {
+  var validateMount = function(req) {
+    var mount = req.params("mount");
+    // Validation
+    mount = decodeURIComponent(mount);
+    return mount;
+  };
+
+  var installApp = function(req, res, appInfo, options) {
+    var mount = validateMount(req);
+    var upgrade = req.params("upgrade") || false;
+    var replace = req.params("replace") || false;
     try {
-      var app = FoxxManager.install(appInfo, mount, options);
+      var app;
+      if (upgrade) {
+        app = FoxxManager.upgrade(appInfo, mount, options);
+      } else if (replace) {
+        app = FoxxManager.replace(appInfo, mount, options);
+      } else {
+        app = FoxxManager.install(appInfo, mount, options);
+      }
       var config = FoxxManager.configuration(mount);
       res.json({
         error: false,
@@ -65,12 +94,6 @@
     }
   };
 
-  var validateMount = function(req) {
-    var mount = req.params("mount");
-    // Validation
-    mount = decodeURIComponent(mount);
-    return mount;
-  };
   /** Install a Foxx from the store
    *
    * Downloads a Foxx from the store and installs it at the given mount
@@ -78,10 +101,9 @@
   controller.put("/store", function(req, res) {
     var content = JSON.parse(req.requestBody),
         name = content.name,
-        version = content.version,
-        mount = validateMount(req);
-    installApp(res, name + ":" + version, mount);
-  }).queryParam("mount", mountPoint);
+        version = content.version;
+    installApp(req, res, name + ":" + version);
+  }).installer();
 
   /** Install a Foxx from Github
    *
@@ -90,20 +112,18 @@
   controller.put("/git", function (req, res) {
     var content = JSON.parse(req.requestBody),
         url = content.url,
-        version = content.version,
-        mount = validateMount(req);
-    installApp(res, "git:" + url + ":" + (version || "master"), mount);
-  }).queryParam("mount", mountPoint);
+        version = content.version;
+    installApp(req, res, "git:" + url + ":" + (version || "master"));
+  }).installer();
 
   /** Generate a new foxx
    *
    * Generate a new empty foxx on the given mount point
    */
   controller.put("/generate", function (req, res) {
-    var info = JSON.parse(req.requestBody),
-        mount = validateMount(req);
-    installApp(res, "EMPTY", mount, info);
-  }).queryParam("mount", mountPoint);
+    var info = JSON.parse(req.requestBody);
+    installApp(req, res, "EMPTY", info);
+  }).installer();
 
   /** Install a Foxx from temporary zip file
    *
@@ -113,10 +133,10 @@
   controller.put("/zip", function (req, res) {
     var content = JSON.parse(req.requestBody),
         file = content.zipFile,
-        mount = validateMount(req),
         path = fs.join(fs.getTempPath(), file);
-    installApp(res, path, mount);
-  }).queryParam("mount", mountPoint);
+    installApp(req, res, path);
+  }).installer();
+
 
   /** Uninstall a Foxx
    *

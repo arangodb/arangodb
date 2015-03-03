@@ -30,11 +30,19 @@
 
     // Install Foxx from github repo
     // info is expected to contain: "url" and "version"
-    installFromGithub: function (info, mount, callback) {
+    installFromGithub: function (info, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,
@@ -49,11 +57,19 @@
 
     // Install Foxx from arango store
     // info is expected to contain: "name" and "version"
-    installFromStore: function (info, mount, callback) {
+    installFromStore: function (info, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,
@@ -66,11 +82,19 @@
       });
     },
 
-    installFromZip: function(fileName, mount, callback) {
+    installFromZip: function(fileName, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify({zipFile: fileName}),
         contentType: "application/json",
         processData: false,
@@ -83,11 +107,19 @@
       });
     },
 
-    generate: function (info, mount, callback) {
+    generate: function (info, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,

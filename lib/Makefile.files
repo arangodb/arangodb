@@ -62,6 +62,7 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/terminal-utils-posix.cpp \
 	lib/Basics/terminal-utils.cpp \
 	lib/Basics/Thread.cpp \
+	lib/Basics/ThreadPool.cpp \
 	lib/Basics/threads-posix.cpp \
 	lib/Basics/Timing.cpp \
 	lib/Basics/tri-strings.cpp \
@@ -193,19 +194,6 @@ lib_libarango_v8_a_SOURCES = \
 	lib/SimpleHttpClient/SimpleHttpResult.cpp \
 	lib/SimpleHttpClient/ConnectionManager.cpp
 
-
-################################################################################
-### @brief library "libarango.a", Ruby part
-################################################################################
-
-if ENABLE_MRUBY
-
-lib_libarango_mruby_a_SOURCES = \
-	lib/MRuby/MRLoader.cpp \
-	lib/MRuby/MRLineEditor.cpp \
-	lib/MRuby/mr-utils.cpp
-
-endif
 
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
