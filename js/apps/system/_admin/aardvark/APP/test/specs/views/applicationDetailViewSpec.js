@@ -53,7 +53,9 @@
       deleteButton = $("input.delete");
       openButton = $("input.open");
       window.CreateDummyForObject(window, "Router");
+      window.CreateDummyForObject(window, "FoxxInstallView");
       window.App = new window.Router();
+      window.foxxInstallView = new window.FoxxInstallView();
       spyOn(window.App, "navigate");
     });
 
@@ -394,6 +396,21 @@
       $(button).click();
       expect(appDummy.teardown).toHaveBeenCalledWith(jasmine.any(Function));
     });
+
+    it("should offer upgrading the app", function() {
+      spyOn(window.foxxInstallView, "upgrade").andCallFake(function(mount, cb) {
+        expect(mount).toEqual(appDummy.get("mount"));
+        expect(cb).toEqual(jasmine.any(Function));
+        cb();
+      });
+      spyOn(window.App, "applicationDetail");
+      $("#app-upgrade").click();
+      expect(window.foxxInstallView.upgrade).toHaveBeenCalled();
+      expect(window.App.applicationDetail).toHaveBeenCalledWith(
+        encodeURIComponent(view.model.get('mount'))
+      );
+    });
+
     /*
     describe("edit a foxx", function() {
 

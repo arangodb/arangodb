@@ -179,6 +179,248 @@
       });
     });
 
+    describe("upgrading apps", function() {
+
+      it("should generate an app", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          calledBack = false;
+          info = {
+            name: "My App",
+            author: "ArangoDB",
+            description: "Description of the App",
+            license: "Apache 2",
+            collectionNames: ["first", "second"]
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.generate(info, mount, function() {
+            calledBack = true;
+          }, false);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount) + "&upgrade=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+
+      });
+
+      it("should install an app from github", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          calledBack = false;
+          info = {
+            url: "arangodb/itzpapalotl",
+            version: "1.2.0"
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.installFromGithub(info, mount, function() {
+            calledBack = true;
+          }, false);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount) + "&upgrade=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+
+      });
+
+      it("should install an app from store", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          calledBack = false;
+          info = {
+            name: "itzpapalotl",
+            version: "1.2.0"
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.installFromStore(info, mount, function() {
+            calledBack = true;
+          }, false);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount) + "&upgrade=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+      });
+
+      it("should install an app from an uploaded zip", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          var fileName = "uploads/tmp-123.zip";
+          calledBack = false;
+          info = {
+            zipFile: fileName,
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.installFromZip(fileName, mount, function() {
+            calledBack = true;
+          }, false);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount) + "&upgrade=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+        
+      });
+    });
+
+    describe("replacing apps", function() {
+
+      it("should generate an app", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          calledBack = false;
+          info = {
+            name: "My App",
+            author: "ArangoDB",
+            description: "Description of the App",
+            license: "Apache 2",
+            collectionNames: ["first", "second"]
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.generate(info, mount, function() {
+            calledBack = true;
+          }, true);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount) + "&replace=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+
+      });
+
+      it("should install an app from github", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          calledBack = false;
+          info = {
+            url: "arangodb/itzpapalotl",
+            version: "1.2.0"
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.installFromGithub(info, mount, function() {
+            calledBack = true;
+          }, true);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount) + "&replace=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+
+      });
+
+      it("should install an app from store", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          calledBack = false;
+          info = {
+            name: "itzpapalotl",
+            version: "1.2.0"
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.installFromStore(info, mount, function() {
+            calledBack = true;
+          }, true);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount) + "&replace=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+      });
+
+      it("should install an app from an uploaded zip", function() {
+        var calledBack, info, mount;
+
+        runs(function() {
+          var fileName = "uploads/tmp-123.zip";
+          calledBack = false;
+          info = {
+            zipFile: fileName,
+          };
+          mount = "/my/app";
+          spyOn($, "ajax").andCallFake(function(opts) {
+            opts.success();
+          });
+          col.installFromZip(fileName, mount, function() {
+            calledBack = true;
+          }, true);
+        });
+
+        waitsFor(function() {
+          return calledBack;
+        }, 750);
+
+        runs(function() {
+          var url = "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount) + "&replace=true";
+          validateRequest(url, "PUT", JSON.stringify(info));
+        });
+        
+      });
+    });
+
   });
 }());
 

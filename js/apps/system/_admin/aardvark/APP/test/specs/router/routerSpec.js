@@ -33,6 +33,7 @@
 
     // Spy on all views that are initialized by startup
     beforeEach(function () {
+      window.CreateDummyForObject(window, "FoxxInstallView");
       naviDummy = {
         id: "navi",
         render: function () {
@@ -253,6 +254,7 @@
     afterEach(function() {
       // Remove all global values the router has created.
       delete window.modalView;
+      delete window.foxxInstallView;
       delete window.progressView;
     });
 
@@ -263,6 +265,13 @@
       beforeEach(function () {
         spyOn(storeDummy, "fetch");
         r = new window.Router();
+      });
+
+      it("should create the foxx installer", function() {
+        expect(window.FoxxInstallView).toHaveBeenCalledWith({
+          collection: foxxDummy
+        });
+        expect(window.foxxInstallView).toBeDefined();
       });
 
       it("should trigger the version check", function() {
