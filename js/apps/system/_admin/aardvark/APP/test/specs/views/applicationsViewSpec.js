@@ -40,7 +40,9 @@
         storeApp = "Online App";
         storeAppVersion = "2.1.1";
         spyOn(listDummy, "fetch").andCallFake(function(opts) {
-          opts.success();
+          if (opts && opts.success) {
+            opts.success();
+          }
         });
         spyOn(listDummy, "each");
         spyOn(listDummy, "sort");
