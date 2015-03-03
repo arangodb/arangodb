@@ -21,11 +21,15 @@
       document.body.appendChild(div);
       window.CreateDummyForObject(window, "FoxxCollection");
       listDummy = new window.FoxxCollection();
+      window.foxxInstallView = new window.FoxxInstallView({
+        collection: listDummy
+      });
     });
 
     afterEach(function() {
       document.body.removeChild(div);
       delete window.modalView;
+      delete window.foxxInstallView;
       document.body.removeChild(modalDiv);
     });
 
@@ -36,7 +40,9 @@
         storeApp = "Online App";
         storeAppVersion = "2.1.1";
         spyOn(listDummy, "fetch").andCallFake(function(opts) {
-          opts.success();
+          if (opts && opts.success) {
+            opts.success();
+          }
         });
         spyOn(listDummy, "each");
         spyOn(listDummy, "sort");
@@ -68,6 +74,7 @@
         view = new window.ApplicationsView({
           collection: listDummy
         });
+        spyOn(view, "reload");
 
         runs(function () {
           $("#addApp").click();
@@ -123,7 +130,6 @@
           $("#new-app-license").val(license);
           $("#new-app-mount").keyup();
           expect($(generateButton).prop("disabled")).toBeFalsy();
-          spyOn(view, "reload");
           $(generateButton).click();
         });
 
@@ -157,7 +163,6 @@
           expect($("#appstore-content").children().length).toEqual(2);
           button = $("#appstore-content .install-app[appId='" + storeApp + "']");
           expect(button.length).toEqual(1);
-          spyOn(view, "reload");
           button.click();
         });
 
@@ -195,7 +200,6 @@
           $("#tag").val(version);
           $("#new-app-mount").keyup();
           expect($(generateButton).prop("disabled")).toBeFalsy();
-          spyOn(view, "reload");
           $(generateButton).click();
         });
 
@@ -224,7 +228,6 @@
             });
           });
           $("#new-app-mount").val(mount);
-          spyOn(view, "reload");
           uploadCallback(["app.zip"], {filename: fileName});
         });
 

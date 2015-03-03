@@ -6144,10 +6144,8 @@ input.gv-radio-button {
       left: 170px;
       position: absolute;
       width: 120px; }
-      .application-detail-view section.info .header .header_left input.delete {
-        margin-top: 35px; }
-      .application-detail-view section.info .header .header_left input.switch-mode {
-        margin-top: 35px; }
+      .application-detail-view section.info .header .header_left input.delete, .application-detail-view section.info .header .header_left input.upgrade, .application-detail-view section.info .header .header_left input.switch-mode {
+        margin-top: 13.3333333333px; }
     .application-detail-view section.info .header .header_right {
       left: 300px;
       padding: 5px;

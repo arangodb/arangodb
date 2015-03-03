@@ -82,6 +82,7 @@
         </div>
         <div class="header_left">
           <input type="button" class="open button-success" disabled="true" value="Open" />
+          <input id="app-upgrade" type="button" class="upgrade button-warning" value="Upgrade" <%=app.isSystem()?"disabled":"" %>/>
           <input id="app-switch-mode" type="button" class="switch-mode button-warning" value="<%=app.get('development')?'Set Pro':'Set Dev'%>" />
           <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
         </div>
@@ -1391,17 +1392,26 @@ if (list.length > 1) {
 <script id="modalApplicationMount.ejs" type="text/template">
   <table>
     <tr class="tableRow">
-      <th class="collectionInfoTh">
-        Mount*:
-      </th>
-      <th class="collectionInfoTh">
-        <input type="text" id="new-app-mount" value="" placeholder="/my/foxx"></input>
-      </th>
-      <th>
-        <a class="modalTooltips" title="The path the app will be mounted. Has to start with /. Is not allowed to start with /_">
-          <span class="arangoicon icon_arangodb_info"></span>
-        </a>
-      </th>
+      <% if (content === true) { %>
+        <th class="collectionInfoTh">
+          Run teardown:
+        </th>
+        <th class="collectionInfoTh">
+          <input type="checkbox" id="new-app-teardown"></input>
+        </th>
+      <% } else { %>
+        <th class="collectionInfoTh">
+          Mount*:
+        </th>
+        <th class="collectionInfoTh">
+          <input type="text" id="new-app-mount" value="" placeholder="/my/foxx"></input>
+        </th>
+        <th>
+          <a class="modalTooltips" title="The path the app will be mounted. Has to start with /. Is not allowed to start with /_">
+            <span class="arangoicon icon_arangodb_info"></span>
+          </a>
+        </th>
+      <% } %>
     </tr>
   </table>
 
@@ -1460,7 +1470,7 @@ if (list.length > 1) {
         -->
         <tr class="tableRow">
           <th class="collectionInfoTh">
-            Collections*:
+            Collections:
           </th>
           <th class="collectionInfoTh">
             <input type="hidden" id="new-app-collections" value="" placeholder="Collections"></input>
@@ -2652,7 +2662,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1425303010706"></script>
+<script src="app.js?version=1425388763587"></script>
 
   </body>
 </html>
