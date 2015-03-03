@@ -2,8 +2,8 @@ ArangoDB
 
 ArangoDB is a multi-purpose, open-source database with flexible data models for
 documents, graphs, and key-values. Build high performance applications using a
-convenient SQL-like query language or JavaScript/Ruby extensions. Use ACID
-transaction if you require them. Scale horizontally and vertically with a few
+convenient SQL-like query language or JavaScript extensions. Use ACID
+transactions if you require them. Scale horizontally and vertically with a few
 mouse clicks.
 
 Key features include:

@@ -15,13 +15,25 @@ v2.6.0 (XXXX-XX-XX)
   live documents in the collection on unload. It is read when the collection is (re)loaded to
   determine the initial size for the collection's primary index
 
-* fixed issue #1230: API: document/col-name/_key and cursor return different floats
+* removed remainders of MRuby integration, removed arangoirb
+
+
+v2.5.0-beta3 (2015-02-27)
+-------------------------
+
+* fix windows install path calculation in arango
+
+* fix windows logging of long strings
+
+* fix possible undefinedness of const strings in windows
 
 
 v2.5.0-beta1 (2015-02-23)
 -------------------------
 
 * fixed issue #1256: agency binary not found #1256 
+
+* fixed issue #1230: API: document/col-name/_key and cursor return different floats
 
 * front-end: dashboard tries not to (re)load statistics if user has no access
 

@@ -95870,6 +95870,7 @@ if (typeof internal.arango !== 'undefined') {
     "ERROR_SYNTAX_ERROR_IN_SCRIPT" : { "code" : 3006, "message" : "syntax error in script" },
     "ERROR_INVALID_MOUNTPOINT"     : { "code" : 3007, "message" : "mountpoint is invalid" },
     "ERROR_NO_FOXX_FOUND"          : { "code" : 3008, "message" : "No foxx found at this location" },
+    "ERROR_APP_NOT_FOUND"          : { "code" : 3009, "message" : "App not found" },
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10000, "message" : "element not inserted into structure, because it already exists" },
     "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10001, "message" : "element not found in structure" },
     "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" },
@@ -101271,9 +101272,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (this.model.isDevelopment()) {
           $("#app-switch-mode").val("Set Pro");
           $("#app-development-indicator").css("display", "inline");
+          $("#app-development-path").css("display", "inline");
         } else {
           $("#app-switch-mode").val("Set Dev");
           $("#app-development-indicator").css("display", "none");
+          $("#app-development-path").css("display", "none");
         }
       }.bind(this));
     },
@@ -103999,9 +104002,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a href="#collections" class="activeBread">Collections</a>'+
-        '  >  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="activeBread" href="#collection/' + name[1] + '/documents/1">' + name[1] + '</a>'+
-        '  >  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="disabledBread">' + name[2] + '</a>'+
         '</div>'
       );
@@ -104972,7 +104975,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#transparentHeader').append(
         '<div class="breadcrumb">'+
         '<a class="activeBread" href="#collections">Collections</a>'+
-        '  &gt;  '+
+        '<span class="disabledBread">&gt</span>'+
         '<a class="disabledBread">'+this.collectionName+'</a>'+
         '</div>'
       );
