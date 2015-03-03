@@ -786,7 +786,8 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   catch(x) {
     return rc;
   }
-  if (result[0].HasOwnProperty('status')) {
+  if ((typeof(result[0]) === 'object') && 
+      result[0].hasOwnProperty('status')) {
     return result[0];
   }
   else {
