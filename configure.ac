@@ -172,47 +172,6 @@ dnl ----------------------------------------------------------------------------
 m4_include([m4/external.openssl])
 
 dnl ----------------------------------------------------------------------------
-dnl MRUBY
-dnl ----------------------------------------------------------------------------
-
-MRUBY_CPPFLAGS=""
-MRUBY_LDLAGS=""
-MRUBY_LIBSLAGS=""
-
-AC_ARG_ENABLE(mruby,
-  AS_HELP_STRING([--enable-mruby], [enable MRUBY (default: no)]),
-  [tr_MRUBY="${enableval:-yes}"],
-  [tr_MRUBY=no]
-)
-
-if test "x$tr_MRUBY" = "xyes";  then
-  MRUBY_VERSION="2013-08-22 (aa099f7f7d1f8c61db936fb7c39a3c734175af16)"
-
-  MRUBY_CPPFLAGS="-I${srcdir}/3rdParty/mruby/include -DTRI_MRUBY_VERSION='\"${MRUBY_VERSION}\"'"
-  MRUBY_LDFLAGS=""
-  MRUBY_LIBS="${srcdir}/3rdParty/mruby/build/host/lib/libmruby.a"
-fi
-
-AM_CONDITIONAL(ENABLE_MRUBY, test "x$tr_MRUBY" = "xyes")
-
-AC_SUBST(MRUBY_CPPFLAGS)
-AC_SUBST(MRUBY_LDFLAGS)
-AC_SUBST(MRUBY_LIBS)
-
-if test "x$tr_MRUBY" = "xyes";  then
-  LIB_INFO="$LIB_INFO|MRUBY: 3rdParty version"
-  LIB_INFO="$LIB_INFO|MRUBY VERSION: ${TRI_MRUBY_VERSION}"
-
-  LIB_INFO="$LIB_INFO|MRUBY_CPPFLAGS: ${MRUBY_CPPFLAGS}"
-  LIB_INFO="$LIB_INFO|MRUBY_LDFLAGS:  ${MRUBY_LDFLAGS}"
-  LIB_INFO="$LIB_INFO|MRUBY_LIBS:     ${MRUBY_LIBS}"
-else
-  LIB_INFO="$LIB_INFO|MRUBY: disabled"
-fi
-
-LIB_INFO="$LIB_INFO|."
-
-dnl ----------------------------------------------------------------------------
 dnl V8
 dnl ----------------------------------------------------------------------------
 

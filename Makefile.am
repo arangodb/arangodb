@@ -148,18 +148,6 @@ LIBS = \
 	@ZLIB_LIBS@ \
 	@READLINE_LIBS@ 
 
-################################################################################
-### @brief ruby additions
-################################################################################
-
-if ENABLE_MRUBY
-
-AM_CPPFLAGS += @MRUBY_CPPFLAGS@
-AM_CPPFLAGS += @MRUBY_LDFLAGS@
-LIBS += @MRUBY_LIBS@
-
-endif
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                              LIBRARIES & PROGRAMS
 ## -----------------------------------------------------------------------------
@@ -175,10 +163,6 @@ noinst_LIBRARIES = \
 	lib/libarango_client.a \
 	arangod/libarangod.a
 
-if ENABLE_MRUBY
-noinst_LIBRARIES += lib/libarango_mruby.a
-endif
-
 ################################################################################
 ### @brief /bin programs
 ################################################################################
@@ -189,10 +173,6 @@ bin_PROGRAMS = \
 	bin/arangorestore \
 	bin/arangosh \
 	bin/arangoimp
-
-if ENABLE_MRUBY
-bin_PROGRAMS += bin/arangoirb
-endif
 
 ################################################################################
 ### @brief /sbin programs
@@ -252,7 +232,6 @@ pkgdataAPPSdir = $(datadir)/arangodb
 pkgdataAPPSADMINdir = $(datadir)/arangodb
 pkgdataAPPSAPIdir = $(datadir)/arangodb
 pkgdataAPPSSYSTEMdir = $(datadir)/arangodb
-pkgdataMRUBYdir = $(datadir)/arangodb
 
 nobase_pkgdata_DATA =
 
@@ -267,14 +246,6 @@ nobase_pkgdataAPPSADMIN_DATA = $(shell find @srcdir@/js/apps/system/_admin -type
 nobase_pkgdataAPPSAPI_DATA = $(shell find @srcdir@/js/apps/system/_api -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
 nobase_pkgdataAPPSSYSTEM_DATA = $(shell find @srcdir@/js/apps/system/_system -type f "(" -path "*/test/*" -o -path "*/test_data/*" -o -path "*/coverage/*" -o -print ")")
 
-
-if ENABLE_MRUBY
-
-nobase_pkgdataMRUBY_DATA = \
-	$(shell find @srcdir@/mr/client -name "*.rb" -print) \
-	$(shell find @srcdir@/mr/common -name "*.rb" -print) 
-
-endif
 
 ################################################################################
 ### @brief /var data
@@ -337,10 +308,6 @@ include lib/Makefile.files
 include arangod/Makefile.files
 include arangosh/Makefile.files
 include etc/Makefile.files
-
-if ENABLE_MRUBY
-include arangoirb/Makefile.files
-endif
 
 ################################################################################
 ### @brief unit tests
@@ -435,8 +402,8 @@ GTAGS:
 .PHONY: update-disclaimer
 
 update-disclaimer:
-	find lib arangod arangosh arangoirb "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec utils/cleanupCFiles "{}" ";"
-	find lib arangod arangosh arangoirb "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec chmod "644" "{}" ";"
+	find lib arangod arangosh "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec utils/cleanupCFiles "{}" ";"
+	find lib arangod arangosh "(" -name "*.c" -o -name "*.h" -o -name "*.cpp" ")" -exec chmod "644" "{}" ";"
 	find js/common/bootstrap js/client/bootstrap js/server/bootstrap -name "*.js" -a ! -name errors.js -exec utils/cleanupCFiles "{}" ";"
 	find js/common/modules/org/arangodb js/client/modules/org/arangodb js/server/modules/org/arangodb -name "*.js"
 	find js -name "*.js"  -exec chmod "644" "{}" ";"
@@ -456,14 +423,6 @@ include Documentation/Makefile.files
 ################################################################################
 
 include js/Makefile.files
-
-################################################################################
-### @brief mruby
-################################################################################
-
-if ENABLE_MRUBY
-include mr/Makefile.mruby
-endif
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                   GENERATED FILES
@@ -527,14 +486,6 @@ endif
 include 3rdParty/Makefile.libev
 
 ################################################################################
-### @brief mruby
-################################################################################
-
-if ENABLE_MRUBY
-include 3rdParty/Makefile.mruby
-endif
-
-################################################################################
 ### @brief V8
 ################################################################################
 
@@ -573,7 +524,6 @@ cmake-setup:
 		-D "VARDIR=${localstatedir}" \
 		\
 		-D ARANGODB_VERSION=${VERSION} \
-		-D USE_MRUBY=${tr_MRUBY} \
 		\
 		-D ICU_INCLUDE="${CMAKE_ICU_INCLUDE}" \
 		-D ICU_LIB_PATH="${CMAKE_ICU_LIB_PATH}" \
@@ -584,11 +534,6 @@ cmake-setup:
 		-D LIBEV_LIB_PATH="${CMAKE_LIBEV_LIB_PATH}" \
 		-D LIBEV_LIBS="${CMAKE_LIBEV_LIBS}" \
 		-D LIBEV_VERSION="${CMAKE_LIBEV_VERSION}" \
-		\
-		-D MRUBY_INCLUDE= \
-		-D MRUBY_LIB_PATH= \
-		-D MRUBY_LIBS= \
-		-D MRUBY_VERSION= \
 		\
 		-D OPENSSL_INCLUDE= \
 		-D OPENSSL_LIB_PATH= \

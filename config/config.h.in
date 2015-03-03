@@ -106,9 +106,6 @@
 /* true if maintainer mode is enabled */
 #undef TRI_ENABLE_MAINTAINER_MODE
 
-/* true if mruby should be used */
-#undef TRI_ENABLE_MRUBY
-
 /* true if timing is enabled */
 #undef TRI_ENABLE_TIMING
 
