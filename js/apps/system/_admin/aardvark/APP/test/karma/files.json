@@ -72,6 +72,7 @@
     "test/specs/views/applicationsViewSpec.js",
     "test/specs/views/applicationDetailViewSpec.js",
     "test/specs/views/modalViewSpec.js",
+    "test/specs/views/foxxInstallViewSpec.js",
     "test/specs/views/editListEntryViewSpec.js",
     "test/specs/views/collectionsViewSpec.js",
     "test/specs/views/collectionsItemViewSpec.js",

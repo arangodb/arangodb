@@ -30,12 +30,10 @@
         position: absolute;
         width: 120px;
 
-        input.delete {
-          margin-top: (160px - 3 * 30px) / 2;
-        }
-
+        input.delete,
+        input.upgrade,
         input.switch-mode {
-          margin-top: (160px - 3 * 30px) / 2;
+          margin-top: (160px - 4 * 30px) / 3;
         }
       }
 
