@@ -1,7 +1,7 @@
 /*jshint browser: true */
-/*jshint strict: false, unused: false */
-/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _, modalDialogHelper, alert*/
+/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _*/
 (function() {
+  "use strict";
 
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
@@ -16,6 +16,14 @@
       'click #app-setup': 'setup',
       'click #app-teardown': 'teardown',
       "click #app-scripts": "toggleScripts",
+      "click #app-upgrade": "upgradeApp"
+    },
+
+    upgradeApp: function() {
+      var mount = this.model.get("mount");
+      window.foxxInstallView.upgrade(mount, function() {
+        window.App.applicationDetail(encodeURIComponent(mount));
+      });
     },
 
     toggleScripts: function() {
@@ -48,13 +56,13 @@
     },
 
     setup: function() {
-      this.model.setup(function(data) {
+      this.model.setup(function() {
 
       });
     },
 
     teardown: function() {
-      this.model.teardown(function(data) {
+      this.model.teardown(function() {
 
       });
     },
@@ -67,7 +75,7 @@
 
       $.get(this.appUrl()).success(function () {
         $('.open', this.el).prop('disabled', false);
-      }, this);
+      }.bind(this));
 
       this.updateConfig();
 
@@ -129,7 +137,7 @@
           return;
         }
       });
-      this.model.setConfiguration(cfg, function(data) {
+      this.model.setConfiguration(cfg, function() {
         window.modalView.hide();
         this.updateConfig();
       }.bind(this));
