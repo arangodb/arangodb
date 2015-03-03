@@ -193,6 +193,19 @@
       });
       expect($.ajax).toHaveBeenCalled();
     });
+
+    it("should be able to download", function() {
+      var testMount = "/this/is/a/test/mount";
+      spyOn(window, "open");
+      var myFoxx = new window.Foxx({
+        mount: testMount
+      });
+      myFoxx.download();
+      expect(window.open).toHaveBeenCalledWith(
+        "/_admin/aardvark/foxxes/download/zip?mount=" + myFoxx.encodedMount()
+      );
+
+    });
   });
 
 }());

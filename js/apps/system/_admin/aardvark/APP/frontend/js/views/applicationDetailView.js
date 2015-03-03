@@ -16,7 +16,14 @@
       'click #app-setup': 'setup',
       'click #app-teardown': 'teardown',
       "click #app-scripts": "toggleScripts",
-      "click #app-upgrade": "upgradeApp"
+      "click #app-upgrade": "upgradeApp",
+      "click #download-app": "downloadApp"
+    },
+
+    downloadApp: function() {
+      if (!this.model.isSystem()) {
+        this.model.download();
+      }
     },
 
     upgradeApp: function() {
