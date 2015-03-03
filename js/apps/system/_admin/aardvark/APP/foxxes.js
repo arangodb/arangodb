@@ -33,6 +33,7 @@
   var controller = new FoxxController(applicationContext);
   var ArangoError = require("org/arangodb").ArangoError;
   var FoxxManager = require("org/arangodb/foxx/manager");
+  var fmUtils = require("org/arangodb/foxx/manager-utils");
   var actions = require("org/arangodb/actions");
   var joi = require("joi");
   var docu = require("lib/swagger").Swagger;
@@ -245,6 +246,22 @@
       res.json(FoxxManager.production(mount));
     }
   }).queryParam("mount", mountPoint);
+
+  /** Download an app as zip archive
+   *
+   * Download a foxx app packed in a zip archive
+   */
+
+  controller.get("/download/zip", function(req, res) {
+    var mount = validateMount(req);
+    var app = FoxxManager.lookupApp(mount);
+    var dir = fs.join(fs.makeAbsolute(app._root), app._path);
+    var zipPath = fmUtils.zipDirectory(dir);
+    res.set("Content-Type", "application/octet-stream");
+    res.set("Content-Disposition", "attachment; filename=app.zip");
+    res.body = fs.readFileSync(zipPath);
+  }).queryParam("mount", mountPoint);
+
 
   // ------------------------------------------------------------
   // SECTION                                                store

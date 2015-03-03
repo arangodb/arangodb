@@ -92,6 +92,12 @@
 
     isDevelopment: function() {
       return this.get("development");
+    },
+
+    download: function() {
+      window.open(
+        "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()
+      );
     }
 
   });
