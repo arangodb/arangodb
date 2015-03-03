@@ -46,6 +46,7 @@
 #include "Basics/init.h"
 #include "Basics/logging.h"
 #include "Basics/messages.h"
+#include "Basics/ThreadPool.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/HeartbeatThread.h"
 #include "Dispatcher/ApplicationDispatcher.h"
@@ -156,7 +157,6 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
 
   // add admin handlers
   _applicationAdminServer->addHandlers(factory, "/_admin");
-
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +282,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _dispatcherThreads(8),
     _dispatcherQueueSize(8192),
     _v8Contexts(8),
+    _indexThreads(2),
     _databasePath(),
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
@@ -289,7 +290,8 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _disableReplicationApplier(false),
     _server(nullptr),
     _queryRegistry(nullptr),
-    _pairForAql(nullptr) {
+    _pairForAql(nullptr),
+    _indexPool(nullptr) {
 
   TRI_SetApplicationName("arangod");
 
@@ -322,9 +324,9 @@ ArangoServer::ArangoServer (int argc, char** argv)
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoServer::~ArangoServer () {
-  if (_jobManager != nullptr) {
-    delete _jobManager;
-  }
+  delete _indexPool;
+
+  delete _jobManager;
 
   if (_server != nullptr) {
     TRI_FreeServer(_server);
@@ -528,12 +530,10 @@ void ArangoServer::buildApplicationServer () {
 
   additional["Database Options:help-admin"]
     ("database.directory", &_databasePath, "path to the database directory")
-  ;
-
-  additional["Database Options:help-admin"]
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
+    ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
   ;
 
   // .............................................................................
@@ -722,6 +722,13 @@ void ArangoServer::buildApplicationServer () {
     }
     else {
       LOG_FATAL_AND_EXIT("cannot determine current directory");
+    }
+  }
+
+  if (_indexThreads > 0) {
+    if (_indexThreads > 128) {
+      // some arbitrary limit
+      _indexThreads = 128;
     }
   }
 }
@@ -1179,8 +1186,14 @@ void ArangoServer::openDatabases (bool checkVersion,
 
   TRI_ASSERT(_server != nullptr);
 
+
+  if (_indexThreads > 0) {
+    _indexPool = new triagens::basics::ThreadPool(_indexThreads, "IndexBuilder");
+  }
+
   int res = TRI_InitServer(_server,
                            _applicationEndpointServer,
+                           _indexPool,
                            _databasePath.c_str(),
                            _applicationV8->appPath().c_str(),
                            &defaults,
