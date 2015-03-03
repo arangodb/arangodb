@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1247: debian init script problems
+
 * multi-threaded index creation on collection load
 
   When a collection contains more than one secondary index, they can be built in memory in

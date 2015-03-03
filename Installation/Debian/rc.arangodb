@@ -1,9 +1,10 @@
 #!/bin/sh
+set -e
 
 ### BEGIN INIT INFO
 # Provides:          arangodb
-# Required-Start:    
-# Required-Stop:     
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
 # Short-Description: arangodb
@@ -22,6 +23,11 @@ CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
+if [ `id -u` -ne 0 ]; then
+   echo "You need root privileges to run this script"
+   exit 1
+fi
+
 start () {
     test -d $PIDDIR || mkdir $PIDDIR
     chown arangodb:arangodb $PIDDIR
@@ -38,15 +44,28 @@ start () {
       chown -R arangodb:arangodb /var/lib/arangodb-apps
     fi
 
-    if [ "$1" = "--upgrade" ]; then
-      $DAEMON -c $CONF --uid arangodb --gid arangodb $@
-    else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
+    [ -d /var/run/arangodb ]  ||  mkdir /var/run/arangodb
+
+    if test -d /var/run/arangodb;  then
+      chown -R arangodb:arangodb /var/run/arangodb
     fi
 
-    RETVAL=$?
+    if [ "$1" = "--upgrade" ]; then
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server $@
+      RETVAL=$?
+      log_end_msg $RETVAL
+    else
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server --check-version
+      RETVAL=$?
 
-    log_end_msg $RETVAL
+      if test $RETVAL -eq 0;  then
+        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
+	RETVAL=$?
+	log_end_msg $RETVAL
+      else
+	log_failure_msg "database version check failed, maybe need to run 'upgrade'?"
+      fi
+    fi
 
     return $RETVAL
 }
@@ -60,13 +79,25 @@ case "$1" in
     ;;
 
   stop)
-    log_begin_msg "Stopping $DESC" "$NAME"
+    log_daemon_msg "Stopping $DESC" "$NAME"
 
     start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
     RETVAL=$?
     log_end_msg $RETVAL
 
-    test -f $PIDFILE && rm -f $PIDFILE
+    log_daemon_msg "Waiting for shutdown" ""
+
+    c=0
+
+    while test -f $PIDFILE -a $c -lt 30; do
+      log_progress_msg "$NAME"
+      sleep 2
+      c=`expr $c + 1`
+    done
+
+    log_end_msg 0
+
+    rm -f $PIDFILE
     exit $RETVAL
     ;;
 
