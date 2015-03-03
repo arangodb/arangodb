@@ -273,7 +273,7 @@ static void arangodumpExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static string GetHttpErrorMessage (SimpleHttpResult* result) {
-  const StringBuffer& body = result->getBody();
+  StringBuffer const& body = result->getBody();
   string details;
 
   TRI_json_t* json = JsonHelper::fromString(body.c_str(), body.length());
@@ -603,7 +603,7 @@ static int DumpCollection (int fd,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      StringBuffer& body = response->getBody();
+      StringBuffer const& body = response->getBody();
 
       if (! TRI_WritePointer(fd, body.c_str(), body.length())) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -689,7 +689,7 @@ static int RunDump (string& errorMsg) {
 
   FlushWal();
 
-  const StringBuffer& data = response->getBody();
+  StringBuffer const& data = response->getBody();
 
 
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
@@ -960,7 +960,7 @@ static int DumpShard (int fd,
     }
 
     if (res == TRI_ERROR_NO_ERROR) {
-      StringBuffer& body = response->getBody();
+      StringBuffer const& body = response->getBody();
 
       if (! TRI_WritePointer(fd, body.c_str(), body.length())) {
         res = TRI_ERROR_CANNOT_WRITE_FILE;
@@ -1025,7 +1025,7 @@ static int RunClusterDump (string& errorMsg) {
   }
 
 
-  const StringBuffer& data = response->getBody();
+  StringBuffer const& data = response->getBody();
 
 
   TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, data.c_str());
