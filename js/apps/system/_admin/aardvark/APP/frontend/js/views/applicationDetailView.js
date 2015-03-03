@@ -38,9 +38,11 @@
         if (this.model.isDevelopment()) {
           $("#app-switch-mode").val("Set Pro");
           $("#app-development-indicator").css("display", "inline");
+          $("#app-development-path").css("display", "inline");
         } else {
           $("#app-switch-mode").val("Set Dev");
           $("#app-development-indicator").css("display", "none");
+          $("#app-development-path").css("display", "none");
         }
       }.bind(this));
     },

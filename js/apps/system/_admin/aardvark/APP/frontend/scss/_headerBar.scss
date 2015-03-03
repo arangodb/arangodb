@@ -118,13 +118,25 @@ div.headerBar > div.headerButtonBar {
 
 // Breadcrumbs on the left side 
 
-div.headerBar > div.breadcrumb {
-  padding-left: 5px !important;
-}
 
-// Disabled breadcrumb
-div.breadcrumb a.disabledBread {
-  color: $c-white;
+.breadcrumb {
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  padding: 8px 0;
+
+  // Disabled breadcrumb
+  .disabledBread {
+    color: $c-white;
+    float: left;
+    padding-left: 5px;
+  }
+
+  .activeBread {
+    color: $c-breadcrumb-a-active-bread;
+    float: left;
+    padding-left: 5px;
+  }
 }
 
 // arangoHeader

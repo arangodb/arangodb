@@ -37,7 +37,7 @@ cat configure.ac \
 
 mv configure.ac.tmp configure.ac
 
-./configure --enable-maintainer-mode --disable-mruby || exit 1
+./configure --enable-maintainer-mode || exit 1
 make built-sources || exit 1
 make add-maintainer || exit 1
 make add-automagic || exit 1
