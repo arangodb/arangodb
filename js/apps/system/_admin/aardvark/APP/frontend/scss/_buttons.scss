@@ -168,6 +168,10 @@ a.headerButton {
     top: -3px;
   }
 
+  .fa-download {
+    margin-left: -3px !important;
+  }
+
   &.activated {
     background-color: $c-positive-hover;
     color: $c-white;
@@ -182,12 +186,6 @@ a.headerButton {
     @extend %icon-inactive;
 
     cursor: not-allowed;
-  }
-}
-
-#exportCollection {
-  i {
-    margin-left: -3px !important;
   }
 }
 
