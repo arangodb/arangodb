@@ -99488,6 +99488,12 @@ window.Users = Backbone.Model.extend({
 
     isDevelopment: function() {
       return this.get("development");
+    },
+
+    download: function() {
+      window.open(
+        "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()
+      );
     }
 
   });
@@ -101282,7 +101288,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       'click #app-setup': 'setup',
       'click #app-teardown': 'teardown',
       "click #app-scripts": "toggleScripts",
-      "click #app-upgrade": "upgradeApp"
+      "click #app-upgrade": "upgradeApp",
+      "click #download-app": "downloadApp"
+    },
+
+    downloadApp: function() {
+      if (!this.model.isSystem()) {
+        this.model.download();
+      }
     },
 
     upgradeApp: function() {

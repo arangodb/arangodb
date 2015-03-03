@@ -2169,6 +2169,8 @@ a.headerButton {
     left: -2px;
     position: relative;
     top: -3px; }
+  a.headerButton .fa-download {
+    margin-left: -3px !important; }
   a.headerButton.activated {
     background-color: #788f3d;
     color: #fff; }
@@ -2177,9 +2179,6 @@ a.headerButton {
       color: #788f3d; }
   a.headerButton.disabled {
     cursor: not-allowed; }
-
-#exportCollection i {
-  margin-left: -3px !important; }
 
 #importCollection i {
   margin-left: -3px !important;
