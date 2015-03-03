@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 
 ### BEGIN INIT INFO
 # Provides:          arangodb
@@ -22,6 +23,11 @@ CONF=/etc/arangodb/arangod.conf
 
 test -x $DAEMON || exit 0
 
+if [ `id -u` -ne 0 ]; then
+   echo "You need root privileges to run this script"
+   exit 1
+fi
+
 start () {
     test -d $PIDDIR || mkdir $PIDDIR
     chown arangodb:arangodb $PIDDIR
@@ -36,6 +42,12 @@ start () {
 
     if test -d /var/lib/arangodb-apps;  then
       chown -R arangodb:arangodb /var/lib/arangodb-apps
+    fi
+
+    [ -d /var/run/arangodb ]  ||  mkdir /var/run/arangodb
+
+    if test -d /var/run/arangodb;  then
+      chown -R arangodb:arangodb /var/run/arangodb
     fi
 
     if [ "$1" = "--upgrade" ]; then
@@ -73,7 +85,19 @@ case "$1" in
     RETVAL=$?
     log_end_msg $RETVAL
 
-    test -f $PIDFILE && rm -f $PIDFILE
+    log_daemon_msg "Waiting for shutdown" ""
+
+    c=0
+
+    while test -f $PIDFILE -a $c -lt 30; do
+      log_progress_msg "$NAME"
+      sleep 2
+      c=`expr $c + 1`
+    done
+
+    log_end_msg 0
+
+    rm -f $PIDFILE
     exit $RETVAL
     ;;
 
