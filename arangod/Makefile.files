@@ -166,14 +166,6 @@ bin_arangod_LDADD = \
 bin_arangod_SOURCES = \
 	arangod/RestServer/arangod.cpp
 
-if ENABLE_MRUBY
-
-bin_arangod_LDADD += \
-	lib/libarango_mruby.a \
-	@MRUBY_LIBS@
-
-endif
-
 ################################################################################
 ## --SECTION--                                                  SCANNER & PARSER
 ################################################################################
