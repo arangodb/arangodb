@@ -91,6 +91,7 @@ add_library(
     Basics/system-functions.cpp
     Basics/terminal-utils.cpp
     Basics/Thread.cpp
+    Basics/ThreadPool.cpp
     Basics/Timing.cpp
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
@@ -210,20 +211,6 @@ add_library(
     SimpleHttpClient/SimpleHttpClient.cpp
     SimpleHttpClient/SimpleHttpResult.cpp
 )
-
-################################################################################
-### @brief LIB_ARANGO_MRUBY
-################################################################################
-
-if (USE_MRUBY)
-  add_library(
-      ${LIB_ARANGO_MRUBY}
-      STATIC
-      MRuby/MRLoader.cpp
-      MRuby/MRLineEditor.cpp
-      MRuby/mr-utils.cpp
-  )
-endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE

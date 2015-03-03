@@ -739,7 +739,8 @@ bool TRI_CloseDatafileDocumentCollection (TRI_document_collection_t*,
 /// @brief fill the additional (non-primary) indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_FillIndexesDocumentCollection (TRI_document_collection_t*);
+int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t*,
+                                       TRI_document_collection_t*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief opens an existing collection

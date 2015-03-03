@@ -51,4 +51,9 @@ AQL offers the following functions to filter data based on [fulltext indexes](..
   
 **Note**: the *FULLTEXT* function requires the collection *collection* to have a
 fulltext index on *attribute*. If no fulltext index is available, this function
-will fail with an error.
+will fail with an error. *FULLTEXT* is not meant to be used as an argument to *FILTER*
+but rather to be used as the expression of the *FOR* statement:
+
+  FOR oneMail IN
+    FULLTEXT(emails, "body", "banana,-apple")
+    RETURN oneMail._id;
