@@ -14,6 +14,8 @@ var runTest = require('jsunity').runTest,
 runJSUnityTests = function (tests) {
   'use strict';
   var result = true;
+  var allResults = [];
+  var res;
 
   _.each(tests, function (file) {
     // find out whether we're on server or client...
@@ -30,7 +32,9 @@ runJSUnityTests = function (tests) {
     }
 
     try {
-      result = result && runTest(file).status;
+      res = runTest(file);
+      allResults.push(res);
+      result = result && res.status;
     } catch (err) {
       print(runenvironment + ": cannot run test file '" + file + "': " + err);
       print(err.stack);
@@ -40,7 +44,7 @@ runJSUnityTests = function (tests) {
 
     internal.wait(0); // force GC
   });
-
+  require("fs").write("testresult.json", JSON.stringify(allResults));
   return result;
 };
 

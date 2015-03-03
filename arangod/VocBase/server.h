@@ -60,6 +60,7 @@ typedef struct TRI_server_s {
 
   TRI_vocbase_defaults_t      _defaults;
   void*                       _applicationEndpointServer; // ptr to C++ object
+  void*                       _indexPool;                 // ptr to C++ object
 
   char*                       _basePath;
   char*                       _databasePath;
@@ -97,13 +98,14 @@ TRI_server_t* TRI_CreateServer (void);
 /// @brief initialise a server instance with configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_InitServer (TRI_server_t* server,
-                    void* databasePath,
-                    char const* basePath,
-                    char const* appPath,
+int TRI_InitServer (TRI_server_t*,
+                    void*,
+                    void*,
+                    char const*,
+                    char const*,
                     TRI_vocbase_defaults_t const*,
-                    bool disableReplicationApplier,
-                    bool iterateMarkersOnOpen);
+                    bool,
+                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy a server instance
