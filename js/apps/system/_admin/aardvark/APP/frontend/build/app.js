@@ -95870,6 +95870,7 @@ if (typeof internal.arango !== 'undefined') {
     "ERROR_SYNTAX_ERROR_IN_SCRIPT" : { "code" : 3006, "message" : "syntax error in script" },
     "ERROR_INVALID_MOUNTPOINT"     : { "code" : 3007, "message" : "mountpoint is invalid" },
     "ERROR_NO_FOXX_FOUND"          : { "code" : 3008, "message" : "No foxx found at this location" },
+    "ERROR_APP_NOT_FOUND"          : { "code" : 3009, "message" : "App not found" },
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10000, "message" : "element not inserted into structure, because it already exists" },
     "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10001, "message" : "element not found in structure" },
     "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" },
@@ -100940,11 +100941,19 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     // Install Foxx from github repo
     // info is expected to contain: "url" and "version"
-    installFromGithub: function (info, mount, callback) {
+    installFromGithub: function (info, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/git?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,
@@ -100959,11 +100968,19 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     // Install Foxx from arango store
     // info is expected to contain: "name" and "version"
-    installFromStore: function (info, mount, callback) {
+    installFromStore: function (info, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/store?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,
@@ -100976,11 +100993,19 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
-    installFromZip: function(fileName, mount, callback) {
+    installFromZip: function(fileName, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/zip?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify({zipFile: fileName}),
         contentType: "application/json",
         processData: false,
@@ -100993,11 +101018,19 @@ window.ArangoUsers = Backbone.Collection.extend({
       });
     },
 
-    generate: function (info, mount, callback) {
+    generate: function (info, mount, callback, flag) {
+      var url = "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount);
+      if (flag !== undefined) {
+        if (flag) {
+          url += "&replace=true";
+        } else {
+          url += "&upgrade=true";
+        }
+      }
       $.ajax({
         cache: false,
         type: "PUT",
-        url: "/_admin/aardvark/foxxes/generate?mount=" + encodeURIComponent(mount),
+        url: url,
         data: JSON.stringify(info),
         contentType: "application/json",
         processData: false,
@@ -101232,9 +101265,9 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint browser: true */
-/*jshint strict: false, unused: false */
-/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _, modalDialogHelper, alert*/
+/*global Backbone, $, window, arangoHelper, templateEngine, Joi, _*/
 (function() {
+  "use strict";
 
   window.ApplicationDetailView = Backbone.View.extend({
     el: '#content',
@@ -101249,6 +101282,14 @@ window.ArangoUsers = Backbone.Collection.extend({
       'click #app-setup': 'setup',
       'click #app-teardown': 'teardown',
       "click #app-scripts": "toggleScripts",
+      "click #app-upgrade": "upgradeApp"
+    },
+
+    upgradeApp: function() {
+      var mount = this.model.get("mount");
+      window.foxxInstallView.upgrade(mount, function() {
+        window.App.applicationDetail(encodeURIComponent(mount));
+      });
     },
 
     toggleScripts: function() {
@@ -101279,13 +101320,13 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     setup: function() {
-      this.model.setup(function(data) {
+      this.model.setup(function() {
 
       });
     },
 
     teardown: function() {
-      this.model.teardown(function(data) {
+      this.model.teardown(function() {
 
       });
     },
@@ -101298,7 +101339,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       $.get(this.appUrl()).success(function () {
         $('.open', this.el).prop('disabled', false);
-      }, this);
+      }.bind(this));
 
       this.updateConfig();
 
@@ -101360,7 +101401,7 @@ window.ArangoUsers = Backbone.Collection.extend({
           return;
         }
       });
-      this.model.setConfiguration(cfg, function(data) {
+      this.model.setConfiguration(cfg, function() {
         window.modalView.hide();
         this.updateConfig();
       }.bind(this));
@@ -101450,17 +101491,14 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint browser: true */
-/*global require, Backbone, $, window, arangoHelper, templateEngine, Joi, alert, _*/
+/*global Backbone, $, window, arangoHelper, templateEngine, _*/
 (function() {
   "use strict";
-
-  var errors = require("internal").errors;
 
   window.ApplicationsView = Backbone.View.extend({
     el: '#content',
 
     template: templateEngine.createTemplate("applicationsView.ejs"),
-    appStoreTemplate: templateEngine.createTemplate("applicationListView.ejs"),
 
     events: {
       "click #addApp"                : "createInstallModal",
@@ -101555,282 +101593,9 @@ window.ArangoUsers = Backbone.Collection.extend({
       $('#foxxDropdownOut').slideToggle(200);
     },
 
-    installFoxxFromStore: function(e) {
-      if (window.modalView.modalTestAll()) {
-        var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-        var toInstall = $(e.currentTarget).attr("appId");
-        var version = $(e.currentTarget).attr("appVersion");
-        this.collection.installFromStore({name: toInstall, version: version}, mount, this.installCallback.bind(this));
-      }
-    },
-
-    installFoxxFromZip: function(files, data) {
-      if (window.modalView.modalTestAll()) {
-        var mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-        this.collection.installFromZip(data.filename, mount, this.installCallback.bind(this));
-      }
-    },
-
-    installCallback: function(result) {
-      if (result.error === false) {
-        window.modalView.hide();
-        this.reload();
-      } else {
-        // TODO Error handling properly!
-        switch(result.errorNum) {
-          case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
-            alert("Unable to download application from the given repository.");
-            break;
-          default:
-            alert("Error: " + result.errorNum + ". " + result.errorMessage);
-        }
-      }
-    },
-
-    installFoxxFromGithub: function() {
-      if (window.modalView.modalTestAll()) {
-        var url, version, mount;
-
-        //fetch needed information, need client side verification
-        //remove name handling on server side because not needed
-        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-        url = window.arangoHelper.escapeHtml($('#repository').val());
-        version = window.arangoHelper.escapeHtml($('#tag').val());
-
-        if (version === '') {
-          version = "master";
-        }
-        var info = {
-          url: window.arangoHelper.escapeHtml($('#repository').val()),
-          version: window.arangoHelper.escapeHtml($('#tag').val())
-        };
-
-        try {
-          Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
-        } catch (e) {
-          return;
-        }
-        //send server req through collection
-        this.collection.installFromGithub(info, mount, this.installCallback.bind(this));
-      }
-    },
-
-    /* potential error handling
-    if (info.responseText.indexOf("already used by") > -1) {
-      alert("Mount path already in use.");
-    } else if (info.responseText.indexOf("app is not defined") > -1) {
-      //temp ignore this message, fix needs to be server-side
-      window.modalView.hide();
-      self.reload();
-    } else {
-      alert(info.statusText);
-    }
-    */
-
-    generateNewFoxxApp: function() {
-      if (window.modalView.modalTestAll()) {
-        var mount;
-        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
-        var info = {
-          name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-          collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
-            return window.arangoHelper.escapeHtml(d.text);
-          }),
-  //        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
-          author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
-          license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
-          description: window.arangoHelper.escapeHtml($("#new-app-description").val())
-        };
-        this.collection.generate(info, mount, this.installCallback.bind(this));
-      }
-    },
-
-    addAppAction: function() {
-      var openTab = $(".modal-body .tab-pane.active").attr("id");
-      switch (openTab) {
-        case "newApp":
-          this.generateNewFoxxApp();
-          break;
-        case "github":
-          this.installFoxxFromGithub();
-          break;
-        case "zip":
-          // this.installFoxxFromZip();
-          break;
-        default:
-      }
-    },
-
-    setMountpointValidators: function() {
-      window.modalView.clearValidators();
-      window.modalView.modalBindValidation({
-        id: "new-app-mount",
-        validateInput: function() {
-          return [
-            {
-              rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
-              msg: "May not contain /APP"
-            },
-            {
-              rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
-              msg: "Can only contain [a-zA-Z0-9_-%]"
-            },
-            {
-              rule: Joi.string().regex(/^\/[^_]/),
-              msg: "Mountpoints with _ are reserved for internal use"
-            },
-            {
-              rule: Joi.string().regex(/[^\/]$/),
-              msg: "May not end with /"
-            },
-            {
-              rule: Joi.string().regex(/^\//),
-              msg: "Has to start with /"
-            },
-            {
-              rule: Joi.string().required().min(2),
-              msg: "Has to be non-empty"
-            },
-          ];
-        }
-      });
-    },
-
-    setGithubValidators: function() {
-      window.modalView.modalBindValidation({
-        id: "repository",
-        validateInput: function() {
-          return [
-            {
-              rule: Joi.string().required().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/),
-              msg: "No valid github account and repository."
-            }
-          ];
-        }
-      });
-    },
-
-    setNewAppValidators: function() {
-      
-      window.modalView.modalBindValidation({
-        id: "new-app-author",
-        validateInput: function() {
-          return [
-            {
-              rule: Joi.string().required().min(1),
-              msg: "Has to be non empty."
-            }
-          ];
-        }
-      });
-
-      window.modalView.modalBindValidation({
-        id: "new-app-name",
-        validateInput: function() {
-          return [
-            {
-              rule: Joi.string().required().regex(/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/),
-              msg: "Can only contain a to z, A to Z, 0-9, '-' and '_'."
-            }
-          ];
-        }
-      });
-
-      window.modalView.modalBindValidation({
-        id: "new-app-description",
-        validateInput: function() {
-          return [
-            {
-              rule: Joi.string().required().min(1),
-              msg: "Has to be non empty."
-            }
-          ];
-        }
-      });
-
-      window.modalView.modalBindValidation({
-        id: "new-app-license",
-        validateInput: function() {
-          return [
-            {
-              rule: Joi.string().required().regex(/^[a-zA-Z0-9 \.,;\-]+$/),
-              msg: "Has to be non empty."
-            }
-          ];
-        }
-      });
-      window.modalView.modalTestAll();
-    },
-
-    switchModalButton: function(event) {
-      window.modalView.clearValidators();
-      var openTab = $(event.currentTarget).attr("href").substr(1);
-      var button = $("#modalButton1");
-      this.setMountpointValidators();
-      switch (openTab) {
-        case "newApp":
-          button.html("Generate");
-          button.prop("disabled", false);
-          this.setNewAppValidators();
-          break;
-        case "appstore":
-          button.html("Install");
-          button.prop("disabled", true);
-          break;
-        case "github":
-          this.setGithubValidators();
-          button.html("Install");
-          button.prop("disabled", false);
-          break;
-        case "zip":
-          button.html("Install");
-          button.prop("disabled", false);
-          break;
-        default:
-      }
-    },
-
     createInstallModal: function(event) {
       event.preventDefault();
-      var buttons = [];
-      var modalEvents = {
-        "click #infoTab a"   : this.switchModalButton.bind(this),
-        "click .install-app" : this.installFoxxFromStore.bind(this)
-      };
-      buttons.push(
-        window.modalView.createSuccessButton("Generate", this.addAppAction.bind(this))
-      );
-      window.modalView.show(
-        "modalApplicationMount.ejs",
-        "Install application",
-        buttons,
-        undefined,
-        undefined,
-        modalEvents
-      );
-      $("#new-app-collections").select2({
-        tags: [],
-        showSearchBox: false,
-        minimumResultsForSearch: -1,
-        width: "336px"
-      });
-      $("#upload-foxx-zip").uploadFile({
-        url: "/_api/upload?multipart=true",
-        allowedTypes: "zip",
-        onSuccess: this.installFoxxFromZip.bind(this)
-      });
-      var listTempl = this.appStoreTemplate;
-      $.get("foxxes/fishbowl", function(list) {
-        var table = $("#appstore-content");
-        _.each(_.sortBy(list, "name"), function(app) {
-          table.append(listTempl.render(app));
-        });
-      }).fail(function() {
-        var table = $("#appstore-content");
-        table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
-      });
-      this.setMountpointValidators();
-      this.setNewAppValidators();
+      window.foxxInstallView.install(this.reload.bind(this));
     },
 
     render: function() {
@@ -105419,6 +105184,339 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint browser: true */
+/*global require, $, Joi, _, alert, templateEngine*/
+(function() {
+  "use strict";
+
+  var errors = require("internal").errors;
+  var appStoreTemplate = templateEngine.createTemplate("applicationListView.ejs");
+
+  var FoxxInstallView = function(opts) {
+    this.collection = opts.collection;
+  };
+
+  var installCallback = function(result) {
+    if (result.error === false) {
+      this.collection.fetch({ async: false });
+      window.modalView.hide();
+      this.reload();
+    } else {
+      // TODO Error handling properly!
+      switch(result.errorNum) {
+        case errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code:
+          alert("Unable to download application from the given repository.");
+          break;
+        default:
+          alert("Error: " + result.errorNum + ". " + result.errorMessage);
+      }
+    }
+  };
+
+  var setMountpointValidators = function() {
+    window.modalView.modalBindValidation({
+      id: "new-app-mount",
+      validateInput: function() {
+        return [
+          {
+            rule: Joi.string().regex(/^(\/(APP[^\/]+|(?!APP)[a-zA-Z0-9_\-%]+))+$/i),
+            msg: "May not contain /APP"
+          },
+          {
+            rule: Joi.string().regex(/^(\/[a-zA-Z0-9_\-%]+)+$/),
+            msg: "Can only contain [a-zA-Z0-9_-%]"
+          },
+          {
+            rule: Joi.string().regex(/^\/[^_]/),
+            msg: "Mountpoints with _ are reserved for internal use"
+          },
+          {
+            rule: Joi.string().regex(/[^\/]$/),
+            msg: "May not end with /"
+          },
+          {
+            rule: Joi.string().regex(/^\//),
+            msg: "Has to start with /"
+          },
+          {
+            rule: Joi.string().required().min(2),
+            msg: "Has to be non-empty"
+          },
+        ];
+      }
+    });
+  };
+
+  var setGithubValidators = function() {
+    window.modalView.modalBindValidation({
+      id: "repository",
+      validateInput: function() {
+        return [
+          {
+            rule: Joi.string().required().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/),
+            msg: "No valid github account and repository."
+          }
+        ];
+      }
+    });
+  };
+
+  var setNewAppValidators = function() {
+    window.modalView.modalBindValidation({
+      id: "new-app-author",
+      validateInput: function() {
+        return [
+          {
+            rule: Joi.string().required().min(1),
+            msg: "Has to be non empty."
+          }
+        ];
+      }
+    });
+    window.modalView.modalBindValidation({
+      id: "new-app-name",
+      validateInput: function() {
+        return [
+          {
+            rule: Joi.string().required().regex(/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/),
+            msg: "Can only contain a to z, A to Z, 0-9, '-' and '_'."
+          }
+        ];
+      }
+    });
+
+    window.modalView.modalBindValidation({
+      id: "new-app-description",
+      validateInput: function() {
+        return [
+          {
+            rule: Joi.string().required().min(1),
+            msg: "Has to be non empty."
+          }
+        ];
+      }
+    });
+
+    window.modalView.modalBindValidation({
+      id: "new-app-license",
+      validateInput: function() {
+        return [
+          {
+            rule: Joi.string().required().regex(/^[a-zA-Z0-9 \.,;\-]+$/),
+            msg: "Has to be non empty."
+          }
+        ];
+      }
+    });
+    window.modalView.modalTestAll();
+  };
+
+  var switchModalButton = function(event) {
+    window.modalView.clearValidators();
+    var openTab = $(event.currentTarget).attr("href").substr(1);
+    var button = $("#modalButton1");
+    if (!this._upgrade) {
+      setMountpointValidators();
+    }
+    switch (openTab) {
+      case "newApp":
+        button.html("Generate");
+        button.prop("disabled", false);
+        setNewAppValidators();
+        break;
+      case "appstore":
+        button.html("Install");
+        button.prop("disabled", true);
+        break;
+      case "github":
+        setGithubValidators();
+        button.html("Install");
+        button.prop("disabled", false);
+        break;
+      case "zip":
+        button.html("Install");
+        button.prop("disabled", false);
+        break;
+      default:
+    }
+  };
+
+  var installFoxxFromStore = function(e) {
+    if (window.modalView.modalTestAll()) {
+      var mount, flag;
+      if (this._upgrade) {
+        mount = this.mount;
+        flag = $('#new-app-teardown').prop("checked");
+      } else {
+        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+      }
+      var toInstall = $(e.currentTarget).attr("appId");
+      var version = $(e.currentTarget).attr("appVersion");
+      if (flag !== undefined) {
+        this.collection.installFromStore({name: toInstall, version: version}, mount, installCallback.bind(this), flag);
+      } else {
+        this.collection.installFromStore({name: toInstall, version: version}, mount, installCallback.bind(this));
+      }
+    }
+  };
+
+  var installFoxxFromZip = function(files, data) {
+    if (window.modalView.modalTestAll()) {
+      var mount, flag;
+      if (this._upgrade) {
+        mount = this.mount;
+        flag = $('#new-app-teardown').prop("checked");
+      } else {
+        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+      }
+      if (flag !== undefined) {
+        this.collection.installFromZip(data.filename, mount, installCallback.bind(this), flag);
+      } else {
+        this.collection.installFromZip(data.filename, mount, installCallback.bind(this));
+      }
+    }
+  };
+
+
+  var installFoxxFromGithub = function() {
+    if (window.modalView.modalTestAll()) {
+      var url, version, mount, flag;
+      if (this._upgrade) {
+        mount = this.mount;
+        flag = $('#new-app-teardown').prop("checked");
+      } else {
+        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+      }
+      url = window.arangoHelper.escapeHtml($('#repository').val());
+      version = window.arangoHelper.escapeHtml($('#tag').val());
+
+      if (version === '') {
+        version = "master";
+      }
+      var info = {
+        url: window.arangoHelper.escapeHtml($('#repository').val()),
+        version: window.arangoHelper.escapeHtml($('#tag').val())
+      };
+
+      try {
+        Joi.assert(url, Joi.string().regex(/^[a-zA-Z0-9_\-]+\/[a-zA-Z0-9_\-]+$/));
+      } catch (e) {
+        return;
+      }
+      //send server req through collection
+      if (flag !== undefined) {
+        this.collection.installFromGithub(info, mount, installCallback.bind(this), flag);
+      } else {
+        this.collection.installFromGithub(info, mount, installCallback.bind(this));
+
+      }
+    }
+  };
+
+  var generateNewFoxxApp = function() {
+    if (window.modalView.modalTestAll()) {
+      var mount, flag;
+      if (this._upgrade) {
+        mount = this.mount;
+        flag = $('#new-app-teardown').prop("checked");
+      } else {
+        mount = window.arangoHelper.escapeHtml($('#new-app-mount').val());
+      }
+      var info = {
+        name: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+        collectionNames: _.map($('#new-app-collections').select2("data"), function(d) {
+          return window.arangoHelper.escapeHtml(d.text);
+        }),
+        //        authenticated: window.arangoHelper.escapeHtml($("#new-app-name").val()),
+        author: window.arangoHelper.escapeHtml($("#new-app-author").val()),
+        license: window.arangoHelper.escapeHtml($("#new-app-license").val()),
+        description: window.arangoHelper.escapeHtml($("#new-app-description").val())
+      };
+      if (flag !== undefined) {
+        this.collection.generate(info, mount, installCallback.bind(this), flag);
+      } else {
+        this.collection.generate(info, mount, installCallback.bind(this));
+      }
+    }
+  };
+
+  var addAppAction = function() {
+    var openTab = $(".modal-body .tab-pane.active").attr("id");
+    switch (openTab) {
+      case "newApp":
+        generateNewFoxxApp.apply(this);
+        break;
+      case "github":
+        installFoxxFromGithub.apply(this);
+        break;
+      case "zip":
+        break;
+      default:
+    }
+  };
+
+  var render = function(scope, upgrade) {
+    var buttons = [];
+    var modalEvents = {
+      "click #infoTab a"   : switchModalButton.bind(scope),
+      "click .install-app" : installFoxxFromStore.bind(scope)
+    };
+    buttons.push(
+      window.modalView.createSuccessButton("Generate", addAppAction.bind(scope))
+    );
+    window.modalView.show(
+      "modalApplicationMount.ejs",
+      "Install application",
+      buttons,
+      upgrade,
+      undefined,
+      modalEvents
+    );
+    $("#new-app-collections").select2({
+      tags: [],
+      showSearchBox: false,
+      minimumResultsForSearch: -1,
+      width: "336px"
+    });
+    $("#upload-foxx-zip").uploadFile({
+      url: "/_api/upload?multipart=true",
+      allowedTypes: "zip",
+      onSuccess: installFoxxFromZip.bind(scope)
+    });
+    $.get("foxxes/fishbowl", function(list) {
+      var table = $("#appstore-content");
+      _.each(_.sortBy(list, "name"), function(app) {
+        table.append(appStoreTemplate.render(app));
+      });
+    }).fail(function() {
+      var table = $("#appstore-content");
+      table.append("<tr><td>Store is not available. ArangoDB is not able to connect to github.com</td></tr>");
+    });
+  };
+
+  FoxxInstallView.prototype.install = function(callback) {
+    this.reload = callback;
+    this._upgrade = false;
+    delete this.mount;
+    render(this, false);
+    window.modalView.clearValidators();
+    setMountpointValidators();
+    setNewAppValidators();
+
+  };
+
+  FoxxInstallView.prototype.upgrade = function(mount, callback) {
+    this.reload = callback;
+    this._upgrade = true;
+    this.mount = mount;
+    render(this, true);
+    window.modalView.clearValidators();
+    setNewAppValidators();
+  };
+
+  window.FoxxInstallView = FoxxInstallView;
+}());
+
+/*jshint browser: true */
 /*jshint unused: false */
 /*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
 
@@ -106297,7 +106395,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 
 /*jshint browser: true */
-/*jshint unused: false */
 /*global Backbone, $, window, setTimeout, Joi, _ */
 /*global templateEngine*/
 
@@ -108989,6 +109086,11 @@ window.ArangoUsers = Backbone.Collection.extend({
     initialize: function () {
       // This should be the only global object
       window.modalView = new window.ModalView();
+
+      this.foxxList = new window.FoxxCollection();
+      window.foxxInstallView = new window.FoxxInstallView({
+        collection: this.foxxList
+      });
       window.progressView = new window.ProgressView();
       var self = this;
 
@@ -109008,7 +109110,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
       this.arangoCollectionsStore.fetch({async: false});
-      this.foxxList = new window.FoxxCollection();
 
       this.footerView = new window.FooterView();
       this.notificationList = new window.NotificationCollection();
