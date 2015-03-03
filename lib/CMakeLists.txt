@@ -91,6 +91,7 @@ add_library(
     Basics/system-functions.cpp
     Basics/terminal-utils.cpp
     Basics/Thread.cpp
+    Basics/ThreadPool.cpp
     Basics/Timing.cpp
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
