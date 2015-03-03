@@ -1153,11 +1153,11 @@ static void DestroyAttributesVector (TRI_vector_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CompareShapeTypes (char const* leftDocument,
-                           TRI_shaped_sub_t* leftObject,
+                           TRI_shaped_sub_t const* leftObject,
                            TRI_shaped_json_t const* leftShaped,
                            TRI_shaper_t* leftShaper,
                            char const* rightDocument,
-                           TRI_shaped_sub_t* rightObject,
+                           TRI_shaped_sub_t const* rightObject,
                            TRI_shaped_json_t const* rightShaped,
                            TRI_shaper_t* rightShaper) {
 
