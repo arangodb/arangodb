@@ -59,6 +59,11 @@
     initialize: function () {
       // This should be the only global object
       window.modalView = new window.ModalView();
+
+      this.foxxList = new window.FoxxCollection();
+      window.foxxInstallView = new window.FoxxInstallView({
+        collection: this.foxxList
+      });
       window.progressView = new window.ProgressView();
       var self = this;
 
@@ -78,7 +83,6 @@
       arangoHelper.setDocumentStore(this.arangoDocumentStore);
 
       this.arangoCollectionsStore.fetch({async: false});
-      this.foxxList = new window.FoxxCollection();
 
       this.footerView = new window.FooterView();
       this.notificationList = new window.NotificationCollection();
