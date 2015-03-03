@@ -5,14 +5,6 @@ require 'httparty'
 require 'json'
 require 'rspec'
 
-RSpec.configure do |config|
-  config.expect_with :rspec do |c|
-    c.syntax = [ :should, :expect ]
-  end
-  config.mock_with :rspec do |c|
-    c.syntax = [ :should, :expect ]
-  end
-end
 
 $address = ENV['ARANGO_SERVER'] || '127.0.0.1:8529'
 $user = ENV['ARANGO_USER']
@@ -35,6 +27,19 @@ end
 begin
   $ssl = RSpec.configuration.ARANGO_SSL
 rescue
+end
+
+RSpec.configure do |config|
+  config.expect_with :rspec do |c|
+    c.syntax = [ :should, :expect ]
+  end
+  config.mock_with :rspec do |c|
+    c.syntax = [ :should, :expect ]
+  end
+  # tests to be excluded when under ssl
+  if $ssl == '1'
+    config.filter_run_excluding :ssl => true
+  end
 end
 
 class ArangoDB
