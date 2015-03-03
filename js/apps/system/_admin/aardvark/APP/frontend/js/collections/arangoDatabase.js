@@ -34,7 +34,7 @@
     },
 
     url: function() {
-      return '/_api/database/';
+      return '/_db/_system/_api/database/';
     },
 
     parse: function(response) {
