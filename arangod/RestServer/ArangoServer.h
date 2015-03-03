@@ -51,6 +51,10 @@ struct TRI_vocbase_defaults_s;
 // -----------------------------------------------------------------------------
 
 namespace triagens {
+  namespace basics {
+    class ThreadPool;
+  }
+
   namespace rest {
     class ApplicationDispatcher;
     class ApplicationEndpointServer;
@@ -117,12 +121,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int startupServer ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             public static methods
-// -----------------------------------------------------------------------------
-
-      public:
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -359,6 +357,22 @@ namespace triagens {
         int _v8Contexts;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief number of background threads for parallel index creation
+/// @startDocuBlock indexThreads
+/// `--database.index-threads`
+///
+/// Specifies the *number* of background threads for index creation. When a
+/// collection contains extra indexes other than the primary index, these other
+/// indexes can be built by multiple threads in parallel. The index threads
+/// are shared among multiple collections and databases. Specifying a value of 
+/// *0* will turn off parallel building, meaning that indexes for each collection
+/// are built sequentially by the thread that opened the collection.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        int _indexThreads;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief path to the database
 /// @startDocuBlock DatabaseDirectory
 /// `--database.directory directory`
@@ -531,6 +545,11 @@ namespace triagens {
 
         std::pair<ApplicationV8*, aql::QueryRegistry*>* _pairForAql;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief thread pool for background parallel index creation
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::ThreadPool* _indexPool;
     };
   }
 }
