@@ -1,23 +1,26 @@
-{% extends "../layout.html" %}
+{% extends "./layout.html" %}
 
 {% block title %}{{ progress.current.title }} | {{ title }}{% endblock %}
 
 {% block style %}
-<link rel="stylesheet" href="{{ staticBase }}/print.css">
-{% for resource in plugins.resources.css %}
-    {% if resource.url %}
-    <link rel="stylesheet" href="{{ resource.url }}">
-    {% else %}
-    <link rel="stylesheet" href="{{ staticBase }}/plugins/{{ resource.path }}">
-    {% endif %}
-{% endfor %}
+    <link rel="stylesheet" href="{{ staticBase }}/print.css">
+    {% for resource in plugins.resources.css %}
+        {% if resource.url %}
+        <link rel="stylesheet" href="{{ resource.url }}">
+        {% else %}
+        <link rel="stylesheet" href="{{ staticBase }}/plugins/{{ resource.path }}">
+        {% endif %}
+    {% endfor %}
+    {% for style in styles %}
+        <link rel="stylesheet" href="{{ basePath }}/{{ style }}">
+    {% endfor %}
 {% endblock %}
 
 {% block content %}
 <div class="page">
     <h1 class="book-chapter book-chapter-{{ progress.current.level|lvl }}">{{ progress.current.title }}</h1>
     {% for section in content %}
-        <section class="{{ section.type }}" id="section-{{ section.id }}">
+        <div class="{{ section.type }}" id="section-{{ section.id }}">
         {% if section.type == "normal" %}
             {% autoescape false %}{{ section.content }}{% endautoescape %}
         {% elif section.type == "exercise" %}
@@ -25,7 +28,7 @@
         {% elif section.type == "quiz" %}
             {% include "./includes/quiz.html" with {section: section} %}
         {% endif %}
-        </section>
+        </div>
     {% endfor %}
 </div>
 {% endblock %}
