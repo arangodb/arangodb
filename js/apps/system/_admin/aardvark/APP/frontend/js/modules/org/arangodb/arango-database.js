@@ -870,7 +870,7 @@ ArangoDatabase.prototype._dropDatabase = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._listDatabases = function () {
-  var requestResult = this._connection.GET("/_api/database");
+  var requestResult = this._connection.GET("/_db/_system/_api/database");
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
