@@ -786,7 +786,13 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   catch(x) {
     return rc;
   }
-  return result[0];
+  if (result[0].HasOwnProperty('status')) {
+    return result[0];
+  }
+  else {
+    // Jasmine tests...
+    return rc;
+  }
 }
 
 function runArangoshCmd (options, instanceInfo, cmds) {
