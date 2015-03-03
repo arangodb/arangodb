@@ -125,11 +125,13 @@ namespace triagens {
           // load our keys and certificates
           if (! SSL_CTX_use_certificate_chain_file(sslctx, keyfile.c_str())) {
             LOG_ERROR("cannot read certificate from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
+            SSL_CTX_free(sslctx);
             return nullptr;
           }
 
           if (! SSL_CTX_use_PrivateKey_file(sslctx, keyfile.c_str(), SSL_FILETYPE_PEM)) {
             LOG_ERROR("cannot read key from '%s': %s", keyfile.c_str(), triagens::basics::lastSSLError().c_str());
+            SSL_CTX_free(sslctx);
             return nullptr;
           }
 

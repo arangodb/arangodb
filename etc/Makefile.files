@@ -10,7 +10,6 @@ BUILT_SOURCES += \
 	etc/arangodb/arangod$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangodump$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangoimp$(PROGRAM_SUFFIX).conf \
-	etc/arangodb/arangoirb$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangorestore$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/arangosh$(PROGRAM_SUFFIX).conf \
 	etc/arangodb/foxx-manager$(PROGRAM_SUFFIX).conf

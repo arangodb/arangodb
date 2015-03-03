@@ -1222,6 +1222,8 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
   skiplistElement->_document = const_cast<TRI_doc_mptr_t*>(document);
   char const* ptr = skiplistElement->_document->getShapedJsonPtr();  // ONLY IN INDEX, PROTECTED by RUNTIME
 
+  auto subObjects = SkiplistIndex_Subobjects(skiplistElement);
+
   for (size_t j = 0; j < skiplistIndex->_paths._length; ++j) {
     TRI_shape_pid_t shape = *((TRI_shape_pid_t*) TRI_AtVector(&skiplistIndex->_paths, j));
 
@@ -1234,7 +1236,7 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
     if (acc == nullptr || acc->_resultSid == TRI_SHAPE_ILLEGAL) {
       // OK, the document does not contain the attributed needed by 
       // the index, are we sparse?
-      skiplistElement->_subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL; 
+      subObjects[j]._sid = BasicShapes::TRI_SHAPE_SID_NULL; 
 
       res = TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING;
 
@@ -1267,7 +1269,7 @@ static int SkiplistIndexHelper (TRI_skiplist_index_t const* skiplistIndex,
     // Store the field
     // .........................................................................
 
-    TRI_FillShapedSub(&skiplistElement->_subObjects[j], &shapedObject, ptr);
+    TRI_FillShapedSub(&subObjects[j], &shapedObject, ptr);
   }
 
   return res;
@@ -1288,14 +1290,13 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   // These will be used for comparisions
   // ...........................................................................
 
-  TRI_skiplist_index_element_t skiplistElement;
-  skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
+  auto skiplistElement = static_cast<TRI_skiplist_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SkiplistIndex_ElementSize(skiplistIndex->_skiplistIndex), false));
 
-  if (skiplistElement._subObjects == nullptr) {
+  if (skiplistElement == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
-  int res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
+  int res = SkiplistIndexHelper(skiplistIndex, skiplistElement, doc);
   // ...........................................................................
   // most likely the cause of this error is that the index is sparse
   // and not all attributes the index needs are set -- so the document
@@ -1314,7 +1315,7 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
 
   if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
     if (idx->_sparse) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1322,23 +1323,13 @@ static int InsertSkiplistIndex (TRI_index_t* idx,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
     return res;
   }
 
-  // ...........................................................................
-  // Fill the json field list from the document for skiplist index
-  // ...........................................................................
-
-  res = SkiplistIndex_insert(skiplistIndex->_skiplistIndex, &skiplistElement);
-
-  // ...........................................................................
-  // Memory which has been allocated to skiplistElement.fields remains allocated
-  // contents of which are stored in the hash array.
-  // ...........................................................................
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
-
-  return res;
+  // insert into the index. the memory for the element will be owned or freed
+  // by the index
+  return SkiplistIndex_insert(skiplistIndex->_skiplistIndex, skiplistElement);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1425,14 +1416,9 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
 
   TRI_skiplist_index_t* skiplistIndex = (TRI_skiplist_index_t*) idx;
 
-  // ...........................................................................
-  // Allocate some memory for the SkiplistIndexElement structure
-  // ...........................................................................
+  auto skiplistElement = static_cast<TRI_skiplist_index_element_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, SkiplistIndex_ElementSize(skiplistIndex->_skiplistIndex), false));
 
-  TRI_skiplist_index_element_t skiplistElement;
-  skiplistElement._subObjects = static_cast<TRI_shaped_sub_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_shaped_sub_t) * skiplistIndex->_paths._length, false));
-
-  if (skiplistElement._subObjects == nullptr) {
+  if (skiplistElement == nullptr) {
     return TRI_ERROR_OUT_OF_MEMORY;
   }
 
@@ -1440,7 +1426,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // Fill the json field list from the document
   // ..........................................................................
 
-  int res = SkiplistIndexHelper(skiplistIndex, &skiplistElement, doc);
+  int res = SkiplistIndexHelper(skiplistIndex, skiplistElement, doc);
 
   // ..........................................................................
   // Error returned generally implies that the document never was part of the
@@ -1448,7 +1434,7 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   // ..........................................................................
   if (res == TRI_ERROR_ARANGO_INDEX_DOCUMENT_ATTRIBUTE_MISSING) {
     if (idx->_sparse) {
-      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
+      TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
       return TRI_ERROR_NO_ERROR;
     }
 
@@ -1456,22 +1442,14 @@ static int RemoveSkiplistIndex (TRI_index_t* idx,
   }
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement);
     return res;
   }
 
-  // ...........................................................................
-  // Attempt the removal for skiplist indexes
-  // ...........................................................................
+  // attempt the removal for skiplist indexes
+  // ownership for the index element is transferred to the index
 
-  res = SkiplistIndex_remove(skiplistIndex->_skiplistIndex, &skiplistElement);
-
-  // ...........................................................................
-  // Deallocate memory allocated to skiplistElement.fields above
-  // ...........................................................................
-
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, skiplistElement._subObjects);
-
-  return res;
+  return SkiplistIndex_remove(skiplistIndex->_skiplistIndex, skiplistElement);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

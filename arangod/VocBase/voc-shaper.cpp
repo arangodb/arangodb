@@ -1153,23 +1153,19 @@ static void DestroyAttributesVector (TRI_vector_t* vector) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int TRI_CompareShapeTypes (char const* leftDocument,
-                           TRI_shaped_sub_t* leftObject,
+                           TRI_shaped_sub_t const* leftObject,
                            TRI_shaped_json_t const* leftShaped,
                            TRI_shaper_t* leftShaper,
                            char const* rightDocument,
-                           TRI_shaped_sub_t* rightObject,
+                           TRI_shaped_sub_t const* rightObject,
                            TRI_shaped_json_t const* rightShaped,
                            TRI_shaper_t* rightShaper) {
 
-  TRI_shape_t const* leftShape;
   TRI_shape_t const* rightShape;
   TRI_shaped_json_t left;
-  TRI_shape_type_t leftType;
-  TRI_shape_type_t rightType;
   TRI_shaped_json_t leftElement;
   TRI_shaped_json_t right;
   TRI_shaped_json_t rightElement;
-  int result;
 
   // left is either a shaped json or a shaped sub object
   if (leftDocument != nullptr) {
@@ -1188,15 +1184,17 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   else {
     right = *rightShaped;
   }
+    
+  // get left shape and type
+  TRI_shape_t const* leftShape = leftShaper->lookupShapeId(leftShaper, left._sid);
 
-  // get shape and type
+  // get right shape and type
   if (leftShaper == rightShaper && left._sid == right._sid) {
     // identical collection and shape
-    leftShape = rightShape = leftShaper->lookupShapeId(leftShaper, left._sid);
+    rightShape = leftShape;
   }
   else {
     // different shapes
-    leftShape  = leftShaper->lookupShapeId(leftShaper, left._sid);
     rightShape = rightShaper->lookupShapeId(rightShaper, right._sid);
   }
 
@@ -1205,8 +1203,8 @@ int TRI_CompareShapeTypes (char const* leftDocument,
     TRI_ASSERT(false);
   }
 
-  leftType   = leftShape->_type;
-  rightType  = rightShape->_type;
+  TRI_shape_type_t leftType   = leftShape->_type;
+  TRI_shape_type_t rightType  = rightShape->_type;
 
   // ...........................................................................
   // check ALL combinations of leftType and rightType
@@ -1444,14 +1442,14 @@ int TRI_CompareShapeTypes (char const* leftDocument,
                                    &rightElement);
             }
 
-            result = TRI_CompareShapeTypes(nullptr,
-                                           nullptr,
-                                           &leftElement,
-                                           leftShaper,
-                                           nullptr,
-                                           nullptr,
-                                           &rightElement,
-                                           rightShaper);
+            int result = TRI_CompareShapeTypes(nullptr,
+                                               nullptr,
+                                               &leftElement,
+                                               leftShaper,
+                                               nullptr,
+                                               nullptr,
+                                               &rightElement,
+                                               rightShaper);
 
             if (result != 0) {
               return result;
@@ -1519,7 +1517,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
           size_t const rightLength = TRI_LengthVector(&rightSorted);
           size_t const numElements = (leftLength < rightLength ? leftLength : rightLength);
 
-          result = 0;
+          int result = 0;
 
           for (size_t i = 0; i < numElements; ++i) {
             attribute_entry_t const* l = static_cast<attribute_entry_t const*>(TRI_AtVector(&leftSorted, i));

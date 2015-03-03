@@ -241,15 +241,6 @@ install(
   PATTERN "_db" EXCLUDE)
 
 ################################################################################
-### @brief install arangod mruby files
-################################################################################
-
-install(
-  DIRECTORY ${PROJECT_SOURCE_DIR}/mr/common 
-  DESTINATION share/arangodb/mr
-  FILES_MATCHING PATTERN "*.rb")
-
-################################################################################
 ### @brief install log directory
 ################################################################################
 

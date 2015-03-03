@@ -1,7 +1,0 @@
-# config file for arangoirb
-
-[server]
-endpoint = tcp://127.0.0.1:8529
-
-[ruby]
-modules-path = @PKGDATADIR@/mr/client/modules;@PKGDATADIR@/mr/common/modules
