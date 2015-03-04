@@ -99975,7 +99975,7 @@ window.Users = Backbone.Model.extend({
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/user",
+        url: this.url + "/user",
         contentType: "application/json",
         processData: false,
         async: false,
@@ -99986,7 +99986,7 @@ window.Users = Backbone.Model.extend({
           returnVal = [];
         }
       });
-      return returnVal;
+      return returnVal.sort();
     },
 
     createDatabaseURL: function(name, protocol, port) {
