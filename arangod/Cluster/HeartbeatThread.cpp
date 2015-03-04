@@ -396,9 +396,9 @@ static bool myDBnamesComparer (std::string const& a, std::string const& b) {
 /// this is triggered if the heartbeat thread finds a new plan version number
 ////////////////////////////////////////////////////////////////////////////////
 
+static const std::string prefixPlanChangeCoordinator = "Plan/Databases";
 bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
                                                    uint64_t& remotePlanVersion) {
-  static const std::string prefix = "Plan/Databases";
 
   bool fetchingUsersFailed = false;
   LOG_TRACE("found a plan update");
@@ -412,12 +412,12 @@ bool HeartbeatThread::handlePlanChangeCoordinator (uint64_t currentPlanVersion,
     AgencyCommLocker locker("Plan", "READ");
 
     if (locker.successful()) {
-      result = _agency.getValues(prefix, true);
+      result = _agency.getValues(prefixPlanChangeCoordinator, true);
     }
   }
 
   if (result.successful()) {
-    result.parse(prefix + "/", false);
+    result.parse(prefixPlanChangeCoordinator + "/", false);
 
     std::vector<TRI_voc_tick_t> ids;
 
