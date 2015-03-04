@@ -84,7 +84,7 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
     _enableCluster(false),
     _disableHeartbeat(false) {
 
-  TRI_ASSERT(_dispatcher != 0);
+  TRI_ASSERT(_dispatcher != nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,12 +92,10 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationCluster::~ApplicationCluster () {
-  if (_heartbeat != 0) {
+  if (_heartbeat != nullptr) {
     // flat line.....
     delete _heartbeat;
   }
-
-  ServerState::cleanup();
 }
 
 // -----------------------------------------------------------------------------
@@ -133,10 +131,6 @@ void ApplicationCluster::setupOptions (std::map<std::string, basics::ProgramOpti
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationCluster::prepare () {
-
-  // initialise ServerState library
-  ServerState::initialise();
-
   // set authentication data
   ServerState::instance()->setAuthentication(_username, _password);
 
