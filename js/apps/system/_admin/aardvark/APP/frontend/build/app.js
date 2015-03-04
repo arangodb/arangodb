@@ -99974,6 +99974,28 @@ window.Users = Backbone.Model.extend({
       return this.models;
     },
 
+<<<<<<< HEAD
+=======
+    getDatabasesForUser: function() {
+      var returnVal;
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: this.url + "/user",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          returnVal = data.result;
+        },
+        error: function() {
+          returnVal = [];
+        }
+      });
+      return returnVal.sort();
+    },
+
+>>>>>>> b037963... Fixed Frontend tests
     createDatabaseURL: function(name, protocol, port) {
       var loc = window.location;
       var hash = window.location.hash;
