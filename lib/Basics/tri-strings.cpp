@@ -1430,10 +1430,9 @@ char* TRI_UnescapeUtf8StringZ (TRI_memory_zone_t* zone, char const* in, size_t i
   *outLength = (size_t) (qtr - buffer);
 
   if (*outLength > 0) {
-    char * utf8_nfc;
+    char * utf8_nfc = TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
 
-    utf8_nfc = TRI_normalize_utf8_to_NFC(zone, buffer, *outLength, &tmpLength);
-    if (utf8_nfc) {
+    if (utf8_nfc != nullptr) {
       *outLength = tmpLength;
       TRI_Free(zone, buffer);
       return utf8_nfc;
