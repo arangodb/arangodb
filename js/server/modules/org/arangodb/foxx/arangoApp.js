@@ -326,7 +326,7 @@
 
     var full = fs.join(this._root, this._path, filename);
     if (!fs.exists(full)) {
-      throwFileNotFound(filename);
+      throwFileNotFound(full);
     }
     var fileContent = fs.read(full);
 
