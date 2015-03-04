@@ -48,7 +48,6 @@ Barrier::Barrier (size_t size)
   : _condition(),
     _missing(size) {
  
-  TRI_ASSERT(size > 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
