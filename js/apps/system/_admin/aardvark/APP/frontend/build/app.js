@@ -99980,7 +99980,6 @@ window.Users = Backbone.Model.extend({
         processData: false,
         async: false,
         success: function(data) {
-          console.log(data.result);
           returnVal = data.result;
         },
         error: function() {
@@ -103112,7 +103111,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     //check if user has _system permission
     var authorized = this.options.database.hasSystemAccess();
-    if (authorized === undefined) {
+    if (!authorized) {
       $('.contentDiv').remove();
       $('.headerBar').remove();
       $('.dashboard-headerbar').remove();
