@@ -99907,7 +99907,6 @@ window.Users = Backbone.Model.extend({
 }());
 
 /*jshint browser: true */
-/*jshint unused: false */
 /*global window, Backbone, $, window, _*/
 
 (function() {
@@ -99921,7 +99920,7 @@ window.Users = Backbone.Model.extend({
       desc: false
     },
 
-    shouldFetchUser: false,
+    url: "/_api/database",
 
     comparator: function(item, item2) {
       var a = item.get('name').toLowerCase();
@@ -99930,19 +99929,6 @@ window.Users = Backbone.Model.extend({
         return a < b ? 1 : a > b ? -1 : 0;
       }
       return a > b ? 1 : a < b ? -1 : 0;
-    },
-
-    sync: function(method, model, options) {
-      if (method === "read") {
-        if (this.shouldFetchUser) {
-          options.url = model.url() + "user";
-        }
-      }
-      return Backbone.sync(method, model, options);
-    },
-
-    url: function() {
-      return '/_db/_system/_api/database/';
     },
 
     parse: function(response) {
@@ -99954,8 +99940,7 @@ window.Users = Backbone.Model.extend({
       });
     },
 
-    initialize: function(values, options) {
-      this.shouldFetchUser = options.shouldFetchUser;
+    initialize: function() {
       var self = this;
       this.fetch().done(function() {
         self.sort();
@@ -99974,8 +99959,6 @@ window.Users = Backbone.Model.extend({
       return this.models;
     },
 
-<<<<<<< HEAD
-=======
     getDatabasesForUser: function() {
       var returnVal;
       $.ajax({
@@ -99995,7 +99978,6 @@ window.Users = Backbone.Model.extend({
       return returnVal.sort();
     },
 
->>>>>>> b037963... Fixed Frontend tests
     createDatabaseURL: function(name, protocol, port) {
       var loc = window.location;
       var hash = window.location.hash;
@@ -100036,7 +100018,7 @@ window.Users = Backbone.Model.extend({
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/current",
+        url: this.url + "/current",
         contentType: "application/json",
         processData: false,
         async: false,
@@ -100052,6 +100034,11 @@ window.Users = Backbone.Model.extend({
         }
       });
       return returnVal;
+    },
+
+    hasSystemAccess: function() {
+      var list = this.getDatabasesForUser();
+      return _.contains(list, "_system");
     }
   });
 }());
