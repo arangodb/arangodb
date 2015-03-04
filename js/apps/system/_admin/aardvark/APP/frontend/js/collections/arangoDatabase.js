@@ -61,7 +61,6 @@
         processData: false,
         async: false,
         success: function(data) {
-          console.log(data.result);
           returnVal = data.result;
         },
         error: function() {
