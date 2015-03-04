@@ -99907,6 +99907,7 @@ window.Users = Backbone.Model.extend({
 }());
 
 /*jshint browser: true */
+/*jshint unused: false */
 /*global window, Backbone, $, window, _*/
 
 (function() {
@@ -99920,7 +99921,7 @@ window.Users = Backbone.Model.extend({
       desc: false
     },
 
-    url: "/_api/database",
+    shouldFetchUser: false,
 
     comparator: function(item, item2) {
       var a = item.get('name').toLowerCase();
@@ -99929,6 +99930,19 @@ window.Users = Backbone.Model.extend({
         return a < b ? 1 : a > b ? -1 : 0;
       }
       return a > b ? 1 : a < b ? -1 : 0;
+    },
+
+    sync: function(method, model, options) {
+      if (method === "read") {
+        if (this.shouldFetchUser) {
+          options.url = model.url() + "user";
+        }
+      }
+      return Backbone.sync(method, model, options);
+    },
+
+    url: function() {
+      return '/_db/_system/_api/database/';
     },
 
     parse: function(response) {
@@ -99940,7 +99954,8 @@ window.Users = Backbone.Model.extend({
       });
     },
 
-    initialize: function() {
+    initialize: function(values, options) {
+      this.shouldFetchUser = options.shouldFetchUser;
       var self = this;
       this.fetch().done(function() {
         self.sort();
@@ -99957,26 +99972,6 @@ window.Users = Backbone.Model.extend({
         self.sort();
       });
       return this.models;
-    },
-
-    getDatabasesForUser: function() {
-      var returnVal;
-      $.ajax({
-        type: "GET",
-        cache: false,
-        url: "/_api/database/user",
-        contentType: "application/json",
-        processData: false,
-        async: false,
-        success: function(data) {
-          console.log(data.result);
-          returnVal = data.result;
-        },
-        error: function() {
-          returnVal = [];
-        }
-      });
-      return returnVal;
     },
 
     createDatabaseURL: function(name, protocol, port) {
@@ -100019,7 +100014,7 @@ window.Users = Backbone.Model.extend({
       $.ajax({
         type: "GET",
         cache: false,
-        url: this.url + "/current",
+        url: "/_api/database/current",
         contentType: "application/json",
         processData: false,
         async: false,
@@ -100035,11 +100030,6 @@ window.Users = Backbone.Model.extend({
         }
       });
       return returnVal;
-    },
-
-    hasSystemAccess: function() {
-      var list = this.getDatabasesForUser();
-      return _.contains(list, "_system");
     }
   });
 }());
