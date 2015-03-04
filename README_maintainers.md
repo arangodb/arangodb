@@ -24,6 +24,9 @@ At runtime arangod needs to be started with these options:
 --javascript.v8-options="--gdbjit_dump"
 --javascript.v8-options="--gdbjit_full"
 
+Debugging the Make process
+--------------------------
+If the compile goes wrong for no particular reason, appending 'verbose=' adds more output. For some reason V8 has VERBOSE=1 for the same effect.
 
 Runtime
 -------
