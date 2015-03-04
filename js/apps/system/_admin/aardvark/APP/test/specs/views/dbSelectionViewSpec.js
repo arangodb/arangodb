@@ -4,90 +4,57 @@
 /*global _, $, DBSelectionView*/
 
 (function () {
-    "use strict";
+  "use strict";
 
-    describe("DB Selection", function () {
+  describe("DB Selection", function () {
 
-        var view,
-            list,
-            dbCollection,
-            fetched,
-            current,
-            div;
+    var view,
+        list,
+        dbCollection,
+        fetched,
+        current,
+        div;
 
-        beforeEach(function () {
-            dbCollection = new window.ArangoDatabase(
-                [],
-                {shouldFetchUser: true}
-            );
+    beforeEach(function () {
+      dbCollection = new window.ArangoDatabase(
+        [],
+        {shouldFetchUser: true}
+      );
 
-
-            //dbCollection = new window.ArangoDatabase();
-            list = ["_system", "second", "first"];
-            current = new window.CurrentDatabase({
-                name: "first",
-                isSystem: false
-            });
-            _.each(list, function (n) {
-                dbCollection.add({name: n});
-            });
-            fetched = false;
-            spyOn(dbCollection, "fetch");
-            div = document.createElement("li");
-            div.id = "dbSelect";
-            document.body.appendChild(div);
-            view = new DBSelectionView(
-                {
-                    collection: dbCollection,
-                    current: current
-                }
-            );
-        });
-
-        afterEach(function () {
-            document.body.removeChild(div);
-        });
-
-        it("should display all databases ordered", function () {
-            view.render($(div));
-            var dbList = $("#dbs_dropdown", $(div)),
-                childs;
-
-            expect(div.childElementCount).toEqual(2);
-            childs = $(dbList).children();
-            expect(childs.length).toEqual(3);
-
-            expect($("a", $(childs[1])).attr("id")).toEqual(list[0]);
-            expect($("a", $(childs[2])).attr("id")).toEqual(list[1]);
-        });
-
-        it("should select the current db", function () {
-            view.render($(div));
-            expect($($(div).children()[0]).text()).toEqual("DB: " + current.get("name") + " ");
-        });
-
-        it("should trigger fetch on collection", function () {
-            view.render($(div));
-            expect(dbCollection.fetch).toHaveBeenCalled();
-        });
-
-        it("should not render the selection if the list has only one element", function () {
-            //var oneCollection = new window.ArangoDatabase();
-            var oneCollection = new window.ArangoDatabase(
-                [],
-                {shouldFetchUser: true}
-            );
-
-            oneCollection.add(current);
-            spyOn(oneCollection, "fetch");
-            view = new DBSelectionView(
-                {
-                    collection: oneCollection,
-                    current: current
-                }
-            );
-            view.render($(div));
-            expect($(div).text().trim()).toEqual("DB: first");
-        });
+      list = ["_system", "second", "first"];
+      current = new window.CurrentDatabase({
+        name: "first",
+        isSystem: false
+      });
+      _.each(list, function (n) {
+        dbCollection.add({name: n});
+      });
+      fetched = false;
+      spyOn(dbCollection, "fetch");
+      spyOn(dbCollection, "getDatabasesForUser").andReturn(list);
+      div = document.createElement("li");
+      div.id = "dbSelect";
+      document.body.appendChild(div);
+      view = new DBSelectionView(
+        {
+          collection: dbCollection,
+          current: current
+        }
+      );
     });
+
+    afterEach(function () {
+      document.body.removeChild(div);
+    });
+
+    it("should select the current db", function () {
+      view.render($(div));
+      expect($($(div).children()[0]).text()).toEqual("DB: " + current.get("name") + " ");
+    });
+
+    it("should trigger fetch on collection", function () {
+      view.render($(div));
+      expect(dbCollection.getDatabasesForUser).toHaveBeenCalled();
+    });
+  });
 }());
