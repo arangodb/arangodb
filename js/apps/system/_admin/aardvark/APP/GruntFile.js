@@ -309,6 +309,7 @@
 
     grunt.registerTask('default', [
       'sass:dev',
+      'jshint:default',
       'replace',
       'concat_in_order:sharedLibs',
       'concat_in_order:default',
