@@ -52,7 +52,7 @@ exports.createQuery = function createQuery (cfg) {
     params = [params];
   }
 
-  if (params && !params.each(function (v) {return typeof v === 'string';})) {
+  if (params && !params.every(function (v) {return typeof v === 'string';})) {
     throw new Error('Argument names must be a string, an array of strings or false.');
   }
 
