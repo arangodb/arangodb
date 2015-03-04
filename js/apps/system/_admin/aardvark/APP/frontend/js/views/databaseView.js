@@ -164,11 +164,7 @@
         success: function(data) {
           self.updateDatabases();
           window.modalView.hide();
-          window.App.naviView.dbSelectionView.collection.fetch({
-            success: function() {
-              window.App.naviView.dbSelectionView.render($("#dbSelect"));
-            }
-          });
+          window.App.naviView.dbSelectionView.render($("#dbSelect"));
         }
       });
     },
@@ -177,11 +173,7 @@
       var toDelete = this.collection.where({name: dbname});
       toDelete[0].destroy({wait: true, url:"/_api/database/"+dbname});
       this.updateDatabases();
-      window.App.naviView.dbSelectionView.collection.fetch({
-        success: function() {
-          window.App.naviView.dbSelectionView.render($("#dbSelect"));
-        }
-      });
+      window.App.naviView.dbSelectionView.render($("#dbSelect"));
       window.modalView.hide();
     },
 

@@ -67,9 +67,7 @@
       window.progressView = new window.ProgressView();
       var self = this;
 
-      this.ArangoDatabase = new window.ArangoDatabase([],{
-        shouldFetchUser: false
-      });
+      this.arangoDatabase = new window.ArangoDatabase();
 
       this.currentDB = new window.CurrentDatabase();
       this.currentDB.fetch({
@@ -87,7 +85,7 @@
       this.footerView = new window.FooterView();
       this.notificationList = new window.NotificationCollection();
       this.naviView = new window.NavigationView({
-        database: this.ArangoDatabase,
+        database: this.arangoDatabase,
         currentDB: this.currentDB,
         notificationCollection: self.notificationList,
         userCollection: this.userCollection
@@ -212,7 +210,7 @@
         if (! this.databaseView) {
           this.databaseView = new window.databaseView({
             users: this.userCollection,
-            collection: this.ArangoDatabase
+            collection: this.arangoDatabase
           });
           }
           this.databaseView.render();
@@ -231,7 +229,7 @@
         if (this.dashboardView === undefined) {
           this.dashboardView = new window.DashboardView({
             dygraphConfig: window.dygraphConfig,
-            database: this.ArangoDatabase
+            database: this.arangoDatabase
           });
         }
         this.dashboardView.render();
