@@ -52,8 +52,6 @@ $VG bin/arangod \
     --javascript.startup-directory js \
     --javascript.app-path js${PS}apps \
     --javascript.script $SCRIPT \
-    --ruby.action-directory mr${PS}action${PS}system \
-    --ruby.modules-path "mr${PS}server${PS}modules;mr${PS}common${PS}modules" "${ARGS[@]}" \
     --no-server \
     --temp-path ${PS}var${PS}tmp \
     $VXML
