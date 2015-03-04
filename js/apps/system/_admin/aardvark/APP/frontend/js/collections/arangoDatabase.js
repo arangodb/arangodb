@@ -1,5 +1,4 @@
 /*jshint browser: true */
-/*jshint unused: false */
 /*global window, Backbone, $, window, _*/
 
 (function() {
@@ -13,7 +12,7 @@
       desc: false
     },
 
-    shouldFetchUser: false,
+    url: "/_api/database",
 
     comparator: function(item, item2) {
       var a = item.get('name').toLowerCase();
@@ -22,19 +21,6 @@
         return a < b ? 1 : a > b ? -1 : 0;
       }
       return a > b ? 1 : a < b ? -1 : 0;
-    },
-
-    sync: function(method, model, options) {
-      if (method === "read") {
-        if (this.shouldFetchUser) {
-          options.url = model.url() + "user";
-        }
-      }
-      return Backbone.sync(method, model, options);
-    },
-
-    url: function() {
-      return '/_db/_system/_api/database/';
     },
 
     parse: function(response) {
@@ -46,8 +32,7 @@
       });
     },
 
-    initialize: function(values, options) {
-      this.shouldFetchUser = options.shouldFetchUser;
+    initialize: function() {
       var self = this;
       this.fetch().done(function() {
         self.sort();
@@ -64,6 +49,26 @@
         self.sort();
       });
       return this.models;
+    },
+
+    getDatabasesForUser: function() {
+      var returnVal;
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: "/_api/database/user",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          console.log(data.result);
+          returnVal = data.result;
+        },
+        error: function() {
+          returnVal = [];
+        }
+      });
+      return returnVal;
     },
 
     createDatabaseURL: function(name, protocol, port) {
@@ -106,7 +111,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/current",
+        url: this.url + "/current",
         contentType: "application/json",
         processData: false,
         async: false,
@@ -122,6 +127,11 @@
         }
       });
       return returnVal;
+    },
+
+    hasSystemAccess: function() {
+      var list = this.getDatabasesForUser();
+      return _.contains(list, "_system");
     }
   });
 }());
