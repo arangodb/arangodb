@@ -233,7 +233,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void executeBatchRequest (const unsigned long numOperations) {
-          static const std::string boundary = "XXXarangob-benchmarkXXX";
+          static const char boundary[] = "XXXarangob-benchmarkXXX";
+          long blen = strlen(boundary);
 
           StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
           int ret = batchPayload.reserve(numOperations * 1024);
@@ -245,7 +246,9 @@ namespace triagens {
           }
           for (unsigned long i = 0; i < numOperations; ++i) {
             // append boundary
-            batchPayload.appendText("--" + boundary + "\r\n");
+            batchPayload.appendText("--", 2);
+            batchPayload.appendText(boundary, blen);
+            batchPayload.appendText("\r\n", 2);
             // append content-type, this will also begin the body
             batchPayload.appendText("Content-Type: ", 14);
             batchPayload.appendText(rest::HttpRequest::BatchContentType);
@@ -262,7 +265,8 @@ namespace triagens {
 
             // headline, e.g. POST /... HTTP/1.1
             rest::HttpRequest::appendMethod(type, &batchPayload);
-            batchPayload.appendText(url + " HTTP/1.1\r\n");
+            batchPayload.appendText(url);
+            batchPayload.appendText(" HTTP/1.1\r\n", 11);
             batchPayload.appendText("\r\n", 2);
 
             // body
@@ -275,7 +279,9 @@ namespace triagens {
           }
 
           // end of MIME
-          batchPayload.appendText("--" + boundary + "--\r\n");
+          batchPayload.appendText("--", 2);
+          batchPayload.appendText(boundary, blen);
+          batchPayload.appendText("--\r\n", 2);
 
           _headers.erase("Content-Type");
           _headers["Content-Type"] = rest::HttpRequest::MultiPartContentType +
