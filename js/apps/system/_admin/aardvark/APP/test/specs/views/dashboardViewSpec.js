@@ -1305,12 +1305,8 @@
       spyOn(jQueryDummy, "html");
       spyOn(jQueryDummy, "remove");
       spyOn(jQueryDummy, "append");
-      spyOn(databaseDummy, "findWhere").andCallFake(function() {
-        return true;
-      });
-
+      spyOn(databaseDummy, "hasSystemAccess").andReturn(true);
       view.isUpdating = false;
-      view.authorized = true;
       view.render(false);
 
       expect(window.$).toHaveBeenCalledWith(view.el);
@@ -1357,8 +1353,8 @@
       spyOn(jQueryDummy, "html");
       spyOn(jQueryDummy, "remove");
       spyOn(jQueryDummy, "append");
+      spyOn(databaseDummy, "hasSystemAccess").andReturn(true);
       view.isUpdating = true;
-      view.authorized = true;
       view.render(false);
 
       expect(window.$).toHaveBeenCalledWith(view.el);

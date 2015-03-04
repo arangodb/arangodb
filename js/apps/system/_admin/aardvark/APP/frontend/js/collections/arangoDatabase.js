@@ -56,7 +56,7 @@
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/user",
+        url: this.url + "/user",
         contentType: "application/json",
         processData: false,
         async: false,
@@ -67,7 +67,7 @@
           returnVal = [];
         }
       });
-      return returnVal;
+      return returnVal.sort();
     },
 
     createDatabaseURL: function(name, protocol, port) {
