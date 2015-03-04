@@ -208,9 +208,6 @@ bool ApplicationCluster::prepare () {
     ServerState::instance()->setAddress(_myAddress);
   }
 
-  // initialise ClusterInfo library
-  ClusterInfo::initialise();
-
   // initialise ClusterComm library
   ClusterComm::initialise();
 
@@ -516,7 +513,6 @@ void ApplicationCluster::stop () {
   }
 
   ClusterComm::cleanup();
-  ClusterInfo::cleanup();
   AgencyComm::cleanup();
 }
 
