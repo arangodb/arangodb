@@ -375,8 +375,8 @@ class XcodeSettings(object):
     if self._Test('GCC_SYMBOLS_PRIVATE_EXTERN', 'YES', default='NO'):
       cflags.append('-fvisibility=hidden')
 
-    if self._Test('GCC_TREAT_WARNINGS_AS_ERRORS', 'YES', default='NO'):
-      cflags.append('-Werror')
+#    if self._Test('GCC_TREAT_WARNINGS_AS_ERRORS', 'YES', default='NO'):
+#      cflags.append('-Werror')
 
     if self._Test('GCC_WARN_ABOUT_MISSING_NEWLINE', 'YES', default='NO'):
       cflags.append('-Wnewline-eof')
