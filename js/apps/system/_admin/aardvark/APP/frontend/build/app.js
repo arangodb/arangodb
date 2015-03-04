@@ -85309,7 +85309,7 @@ ArangoDatabase.prototype._dropDatabase = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoDatabase.prototype._listDatabases = function () {
-  var requestResult = this._connection.GET("/_db/_system/_api/database");
+  var requestResult = this._connection.GET("/_api/database");
 
   if (requestResult !== null && requestResult.error === true) {
     throw new ArangoError(requestResult);
@@ -99918,7 +99918,6 @@ window.Users = Backbone.Model.extend({
 }());
 
 /*jshint browser: true */
-/*jshint unused: false */
 /*global window, Backbone, $, window, _*/
 
 (function() {
@@ -99932,7 +99931,7 @@ window.Users = Backbone.Model.extend({
       desc: false
     },
 
-    shouldFetchUser: false,
+    url: "/_api/database",
 
     comparator: function(item, item2) {
       var a = item.get('name').toLowerCase();
@@ -99941,19 +99940,6 @@ window.Users = Backbone.Model.extend({
         return a < b ? 1 : a > b ? -1 : 0;
       }
       return a > b ? 1 : a < b ? -1 : 0;
-    },
-
-    sync: function(method, model, options) {
-      if (method === "read") {
-        if (this.shouldFetchUser) {
-          options.url = model.url() + "user";
-        }
-      }
-      return Backbone.sync(method, model, options);
-    },
-
-    url: function() {
-      return '/_db/_system/_api/database/';
     },
 
     parse: function(response) {
@@ -99965,8 +99951,7 @@ window.Users = Backbone.Model.extend({
       });
     },
 
-    initialize: function(values, options) {
-      this.shouldFetchUser = options.shouldFetchUser;
+    initialize: function() {
       var self = this;
       this.fetch().done(function() {
         self.sort();
@@ -99983,6 +99968,26 @@ window.Users = Backbone.Model.extend({
         self.sort();
       });
       return this.models;
+    },
+
+    getDatabasesForUser: function() {
+      var returnVal;
+      $.ajax({
+        type: "GET",
+        cache: false,
+        url: "/_api/database/user",
+        contentType: "application/json",
+        processData: false,
+        async: false,
+        success: function(data) {
+          console.log(data.result);
+          returnVal = data.result;
+        },
+        error: function() {
+          returnVal = [];
+        }
+      });
+      return returnVal;
     },
 
     createDatabaseURL: function(name, protocol, port) {
@@ -100025,7 +100030,7 @@ window.Users = Backbone.Model.extend({
       $.ajax({
         type: "GET",
         cache: false,
-        url: "/_api/database/current",
+        url: this.url + "/current",
         contentType: "application/json",
         processData: false,
         async: false,
@@ -100041,6 +100046,11 @@ window.Users = Backbone.Model.extend({
         }
       });
       return returnVal;
+    },
+
+    hasSystemAccess: function() {
+      var list = this.getDatabasesForUser();
+      return _.contains(list, "_system");
     }
   });
 }());
@@ -103101,7 +103111,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     }.bind(this);
 
     //check if user has _system permission
-    var authorized = this.options.database.findWhere({name: "_system"});
+    var authorized = this.options.database.hasSystemAccess();
     if (authorized === undefined) {
       $('.contentDiv').remove();
       $('.headerBar').remove();
@@ -103287,11 +103297,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         success: function(data) {
           self.updateDatabases();
           window.modalView.hide();
-          window.App.naviView.dbSelectionView.collection.fetch({
-            success: function() {
-              window.App.naviView.dbSelectionView.render($("#dbSelect"));
-            }
-          });
+          window.App.naviView.dbSelectionView.render($("#dbSelect"));
         }
       });
     },
@@ -103300,11 +103306,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       var toDelete = this.collection.where({name: dbname});
       toDelete[0].destroy({wait: true, url:"/_api/database/"+dbname});
       this.updateDatabases();
-      window.App.naviView.dbSelectionView.collection.fetch({
-        success: function() {
-          window.App.naviView.dbSelectionView.render($("#dbSelect"));
-        }
-      });
+      window.App.naviView.dbSelectionView.render($("#dbSelect"));
       window.modalView.hide();
     },
 
@@ -103501,9 +103503,6 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     initialize: function(opts) {
       this.current = opts.current;
-      this.collection.fetch({
-        async: false
-      });
     },
 
     changeDatabase: function(e) {
@@ -103515,7 +103514,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     render: function(el) {
       this.$el = el;
       this.$el.html(this.template.render({
-        list: this.collection,
+        list: this.collection.getDatabasesForUser(),
         current: this.current.get("name")
       }));
       this.delegateEvents();
@@ -109120,9 +109119,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       window.progressView = new window.ProgressView();
       var self = this;
 
-      this.ArangoDatabase = new window.ArangoDatabase([],{
-        shouldFetchUser: false
-      });
+      this.arangoDatabase = new window.ArangoDatabase();
 
       this.currentDB = new window.CurrentDatabase();
       this.currentDB.fetch({
@@ -109140,7 +109137,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.footerView = new window.FooterView();
       this.notificationList = new window.NotificationCollection();
       this.naviView = new window.NavigationView({
-        database: this.ArangoDatabase,
+        database: this.arangoDatabase,
         currentDB: this.currentDB,
         notificationCollection: self.notificationList,
         userCollection: this.userCollection
@@ -109265,7 +109262,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (! this.databaseView) {
           this.databaseView = new window.databaseView({
             users: this.userCollection,
-            collection: this.ArangoDatabase
+            collection: this.arangoDatabase
           });
           }
           this.databaseView.render();
@@ -109284,7 +109281,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (this.dashboardView === undefined) {
           this.dashboardView = new window.DashboardView({
             dygraphConfig: window.dygraphConfig,
-            database: this.ArangoDatabase
+            database: this.arangoDatabase
           });
         }
         this.dashboardView.render();

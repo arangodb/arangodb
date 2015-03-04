@@ -13,9 +13,6 @@
 
     initialize: function(opts) {
       this.current = opts.current;
-      this.collection.fetch({
-        async: false
-      });
     },
 
     changeDatabase: function(e) {
@@ -27,7 +24,7 @@
     render: function(el) {
       this.$el = el;
       this.$el.html(this.template.render({
-        list: this.collection,
+        list: this.collection.getDatabasesForUser(),
         current: this.current.get("name")
       }));
       this.delegateEvents();
