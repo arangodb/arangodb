@@ -48,6 +48,7 @@ add_library(
     Basics/application-exit.cpp
     Basics/associative-multi.cpp
     Basics/associative.cpp
+    Basics/Barrier.cpp
     Basics/ConditionLocker.cpp
     Basics/ConditionVariable.cpp
     Basics/conversions.cpp
