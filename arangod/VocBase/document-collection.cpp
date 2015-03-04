@@ -29,6 +29,7 @@
 
 #include "document-collection.h"
 
+#include "Basics/Barrier.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/logging.h"
@@ -2804,7 +2805,7 @@ class IndexFiller {
       }
       catch (...) {
       }
-
+        
       _callback(res);
     }
 
@@ -2837,49 +2838,72 @@ int TRI_FillIndexesDocumentCollection (TRI_vocbase_col_t* collection,
     return TRI_ERROR_INTERNAL;
   }
  
-  
-  // now actually fill the secondary indexes
-  std::atomic<size_t> numFilled(1); // primary index is already filled
-  std::atomic<int> result(TRI_ERROR_NO_ERROR);
-  auto indexPool = document->_vocbase->_server->_indexPool;
-
-  auto callback = [&numFilled, &result] (int res) -> void {
-    ++numFilled;
-    // update the error code
-    if (res != TRI_ERROR_NO_ERROR) {
-      int expected = TRI_ERROR_NO_ERROR;
-      result.compare_exchange_strong(expected, res, std::memory_order_acquire);
-    }
-  };
-
   // distribute the work to index threads plus this thread
   size_t const n = document->_allIndexes._length;
-  
-  for (size_t i = 1;  i < n;  ++i) {
-    TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
 
-    // index threads must come first, otherwise this thread will block the loop and
-    // prevent distribution to threads
-    if (indexPool != nullptr && i != (n - 1)) {
-      // move task into thread pool
-      IndexFiller indexTask(document, idx, callback);
-      static_cast<triagens::basics::ThreadPool*>(indexPool)->enqueue(indexTask);
-    }
-    else { 
-      // fill index in this thread
-      int res = FillIndex(document, idx);
-      ++numFilled;
+  TRI_ASSERT(n >= 1);
+    
+  std::atomic<int> result(TRI_ERROR_NO_ERROR);
+ 
+  { 
+    triagens::basics::Barrier barrier(n - 1);
+
+    auto indexPool = document->_vocbase->_server->_indexPool;
+
+    auto callback = [&barrier, &result] (int res) -> void {
+      // update the error code
       if (res != TRI_ERROR_NO_ERROR) {
         int expected = TRI_ERROR_NO_ERROR;
         result.compare_exchange_strong(expected, res, std::memory_order_acquire);
       }
+      
+      barrier.join();
+    };
+
+    // now actually fill the secondary indexes
+    for (size_t i = 1;  i < n;  ++i) {
+      TRI_index_t* idx = static_cast<TRI_index_t*>(document->_allIndexes._buffer[i]);
+
+      // index threads must come first, otherwise this thread will block the loop and
+      // prevent distribution to threads
+      if (indexPool != nullptr && i != (n - 1)) {
+        // move task into thread pool
+        IndexFiller indexTask(document, idx, callback);
+
+        try {
+          static_cast<triagens::basics::ThreadPool*>(indexPool)->enqueue(indexTask);
+        }
+        catch (...) {
+          // set error code
+          int expected = TRI_ERROR_NO_ERROR;
+          result.compare_exchange_strong(expected, TRI_ERROR_INTERNAL, std::memory_order_acquire);
+        
+          barrier.join();
+        }
+      }
+      else { 
+        // fill index in this thread
+        int res;
+        
+        try {
+          res = FillIndex(document, idx);
+        }
+        catch (...) {
+          res = TRI_ERROR_INTERNAL;
+        }
+        
+        if (res != TRI_ERROR_NO_ERROR) {
+          int expected = TRI_ERROR_NO_ERROR;
+          result.compare_exchange_strong(expected, res, std::memory_order_acquire);
+        }
+        
+        barrier.join();
+      }
     }
+
+    // barrier waits here until all threads have joined
   }
 
-  while (numFilled < n) {
-    usleep(10000);
-  }
-  
   return result.load();
 }
 

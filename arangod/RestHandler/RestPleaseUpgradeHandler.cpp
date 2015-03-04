@@ -65,15 +65,16 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
   _response = createResponse(HttpResponse::OK);
   _response->setContentType("text/plain; charset=utf-8");
 
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "Database: ");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), _request->databaseName().c_str());
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "\r\n\r\n");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "It appears that your database must be upgrade. ");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "Normally this can be done using\r\n\r\n");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "  /etc/init.d/arangodb stop\r\n");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "  /etc/init.d/arangodb upgrade\r\n");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "  /etc/init.d/arangodb start\r\n\r\n");
-  TRI_AppendStringStringBuffer(_response->body().stringBuffer(), "Please check the log file for details.\r\n");
+  auto& buffer = _response->body();
+  buffer.appendText("Database: ");
+  buffer.appendText(_request->databaseName());
+  buffer.appendText("\r\n\r\n");
+  buffer.appendText("It appears that your database must be upgraded. ");
+  buffer.appendText("Normally this can be done using\r\n\r\n");
+  buffer.appendText("  /etc/init.d/arangodb stop\r\n");
+  buffer.appendText("  /etc/init.d/arangodb upgrade\r\n");
+  buffer.appendText("  /etc/init.d/arangodb start\r\n\r\n");
+  buffer.appendText("Please check the log file for details.\r\n");
 
   return status_t(HANDLER_DONE);
 }
