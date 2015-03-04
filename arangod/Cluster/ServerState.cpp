@@ -48,7 +48,7 @@ using namespace triagens::basics;
 /// running
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState Instance;
+static ServerState Instance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       ServerState

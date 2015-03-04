@@ -45,6 +45,17 @@
 using namespace std;
 using namespace triagens::arango;
 using triagens::basics::JsonHelper;
+  
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief single instance of ClusterInfo - will live as long as the server is
+/// running
+////////////////////////////////////////////////////////////////////////////////
+
+static ClusterInfo Instance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -243,27 +254,7 @@ void CollectionInfoCurrent::copyAllJsons () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ClusterInfo* ClusterInfo::instance () {
-  static ClusterInfo* Instance = new ClusterInfo();
-  return Instance;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the cluster info singleton object
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::initialise () {
-  instance();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup function to call once when shutting down
-////////////////////////////////////////////////////////////////////////////////
-
-void ClusterInfo::cleanup () {
-  auto i = instance();
-  TRI_ASSERT(i != nullptr);
-
-  delete i;
+  return &Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
