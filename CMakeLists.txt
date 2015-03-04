@@ -27,7 +27,6 @@ project(arangodb)
 set(LIB_ARANGO        arango)
 set(LIB_ARANGO_CLIENT arango_client)
 set(LIB_ARANGO_FE     arango_fe)
-set(LIB_ARANGO_MRUBY  arango_mruby)
 set(LIB_ARANGO_V8     arango_v8)
 
 set(BIN_ARANGOB       arangob)
@@ -624,30 +623,6 @@ if (LIBEV_LIB_PATH)
 endif ()
 
 add_definitions("-DTRI_LIBEV_VERSION=\"${LIBEV_VERSION}\"")
-
-################################################################################
-### @brief MRUBY
-################################################################################
-
-if (MSVC OR RASPBIAN)
-else ()
-  set(MRUBY_INCLUDE ${PROJECT_SOURCE_DIR}/3rdParty/mruby/include CACHE path "MRUBY include path")
-  set(MRUBY_LIB_PATH ${PROJECT_SOURCE_DIR}/3rdParty/mruby/build/host/lib CACHE path "MRUBY library path")
-  set(MRUBY_LIBS mruby CACHE string "MRUBY libraries")
-  set(MRUBY_VERSION "2013-08-22 (aa099f7f7d1f8c61db936fb7c39a3c734175af16)" CACHE string "MRUBY version")
-endif ()
-
-if (USE_MRUBY)
-  if (MRUBY_INCLUDE)
-    include_directories(${MRUBY_INCLUDE})
-  endif ()
-
-  if (MRUBY_LIB_PATH)
-    link_directories(${MRUBY_LIB_PATH})
-  endif ()
-
-  add_definitions("-DTRI_MRUBY_VERSION=\"${MRUBY_VERSION}\"")
-endif ()
 
 ################################################################################
 ### @brief OPENSSL
