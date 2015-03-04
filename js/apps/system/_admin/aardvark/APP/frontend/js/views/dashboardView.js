@@ -712,7 +712,7 @@
 
     //check if user has _system permission
     var authorized = this.options.database.hasSystemAccess();
-    if (authorized === undefined) {
+    if (!authorized) {
       $('.contentDiv').remove();
       $('.headerBar').remove();
       $('.dashboard-headerbar').remove();
