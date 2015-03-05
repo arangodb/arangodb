@@ -8,7 +8,7 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "499066405", 
+        "_rev" : "503415918", 
         "isCapital" : false, 
         "population" : 80000 
       }, 
@@ -18,23 +18,23 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
           { 
             "_id" : "germanCity/Cologne", 
             "_key" : "Cologne", 
-            "_rev" : "498476581", 
+            "_rev" : "502826094", 
             "isCapital" : false, 
             "population" : 1000000 
           }, 
           { 
             "_id" : "frenchCity/Lyon", 
             "_key" : "Lyon", 
-            "_rev" : "499066405", 
+            "_rev" : "503415918", 
             "isCapital" : false, 
             "population" : 80000 
           } 
         ], 
         "edges" : [ 
           { 
-            "_id" : "internationalHighway/501425701", 
-            "_key" : "501425701", 
-            "_rev" : "501425701", 
+            "_id" : "internationalHighway/505775214", 
+            "_key" : "505775214", 
+            "_rev" : "505775214", 
             "_from" : "germanCity/Cologne", 
             "_to" : "frenchCity/Lyon", 
             "distance" : 700 
@@ -48,23 +48,23 @@ arangosh> g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'
             { 
               "_id" : "germanCity/Cologne", 
               "_key" : "Cologne", 
-              "_rev" : "498476581", 
+              "_rev" : "502826094", 
               "isCapital" : false, 
               "population" : 1000000 
             }, 
             { 
               "_id" : "frenchCity/Lyon", 
               "_key" : "Lyon", 
-              "_rev" : "499066405", 
+              "_rev" : "503415918", 
               "isCapital" : false, 
               "population" : 80000 
             } 
           ], 
           "edges" : [ 
             { 
-              "_id" : "internationalHighway/501425701", 
-              "_key" : "501425701", 
-              "_rev" : "501425701", 
+              "_id" : "internationalHighway/505775214", 
+              "_key" : "505775214", 
+              "_rev" : "505775214", 
               "_from" : "germanCity/Cologne", 
               "_to" : "frenchCity/Lyon", 
               "distance" : 700 

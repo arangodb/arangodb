@@ -6,24 +6,24 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
   [ 
     { 
       "startVertex" : "germanCity/Hamburg", 
-      "distance" : 900, 
-      "vertex" : { 
-        "_id" : "frenchCity/Paris", 
-        "_key" : "Paris", 
-        "_rev" : "631186981", 
-        "isCapital" : true, 
-        "population" : 4000000 
-      } 
-    }, 
-    { 
-      "startVertex" : "germanCity/Hamburg", 
       "distance" : 1200, 
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "630990373", 
+        "_rev" : "631997550", 
         "isCapital" : false, 
         "population" : 80000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Hamburg", 
+      "distance" : 900, 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "632194158", 
+        "isCapital" : true, 
+        "population" : 4000000 
       } 
     }, 
     { 
@@ -32,7 +32,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "631186981", 
+        "_rev" : "632194158", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -43,7 +43,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "630990373", 
+        "_rev" : "631997550", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -54,7 +54,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "631186981", 
+        "_rev" : "632194158", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -65,7 +65,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "630990373", 
+        "_rev" : "631997550", 
         "isCapital" : false, 
         "population" : 80000 
       } 

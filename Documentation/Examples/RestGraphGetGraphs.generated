@@ -8,7 +8,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "_graphs/graph2", 
       "_key" : "graph2", 
-      "_rev" : "1183786533", 
+      "_rev" : "1183745134", 
       "edgeDefinitions" : [ 
         { 
           "collection" : "edges2", 
@@ -24,7 +24,7 @@ content-type: application/json; charset=utf-8
     { 
       "_id" : "_graphs/graph1", 
       "_key" : "graph1", 
-      "_rev" : "1182803493", 
+      "_rev" : "1182762094", 
       "edgeDefinitions" : [ 
         { 
           "collection" : "edges1", 
