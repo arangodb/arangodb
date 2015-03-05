@@ -209,7 +209,8 @@ bool ApplicationCluster::prepare () {
   }
 
   // initialise ClusterComm library
-  ClusterComm::initialise();
+  // must call initialize while still single-threaded
+  ClusterComm::initialize();
 
   // disable error logging for a while
   ClusterComm::instance()->enableConnectionErrorLogging(false);

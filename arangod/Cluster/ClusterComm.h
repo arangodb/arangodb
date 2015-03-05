@@ -229,7 +229,7 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialises library
+/// @brief initializes library
 ///
 /// We are a singleton class, therefore nobody is allowed to create
 /// new instances or copy them, except we ourselves.
@@ -258,10 +258,10 @@ void ClusterCommRestCallback (std::string& coordinator, rest::HttpResponse* resp
         static ClusterComm* instance ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise function to call once when still single-threaded
+/// @brief initialize function to call once when still single-threaded
 ////////////////////////////////////////////////////////////////////////////////
 
-        static void initialise ();
+        static void initialize ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleanup function to call once when shutting down
