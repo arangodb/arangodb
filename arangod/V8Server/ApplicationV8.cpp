@@ -60,6 +60,8 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/v8-cluster.h"
 
+#include "3rdParty/valgrind/valgrind.h"
+
 using namespace triagens;
 using namespace triagens::basics;
 using namespace triagens::arango;
@@ -1144,12 +1146,13 @@ void ApplicationV8::stop () {
       }
     }
   }
-
+  LOG_DEBUG("Waiting for GC Thread to finish action");
   // wait until garbage collector thread is done
   while (! _gcFinished) {
     usleep(10000);
   }
 
+  LOG_DEBUG("Commanding GC Thread to terminate");
   // stop GC thread
   _gcThread->shutdown();
 
@@ -1168,6 +1171,8 @@ void ApplicationV8::stop () {
       delete[] _contexts[name];
     }
   }
+
+  LOG_DEBUG("Shutting down V8");
 
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
@@ -1433,8 +1438,13 @@ void ApplicationV8::shutdownV8Instance (const string& name, size_t i) {
     auto localContext = v8::Local<v8::Context>::New(isolate, context->_context);
     localContext->Enter();
     v8::Context::Scope contextScope(localContext);
+    double availableTime = 30.0;
 
-    TRI_RunGarbageCollectionV8(isolate, 30.0);
+    if (RUNNING_ON_VALGRIND) {
+      availableTime *= 10;
+    }
+
+    TRI_RunGarbageCollectionV8(isolate, availableTime);
 
     TRI_GET_GLOBALS();
     if (v8g != nullptr) {
