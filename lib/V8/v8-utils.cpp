@@ -4013,6 +4013,7 @@ v8::Handle<v8::Array> static TRI_V8PathList (v8::Isolate* isolate, string const&
 
 bool TRI_SingleRunGarbageCollectionV8 (v8::Isolate* isolate,
                                        int idleTimeInMs) {
+  LOG_INFO("%F");
   isolate->LowMemoryNotification();
   bool rc = isolate->IdleNotification(idleTimeInMs);
   isolate->RunMicrotasks();
@@ -4029,10 +4030,10 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
   int idleTimeInMs = 1000;
 
   if (availableTime >= 5.0) {
-    idleTimeInMs = 10000;
+    idleTimeInMs = 5000;
   }
   if (availableTime >= 10.0) {
-    idleTimeInMs = 100000;
+    idleTimeInMs = 10000;
   }
     
   double const until = TRI_microtime() + availableTime;
