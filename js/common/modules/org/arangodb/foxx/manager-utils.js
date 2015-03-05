@@ -300,6 +300,7 @@ function listJson (showPrefix, onlyDevelopment) {
       author: doc.manifest.author,
       system: doc.isSystem || false,
       development: doc.isDevelopment || false,
+      license: doc.manifest.license,
       version: doc.version,
       path: fs.join(fs.makeAbsolute(doc.root), doc.path)
     };
