@@ -224,7 +224,7 @@ function makeTestingArgs (appDir) {
            "--server.keyfile",       fs.join(topDir, "UnitTests", "server.pem"),
            "--database.maximal-journal-size",  "1048576",
            "--database.force-sync-properties", "false",
-           "--javascript.app-path",            fs.join(fs.getTempPath(), "js", "apps"),
+           "--javascript.app-path",            appDir,
            "--javascript.startup-directory",   fs.join(topDir, "js"),
            "--ruby.modules-path", fs.join(topDir,"mr", "common", "modules"),
            "--server.threads",                 "20",
@@ -261,7 +261,7 @@ function startInstance (protocol, options, addArgs, testname) {
   instanceInfo.flatTmpDataDir = tmpDataDir;
 
   tmpDataDir = fs.join(tmpDataDir, testname);
-  appDir =  fs.join(tmpDataDir, testname, "apps");
+  appDir =  fs.join(tmpDataDir, "apps");
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
