@@ -217,13 +217,8 @@ function findTopDir () {
   return topDir;
 }
 
-function findAppDir () {
-  return fs.join(fs.getTempPath(), "js", "apps");
-}
-
-function makeTestingArgs () {
+function makeTestingArgs (appDir) {
   var topDir = findTopDir();
-  var appDir = findAppDir();
   fs.makeDirectoryRecursive(appDir, true);
   return [ "--configuration",                  "none",
            "--server.keyfile",       fs.join(topDir, "UnitTests", "server.pem"),
@@ -261,10 +256,12 @@ function startInstance (protocol, options, addArgs, testname) {
   var instanceInfo = {};
   instanceInfo.topDir = topDir;
   var tmpDataDir = fs.getTempFile();
+  var appDir;
 
   instanceInfo.flatTmpDataDir = tmpDataDir;
 
   tmpDataDir = fs.join(tmpDataDir, testname);
+  appDir =  fs.join(tmpDataDir, testname, "apps");
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
 
@@ -273,7 +270,7 @@ function startInstance (protocol, options, addArgs, testname) {
   var valgrindopts = [];
   var dispatcher;
   if (options.cluster) {
-    var extraargs = makeTestingArgs();
+    var extraargs = makeTestingArgs(appDir);
     extraargs = extraargs.concat(options.extraargs);
     if (addArgs !== undefined) {
       extraargs = extraargs.concat(addArgs);
@@ -334,7 +331,7 @@ function startInstance (protocol, options, addArgs, testname) {
     var pf = new PortFinder([8529 + options.portOffset],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
-    var args = makeTestingArgs();
+    var args = makeTestingArgs(appDir);
     args.push("--server.endpoint");
     endpoint = protocol+"://127.0.0.1:"+port;
     args.push(endpoint);
@@ -386,6 +383,16 @@ function startInstance (protocol, options, addArgs, testname) {
     }
   }
   print("up and Running in " + (time () - startTime) + " seconds");
+  if (!options.cluster && (require("internal").platform.substr(0,3) === 'win')) {
+    var procdumpArgs = [
+      '-accepteula',
+      '-e',
+      '-ma',
+      instanceInfo.pid.pid,
+      fs.join(tmpDataDir, 'core.dmp')
+    ];
+    instanceInfo.monitor = executeExternal('procdump', procdumpArgs);
+  }
   return instanceInfo;
 }
 
@@ -437,7 +444,12 @@ function checkInstanceAlive(instanceInfo, options) {
       instanceInfo.exitStatus = res;
       print(instanceInfo);
       if (res.hasOwnProperty('signal') && 
-          ((res.signal === 11) || (res.signal === 6)))
+          ((res.signal === 11) ||
+           (res.signal === 6)  ||
+           // Windows sometimes has random numbers in signal...
+           (require("internal").platform.substr(0,3) === 'win')
+          )
+         )
       {
         storeArangodPath = "/var/tmp/arangod_" + instanceInfo.pid.pid;
         print("Core dump written; copying arangod to " + 
@@ -446,6 +458,10 @@ function checkInstanceAlive(instanceInfo, options) {
           storeArangodPath + 
           " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
         copy("bin/arangod", storeArangodPath);
+        if (require("internal").platform.substr(0,3) === 'win') {
+          // Windows: wait for procdump to do its job...
+          statusExternal(instanceInfo.monitor, true);
+        }
       }
     }
     if (!ret) {
@@ -541,6 +557,10 @@ function shutdownInstance (instanceInfo, options) {
             serverCrashed = true;
             break;
           }
+          if (require("internal").platform.substr(0,3) === 'win') {
+            // Windows: wait for procdump to do its job...
+            statusExternal(instanceInfo.monitor, true);
+          }
         }
         else {
           print("Server shutdown: Success.");
@@ -576,15 +596,6 @@ function cleanupDBDirectories(options) {
       }
     }
     cleanupDirectories = [];
-  }
-}
-
-function cleanUpAppFolder() {
-  var path = findAppDir();
-  try {
-    fs.removeDirectoryRecursive(path, true);
-  } catch(e) {
-    // May not exist for various tests
   }
 }
 
@@ -1397,13 +1408,14 @@ testFuncs.upgrade = function (options) {
 
   var tmpDataDir = fs.getTempFile();
   fs.makeDirectoryRecursive(tmpDataDir);
-
+  var appDir = fs.join(tmpDataDir, "app");
+ 
   // We use the PortFinder to find a free port for our subinstance,
   // to this end, we have to fake a dummy dispatcher:
   var dispatcher = {endpoint: "tcp://127.0.0.1:", avoidPorts: [], id: "me"};
   var pf = new PortFinder([8529],dispatcher);
   var port = pf.next();
-  var args = makeTestingArgs();
+  var args = makeTestingArgs(appDir);
   args.push("--server.endpoint");
   var endpoint = "tcp://127.0.0.1:"+port;
   args.push(endpoint);
@@ -1804,7 +1816,6 @@ function UnitTest (which, options) {
         allok = false;
       }
       results.all_ok = allok;
-      cleanUpAppFolder();
     }
     results.all_ok = allok;
     results.crashed = serverCrashed;
@@ -1844,7 +1855,6 @@ function UnitTest (which, options) {
     r.ok = ok;
     results.all_ok = ok;
     results.crashed = serverCrashed;
-    cleanUpAppFolder();
     if (allok) {
       cleanupDBDirectories(options);
     }
