@@ -93,10 +93,10 @@ ClusterComm* ClusterComm::instance () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the cluster comm singleton object
+/// @brief initialize the cluster comm singleton object
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterComm::initialise () {
+void ClusterComm::initialize () {
   auto* i = instance();
   i->startBackgroundThread();
 }
