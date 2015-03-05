@@ -33,6 +33,8 @@
 
     // Spy on all views that are initialized by startup
     beforeEach(function () {
+      // Disable the binding of resize event. Causes tests to occasionally fail
+      spyOn($.fn, "resize");
       window.CreateDummyForObject(window, "FoxxInstallView");
       naviDummy = {
         id: "navi",
@@ -324,6 +326,7 @@
 
       beforeEach(function () {
         r = new window.Router();
+        spyOn(r, "handleResize");
         simpleNavigationCheck = function (url, viewName, navTo, initObject,
           funcList, shouldNotRender, shouldNotCache) {
           var route,
@@ -676,6 +679,7 @@
       beforeEach(function () {
         spyOn(jQueryDummy, "ajax").andCallFake(function() { });
         r = new window.Router();
+        spyOn(r, "handleResize");
       });
 
       it("checkUser logged in", function () {
