@@ -54,6 +54,7 @@ $VG bin/arangod \
     --javascript.script $SCRIPT \
     --no-server \
     --temp-path ${PS}var${PS}tmp \
+    "${ARGS[@]}" \
     $VXML
 
 if test $? -eq 0; then
