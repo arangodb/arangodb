@@ -234,7 +234,7 @@ namespace triagens {
 
         void executeBatchRequest (const unsigned long numOperations) {
           static const char boundary[] = "XXXarangob-benchmarkXXX";
-          long blen = strlen(boundary);
+          size_t blen = strlen(boundary);
 
           StringBuffer batchPayload(TRI_UNKNOWN_MEM_ZONE);
           int ret = batchPayload.reserve(numOperations * 1024);

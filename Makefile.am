@@ -237,7 +237,7 @@ nobase_pkgdata_DATA =
 
 nobase_pkgdataACTIONS_DATA = $(shell find @srcdir@/js/actions -name "*.js" -print)
 nobase_pkgdataCOMMON_DATA = $(shell find @srcdir@/js/common -name "*.js" -print)
-nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server -name "*.js" -print)
+nobase_pkgdataSERVER_DATA = $(shell find @srcdir@/js/server "(" -name "*.js" -o -name "*.tmpl" ")" -print)
 nobase_pkgdataCLIENT_DATA = $(shell find @srcdir@/js/client -name "*.js" -print)
 nobase_pkgdataNODE_DATA = $(shell find @srcdir@/js/node -type f "(" -name .travis.yml -o -name .npmignore -o -print ")" | grep -v "\(htmlparser2\|js-yaml\)/test/" )
 
