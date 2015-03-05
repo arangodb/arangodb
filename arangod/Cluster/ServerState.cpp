@@ -40,6 +40,17 @@ using namespace triagens::arango;
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief single instance of ServerState - will live as long as the server is
+/// running
+////////////////////////////////////////////////////////////////////////////////
+
+static ServerState Instance;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                       ServerState
 // -----------------------------------------------------------------------------
 
@@ -84,27 +95,7 @@ ServerState::~ServerState () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServerState* ServerState::instance () {
-  static ServerState* Instance = new ServerState();
-  return Instance;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise the server state singleton object
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::initialise () {
-  instance();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cleanup function to call once when shutting down
-////////////////////////////////////////////////////////////////////////////////
-
-void ServerState::cleanup () {
-  auto i = instance();
-  TRI_ASSERT(i != nullptr);
-
-  delete i;
+  return &Instance;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
