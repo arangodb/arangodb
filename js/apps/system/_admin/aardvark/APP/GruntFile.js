@@ -187,7 +187,7 @@
             "frontend/js/config/dygraphConfig.js",
             "frontend/js/collections/arangoStatisticsDescriptionCollection.js",
             "clusterFrontend/js/views/*",
-            "clusterFrontend/js/routers/*",
+            "clusterFrontend/js/routers/*"
           ],
           dest: 'clusterFrontend/build/cluster.js'
         },
