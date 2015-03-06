@@ -128,6 +128,26 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                         ArangoApp
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Checks if the mountpoint is reserved for system apps
+////////////////////////////////////////////////////////////////////////////////
+
+var isSystemMount = function(mount) {
+  return (/^\/_/).test(mount);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the root path for application. Knows about system apps
+////////////////////////////////////////////////////////////////////////////////
+
+var computeRootAppPath = function(mount) {
+  if (isSystemMount(mount)) {
+    return module.systemAppPath();
+  }
+  return module.appPath();
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoApp constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,7 +168,7 @@
     }
     this._name = this._manifest.name;
     this._version = this._manifest.version;
-    this._root = config.root;
+    this._root = computeRootAppPath(config.mount);
     this._path = config.path;
     this._options = config.options;
     this._mount = config.mount;
@@ -203,7 +223,6 @@
       manifest: this._manifest,
       name: this._name,
       version: this._version,
-      root: this._root,
       path: this._path,
       options: this._options,
       mount: this._mount,
