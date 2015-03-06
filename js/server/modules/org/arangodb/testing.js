@@ -915,7 +915,14 @@ testFuncs.single_server = function (options) {
     var te = options.test;
     print("\n" + Date() + " arangod: Trying",te,"...");
     result = {};
-    result[te] = runThere(options, instanceInfo, makePathGeneric(te));
+    var r = runThere(options, instanceInfo, makePathGeneric(te));
+
+    if (r.hasOwnProperty('status')) {
+      result[te] = r;
+      if (result[te].status === false) {
+        options.cleanup = false;
+      }
+    }
     print("Shutting down...");
     if (result[te].status === false) {
       options.cleanup = false;
