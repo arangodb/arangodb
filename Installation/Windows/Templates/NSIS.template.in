@@ -43,6 +43,55 @@
   InstallDir "@CPACK_NSIS_INSTALL_ROOT@\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
 
 ;--------------------------------
+; Open a URL in a browser.
+; http://nsis.sourceforge.net/Open_link_in_new_browser_window
+Function openLinkNewWindow
+  Push $3
+  Exch
+  Push $2
+  Exch
+  Push $1
+  Exch
+  Push $0
+  Exch
+ 
+  ReadRegStr $0 HKCR "http\shell\open\command" ""
+# Get browser path
+    DetailPrint $0
+  StrCpy $2 '"'
+  StrCpy $1 $0 1
+  StrCmp $1 $2 +2 # if path is not enclosed in " look for space as final char
+    StrCpy $2 ' '
+  StrCpy $3 1
+  loop:
+    StrCpy $1 $0 1 $3
+    DetailPrint $1
+    StrCmp $1 $2 found
+    StrCmp $1 "" found
+    IntOp $3 $3 + 1
+    Goto loop
+ 
+  found:
+    StrCpy $1 $0 $3
+    StrCmp $2 " " +2
+      StrCpy $1 '$1"'
+ 
+  Pop $0
+  Exec '$1 $0'
+  Pop $0
+  Pop $1
+  Pop $2
+  Pop $3
+FunctionEnd
+ 
+!macro _OpenURL URL
+Push "${URL}"
+Call openLinkNewWindow
+!macroend
+ 
+!define OpenURL '!insertmacro "_OpenURL"'
+
+;--------------------------------
 ;General
 
   ;Name and file
@@ -76,11 +125,11 @@ Function Tri_ChangePrivileges
     	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
 	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
 	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
-		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "You need privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "Administrator privileges required, plesae try again" /SD IDNO IDYES uac_tryagain IDNO 0
 	${EndIf}
 	;fall-through and die
     ${Case} 1223
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "You need requires admin privileges, aborting!"
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Administrator privileges required, aborting!"
 	Quit
     ${Case} 1062
 	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
@@ -101,11 +150,11 @@ ${Case} 0
 	${IfThen} $1 = 1 ${|} Quit ${|} ;we are the outer process, the inner process has done its work, we are done
 	${IfThen} $3 <> 0 ${|} ${Break} ${|} ;we are admin, let the show go on
 	${If} $1 = 3 ;RunAs completed successfully, but with a non-admin user
-		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "You need privileges, try again" /SD IDNO IDYES uac_tryagain IDNO 0
+		MessageBox mb_YesNo|mb_IconExclamation|mb_TopMost|mb_SetForeground "Administrator privileges required, plesae try again" /SD IDNO IDYES uac_tryagain IDNO 0
 	${EndIf}
 	;fall-through and die
 ${Case} 1223
-	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "You need requires admin privileges, aborting!"
+	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Administrator privileges required, aborting!"
 	Quit
 ${Case} 1062
 	MessageBox mb_IconStop|mb_TopMost|mb_SetForeground "Logon service not running, aborting!"
@@ -811,11 +860,14 @@ Section "-Core installation"
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
      SimpleSC::StopService  'ArangoDB' 0 30
      SimpleSC::RemoveService  'ArangoDB' 
-     SimpleSC::InstallService 'ArangoDB'  'ArangoDB'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' '' 
+     SimpleSC::InstallService 'ArangoDB'  'ArangoDB'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' ''
      SimpleSC::StartService 'ArangoDB' '' 30
    nothing:
-
 SectionEnd
+
+Function .onInstSuccess
+  ${OpenURL} "http://127.0.0.1:8529"
+FunctionEnd
 
 Section "-Add to path"
   Push $INSTDIR\bin
@@ -916,7 +968,7 @@ Function default_installation_directory
    ${EndIf}
 FunctionEnd
 
-Function assign_propertly_access_rigths
+Function assign_proper_access_rigths
     StrCpy $0 "0"
     AccessControl::GrantOnFile \
      "$INSTDIR" "(BU)" "GenericRead + GenericWrite + GenericExecute"
@@ -933,7 +985,7 @@ Function is_writable
 ; is does not matter if we do some errors here
    ${If} $TRI_INSTALL_ALL_USERS == '1'
      CreateDirectory $INSTDIR
-     Call assign_propertly_access_rigths
+     Call assign_proper_access_rigths
     ${EndIf}
 FunctionEnd
 
@@ -978,7 +1030,7 @@ Function insert_registration_keys
    ${EndIf}
 
  there_are_erros: ;nothing
-MessageBox MB_OK "There is an error during registration of installation keys$\nArango will work fine but there will be trouble during deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
+MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
 
 FunctionEnd
 
@@ -1197,6 +1249,7 @@ Section "Uninstall"
   ${Else}
      DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" 
   ${EndIf} 
+  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
 
   Push $INSTDIR\bin
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
