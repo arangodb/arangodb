@@ -58,7 +58,7 @@ describe("Foxx Manager install", function() {
 
     beforeEach(function() {
       try {
-        FoxxManager.uninstall("/unittest/broken");
+        FoxxManager.uninstall("/unittest/broken", {force: true});
       } catch(e) {
       }
       validateError = function(type, error) {
