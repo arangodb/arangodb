@@ -2484,7 +2484,7 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 /// applied. The *waitForSync* parameter cannot be used to disable
 /// synchronization for collections that have a default *waitForSync* value
 /// of *true*.
-///m
+///
 /// `collection.replace(document-handle, data)`
 ///
 /// As before. Instead of document a *document-handle* can be passed as
