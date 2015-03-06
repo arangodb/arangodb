@@ -90,7 +90,7 @@
 
     "sharedLibs.js": {
       "files": [
-        "frontend/build/app.js"
+        "build/sharedLibs.js"
       ]
     },
 
