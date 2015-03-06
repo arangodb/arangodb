@@ -1,4 +1,6 @@
-/*global module, require, exports */
+/*jshint esnext: true */
+/*global module, require, exports*/
+/*global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx application manager
@@ -411,7 +413,6 @@
     var file = fs.join(root, path, "manifest.json");
      return {
       id: mount,
-      root: root,
       path: path,
       options: options || {},
       mount: mount,
@@ -788,7 +789,8 @@
     try {
       _buildAppInPath(appInfo, tempPath, {});
       var tmp = new ArangoApp(fakeAppConfig(tempPath));
-      tmp = undefined;
+      routeApp(tmp);
+      exportApp(tmp);
     } catch (e) {
       throw e;
     } finally {
@@ -817,16 +819,18 @@
     initCache();
     _buildAppInPath(appInfo, targetPath, options);
     try {
-      db._executeTransaction({
-        collections: {
-          write: collection.name()
-        },
-        action: function() {
-          app = _scanFoxx(mount, options);
+      if (!options.__clusterDistribution) {
+        db._executeTransaction({
+          collections: {
+            write: collection.name()
+          },
+          action: function() {
+            app = _scanFoxx(mount, options);
+          }
+        });
+        if (runSetup) {
+          setup(mount);
         }
-      });
-      if (runSetup) {
-        setup(mount);
       }
       // Validate Routing
       routeApp(app);
@@ -838,16 +842,17 @@
       } catch (err) {
       }
       try {
-        db._executeTransaction({
-          collections: {
-            write: collection.name()
-          },
-          action: function() {
-            var definition = collection.firstExample({mount: mount});
-            collection.remove(definition._key);
-          }
-        });
-        
+        if (!options.__clusterDistribution) {
+          db._executeTransaction({
+            collections: {
+              write: collection.name()
+            },
+            action: function() {
+              var definition = collection.firstExample({mount: mount});
+              collection.remove(definition._key);
+            }
+          });
+        }
       } catch (err) {
       }
       throw e;
@@ -869,6 +874,21 @@
       [ appInfo, mount ] );
     utils.validateMount(mount);
     var app = _install(appInfo, mount, options, true);
+    if (ArangoServerState.isCoordinator()) {
+      let coordinators = ArangoClusterInfo.getCoordinators();
+      let req = {appInfo, mount, options};
+      let httpOptions = {};
+      let coordOptions = {
+        coordTransactionID: ArangoClusterInfo.uniqid()
+      };
+      req.options.__clusterDistribution = true;
+      for (let i = 0; i < coordinators.length; ++i) {
+        if (coordinators[i] !== ArangoServerState.id()) {
+          ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
+            "/_admin/foxx/install", req, httpOptions, coordOptions);
+        }
+      }
+    }
     reloadRouting();
     return app.simpleJSON();
   };
@@ -901,19 +921,21 @@
       });
     }
     delete appCache[dbname][mount];
-    try {
-      db._executeTransaction({
-        collections: {
-          write: collection.name()
-        },
-        action: function() {
-          var definition = collection.firstExample({mount: mount});
-          collection.remove(definition._key);
+    if (!options.__clusterDistribution) {
+      try {
+        db._executeTransaction({
+          collections: {
+            write: collection.name()
+          },
+          action: function() {
+            var definition = collection.firstExample({mount: mount});
+            collection.remove(definition._key);
+          }
+        });
+      } catch (e) {
+        if (!options.force) {
+          throw e;
         }
-      });
-    } catch (e) {
-      if (!options.force) {
-        throw e;
       }
     }
     if (options.teardown !== false && options.teardown !== "false") {
@@ -959,6 +981,21 @@
       [ mount ] );
     utils.validateMount(mount);
     var app = _uninstall(mount, options);
+    if (ArangoServerState.isCoordinator()) {
+      let coordinators = ArangoClusterInfo.getCoordinators();
+      let req = {mount, options};
+      let httpOptions = {};
+      let coordOptions = {
+        coordTransactionID: ArangoClusterInfo.uniqid()
+      };
+      req.options.__clusterDistribution = true;
+      for (let i = 0; i < coordinators.length; ++i) {
+        if (coordinators[i] !== ArangoServerState.id()) {
+          ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
+            "/_admin/foxx/uninstall", req, httpOptions, coordOptions);
+        }
+      }
+    }
     reloadRouting();
     return app.simpleJSON();
   };
@@ -977,6 +1014,22 @@
       [ appInfo, mount ] );
     utils.validateMount(mount);
     _validateApp(appInfo);
+    options = options || {};
+    if (ArangoServerState.isCoordinator()) {
+      let coordinators = ArangoClusterInfo.getCoordinators();
+      let req = {appInfo, mount, options};
+      let httpOptions = {};
+      let coordOptions = {
+        coordTransactionID: ArangoClusterInfo.uniqid()
+      };
+      req.options.__clusterDistribution = true;
+      for (let i = 0; i < coordinators.length; ++i) {
+        if (coordinators[i] !== ArangoServerState.id()) {
+          ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
+            "/_admin/foxx/replace", req, httpOptions, coordOptions);
+        }
+      }
+    }
     _uninstall(mount, {teardown: false});
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
@@ -997,6 +1050,21 @@
       [ appInfo, mount ] );
     utils.validateMount(mount);
     _validateApp(appInfo);
+    if (ArangoServerState.isCoordinator()) {
+      let coordinators = ArangoClusterInfo.getCoordinators();
+      let req = {appInfo, mount, options};
+      let httpOptions = {};
+      let coordOptions = {
+        coordTransactionID: ArangoClusterInfo.uniqid()
+      };
+      req.options.__clusterDistribution = true;
+      for (let i = 0; i < coordinators.length; ++i) {
+        if (coordinators[i] !== ArangoServerState.id()) {
+          ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
+            "/_admin/foxx/update", req, httpOptions, coordOptions);
+        }
+      }
+    }
     _uninstall(mount, {teardown: false});
     var app = _install(appInfo, mount, options, false);
     reloadRouting();
