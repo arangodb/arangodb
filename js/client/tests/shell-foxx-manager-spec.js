@@ -87,5 +87,161 @@ describe("Foxx Manager", function() {
     });
 
   });
+
+  describe("upgradeing", function() {
+    
+    var download = require("internal").download;
+    var colSetup = "unittest_upgrade_setup";
+    var colSetupTeardown = "unittest_upgrade_setup_teardown";
+    var mount = "/unittest/upgrade";
+    var setupTeardownApp = fs.join(basePath, "minimal-working-setup-teardown");
+    var setupApp = fs.join(basePath, "minimal-working-setup");
+    var url = arango.getEndpoint().replace("tcp://", "http://") + "/_db/_system" + mount + "/test";
+    var brokenApp = fs.join(basePath, "broken-controller-file");
+
+    beforeEach(function() {
+      try {
+        db._drop(colSetup);
+      } catch(e) {
+      }
+      try {
+        db._drop(colSetupTeardown);
+      } catch(e) {
+      }
+      try {
+        FoxxManager.uninstall(mount, {force: true});
+      } catch(e) {
+      }
+      FoxxManager.install(setupTeardownApp, mount);
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+      expect(download(url).code).toEqual(200);
+    });
+
+    afterEach(function() {
+      try {
+        db._drop(colSetup);
+      } catch(e) {
+      }
+      try {
+        db._drop(colSetupTeardown);
+      } catch(e) {
+      }
+      try {
+        FoxxManager.uninstall(mount, {force: true});
+      } catch(e) {
+      }
+    });
+
+    it("should run the setup script", function() {
+      expect(db._collection(colSetup)).toBeNull();
+      FoxxManager.upgrade(setupApp, mount);
+      expect(db._collection(colSetup)).toBeDefined();
+    });
+
+    it("should not run the teardown script", function() {
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+      FoxxManager.upgrade(setupApp, mount);
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+    });
+
+    it("should keep the old app reachable", function() {
+      try {
+        FoxxManager.upgrade(brokenApp, mount);
+      } catch (e) {
+      }
+      expect(download(url).code).toEqual(200);
+    });
+
+    it("should not execute teardown of the old app", function() {
+      try {
+        FoxxManager.upgrade(brokenApp, mount);
+      } catch (e) {
+      }
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+    });
+
+  });
+
+  describe("replacing", function() {
+    
+    var download = require("internal").download;
+    var colSetup = "unittest_replace_setup";
+    var colSetupTeardown = "unittest_replace_setup_teardown";
+    var mount = "/unittest/replace";
+    var setupTeardownApp = fs.join(basePath, "minimal-working-setup-teardown");
+    var setupApp = fs.join(basePath, "minimal-working-setup");
+    var url = arango.getEndpoint().replace("tcp://", "http://") + "/_db/_system" + mount + "/test";
+    var brokenApp = fs.join(basePath, "broken-controller-file");
+
+    beforeEach(function() {
+      try {
+        db._drop(colSetup);
+      } catch(e) {
+      }
+      try {
+        db._drop(colSetupTeardown);
+      } catch(e) {
+      }
+      try {
+        FoxxManager.uninstall(mount, {force: true});
+      } catch(e) {
+      }
+      FoxxManager.install(setupTeardownApp, mount);
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+      expect(download(url).code).toEqual(200);
+    });
+
+    afterEach(function() {
+      try {
+        db._drop(colSetup);
+      } catch(e) {
+      }
+      try {
+        db._drop(colSetupTeardown);
+      } catch(e) {
+      }
+      try {
+        FoxxManager.uninstall(mount, {force: true});
+      } catch(e) {
+      }
+    });
+
+    it("should run the setup script", function() {
+      expect(db._collection(colSetup)).toBeNull();
+      FoxxManager.replace(setupApp, mount);
+      expect(db._collection(colSetup)).toBeDefined();
+    });
+
+    it("should run the teardown script", function() {
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+      FoxxManager.replace(setupApp, mount);
+      expect(db._collection(colSetupTeardown)).toBeNull();
+    });
+
+    it("should make the original app unreachable", function() {
+      FoxxManager.replace(setupApp, mount);
+      expect(download(url).code).toEqual(404);
+    });
+
+
+    it("with broken app it should keep the old app reachable", function() {
+      try {
+        FoxxManager.replace(brokenApp, mount);
+      } catch (e) {
+      }
+      expect(download(url).code).toEqual(200);
+    });
+
+    it("with broken app it should not execute teardown of the old app", function() {
+      try {
+        FoxxManager.replace(brokenApp, mount);
+      } catch (e) {
+      }
+      expect(db._collection(colSetupTeardown)).toBeDefined();
+    });
+
+  });
+
+
 });
 
