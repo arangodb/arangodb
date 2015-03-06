@@ -383,6 +383,24 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief returns a valid app config for validation purposes
+  ////////////////////////////////////////////////////////////////////////////////
+   
+  var fakeAppConfig = function(path) {
+    var file = fs.join(path, "manifest.json");
+    return {
+      id: "/internal",
+      root: "",
+      path: path,
+      options: {},
+      mount: "/internal",
+      manifest: validateManifestFile(file),
+      isSystem: false,
+      isDevelopment: false
+    };
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief returns the app path and manifest
   ////////////////////////////////////////////////////////////////////////////////
 
@@ -391,21 +409,16 @@
     var path = transformMountToPath(mount);
 
     var file = fs.join(root, path, "manifest.json");
-    var result = {
+     return {
       id: mount,
       root: root,
       path: path,
       options: options || {},
       mount: mount,
+      manifest: validateManifestFile(file),
       isSystem: isSystemMount(mount),
       isDevelopment: activateDevelopment || false
     };
-    // try {
-      result.manifest = validateManifestFile(file);
-    // } catch(err) {
-    //   result.error = err;
-    // }
-    return result;
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -735,6 +748,56 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Build app in path
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var _buildAppInPath = function(appInfo, path, options) {
+    try {
+      if (appInfo === "EMPTY") {
+        // Make Empty app
+        installAppFromGenerator(path, options || {});
+      } else if (/^GIT:/i.test(appInfo)) {
+        installAppFromRemote(buildGithubUrl(appInfo), path);
+      } else if (/^https?:/i.test(appInfo)) {
+        installAppFromRemote(appInfo, path);
+      } else if (utils.pathRegex.test(appInfo)) {
+        installAppFromLocal(appInfo, path);
+      } else if (/^uploads[\/\\]tmp-/.test(appInfo)) {
+        // Install from upload API
+        appInfo = fs.join(fs.getTempPath(), appInfo);
+        installAppFromLocal(appInfo, path);
+      } else {
+        installAppFromRemote(store.buildUrl(appInfo), path);
+      }
+    } catch (e) {
+      try {
+        fs.removeDirectoryRecursive(path, true);
+      } catch (err) {
+      }
+      throw e;
+    }
+  };
+
+  ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Internal app validation function
+  /// Does not check parameters and throws errors.
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var _validateApp = function(appInfo) {
+    var tempPath = fs.getTempFile("apps", false);
+    try {
+      _buildAppInPath(appInfo, tempPath, {});
+      var tmp = new ArangoApp(fakeAppConfig(tempPath));
+      tmp = undefined;
+    } catch (e) {
+      throw e;
+    } finally {
+      fs.removeDirectoryRecursive(tempPath, true);
+    }
+  };
+
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Internal install function. Check install.
   /// Does not check parameters and throws errors.
   ////////////////////////////////////////////////////////////////////////////////
@@ -752,30 +815,7 @@
     fs.removeDirectory(targetPath);
 
     initCache();
-    try {
-      if (appInfo === "EMPTY") {
-        // Make Empty app
-        installAppFromGenerator(targetPath, options || {});
-      } else if (/^GIT:/i.test(appInfo)) {
-        installAppFromRemote(buildGithubUrl(appInfo), targetPath);
-      } else if (/^https?:/i.test(appInfo)) {
-        installAppFromRemote(appInfo, targetPath);
-      } else if (utils.pathRegex.test(appInfo)) {
-        installAppFromLocal(appInfo, targetPath);
-      } else if (/^uploads[\/\\]tmp-/.test(appInfo)) {
-        // Install from upload API
-        appInfo = fs.join(fs.getTempPath(), appInfo);
-        installAppFromLocal(appInfo, targetPath);
-      } else {
-        installAppFromRemote(store.buildUrl(appInfo), targetPath);
-      }
-    } catch (e) {
-      try {
-        fs.removeDirectoryRecursive(targetPath, true);
-      } catch (err) {
-      }
-      throw e;
-    }
+    _buildAppInPath(appInfo, targetPath, options);
     try {
       db._executeTransaction({
         collections: {
@@ -936,7 +976,8 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
-    _uninstall(mount, {teardown: true});
+    _validateApp(appInfo);
+    _uninstall(mount, {teardown: false});
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
@@ -955,6 +996,7 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
+    _validateApp(appInfo);
     _uninstall(mount, {teardown: false});
     var app = _install(appInfo, mount, options, false);
     reloadRouting();
