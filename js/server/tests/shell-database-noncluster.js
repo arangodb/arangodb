@@ -186,13 +186,15 @@ function DatabaseSuite () {
       assertTrue(internal.db._dropDatabase("UnitTestsDatabase0"));
 
       var tries = 0;
-      while (tries++ < 15) {
+      while (tries++ < 150) {
         if (fs.exists(path)) {
-          internal.wait(1);
+          internal.wait(2);
           continue;
         }
       }
-
+      if (tries > 15) {
+        require("internal").printf("[WARNING] waited " + tries * 2 +" seconds for " + path + " do disappear");
+      }
       assertFalse(fs.exists(path));
     }
 
