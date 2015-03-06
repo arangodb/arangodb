@@ -268,7 +268,9 @@ ClusterInfo::ClusterInfo ()
     _currentDatabases(),
     _collectionsValid(false),
     _serversValid(false),
-    _DBServersValid(false) {
+    _DBServersValid(false),
+    _coordinatorsValid(false) {
+
   _uniqid._currentValue = _uniqid._upperValue = 0ULL;
 
   // Actual loading into caches is postponed until necessary
@@ -329,6 +331,7 @@ void ClusterInfo::flush () {
   _collectionsCurrentValid = false;
   _serversValid = false;
   _DBServersValid = false;
+  _coordinatorsValid = false;
 
   _collections.clear();
   _collectionsCurrent.clear();
@@ -1908,11 +1911,54 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about all coordinators from the agency
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+static const std::string prefixCurrentCoordinators = "Current/Coordinators";
+
+void ClusterInfo::loadCurrentCoordinators () {
+
+  AgencyCommResult result;
+
+  {
+    AgencyCommLocker locker("Current", "READ");
+
+    if (locker.successful()) {
+      result = _agency.getValues(prefixCurrentCoordinators, true);
+    }
+  }
+
+  if (result.successful()) {
+    result.parse(prefixCurrentCoordinators + "/", false);
+
+    WRITE_LOCKER(_lock);
+    _coordinators.clear();
+
+    std::map<std::string, AgencyCommResultEntry>::const_iterator it = result._values.begin();
+
+    for (; it != result._values.end(); ++it) {
+      _coordinators.emplace(std::make_pair((*it).first, triagens::basics::JsonHelper::getStringValue((*it).second._json, "")));
+    }
+
+    _coordinatorsValid = true;
+    return;
+  }
+
+  LOG_TRACE("Error while loading %s", prefixCurrentCoordinators.c_str());
+
+  _coordinatorsValid = false;
+
+  return;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixCurrentDBServers = "Current/DBServers";
+
 void ClusterInfo::loadCurrentDBServers () {
 
   AgencyCommResult result;
@@ -1987,6 +2033,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static const std::string prefixTargetServerEndoint = "Target/MapIDToEndpoint/";
+
 std::string ClusterInfo::getTargetServerEndpoint (ServerID const& serverID) {
 
   AgencyCommResult result;
@@ -2129,6 +2176,38 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
 
   shardID = shards->at(hash % shards->size());
   return error;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of coordinator server names
+////////////////////////////////////////////////////////////////////////////////
+
+std::vector<ServerID> ClusterInfo::getCurrentCoordinators () {
+  std::vector<ServerID> result;
+  
+  int tries = 0;
+  while (++tries <= 2) {
+    {
+      // return a consistent state of servers
+      READ_LOCKER(_lock);
+
+      if (_coordinatorsValid) {
+        result.reserve(_coordinators.size());
+
+        for (auto& it : _coordinators) {
+          result.emplace_back(it.first);
+        }
+
+        return result;
+      }
+    }
+
+    // loadCurrentCoordinators needs the write lock
+    loadCurrentCoordinators();
+  }
+
+  // note that the result will be empty if we get here
+  return result;
 }
 
 // -----------------------------------------------------------------------------
