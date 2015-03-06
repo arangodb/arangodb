@@ -999,7 +999,7 @@ static void JS_GetDBServers (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("DBServers()");
+    TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
 
   std::vector<std::string> DBServers = ClusterInfo::instance()->getCurrentDBServers();
@@ -1029,6 +1029,31 @@ static void JS_ReloadDBServers (const v8::FunctionCallbackInfo<v8::Value>& args)
 
   ClusterInfo::instance()->loadCurrentDBServers();
   TRI_V8_RETURN_UNDEFINED();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the coordinators currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetCoordinators (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
+  }
+
+  std::vector<std::string> coordinators = ClusterInfo::instance()->getCurrentCoordinators();
+
+  v8::Handle<v8::Array> l = v8::Array::New(isolate);
+
+  for (size_t i = 0; i < coordinators.size(); ++i) {
+    ServerID const sid = coordinators[i];
+
+    l->Set((uint32_t) i, TRI_V8_STD_STRING(sid));
+  }
+
+  TRI_V8_RETURN(l);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2048,6 +2073,7 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getServerEndpoint"), JS_GetServerEndpointClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getDBServers"), JS_GetDBServers);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("reloadDBServers"), JS_ReloadDBServers);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getCoordinators"), JS_GetCoordinators);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("uniqid"), JS_UniqidClusterInfo);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);
