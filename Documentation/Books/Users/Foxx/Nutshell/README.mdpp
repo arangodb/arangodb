@@ -114,14 +114,6 @@ Now open your favorite editor and have a deeper look into the code.
   <dd>Most of the code described in this tutorial is already generated</dd>
 </dl>
 
-<div class="tutorialViewer">
-<img src="/wp-content/themes/triagens/tutorials/foxx/foxx_folder.png" width="100%">
-</div>
-<div class="tutorialViewer">
-<img src="/wp-content/themes/triagens/tutorials/foxx/foxx_manifest.png" width="100%" style="padding-top:20px">
-</div>
-</div>
-
 <a id="list-elements" />
 !SUBSECTION List content of a collection
 The following route lists all elements of our collection:
@@ -132,7 +124,7 @@ The following route lists all elements of our collection:
 
 It is defined in the source in the following way:
 
-```
+```js
 /** Lists of all FirstCollection
  *
  * This function simply returns the list of all FirstCollection.
@@ -161,7 +153,7 @@ This code-snippet defines the route to create a new document in our collection:
 POST https://localhost:8529/db/_system/firstApp/firstCollection
 ```
 
-```
+```js
 /** Creates a new FirstCollection
  *
  * Creates a new FirstCollection-Item. The information has to be in the
@@ -188,7 +180,7 @@ This route allows to read a specific document in our collection, identified by I
 GET https://localhost:8529/db/_system/firstApp/firstCollection/:id
 ```
 
-```
+```js
 /** Reads a FirstCollection
  *
  * Reads a FirstCollection-Item.
@@ -215,7 +207,7 @@ This code shows how to update a specific document in our collection. The API cal
 GET https://localhost:8529/db/_system/firstApp/firstCollection/:id
 ```
 
-```
+```js
 /** Updates a FirstCollection
  *
  * Changes a FirstCollection-Item. The information has to be in the
@@ -245,7 +237,7 @@ DELETE https://localhost:8529/db/_system/firstApp/firstCollection/:id
 ```
 The corresponding controller function is just a few lines:
 
-```
+```js
 /** Removes a FirstCollection
  *
  * Removes a FirstCollection-Item.
@@ -271,7 +263,12 @@ Some details you should now about the code:
 We now want to add some functionality, a simple search query. First we create an endpoint that allows to execute a simple AQL query.
 The query will search for all documents having a specific `name` attribute.
 
-```
+<dl>
+  <dt>Note</dt>
+  <dd>This part of the code is not generated.</dd>
+</dl>
+
+```js
 var db = require('org/arangodb').db;
 var searchQuery = 'FOR x IN @@collection FILTER x.name == @name RETURN x';
 
@@ -300,7 +297,3 @@ Some details you should know about the code:
 * `@collection` is a bindParameter for collections and will be replaced in the query.
 * `name` is a bindParameter for a variable value and will be replaced in the query.
 
-<dl>
-  <dt>Note</dt>
-  <dd>This part of the code is not generated.</dd>
-</dl>
