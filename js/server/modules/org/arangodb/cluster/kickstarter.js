@@ -227,12 +227,12 @@ launchActions.startAgent = function (dispatchers, cmd, isRelaunch) {
   }
 
   var instanceName = "agent"+cmd.agencyPrefix+cmd.extPort;
-  var extBind = (cmd.onlyLocalhost ? "127.0.0.1:" : "0.0.0.0:")+cmd.extPort;
   var extEndpoint = getAddrPort(exchangePort(dispatchers[cmd.dispatcher].endpoint, cmd.extPort));
-  var clusterBind = (cmd.onlyLocalhost ? "127.0.0.1:" : "0.0.0.0:")+cmd.intPort;
+  var extBind = cmd.onlyLocalhost ? ("127.0.0.1:"+cmd.extPort) : extEndpoint;
   var clusterEndPoint = getAddrPort(exchangePort(dispatchers[cmd.dispatcher].endpoint, cmd.intPort));
+  var clusterBind = cmd.onlyLocalhost ? ("127.0.0.1:"+cmd.intPort) : clusterEndPoint;
 
-  var clusterUrl = "http://" + clusterBind;
+  var clusterUrl = "http://" + clusterEndPoint;
   var agencyUrl =  "http://" + extBind;
 
   var args = {
