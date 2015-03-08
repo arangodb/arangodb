@@ -514,10 +514,7 @@ static vector<string> ParseProgramOptions (int argc, char* args[], eRunMode *run
   // and parse the command line and config file
   ProgramOptions options;
 
-  char* p = TRI_BinaryName(args[0]);
-  string conf = p;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
-  conf += ".conf";
+  string conf = TRI_BinaryName(args[0]) + ".conf";
 
   BaseClient.parse(options, description, "<options>", argc, args, conf);
 
