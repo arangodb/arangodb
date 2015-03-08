@@ -41,7 +41,6 @@
 #include <sys/file.h>
 #endif
 
-
 #include "Basics/conversions.h"
 #include "Basics/hashes.h"
 #include "Basics/locks.h"
@@ -54,6 +53,8 @@
 #ifdef _WIN32
 #include <tchar.h>
 #endif
+
+using namespace std;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private defines
@@ -1621,7 +1622,7 @@ char* TRI_GetAbsolutePath (char const* file, char const* cwd) {
 /// @brief returns the binary name without any path or suffix
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_BinaryName (const char* argv0) {
+string TRI_BinaryName (const char* argv0) {
   char* name;
   char* p;
   char* e;
@@ -1637,18 +1638,22 @@ char* TRI_BinaryName (const char* argv0) {
     }
   }
 
-  return name;
+  string result = name;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, name);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief locates the directory containing the program
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_LocateBinaryPath (char const* argv0) {
+string TRI_LocateBinaryPath (char const* argv0) {
   char const* p;
   char* binaryPath = nullptr;
 
 #if _WIN32
+
   if (argv0 == nullptr) {
     char buff[4096];
     int res = GetModuleFileName(NULL, buff, sizeof(buff));
@@ -1657,6 +1662,7 @@ char* TRI_LocateBinaryPath (char const* argv0) {
       buff[4095] = '\0';
 
       char* q = buff + res;
+
       while (buff < q) {
         if (*q == '\\' || *q == '/') {
           *q = '\0';
@@ -1666,11 +1672,12 @@ char* TRI_LocateBinaryPath (char const* argv0) {
         --q;
       }
 
-      return TRI_DuplicateString(buff);
+      return string(buff);
     }
 
-    return nullptr;
+    return string();
   }
+
 #endif
 
   // check if name contains a '/' ( or '\' for windows)
@@ -1731,7 +1738,10 @@ char* TRI_LocateBinaryPath (char const* argv0) {
     }
   }
 
-  return binaryPath;
+  string result = binaryPath;
+  TRI_FreeString(TRI_CORE_MEM_ZONE, binaryPath);
+
+  return result;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2118,70 +2128,15 @@ void TRI_SetUserTempPath (char* path) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief locate the installation directory in the given rootKey
-///
-/// rootKey should be: either HKEY_CURRENT_USER or HKEY_LOCAL_MASCHINE
-/// Will always end in a directory separator.
-////////////////////////////////////////////////////////////////////////////////
-
-#if _WIN32
-char * __LocateInstallDirectory_In(HKEY rootKey) {
-  DWORD dwType;
-  char  szPath[1023];
-  DWORD dwDataSize;
-  HKEY key;
-
-  dwDataSize = sizeof(szPath);
-  memset(szPath, 0, dwDataSize);
-
-  // open the key for reading
-  long lResult = RegOpenKeyEx(
-                              rootKey,
-                              "SOFTWARE\\ArangoDB GmbH\\ArangoDB " TRI_VERSION,
-                               0,
-                               KEY_READ,
-                               &key);
-
-  if (lResult == ERROR_SUCCESS) {
-      // read the version value
-      lResult = RegQueryValueEx(key, "", NULL, &dwType, (BYTE*)szPath, &dwDataSize);
-
-      if (lResult == ERROR_SUCCESS) {
-        return TRI_Concatenate2String(szPath, "\\"); // TODO check if it already ends in \\ or /
-      }
-
-      RegCloseKey(key);
-    }
-
-  return NULL;
-
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief locate the installation directory
 //
 /// Will always end in a directory separator.
 ////////////////////////////////////////////////////////////////////////////////
 
 #if _WIN32
-char* TRI_LocateInstallDirectory () {
-  // We look for the configuration first in HKEY_CURRENT_USER (arango was
-  // installed for a single user). When we don't find  anything when look in
-  // HKEY_LOCAL_MACHINE (arango was installed as service).
 
-  char * directory = __LocateInstallDirectory_In(HKEY_CURRENT_USER);
-
-  if (!directory) {
-    directory = __LocateInstallDirectory_In(HKEY_LOCAL_MACHINE);
-  }
-  return directory;
-}
-
-#else
-
-char* TRI_LocateInstallDirectory () {
-  return NULL;
+string TRI_LocateInstallDirectory () {
+  return TRI_LocateBinaryPath(nullptr) + string(1, TRI_DIR_SEPARATOR_CHAR) + ".." + string(1, TRI_DIR_SEPARATOR_CHAR);
 }
 
 #endif
@@ -2203,24 +2158,17 @@ char* TRI_LocateConfigDirectory () {
     return v;
   }
 
-  v = TRI_LocateInstallDirectory();
+  string r = TRI_LocateInstallDirectory();
 
-  if (v != NULL) {
 #ifdef _SYSCONFDIR_
-    TRI_AppendString(&v, _SYSCONFDIR_);
+  r += _SYSCONFDIR_;
 #else
-    TRI_AppendString(&v, "etc\\arangodb\\");
-#endif
-    return v;
-  }
-#ifdef _SYSCONFDIR_
-  else {
-    return TRI_DuplicateString(_SYSCONFDIR_);
-  }
-#else
-  return v;
+  r += "etc\\arangodb";
 #endif
 
+  r += string(1, TRI_DIR_SEPARATOR_CHAR);
+
+  return TRI_DuplicateString(r.c_str());
 }
 
 #elif defined(_SYSCONFDIR_)

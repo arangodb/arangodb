@@ -352,19 +352,16 @@ void ArangoServer::buildApplicationServer () {
     LOG_FATAL_AND_EXIT("out of memory");
   }
 
-  char* p = TRI_BinaryName(_argv[0]);
-  string conf = p;
-  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
-  conf += ".conf";
+  string conf = TRI_BinaryName(_argv[0]) + ".conf";
 
   _applicationServer->setSystemConfigFile(conf);
 
   // arangod allows defining a user-specific configuration file. arangosh and the other binaries don't
   _applicationServer->setUserConfigFile(".arango" + string(1, TRI_DIR_SEPARATOR_CHAR) + string(conf));
 
-
   // initialise the server's write ahead log
   wal::LogfileManager::initialise(&_databasePath, _server);
+
   // and add the feature to the application server
   _applicationServer->addFeature(wal::LogfileManager::instance());
 
