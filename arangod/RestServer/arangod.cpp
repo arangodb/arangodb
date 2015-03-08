@@ -216,6 +216,7 @@ static void TRI_GlobalEntryFunction() {
 #ifdef _WIN32
 
 static void TRI_GlobalExitFunction (int exitCode, void* data) {
+
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
@@ -519,6 +520,7 @@ int main (int argc, char* argv[]) {
   signal(SIGSEGV, abortHandler);
 
 #ifdef _WIN32
+
   SetUnhandledExceptionFilter(unhandledExceptionHandler);
 
   if (1 < argc) {
