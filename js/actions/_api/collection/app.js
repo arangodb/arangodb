@@ -188,7 +188,7 @@ function parseBodyForCreateCollection (req, res) {
 ///
 /// - *journalSize* (optional, default is a configuration parameter): The 
 ///   maximal size of a journal or datafile in bytes. The value 
-///   must be at least `1048576` (1 MB).
+///   must be at least `1048576` (1 MiB).
 ///
 /// - *isSystem* (optional, default is *false*): If *true*, create a
 ///   system collection. In this case *collection-name* should start with
