@@ -39,6 +39,8 @@
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 
+using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
@@ -276,24 +278,23 @@ static char* FillVariables (const char* value) {
           }
 
           if (v == nullptr) {
+
+#if _WIN32
+
             if (TRI_EqualString(k, "ROOTDIR")) {
-              char* vv = TRI_LocateInstallDirectory();
+              string vv = TRI_LocateInstallDirectory();
 
-              if (vv != nullptr) {
-                size_t lv = strlen(vv);
+              if (! vv.empty()) {
+                size_t lv = vv.length();
 
-                if (0 < lv) {
-                  if (vv[lv - 1] == TRI_DIR_SEPARATOR_CHAR || vv[lv - 1] == '/') {
-                    v = TRI_DuplicateString2(vv, lv - 1);
-                  }
-                  else {
-                    v = TRI_DuplicateString2(vv, lv);
-                  }
+                if (vv[lv - 1] == TRI_DIR_SEPARATOR_CHAR || vv[lv - 1] == '/') {
+                  v = TRI_DuplicateString2(vv.c_str(), lv - 1);
                 }
-
-                TRI_FreeString(TRI_CORE_MEM_ZONE, vv);
               }
             }
+
+#endif
+
           }
           else {
             v = TRI_DuplicateString(v);

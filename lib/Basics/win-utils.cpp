@@ -345,25 +345,24 @@ void TRI_FixIcuDataEnv () {
     return;
   }
 
-  char* p = nullptr;
+  string p = TRI_LocateInstallDirectory();
 
-  p = TRI_LocateInstallDirectory();
-
-  if (p != nullptr) {
-    string e = string("ICU_DATA=") + p + "\\share\\arangodb\\";
+  if (! p.empty()) {
+    string e = "ICU_DATA=" + p + "\\share\\arangodb\\";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
   }
   else {
 #ifdef _SYSCONFDIR_
-    string e  = string("ICU_DATA=") + _SYSCONFDIR_ + "..\\..\\bin";
+    string e  = "ICU_DATA=" + string(_SYSCONFDIR_) + "..\\..\\bin";
     e = StringUtils::replace(e, "\\", "\\\\");
     putenv(e.c_str());
 #else
+
     p = TRI_LocateBinaryPath(nullptr);
 
-    if (p != nullptr) {
-      string e = string("ICU_DATA=") + p + "\\";
+    if (! p.empty()) {
+      string e = "ICU_DATA=" + p + "\\";
       e = StringUtils::replace(e, "\\", "\\\\");
       putenv(e.c_str());
     }
@@ -371,10 +370,6 @@ void TRI_FixIcuDataEnv () {
       putenv("ICU_DATA=.\\\\");
     }
 #endif
-  }
-
-  if (p != nullptr) {
-    TRI_FreeString(TRI_CORE_MEM_ZONE, p);
   }
 }
 
