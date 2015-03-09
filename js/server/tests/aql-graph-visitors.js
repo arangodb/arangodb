@@ -2343,6 +2343,403 @@ function ahuacatlGraphVisitorsSuite () {
       ];
 
       assertEqual(expected, result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBuiltinCountingVisitor : function () {
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::COUNTINGVISITOR" } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+        
+      assertEqual([ 87 ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBuiltinHasAnyAttributesVisitor : function () {
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/foo", { });
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::HASATTRIBUTESVISITOR", data: { attributes: [ "foo", "bar" ], type: "any" } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/foo", "inbound", params) RETURN result.vertex._key');
+
+      assertEqual([ "foo", "test" ], result.json.sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBuiltinHasAllAttributesVisitor : function () {
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz", foo: "bar" }); 
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/foo", { });
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::HASATTRIBUTESVISITOR", data: { attributes: [ "foo", "bar" ], type: "all" } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/foo", "inbound", params) RETURN result.vertex._key');
+
+      assertEqual([ "foo" ], result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBuiltinProjectingVisitor : function () {
+      var result = AQL_EXECUTE('LET params = { _sort: true, visitor : "_AQL::PROJECTINGVISITOR", data : { attributes: [ "name", "type" ] } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/world", "inbound", params) RETURN result');
+
+      var expected = [  
+        { 
+          "name" : "World", 
+          "type" : "root" 
+        }, 
+        { 
+          "name" : "Africa", 
+          "type" : "continent" 
+        }, 
+        { 
+          "name" : "Algeria", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Algiers", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Angola", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Luanda", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Botswana", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Gaborone", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Burkina Faso", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Ouagadougou", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Burundi", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Bujumbura", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Cameroon", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Yaounde", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Chad", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "N'Djamena", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Cote d'Ivoire", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Yamoussoukro", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Egypt", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Cairo", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Eritrea", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Asmara", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Asia", 
+          "type" : "continent" 
+        }, 
+        { 
+          "name" : "Afghanistan", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Kabul", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bahrain", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Manama", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bangladesh", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Dhaka", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bhutan", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Thimphu", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Brunei", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Bandar Seri Begawan", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Cambodia", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Phnom Penh", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "People's Republic of China", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Beijing", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Australia", 
+          "type" : "continent" 
+        }, 
+        { 
+          "name" : "Australia", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Canberra", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Europe", 
+          "type" : "continent" 
+        }, 
+        { 
+          "name" : "Albania", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Tirana", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Andorra", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Andorra la Vella", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Austria", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Vienna", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Belgium", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Brussels", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bosnia and Herzegovina", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Sarajevo", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bulgaria", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Sofia", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Croatia", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Zagreb", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Czech Republic", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Prague", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Denmark", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Copenhagen", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Finland", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Helsinki", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "France", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Paris", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Germany", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Berlin", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "North America", 
+          "type" : "continent" 
+        }, 
+        { 
+          "name" : "Antigua and Barbuda", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Saint John's", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bahamas", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Nassau", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Barbados", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Bridgetown", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Canada", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Ottawa", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "South America", 
+          "type" : "continent" 
+        }, 
+        { 
+          "name" : "Argentina", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Buenos Aires", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Bolivia", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "La Paz", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Brazil", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Brasilia", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Chile", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Santiago", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Colombia", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Bogota", 
+          "type" : "capital" 
+        }, 
+        { 
+          "name" : "Ecuador", 
+          "type" : "country" 
+        }, 
+        { 
+          "name" : "Quito", 
+          "type" : "capital" 
+        } 
+      ];
+        
+      assertEqual(expected, result.json);
     }
 
   };

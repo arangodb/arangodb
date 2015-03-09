@@ -30,5 +30,7 @@ build-book:
 	python codeBlockReader.py
 	python bot.py
 	cd $(NAME) && gitbook build -o ../books/$(NAME)
-	cp Users/Arangodb_Logo.png books/Users/
+	cp Users/arangodbLogo.png books/Users/
+	cp Users/cookbookLogo.png books/Users/
+	cp Users/googlegroupsIcon.png books/Users/
 	python deprecated.py
