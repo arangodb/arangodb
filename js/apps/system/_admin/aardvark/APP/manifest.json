@@ -35,12 +35,6 @@
   },
 
   "assets": {
-    "index.html": {
-      "files": [
-        "frontend/html/redirect.html"
-      ]
-    },
-
     "documentation.html": {
       "files": [
         "frontend/html/documentation.html"
@@ -169,6 +163,8 @@
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
     "/worker-json.js" : "frontend/src/worker-json.js"
   },
+
+  "defaultDocument": "redirect",
 
   "lib": "."
 }
