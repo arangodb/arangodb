@@ -391,7 +391,7 @@
   var fakeAppConfig = function(path) {
     var file = fs.join(path, "manifest.json");
     return {
-      id: "/internal",
+      id: "__internal",
       root: "",
       path: path,
       options: {},
