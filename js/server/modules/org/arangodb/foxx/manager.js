@@ -906,7 +906,7 @@
   var _uninstall = function(mount, options) {
     var dbname = arangodb.db._name();
     if (!appCache.hasOwnProperty(dbname)) {
-      initializeFoxx();
+      initializeFoxx(options);
     }
     var app;
     options = options || {};
@@ -1094,9 +1094,9 @@
   /// @brief initializes the Foxx apps
   ////////////////////////////////////////////////////////////////////////////////
 
-  var initializeFoxx = function() {
+  var initializeFoxx = function(options) {
     var dbname = arangodb.db._name();
-    syncWithFolder();
+    syncWithFolder(options);
     refillCaches(dbname);
     checkMountedSystemApps(dbname);
   };
@@ -1201,8 +1201,10 @@
   /// @brief Syncs the apps in ArangoDB with the applications stored on disc
   ////////////////////////////////////////////////////////////////////////////////
 
-  var syncWithFolder = function() {
+  var syncWithFolder = function(options) {
     var dbname = arangodb.db._name();
+    options = options || {};
+    options.replace = true;
     appCache = appCache || {};
     appCache[dbname] = {};
     var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
@@ -1211,7 +1213,7 @@
     var collection = utils.getStorage();
     var transAction = function() {
       mount = transformPathToMount(folders[i]);
-      _scanFoxx(mount, { replace: true });
+      _scanFoxx(mount, options);
     };
     for (i = 0; i < l; ++i) {
       db._executeTransaction({
