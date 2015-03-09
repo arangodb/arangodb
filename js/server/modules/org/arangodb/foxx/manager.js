@@ -875,7 +875,8 @@
       [ appInfo, mount ] );
     utils.validateMount(mount);
     var app = _install(appInfo, mount, options, true);
-    if (ArangoServerState.isCoordinator()) {
+    options = options || {};
+    if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
       let coordinators = ArangoClusterInfo.getCoordinators();
       /*jshint -W075:true */
       let req = {appInfo, mount, options};
@@ -984,8 +985,9 @@
       [ [ "Mount path", "string" ] ],
       [ mount ] );
     utils.validateMount(mount);
+    options = options || {};
     var app = _uninstall(mount, options);
-    if (ArangoServerState.isCoordinator()) {
+    if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
       let coordinators = ArangoClusterInfo.getCoordinators();
       /*jshint -W075:true */
       let req = {mount, options};
@@ -995,6 +997,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req.options.force = true;
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
@@ -1022,7 +1025,7 @@
     utils.validateMount(mount);
     _validateApp(appInfo);
     options = options || {};
-    if (ArangoServerState.isCoordinator()) {
+    if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
       let coordinators = ArangoClusterInfo.getCoordinators();
     /*jshint -W075:true */
     let req = {appInfo, mount, options};
@@ -1032,6 +1035,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req.options.force = true;
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
@@ -1060,7 +1064,8 @@
       [ appInfo, mount ] );
     utils.validateMount(mount);
     _validateApp(appInfo);
-    if (ArangoServerState.isCoordinator()) {
+    options = options || {};
+    if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
       let coordinators = ArangoClusterInfo.getCoordinators();
       /*jshint -W075:true */
       let req = {appInfo, mount, options};
@@ -1070,6 +1075,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req.options.force = true;
       req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
