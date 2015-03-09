@@ -1027,9 +1027,9 @@
     options = options || {};
     if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
       let coordinators = ArangoClusterInfo.getCoordinators();
-    /*jshint -W075:true */
-    let req = {appInfo, mount, options};
-    /*jshint -W075:false */
+      /*jshint -W075:true */
+      let req = {appInfo, mount, options};
+      /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterInfo.uniqid()
@@ -1044,7 +1044,7 @@
         }
       }
     }
-    _uninstall(mount, {teardown: false});
+    _uninstall(mount, {teardown: true, __clusterDistribution: options.__clusterDistribution || false});
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
@@ -1084,8 +1084,8 @@
         }
       }
     }
-    _uninstall(mount, {teardown: false});
-    var app = _install(appInfo, mount, options, false);
+    _uninstall(mount, {teardown: false, __clusterDistribution: options.__clusterDistribution || false});
+    var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
   };
