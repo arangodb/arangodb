@@ -877,7 +877,9 @@
     var app = _install(appInfo, mount, options, true);
     if (ArangoServerState.isCoordinator()) {
       let coordinators = ArangoClusterInfo.getCoordinators();
+      /*jshint -W075:true */
       let req = {appInfo, mount, options};
+      /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterInfo.uniqid()
@@ -985,7 +987,9 @@
     var app = _uninstall(mount, options);
     if (ArangoServerState.isCoordinator()) {
       let coordinators = ArangoClusterInfo.getCoordinators();
+      /*jshint -W075:true */
       let req = {mount, options};
+      /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterInfo.uniqid()
@@ -1020,7 +1024,9 @@
     options = options || {};
     if (ArangoServerState.isCoordinator()) {
       let coordinators = ArangoClusterInfo.getCoordinators();
-      let req = {appInfo, mount, options};
+    /*jshint -W075:true */
+    let req = {appInfo, mount, options};
+    /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterInfo.uniqid()
@@ -1056,7 +1062,9 @@
     _validateApp(appInfo);
     if (ArangoServerState.isCoordinator()) {
       let coordinators = ArangoClusterInfo.getCoordinators();
+      /*jshint -W075:true */
       let req = {appInfo, mount, options};
+      /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterInfo.uniqid()
