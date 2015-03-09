@@ -49,6 +49,7 @@
   var invalidateExportCache  = require("org/arangodb/foxx/routing").invalidateExportCache;
   var arangodb = require("org/arangodb");
   var ArangoError = arangodb.ArangoError;
+  var cluster = require("org/arangodb/cluster");
   var checkParameter = arangodb.checkParameter;
   var errors = arangodb.errors;
   var download = require("internal").download;
@@ -437,6 +438,32 @@
   };
 
   ////////////////////////////////////////////////////////////////////////////////
+  /// @brief Distributes zip file to peer coordinators. Only used in cluster
+  ////////////////////////////////////////////////////////////////////////////////
+
+  var uploadToPeerCoordinators = function(appInfo, coordinators) {
+    let coordOptions = {
+      coordTransactionID: ArangoClusterInfo.uniqid()
+    };
+    let req = fs.readBuffer(fs.join(fs.getTempPath(), appInfo));
+    console.log(appInfo, req);
+    let httpOptions = {};
+    let mapping = {};
+    for (let i = 0; i < coordinators.length; ++i) {
+      let ctid = ArangoClusterInfo.uniqid();
+      mapping[ctid] = coordinators[i];
+      coordOptions.clientTransactionID = ctid;
+      ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
+        "/_api/upload", req, httpOptions, coordOptions);
+    }
+    return {
+      results: cluster.wait(coordOptions, coordinators),
+      mapping: mapping
+    };
+  };
+
+
+  ////////////////////////////////////////////////////////////////////////////////
   /// @brief Generates an App with the given options into the targetPath
   ////////////////////////////////////////////////////////////////////////////////
   var installAppFromGenerator = function(targetPath, options) {
@@ -766,7 +793,6 @@
       } else if (utils.pathRegex.test(appInfo)) {
         installAppFromLocal(appInfo, path);
       } else if (/^uploads[\/\\]tmp-/.test(appInfo)) {
-        // Install from upload API
         appInfo = fs.join(fs.getTempPath(), appInfo);
         installAppFromLocal(appInfo, path);
       } else {
@@ -874,23 +900,48 @@
         [ "Mount path", "string" ] ],
       [ appInfo, mount ] );
     utils.validateMount(mount);
+    let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
     var app = _install(appInfo, mount, options, true);
     options = options || {};
     if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-      let coordinators = ArangoClusterInfo.getCoordinators();
-      /*jshint -W075:true */
-      let req = {appInfo, mount, options};
-      /*jshint -W075:false */
-      let httpOptions = {};
-      let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
-      };
-      req.options.__clusterDistribution = true;
-      req = JSON.stringify(req);
-      for (let i = 0; i < coordinators.length; ++i) {
-        if (coordinators[i] !== ArangoServerState.id()) {
-          ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
-            "/_admin/foxx/install", req, httpOptions, coordOptions);
+      let name = ArangoServerState.id();
+      let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
+        return c !== name;
+      });
+      if (hasToBeDistributed) {
+        let result = uploadToPeerCoordinators(appInfo, coordinators);
+        let mapping = result.mapping;
+        let res = result.results;
+        let intOpts = JSON.parse(JSON.stringify(options));
+        intOpts.__clusterDistribution = true;
+        let coordOptions = {
+          coordTransactionID: ArangoClusterInfo.uniqid()
+        };
+        let httpOptions = {};
+        for (let i = 0; i < res.length; ++i) {
+          let b = JSON.parse(res[i].body);
+          /*jshint -W075:true */
+          let intReq = {appInfo: b.filename, mount, options: intOpts};
+          /*jshint -W075:false */
+          ArangoClusterComm.asyncRequest("POST","server:" + mapping[res[i].clientTransactionID], db._name(),
+            "/_admin/foxx/install", JSON.stringify(intReq), httpOptions, coordOptions);
+        }
+        cluster.wait(coordOptions, coordinators);
+      } else {
+        /*jshint -W075:true */
+        let req = {appInfo, mount, options};
+        /*jshint -W075:false */
+        let httpOptions = {};
+        let coordOptions = {
+          coordTransactionID: ArangoClusterInfo.uniqid()
+        };
+        req.options.__clusterDistribution = true;
+        req = JSON.stringify(req);
+        for (let i = 0; i < coordinators.length; ++i) {
+          if (coordinators[i] !== ArangoServerState.id()) {
+            ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
+              "/_admin/foxx/install", req, httpOptions, coordOptions);
+          }
         }
       }
     }
@@ -1025,26 +1076,53 @@
     utils.validateMount(mount);
     _validateApp(appInfo);
     options = options || {};
+    let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
     if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-      let coordinators = ArangoClusterInfo.getCoordinators();
-      /*jshint -W075:true */
-      let req = {appInfo, mount, options};
-      /*jshint -W075:false */
-      let httpOptions = {};
-      let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
-      };
-      req.options.__clusterDistribution = true;
-      req.options.force = true;
-      req = JSON.stringify(req);
-      for (let i = 0; i < coordinators.length; ++i) {
-        if (coordinators[i] !== ArangoServerState.id()) {
+      let name = ArangoServerState.id();
+      let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
+        return c !== name;
+      });
+      if (hasToBeDistributed) {
+        let result = uploadToPeerCoordinators(appInfo, coordinators);
+        let mapping = result.mapping;
+        let res = result.results;
+        let intOpts = JSON.parse(JSON.stringify(options));
+        intOpts.__clusterDistribution = true;
+        let coordOptions = {
+          coordTransactionID: ArangoClusterInfo.uniqid()
+        };
+        let httpOptions = {};
+        for (let i = 0; i < res.length; ++i) {
+          let b = JSON.parse(res[i].body);
+          /*jshint -W075:true */
+          let intReq = {appInfo: b.filename, mount, options: intOpts};
+          /*jshint -W075:false */
+          ArangoClusterComm.asyncRequest("POST","server:" + mapping[res[i].coordinatorTransactionID], db._name(),
+            "/_admin/foxx/replace", JSON.stringify(intReq), httpOptions, coordOptions);
+        }
+        cluster.wait(coordOptions, coordinators);
+      } else {
+        let intOpts = JSON.parse(JSON.stringify(options));
+        /*jshint -W075:true */
+        let req = {appInfo, mount, options: intOpts};
+        /*jshint -W075:false */
+        let httpOptions = {};
+        let coordOptions = {
+          coordTransactionID: ArangoClusterInfo.uniqid()
+        };
+        req.options.__clusterDistribution = true;
+        req.options.force = true;
+        req = JSON.stringify(req);
+        for (let i = 0; i < coordinators.length; ++i) {
           ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
             "/_admin/foxx/replace", req, httpOptions, coordOptions);
         }
       }
     }
-    _uninstall(mount, {teardown: true, __clusterDistribution: options.__clusterDistribution || false});
+    _uninstall(mount, {teardown: true,
+      __clusterDistribution: options.__clusterDistribution || false,
+      force: !options.__clusterDistribution
+    });
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
@@ -1065,26 +1143,53 @@
     utils.validateMount(mount);
     _validateApp(appInfo);
     options = options || {};
+    let hasToBeDistributed = /^uploads[\/\\]tmp-/.test(appInfo);
     if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
-      let coordinators = ArangoClusterInfo.getCoordinators();
-      /*jshint -W075:true */
-      let req = {appInfo, mount, options};
-      /*jshint -W075:false */
-      let httpOptions = {};
-      let coordOptions = {
-        coordTransactionID: ArangoClusterInfo.uniqid()
-      };
-      req.options.__clusterDistribution = true;
-      req.options.force = true;
-      req = JSON.stringify(req);
-      for (let i = 0; i < coordinators.length; ++i) {
-        if (coordinators[i] !== ArangoServerState.id()) {
+      let name = ArangoServerState.id();
+      let coordinators = ArangoClusterInfo.getCoordinators().filter(function(c) {
+        return c !== name;
+      });
+      if (hasToBeDistributed) {
+        let result = uploadToPeerCoordinators(appInfo, coordinators);
+        let mapping = result.mapping;
+        let res = result.results;
+        let intOpts = JSON.parse(JSON.stringify(options));
+        intOpts.__clusterDistribution = true;
+        let coordOptions = {
+          coordTransactionID: ArangoClusterInfo.uniqid()
+        };
+        let httpOptions = {};
+        for (let i = 0; i < res.length; ++i) {
+          let b = JSON.parse(res[i].body);
+          /*jshint -W075:true */
+          let intReq = {appInfo: b.filename, mount, options: intOpts};
+          /*jshint -W075:false */
+          ArangoClusterComm.asyncRequest("POST","server:" + mapping[res[i].coordinatorTransactionID], db._name(),
+            "/_admin/foxx/update", JSON.stringify(intReq), httpOptions, coordOptions);
+        }
+        cluster.wait(coordOptions, coordinators);
+      } else {
+        let intOpts = JSON.parse(JSON.stringify(options));
+        /*jshint -W075:true */
+        let req = {appInfo, mount, options: intOpts};
+        /*jshint -W075:false */
+        let httpOptions = {};
+        let coordOptions = {
+          coordTransactionID: ArangoClusterInfo.uniqid()
+        };
+        req.options.__clusterDistribution = true;
+        req.options.force = true;
+        req = JSON.stringify(req);
+        for (let i = 0; i < coordinators.length; ++i) {
           ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
             "/_admin/foxx/update", req, httpOptions, coordOptions);
         }
       }
     }
-    _uninstall(mount, {teardown: false, __clusterDistribution: options.__clusterDistribution || false});
+    _uninstall(mount, {teardown: false,
+      __clusterDistribution: options.__clusterDistribution || false,
+      force: !options.__clusterDistribution
+    });
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
