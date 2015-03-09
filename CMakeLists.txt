@@ -890,11 +890,19 @@ if (MSVC)
     SET(BITS 32)
   endif()
 
+  # SetRegView controlls where die regkeys are written to
+  # SetRegView 32 writes the keys into Wow6432
+  # this variable was defined by eld and included in NSIS.template.in
+  # we probably need this for the install/uninstall software list.
+
+  SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView ${BITS}")
+
   SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  
-      "  SimpleSC::StopService  'ArangoDB' 0 30
-         SimpleSC::RemoveService  'ArangoDB' 
-       "
-   )
+    "     SetRegView ${BITS}
+          SimpleSC::StopService    'ArangoDB' 0 30
+          SimpleSC::RemoveService  'ArangoDB' 
+    "
+  )
 
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)

@@ -43,3 +43,4 @@ use
 `db._create(collection-name)`
 
 This call will create a new collection called *collection-name*.
+This method is a database method and is documented in detail at [Database Methods](../Collections/DatabaseMethods.html#create)
