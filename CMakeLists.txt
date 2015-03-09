@@ -211,12 +211,13 @@ endif()
 option(USE_RELATIVE "Do you want to have all path are relative to the binary" OFF)
 
 if (USE_RELATIVE)
+
   ################################################################################
   ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
   ################################################################################
 
-  set(ETCDIR_NATIVE "./etc/relative/")
-  set(ETCDIR_INSTALL "etc/relative/")
+  set(ETCDIR_NATIVE "./etc/relative")
+  set(ETCDIR_INSTALL "etc/relative")
 
   file(TO_NATIVE_PATH "${ETCDIR_NATIVE}" ETCDIR_NATIVE)
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ETCDIR_ESCAPED "${ETCDIR_NATIVE}")
@@ -238,7 +239,6 @@ if (USE_RELATIVE)
   endif ()
 
   file(TO_NATIVE_PATH "${VARDIR_NATIVE}" VARDIR_NATIVE)
-
 
   ################################################################################
   ### @brief database directory
@@ -290,6 +290,7 @@ if (USE_RELATIVE)
   endif ()
 
 else()
+
   ################################################################################
   ### @brief SYSTEM CONFIGURATION DIRECTORY (/etc)
   ################################################################################
@@ -883,22 +884,14 @@ if (MSVC)
 
   if(CMAKE_CL_64)
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
-    SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
     SET(BITS 64)
   else()
     SET(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES")
-    SET(CPACK_PACKAGE_INSTALL_REGISTRY_KEY "${CPACK_PACKAGE_NAME} ${CPACK_PACKAGE_VERSION}")
     SET(BITS 32)
   endif()
 
-  SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView ${BITS}")
-
-  # SetRegView controlls where die regkeys are written to
-  # SetRegView 32 writes the keys into Wow6432
-  # this variable was defined by eld and included in NSIS.template.in
   SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  
-      "  SetRegView ${BITS}
-         SimpleSC::StopService  'ArangoDB' 0 30
+      "  SimpleSC::StopService  'ArangoDB' 0 30
          SimpleSC::RemoveService  'ArangoDB' 
        "
    )
