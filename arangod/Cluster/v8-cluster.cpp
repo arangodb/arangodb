@@ -991,6 +991,23 @@ static void JS_GetServerEndpointClusterInfo (const v8::FunctionCallbackInfo<v8::
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server name for an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetServerNameClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
+  }
+
+  const std::string result = ClusterInfo::instance()->getServerName(TRI_ObjectToString(args[0]));
+
+  TRI_V8_RETURN_STD_STRING(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the DBServers currently registered
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2071,6 +2088,7 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getResponsibleServer"), JS_GetResponsibleServerClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getResponsibleShard"), JS_GetResponsibleShardClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getServerEndpoint"), JS_GetServerEndpointClusterInfo);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getServerName"), JS_GetServerNameClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getDBServers"), JS_GetDBServers);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("reloadDBServers"), JS_ReloadDBServers);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getCoordinators"), JS_GetCoordinators);
