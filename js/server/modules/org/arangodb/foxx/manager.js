@@ -391,7 +391,7 @@
   var fakeAppConfig = function(path) {
     var file = fs.join(path, "manifest.json");
     return {
-      id: "/internal",
+      id: "__internal",
       root: "",
       path: path,
       options: {},
@@ -906,7 +906,7 @@
   var _uninstall = function(mount, options) {
     var dbname = arangodb.db._name();
     if (!appCache.hasOwnProperty(dbname)) {
-      initializeFoxx();
+      initializeFoxx(options);
     }
     var app;
     options = options || {};
@@ -1027,9 +1027,9 @@
     options = options || {};
     if (ArangoServerState.isCoordinator() && !options.__clusterDistribution) {
       let coordinators = ArangoClusterInfo.getCoordinators();
-    /*jshint -W075:true */
-    let req = {appInfo, mount, options};
-    /*jshint -W075:false */
+      /*jshint -W075:true */
+      let req = {appInfo, mount, options};
+      /*jshint -W075:false */
       let httpOptions = {};
       let coordOptions = {
         coordTransactionID: ArangoClusterInfo.uniqid()
@@ -1044,7 +1044,7 @@
         }
       }
     }
-    _uninstall(mount, {teardown: false});
+    _uninstall(mount, {teardown: true, __clusterDistribution: options.__clusterDistribution || false});
     var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
@@ -1084,8 +1084,8 @@
         }
       }
     }
-    _uninstall(mount, {teardown: false});
-    var app = _install(appInfo, mount, options, false);
+    _uninstall(mount, {teardown: false, __clusterDistribution: options.__clusterDistribution || false});
+    var app = _install(appInfo, mount, options, true);
     reloadRouting();
     return app.simpleJSON();
   };
@@ -1094,9 +1094,9 @@
   /// @brief initializes the Foxx apps
   ////////////////////////////////////////////////////////////////////////////////
 
-  var initializeFoxx = function() {
+  var initializeFoxx = function(options) {
     var dbname = arangodb.db._name();
-    syncWithFolder();
+    syncWithFolder(options);
     refillCaches(dbname);
     checkMountedSystemApps(dbname);
   };
@@ -1201,8 +1201,10 @@
   /// @brief Syncs the apps in ArangoDB with the applications stored on disc
   ////////////////////////////////////////////////////////////////////////////////
 
-  var syncWithFolder = function() {
+  var syncWithFolder = function(options) {
     var dbname = arangodb.db._name();
+    options = options || {};
+    options.replace = true;
     appCache = appCache || {};
     appCache[dbname] = {};
     var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
@@ -1211,7 +1213,7 @@
     var collection = utils.getStorage();
     var transAction = function() {
       mount = transformPathToMount(folders[i]);
-      _scanFoxx(mount, { replace: true });
+      _scanFoxx(mount, options);
     };
     for (i = 0; i < l; ++i) {
       db._executeTransaction({
