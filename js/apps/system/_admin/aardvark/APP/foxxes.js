@@ -133,9 +133,8 @@
    */
   controller.put("/zip", function (req, res) {
     var content = JSON.parse(req.requestBody),
-        file = content.zipFile,
-        path = fs.join(fs.getTempPath(), file);
-    installApp(req, res, path);
+        file = content.zipFile;
+    installApp(req, res, file);
   }).installer();
 
 
