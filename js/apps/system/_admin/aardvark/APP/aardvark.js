@@ -1,3 +1,4 @@
+/*jshint globalstrict: true */
 /*global require, applicationContext, parseInt*/
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -33,44 +34,25 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   controller = new FoxxController(applicationContext),
   ArangoError = require("org/arangodb").ArangoError,
   underscore = require("underscore"),
+  cluster = require("org/arangodb/cluster"),
   joi = require("joi"),
   notifications = require("org/arangodb/configuration").notifications,
   db = require("internal").db,
   foxxInstallKey = joi.string().required().description(
     "The _key attribute, where the information of this Foxx-Install is stored."
-  ),
-  appname = joi.string().required();
+  );
 
 var foxxes = new (require("lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
-var sortVersions = function(a, b) {
-  var left = a.split(".").map(function(c) {
-    return parseInt(c, 10);
-  });
-  var right = b.split(".").map(function(c) {
-    return parseInt(c, 10);
-  });
-  if (left[0] === right[0]) {
-    if (left[1] === right[1]) {
-      if (left[2] < right[2]) {
-        return 1;
-      }
-      if (left[2] < right[2]) {
-        return -1;
-      }
-      return 0;
-    }
-    if (left[1] < right[1]) {
-      return 1;
-    }
-    return -1;
-  }
-  if (left[0] < right[0]) {
-    return 1;
-  }
-  return -1;
-};
 
+controller.get("/index.html", function(req, res) {
+  res.status(303);
+  if (cluster.dispatcherDisabled()) {
+    res.set("Location", "standalone.html");
+  } else {
+    res.set("Location", "cluster.html");
+  }
+});
 
 controller.get("/whoAmI", function(req, res) {
   res.json({
@@ -78,7 +60,7 @@ controller.get("/whoAmI", function(req, res) {
   });
 });
 
-controller.get("/unauthorized", function(req, res) {
+controller.get("/unauthorized", function() {
   throw new ArangoError();
 }).errorResponse(ArangoError, 401, "unauthorized");
 
