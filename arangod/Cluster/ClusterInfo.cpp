@@ -1911,6 +1911,37 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find the ID of a server from its endpoint.
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+std::string ClusterInfo::getServerName (std::string const& endpoint) {
+  int tries = 0;
+
+  if (! _serversValid) {
+    loadServers();
+    tries++;
+  }
+
+  while (++tries <= 2) {
+    {
+      READ_LOCKER(_lock);
+      for (auto const& it : _servers) {
+        if (it.second == endpoint) {
+          return it.first;
+        }
+      }
+    }
+
+    // must call loadServers outside the lock
+    loadServers();
+  }
+
+  return std::string("");
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all coordinators from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
