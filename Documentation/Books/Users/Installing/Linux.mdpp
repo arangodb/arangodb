@@ -41,28 +41,7 @@ Other versions of ArangoDB or other architectures should work similarly.
 
 !SUBSECTION Linux-Mint
 
-Download and import GPG-PublicKey:
-
-
-    wget -O RPM-GPG-KEY-www.arangodb.org http://www.arangodb.com/repositories/PublicKey
-    apt-key add RPM-GPG-KEY-www.arangodb.org
-
-Add the corresponding repository in file  `/etc/apt/sources.list`:
-
-    deb http://www.arangodb.com/repositories LinuxMint-13 main
-
-Update the repository data:
-
-    aptitude update
-
-Now you should be able to search for arangodb:
-
-    aptitude search arangodb
-
-In order to install arangodb:
-
-    aptitude install arangodb
-
+Please use the corresponding Ubuntu or Debian packages.
 
 !SECTION Using Vagrant and Chef
 
