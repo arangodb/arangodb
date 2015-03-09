@@ -808,6 +808,7 @@
     var targetPath = computeAppPath(mount, true);
     var app;
     var collection = utils.getStorage();
+    options = options || {};
     if (fs.exists(targetPath)) {
       throw new Error("An app is already installed at this location.");
     }
@@ -882,6 +883,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
           ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
@@ -989,6 +991,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
           ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
@@ -1023,6 +1026,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
           ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
@@ -1058,6 +1062,7 @@
         coordTransactionID: ArangoClusterInfo.uniqid()
       };
       req.options.__clusterDistribution = true;
+      req = JSON.stringify(req);
       for (let i = 0; i < coordinators.length; ++i) {
         if (coordinators[i] !== ArangoServerState.id()) {
           ArangoClusterComm.asyncRequest("POST","server:" + coordinators[i], db._name(),
