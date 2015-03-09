@@ -23,11 +23,11 @@ cli.main(function (args, options) {
         if (options.escape) {
             var replace = {'\\n':'\n','\\r':'\r','\\t':'\t','\\e':'\e','\\v':'\v','\\f':'\f','\\c':'\c','\\b':'\b','\\a':'\a','\\\\':'\\'};
             var escape = function (str) {
-                string += '';
+                str += '';
                 for (j in replace) {
-                    string = string.replace(i, replace[i]);
+                    str = str.replace(i, replace[i]);
                 }
-                return string;
+                return str;
             }
             for (i = 0, l = this.argc; i < l; i++) {
                 args[i] = escape(args[i]);
