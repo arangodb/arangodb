@@ -404,7 +404,10 @@ void TRI_FreeBarrier (TRI_barrier_blocker_t* element, bool fromTransaction) {
     element->_usedByTransaction = false;
   }
   else {
-    TRI_ASSERT(element->_usedByExternal == true);
+    // note: _usedByExternal may or may not be true when we get here
+    // the reason is that there are barriers not linked to elements at all
+    // (when a barrier is created ahead of operations but the operations are
+    // not executed etc.) 
     element->_usedByExternal = false;
   }
 

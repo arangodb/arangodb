@@ -280,7 +280,7 @@ winXX-build:
 	cd Build$(BITS) && cmake --build . --config $(BUILD_TARGET)
 
 packXX:
-	cd Build$(BITS) && cpack -G NSIS
+	cd Build$(BITS) && cpack -G NSIS && cpack -G ZIP
 
 	./Installation/Windows/installer-generator.sh $(BITS) $(shell pwd)
 
