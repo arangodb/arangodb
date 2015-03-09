@@ -141,7 +141,10 @@ var isSystemMount = function(mount) {
 /// @brief returns the root path for application. Knows about system apps
 ////////////////////////////////////////////////////////////////////////////////
 
-var computeRootAppPath = function(mount) {
+var computeRootAppPath = function(mount, isValidation) {
+  if (isValidation) {
+    return "";
+  }
   if (isSystemMount(mount)) {
     return module.systemAppPath();
   }
@@ -168,7 +171,7 @@ var computeRootAppPath = function(mount) {
     }
     this._name = this._manifest.name;
     this._version = this._manifest.version;
-    this._root = computeRootAppPath(config.mount);
+    this._root = computeRootAppPath(config.mount, config.id === "__internal");
     this._path = config.path;
     this._options = config.options;
     this._mount = config.mount;
