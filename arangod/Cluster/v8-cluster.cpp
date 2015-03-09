@@ -35,6 +35,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -1537,7 +1538,20 @@ static void PrepareClusterCommRequest (
 
   body.clear();
   if (args.Length() > 4) {
-    body = TRI_ObjectToString(args[4]);
+    if (args[4]->IsObject() && V8Buffer::hasInstance(isolate, args[4])) {
+      // supplied body is a Buffer object
+      char const* data = V8Buffer::data(args[4].As<v8::Object>());
+      size_t size = V8Buffer::length(args[4].As<v8::Object>());
+
+      if (data == nullptr) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid <body> buffer value");
+      }
+
+      body.assign(data, size);
+    }
+    else {
+      body = TRI_ObjectToString(args[4]);
+    }
   }
 
   if (args.Length() > 5 && args[5]->IsObject()) {
