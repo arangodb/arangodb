@@ -95,6 +95,8 @@ test.cpp.txt
 js/apps/*
 !js/apps/system
 !js/apps/system/*
+!js/apps/system/_admin/aardvark/APP/build
+!js/apps/system/_admin/aardvark/APP/build/*
 !js/apps/system/_admin/aardvark/APP/frontend/build
 !js/apps/system/_admin/aardvark/APP/frontend/build/*
 !js/apps/system/_admin/aardvark/APP/clusterFrontend/build
