@@ -10102,7 +10102,7 @@ window.Users = Backbone.Model.extend({
 }());
 
 /*jshint browser: true */
-/*global Backbone, $ */
+/*global Backbone, $, arango */
 (function() {
   "use strict";
 
@@ -10199,7 +10199,7 @@ window.Users = Backbone.Model.extend({
 
     download: function() {
       window.open(
-        "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()
+        "/_db/" + arango.getDatabaseName() + "/_admin/aardvark/foxxes/download/zip?mount=" + this.encodedMount()
       );
     }
 
@@ -14238,7 +14238,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       "click #confirmDeleteDocument" : "deleteDocument",
       "click #document-from" : "navigateToDocument",
       "click #document-to" : "navigateToDocument",
-      "dblclick #documentEditor tr" : "addProperty"
+      "dblclick #documentEditor tr" : "addProperty",
+      "focusout .ace_editor": "parseInvalidJson"
     },
 
     editor: 0,
@@ -14418,10 +14419,12 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     saveDocument: function () {
-      var model, result;
+      var model, result, fixedJSON;
 
       try {
-        model = this.editor.get();
+        model = this.editor.getText();
+        fixedJSON = model.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": ');
+        model = JSON.parse(fixedJSON);
       }
       catch (e) {
         this.errorConfirmation();
@@ -14495,6 +14498,19 @@ window.ArangoUsers = Backbone.Collection.extend({
     escaped: function (value) {
       return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+    },
+
+    parseInvalidJson: function() {
+      var model, fixedJSON;
+
+      try {
+        model = this.editor.getText();
+        fixedJSON = model.replace(/(['"])?([a-zA-Z0-9_]+)(['"])?:/g, '"$2": ');
+        model = JSON.parse(fixedJSON);
+        this.editor.set(model);
+      }
+      catch (e) {
+      }
     }
 
   });
