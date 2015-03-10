@@ -1,3 +1,9 @@
+v2.4.5 (XXXX-XX-XX)
+-------------------
+
+* fixed comment parsing in Foxx controllers
+
+
 v2.4.4 (2015-02-24)
 -------------------
 
