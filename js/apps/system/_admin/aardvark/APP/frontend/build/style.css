@@ -4830,6 +4830,10 @@ pre.gv-object-view {
   margin-right: 24px;
   width: 360px; }
 
+#control_event_node_edit_modal, #control_event_edge_edit_modal, #control_event_node_delete_modal, #control_event_edge_delete_modal, #control_event_new_node_modal {
+  width: 640px;
+  margin-left: -320px; }
+
 .navlogo .stat_cpu {
   height: 26px;
   margin-top: 1px;
