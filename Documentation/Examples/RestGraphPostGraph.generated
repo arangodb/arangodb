@@ -7,13 +7,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/
 
 HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
-etag: 1179747438
+etag: 1180351683
 
 { 
   "graph" : { 
     "_id" : "_graphs/graph", 
     "_key" : "graph", 
-    "_rev" : "1179747438", 
+    "_rev" : "1180351683", 
     "edgeDefinitions" : [ 
       { 
         "collection" : "edges", 

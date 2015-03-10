@@ -12,7 +12,7 @@ HTTP/1.1 201 Created
 content-type: application/json; charset=utf-8
 
 { 
-  "id" : "products/1246790766", 
+  "id" : "products/1247919299", 
   "type" : "skiplist", 
   "unique" : false, 
   "sparse" : true, 
