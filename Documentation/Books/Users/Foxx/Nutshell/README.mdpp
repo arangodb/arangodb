@@ -30,7 +30,7 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
 !SECTION Create a new application
 1. Click on `Add Application` / `New App`.
 2. You will be offered a dialog to fill in some information about your application.
-3.For this tutorial we will use the following information:
+3. For this tutorial we will use the following information:
   * <strong>Author:</strong> ArangoDB
   * <strong>Name:</strong> firstApp
   * <strong>Description:</strong> This is my first Foxx app
@@ -47,7 +47,7 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
 <a id="interactive-doc" />
 !SUBSECTION Interactive documentation
 Now you should see your new application in the list of installed applications.
-Click on it, leading you to the details page.
+Clicking on it will lead you to the details page.
 This page provides the meta information about the application entered in the generating dialog.
 You can modify this information in the applications manifest file.
 Additionally, the interactive [swagger-documentation]("http://www.swagger.io/") could be used to test the app.
@@ -70,7 +70,7 @@ In order to develop your Foxx you now have two options. If you do not have acces
 
 ![Download and Upgrade the Application](foxx_download_upgrade.png)
 
-2. Use Foxx development mode.
+1. Use Foxx development mode.
   * Active the development mode by clicking on `Set Dev`.
   * The Web Interface will print the folder containing the sources of your Application.
   * Open this folder to modify the files.
