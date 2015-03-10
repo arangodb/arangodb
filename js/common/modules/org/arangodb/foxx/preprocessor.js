@@ -124,17 +124,24 @@ extend(Preprocessor.prototype, {
 
   stripComment: function (str) {
     'use strict';
-    return str.match(/^\s*\/?\*\*?\/?\s*(.*)$/)[1];
+    return str.replace(/^\s*\/\*\*/, ''). // start of JSDoc comment
+               replace(/^\s*\*/, '').     // continuation of JSDoc comment
+               replace(/^.*?\*\//, '').   // end of JSDoc comment
+               replace(/\\/g, '\\\\').    // replace backslashes
+               replace(/"/g, '\\"');      // replace quotes
   },
 
   isJSDoc: function (str) {
     'use strict';
     var matched;
 
-    if (this.inJSDoc && str.match(/^\s*\*/)) {
-      matched = true;
-      if (str.match(/^\s*\*\//)) {
+    if (this.inJSDoc) {
+      if (str.match(/\*\//)) {
         this.inJSDoc = false;
+        matched = true;
+      }
+      else {
+        matched = true;
       }
     } else if ((!this.inJSDoc) && str.match(/^\s*\/\*\*/)) {
       matched = true;
