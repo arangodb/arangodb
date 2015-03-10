@@ -147,7 +147,7 @@ namespace triagens {
         MUTEX_LOCKER(MutexNonce);
 
         if (TimestampNonces == 0) {
-          LOG_INFO("setting nonce hash size to %d", (int) SizeNonces);
+          LOG_TRACE("setting nonce hash size to %d", (int) SizeNonces);
           create(SizeNonces);
         }
 
