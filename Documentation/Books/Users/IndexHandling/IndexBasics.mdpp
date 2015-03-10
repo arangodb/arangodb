@@ -51,7 +51,7 @@ used to quickly find connections between vertex documents and is invoked when
 the connecting edges of a vertex are queried. 
 
 Edges indexes are used from within AQL when performing equality lookups on `_from`
-or `_to` values in an edge collections. There are also dedidacted functions to 
+or `_to` values in an edge collections. There are also dedicated functions to 
 find edges given their `_from` or `_to` values that will always make use of the 
 edges index:
 
