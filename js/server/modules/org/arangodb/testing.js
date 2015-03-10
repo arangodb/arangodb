@@ -680,8 +680,8 @@ function findTests () {
 }
 
 function runThere (options, instanceInfo, file) {
-  var r;
   try {
+    var r;
     var t;
     if (file.indexOf("-spec") === -1) {
       t = 'var runTest = require("jsunity").runTest; '+
@@ -690,8 +690,16 @@ function runThere (options, instanceInfo, file) {
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       t = 'var executeTestSuite = require("jasmine").executeTestSuite; '+
-          'return { status: executeTestSuite([' + JSON.stringify(file) + '],{"format": '+
-          JSON.stringify(jasmineReportFormat) + '}) };';
+          'try {' +
+          'return { status: executeTestSuite([' + JSON.stringify(file) + '], {"format": '+
+          JSON.stringify(jasmineReportFormat) + '}), message: "Success"};'+
+          ' } catch (e) {' +
+          'return {' +
+          '  status: false,' + 
+          '  message: e.message || String(e) || "unknown",' +
+          '  stack: e.stack' + 
+          '};' +
+          '}';
     }
     var o = makeAuthorisationHeaders(options);
     o.method = "POST";
@@ -700,17 +708,20 @@ function runThere (options, instanceInfo, file) {
     r = download(instanceInfo.url + "/_admin/execute?returnAsJSON=true",t,o);
     if (! r.error && r.code === 200) {
       r = JSON.parse(r.body);
+    } else {
+      return {
+        status: false,
+        message: r.body
+      };
     }
-    if (file.indexOf("-spec") !== -1) {
-      // remoting a jasmine suite... 
-      r = {status: r.status, message: ''};
-    }
+    return r;
+  } catch (e) {
+    return {
+      status: false,
+      message: e.message || String(e),
+      stack: e.stack
+    };
   }
-  catch (err) {
-    r = err;
-      throw(err);
-  }
-  return r;
 }
 
 
@@ -724,7 +735,16 @@ function runHere (options, instanceInfo, file) {
     else {
       var jasmineReportFormat = options.jasmineReportFormat || 'progress';
       var executeTestSuite = require("jasmine").executeTestSuite; 
-      result = executeTestSuite([ file ], { format: jasmineReportFormat });
+      try {
+        result = executeTestSuite([ file ], { format: jasmineReportFormat });
+      } catch (e) {
+        result = {
+          status: false,
+          message: e.message || String(e) || "unknown",
+          stack: e.stack
+        };
+        return result;
+      }
     }
     if (file.indexOf("-spec") !== -1) {
       result = {
