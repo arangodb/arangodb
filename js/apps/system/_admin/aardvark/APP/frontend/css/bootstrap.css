@@ -4904,8 +4904,8 @@ input[type="submit"].btn::-moz-focus-inner {
   top: 10%;
   left: 50%;
   z-index: 1050;
-  width: 560px;
-  margin-left: -280px;
+  width: 640px;
+  margin-left: -320px;
   background-color: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.3);
   -webkit-border-radius: 6px;
