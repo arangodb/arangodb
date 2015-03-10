@@ -1,19 +1,18 @@
 !CHAPTER Foxx
 
 In the recent movements of software development many companies of all sizes talk about
-moving away from large monolithic applications and switch over to a microservice based
-software architecture.
-Because it yields many benefits in terms of scaling and zero-downtime.
+moving away from large monolithic applications and switch over to a microservice based software architecture.
+Because microservices yield many benefits in terms of scaling and zero-downtime.
 
-During the design of foxx we followed the concepts and ideas of microservices.
+During the design of Foxx we followed the concepts and ideas of microservices.
 Our baseline is the definition by Martin Fowler and James Lewis given in their [microservice article](http://martinfowler.com/articles/microservices.html).
-The following table lists a mapping of microservice concepts and how they can be realized within foxx:
+The following table lists a mapping of microservice concepts and how they can be realized within Foxx:
 
 <table>
   <thead>
     <tr>
       <th>microservice</th>
-      <th>foxx</th>
+      <th>Foxx</th>
       <th>description</th>
     </tr>
   </thead>
@@ -111,14 +110,14 @@ The following table lists a mapping of microservice concepts and how they can be
   </tbody>
 </table>
 
-As you can see most concepts of microservices are natively available in foxx plus several additions that easy your development
+As you can see most concepts of microservices are natively available in Foxx plus several additions that easy your development
 process.
-That is why we like to call foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
+That is why we like to call Foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
 on top of ArangoDB.
 
 If this short introduction has piqued your interest you can find more details in the sections below.
 We recommend to start with Foxx in a nutshell which gives a really quick introduction in how to
-create and use your first foxx.
+create and use your first Foxx.
 All other sections will give very detailed informations about the features available and a peak behind the curtains.
 
 !SECTION Foxx in a nutshell
@@ -181,5 +180,5 @@ It will also explain how to move your application from a single server to an unl
 
 This chapter will present the more advanced capabilities of Foxx.
 It requires that you know the details presented in the chapters before.
-Here you will learn about foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
-Furthermore you will learn about background and periodical tasks in foxx applications.
+Here you will learn about Foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
+Furthermore you will learn about background and periodical tasks in Foxx applications.
