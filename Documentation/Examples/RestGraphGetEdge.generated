@@ -2,13 +2,13 @@ shell> curl --data-binary @- --dump - http://localhost:8529/_api/graph/graph/edg
 
 HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
-etag: 1218937966
+etag: 1220066499
 
 { 
   "edge" : { 
     "_id" : "edges/edge1", 
     "_key" : "edge1", 
-    "_rev" : "1218937966", 
+    "_rev" : "1220066499", 
     "_from" : "vertices/vert1", 
     "_to" : "vertices/vert2", 
     "$label" : null, 
