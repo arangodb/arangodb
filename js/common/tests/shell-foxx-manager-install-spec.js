@@ -356,4 +356,19 @@ describe("Foxx Manager install", function() {
 
   });
 
+  /*
+  it("checking marvolous comments", function() {
+    var mount = "unittest/comments";
+    FoxxManager.uninstall(mount, {force: true});
+    try {
+      FoxxManager.install(fs.join(basePath, "fanciful-comments"), mount);
+      expect(true).toBeTruthy();
+    } catch (e) {
+      expect(true).toBeFalsy("Failed to install app with comments.");
+      expect(e).toBeUndefined();
+    }
+    FoxxManager.uninstall(mount, {force: true});
+  });
+  */
+
 });
