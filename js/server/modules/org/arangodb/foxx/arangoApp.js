@@ -229,6 +229,7 @@ var computeRootAppPath = function(mount, isValidation) {
       path: this._path,
       options: this._options,
       mount: this._mount,
+      root: this._root,
       isSystem: this._isSystem,
       isDevelopment: this._isDevelopment
     };
