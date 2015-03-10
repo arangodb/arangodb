@@ -46,7 +46,7 @@ var foxxes = new (require("lib/foxxes").Foxxes)();
 var FoxxManager = require("org/arangodb/foxx/manager");
 
 controller.get("/index.html", function(req, res) {
-  res.status(303);
+  res.status(301);
   if (cluster.dispatcherDisabled()) {
     res.set("Location", "standalone.html");
   } else {
