@@ -128,7 +128,8 @@ extend(Preprocessor.prototype, {
                replace(/^(.*?)\*\/.*$/, '$1').  // end of JSDoc comment
                replace(/^\s*\*/, '').           // continuation of JSDoc comment
                replace(/\\/g, '\\\\').          // replace backslashes
-               replace(/"/g, '\\"');            // replace quotes
+               replace(/"/g, '\\"').            // replace quotes
+               trim();                          // remove leading and trailing spaces
   },
 
   isJSDoc: function (str) {
