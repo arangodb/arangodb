@@ -164,8 +164,6 @@
     "/worker-json.js" : "frontend/src/worker-json.js"
   },
 
-  "defaultDocument": "redirect",
-
   "lib": "."
 }
 
