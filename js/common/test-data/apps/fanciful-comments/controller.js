@@ -21,11 +21,6 @@
   controller.get("/c", function() {});
 
   /** A comment
-   * inline with controller*/ controller.get("/d", function() {
- 
- });
-
-  /** A comment
    Containing 2 * 3 = 5
    */
   controller.get("/e", function() {});
@@ -66,4 +61,18 @@
 stuff     */
   controller.get("/k", function() {});
 
+  /** This
+   * "is" 
+   * With quotation '' marks
+   */
+  controller.get("/l", function() {});
+
+  /** valid
+   * comment
+   */
+  controller.get("/m", function() {
+    /** this
+     * shall be ignored
+     */
+  });
 }());
