@@ -17,7 +17,7 @@
         path = path.slice(0, path.length - 2).join("/");
 
         if (username) {
-            res.set("Location", path + "/changePassword.html" + "?n=" + username.user + "&t=" + token);
+            res.set("Location", path + "/changePassword.html" + "?n=" + encodeURIComponent(username.user) + "&t=" + token);
         } else {
             res.set("Location", path + "/invalid.html");
         }
@@ -32,7 +32,7 @@
         path = url.parse(req.url).pathname.split("/");
         path = path.slice(0, path.length - 1).join("/");
 
-        if (users.changePassword(token, password)) {
+        if (users.changePassword(decodeURIComponent(token), decodeURIComponent(password))) {
             res.set("Location", path + "/confirmed.html");
         } else {
             res.set("Location", path + "/invalid.html");
