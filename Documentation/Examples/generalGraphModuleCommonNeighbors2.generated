@@ -12,21 +12,21 @@ arangosh> graph._commonNeighbors(
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "1070040174", 
+          "_rev" : "1070447811", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "1070629998", 
+          "_rev" : "1071037635", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "1070826606", 
+          "_rev" : "1071234243", 
           "isCapital" : true, 
           "population" : 4000000 
         } 
@@ -35,14 +35,14 @@ arangosh> graph._commonNeighbors(
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "1070629998", 
+          "_rev" : "1071037635", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "1070826606", 
+          "_rev" : "1071234243", 
           "isCapital" : true, 
           "population" : 4000000 
         } 
@@ -51,7 +51,7 @@ arangosh> graph._commonNeighbors(
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "1070629998", 
+          "_rev" : "1071037635", 
           "isCapital" : false, 
           "population" : 80000 
         } 

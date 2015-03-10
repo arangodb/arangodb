@@ -6,15 +6,15 @@ shell> curl -X PUT --data-binary @- --dump - http://localhost:8529/_api/gharial/
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1492288622
+etag: 1481030851
 
 { 
   "error" : false, 
   "code" : 202, 
   "vertex" : { 
     "_id" : "female/alice", 
-    "_rev" : "1492288622", 
-    "_oldRev" : "1489798254", 
+    "_rev" : "1481030851", 
+    "_oldRev" : "1478540483", 
     "_key" : "alice" 
   } 
 }
