@@ -361,7 +361,6 @@ describe("Foxx Manager install", function() {
     try {
       FoxxManager.uninstall(mount, {force: true});
     } catch (e) {
-      throw e;
       expect(e).toBeUndefined();
     }
     try {
