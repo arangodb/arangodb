@@ -10,22 +10,22 @@
       var result;
       $.ajax("whoAmI", {async:false}).done(
         function(data) {
-        result = data.name;
-      }
+          result = data.user;
+        }
       );
+
       this.activeUser = result;
 
-      if (this.activeUser === 0 || this.activeUser === undefined || this.activeUser === null) {
+      if (this.activeUser === false) {
         this.activeUser = "root";
       }
-
     },
 
     url: '/_api/user/',
 
     model: ArangoQuery,
 
-    activeUser: 0,
+    activeUser: null,
 
     parse: function(response) {
       var self = this, toReturn;

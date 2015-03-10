@@ -59,7 +59,7 @@
         name = null,
         active = false,
         currentUser = null;
-      if (username !== null) {
+      if (username) {
         currentUser = this.userCollection.findWhere({user: username});
         currentUser.set({loggedIn : true});
         name = currentUser.get("extra").name;

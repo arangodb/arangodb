@@ -34,6 +34,12 @@
       controller = new FoxxController(applicationContext),
       FoxxManager = require("org/arangodb/foxx/manager");
 
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "aardvark_sid"}
+  });
+
   controller.get("/devMode", function(req, res) {
     res.json(false);
   });

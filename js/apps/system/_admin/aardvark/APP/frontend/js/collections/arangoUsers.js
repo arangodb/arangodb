@@ -5,7 +5,7 @@
 window.ArangoUsers = Backbone.Collection.extend({
   model: window.Users,
 
-  activeUser: "",
+  activeUser: null,
   activeUserSettings: {
     "query" : {},
     "shell" : {},
@@ -32,8 +32,22 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   login: function (username, password) {
-    this.activeUser = username;
-    return true;
+    var result = null;
+    $.ajax("login", {
+      async: false,
+      method: "POST",
+      data: JSON.stringify({
+        username: username,
+        password: password
+      }),
+      dataType: "json"
+    }).done(
+      function (data) {
+        result = data.user;
+      }
+    );
+    this.activeUser = result;
+    return this.activeUser;
   },
 
   setSortingDesc: function(yesno) {
@@ -41,14 +55,11 @@ window.ArangoUsers = Backbone.Collection.extend({
   },
 
   logout: function () {
-    this.activeUser = undefined;
+    $.ajax("logout", {async:false,method:"POST"});
+    this.activeUser = null;
     this.reset();
-    $.ajax("unauthorized", {async:false}).error(
-      function () {
-        window.App.navigate("");
-        window.location.reload();
-      }
-    );
+    window.App.navigate("");
+    window.location.reload();
   },
 
   setUserSettings: function (identifier, content) {
@@ -104,7 +115,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     var result;
     $.ajax("whoAmI", {async:false}).done(
       function(data) {
-        result = data.name;
+        result = data.user;
       }
     );
     this.activeUser = result;

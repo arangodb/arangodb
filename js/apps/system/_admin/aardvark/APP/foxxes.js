@@ -51,6 +51,12 @@
   var fs = require("fs");
   var defaultThumb = require("/lib/defaultThumbnail").defaultThumb;
 
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "aardvark_sid"}
+  });
+
   controller.extend({
     installer: function() {
       this.queryParam("mount", mountPoint);
