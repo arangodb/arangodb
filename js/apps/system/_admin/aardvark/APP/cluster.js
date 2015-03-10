@@ -37,6 +37,12 @@
     load = require("internal").download,
     _ = require("underscore");
 
+  controller.activateSessions({
+    type: "cookie",
+    autoCreateSession: true,
+    cookie: {name: "aardvark_sid"}
+  });
+
   /** Plan and start a new cluster
    *
    * This will plan a new cluster with the information
