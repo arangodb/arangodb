@@ -124,7 +124,6 @@
   * [Cluster](Foxx/Cluster/README.md)
     * [Install](Foxx/Cluster/Install.md)
     * [Setup & Teardown](Foxx/Cluster/Scripts.md)
-    * [Microservices](Foxx/Cluster/MicroServices.md)
   * [Advanced Features](Foxx/Advanced/README.md)
     * [Exports](Foxx/Advanced/Exports.md)
     * [Dependency Injection](Foxx/Advanced/Injection.md)
