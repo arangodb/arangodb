@@ -601,6 +601,8 @@
 ///   No foxx found at this location
 /// - 3009: @LIT{App not found}
 ///   No app found at this mountpoint
+/// - 3010: @LIT{App not configured}
+///   The app has to be configured before it can be used
 /// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
@@ -3188,6 +3190,16 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APP_NOT_FOUND                                           (3009)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3010: ERROR_APP_NEEDS_CONFIGURATION
+///
+/// App not configured
+///
+/// The app has to be configured before it can be used
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_APP_NEEDS_CONFIGURATION                                 (3010)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS

@@ -773,10 +773,15 @@
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structured to flat commandline arguments
+/// @param longOptsEqual whether long-options are in the type --opt=value 
+///                      or --opt value
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.toArgv = function (structure) {
+  exports.toArgv = function (structure, longOptsEqual) {
     "use strict";
+    if (typeof(longOptsEqual) === 'undefined') {
+      longOptsEqual = false;
+    }
     var vec = [];
     for (var key in structure) {
       if (structure.hasOwnProperty(key)) {
@@ -798,8 +803,13 @@
           vec = vec.concat(structure[key]);
         }
         else {
-          vec.push('--' + key);
-          vec.push(structure[key]);
+          if (longOptsEqual) {
+            vec.push('--' + key + '=' + structure[key]);
+          }
+          else {
+            vec.push('--' + key);
+            vec.push(structure[key]);
+          }
         }
       }
     }
@@ -818,9 +828,9 @@
         var n = option.indexOf(':');
         var topOption = option.slice(0, n);
         if (! ret.hasOwnProperty(topOption)) {
-          ret.topOption = {};
+          ret[topOption] = {};
         }
-        setOption(ret.topOption, option.slice(n, option.length), value);
+        setOption(ret[topOption], option.slice(n + 1, option.length), value);
       }
       else if (argv[i + 1] === 'true') {
         ret[option] = true;
