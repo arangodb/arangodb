@@ -60,6 +60,30 @@
   var throwDownloadError = arangodb.throwDownloadError;
   var throwFileNotFound = arangodb.throwFileNotFound;
 
+  var manifestSchema = {
+    "assets":             [ false, "object" ],
+    "author":             [ false, "string" ],
+    "configuration":      [ false, "object" ],
+    "contributors":       [ false, "array" ],
+    "controllers":        [ false, "object" ],
+    "defaultDocument":    [ false, "string" ],
+    "description":        [ true, "string" ],
+    "engines":            [ false, "object" ],
+    "files":              [ false, "object" ],
+    "isSystem":           [ false, "boolean" ],
+    "keywords":           [ false, "array" ],
+    "lib":                [ false, "string" ],
+    "license":            [ false, "string" ],
+    "name":               [ true, "string" ],
+    "repository":         [ false, "object" ],
+    "setup":              [ false, "string" ],
+    "teardown":           [ false, "string" ],
+    "thumbnail":          [ false, "string" ],
+    "version":            [ true, "string" ],
+    "rootElement":        [ false, "boolean" ],
+    "exports":            [ false, ["object", "string"] ]
+  };
+
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private variables
   // -----------------------------------------------------------------------------
@@ -198,36 +222,13 @@
 
     // Validate all attributes specified in the manifest
     // the following attributes are allowed with these types...
-    var expected = {
-      "assets":             [ false, "object" ],
-      "author":             [ false, "string" ],
-      "configuration":      [ false, "object" ],
-      "contributors":       [ false, "array" ],
-      "controllers":        [ false, "object" ],
-      "defaultDocument":    [ false, "string" ],
-      "description":        [ true, "string" ],
-      "engines":            [ false, "object" ],
-      "files":              [ false, "object" ],
-      "isSystem":           [ false, "boolean" ],
-      "keywords":           [ false, "array" ],
-      "lib":                [ false, "string" ],
-      "license":            [ false, "string" ],
-      "name":               [ true, "string" ],
-      "repository":         [ false, "object" ],
-      "setup":              [ false, "string" ],
-      "teardown":           [ false, "string" ],
-      "thumbnail":          [ false, "string" ],
-      "version":            [ true, "string" ],
-      "rootElement":        [ false, "boolean" ],
-      "exports":            [ false, ["object", "string"] ]
-    };
 
-    var failed = !Object.keys(expected).every(function (key) {
+    var failed = !Object.keys(manifestSchema).every(function (key) {
       var valid = true;
 
       if (manifest.hasOwnProperty(key)) {
         // attribute is present in manifest, now check data type
-        var expectedType = expected[key][1];
+        var expectedType = manifestSchema[key][1];
         var actualType = Array.isArray(manifest[key]) ? "array" : typeof(manifest[key]);
 
         if (!Array.isArray(expectedType)) {
@@ -247,7 +248,7 @@
         }
       } else {
         // attribute not present in manifest
-        valid = expected[key][0];
+        valid = manifestSchema[key][0];
 
         if (!valid) {
           // required attribute
@@ -269,7 +270,7 @@
 
     // additionally check if there are superfluous attributes in the manifest
     Object.keys(manifest).forEach(function (key) {
-      if (!expected.hasOwnProperty(key)) {
+      if (!manifestSchema.hasOwnProperty(key)) {
         console.warn("Manifest '%s' contains an unknown attribute '%s'",
           filename,
           key);
