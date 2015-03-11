@@ -1,3 +1,11 @@
+v2.5.1 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
+
+
 v2.5.0 (2015-03-09)
 -------------------
 
