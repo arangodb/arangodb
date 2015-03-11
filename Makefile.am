@@ -479,14 +479,14 @@ if ENABLE_HTML2TEXT
 BUILT_SOURCES += README
 
 README: README.md
-	fgrep -v "[Build Status]" $< \
-		| fgrep -v "ArangoDB-Logo" \
-		| @MARKDOWN_EXEC@ \
+	fgrep -v "[Build Status]" $< | fgrep -v "ArangoDB-Logo" > $@.tmp1
+	@MARKDOWN_EXEC@ $@.tmp1 \
 		| @HTML2TEXT_EXEC@ -style pretty -nobs \
 		| sed -e 's:&gt;:>:g' \
                 | awk 'BEGIN { s = 0; } { if (length($0) == 0) {if (s != 0) print $0;} else {s = 1; print $0; }}' \
-		> $@.tmp
-	mv $@.tmp $@
+		> $@.tmp2
+	mv $@.tmp2 $@
+	rm $@.tmp1
 
 endif
 endif
