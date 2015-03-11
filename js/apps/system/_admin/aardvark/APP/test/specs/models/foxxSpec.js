@@ -198,13 +198,13 @@
       var testMount = "/this/is/a/test/mount";
       spyOn(window, "open");
       var dbName = "foxx";
-      spyOn(arango, "getDatabaseName").andReturn(dbname);
+      spyOn(window.arango, "getDatabaseName").andReturn(dbName);
       var myFoxx = new window.Foxx({
         mount: testMount
       });
       myFoxx.download();
       expect(window.open).toHaveBeenCalledWith(
-        "/_db/" + dbname + "/_admin/aardvark/foxxes/download/zip?mount=" + myFoxx.encodedMount()
+        "/_db/" + dbName + "/_admin/aardvark/foxxes/download/zip?mount=" + myFoxx.encodedMount()
       );
 
     });

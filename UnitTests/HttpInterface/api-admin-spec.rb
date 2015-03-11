@@ -117,14 +117,17 @@ describe ArangoDB do
 ################################################################################
   
     context "dealing with the admin interface:" do
+
       it "checks whether the admin interface is available at /_admin/aardvark/index.html" do
         cmd = "/_admin/aardvark/index.html"
-        doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)
-
-        # check response code
-        doc.code.should eq(200)
+        begin 
+          doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain, :no_follow => true)
+        rescue HTTParty::RedirectionTooDeep => e
+          # check response code
+          e.response.code.should eq("301")
+        end
       end
-      
+
       it "checks whether the admin interface is available at /_admin/aardvark/cluster.html" do
         cmd = "/_admin/aardvark/cluster.html"
         doc = ArangoDB.log_get("admin-interface-get", cmd, :format => :plain)

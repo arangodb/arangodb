@@ -11,21 +11,21 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "1077249134", 
+          "_rev" : "1077722307", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "1077838958", 
+          "_rev" : "1078312131", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "1078035566", 
+          "_rev" : "1078508739", 
           "isCapital" : true, 
           "population" : 4000000 
         } 
@@ -34,14 +34,14 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "1077838958", 
+          "_rev" : "1078312131", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "frenchCity/Paris", 
           "_key" : "Paris", 
-          "_rev" : "1078035566", 
+          "_rev" : "1078508739", 
           "isCapital" : true, 
           "population" : 4000000 
         } 
@@ -50,7 +50,7 @@ arangosh> db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "1077838958", 
+          "_rev" : "1078312131", 
           "isCapital" : false, 
           "population" : 80000 
         } 

@@ -2,7 +2,7 @@ shell> curl --data-binary @- --dump - http://localhost:8529/_api/gharial/social/
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1485603950
+etag: 1474346179
 
 { 
   "error" : false, 
@@ -10,7 +10,7 @@ etag: 1485603950
   "vertex" : { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "1485603950", 
+    "_rev" : "1474346179", 
     "name" : "Alice" 
   } 
 }

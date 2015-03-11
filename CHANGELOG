@@ -1,3 +1,19 @@
+v2.5.1 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
+
+
+v2.5.0 (2015-03-09)
+-------------------
+
+* installer fixes for Windows
+
+* fix for downloading Foxx
+
+
 v2.5.0-beta4 (2015-03-05)
 -------------------------
 
@@ -312,7 +328,17 @@ v2.5.0-beta2 (2015-02-23)
 * Standard Errors can now contain custom messages.
 
 
-v2.4.4 (2015-XX-XX)
+v2.4.5 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
+
+* fixed comment parsing in Foxx controllers
+
+
+v2.4.4 (2015-02-24)
 -------------------
 
 * fixed the generation template for foxx apps. It now does not create deprecated functions anymore
