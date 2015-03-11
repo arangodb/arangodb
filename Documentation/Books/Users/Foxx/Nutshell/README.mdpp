@@ -12,6 +12,7 @@
 * [Update a document](#update-document)
 * [Delete a document](#delete-document)
 * [Execute a query](#execute-query)
+* [Conclusion](#conclusion)
 
 <a id="quick-start"></a>
 !SECTION Quick Start
@@ -28,14 +29,15 @@ Start the interface from <a href="http://localhost:8529" target="_blank">http://
 
 <a id="new-application" />
 !SECTION Create a new application
-1. Click on `Add Application` / `New App`.
-2. You will be offered a dialog to fill in some information about your application.
+1. Click on `Add Application`.
+2. In the New App tab, you will be offered a dialog to fill in some information about your application.
 3. For this tutorial we will use the following information:
-  * <strong>Author:</strong> ArangoDB
-  * <strong>Name:</strong> firstApp
-  * <strong>Description:</strong> This is my first Foxx app
-  * <strong>License:</strong> Apache 2
-  * <strong>Collections:</strong> firstCollection
+  * **Author:** ArangoDB
+  * **Name:** firstApp
+  * **Description:** This is my first Foxx app
+  * **License:** Apache 2
+  * **Collections:** firstCollection
+4. Click Generate
 
 !SUBSECTION Some details you should know:
 * The information entered here is basically meta information that will be displayed in the web interface.
@@ -68,7 +70,7 @@ In order to develop your Foxx you now have two options. If you do not have acces
   * You can then click on `upgrade`, select `Zip` and upload your zip file.
   * This will replace the Foxx stored in ArangoDB by your own implementation.
 
-![Download and Upgrade the Application](foxx_download_upgrade.png)
+  ![Download and Upgrade the Application](foxx_download_upgrade.png)
 
 1. Use Foxx development mode.
   * Active the development mode by clicking on `Set Dev`.
@@ -77,7 +79,7 @@ In order to develop your Foxx you now have two options. If you do not have acces
   * All changes to these files will be applied directly as long as the development mode is active.
   * Deactivate the development mode by clicking on `Set Pro`.
 
-![Activate Development Mode and App path](foxx_development.png)
+  ![Activate Development Mode and App path](foxx_development.png)
 
 <a id="folder-structure" />
 !SUBSECTION App folder structure
@@ -222,7 +224,7 @@ You can also try to store documents having different attributes or not having na
 Some details you should know about the code:
 
 * `controller.post(path, callback)` creates a `POST` request handler on `path`. It will execute `callback` whenever triggered.
-* `req.params()` allwos to access all parameters, including the body, sent with the request.
+* `req.params()` allows to access all parameters, including the body, sent with the request.
 * `FirstCollection_repo.save()` will store a JSON document into our collection
 * `forClient()` will create JSON output for the client
 * `bodyParam` defines that there is an body expected in each request and the body should correspond to a valid FirstCollection object. All other bodies will be rejected and a documentation will be generated for this body. It can be accessed in the request parameters via it's name 'firstCollection'
@@ -464,3 +466,11 @@ Some details you should know about the code:
 * `@collection` is a bindParameter for collections and will be replaced in the query.
 * `name` is a bindParameter for a variable value and will be replaced in the query.
 
+<a id="conclusion" />
+!SUBSECTION Conclusion
+
+Now we have managed to create a very basic CRUD based Foxx.
+It is a REST-based wrapper arpund the interface of one of ArangoDBs collections and you can now start to include custom functionality into it.
+The first custom function we have created already is the byName query.
+It has stored an AQL on the server-side keeping your application clean of it.
+Now you can also access this query from several applications increasing the reusability of code.
