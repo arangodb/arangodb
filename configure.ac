@@ -25,6 +25,17 @@ AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
 
+if python -c '
+import sys
+if sys.version_info.major != 2:
+    exit(0)
+else:
+    exit(1)
+'; then
+   echo "Compiling V8 requires a python version 2; please adjust your " `which python`
+   exit 1
+fi
+
 
 dnl ----------------------------------------------------------------------------
 dnl grab the configure command, options and flags and store them in m4 variables
