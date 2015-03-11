@@ -219,7 +219,7 @@
       "thumbnail":          [ false, "string" ],
       "version":            [ true, "string" ],
       "rootElement":        [ false, "boolean" ],
-      "exports":            [ false, "object" ]
+      "exports":            [ false, ["object", "string"] ]
     };
 
     var att, failed = false;
@@ -232,11 +232,15 @@
           expectedType = expected[att][1];
           actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
 
-          if (actualType !== expectedType) {
+          function matchesType(type) {
+            return actualType === type;
+          }
+
+          if (!(Array.isArray(expectedType) ? expectedType.some(matchesType) : actualType === expectedType)) {
             console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
               filename,
               actualType,
-              expectedType,
+              String(expectedType),
               att);
             failed = true;
           }
