@@ -61,6 +61,7 @@ var optionsDocumentation = [
   '   - `skipRanges`: if set to true the ranges tests are skipped',
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
+  '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -112,6 +113,7 @@ var optionsDefaults = { "cluster": false,
                         "skipTimeCritical": false,
                         "skipAql": false,
                         "skipRanges": false,
+                        "skipLogAnalysis": false,
                         "username": "root",
                         "password": "",
                         "test": undefined,
@@ -507,7 +509,9 @@ function shutdownInstance (instanceInfo, options) {
   }
   if (options.cluster) {
     var rc = instanceInfo.kickstarter.shutdown();
-    instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
+    if (!options.skipLogAnalysis) {
+      instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
+    }
     if (options.cleanup) {
       instanceInfo.kickstarter.cleanup();
     }
@@ -574,7 +578,9 @@ function shutdownInstance (instanceInfo, options) {
     else {
       print("Server already dead, doing nothing.");
     }
-    instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
+    if (!options.skipLogAnalysis) {
+      instanceInfo.importantLogLines = readImportantLogLines(instanceInfo.tmpDataDir);
+    }
   }
 
   cleanupDirectories = cleanupDirectories.concat([instanceInfo.tmpDataDir, instanceInfo.flatTmpDataDir]);
@@ -902,7 +908,8 @@ function performTests(options, testList, testname, remote) {
     shutdownInstance(instanceInfo,options);
   }
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -949,7 +956,8 @@ testFuncs.single_server = function (options) {
     }
     shutdownInstance(instanceInfo,options);
     print("done.");
-    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+    if ((!options.skipLogAnalysis) &&
+        instanceInfo.hasOwnProperty('importantLogLines') &&
         Object.keys(instanceInfo.importantLogLines).length > 0) {
       print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
     }
@@ -997,7 +1005,8 @@ testFuncs.single_client = function (options) {
     }
     shutdownInstance(instanceInfo,options);
     print("done.");
-    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+    if ((!options.skipLogAnalysis) &&
+        instanceInfo.hasOwnProperty('importantLogLines') &&
         Object.keys(instanceInfo.importantLogLines).length > 0) {
       print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
     }
@@ -1118,7 +1127,8 @@ testFuncs.shell_client = function(options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo, options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1270,7 +1280,8 @@ function rubyTests (options, ssl) {
   fs.remove(tmpname);
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1419,7 +1430,8 @@ testFuncs.importing = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1484,7 +1496,8 @@ testFuncs.foxx_manager = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1535,7 +1548,8 @@ testFuncs.dump = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1599,7 +1613,8 @@ testFuncs.arangob = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1620,7 +1635,8 @@ testFuncs.authentication = function (options) {
   print("Shutting down...");
   shutdownInstance(instanceInfo,options);
   print("done.");
-  if (instanceInfo.hasOwnProperty('importantLogLines') &&
+  if ((!options.skipLogAnalysis) &&
+      instanceInfo.hasOwnProperty('importantLogLines') &&
       Object.keys(instanceInfo.importantLogLines).length > 0) {
     print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
   }
@@ -1719,7 +1735,8 @@ testFuncs.authentication_parameters = function (options) {
 
     print("Shutting down " + authTestNames[test] + " test...");
     shutdownInstance(instanceInfo, options);
-    if (instanceInfo.hasOwnProperty('importantLogLines') &&
+    if ((!options.skipLogAnalysis) &&
+        instanceInfo.hasOwnProperty('importantLogLines') &&
         (instanceInfo.importantLogLines.length > 0)) {
       print("Found messages in the server logs: \n" + yaml.safeDump(instanceInfo.importantLogLines));
     }
