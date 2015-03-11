@@ -297,7 +297,7 @@ function optimizerCountTestSuite () {
     testCountShaped : function () {
       var query = "FOR j IN " + c.name() + " COLLECT doc = j WITH COUNT INTO count RETURN doc";
 
-      var results = AQL_EXECUTE(query), x = 0;
+      var results = AQL_EXECUTE(query);
       // expectation is that we get 1000 different docs and do not crash (issue #1265)
       assertEqual(1000, results.json.length);
     }
