@@ -66,7 +66,10 @@
     author: joi.string().allow("").default(""),
     configuration: joi.object().optional(),
     contributors: joi.array().optional(),
-    controllers: joi.object().optional(),
+    controllers: joi.alternatives().try(
+      joi.string().optional(),
+      joi.object().optional()
+    ),
     defaultDocument: joi.string().allow("").optional(),
     description: joi.string().allow("").default(""),
     engines: joi.object().optional(),
