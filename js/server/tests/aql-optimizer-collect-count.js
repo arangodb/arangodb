@@ -288,6 +288,18 @@ function optimizerCountTestSuite () {
       var plan = AQL_EXPLAIN(query).plan;
       // must have a SortNode
       assertNotEqual(-1, plan.nodes.map(function(node) { return node.type; }).indexOf("SortNode"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test count shaped
+////////////////////////////////////////////////////////////////////////////////
+
+    testCountShaped : function () {
+      var query = "FOR j IN " + c.name() + " COLLECT doc = j WITH COUNT INTO count RETURN doc";
+
+      var results = AQL_EXECUTE(query), x = 0;
+      // expectation is that we get 1000 different docs and do not crash (issue #1265)
+      assertEqual(1000, results.json.length);
     }
 
   };
