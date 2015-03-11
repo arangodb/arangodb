@@ -39,6 +39,7 @@
 
   var db = require("internal").db;
   var fs = require("fs");
+  var joi = require("joi");
   var utils = require("org/arangodb/foxx/manager-utils");
   var store = require("org/arangodb/foxx/store");
   var console = require("console");
@@ -61,27 +62,30 @@
   var throwFileNotFound = arangodb.throwFileNotFound;
 
   var manifestSchema = {
-    "assets":             [ false, "object" ],
-    "author":             [ false, "string" ],
-    "configuration":      [ false, "object" ],
-    "contributors":       [ false, "array" ],
-    "controllers":        [ false, "object" ],
-    "defaultDocument":    [ false, "string" ],
-    "description":        [ true, "string" ],
-    "engines":            [ false, "object" ],
-    "files":              [ false, "object" ],
-    "isSystem":           [ false, "boolean" ],
-    "keywords":           [ false, "array" ],
-    "lib":                [ false, "string" ],
-    "license":            [ false, "string" ],
-    "name":               [ true, "string" ],
-    "repository":         [ false, "object" ],
-    "setup":              [ false, "string" ],
-    "teardown":           [ false, "string" ],
-    "thumbnail":          [ false, "string" ],
-    "version":            [ true, "string" ],
-    "rootElement":        [ false, "boolean" ],
-    "exports":            [ false, ["object", "string"] ]
+    assets: joi.object().optional(),
+    author: joi.string().allow("").default(""),
+    configuration: joi.object().optional(),
+    contributors: joi.array().optional(),
+    controllers: joi.object().optional(),
+    defaultDocument: joi.string().allow("").optional(),
+    description: joi.string().allow("").default(""),
+    engines: joi.object().optional(),
+    exports: joi.alternatives().try(
+      joi.string().optional(),
+      joi.object().optional()
+    ),
+    files: joi.object().optional(),
+    isSystem: joi.boolean().default(false),
+    keywords: joi.array().optional(),
+    lib: joi.string().optional(),
+    license: joi.string().optional(),
+    name: joi.string().required(),
+    repository: joi.object().optional(),
+    setup: joi.string().optional(),
+    teardown: joi.string().optional(),
+    thumbnail: joi.string().optional(),
+    version: joi.string().required(),
+    rootElement: joi.boolean().default(false)
   };
 
   // -----------------------------------------------------------------------------
@@ -209,73 +213,52 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var checkManifest = function(filename, manifest) {
-    // add some default attributes
-    if (!manifest.hasOwnProperty("author")) {
-      // add a default (empty) author
-      manifest.author = "";
-    }
+    var valid = true;
 
-    if (!manifest.hasOwnProperty("description")) {
-      // add a default (empty) description
-      manifest.description = "";
-    }
-
-    // Validate all attributes specified in the manifest
-    // the following attributes are allowed with these types...
-
-    var failed = !Object.keys(manifestSchema).every(function (key) {
-      var valid = true;
-
-      if (manifest.hasOwnProperty(key)) {
-        // attribute is present in manifest, now check data type
-        var expectedType = manifestSchema[key][1];
-        var actualType = Array.isArray(manifest[key]) ? "array" : typeof(manifest[key]);
-
-        if (!Array.isArray(expectedType)) {
-          valid = (actualType === expectedType);
+    Object.keys(manifestSchema).forEach(function (key) {
+      var schema = manifestSchema[key];
+      var value = manifest[key];
+      var result = joi.validate(value, schema);
+      if (result.value !== undefined) {
+        manifest[key] = result.value;
+      }
+      if (result.error) {
+        valid = false;
+        if (value === undefined) {
+          console.error(
+            "Manifest '%s' %s for attribute '%s'",
+            filename,
+            result.error.message,
+            key
+          );
         } else {
-          valid = expectedType.some(function (type) {
-            return actualType === type;
-          });
-        }
-
-        if (!valid) {
-          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
+          console.error(
+            "Manifest '%s' %s (%s) for attribute '%s'",
             filename,
-            actualType,
-            String(expectedType),
-            key);
-        }
-      } else {
-        // attribute not present in manifest
-        valid = manifestSchema[key][0];
-
-        if (!valid) {
-          // required attribute
-          console.error("Manifest '%s' does not provide required attribute '%s'",
-            filename,
-            key);
+            result.error.message,
+            manifest[key],
+            key
+          );
         }
       }
-
-      return valid;
     });
 
-    if (failed) {
+    Object.keys(manifest).forEach(function (key) {
+      if (!manifestSchema[key]) {
+        console.warn(
+          "Manifest '%s' contains an unknown attribute '%s'",
+          filename,
+          key
+        );
+      }
+    });
+
+    if (!valid) {
       throw new ArangoError({
         errorNum: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code,
         errorMessage: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.message
       });
     }
-
-    // additionally check if there are superfluous attributes in the manifest
-    Object.keys(manifest).forEach(function (key) {
-      if (!manifestSchema.hasOwnProperty(key)) {
-        console.warn("Manifest '%s' contains an unknown attribute '%s'",
-          filename,
-          key);
-      }
-    });
   };
 
 
