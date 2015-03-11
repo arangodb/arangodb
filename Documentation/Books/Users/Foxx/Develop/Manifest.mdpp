@@ -1,7 +1,7 @@
 !CHAPTER The Manifest File
 
-In the **manifest.json** you define the components of your application. 
-The content is a JSON object with the following attributes (not all 
+In the **manifest.json** you define the components of your application.
+The content is a JSON object with the following attributes (not all
 attributes are required though):
 
 * **assets**: Deliver preprocessed files
@@ -9,7 +9,7 @@ attributes are required though):
 * **contributors**: An array containing objects, each represents a contributor (with **name** and optional **email**)
 * **controllers**: Map routes to FoxxControllers
 * **exports**: Map names to Foxx exports
-* **defaultDocument**: The default document when the applicated root (**/**) is called (defaults to **index.html**)
+* **defaultDocument**: The default document when the application's root (`/`) is called (defaults to `"index.html"`)
 * **description**: A short description of the application (Meta information)
 * **engines**: Should be an object with **arangodb** set to the ArangoDB version your Foxx app is compatible with
 * **files**: Deliver files
@@ -19,14 +19,14 @@ attributes are required though):
 * **license**: Short form of the license (MIT, GPL...)
 * **name**: Name of the application (Meta information)
 * **repository**: An object with information about where you can find the repository: **type** and **url**
-* **setup**: Path to a setup script
+* **scripts**: An object with script names mapped to filenames, e.g. your app's **setup** and **teardown** scripts
 * **teardown**: Path to a teardown script
 * **thumbnail**: Path to a thumbnail that represents the application (Meta information)
 * **version**: Current version of the application (Meta information)
 
 If you install an application using the Foxx manager or are using the
 development mode, your manifest will be checked for completeness and common errors.
-You should have a look at the server log files after changing a manifest file to 
+You should have a look at the server log files after changing a manifest file to
 get informed about potential errors in the manifest.
 
 A more complete example for a Manifest file:
@@ -58,8 +58,10 @@ A more complete example for a Manifest file:
     }
   },
 
-  "setup": "scripts/setup.js",
-  "teardown": "scripts/teardown.js"
+  "scripts": {
+    "setup": "scripts/setup.js",
+    "teardown": "scripts/teardown.js"
+  }
 }
 ```
 
@@ -89,9 +91,30 @@ data even after removing an application. It's up to you to decide what to do.
 
 You can add multiple controllers in one manifest this way.
 
+If **controllers** is set to a string instead, it will be treated as the **value**
+with the **key** being implicitly set to `"/"` (i.e. the root of your app's mount point).
+
+In other words, the following:
+
+```json
+{
+  "controllers": "my-controllers.js"
+}
+```
+
+is equivalent to this:
+
+```js
+{
+  "controllers": {
+    "/": "my-controllers.js"
+  }
+}
+```
+
 !SUBSECTION The files
 
-Deliver all files in a certain folder without modifying them. You can deliver 
+Deliver all files in a certain folder without modifying them. You can deliver
 text files as well as binaries:
 
 ```js
@@ -102,7 +125,7 @@ text files as well as binaries:
 
 !SUBSECTION The assets
 
-The value for the asset key is an object consisting of paths that are matched 
+The value for the asset key is an object consisting of paths that are matched
 to the files they are composed of. Let's take the following example:
 
 ```js
