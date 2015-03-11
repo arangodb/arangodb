@@ -61,29 +61,84 @@
   var throwDownloadError = arangodb.throwDownloadError;
   var throwFileNotFound = arangodb.throwFileNotFound;
 
+  // Regular expressions for joi patterns
+  var RE_FQPATH = /^\//;
+  var RE_EMPTY = /^$/;
+  var RE_NOT_FQPATH = /^[^\/]/;
+  var RE_NOT_EMPTY = /./;
+
   var manifestSchema = {
-    assets: joi.object().optional(),
+    assets: (
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, (
+        joi.object().required()
+        .keys({
+          files: (
+            joi.array().required()
+            .items(joi.string().required())
+          ),
+          contentType: joi.string().optional()
+        })
+      ))
+    ),
     author: joi.string().allow("").default(""),
-    configuration: joi.object().optional(),
+    configuration: (
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, (
+        joi.object().required()
+        .keys({
+          default: joi.any().optional(),
+          type: (
+            joi.string().required()
+            .valid(Object.keys(utils.typeToRegex))
+          ),
+          description: joi.string().optional()
+        })
+      ))
+    ),
     contributors: joi.array().optional(),
     controllers: joi.alternatives().try(
       joi.string().optional(),
-      joi.object().optional()
+      (
+        joi.object().optional()
+        .pattern(RE_NOT_FQPATH, joi.forbidden())
+        .pattern(RE_FQPATH, joi.string().required())
+      )
     ),
     defaultDocument: joi.string().allow("").optional(),
     description: joi.string().allow("").default(""),
-    engines: joi.object().optional(),
+    engines: (
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
+    ),
     exports: joi.alternatives().try(
       joi.string().optional(),
-      joi.object().optional()
+      (
+        joi.object().optional()
+        .pattern(RE_EMPTY, joi.forbidden())
+        .pattern(RE_NOT_EMPTY, joi.string().required())
+      )
     ),
-    files: joi.object().optional(),
+    files: (
+      joi.object().optional()
+      .pattern(RE_NOT_FQPATH, joi.forbidden())
+      .pattern(RE_FQPATH, joi.string().required())
+    ),
     isSystem: joi.boolean().default(false),
     keywords: joi.array().optional(),
     lib: joi.string().optional(),
     license: joi.string().optional(),
     name: joi.string().required(),
-    repository: joi.object().optional(),
+    repository: (
+      joi.object().optional()
+      .keys({
+        type: joi.string().required(),
+        url: joi.string().required()
+      })
+    ),
     setup: joi.string().optional(),
     teardown: joi.string().optional(),
     thumbnail: joi.string().optional(),
