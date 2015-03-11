@@ -437,36 +437,32 @@
     if (!app._isDevelopment && isExported(app._mount)) {
       return app._exports;
     }
-    var result, context, i, file, tmpContext;
+
     app._exports = {};
+
     // mount all exports
     if (app._manifest.hasOwnProperty("exports")) {
-      var exps = app._manifest.exports;
+      var appExports = app._manifest.exports;
 
-      if (typeof exps === "string") {
-        file = exps;
-        result = {};
-
-        // TODO ?
-        context = {exports: result};
-        tmpContext = {prefix: "/"};
-        app.loadAppScript(file, { context: context, appContext: tmpContext });
-        app._exports = context.exports;
+      if (typeof appExports === "string") {
+        app._exports = loadExport(app, appExports);
       } else {
-        Object.keys(exps).forEach(function (key) {
-          file = exps[key];
-          result = {};
-
-          // TODO ?
-          context = { exports: result };
-          tmpContext = {prefix: "/"};
-          app.loadAppScript(file, { context: context, appContext: tmpContext });
-          app._exports[key] = context.exports;
+        Object.keys(appExports).forEach(function (key) {
+          app._exports[key] = loadExport(app, appExports[key]);
         });
       }
     }
     setIsExported(app._mount);
     return app._exports;
+
+  };
+
+  var loadExport = function (app, file) {
+    // TODO ?
+    var context = {exports: {}};
+    var tmpContext = {prefix: "/"};
+    app.loadAppScript(file, {context: context, appContext: tmpContext});
+    return context.exports;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
