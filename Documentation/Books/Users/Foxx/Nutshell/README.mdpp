@@ -119,7 +119,7 @@ Now open your favorite editor and have a deeper look into the code.
 The following route lists all elements of our collection:
 
 ```
-  GET http://localhost:8529/db/_system/firstApp/firstCollection
+GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection
 ```
 
 It is defined in the source in the following way:
@@ -139,18 +139,18 @@ controller.get('/firstCollection', function (req, res) {
 Some details you should know about the code:
 
 * The `controller` gives you options to create routes.
-* `controller.get(path, callback)` creates a `GET` request on `path`. It will call `callback` whenever triggered.
+* `controller.get(path, callback)` creates a `GET` request handler on `path`. It will execute `callback` whenever triggered.
 * `FirstCollection_repo` is an instance of firstCollection
 * `_.map(collection.all(), function())` transforms all documents in the collection to readable JSON.
 * `res.json()` creates a JSON response for the client.
-* The comment on top of the function will generate a nice documentation.
+* The comment above the function will generate a nice documentation.
 
 <a id="create-document" />
 !SUBSECTION  Create a new document
 This code-snippet defines the route to create a new document in our collection:
 
 ```
-POST https://localhost:8529/db/_system/firstApp/firstCollection
+POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection
 ```
 
 ```js
@@ -164,9 +164,64 @@ controller.post('/firstCollection', function (req, res) {
   res.json(FirstCollection_repo.save(firstCollection).forClient());
 }).bodyParam('firstCollection', 'The FirstCollection you want to create', FirstCollection);
 ```
+
+This route is used to store JSON objects following a strict pattern into the collection.
+The pattern is defined by the Model given in the file `models/FirstCollection.js`:
+
+```js
+(function () {
+  'use strict';
+  var Foxx = require('org/arangodb/foxx'),
+  Joi = require('joi'),
+  Model;
+
+  Model = Foxx.Model.extend({
+    schema: {
+      // Describe the attributes with Joi here
+      '_key': Joi.string(),
+    }
+  });
+
+  exports.Model = Model;
+}());
+```
+
+This defines that only documents having a `_key` can be stored and nothing else.
+Now lets also allow to store an optional `name` by changing the following lines:
+
+```js
+  Model = Foxx.Model.extend({
+    schema: {
+      // Describe the attributes with Joi here
+      '_key': Joi.string(),
+      'name': Joi.string().optional(),
+    }
+  });
+```
+
+To test it you can for example store the following object.
+Note the _key is the internal identifier for this
+object and can either be user-defined or will be generated otherwise.
+In this tutorial we will refer to this key again.
+
+```json
+{
+  "_key": "123456",
+  "name": "Alice"
+}
+```
+
+To test the route you can copy & paste this object into the interactive documentation or execute the following line in your shell:
+```
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"_key":"123456", "name":"Alice"}'
+{"_key":"123456","name":"Alice"}
+```
+
+You can also try to store documents having different attributes or not having name.
+
 Some details you should know about the code:
 
-* `controller.post(path, callback)` creates a `POST` request on `path`. It will call `callback` whenever triggered.
+* `controller.post(path, callback)` creates a `POST` request handler on `path`. It will execute `callback` whenever triggered.
 * `req.params()` allwos to access all parameters, including the body, sent with the request.
 * `FirstCollection_repo.save()` will store a JSON document into our collection
 * `forClient()` will create JSON output for the client
@@ -177,7 +232,7 @@ Some details you should know about the code:
 This route allows to read a specific document in our collection, identified by Id:
 
 ```
-GET https://localhost:8529/db/_system/firstApp/firstCollection/:id
+GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/:id
 ```
 
 ```js
@@ -194,7 +249,17 @@ controller.get('/firstCollection/:id', function (req, res) {
 });
 ```
 
-* `controller.post(path, callback)` creates a `PUT` request on `path`. It will call `callback` whenever triggered.
+This route now allows us to read exactly one specific document stored in our collection.
+In the last route we have inserted the "Alice" document, now we want to get that one back.
+In order to achieve this we have to replace the "_id" with the "_key" we have stored earlier.
+In the interactive documentation there is a text field to enter the value, or you can execute the following CURL command:
+
+```
+unix> curl -X GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/123456
+{"_key":"123456","name":"Alice"}
+```
+
+* `controller.get(path, callback)` creates a `GET` request handler on `path`. It will execute `callback` whenever triggered.
 * The `:id` in the path defines that this part of the route will be interpreted as a parameter with the name id.
 * `byId` fetches a document from the collection by it's unique identifier: `_key`
 * `pathParam` documents the path parameter `id` as described in the path. It also restricts it to be a string.
@@ -204,7 +269,7 @@ controller.get('/firstCollection/:id', function (req, res) {
 This code shows how to update a specific document in our collection. The API call is:
 
 ```
-GET https://localhost:8529/db/_system/firstApp/firstCollection/:id
+GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/:id
 ```
 
 ```js
@@ -223,9 +288,34 @@ controller.put('/firstCollection/:id', function (req, res) {
 }).bodyParam('firstCollection', 'The FirstCollection you want your old one to be replaced with', FirstCollection);
 ```
 
+This route allows us to replace one specific document.
+To test it let's replace "Alice" with "Bob" by filling the input field in the documentation with:
+
+```json
+{
+  "name": "Bob"
+}
+```
+
+Or sending the following CURL request:
+
+```
+unix> curl -X PUT http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/123456 --data '{"name": "Bob"}'
+{"_id":"firstApp_firstCollection/123456","_rev":"13346908308","_oldRev":"13267150996","_key":"123456"}
+```
+
+Note here: The `_rev`and `_oldRev` values are generated by ArangoDB and can be used to validate if cached versions of the document are still up-to-date
+
+Now let us read the document again using the `GET` request from before. It shall return "Bob" now:
+
+```
+unix> curl -X GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/123456
+{"_key":"123456","name":"Bob"}
+```
+
 Some details you should now about the code:
 
-* `controller.put(path, callback)` creates a `PUT` request on `path`. It will call `callback` whenever triggered.
+* `controller.put(path, callback)` creates a `PUT` request handler on `path`. It will execute `callback` whenever triggered.
 * `replaceById` overwrites a document from the collection with a newer version.
 
 <a id="delete-document">
@@ -233,7 +323,7 @@ Some details you should now about the code:
 This call allows to delete a specific document in our collection:
 
 ```
-DELETE https://localhost:8529/db/_system/firstApp/firstCollection/:id
+DELETE http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/:id
 ```
 The corresponding controller function is just a few lines:
 
@@ -251,9 +341,21 @@ controller.del('/firstCollection/:id', function (req, res) {
   type: 'string'
 }).errorResponse(ArangoError, 404, 'The document could not be found');
 ```
+
+Let's also test this route:
+
+```
+unix> curl -X DELETE http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/123456
+{"success":true}
+unix> curl -X GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/123456
+{"error":"document not found"}
+```
+
+The document is gone now, if you are using development mode you will also receive the stacktrace for the error.
+
 Some details you should now about the code:
 
-* `controller.del(path, callback)` creates a `DELETE` request on `path`. It will call `callback` whenever triggered.
+* `controller.del(path, callback)` creates a `DELETE` request handler on `path`. It will execute `callback` whenever triggered.
 * `removeById` will delete a document from the collection.
 * `errorResponse` defines the message that should be delivered to the client whenever there was an error. In this case the user will get a classical `404`.
 * If no `errorResponse` is given a internal `500` will be returned by the server.
@@ -265,8 +367,12 @@ The query will search for all documents having a specific `name` attribute.
 
 <dl>
   <dt>Note</dt>
-  <dd>This part of the code is not generated.</dd>
+  <dd>This part of the code is not generated. You can just add it after all the other routes.</dd>
 </dl>
+
+```
+GET http://localhost:8529/_db/_system/firstApp/firstCollection/byName/:name
+```
 
 ```js
 var db = require('org/arangodb').db;
@@ -285,9 +391,70 @@ controller.get('/firstCollection/byName/:name', function (req, res) {
     }).toArray()
   );
 }).pathParam('name', {
-  description: 'The value to search for',
-  type: 'string'
+  type: joi.string().required().description('The value to search for')
 });
+```
+
+This query searches for all documents that have the given name attribute.
+In order to test it let us install several instances of "Alice" in the POST route:
+
+```json
+{
+  "name": "Alice"
+}
+```
+
+```
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"name":"Alice"}'
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"name":"Alice"}'
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"name":"Alice"}'
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"name":"Alice"}'
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"name":"Alice"}'
+unix> curl -X POST http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection --data '{"name":"Alice"}'
+```
+
+And now let's issue the query with `Alice`
+
+```
+unix> curl -X GET http://localhost:8529/_db/_system/firstApp/firstCollection/firstCollection/byName/Alice | json_pp
+[
+  {
+    "_key" : "15352375444",
+    "_rev" : "15352375444",
+    "name" : "Alice",
+    "_id" : "firstApp_firstCollection/15352375444"
+  },
+  {
+    "_key" : "15346346132",
+    "_rev" : "15346346132",
+    "name" : "Alice",
+    "_id" : "firstApp_firstCollection/15346346132"
+  },
+  {
+    "name" : "Alice",
+    "_id" : "firstApp_firstCollection/15344380052",
+    "_rev" : "15344380052",
+    "_key" : "15344380052"
+  },
+  {
+    "_key" : "15341824148",
+    "_rev" : "15341824148",
+    "name" : "Alice",
+    "_id" : "firstApp_firstCollection/15341824148"
+  },
+  {
+    "_key" : "15350343828",
+    "_rev" : "15350343828",
+    "name" : "Alice",
+    "_id" : "firstApp_firstCollection/15350343828"
+  },
+  {
+    "_key" : "15348377748",
+    "_rev" : "15348377748",
+    "_id" : "firstApp_firstCollection/15348377748",
+    "name" : "Alice"
+  }
+]
 ```
 
 Some details you should know about the code:
