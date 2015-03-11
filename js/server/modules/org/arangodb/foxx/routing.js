@@ -693,7 +693,7 @@ function escapeHTML (string) {
         transformRoutes(ri.routes, routes, mountPoint, ri.urlPrefix, tmpContext.isDevelopment);
       }
     }
-  }
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Exports
