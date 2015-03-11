@@ -266,14 +266,32 @@ function startInstance (protocol, options, addArgs, testname) {
   appDir =  fs.join(tmpDataDir, "apps");
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
+  var optionsExtraArgs = [];
+  if (typeof(options.extraargs) === 'object') {
+    if (_.isArray(options.extraargs)) {
+      optionsExtraArgs = options.extraargs;
+    }
+    else {
+      optionsExtraArgs = optionsExtraArgs.concat(toArgv(options.extraargs));
+    }
+  }
 
   var endpoint;
   var pos;
   var valgrindopts = [];
+  if (typeof(options.valgrindargs) === 'object') {
+    if (_.isArray(options.valgrindargs)) {
+      valgrindopts = options.valgrindargs;
+    }
+    else {
+      valgrindopts = valgrindopts.concat(toArgv(options.valgrindargs, true));
+    }
+  }
+
   var dispatcher;
   if (options.cluster) {
     var extraargs = makeTestingArgs(appDir);
-    extraargs = extraargs.concat(options.extraargs);
+    extraargs = extraargs.concat(optionsExtraArgs);
     if (addArgs !== undefined) {
       extraargs = extraargs.concat(addArgs);
     }
@@ -287,7 +305,6 @@ function startInstance (protocol, options, addArgs, testname) {
     var valgrindXmlFileBase = "";
     if (typeof(options.valgrind) === 'string') {
       runInValgrind = options.valgrind;
-      valgrindopts = options.valgrindargs;
       valgrindXmlFileBase = options.valgrindXmlFileBase;
     }
 
@@ -346,13 +363,14 @@ function startInstance (protocol, options, addArgs, testname) {
       args.push("--server.keyfile");
       args.push(fs.join("UnitTests","server.pem"));
     }
-    args = args.concat(options.extraargs);
+    args = args.concat(optionsExtraArgs);
+
     if (addArgs !== undefined) {
       args = args.concat(addArgs);
     }
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
-      valgrindopts = options.valgrindargs.concat(
+      valgrindopts = valgrindopts.concat(
         ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.xml',
          "--log-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.valgrind.log']);
       var newargs=valgrindopts.concat([run]).concat(args);      
