@@ -3642,6 +3642,11 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
 int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
                                    std::string& key) const {
+  if (value.isShaped()) {
+    key = TRI_EXTRACT_MARKER_KEY(value.getMarker());
+    return TRI_ERROR_NO_ERROR;
+  }
+
   if (value.isObject()) {
     Json member(value.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY, false));
 
