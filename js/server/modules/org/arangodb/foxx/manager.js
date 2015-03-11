@@ -155,7 +155,8 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var routes = function(mount) {
-    return routeApp(lookupApp(mount));
+    var app = lookupApp(mount);
+    return routeApp(app);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -817,8 +818,10 @@
     try {
       _buildAppInPath(appInfo, tempPath, {});
       var tmp = new ArangoApp(fakeAppConfig(tempPath));
-      routeApp(tmp);
-      exportApp(tmp);
+      if (!tmp.needsConfiguration()) {
+        routeApp(tmp, true);
+        exportApp(tmp);
+      }
     } catch (e) {
       throw e;
     } finally {
@@ -859,10 +862,12 @@
       if (runSetup) {
         setup(mount);
       }
-      // Validate Routing
-      routeApp(app);
-      // Validate Exports
-      exportApp(app);
+      if (!app.needsConfiguration()) {
+        // Validate Routing
+        routeApp(app, true);
+        // Validate Exports
+        exportApp(app);
+      }
     } catch (e) {
       try {
         fs.removeDirectoryRecursive(targetPath, true);
