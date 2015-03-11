@@ -453,18 +453,16 @@
         app.loadAppScript(file, { context: context, appContext: tmpContext });
         app._exports = context.exports;
       } else {
-        for (i in exps) {
-          if (exps.hasOwnProperty(i)) {
-            file = exps[i];
-            result = {};
+        Object.keys(exps).forEach(function (key) {
+          file = exps[key];
+          result = {};
 
-            // TODO ?
-            context = { exports: result };
-            tmpContext = {prefix: "/"};
-            app.loadAppScript(file, { context: context, appContext: tmpContext });
-            app._exports[i] = context.exports;
-          }
-        }
+          // TODO ?
+          context = { exports: result };
+          tmpContext = {prefix: "/"};
+          app.loadAppScript(file, { context: context, appContext: tmpContext });
+          app._exports[key] = context.exports;
+        });
       }
     }
     setIsExported(app._mount);
