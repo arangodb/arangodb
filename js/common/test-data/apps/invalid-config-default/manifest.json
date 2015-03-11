@@ -1,0 +1,11 @@
+{
+  "name": "invalid-config-default",
+  "version": "0.0.0",
+  "configuration": {
+    "stringValue": {
+      "description": "A string value",
+      "type": "string",
+      "default": 23
+    }
+  }
+}

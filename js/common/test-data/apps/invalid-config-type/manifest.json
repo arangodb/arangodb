@@ -1,0 +1,10 @@
+{
+  "name": "invalid-config-type",
+  "version": "0.0.0",
+  "configuration": {
+    "blibBlob": {
+      "description": "A blibby blob.",
+      "type": "blibby-blob"
+    }
+  }
+}

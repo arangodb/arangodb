@@ -1,0 +1,13 @@
+{
+  "name": "broken-if-unconfigured",
+  "version": "0.0.0",
+  "controllers": {
+    "/": "needs-config.js"
+  },
+  "configuration": {
+    "stringValue": {
+      "description": "A string value",
+      "type": "string"
+    }
+  }
+}
