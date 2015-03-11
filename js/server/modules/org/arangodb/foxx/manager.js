@@ -184,16 +184,16 @@
   /// this implements issue #590: Manifest Lint
   ////////////////////////////////////////////////////////////////////////////////
 
-  var checkManifest = function(filename, mf) {
+  var checkManifest = function(filename, manifest) {
     // add some default attributes
-    if (! mf.hasOwnProperty("author")) {
+    if (!manifest.hasOwnProperty("author")) {
       // add a default (empty) author
-      mf.author = "";
+      manifest.author = "";
     }
 
-    if (! mf.hasOwnProperty("description")) {
+    if (!manifest.hasOwnProperty("description")) {
       // add a default (empty) description
-      mf.description = "";
+      manifest.description = "";
     }
 
     // Validate all attributes specified in the manifest
@@ -222,46 +222,43 @@
       "exports":            [ false, ["object", "string"] ]
     };
 
-    var att, valid, failed = false;
-    var expectedType, actualType;
+    var failed = !Object.keys(expected).every(function (key) {
+      var valid = true;
 
-    for (att in expected) {
-      if (expected.hasOwnProperty(att)) {
-        if (mf.hasOwnProperty(att)) {
-          // attribute is present in manifest, now check data type
-          expectedType = expected[att][1];
-          actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
+      if (manifest.hasOwnProperty(key)) {
+        // attribute is present in manifest, now check data type
+        var expectedType = expected[key][1];
+        var actualType = Array.isArray(manifest[key]) ? "array" : typeof(manifest[key]);
 
-          if (!Array.isArray(expectedType)) {
-            valid = (actualType === expectedType);
-          } else {
-            valid = expectedType.some(function (type) {
-              return actualType === type;
-            });
-          }
-
-          if (!valid) {
-            console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
-              filename,
-              actualType,
-              String(expectedType),
-              att);
-            failed = true;
-          }
+        if (!Array.isArray(expectedType)) {
+          valid = (actualType === expectedType);
+        } else {
+          valid = expectedType.some(function (type) {
+            return actualType === type;
+          });
         }
-        else {
-          // attribute not present in manifest
-          if (expected[att][0]) {
-            // required attribute
-            console.error("Manifest '%s' does not provide required attribute '%s'",
-              filename,
-              att);
 
-            failed = true;
-          }
+        if (!valid) {
+          console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
+            filename,
+            actualType,
+            String(expectedType),
+            key);
+        }
+      } else {
+        // attribute not present in manifest
+        valid = expected[key][0];
+
+        if (!valid) {
+          // required attribute
+          console.error("Manifest '%s' does not provide required attribute '%s'",
+            filename,
+            key);
         }
       }
-    }
+
+      return valid;
+    });
 
     if (failed) {
       throw new ArangoError({
@@ -271,15 +268,13 @@
     }
 
     // additionally check if there are superfluous attributes in the manifest
-    for (att in mf) {
-      if (mf.hasOwnProperty(att)) {
-        if (! expected.hasOwnProperty(att)) {
-          console.warn("Manifest '%s' contains an unknown attribute '%s'",
-            filename,
-            att);
-        }
+    Object.keys(manifest).forEach(function (key) {
+      if (!expected.hasOwnProperty(key)) {
+        console.warn("Manifest '%s' contains an unknown attribute '%s'",
+          filename,
+          key);
       }
-    }
+    });
   };
 
 
