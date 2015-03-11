@@ -443,19 +443,27 @@
     if (app._manifest.hasOwnProperty("exports")) {
       var exps = app._manifest.exports;
 
-      for (i in exps) {
-        if (exps.hasOwnProperty(i)) {
-          file = exps[i];
-          result = {};
+      if (typeof exps === "string") {
+        file = exps;
+        result = {};
 
-          // TODO ?
-          context = { exports: result };
+        // TODO ?
+        context = {exports: result};
+        tmpContext = {prefix: "/"};
+        app.loadAppScript(file, { context: context, appContext: tmpContext });
+        app._exports = context.exports;
+      } else {
+        for (i in exps) {
+          if (exps.hasOwnProperty(i)) {
+            file = exps[i];
+            result = {};
 
-          tmpContext = {prefix: "/"};
-
-          app.loadAppScript(file, { context: context, appContext: tmpContext });
-
-          app._exports[i] = context.exports;
+            // TODO ?
+            context = { exports: result };
+            tmpContext = {prefix: "/"};
+            app.loadAppScript(file, { context: context, appContext: tmpContext });
+            app._exports[i] = context.exports;
+          }
         }
       }
     }
