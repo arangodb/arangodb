@@ -1,6 +1,8 @@
 v2.4.5 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1265: arangod crashed with SIGSEGV
+
 * fixed issue #1241: Wildcards in examples
 
 * fixed comment parsing in Foxx controllers
