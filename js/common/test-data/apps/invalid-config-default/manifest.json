@@ -5,7 +5,7 @@
     "stringValue": {
       "description": "A string value",
       "type": "string",
-      "value": 23
+      "default": 23
     }
   }
 }
