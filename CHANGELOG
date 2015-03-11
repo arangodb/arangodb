@@ -323,6 +323,8 @@ v2.5.0-beta2 (2015-02-23)
 v2.4.5 (XXXX-XX-XX)
 -------------------
 
+* fixed issue #1241: Wildcards in examples
+
 * fixed comment parsing in Foxx controllers
 
 
