@@ -139,8 +139,14 @@
         url: joi.string().required()
       })
     ),
-    setup: joi.string().optional(),
-    teardown: joi.string().optional(),
+    scripts: (
+      joi.object()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
+      .default(function () {return {};}, 'empty scripts object')
+    ),
+    setup: joi.string().optional(), // TODO remove in 2.8
+    teardown: joi.string().optional(), // TODO remove in 2.8
     thumbnail: joi.string().optional(),
     version: joi.string().required(),
     rootElement: joi.boolean().default(false)
@@ -301,6 +307,26 @@
       }
     });
 
+    // TODO Emit deprecation warnings in 2.7
+
+    if (manifest.setup) {
+      // console.warn(
+      //   "Manifest '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
+      //   filename
+      // );
+      manifest.scripts.setup = manifest.setup;
+      delete manifest.setup;
+    }
+
+    if (manifest.teardown) {
+      // console.warn(
+      //   "Manifest '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
+      //   filename
+      // );
+      manifest.scripts.teardown = manifest.teardown;
+      delete manifest.teardown;
+    }
+
     Object.keys(manifest).forEach(function (key) {
       if (!manifestSchema[key]) {
         console.warn(
@@ -421,9 +447,9 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var executeAppScript = function(app, name) {
-    var desc = app._manifest;
-    if (desc.hasOwnProperty(name)) {
-      app.loadAppScript(desc[name]);
+    var scripts = app._manifest.scripts;
+    if (scripts.hasOwnProperty(name)) {
+      app.loadAppScript(scripts[name]);
     }
   };
 
