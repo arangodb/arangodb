@@ -2890,7 +2890,7 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
     // we need this mapping to generate the grouped output
 
     for (size_t i = 0; i < registerPlan.size(); ++i) {
-      _variableNames.push_back(""); // initialize with some default value
+      _variableNames.emplace_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
@@ -3123,7 +3123,17 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
   size_t i = 0;
   for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
     // FIXME: can throw:
-    res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
+
+    if (_currentGroup.groupValues[i].type() == AqlValue::SHAPED) {
+      // if a value in the group is a document, it must be converted into its JSON equivalent. the reason is
+      // that a group might theoretically consist of multiple documents, from different collections. but there
+      // is only one collection pointer per output register
+      auto document = cur->getDocumentCollection((*it).second);
+      res->setValue(row, (*it).first, AqlValue(new Json(_currentGroup.groupValues[i].toJson(_trx, document))));
+    }
+    else {
+      res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
+    }
     ++i;
   }
 

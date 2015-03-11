@@ -225,6 +225,7 @@
 * [Indexing](IndexHandling/README.md)
   * [Index Basics](IndexHandling/IndexBasics.md)
   * [Which Index to use when](IndexHandling/WhichIndex.md)
+  * [How ArangoDB uses indexes](IndexHandling/HowArangoDBUsesIndexes.md)
   * [Working with Indexes](IndexHandling/WorkingWithIndexes.md)
     * [Hash Indexes](IndexHandling/Hash.md)
     * [Skiplists](IndexHandling/Skiplist.md)

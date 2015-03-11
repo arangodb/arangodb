@@ -35,6 +35,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
+#include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 #include "V8/v8-utils.h"
@@ -991,6 +992,23 @@ static void JS_GetServerEndpointClusterInfo (const v8::FunctionCallbackInfo<v8::
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get the server name for an endpoint
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetServerNameClusterInfo (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getServerName(<endpoint>)");
+  }
+
+  const std::string result = ClusterInfo::instance()->getServerName(TRI_ObjectToString(args[0]));
+
+  TRI_V8_RETURN_STD_STRING(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the DBServers currently registered
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -999,7 +1017,7 @@ static void JS_GetDBServers (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 0) {
-    TRI_V8_THROW_EXCEPTION_USAGE("DBServers()");
+    TRI_V8_THROW_EXCEPTION_USAGE("getDBServers()");
   }
 
   std::vector<std::string> DBServers = ClusterInfo::instance()->getCurrentDBServers();
@@ -1029,6 +1047,31 @@ static void JS_ReloadDBServers (const v8::FunctionCallbackInfo<v8::Value>& args)
 
   ClusterInfo::instance()->loadCurrentDBServers();
   TRI_V8_RETURN_UNDEFINED();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the coordinators currently registered
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_GetCoordinators (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getCoordinators()");
+  }
+
+  std::vector<std::string> coordinators = ClusterInfo::instance()->getCurrentCoordinators();
+
+  v8::Handle<v8::Array> l = v8::Array::New(isolate);
+
+  for (size_t i = 0; i < coordinators.size(); ++i) {
+    ServerID const sid = coordinators[i];
+
+    l->Set((uint32_t) i, TRI_V8_STD_STRING(sid));
+  }
+
+  TRI_V8_RETURN(l);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1495,7 +1538,20 @@ static void PrepareClusterCommRequest (
 
   body.clear();
   if (args.Length() > 4) {
-    body = TRI_ObjectToString(args[4]);
+    if (args[4]->IsObject() && V8Buffer::hasInstance(isolate, args[4])) {
+      // supplied body is a Buffer object
+      char const* data = V8Buffer::data(args[4].As<v8::Object>());
+      size_t size = V8Buffer::length(args[4].As<v8::Object>());
+
+      if (data == nullptr) {
+        TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "invalid <body> buffer value");
+      }
+
+      body.assign(data, size);
+    }
+    else {
+      body = TRI_ObjectToString(args[4]);
+    }
   }
 
   if (args.Length() > 5 && args[5]->IsObject()) {
@@ -2046,8 +2102,10 @@ void TRI_InitV8Cluster (v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getResponsibleServer"), JS_GetResponsibleServerClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getResponsibleShard"), JS_GetResponsibleShardClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getServerEndpoint"), JS_GetServerEndpointClusterInfo);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getServerName"), JS_GetServerNameClusterInfo);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getDBServers"), JS_GetDBServers);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("reloadDBServers"), JS_ReloadDBServers);
+  TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("getCoordinators"), JS_GetCoordinators);
   TRI_AddMethodVocbase(isolate, rt, TRI_V8_ASCII_STRING("uniqid"), JS_UniqidClusterInfo);
 
   v8g->ClusterInfoTempl.Reset(isolate, rt);

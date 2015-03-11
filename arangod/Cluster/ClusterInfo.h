@@ -944,6 +944,21 @@ namespace triagens {
         std::string getServerEndpoint (ServerID const&);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief find the server ID for an endpoint.
+/// If it is not found in the cache, the cache is reloaded once, if
+/// it is still not there an empty string is returned as an error.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string getServerName (std::string const& endpoint);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief (re-)load the information about all coordinators from the agency
+/// Usually one does not have to call this directly.
+////////////////////////////////////////////////////////////////////////////////
+
+        void loadCurrentCoordinators ();
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief (re-)load the information about all DBservers from the agency
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
@@ -980,6 +995,12 @@ namespace triagens {
                                  bool docComplete,
                                  ShardID& shardID,
                                  bool& usesDefaultShardingAttributes);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the list of coordinator server names
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<ServerID> getCurrentCoordinators ();
 
       private:
 
@@ -1059,6 +1080,9 @@ namespace triagens {
         std::map<ServerID, ServerID>    _DBServers;
                                         // from Current/DBServers
         bool                            _DBServersValid;
+        std::map<ServerID, ServerID>    _coordinators;
+                                        // from Current/Coordinators
+        bool                            _coordinatorsValid;
         std::map<ShardID, ServerID>     _shardIds;
                                         // from Current/Collections/
         std::map<CollectionID, std::shared_ptr<std::vector<std::string>>>

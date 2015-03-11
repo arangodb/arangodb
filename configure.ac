@@ -6,7 +6,7 @@ dnl ============================================================================
 dnl --SECTION--                                  triAGENS GmbH Build Environment
 dnl ============================================================================
 
-AC_INIT([triAGENS ArangoDB], [2.5.0-beta4], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
+AC_INIT([triAGENS ArangoDB], [2.5.0], [info@arangodb.com], [arangodb], [https://www.arangodb.com])
 
 dnl ----------------------------------------------------------------------------
 dnl auxillary directory for install-sh and missing
@@ -24,6 +24,17 @@ AC_MSG_NOTICE([with CPPFLAGS='$CPPFLAGS'])
 AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
+
+if python -c '
+import sys
+if sys.version_info.major != 2:
+    exit(0)
+else:
+    exit(1)
+'; then
+   echo "Compiling V8 requires a python version 2; please adjust your " `which python`
+   exit 1
+fi
 
 
 dnl ----------------------------------------------------------------------------

@@ -56,7 +56,7 @@ describe("Foxx Manager install", function() {
   describe("failing for an invalid app", function() {
     beforeEach(function() {
       try {
-        FoxxManager.uninstall("/unittest/broken");
+        FoxxManager.uninstall("/unittest/broken", {force: true});
       } catch(e) {
       }
     });
