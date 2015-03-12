@@ -31,10 +31,9 @@ case $target in
 
   armv7l-*-linux-gnueabihf)
     tr_ARM="yes"
-    tr_ARM7="yes"
-    CFLAGS="$CFLAGS"
-    CXXFLAGS="$CXXFLAGS"
-    CPPFLAGS="$CPPFLAGS"
+    CFLAGS="$CFLAGS -marm"
+    CXXFLAGS="$CXXFLAGS -marm"
+    CPPFLAGS="$CPPFLAGS -marm"
     ;;
 
   armv6l-*-linux-gnueabihf)
