@@ -219,6 +219,24 @@ int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionBlock::isKilled () const {
+  return _engine->getQuery()->killed();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionBlock::throwIfKilled () {
+  if (isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -380,6 +398,8 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
+  throwIfKilled(); // check if we were aborted
+
   AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
   if (docs == nullptr) {
     return false;
@@ -2459,6 +2479,7 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
     AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
     try {
       result->setValue(i, _outReg, a);
+      throwIfKilled(); // check if we were aborted
     }
     catch (...) {
       a.destroy();
@@ -2478,6 +2499,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     // the calculation is a reference to a variable only.
     // no need to execute the expression at all
     fillBlockWithReference(result);
+    throwIfKilled(); // check if we were aborted
     return;
   }
 
@@ -2890,7 +2912,7 @@ AggregateBlock::AggregateBlock (ExecutionEngine* engine,
     // we need this mapping to generate the grouped output
 
     for (size_t i = 0; i < registerPlan.size(); ++i) {
-      _variableNames.push_back(""); // initialize with some default value
+      _variableNames.emplace_back(""); // initialize with some default value
     }
 
     // iterate over all our variables
@@ -3123,7 +3145,17 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
   size_t i = 0;
   for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
     // FIXME: can throw:
-    res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
+
+    if (_currentGroup.groupValues[i].type() == AqlValue::SHAPED) {
+      // if a value in the group is a document, it must be converted into its JSON equivalent. the reason is
+      // that a group might theoretically consist of multiple documents, from different collections. but there
+      // is only one collection pointer per output register
+      auto document = cur->getDocumentCollection((*it).second);
+      res->setValue(row, (*it).first, AqlValue(new Json(_currentGroup.groupValues[i].toJson(_trx, document))));
+    }
+    else {
+      res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
+    }
     ++i;
   }
 
@@ -3724,6 +3756,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
     auto res = (*it);
     auto document = res->getDocumentCollection(registerId);
+    
+    throwIfKilled(); // check if we were aborted
       
     size_t const n = res->size();
     
@@ -3853,6 +3887,8 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto res = (*it);
     auto document = res->getDocumentCollection(registerId);
     size_t const n = res->size();
+    
+    throwIfKilled(); // check if we were aborted
     
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
@@ -3987,6 +4023,8 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto* res = b;   // This is intentionally a copy!
     auto document = res->getDocumentCollection(docRegisterId);
     decltype(document) keyDocument = nullptr;
+
+    throwIfKilled(); // check if we were aborted
 
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
@@ -4161,6 +4199,8 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
     }
+    
+    throwIfKilled(); // check if we were aborted
       
     size_t const n = res->size();
     

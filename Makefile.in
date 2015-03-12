@@ -9498,14 +9498,14 @@ js/apps/system/_admin/aardvark/APP/frontend/js/modules/underscore.js: @srcdir@/j
 	(echo "module.define(\"underscore\", function(exports, module) {" && cat $< && echo "});") > $@
 
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@README: README.md
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	fgrep -v "[Build Status]" $< \
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| fgrep -v "ArangoDB-Logo" \
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| @MARKDOWN_EXEC@ \
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	fgrep -v "[Build Status]" $< | fgrep -v "ArangoDB-Logo" > $@.tmp1
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	@MARKDOWN_EXEC@ $@.tmp1 \
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| @HTML2TEXT_EXEC@ -style pretty -nobs \
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		| sed -e 's:&gt;:>:g' \
 @ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@                | awk 'BEGIN { s = 0; } { if (length($0) == 0) {if (s != 0) print $0;} else {s = 1; print $0; }}' \
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		> $@.tmp
-@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	mv $@.tmp $@
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@		> $@.tmp2
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	mv $@.tmp2 $@
+@ENABLE_HTML2TEXT_TRUE@@ENABLE_MARKDOWN_TRUE@	rm $@.tmp1
 
 ################################################################################
 ### @brief flex

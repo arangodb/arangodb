@@ -4389,6 +4389,13 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
   right: 4px;
   top: 2px; }
 
+.fa-minus-circle {
+  color: #da4f49;
+  font-size: 14pt; }
+
+.fa-minus-circle:hover {
+  cursor: pointer; }
+
 div.headerDropdown {
   background-color: #fff;
   display: none;

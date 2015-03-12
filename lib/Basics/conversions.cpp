@@ -904,6 +904,22 @@ char* TRI_StringUInt64Octal (uint64_t attr) {
   return TRI_DuplicateString2(buffer, len);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief converts a time stamp to a string
+////////////////////////////////////////////////////////////////////////////////
+
+std::string TRI_StringTimeStamp (double stamp) {
+  char buffer[32];
+  size_t len;
+  struct tm tb;
+  time_t tt = static_cast<time_t>(stamp);
+
+  TRI_gmtime(tt, &tb);
+  len = strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H:%M:%SZ", &tb);
+
+  return std::string(buffer, len);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

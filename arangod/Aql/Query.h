@@ -38,6 +38,7 @@
 #include "Aql/types.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/V8TransactionContext.h"
+#include "VocBase/voc-types.h"
 #include "V8Server/ApplicationV8.h"
 
 struct TRI_json_t;
@@ -57,6 +58,7 @@ namespace triagens {
     class Executor;
     class Expression;
     class Parser;
+    class Query;
     class QueryRegistry;
     struct Variable;
 
@@ -106,12 +108,18 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct Profile {
-      Profile (); 
+      Profile (Profile const&) = delete;
+      Profile& operator= (Profile const&) = delete;
+
+      explicit Profile (Query*);
+
+      ~Profile ();
 
       void enter (ExecutionState);
 
       TRI_json_t* toJson (TRI_memory_zone_t*);
 
+      Query*                                         query;
       std::vector<std::pair<ExecutionState, double>> results;
       double                                         stamp;
     };
@@ -165,6 +173,22 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query is killed
+////////////////////////////////////////////////////////////////////////////////
+
+        inline bool killed () const {
+          return _killed;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the query to killed
+////////////////////////////////////////////////////////////////////////////////
+        
+        inline void killed (bool) {
+          _killed = true;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief the part of the query
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -194,6 +218,14 @@ namespace triagens {
 
         std::vector<std::string> collectionNames () const {
           return _collections.collectionNames();
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the query's id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_tick_t id () const {
+          return _id;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -479,6 +511,12 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief query id
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_voc_tick_t const _id;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief application v8 used in the query, we need this for V8 context access
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -618,6 +656,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool const                        _contextOwnedByExterior;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query is killed
+////////////////////////////////////////////////////////////////////////////////
+
+        bool                              _killed;
 
     };
 
