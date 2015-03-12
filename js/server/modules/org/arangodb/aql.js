@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false, bitwise: false */
-/*global require, exports, COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING */
+/*global require, exports, COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -4282,7 +4282,7 @@ function AQL_SLEEP (duration) {
     return null;
   }
 
-  INTERNAL.sleep(duration);
+  AQL_QUERY_SLEEP(duration);
   return null;
 }
 

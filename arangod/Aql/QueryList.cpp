@@ -29,6 +29,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
+#include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
@@ -39,13 +40,9 @@ using namespace triagens::aql;
 // --SECTION--                                                 struct QueryEntry
 // -----------------------------------------------------------------------------
 
-QueryEntry::QueryEntry (TRI_voc_tick_t id,
-                        char const* queryString,
-                        size_t queryLength,
+QueryEntry::QueryEntry (triagens::aql::Query const* query,
                         double started) 
-  : id(id),
-    queryString(queryString),
-    queryLength(queryLength),
+  : query(query),
     started(started) {
 }
 
@@ -80,9 +77,8 @@ size_t const QueryList::DefaultMaxQueryStringLength = 4096;
 /// @brief create a query list
 ////////////////////////////////////////////////////////////////////////////////
 
-QueryList::QueryList (TRI_vocbase_t* vocbase) 
-  : _vocbase(vocbase),
-    _lock(),
+QueryList::QueryList (TRI_vocbase_t*) 
+  : _lock(),
     _current(),
     _slow(),
     _slowCount(0),
@@ -125,12 +121,7 @@ void QueryList::insert (Query const* query,
   }
 
   try { 
-    std::unique_ptr<QueryEntry> entry(new QueryEntry( 
-      query->id(), 
-      query->queryString(),
-      query->queryLength(),
-      stamp
-    ));
+    std::unique_ptr<QueryEntry> entry(new QueryEntry(query, stamp));
 
     WRITE_LOCKER(_lock);
     auto it = _current.emplace(std::make_pair(query->id(), entry.get()));
@@ -167,17 +158,21 @@ void QueryList::remove (Query const* query,
 
       try {
         // check if we need to push the query into the list of slow queries
-        if (_slowQueryThreshold >= 0.0 && 
+        if (_trackSlowQueries && 
+            _slowQueryThreshold >= 0.0 && 
             now - entry->started >= _slowQueryThreshold) {
           // yes.
 
+          char const* queryString = entry->query->queryString();
           size_t const maxLength = _maxQueryStringLength;
-          size_t length = entry->queryLength;
+          size_t const originalLength = entry->query->queryLength();
+          size_t length = originalLength;
+
           if (length > maxLength) {
             length = maxLength;
             // do not create invalid UTF-8 sequences
             while (length > 0) {
-              uint8_t c = entry->queryString[length - 1];
+              uint8_t c = queryString[length - 1];
               if ((c & 0b10000000) == 0) {
                 // single-byte character
                 break;
@@ -194,8 +189,8 @@ void QueryList::remove (Query const* query,
           }
 
           _slow.emplace_back(QueryEntryCopy(
-            entry->id, 
-            std::string(entry->queryString, length).append(entry->queryLength > maxLength ? "..." : ""), 
+            entry->query->id(), 
+            std::string(queryString, length).append(originalLength > maxLength ? "..." : ""), 
             entry->started, 
             now - entry->started
           ));
@@ -218,6 +213,29 @@ void QueryList::remove (Query const* query,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief kills a query
+////////////////////////////////////////////////////////////////////////////////
+
+int QueryList::kill (TRI_voc_tick_t id) {
+  {
+    WRITE_LOCKER(_lock);
+  
+    auto it = _current.find(id);
+
+    if (it == _current.end()) {
+      return TRI_ERROR_QUERY_NOT_FOUND;
+    }
+
+    const_cast<triagens::aql::Query*>((*it).second->query)->killed(true);
+  }
+  
+  // log outside the lock  
+  LOG_WARNING("killing AQL query '%llu'", (unsigned long long) id);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the list of currently running queries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -236,16 +254,19 @@ std::vector<QueryEntryCopy> QueryList::listCurrent () {
       auto entry = it.second;
 
       if (entry == nullptr || 
-          entry->queryString == nullptr) {
+          entry->query->queryString() == nullptr) {
         continue;
       }
 
-      size_t length = entry->queryLength;
+      char const* queryString = entry->query->queryString();
+      size_t const originalLength = entry->query->queryLength();
+      size_t length = originalLength;
+
       if (length > maxLength) {
         length = maxLength;
         // do not create invalid UTF-8 sequences
         while (length > 0) {
-          uint8_t c = entry->queryString[length - 1];
+          uint8_t c = queryString[length - 1];
           if ((c & 0b10000000) == 0) {
             // single-byte character
             break;
@@ -262,8 +283,8 @@ std::vector<QueryEntryCopy> QueryList::listCurrent () {
       }
 
       result.emplace_back(QueryEntryCopy(
-        entry->id, 
-        std::string(entry->queryString, length).append(entry->queryLength > maxLength ? "..." : ""), 
+        entry->query->id(), 
+        std::string(queryString, length).append(originalLength > maxLength ? "..." : ""), 
         entry->started, 
         now - entry->started
       ));
