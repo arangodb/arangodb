@@ -1,5 +1,6 @@
 /*jshint strict: false */
-/*global require, AQL_PARSE */
+/*global require, AQL_PARSE, AQL_QUERIES_CURRENT, AQL_QUERIES_SLOW, 
+  AQL_QUERIES_PROPERTIES, AQL_QUERIES_KILL */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query actions
@@ -34,8 +35,280 @@ var actions = require("org/arangodb/actions");
 var ArangoError = arangodb.ArangoError;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
+// --SECTION--                                                      HTTP methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock GetApiQueryCurrent
+/// @brief returns a list of currently running AQL queries
+///
+/// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
+///
+/// Returns an array containing the AQL queries currently running in the selected
+/// database. Each query is a JSON object with the following attributes:
+///
+/// - *id*: the query's id
+///
+/// - *query*: the query string (potentially truncated)
+///
+/// - *started*: the date and time when the query was started
+///
+/// - *runTime*: the query's run time up to the point the list of queries was
+///   queried
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned when the list of queries can be retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock GetApiQuerySlow
+/// @brief returns a list of slow running AQL queries
+///
+/// @RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries}
+///
+/// Returns an array containing the last AQL queries that exceeded the slow 
+/// query threshold in the selected database. 
+/// The maximum amount of queries in the list can be controlled by setting
+/// the query tracking property `maxSlowQueries`. The threshold for treating
+/// a query as *slow* can be adjusted by setting the query tracking property
+/// `slowQueryThreshold`.
+///
+/// Each query is a JSON object with the following attributes:
+///
+/// - *id*: the query's id
+///
+/// - *query*: the query string (potentially truncated)
+///
+/// - *started*: the date and time when the query was started
+///
+/// - *runTime*: the query's run time up to the point the list of queries was
+///   queried
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned when the list of queries can be retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock GetApiQueryProperties
+/// @brief returns the configuration for the AQL query tracking
+///
+/// @RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking}
+///
+/// Returns the current query tracking configuration. The configuration is a
+/// JSON object with the following properties:
+/// 
+/// - *enabled*: if set to *true*, then queries will be tracked. If set to 
+///   *false*, neither queries nor slow queries will be tracked.
+///
+/// - *trackSlowQueries*: if set to *true*, then slow queries will be tracked
+///   in the list of slow queries if their runtime exceeds the value set in 
+///   *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
+///   property must also be set to *true*.
+/// 
+/// - *maxSlowQueries*: the maximum number of slow queries to keep in the list
+///   of slow queries. If the list of slow queries is full, the oldest entry in
+///   it will be discarded when additional slow queries occur.
+///
+/// - *slowQueryThreshold*: the threshold value for treating a query as slow. A
+///   query with a runtime greater or equal to this threshold value will be
+///   put into the list of slow queries when slow query tracking is enabled.
+///   The value for *slowQueryThreshold* is specified in seconds.
+///
+/// - *maxQueryStringLength*: the maximum query string length to keep in the
+///   list of queries. Query strings can have arbitrary lengths, and this property
+///   can be used to save memory in case very long query strings are used. The
+///   value is specified in bytes.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned when the list of queries can be retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+function get_api_query (req, res) {
+  var suffixes = [ "slow", "current", "properties" ];
+
+  if (req.suffix.length !== 1 ||
+      suffixes.indexOf(req.suffix[0]) === -1) {
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+    return;
+  }
+
+  var result;
+  if (req.suffix[0] === "slow") {
+    result = AQL_QUERIES_SLOW();
+  }
+  else if (req.suffix[0] === "current") {
+    result = AQL_QUERIES_CURRENT();
+  }
+  else if (req.suffix[0] === "properties") {
+    result = AQL_QUERIES_PROPERTIES();
+  }
+
+  if (result instanceof ArangoError) {
+    actions.resultBad(req, res, result.errorNum, result.errorMessage);
+    return;
+  }
+
+  actions.resultOk(req, res, actions.HTTP_OK, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock DeleteApiQuerySlow
+/// @brief clears the list of slow AQL queries
+///
+/// @RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// The server will respond with *HTTP 200* when the list of queries was
+/// cleared successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock DeleteApiQueryKill
+/// @brief kills an AQL query
+///
+/// @RESTHEADER{DELETE /_api/query/{query-id}, Kills a running AQL query}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// The server will respond with *HTTP 200* when the query was still running when
+/// the kill request was executed and the query's kill flag was set.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request.
+///
+/// @RESTRETURNCODE{404}
+/// The server will respond with *HTTP 404* when no query with the specified
+/// id was found.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+function delete_api_query (req, res) {
+  if (req.suffix.length !== 1) {
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+    return;
+  }
+
+  if (req.suffix[0] === "slow") {
+    // erase the slow log
+    AQL_QUERIES_SLOW(true);
+    actions.resultOk(req, res, actions.HTTP_NO_CONTENT);
+  }
+  else {
+    // kill a single query
+    AQL_QUERIES_KILL(req.suffix[0]);
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock PutApiQueryProperties
+/// @brief changes the configuration for the AQL query tracking
+///
+/// @RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL query tracking}
+///
+/// @RESTBODYPARAM{properties,json,required}
+/// The properties for query tracking in the current database. 
+///
+/// The properties need to be passed in the attribute *properties* in the body
+/// of the HTTP request. *properties* needs to be a JSON object with the following
+/// properties:
+/// 
+/// - *enabled*: if set to *true*, then queries will be tracked. If set to 
+///   *false*, neither queries nor slow queries will be tracked.
+///
+/// - *trackSlowQueries*: if set to *true*, then slow queries will be tracked
+///   in the list of slow queries if their runtime exceeds the value set in 
+///   *slowQueryThreshold*. In order for slow queries to be tracked, the *enabled*
+///   property must also be set to *true*.
+/// 
+/// - *maxSlowQueries*: the maximum number of slow queries to keep in the list
+///   of slow queries. If the list of slow queries is full, the oldest entry in
+///   it will be discarded when additional slow queries occur.
+///
+/// - *slowQueryThreshold*: the threshold value for treating a query as slow. A
+///   query with a runtime greater or equal to this threshold value will be
+///   put into the list of slow queries when slow query tracking is enabled.
+///   The value for *slowQueryThreshold* is specified in seconds.
+///
+/// - *maxQueryStringLength*: the maximum query string length to keep in the
+///   list of queries. Query strings can have arbitrary lengths, and this property
+///   can be used to save memory in case very long query strings are used. The
+///   value is specified in bytes.
+///
+/// After the properties have been changed, the current set of properties will
+/// be returned in the HTTP response.
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the properties were changed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+function put_api_query (req, res) {
+
+  if (req.suffix.length !== 1 ||
+      req.suffix[0] !== "properties") {
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+    return;
+  }
+
+  var json = actions.getJsonBody(req, res);
+
+  if (json === undefined) {
+    return;
+  }
+
+  var result = AQL_QUERIES_PROPERTIES(json);
+
+  if (result instanceof ArangoError) {
+    actions.resultBad(req, res, result.errorNum, result.errorMessage);
+    return;
+  }
+
+  actions.resultOk(req, res, actions.HTTP_OK, result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_query
@@ -144,10 +417,22 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
+        case actions.GET:
+          get_api_query(req, res);
+          break;
+        
+        case actions.PUT:
+          put_api_query(req, res);
+          break;
+
         case actions.POST:
           post_api_query(req, res);
           break;
-
+        
+        case actions.DELETE:
+          delete_api_query(req, res);
+          break;
+        
         default:
           actions.resultUnsupported(req, res);
       }

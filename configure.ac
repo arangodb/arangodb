@@ -25,6 +25,16 @@ AC_MSG_NOTICE([with CFLAGS='$CFLAGS'])
 AC_MSG_NOTICE([with CXXFLAGS='$CXXFLAGS'])
 AC_MSG_NOTICE([with LDFLAGS='$LDFLAGS'])
 
+if python -c '
+import sys
+if sys.version_info.major != 2:
+    exit(0)
+else:
+    exit(1)
+'; then
+   echo "Compiling V8 requires a python version 2; please adjust your " `which python`
+   exit 1
+fi
 
 dnl ----------------------------------------------------------------------------
 dnl grab the configure command, options and flags and store them in m4 variables
@@ -53,7 +63,6 @@ AC_DEFINE_UNQUOTED(TRI_CONFIGURE_COMMAND, "$TRI_CONFIGURE_COMMAND", "" , [config
 AC_DEFINE_UNQUOTED(TRI_CONFIGURE_OPTIONS, "$TRI_CONFIGURE_OPTIONS", "" , [configure options])
 AC_DEFINE_UNQUOTED(TRI_CONFIGURE_FLAGS, "$TRI_CONFIGURE_FLAGS", "" , [configure flags])
 
-
 dnl ----------------------------------------------------------------------------
 dnl grab the git version number if available
 dnl ----------------------------------------------------------------------------
@@ -66,7 +75,6 @@ fi
 
 AC_SUBST(TRI_REPOSITORY_VERSION)
 AC_DEFINE_UNQUOTED(TRI_REPOSITORY_VERSION, "$TRI_REPOSITORY_VERSION", "" , [repository version])
-
 
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES

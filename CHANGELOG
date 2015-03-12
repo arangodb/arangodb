@@ -1,3 +1,11 @@
+v2.5.1 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
+
+
 v2.5.0 (2015-03-09)
 -------------------
 
@@ -322,6 +330,33 @@ v2.5.0-beta2 (2015-02-23)
 
 v2.4.5 (XXXX-XX-XX)
 -------------------
+
+* added AQL current and slow query tracking, killing of AQL queries
+
+  This change enables retrieving the list of currently running AQL queries inside the selected database.
+  AQL queries with an execution time beyond a certain threshold can be moved to a "slow query" facility
+  and retrieved from there. Queries can also be killed by specifying the query id.
+
+  This change adds the following HTTP REST APIs:
+
+  - `GET /_api/query/current`: for retrieving the list of currently running queries
+  - `GET /_api/query/slow`: for retrieving the list of slow queries
+  - `DELETE /_api/query/slow`: for clearing the list of slow queries
+  - `GET /_api/query/properties`: for retrieving the properties for query tracking
+  - `PUT /_api/query/properties`: for adjusting the properties for query tracking
+  - `DELETE /_api/query/<id>`: for killing an AQL query
+
+  The following JavaScript APIs have been added:
+
+  - require("org/arangodb/aql/queries").current();
+  - require("org/arangodb/aql/queries").slow();
+  - require("org/arangodb/aql/queries").clearSlow();
+  - require("org/arangodb/aql/queries").properties();
+  - require("org/arangodb/aql/queries").kill();
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
 
 * fixed comment parsing in Foxx controllers
 

@@ -152,7 +152,9 @@ instead.
       attributes specified in *data.attributes* for each visited vertex. If *data.type* is *"all"*,
       then the object will only be returned if all specified attributes are present in the vertex,
       if *data.type* is *"any"*, the object will be returned if the vertex contains any of the
-      specified attributes.
+      specified attributes. If the optional *data.allowNull* is set to `false`, then the object
+      will only be returned if an attribute is present **and** does not contain a `null` value.
+      Otherwise an object will be returned already if the attribute is present.
 
     - *"_AQL::PROJECTINGVISITOR"*: this visitor will produce an object with the attributes 
       specified in *data.attributes* for each visited vertex. This can be used to create a 

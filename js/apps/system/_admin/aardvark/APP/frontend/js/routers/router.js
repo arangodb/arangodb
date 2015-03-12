@@ -16,6 +16,7 @@
       "collection/:colid/:docid": "document",
       "shell": "shell",
       "query": "query",
+      "queryManagement": "queryManagement",
       "api": "api",
       "databases": "databases",
       "applications": "applications",
@@ -195,6 +196,16 @@
       }
       this.queryView.render();
       this.naviView.selectMenuItem('query-menu');
+    },
+
+    queryManagement: function () {
+      if (!this.queryManagementView) {
+        this.queryManagementView = new window.queryManagementView({
+          collection: undefined
+        });
+      }
+      this.queryManagementView.render();
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     api: function () {

@@ -2591,6 +2591,36 @@ function ahuacatlGraphVisitorsSuite () {
 /// @brief tests a built-in visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+    testBuiltinHasAnyAttributesVisitorAllowNull : function () {
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
+      vertex.save({ _key: "baz", bar: "baz", foo: null });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/foo", { });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/baz", { });
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::HASATTRIBUTESVISITOR", data: { allowNull: true, attributes: [ "foo", "bar" ], type: "any" } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/test", "outbound", params) RETURN result.vertex._key');
+
+      assertEqual([ "baz", "foo", "test" ], result.json.sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBuiltinHasAnyAttributesVisitorAllowNullFalse : function () {
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz" });
+      vertex.save({ _key: "baz", bar: "baz", foo: null });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/foo", { });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/baz", { });
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::HASATTRIBUTESVISITOR", data: { allowNull: false, attributes: [ "foo" ], type: "any" } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/test", "outbound", params) RETURN result.vertex._key');
+
+      assertEqual([ "test" ], result.json.sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
     testBuiltinHasAnyAttributesVisitor : function () {
       vertex.save({ _key: "test", foo: "bar" }); 
       vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
@@ -2972,6 +3002,38 @@ function ahuacatlGraphVisitorsSuite () {
       ];
         
       assertEqual(expected, result.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testNeighborsBuiltinHasAnyAttributesVisitor : function () {
+      var graphModule = require("org/arangodb/general-graph");
+
+      try {
+        graphModule._drop("UnitTestsAhuacatlGraph");
+      }
+      catch (err) {
+      }
+      var graph = graphModule._create("UnitTestsAhuacatlGraph");
+      graph._addVertexCollection(vertex.name());
+      var rel = graphModule._relation(edge.name(), [ vertex.name() ], [ vertex.name() ]);
+      graph._extendEdgeDefinitions(rel);
+
+      vertex.save({ _key: "newRoot", foo: "bar" }); 
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
+      edge.save("UnitTestsAhuacatlVertex/newRoot", "UnitTestsAhuacatlVertex/test", { });
+      edge.save("UnitTestsAhuacatlVertex/newRoot", "UnitTestsAhuacatlVertex/foo", { });
+      var result = AQL_EXECUTE('LET params = { direction: "any", visitor : "_AQL::HASATTRIBUTESVISITOR", data: { attributes: [ "foo", "bar" ], type: "any" } } FOR result IN GRAPH_NEIGHBORS("UnitTestsAhuacatlGraph", "UnitTestsAhuacatlVertex/newRoot", params) RETURN result.vertex._key');
+
+      assertEqual([ "foo", "test" ], result.json.sort());
+      try {
+        graphModule._drop("UnitTestsAhuacatlGraph");
+      }
+      catch (err) {
+      }
     }
 
   };
