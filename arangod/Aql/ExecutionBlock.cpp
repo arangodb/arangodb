@@ -219,6 +219,24 @@ int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionBlock::isKilled () const {
+  return _engine->getQuery()->killed();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionBlock::throwIfKilled () {
+  if (isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -380,6 +398,8 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
+  throwIfKilled(); // check if we were aborted
+
   AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
   if (docs == nullptr) {
     return false;
@@ -2459,6 +2479,7 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
     AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
     try {
       result->setValue(i, _outReg, a);
+      throwIfKilled(); // check if we were aborted
     }
     catch (...) {
       a.destroy();
@@ -2478,6 +2499,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
     // the calculation is a reference to a variable only.
     // no need to execute the expression at all
     fillBlockWithReference(result);
+    throwIfKilled(); // check if we were aborted
     return;
   }
 
@@ -3642,6 +3664,11 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
 int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
                                    std::string& key) const {
+  if (value.isShaped()) {
+    key = TRI_EXTRACT_MARKER_KEY(value.getMarker());
+    return TRI_ERROR_NO_ERROR;
+  }
+
   if (value.isObject()) {
     Json member(value.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY, false));
 
@@ -3734,6 +3761,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
     auto res = (*it);
     auto document = res->getDocumentCollection(registerId);
+    
+    throwIfKilled(); // check if we were aborted
       
     size_t const n = res->size();
     
@@ -3863,6 +3892,8 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto res = (*it);
     auto document = res->getDocumentCollection(registerId);
     size_t const n = res->size();
+    
+    throwIfKilled(); // check if we were aborted
     
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
@@ -3997,6 +4028,8 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto* res = b;   // This is intentionally a copy!
     auto document = res->getDocumentCollection(docRegisterId);
     decltype(document) keyDocument = nullptr;
+
+    throwIfKilled(); // check if we were aborted
 
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
@@ -4171,6 +4204,8 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
     }
+    
+    throwIfKilled(); // check if we were aborted
       
     size_t const n = res->size();
     
