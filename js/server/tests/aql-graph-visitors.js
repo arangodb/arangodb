@@ -2359,6 +2359,36 @@ function ahuacatlGraphVisitorsSuite () {
 /// @brief tests a built-in visitor
 ////////////////////////////////////////////////////////////////////////////////
 
+    testBuiltinHasAnyAttributesVisitorAllowNull : function () {
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
+      vertex.save({ _key: "baz", bar: "baz", foo: null });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/foo", { });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/baz", { });
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::HASATTRIBUTESVISITOR", data: { allowNull: true, attributes: [ "foo", "bar" ], type: "any" } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/test", "outbound", params) RETURN result.vertex._key');
+
+      assertEqual([ "baz", "foo", "test" ], result.json.sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
+    testBuiltinHasAnyAttributesVisitorAllowNullFalse : function () {
+      vertex.save({ _key: "test", foo: "bar" }); 
+      vertex.save({ _key: "foo", bar: "baz" });
+      vertex.save({ _key: "baz", bar: "baz", foo: null });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/foo", { });
+      edge.save("UnitTestsAhuacatlVertex/test", "UnitTestsAhuacatlVertex/baz", { });
+      var result = AQL_EXECUTE('LET params = { visitor : "_AQL::HASATTRIBUTESVISITOR", data: { allowNull: false, attributes: [ "foo" ], type: "any" } } FOR result IN TRAVERSAL(UnitTestsAhuacatlVertex, UnitTestsAhuacatlEdge, "UnitTestsAhuacatlVertex/test", "outbound", params) RETURN result.vertex._key');
+
+      assertEqual([ "test" ], result.json.sort());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief tests a built-in visitor
+////////////////////////////////////////////////////////////////////////////////
+
     testBuiltinHasAnyAttributesVisitor : function () {
       vertex.save({ _key: "test", foo: "bar" }); 
       vertex.save({ _key: "foo", bar: "baz", foo: "bar" });
