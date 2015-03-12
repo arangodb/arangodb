@@ -173,14 +173,14 @@ void QueryList::remove (Query const* query,
             // do not create invalid UTF-8 sequences
             while (length > 0) {
               uint8_t c = queryString[length - 1];
-              if ((c & 0b10000000) == 0) {
+              if ((c & 128) == 0) {
                 // single-byte character
                 break;
               }
               --length;
 
               // start of a multi-byte sequence
-              if ((c & 0b11000000) == 0b11000000) {
+              if ((c & 192) == 192) {
                 // decrease length by one more, so we the string contains the 
                 // last part of the previous (multi-byte?) sequence
                 break;
@@ -217,6 +217,8 @@ void QueryList::remove (Query const* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 int QueryList::kill (TRI_voc_tick_t id) {
+  std::string queryString;
+
   {
     WRITE_LOCKER(_lock);
   
@@ -226,11 +228,13 @@ int QueryList::kill (TRI_voc_tick_t id) {
       return TRI_ERROR_QUERY_NOT_FOUND;
     }
 
-    const_cast<triagens::aql::Query*>((*it).second->query)->killed(true);
+    auto entry = (*it).second;
+    queryString.assign(entry->query->queryString(), entry->query->queryLength());
+    const_cast<triagens::aql::Query*>(entry->query)->killed(true);
   }
   
   // log outside the lock  
-  LOG_WARNING("killing AQL query '%llu'", (unsigned long long) id);
+  LOG_WARNING("killing AQL query %llu '%s'", (unsigned long long) id, queryString.c_str());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -267,14 +271,14 @@ std::vector<QueryEntryCopy> QueryList::listCurrent () {
         // do not create invalid UTF-8 sequences
         while (length > 0) {
           uint8_t c = queryString[length - 1];
-          if ((c & 0b10000000) == 0) {
+          if ((c & 128) == 0) {
             // single-byte character
             break;
           }
           --length;
    
           // start of a multi-byte sequence
-          if ((c & 0b11000000) == 0b11000000) {
+          if ((c & 192) == 192) {
             // decrease length by one more, so we the string contains the 
             // last part of the previous (multi-byte?) sequence
             break;
