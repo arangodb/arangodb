@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, AQL_PARSE */
+/*global require, AQL_PARSE, AQL_QUERIES_CURRENT, AQL_QUERIES_SLOW, AQL_QUERIES_PROPERTIES */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query actions
@@ -34,8 +34,164 @@ var actions = require("org/arangodb/actions");
 var ArangoError = arangodb.ArangoError;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
+// --SECTION--                                                      HTTP methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock GetApiQueryCurrent
+/// @brief returns a list of currently running AQL queries
+///
+/// @RESTHEADER{GET /_api/query/current, Returns the currently running AQL queries}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned when the list of queries can be retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock GetApiQuerySlow
+/// @brief returns a list of slow running AQL queries
+///
+/// @RESTHEADER{GET /_api/query/slow, Returns the list of slow AQL queries}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned when the list of queries can be retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock GetApiQueryProperties
+/// @brief returns the configuration for the AQL query tracking
+///
+/// @RESTHEADER{GET /_api/query/properties, Returns the properties for the AQL query tracking}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned when the list of queries can be retrieved successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+function get_api_query (req, res) {
+  var suffixes = [ "slow", "current", "properties" ];
+
+  if (req.suffix.length !== 1 ||
+      suffixes.indexOf(req.suffix[0]) === -1) {
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+    return;
+  }
+
+  var result;
+  if (req.suffix[0] === "slow") {
+    result = AQL_QUERIES_SLOW();
+  }
+  else if (req.suffix[0] === "current") {
+    result = AQL_QUERIES_CURRENT();
+  }
+  else if (req.suffix[0] === "properties") {
+    result = AQL_QUERIES_PROPERTIES();
+  }
+
+  if (result instanceof ArangoError) {
+    actions.resultBad(req, res, result.errorNum, result.errorMessage);
+    return;
+  }
+
+  actions.resultOk(req, res, actions.HTTP_OK, result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock DeleteApiQuerySlow
+/// @brief clears the list of slow AQL queries
+///
+/// @RESTHEADER{DELETE /_api/query/slow, Clears the list of slow AQL queries}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{204}
+/// The server will respond with *HTTP 200* when the list of queries was
+/// cleared successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+function delete_api_query (req, res) {
+  if (req.suffix.length !== 1 || req.suffix[0] !== "slow") {
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+    return;
+  }
+
+  AQL_QUERIES_SLOW(true);
+  actions.resultOk(req, res, actions.HTTP_NO_CONTENT);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock PutApiQueryProperties
+/// @brief chages the configuration for the AQL query tracking
+///
+/// @RESTHEADER{PUT /_api/query/properties, Changes the properties for the AQL query tracking}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Is returned if the properties were changed successfully.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request,
+///
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+function put_api_query (req, res) {
+
+  if (req.suffix.length !== 1 ||
+      req.suffix[0] !== "properties") {
+    actions.resultNotFound(req,
+                           res,
+                           arangodb.ERROR_HTTP_NOT_FOUND,
+                           arangodb.errors.ERROR_HTTP_NOT_FOUND.message);
+    return;
+  }
+
+  var json = actions.getJsonBody(req, res);
+
+  if (json === undefined) {
+    return;
+  }
+
+  var result = AQL_QUERIES_PROPERTIES(json);
+
+  if (result instanceof ArangoError) {
+    actions.resultBad(req, res, result.errorNum, result.errorMessage);
+    return;
+  }
+
+  actions.resultOk(req, res, actions.HTTP_OK, result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_query
@@ -144,10 +300,22 @@ actions.defineHttp({
   callback : function (req, res) {
     try {
       switch (req.requestType) {
+        case actions.GET:
+          get_api_query(req, res);
+          break;
+        
+        case actions.PUT:
+          put_api_query(req, res);
+          break;
+
         case actions.POST:
           post_api_query(req, res);
           break;
-
+        
+        case actions.DELETE:
+          delete_api_query(req, res);
+          break;
+        
         default:
           actions.resultUnsupported(req, res);
       }

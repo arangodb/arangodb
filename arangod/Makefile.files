@@ -37,6 +37,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/OptimizerRules.cpp \
 	arangod/Aql/Parser.cpp \
 	arangod/Aql/Query.cpp \
+	arangod/Aql/QueryList.cpp \
 	arangod/Aql/QueryRegistry.cpp \
 	arangod/Aql/RangeInfo.cpp \
 	arangod/Aql/Range.cpp \
