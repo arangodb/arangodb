@@ -175,6 +175,22 @@ void QueryList::remove (Query const* query,
           size_t length = entry->queryLength;
           if (length > maxLength) {
             length = maxLength;
+            // do not create invalid UTF-8 sequences
+            while (length > 0) {
+              uint8_t c = entry->queryString[length - 1];
+              if ((c & 0b10000000) == 0) {
+                // single-byte character
+                break;
+              }
+              --length;
+
+              // start of a multi-byte sequence
+              if ((c & 0b11000000) == 0b11000000) {
+                // decrease length by one more, so we the string contains the 
+                // last part of the previous (multi-byte?) sequence
+                break;
+              }
+            }
           }
 
           _slow.emplace_back(QueryEntryCopy(
@@ -227,6 +243,22 @@ std::vector<QueryEntryCopy> QueryList::listCurrent () {
       size_t length = entry->queryLength;
       if (length > maxLength) {
         length = maxLength;
+        // do not create invalid UTF-8 sequences
+        while (length > 0) {
+          uint8_t c = entry->queryString[length - 1];
+          if ((c & 0b10000000) == 0) {
+            // single-byte character
+            break;
+          }
+          --length;
+   
+          // start of a multi-byte sequence
+          if ((c & 0b11000000) == 0b11000000) {
+            // decrease length by one more, so we the string contains the 
+            // last part of the previous (multi-byte?) sequence
+            break;
+          }
+        }
       }
 
       result.emplace_back(QueryEntryCopy(
