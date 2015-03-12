@@ -1500,6 +1500,75 @@ static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesKillAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_KILL(<id>)");
+  }
+
+  auto id = TRI_ObjectToUInt64(args[0], true);
+
+  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  TRI_ASSERT(queryList != nullptr);
+  
+  auto res = queryList->kill(id);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_V8_RETURN_TRUE();
+  }
+
+  TRI_V8_THROW_EXCEPTION(res);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleeps and checks for query abortion in between
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QuerySleepAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sleep(<seconds>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  triagens::aql::Query* query = static_cast<triagens::aql::Query*>(v8g->_query);
+
+  if (query == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_NOT_FOUND);
+  }
+
+  double n = TRI_ObjectToDouble(args[0]);
+  double const until = TRI_microtime() + n;
+
+  // TODO: use select etc. to wait until point in time
+  while (TRI_microtime() < until) {
+    usleep(10000);
+
+    if (query != nullptr) {
+      if (query->killed()) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
+    }
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           TRI_VOCBASE_T FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -2770,6 +2839,8 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_PROPERTIES"), JS_QueriesPropertiesAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_CURRENT"), JS_QueriesCurrentAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_SLOW"), JS_QueriesSlowAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
 
   TRI_InitV8replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 
