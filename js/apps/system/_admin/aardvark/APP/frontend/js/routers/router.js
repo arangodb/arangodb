@@ -205,6 +205,7 @@
         });
       }
       this.queryManagementView.render();
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     api: function () {

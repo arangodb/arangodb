@@ -107260,8 +107260,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     tabbarElements: {
       id: "arangoQueryManagementTabbar",
       titles: [
-        ["Active Queries", "activequeries"],
-        ["Slow Queries", "slowqueries"]
+        ["Active", "activequeries"],
+        ["Slow", "slowqueries"]
       ]
     },
 
@@ -107360,7 +107360,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function() {
-      this.renderActive();
+      this.convertModelToJSON(true);
     },
 
     renderActive: function() {
@@ -109557,6 +109557,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.queryManagementView.render();
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     api: function () {
