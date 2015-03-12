@@ -86,7 +86,7 @@ QueryList::QueryList (TRI_vocbase_t* vocbase)
     _current(),
     _slow(),
     _slowCount(0),
-    _enabled(false),
+    _enabled(true),
     _trackSlowQueries(true),
     _slowQueryThreshold(QueryList::DefaultSlowQueryThreshold),
     _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
