@@ -1,5 +1,6 @@
 /*jshint strict: false */
-/*global require, AQL_PARSE, AQL_QUERIES_CURRENT, AQL_QUERIES_SLOW, AQL_QUERIES_PROPERTIES */
+/*global require, AQL_PARSE, AQL_QUERIES_CURRENT, AQL_QUERIES_SLOW, 
+  AQL_QUERIES_PROPERTIES, AQL_QUERIES_KILL */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query actions
@@ -191,8 +192,29 @@ function get_api_query (req, res) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock DeleteApiQueryKill
+/// @brief kills an AQL query
+///
+/// @RESTHEADER{DELETE /_api/query/{query-id}, Kills a running AQL query}
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// The server will respond with *HTTP 200* when the query was still running when
+/// the kill request was executed and the query's kill flag was set.
+///
+/// @RESTRETURNCODE{400}
+/// The server will respond with *HTTP 400* in case of a malformed request.
+///
+/// @RESTRETURNCODE{404}
+/// The server will respond with *HTTP 404* when no query with the specified
+/// id was found.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
 function delete_api_query (req, res) {
-  if (req.suffix.length !== 1 || req.suffix[0] !== "slow") {
+  if (req.suffix.length !== 1) {
     actions.resultNotFound(req,
                            res,
                            arangodb.ERROR_HTTP_NOT_FOUND,
@@ -200,8 +222,16 @@ function delete_api_query (req, res) {
     return;
   }
 
-  AQL_QUERIES_SLOW(true);
-  actions.resultOk(req, res, actions.HTTP_NO_CONTENT);
+  if (req.suffix[0] === "slow") {
+    // erase the slow log
+    AQL_QUERIES_SLOW(true);
+    actions.resultOk(req, res, actions.HTTP_NO_CONTENT);
+  }
+  else {
+    // kill a single query
+    AQL_QUERIES_KILL(req.suffix[0]);
+    actions.resultOk(req, res, actions.HTTP_OK);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

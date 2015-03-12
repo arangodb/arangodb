@@ -46,15 +46,11 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
     struct QueryEntry {
-      QueryEntry (TRI_voc_tick_t,
-                  char const*,
-                  size_t,
-                  double); 
+      QueryEntry (triagens::aql::Query const*,
+                  double);
 
-      TRI_voc_tick_t  const id;
-      char const*     const queryString;
-      size_t          const queryLength;
-      double          const started;
+      triagens::aql::Query const* query;
+      double const started;
     };
 
 // -----------------------------------------------------------------------------
@@ -214,6 +210,12 @@ namespace triagens {
                      double);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief kills a query
+////////////////////////////////////////////////////////////////////////////////
+
+        int kill (TRI_voc_tick_t);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the list of running queries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -236,12 +238,6 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief vocbase
-////////////////////////////////////////////////////////////////////////////////
-
-        struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief r/w lock for the list

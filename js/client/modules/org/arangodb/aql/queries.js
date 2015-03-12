@@ -102,6 +102,26 @@ exports.properties = function (config) {
   return requestResult;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills a query
+////////////////////////////////////////////////////////////////////////////////
+
+exports.kill = function (id) {
+  'use strict';
+  
+  if (typeof id === 'object' && 
+      id.hasOwnProperty('id')) {
+    id = id.id;
+  }
+
+  var db = internal.db;
+
+  var requestResult = db._connection.DELETE("/_api/query/" + encodeURIComponent(id), "");
+  arangosh.checkRequestResult(requestResult);
+
+  return requestResult;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
