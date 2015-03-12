@@ -4399,6 +4399,13 @@ li a [class^="icon_arangodb"], li a [class*=" icon_arangodb"] {
   right: 4px;
   top: 2px; }
 
+.fa-minus-circle {
+  color: #da4f49;
+  font-size: 14pt; }
+
+.fa-minus-circle:hover {
+  cursor: pointer; }
+
 div.headerDropdown {
   background-color: #fff;
   display: none;
@@ -4841,8 +4848,8 @@ pre.gv-object-view {
   width: 360px; }
 
 #control_event_node_edit_modal, #control_event_edge_edit_modal, #control_event_node_delete_modal, #control_event_edge_delete_modal, #control_event_new_node_modal {
-  width: 640px;
-  margin-left: -320px; }
+  margin-left: -320px;
+  width: 640px; }
 
 .scenarioImage {
   height: 70%;
