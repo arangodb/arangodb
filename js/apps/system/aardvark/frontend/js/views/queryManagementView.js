@@ -23,7 +23,8 @@
 
     events: {
       "click #arangoQueryManagementTabbar button" : "switchTab",
-      "click #deleteSlowQueryHistory" : "deleteSlowQueryHistoryModal"
+      "click #deleteSlowQueryHistory" : "deleteSlowQueryHistoryModal",
+      "click #arangoQueryManagementTable .fa-minus-circle" : "deleteRunningQueryModal"
     },
 
     tabbarElements: {
@@ -36,8 +37,9 @@
 
     tableDescription: {
       id: "arangoQueryManagementTable",
-      titles: ["ID", "Content", "Started", "Runtime"],
-      rows: []
+      titles: ["ID", "Query String", "Runtime", "Started", ""],
+      rows: [],
+      unescaped: [false, false, false, false, true]
     },
 
     switchTab: function(e) {
@@ -47,6 +49,47 @@
       else if (e.currentTarget.id === 'slowqueries') {
         this.convertModelToJSON(false);
       }
+    },
+
+    deleteRunningQueryModal: function(e) {
+      this.killQueryId = $(e.currentTarget).attr('data-id');
+      var buttons = [], tableContent = [];
+
+      tableContent.push(
+        window.modalView.createReadOnlyEntry(
+          undefined,
+          "Running Query",
+          'Do you want to kill the running query?',
+          undefined,
+          undefined,
+          false,
+          undefined
+        )
+      );
+
+      buttons.push(
+        window.modalView.createDeleteButton('Kill', this.killRunningQuery.bind(this))
+      );
+
+      window.modalView.show(
+        'modalTable.ejs',
+        'Kill Running Query',
+        buttons,
+        tableContent
+      );
+
+      $('.modal-delete-confirmation strong').html('Really kill?');
+
+    },
+
+    killRunningQuery: function() {
+      this.collection.killRunningQuery(this.killQueryId, this.killRunningQueryCallback.bind(this));
+      window.modalView.hide();
+    },
+
+    killRunningQueryCallback: function() {
+      this.convertModelToJSON(true);
+      this.renderActive();
     },
 
     deleteSlowQueryHistoryModal: function() {
@@ -100,7 +143,9 @@
     renderSlow: function() {
       this.$el.html(this.templateSlow.render({}));
       $(this.id).html(this.tabbar.render({content: this.tabbarElements}));
-      $(this.id).append(this.table.render({content: this.tableDescription}));
+      $(this.id).append(this.table.render({
+        content: this.tableDescription,
+      }));
       $('#slowqueries').addClass("arango-active-tab");
     },
 
@@ -118,11 +163,17 @@
       this.collection.fetch({
         success: function () {
           self.collection.each(function (model) {
+
+          var button = '';
+            if (active) {
+              button = '<i data-id="'+model.get('id')+'" class="fa fa-minus-circle"></i>';
+            }
             rowsArray.push([
               model.get('id'),
               model.get('query'),
-              model.get('runTime'),
-              model.get('started')
+              model.get('runTime').toFixed(2) + ' s',
+              model.get('started'),
+              button
             ]);
           });
 
