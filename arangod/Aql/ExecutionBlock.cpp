@@ -219,6 +219,24 @@ int ExecutionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+bool ExecutionBlock::isKilled () const {
+  return _engine->getQuery()->killed();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionBlock::throwIfKilled () {
+  if (isKilled()) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief functionality to walk an execution block recursively
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -380,6 +398,8 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
+  throwIfKilled();
+
   AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
   if (docs == nullptr) {
     return false;
@@ -2380,6 +2400,8 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
         throw;
       }
     }
+        
+    throwIfKilled(); // check if we were aborted
   }
   else {
     vector<AqlValue>& data(result->getData());
@@ -2414,6 +2436,7 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
       try {
         result->setValue(i, _outReg, a);
+        throwIfKilled(); // check if we were aborted
       }
       catch (...) {
         a.destroy();

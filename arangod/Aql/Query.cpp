@@ -172,7 +172,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _maxWarningCount(10),
     _warnings(),
     _part(part),
-    _contextOwnedByExterior(contextOwnedByExterior) {
+    _contextOwnedByExterior(contextOwnedByExterior),
+    _killed(false) {
 
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR: " << queryString << "\n";
 
@@ -219,7 +220,8 @@ Query::Query (triagens::arango::ApplicationV8* applicationV8,
     _maxWarningCount(10),
     _warnings(),
     _part(part),
-    _contextOwnedByExterior(contextOwnedByExterior) {
+    _contextOwnedByExterior(contextOwnedByExterior),
+    _killed(false) {
 
   // std::cout << TRI_CurrentThreadId() << ", QUERY " << this << " CTOR (JSON): " << _queryJson.toString() << "\n";
 
