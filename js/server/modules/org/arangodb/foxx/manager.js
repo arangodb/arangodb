@@ -1277,7 +1277,7 @@
       [ mount ] );
     utils.validateMount(mount, true);
     var app = lookupApp(mount);
-    var invalid = app.configure(options);
+    var invalid = app.configure(options.configuration || {});
     if (invalid.length > 0) {
       // TODO Error handling
       console.log(invalid);

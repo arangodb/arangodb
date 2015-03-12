@@ -603,7 +603,8 @@
              res.mount);
           break;
         case "configure":
-          res = configure(args[1]);
+          options = extractOptions(args);
+          res = configure(args[1], options);
           printf("Reconfigured Application %s version %s on mount point %s\n",
              res.name,
              res.version,
