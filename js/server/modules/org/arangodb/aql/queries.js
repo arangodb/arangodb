@@ -1,4 +1,5 @@
-/*global exports, AQL_QUERIES_SLOW, AQL_QUERIES_CURRENT, AQL_QUERIES_PROPERTIES */
+/*global exports, AQL_QUERIES_SLOW, AQL_QUERIES_CURRENT, AQL_QUERIES_PROPERTIES,
+  AQL_QUERIES_KILL */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
@@ -72,6 +73,21 @@ exports.properties = function (config) {
     return AQL_QUERIES_PROPERTIES();
   }
   return AQL_QUERIES_PROPERTIES(config);
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills a query
+////////////////////////////////////////////////////////////////////////////////
+
+exports.kill = function (id) {
+  'use strict';
+
+  if (typeof id === 'object' && 
+      id.hasOwnProperty('id')) {
+    id = id.id;
+  }
+
+  return AQL_QUERIES_KILL(id);
 };
 
 // -----------------------------------------------------------------------------

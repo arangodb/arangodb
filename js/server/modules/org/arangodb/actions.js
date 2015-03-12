@@ -2044,6 +2044,7 @@ function resultException (req, res, err, headers, verbose) {
       case arangodb.ERROR_CURSOR_NOT_FOUND:
       case arangodb.ERROR_USER_NOT_FOUND:
       case arangodb.ERROR_TASK_NOT_FOUND:
+      case arangodb.ERROR_QUERY_NOT_FOUND:
         code = exports.HTTP_NOT_FOUND;
         break;
 
