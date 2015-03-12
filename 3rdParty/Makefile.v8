@@ -12,6 +12,12 @@ BUILT_SOURCES += @V8_LIBS@
 
 DEBUG_V8_FLAGS = -DV8_TARGET_ARCH_X64 -DENABLE_GDB_JIT_INTERFACE -DV8_DEPRECATION_WARNINGS -DV8_I18N_SUPPORT -DGTEST_HAS_POSIX_RE=0 -DGTEST_LANG_CXX11=0 -DUNIT_TEST -DGTEST_HAS_RTTI=0 -DENABLE_DISASSEMBLER -DV8_ENABLE_CHECKS -DOBJECT_PRINT -DVERIFY_HEAP -DDEBUG -DENABLE_EXTRA_CHECKS -DENABLE_HANDLE_ZAPPING -DOPTIMIZED_DEBUG
 
+if ENABLE_GOLD
+GOLD_V8_FLAGS = -fuse-ld=gold
+else
+GOLD_V8_FLAGS =
+endif
+
 V8DIR=@V8_DIR@
 
 @V8_LIBS@: @srcdir@/.v8-build-@TRI_BITS@
@@ -31,8 +37,8 @@ if ENABLE_ARM
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
-		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS)" \
+		CFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb -fsigned-char -march=armv6 $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		LDFLAGS="-march=armv6" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
@@ -45,8 +51,8 @@ if ENABLE_V8_DEBUG
 else
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
-		CFLAGS="-O2 -g -fsigned-char -march=armv6" \
-		CXXFLAGS="-O2 -g -fsigned-char -march=armv6" \
+		CFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g -fsigned-char -march=armv6 $(GOLD_V8_FLAGS)" \
 		LDFLAGS="-march=armv6" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
@@ -67,8 +73,8 @@ if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
 		LDFLAGS="-lc++" \
-		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS)" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -86,8 +92,8 @@ else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
 		LDFLAGS="-lc++" \
-                CFLAGS="-O2 -g" \
-		CXXFLAGS="-O2 -g" \
+                CFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -98,15 +104,15 @@ else # ! ENABLE_V8_DEBUG
 endif # ENABLE_V8_DEBUG
 
 ################################################################################
-## DARWIN RELEASE
+## LINUX RELEASE
 ################################################################################
 
 else # ! ENABLE_DARWIN
 if ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
-		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS)" \
-		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS)" \
+		CFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O0 -ggdb $(DEBUG_V8_FLAGS) $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \
@@ -118,8 +124,8 @@ if ENABLE_V8_DEBUG
 else # ! ENABLE_V8_DEBUG
 	cd @top_srcdir@/3rdParty/$(V8DIR) \
 	  && $(MAKE) \
-		CFLAGS="-O2 -g" \
-		CXXFLAGS="-O2 -g" \
+		CFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
+		CXXFLAGS="-O2 -g $(GOLD_V8_FLAGS)" \
 		CC="$(CC)" \
 		CC.host="$(CC)" \
 		CXX="$(CXX)" \

@@ -32,6 +32,7 @@ case $target in
   armv7l-*-linux-gnueabihf)
     tr_ARM="yes"
     CFLAGS="$CFLAGS -marm"
+    CXXFLAGS="$CXXFLAGS -marm"
     CPPFLAGS="$CPPFLAGS -marm"
     ;;
 
@@ -145,6 +146,10 @@ AC_PROG_MAKE_SET
 
 AX_CXX_COMPILE_STDCXX_11(noext, mandatory)
 
+dnl ----------------------------------------------------------------------------
+dnl error & warnings && C/C++ standard
+dnl ----------------------------------------------------------------------------
+
 AC_ARG_ENABLE(error-on-warning,
   AS_HELP_STRING([--enable-error-on-warning], [treat warnings as errors (default: no)]),
   [tr_WERROR="${enableval:-yes}"],
@@ -223,6 +228,23 @@ fi
 
 if test "x$tr_ISYSTEM" = "xno";  then
   INCPREFIX="-I"
+fi
+
+dnl ----------------------------------------------------------------------------
+dnl GOLD
+dnl ----------------------------------------------------------------------------
+
+AC_ARG_ENABLE(gold,
+  AS_HELP_STRING([--enable-gold], [use new gold linker (default: no)]),
+  [tr_GOLD="${enableval:-yes}"],
+  [tr_GOLD=no]
+)
+
+AM_CONDITIONAL(ENABLE_GOLD, test "x$tr_GOLD" = xyes)
+
+if test "x$tr_GOLD" = xyes;  then
+  CFLAGS="$CFLAGS -fuse-ld=gold"
+  CXXFLAGS="$CXXFLAGS -fuse-ld=gold"
 fi
 
 dnl ----------------------------------------------------------------------------
