@@ -36,7 +36,6 @@ else:
    exit 1
 fi
 
-
 dnl ----------------------------------------------------------------------------
 dnl grab the configure command, options and flags and store them in m4 variables
 dnl ----------------------------------------------------------------------------
@@ -64,7 +63,6 @@ AC_DEFINE_UNQUOTED(TRI_CONFIGURE_COMMAND, "$TRI_CONFIGURE_COMMAND", "" , [config
 AC_DEFINE_UNQUOTED(TRI_CONFIGURE_OPTIONS, "$TRI_CONFIGURE_OPTIONS", "" , [configure options])
 AC_DEFINE_UNQUOTED(TRI_CONFIGURE_FLAGS, "$TRI_CONFIGURE_FLAGS", "" , [configure flags])
 
-
 dnl ----------------------------------------------------------------------------
 dnl grab the git version number if available
 dnl ----------------------------------------------------------------------------
@@ -77,7 +75,6 @@ fi
 
 AC_SUBST(TRI_REPOSITORY_VERSION)
 AC_DEFINE_UNQUOTED(TRI_REPOSITORY_VERSION, "$TRI_REPOSITORY_VERSION", "" , [repository version])
-
 
 dnl ============================================================================
 dnl --SECTION--                                              3RD-PARTY LIBRARIES
