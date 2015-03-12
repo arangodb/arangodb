@@ -30,8 +30,8 @@
     tabbarElements: {
       id: "arangoQueryManagementTabbar",
       titles: [
-        ["Active Queries", "activequeries"],
-        ["Slow Queries", "slowqueries"]
+        ["Active", "activequeries"],
+        ["Slow", "slowqueries"]
       ]
     },
 
@@ -130,7 +130,7 @@
     },
 
     render: function() {
-      this.renderActive();
+      this.convertModelToJSON(true);
     },
 
     renderActive: function() {
