@@ -35,6 +35,7 @@
 
 #include <regex.h>
 
+#include "Aql/QueryList.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
 #include "Basics/hashes.h"
@@ -73,6 +74,8 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
+
+static std::atomic<TRI_voc_tick_t> QueryId(1);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auxiliary struct for index iteration
@@ -1350,6 +1353,18 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
 
   vocbase->_oldTransactions    = nullptr;
 
+  try {
+    vocbase->_queries          = new triagens::aql::QueryList(vocbase);
+  }
+  catch (...) {
+    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
+    TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
+    TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
+    TRI_set_errno(TRI_ERROR_OUT_OF_MEMORY);
+    
+    return nullptr;
+  }
+
   // use the defaults provided
   TRI_ApplyVocBaseDefaults(vocbase, defaults);
 
@@ -1436,6 +1451,10 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroySpin(&vocbase->_usage._lock);
 
   TRI_FreeStoreGeneralCursor(vocbase->_cursors);
+  
+  if (vocbase->_queries != nullptr) {
+    delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  }
 
   // free name and path
   TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
@@ -2477,6 +2496,14 @@ bool TRI_IsAllowedNameVocBase (bool allowSystem,
   }
 
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the next query id
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_voc_tick_t TRI_NextQueryIdVocBase (TRI_vocbase_t* vocbase) {
+  return QueryId.fetch_add(1, std::memory_order_seq_cst);
 }
 
 // -----------------------------------------------------------------------------
