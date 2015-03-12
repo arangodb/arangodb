@@ -8,10 +8,10 @@ This file contains documentation about the build process, documentation generati
 Configure
 ---------
 ---------
---enable-relative
---enable-maintainer-mode
---enable-all-in-one-icu
---with-backtrace
+--enable-relative - relative mode so you can run without make install
+--enable-maintainer-mode - generate lex/yacc files
+--with-backtrace - add backtraces to native code asserts & exceptions
+--enable-failure-tests - adds javascript hook to crash the server for data integrity tests
 
 CFLAGS
 ------
@@ -68,17 +68,28 @@ JSLint
 Make target
 -----------
 use
-make jslint
+
+    make gitjslint
+
+to lint your modified files.
+
+    make jslint
+
 to find out whether all of your files comply to jslint. This is required to make contineous integration work smoothly.
 
 if you want to add new files / patterns to this make target, edit js/Makefile.files
+
+to be safe from commiting non-linted stuff add **.git/hooks/pre-commit** with:
+
+    make gitjslint
+
 
 Use standalone for your js file
 -------------------------------
 If you want to search errors in your js file, jslint is very handy - like a compiler is for C/C++.
 You can invoke it like this:
 
-bin/arangosh --jslint js/server/modules/org/arangodb/testing.js
+    bin/arangosh --jslint js/server/modules/org/arangodb/testing.js
 
 
 ArangoDB Unittesting Framework
@@ -86,7 +97,7 @@ ArangoDB Unittesting Framework
 ------------------------------
 Dependencies
 ------------
- * Ruby, rspec
+ * Ruby, rspec, httparty
 
 
 Filename conventions
@@ -103,7 +114,7 @@ These tests will only run if no cluster is used. (option 'cluster' needs to be f
 
 -timecritical
 -------------
-These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them. To skip them, set the option 'skipTimeCritical' to true.
+These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option 'skipTimeCritical' to true.
 
 -disabled
 ---------
@@ -121,9 +132,9 @@ These tests are ran using the jasmine framework instead of jsunity.
 Test frameworks used
 ====================
 There are several major places where unittests live: 
- - UnitTests/HttpInterface
- - UnitTests/Basics
- - UnitTests/Geo
+ - UnitTests/HttpInterface (rspec tests)
+ - UnitTests/Basics (boost unittests)
+ - UnitTests/Geo (boost unittests)
  - js/server/tests (runneable on the server)
  - js/common/tests (runneable on the server & via arangosh)
  - js/common/test-data
@@ -204,12 +215,15 @@ Most of the tests can be invoked via the main Makefile:
 
 Javascript framework
 --------------------
-(used in Jenkins integration)
+(used in Jenkins integration; required for running cluster tests)
 Invoked like that:
-scripts/run scripts/unittest.js all
+
+    scripts/unittest all
 
 calling it without parameters like this:
-scripts/run scripts/unittest.js
+
+    scripts/unittest
+
 will give you a extensive usage help which we won't duplicate here.
 
 Choosing facility
@@ -221,13 +235,14 @@ Available choices include:
  - single_client: (see Running a single unittestsuite)
  
  - single_server: (see Running a single unittestsuite)
+ - single_localserver: (see Running a single unittestsuite)
  - many more - call without arguments for more details.
      
 
 Passing Options
 _______________
 
-Options are passed in as one json; Please note that formating blanks may cause problems.
+(Old way: Options are passed in as one json; Please note that formating blanks may cause problems.
 Different facilities may take different options. The above mentioned usage output contains
 the full detail.
 
@@ -242,23 +257,35 @@ valgrind could look like this:
         '"--javascript.gc-interval","65536"],'\
     '"valgrind":"/usr/bin/valgrind",'\
     '"valgrindargs":["--log-file=/tmp/valgrindlog.%p"]}'
+)
+Options are passed as regular long values in the syntax --option value --sub:option value.
+Using Valgrind could look like this:
+
+    ./scripts/unittest single_server --test js/server/tests/aql-escaping.js \
+      --extraargs:server.threads 1 \
+      --extraargs:scheduler.threads 1 \
+      --extraargs:javascript.gc-frequency 1000000 \
+      --extraargs:javascript.gc-interval 65536 \
+      --valgrind /usr/bin/valgrind \
+      --valgrindargs:log-file /tmp/valgrindlog.%p
 
  - we specify the test to execute
- - we specify some arangod arguments which increase the server performance
+ - we specify some arangod arguments via --extraargs which increase the server performance
  - we specify to run using valgrind (this is supported by all facilities
  - we specify some valgrind commandline arguments
 
 Running a single unittestsuite
 ------------------------------
 Testing a single test with the frame work directly on a server:
-scripts/run scripts/unittest.js single_server '{"test":"js/server/tests/aql-escaping.js"}'
+
+    scripts/unittest single_server --test js/server/tests/aql-escaping.js
 
 Testing a single test with the frame work via arangosh:
-scripts/run scripts/unittest.js single_client '{"test":"js/server/tests/aql-escaping.js"}'
 
-unittest.js is mostly only a wrapper; The backend functionality lives in:
-js/server/modules/org/arangodb/testing.js
+    scripts/unittest single_client --test js/server/tests/aql-escaping.js
 
+scripts/unittest is mostly only a wrapper; The backend functionality lives in:
+**js/server/modules/org/arangodb/testing.js**
 
 
 arangod Emergency console

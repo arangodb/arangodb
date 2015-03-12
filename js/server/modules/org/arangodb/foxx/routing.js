@@ -428,6 +428,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
   var exportApp = function (app) {
+    if (app.needsConfiguration()) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_APP_NEEDS_CONFIGURATION.code,
+        errorMessage: errors.ERROR_APP_NEEDS_CONFIGURATION.message
+      });
+    }
     if (!app._isDevelopment && isExported(app._mount)) {
       return app._exports;
     }
@@ -465,12 +471,129 @@
     exportCache = {};
   };
 
+  ////////////////////////////////////////////////////////////////////////////////
+  ///// @brief escapes all html reserved characters that are not allowed in <pre>
+  //////////////////////////////////////////////////////////////////////////////////
+function escapeHTML (string) {
+  var list = string.split("");
+  var i = 0;
+  for (i = 0; i < list.length; ++i) {
+    switch (list[i]) {
+      case "'":
+      list[i] = "&apos;";
+      break;
+      case '"':
+      list[i] = "&quot;";
+      break;
+      case "&":
+      list[i] = "&amp;";
+      break;
+      case "<":
+      list[i] = "&lt;";
+      break;
+      case ">":
+      list[i] = "&gt;";
+      break;
+      default:
+    }
+  }
+  return list.join("");
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routes a default Configuration Required app
+////////////////////////////////////////////////////////////////////////////////
+
+  var routeNeedsConfigurationApp = function(app) {
+
+    return {
+      urlPrefix: "",
+      name: 'foxx("' + app._mount + '")',
+      routes: [{
+        "url" : {
+          match: "/*",
+          methods: actions.ALL_METHODS
+        },
+        "action": {
+          "callback": function(req, res) {
+            res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
+            res.contentType = "text/html; charset=utf-8";
+            if (app._isDevelopment) {
+              res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
+                         "This service is not configured.</p>";
+              res.body += "<h3>Configuration Information</h3>";
+              res.body += "<pre>";
+              res.body += escapeHTML(JSON.stringify(app.getConfiguration(), undefined, 2));
+              res.body += "</pre>";
+              res.budy += "</body></html>";
+
+            } else {
+              res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
+              "This service is not configured.</p></body></html>";
+
+            }
+            return;
+          }
+        }
+      }],
+      middleware: [],
+      context: {},
+      models: {},
+
+      foxx: true
+    };
+    
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief routes this app if the original is broken app
+////////////////////////////////////////////////////////////////////////////////
+
+  var routeBrokenApp = function(app, err) {
+
+    return {
+      urlPrefix: "",
+      name: 'foxx("' + app._mount + '")',
+      routes: [{
+        "url" : {
+          match: "/*",
+          methods: actions.ALL_METHODS
+        },
+        "action": {
+          "callback": function(req, res) {
+            res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
+            res.contentType = "text/html; charset=utf-8";
+            if (app._isDevelopment) {
+              res.body = "<html><head><title>" + escapeHTML(String(err)) +
+                       "</title></head><body><pre>" + escapeHTML(String(err.stack)) + "</pre></body></html>";
+            } else {
+              res.body = "<html><head><title>Service Unavailable</title></head><body><p>" +
+              "This service is temporarily not available. Please check the log file for errors.</p></body></html>";
+
+            }
+            return;
+          }
+        }
+      }],
+      middleware: [],
+      context: {},
+      models: {},
+
+      foxx: true
+    };
+    
+  };
+
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief computes the routes of an app
 ////////////////////////////////////////////////////////////////////////////////
 
-  var routeApp = function (app) {
+  var routeApp = function (app, isInstallProcess) {
+    if (app.needsConfiguration()) {
+      return routeNeedsConfigurationApp(app);
+    }
     var i;
     var mount = app._mount;
 
@@ -568,7 +691,10 @@
       if (err.hasOwnProperty("stack")) {
         console.errorLines(err.stack);
       }
-      throw err;
+      if (isInstallProcess) {
+        throw err;
+      }
+      return routeBrokenApp(app, err);
     }
     return null;
   };

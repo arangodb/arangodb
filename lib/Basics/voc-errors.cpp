@@ -253,6 +253,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_INVALID_MOUNTPOINT, "mountpoint is invalid");
   REG_ERROR(ERROR_NO_FOXX_FOUND, "No foxx found at this location");
   REG_ERROR(ERROR_APP_NOT_FOUND, "App not found");
+  REG_ERROR(ERROR_APP_NEEDS_CONFIGURATION, "App not configured");
   REG_ERROR(RESULT_ELEMENT_EXISTS, "element not inserted into structure, because it already exists");
   REG_ERROR(RESULT_ELEMENT_NOT_FOUND, "element not found in structure");
   REG_ERROR(ERROR_APP_ALREADY_EXISTS, "newest version of app already installed");
