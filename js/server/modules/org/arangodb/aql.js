@@ -60,21 +60,40 @@ var DefaultVisitors = {
     visitorReturnsResults: true,
     func: function (config, result, vertex, path) {
       if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+        if (config.data.attributes.length === 0) {
+          return;
+        }
+
+        var allowNull = true; // default value
+        if (config.data.hasOwnProperty('allowNull')) {
+          allowNull = config.data.allowNull;
+        }
         var i;
         if (config.data.type === 'any') {
           for (i = 0; i < config.data.attributes.length; ++i) {
-            if (vertex.hasOwnProperty(config.data.attributes[i])) {
-              break;
-            }
-          }
-        }
-        else {
-          for (i = 0; i < config.data.attributes.length; ++i) {
             if (! vertex.hasOwnProperty(config.data.attributes[i])) {
-              return;
+              continue;
             }
+            if (! allowNull && vertex[config.data.attributes[i]] === null) {
+              continue;
+            }
+          
+            return CLONE({ vertex: vertex, path: path });
+          }
+
+          return;
+        }
+          
+        for (i = 0; i < config.data.attributes.length; ++i) {
+          if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+            return;
+          }
+          if (! allowNull &&
+              vertex[config.data.attributes[i]] === null) {
+            return;
           }
         }
+
         return CLONE({ vertex: vertex, path: path });
       }
     }
