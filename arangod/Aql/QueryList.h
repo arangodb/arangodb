@@ -101,6 +101,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not queries are tracked
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
 
         inline bool enabled () const {
@@ -109,6 +111,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toggle query tracking
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
         
         inline void enabled (bool value) {
@@ -117,6 +121,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not slow queries are tracked
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
 
         inline bool trackSlowQueries () const {
@@ -125,6 +131,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief toggle slow query tracking
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
         
         inline void trackSlowQueries (bool value) {
@@ -133,6 +141,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief threshold for slow queries (in seconds)
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
 
         inline double slowQueryThreshold () const {
@@ -141,6 +151,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the slow query threshold
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
         
         inline void slowQueryThreshold (double value) {
@@ -153,6 +165,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the max number of slow queries to keep
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
 
         inline size_t maxSlowQueries () const {
@@ -161,6 +175,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the max number of slow queries to keep
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
 
         inline void maxSlowQueries (size_t value) {
@@ -173,6 +189,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the max length of query strings that are stored / returned
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
 
         inline size_t maxQueryStringLength () const {
@@ -181,6 +199,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the max length of query strings that are stored / returned
+/// we're not using a lock here for performance reasons - thus concurrent 
+/// modifications of this variable are possible but are considered unharmful
 ////////////////////////////////////////////////////////////////////////////////
         
         inline void maxQueryStringLength (size_t value) {
