@@ -1191,6 +1191,14 @@
         }
       }
     }
+    var oldApp = lookupApp(mount);
+    var oldConf = oldApp.getConfiguration(true);
+    options.configuration = options.configuration || {};
+    for (var attr in oldConf) {
+      if (oldConf.hasOwnProperty(attr) && !options.configuration.hasOwnProperty(attr)) {
+        options.configuration[attr] = oldConf[attr];
+      }
+    }
     _uninstall(mount, {teardown: false,
       __clusterDistribution: options.__clusterDistribution || false,
       force: !options.__clusterDistribution
@@ -1272,7 +1280,7 @@
     var invalid = app.configure(options);
     if (invalid.length > 0) {
       // TODO Error handling
-      require("console").log(invalid);
+      console.log(invalid);
     }
     utils.updateApp(mount, app.toJSON());
     reloadRouting();

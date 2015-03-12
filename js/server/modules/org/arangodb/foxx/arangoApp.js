@@ -313,7 +313,7 @@ var computeRootAppPath = function(mount, isValidation) {
 /// @brief get app configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.getConfiguration = function() {
+  ArangoApp.prototype.getConfiguration = function(simple) {
     if (!this._manifest.hasOwnProperty("configuration")) {
       return {};
     }
@@ -321,6 +321,19 @@ var computeRootAppPath = function(mount, isValidation) {
     var config = JSON.parse(JSON.stringify(this._manifest.configuration));
     var setting = this._options.configuration || {};
     var attr;
+    if (simple) {
+      var res = {};
+      for (attr in config) {
+        if (config.hasOwnProperty(attr)) {
+          if (setting.hasOwnProperty(attr)) {
+            res[attr] = setting[attr];
+          } else if (config[attr].hasOwnProperty("default")) {
+            res[attr] = config[attr].default;
+          }
+        }
+      }
+      return res;
+    }
     for (attr in config) {
       if (config.hasOwnProperty(attr)) {
         if (setting.hasOwnProperty(attr)) {
