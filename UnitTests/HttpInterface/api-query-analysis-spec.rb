@@ -32,7 +32,7 @@ describe ArangoDB do
   describe "tracking" do
 
     before do
-      ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({enable: true, slowQueryThreshold: 20, trackSlowQueries: false}))
+      ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({enable: true, slowQueryThreshold: 20, trackSlowQueries: true}))
     end
 
     before(:each) do
@@ -133,6 +133,19 @@ describe ArangoDB do
       # This string is exactly 64 bit long
       shortend = "FOR x IN 1..1 LET y = SLEEP(5) LET a = y LET b = a LET c= \"öö"
       res[0]["query"].should eq(shortend + "...")
+    end
+
+    it "should be able to kill a running query" do
+      send_queries
+      doc = ArangoDB.log_get("#{@prefix}-current", @current)
+      res = JSON.parse doc.body
+      res.length.should eq(1)
+      doc = ArangoDB.log_delete(@prefix, "#{@api}/" + res[0]["id"])
+      doc.code.should eq(200)
+      sleep 1
+      doc = ArangoDB.log_get("#{@prefix}-current", @current)
+      res = JSON.parse doc.body
+      res.length.should eq(0)
     end
 
   end
