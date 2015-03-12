@@ -38,3 +38,11 @@ li a [class*=" icon_arangodb"] {
   top: 2px;
 }
 
+.fa-minus-circle {
+  color: $c-negative;
+  font-size: 14pt;
+}
+
+.fa-minus-circle:hover {
+  cursor: pointer;
+}
