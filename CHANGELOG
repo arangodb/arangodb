@@ -1,6 +1,27 @@
 v2.4.5 (XXXX-XX-XX)
 -------------------
 
+* added AQL current and slow query tracking
+
+  This change enables retrieving the list of currently running AQL queries inside the selected database.
+  AQL queries with an execution time beyond a certain threshold can be moved to a "slow query" facility
+  and retrieved from there.
+
+  This change adds the following HTTP REST APIs:
+
+  - `GET /_api/query/current`: for retrieving the list of currently running queries
+  - `GET /_api/query/slow`: for retrieving the list of slow queries
+  - `DELETE /_api/query/slow`: for clearing the list of slow queries
+  - `GET /_api/query/properties`: for retrieving the properties for query tracking
+  - `PUT /_api/query/properties`: for adjusting the properties for query tracking
+
+  The following JavaScript APIs have been added:
+
+  - require("org/arangodb/aql/queries").current();
+  - require("org/arangodb/aql/queries").slow();
+  - require("org/arangodb/aql/queries").clearSlow();
+  - require("org/arangodb/aql/queries").properties();
+
 * fixed issue #1265: arangod crashed with SIGSEGV
 
 * fixed issue #1241: Wildcards in examples
