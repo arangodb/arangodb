@@ -95871,7 +95871,6 @@ if (typeof internal.arango !== 'undefined') {
     "ERROR_INVALID_MOUNTPOINT"     : { "code" : 3007, "message" : "mountpoint is invalid" },
     "ERROR_NO_FOXX_FOUND"          : { "code" : 3008, "message" : "No foxx found at this location" },
     "ERROR_APP_NOT_FOUND"          : { "code" : 3009, "message" : "App not found" },
-    "ERROR_APP_NEEDS_CONFIGURATION" : { "code" : 3010, "message" : "App not configured" },
     "RESULT_ELEMENT_EXISTS"        : { "code" : 10000, "message" : "element not inserted into structure, because it already exists" },
     "RESULT_ELEMENT_NOT_FOUND"     : { "code" : 10001, "message" : "element not found in structure" },
     "ERROR_APP_ALREADY_EXISTS"     : { "code" : 20000, "message" : "newest version of app already installed" },
@@ -96732,15 +96731,10 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief structured to flat commandline arguments
-/// @param longOptsEqual whether long-options are in the type --opt=value 
-///                      or --opt value
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.toArgv = function (structure, longOptsEqual) {
+  exports.toArgv = function (structure) {
     "use strict";
-    if (typeof(longOptsEqual) === 'undefined') {
-      longOptsEqual = false;
-    }
     var vec = [];
     for (var key in structure) {
       if (structure.hasOwnProperty(key)) {
@@ -96762,13 +96756,8 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
           vec = vec.concat(structure[key]);
         }
         else {
-          if (longOptsEqual) {
-            vec.push('--' + key + '=' + structure[key]);
-          }
-          else {
-            vec.push('--' + key);
-            vec.push(structure[key]);
-          }
+          vec.push('--' + key);
+          vec.push(structure[key]);
         }
       }
     }
@@ -96787,9 +96776,9 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
         var n = option.indexOf(':');
         var topOption = option.slice(0, n);
         if (! ret.hasOwnProperty(topOption)) {
-          ret[topOption] = {};
+          ret.topOption = {};
         }
-        setOption(ret[topOption], option.slice(n + 1, option.length), value);
+        setOption(ret.topOption, option.slice(n, option.length), value);
       }
       else if (argv[i + 1] === 'true') {
         ret[option] = true;
@@ -107249,8 +107238,8 @@ window.ArangoUsers = Backbone.Collection.extend({
     tabbarElements: {
       id: "arangoQueryManagementTabbar",
       titles: [
-        ["Active Queries", "activequeries"],
-        ["Slow Queries", "slowqueries"]
+        ["Active", "activequeries"],
+        ["Slow", "slowqueries"]
       ]
     },
 
@@ -107349,7 +107338,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     render: function() {
-      this.renderActive();
+      this.convertModelToJSON(true);
     },
 
     renderActive: function() {
@@ -109546,6 +109535,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         });
       }
       this.queryManagementView.render();
+      this.naviView.selectMenuItem('tools-menu');
     },
 
     api: function () {
