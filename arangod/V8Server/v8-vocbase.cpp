@@ -37,6 +37,7 @@
 #include "v8-voccursor.h"
 
 #include "Aql/Query.h"
+#include "Aql/QueryList.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/Utf8Helper.h"
 
@@ -107,7 +108,7 @@ int32_t const WRP_VOCBASE_COL_TYPE = 2;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  HELPER FUNCTIONS
 // -----------------------------------------------------------------------------
-
+  
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wraps a C++ into a v8::Object
 ////////////////////////////////////////////////////////////////////////////////
@@ -1406,6 +1407,235 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_WrapGeneralCursor(args, cursor);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief retrieve global query options or configure them
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesPropertiesAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  TRI_ASSERT(queryList != nullptr);
+
+  
+  if (args.Length() > 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_PROPERTIES(<options>)");
+  }
+
+  if (args.Length() == 1) {
+    // store options
+    if (! args[0]->IsObject()) {
+      TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_PROPERTIES(<options>)");
+    }
+
+    auto obj = args[0]->ToObject();
+    if (obj->Has(TRI_V8_ASCII_STRING("enabled"))) {
+      queryList->enabled(TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("enabled"))));
+    }
+    if (obj->Has(TRI_V8_ASCII_STRING("trackSlowQueries"))) {
+      queryList->trackSlowQueries(TRI_ObjectToBoolean(obj->Get(TRI_V8_ASCII_STRING("trackSlowQueries"))));
+    }
+    if (obj->Has(TRI_V8_ASCII_STRING("maxSlowQueries"))) {
+      queryList->maxSlowQueries(static_cast<size_t>(TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("maxSlowQueries")))));
+    }
+    if (obj->Has(TRI_V8_ASCII_STRING("slowQueryThreshold"))) {
+      queryList->slowQueryThreshold(TRI_ObjectToDouble(obj->Get(TRI_V8_ASCII_STRING("slowQueryThreshold"))));
+    }
+    if (obj->Has(TRI_V8_ASCII_STRING("maxQueryStringLength"))) {
+      queryList->maxQueryStringLength(static_cast<size_t>(TRI_ObjectToInt64(obj->Get(TRI_V8_ASCII_STRING("maxQueryStringLength")))));
+    }
+
+    // fall-through intentional
+  }
+
+  // return current settings
+  auto result = v8::Object::New(isolate);
+  result->Set(TRI_V8_ASCII_STRING("enabled"), v8::Boolean::New(isolate, queryList->enabled()));
+  result->Set(TRI_V8_ASCII_STRING("trackSlowQueries"), v8::Boolean::New(isolate, queryList->trackSlowQueries()));
+  result->Set(TRI_V8_ASCII_STRING("maxSlowQueries"), v8::Number::New(isolate, static_cast<double>(queryList->maxSlowQueries())));
+  result->Set(TRI_V8_ASCII_STRING("slowQueryThreshold"), v8::Number::New(isolate, queryList->slowQueryThreshold()));
+  result->Set(TRI_V8_ASCII_STRING("maxQueryStringLength"), v8::Number::New(isolate, static_cast<double>(queryList->maxQueryStringLength())));
+  
+  TRI_V8_RETURN(result);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the list of currently running queries
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesCurrentAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_CURRENT()");
+  }
+  
+
+  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  TRI_ASSERT(queryList != nullptr);
+
+
+  try {
+    auto const&& queries = queryList->listCurrent(); 
+
+    uint32_t i = 0;
+    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
+
+    for (auto it : queries) {
+      auto const&& timeString = TRI_StringTimeStamp(it.started);
+
+      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
+      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, it.id));
+      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(it.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
+      obj->Set(TRI_V8_ASCII_STRING("runTime"), v8::Number::New(isolate, it.runTime));
+   
+      result->Set(i++, obj);
+    }
+
+    TRI_V8_RETURN(result);
+  }
+  catch (...) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the list of slow running queries or clears the list
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesSlowAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  TRI_ASSERT(queryList != nullptr);
+
+  
+  if (args.Length() == 1) {
+    queryList->clearSlow();
+    TRI_V8_RETURN_TRUE();
+  }
+  
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_SLOW()");
+  }
+
+  try {
+    auto const&& queries = queryList->listSlow(); 
+
+    uint32_t i = 0;
+    auto result = v8::Array::New(isolate, static_cast<int>(queries.size()));
+
+    for (auto it : queries) {
+      auto const&& timeString = TRI_StringTimeStamp(it.started);
+
+      v8::Handle<v8::Object> obj = v8::Object::New(isolate);
+      obj->Set(TRI_V8_ASCII_STRING("id"), V8TickId(isolate, it.id));
+      obj->Set(TRI_V8_ASCII_STRING("query"), TRI_V8_STD_STRING(it.queryString));
+      obj->Set(TRI_V8_ASCII_STRING("started"), TRI_V8_STD_STRING(timeString));
+      obj->Set(TRI_V8_ASCII_STRING("runTime"), v8::Number::New(isolate, it.runTime));
+   
+      result->Set(i++, obj);
+    }
+
+    TRI_V8_RETURN(result);
+  }
+  catch (...) {
+    TRI_V8_THROW_EXCEPTION_MEMORY();
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief kills an AQL query
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueriesKillAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_vocbase_t* vocbase = GetContextVocBase(isolate);
+
+  if (vocbase == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
+  }
+  
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("AQL_QUERIES_KILL(<id>)");
+  }
+
+  auto id = TRI_ObjectToUInt64(args[0], true);
+
+  auto queryList = static_cast<triagens::aql::QueryList*>(vocbase->_queries);
+  TRI_ASSERT(queryList != nullptr);
+  
+  auto res = queryList->kill(id);
+
+  if (res == TRI_ERROR_NO_ERROR) {
+    TRI_V8_RETURN_TRUE();
+  }
+
+  TRI_V8_THROW_EXCEPTION(res);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sleeps and checks for query abortion in between
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QuerySleepAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 1) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sleep(<seconds>)");
+  }
+  
+  TRI_GET_GLOBALS();
+  triagens::aql::Query* query = static_cast<triagens::aql::Query*>(v8g->_query);
+
+  if (query == nullptr) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_NOT_FOUND);
+  }
+
+  double n = TRI_ObjectToDouble(args[0]);
+  double const until = TRI_microtime() + n;
+
+  // TODO: use select etc. to wait until point in time
+  while (TRI_microtime() < until) {
+    usleep(10000);
+
+    if (query != nullptr) {
+      if (query->killed()) {
+        TRI_V8_THROW_EXCEPTION(TRI_ERROR_QUERY_KILLED);
+      }
+    }
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                           TRI_VOCBASE_T FUNCTIONS
 // -----------------------------------------------------------------------------
@@ -2678,6 +2908,11 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_EXPLAIN"), JS_ExplainAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_PARSE"), JS_ParseAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_WARNING"), JS_WarningAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_PROPERTIES"), JS_QueriesPropertiesAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_CURRENT"), JS_QueriesCurrentAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_SLOW"), JS_QueriesSlowAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
 
   TRI_InitV8replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 
