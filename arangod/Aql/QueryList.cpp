@@ -29,6 +29,7 @@
 
 #include "Aql/QueryList.h"
 #include "Aql/Query.h"
+#include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
 #include "VocBase/vocbase.h"
@@ -216,15 +217,21 @@ void QueryList::remove (Query const* query,
 ////////////////////////////////////////////////////////////////////////////////
 
 int QueryList::kill (TRI_voc_tick_t id) {
-  WRITE_LOCKER(_lock);
+  {
+    WRITE_LOCKER(_lock);
   
-  auto it = _current.find(id);
+    auto it = _current.find(id);
 
-  if (it == _current.end()) {
-    return TRI_ERROR_QUERY_NOT_FOUND;
+    if (it == _current.end()) {
+      return TRI_ERROR_QUERY_NOT_FOUND;
+    }
+
+    const_cast<triagens::aql::Query*>((*it).second->query)->killed(true);
   }
+  
+  // log outside the lock  
+  LOG_WARNING("killing AQL query '%llu'", (unsigned long long) id);
 
-  const_cast<triagens::aql::Query*>((*it).second->query)->killed(true);
   return TRI_ERROR_NO_ERROR;
 }
 
