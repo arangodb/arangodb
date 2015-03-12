@@ -42,7 +42,7 @@ dnl ----------------------------------------------------------------------------
 
 AC_CHECK_HEADERS([openssl/ssl.h])
 
-AC_CHECK_LIB([crypto], [CRYPTO_get_ex_data],
+AC_CHECK_LIB([crypto], [CRYPTO_num_locks],
   OPENSSL_LIBS="-lcrypto $OPENSSL_LIBS",
   AC_MSG_ERROR([please install the OpenSSL library]),
   [-lz $LIBS])

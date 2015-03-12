@@ -1,4 +1,14 @@
-v2.4.4 (2015-XX-XX)
+v2.4.5 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
+
+* fixed comment parsing in Foxx controllers
+
+
+v2.4.4 (2015-02-24)
 -------------------
 
 * fixed the generation template for foxx apps. It now does not create deprecated functions anymore
@@ -7,6 +17,8 @@ v2.4.4 (2015-XX-XX)
 
 * increased default value of traversal option *maxIterations* to 100 times of its previous
   default value
+
+* fixed issue #1256: agency binary not found #1256 
 
 
 v2.4.3 (2015-02-06)

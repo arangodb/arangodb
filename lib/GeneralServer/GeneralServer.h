@@ -473,7 +473,7 @@ namespace triagens {
 
             typename HF::GeneralResponse * response = handler->getResponse();
 
-            if (response == 0) {
+            if (response == nullptr) {
               basics::InternalError err("no response received from handler", __FILE__, __LINE__);
 
               handler->handleError(err);
@@ -483,7 +483,7 @@ namespace triagens {
             RequestStatisticsAgentSetRequestEnd(handler);
             handler->RequestStatisticsAgent::transfer(task);
 
-            if (response != 0) {
+            if (response != nullptr) {
               task->handleResponse(response);
             }
             else {

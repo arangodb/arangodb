@@ -56,6 +56,7 @@ add_executable(
     Aql/OptimizerRules.cpp
     Aql/Parser.cpp
     Aql/Query.cpp
+    Aql/QueryList.cpp
     Aql/QueryRegistry.cpp
     Aql/RangeInfo.cpp
     Aql/Range.cpp
@@ -219,9 +220,9 @@ install(
 install(
   DIRECTORY ${PROJECT_SOURCE_DIR}/js/node ${PROJECT_SOURCE_DIR}/js/apps
   DESTINATION share/arangodb/js
-  REGEX "/\.bin$" EXCLUDE
-  REGEX "/\.travis.yml$" EXCLUDE
-  REGEX "/\.npmignore$" EXCLUDE
+  REGEX "/\\.bin$" EXCLUDE
+  REGEX "/\\.travis.yml$" EXCLUDE
+  REGEX "/\\.npmignore$" EXCLUDE
   REGEX "/databases/" EXCLUDE)
 
 ################################################################################
