@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false, bitwise: false */
-/*global require, exports, COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING */
+/*global require, exports, COMPARE_STRING, AQL_TO_BOOL, AQL_TO_NUMBER, AQL_TO_STRING, AQL_WARNING, AQL_QUERY_SLEEP */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Ahuacatl, internal query functions
@@ -60,21 +60,40 @@ var DefaultVisitors = {
     visitorReturnsResults: true,
     func: function (config, result, vertex, path) {
       if (typeof config.data === "object" && Array.isArray(config.data.attributes)) {
+        if (config.data.attributes.length === 0) {
+          return;
+        }
+
+        var allowNull = true; // default value
+        if (config.data.hasOwnProperty('allowNull')) {
+          allowNull = config.data.allowNull;
+        }
         var i;
         if (config.data.type === 'any') {
           for (i = 0; i < config.data.attributes.length; ++i) {
-            if (vertex.hasOwnProperty(config.data.attributes[i])) {
-              break;
-            }
-          }
-        }
-        else {
-          for (i = 0; i < config.data.attributes.length; ++i) {
             if (! vertex.hasOwnProperty(config.data.attributes[i])) {
-              return;
+              continue;
             }
+            if (! allowNull && vertex[config.data.attributes[i]] === null) {
+              continue;
+            }
+          
+            return CLONE({ vertex: vertex, path: path });
+          }
+
+          return;
+        }
+          
+        for (i = 0; i < config.data.attributes.length; ++i) {
+          if (! vertex.hasOwnProperty(config.data.attributes[i])) {
+            return;
+          }
+          if (! allowNull &&
+              vertex[config.data.attributes[i]] === null) {
+            return;
           }
         }
+
         return CLONE({ vertex: vertex, path: path });
       }
     }
@@ -4316,7 +4335,7 @@ function AQL_SLEEP (duration) {
     return null;
   }
 
-  INTERNAL.sleep(duration);
+  AQL_QUERY_SLEEP(duration);
   return null;
 }
 
