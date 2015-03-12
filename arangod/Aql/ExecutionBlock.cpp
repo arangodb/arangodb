@@ -3594,6 +3594,8 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
   for (auto it = blocks.begin(); it != blocks.end(); ++it) {
     auto res = (*it);
     auto document = res->getDocumentCollection(registerId);
+    
+    throwIfKilled(); // check if we were aborted
       
     size_t const n = res->size();
     
@@ -3722,6 +3724,8 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto res = (*it);
     auto document = res->getDocumentCollection(registerId);
     size_t const n = res->size();
+    
+    throwIfKilled(); // check if we were aborted
     
     // loop over the complete block
     for (size_t i = 0; i < n; ++i) {
@@ -3857,6 +3861,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
     auto document = res->getDocumentCollection(docRegisterId);
     decltype(document) keyDocument = nullptr;
 
+    throwIfKilled(); // check if we were aborted
 
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
@@ -4031,6 +4036,8 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
     if (hasKeyVariable) {
       keyDocument = res->getDocumentCollection(keyRegisterId);
     }
+    
+    throwIfKilled(); // check if we were aborted
       
     size_t const n = res->size();
     
