@@ -646,6 +646,11 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
     _totalCount(0),
     _posInDocuments(0),
     _atBeginning(false) {
+
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+  if (trxCollection != nullptr) {
+    _trx->orderBarrier(trxCollection);
+  }
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock () {
@@ -867,6 +872,11 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
   std::vector<RangeInfo> const& attrRanges = orRanges[0];
   for (auto r : attrRanges) {
     _allBoundsConstant &= r.isConstant();
+  }
+
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+  if (trxCollection != nullptr) {
+    _trx->orderBarrier(trxCollection);
   }
 }
 
@@ -3062,6 +3072,11 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
                                       ModificationNode const* ep)
   : ExecutionBlock(engine, ep),
     _collection(ep->_collection) {
+  
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+  if (trxCollection != nullptr) {
+    _trx->orderBarrier(trxCollection);
+  }
 }
 
 ModificationBlock::~ModificationBlock () {
