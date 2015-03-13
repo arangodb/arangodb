@@ -60,7 +60,7 @@ TimerTask::~TimerTask () {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void TimerTask::getDescription (TRI_json_t* json) {
+void TimerTask::getDescription (TRI_json_t* json) const {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "timed", strlen("timed")));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "offset", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, seconds));
 }
