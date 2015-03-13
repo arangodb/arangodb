@@ -82,7 +82,7 @@ QueryList::QueryList (TRI_vocbase_t*)
     _current(),
     _slow(),
     _slowCount(0),
-    _enabled(true),
+    _enabled(! Query::DisableQueryTracking()),
     _trackSlowQueries(true),
     _slowQueryThreshold(QueryList::DefaultSlowQueryThreshold),
     _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
@@ -116,7 +116,7 @@ QueryList::~QueryList () {
 void QueryList::insert (Query const* query,
                         double stamp) {
   // no query string
-  if (query->queryString() == nullptr || ! _enabled) {
+  if (! _enabled || query == nullptr || query->queryString() == nullptr) {
     return;
   }
 
@@ -140,7 +140,7 @@ void QueryList::insert (Query const* query,
 void QueryList::remove (Query const* query,
                         double now) {
   // no query string
-  if (query->queryString() == nullptr || ! _enabled) {
+  if (! _enabled || query == nullptr || query->queryString() == nullptr) {
     return;
   }
 
