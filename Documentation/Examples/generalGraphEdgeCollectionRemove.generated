@@ -4,7 +4,7 @@ arangosh> graph.relation.save("female/alice", "female/diana", {_key: "aliceAndDi
 { 
   "error" : false, 
   "_id" : "relation/aliceAndDiana", 
-  "_rev" : "575971272", 
+  "_rev" : "575740848", 
   "_key" : "aliceAndDiana" 
 }
 arangosh> db._exists("relation/aliceAndDiana")

@@ -1,22 +1,22 @@
 arangosh> db.users.all().toArray();
 [ 
   { 
-    "_id" : "users/495099848", 
-    "_key" : "495099848", 
-    "_rev" : "495099848", 
-    "name" : "Helmut" 
-  }, 
-  { 
-    "_id" : "users/495296456", 
-    "_key" : "495296456", 
-    "_rev" : "495296456", 
+    "_id" : "users/491854768", 
+    "_key" : "491854768", 
+    "_rev" : "491854768", 
     "name" : "Angela" 
   }, 
   { 
-    "_id" : "users/494837704", 
-    "_key" : "494837704", 
-    "_rev" : "494837704", 
+    "_id" : "users/491396016", 
+    "_key" : "491396016", 
+    "_rev" : "491396016", 
     "name" : "Gerhard" 
+  }, 
+  { 
+    "_id" : "users/491658160", 
+    "_key" : "491658160", 
+    "_rev" : "491658160", 
+    "name" : "Helmut" 
   } 
 ]
 arangosh> db.users.byExample({ "_id" : "users/20" }).toArray();
@@ -24,9 +24,9 @@ arangosh> db.users.byExample({ "_id" : "users/20" }).toArray();
 arangosh> db.users.byExample({ "name" : "Gerhard" }).toArray();
 [ 
   { 
-    "_id" : "users/494837704", 
-    "_key" : "494837704", 
-    "_rev" : "494837704", 
+    "_id" : "users/491396016", 
+    "_key" : "491396016", 
+    "_rev" : "491396016", 
     "name" : "Gerhard" 
   } 
 ]

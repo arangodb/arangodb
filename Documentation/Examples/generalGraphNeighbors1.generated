@@ -8,16 +8,16 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "frenchCity/Lyon", 
       "_key" : "Lyon", 
-      "_rev" : "489398216", 
+      "_rev" : "485956528", 
       "isCapital" : false, 
       "population" : 80000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "internationalHighway/491757512", 
-          "_key" : "491757512", 
-          "_rev" : "491757512", 
+          "_id" : "internationalHighway/488315824", 
+          "_key" : "488315824", 
+          "_rev" : "488315824", 
           "_from" : "germanCity/Cologne", 
           "_to" : "frenchCity/Lyon", 
           "distance" : 700 
@@ -27,14 +27,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "488808392", 
+          "_rev" : "485366704", 
           "isCapital" : false, 
           "population" : 1000000 
         }, 
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "489398216", 
+          "_rev" : "485956528", 
           "isCapital" : false, 
           "population" : 80000 
         } 
@@ -46,16 +46,16 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
     "vertex" : { 
       "_id" : "germanCity/Cologne", 
       "_key" : "Cologne", 
-      "_rev" : "488808392", 
+      "_rev" : "485366704", 
       "isCapital" : false, 
       "population" : 1000000 
     }, 
     "path" : { 
       "edges" : [ 
         { 
-          "_id" : "internationalHighway/491757512", 
-          "_key" : "491757512", 
-          "_rev" : "491757512", 
+          "_id" : "internationalHighway/488315824", 
+          "_key" : "488315824", 
+          "_rev" : "488315824", 
           "_from" : "germanCity/Cologne", 
           "_to" : "frenchCity/Lyon", 
           "distance" : 700 
@@ -65,14 +65,14 @@ arangosh> db._query("FOR e IN GRAPH_NEIGHBORS("
         { 
           "_id" : "frenchCity/Lyon", 
           "_key" : "Lyon", 
-          "_rev" : "489398216", 
+          "_rev" : "485956528", 
           "isCapital" : false, 
           "population" : 80000 
         }, 
         { 
           "_id" : "germanCity/Cologne", 
           "_key" : "Cologne", 
-          "_rev" : "488808392", 
+          "_rev" : "485366704", 
           "isCapital" : false, 
           "population" : 1000000 
         } 
