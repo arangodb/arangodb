@@ -27,6 +27,7 @@
 ;--------------------------------
 ;Variables
 
+  var retryCount
   Var MUI_TEMP
   Var STARTMENU_FOLDER
   Var SV_ALLUSERS
@@ -636,6 +637,31 @@ FunctionEnd
 
 ;--------------------------------
 
+Function WaitForServiceUp
+  Sleep 2000
+; TODO: alter arango so it claims 'running' state if its realy done starting
+;  Push 0
+;  Pop $retryCount
+;  try_again:
+;    SimpleSC::ServiceIsRunning "ArangoDB"
+;    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+;    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
+;    ${If} $1 == 1
+;      ;MessageBox MB_OK "Service running : $retryCount "
+;      ; ok, running now.
+;      Return
+;    ${EndIf}
+;    Sleep 1000
+;    ${If} ${retryCount} == 20
+;      ;MessageBox MB_OK "Service waiting retry count reached"
+;      Return
+;    ${EndIf}
+;    IntOp $retryCount ${retryCount} + 1
+;    Goto try_again
+FunctionEnd
+
+;--------------------------------
+
 !ifdef CPACK_USES_DOWNLOAD
 Function DownloadFile
     IfFileExists $INSTDIR\* +2
@@ -870,6 +896,7 @@ Section "-Core installation"
      SimpleSC::RemoveService  'ArangoDB' 
      SimpleSC::InstallService 'ArangoDB'  'ArangoDB'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' ''
      SimpleSC::StartService 'ArangoDB' '' 30
+     Call WaitForServiceUp
    nothing:
 SectionEnd
 
