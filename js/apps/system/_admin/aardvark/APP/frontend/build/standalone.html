@@ -129,13 +129,11 @@
         <dt>Links</dt>
         <dd>
           <ul>
-            <% if (!app.attributes.development) { %>
-              <li>
-                <a href="./swagger/<%= encodeURIComponent(encodeURIComponent(app.attributes.mount)) %>" target="_blank">
-                  Download API Documentation
-                </a>
-              </li>
-            <% } %>
+            <li>
+              <a href="./foxxes/docu<%= app.attributes.mount %>" target="_blank">
+                Download API Documentation
+              </a>
+            </li>
             <% if (app.attributes.repository && app.attributes.repository.type == 'git') { %>
               <li><a href="<%= app.attributes.repository.url %>" target="_blank">Git Repository</a></li>
             <% } %>
@@ -2688,7 +2686,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1426177892015"></script>
+<script src="app.js?version=1426242682164"></script>
 
   </body>
 </html>
