@@ -10,8 +10,8 @@ content-type: application/json; charset=utf-8
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-03-13T12:53:43Z", 
-      "message" : "applier shut down", 
+      "time" : "2015-03-13T13:04:20Z", 
+      "message" : "fetching master state information", 
       "failedConnects" : 1 
     }, 
     "totalRequests" : 2, 
@@ -19,15 +19,15 @@ content-type: application/json; charset=utf-8
     "totalEvents" : 0, 
     "totalOperationsExcluded" : 0, 
     "lastError" : { 
-      "time" : "2015-03-13T12:53:43Z", 
+      "time" : "2015-03-13T13:04:20Z", 
       "errorMessage" : "could not connect to master at tcp://127.0.0.1:8529: Could not connect", 
       "errorNum" : 1412 
     }, 
-    "time" : "2015-03-13T12:53:43Z" 
+    "time" : "2015-03-13T13:04:20Z" 
   }, 
   "server" : { 
-    "version" : "2.4.5-beta2", 
-    "serverId" : "161978609751180" 
+    "version" : "2.4.5-beta3", 
+    "serverId" : "271830257909397" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 

@@ -5,7 +5,7 @@ arangosh> graph._edges({type: "married"}).toArray();
   { 
     "_id" : "relation/aliceAndBob", 
     "_key" : "aliceAndBob", 
-    "_rev" : "109386672", 
+    "_rev" : "105908370", 
     "_from" : "female/alice", 
     "_to" : "male/bob", 
     "type" : "married" 
@@ -13,7 +13,7 @@ arangosh> graph._edges({type: "married"}).toArray();
   { 
     "_id" : "relation/charlyAndDiana", 
     "_key" : "charlyAndDiana", 
-    "_rev" : "109845424", 
+    "_rev" : "106367122", 
     "_from" : "male/charly", 
     "_to" : "female/diana", 
     "type" : "married" 

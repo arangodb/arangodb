@@ -6,25 +6,25 @@ arangosh> query.toArray();
   { 
     "_id" : "female/diana", 
     "_key" : "diana", 
-    "_rev" : "519445424", 
+    "_rev" : "519440530", 
     "name" : "Diana" 
   }, 
   { 
     "_id" : "female/alice", 
     "_key" : "alice", 
-    "_rev" : "518724528", 
+    "_rev" : "518719634", 
     "name" : "Alice" 
   }, 
   { 
     "_id" : "male/bob", 
     "_key" : "bob", 
-    "_rev" : "519052208", 
+    "_rev" : "519047314", 
     "name" : "Bob" 
   }, 
   { 
     "_id" : "male/charly", 
     "_key" : "charly", 
-    "_rev" : "519248816", 
+    "_rev" : "519243922", 
     "name" : "Charly" 
   } 
 ]
