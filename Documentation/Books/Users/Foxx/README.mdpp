@@ -6,7 +6,7 @@ With the framework you can embed complex queries and data-focused business logic
 
 Using Foxx will give you benefits above writing the code in a separate applications.
 First of all it yields performance benefits, the data analysis and modification is executed as close to the data as possible.
-Also it requires one network hop less as the foxx has direct access to the data and does not have to query a database located on a different server.
+Also it requires one network hop less as the Foxx has direct access to the data and does not have to query a database located on a different server.
 Second your application is completely free of any database related information like queries, it is just requesting a endpoint that gives the data in the expected format.
 This also allows to reuse this endpoint in different applications without copying the queries.
 Third Foxx adds another level of security to your application, you can manage the access rights on any level you like: application, collection, document or even attribute.
@@ -194,3 +194,5 @@ This chapter will present the more advanced capabilities of Foxx.
 It requires that you know the details presented in the chapters before.
 Here you will learn about Foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
 Furthermore you will learn about background and periodical tasks in Foxx applications.
+
+[Read More](Advanced/README.md)

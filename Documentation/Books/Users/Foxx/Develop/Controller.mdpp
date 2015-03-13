@@ -33,7 +33,7 @@
 !SECTION Documenting and constraining a specific route
 
 If you now want to document your route, you can use JSDoc style comments (a
-multiline comment block with the first line starting with */*** instead
+multi-line comment block where the first line starts with */*** instead
 of */**) above your routes to do that:
 
 ```js
@@ -82,10 +82,10 @@ API by chaining the following methods onto your path definition:
 
 In addition to documenting a specific route, you can also
 do the same for all routes of a controller. For this purpose
-use the *allRoutes* object of the according controller.
+use the **allRoutes** object of the according controller.
 The following methods are available.
 
-*Examples*
+**Examples**
 
 Provide an error response for all routes handled by this controller:
 
@@ -147,18 +147,18 @@ When you have created your FoxxController you can now define routes on it.
 You provide each with a function that will handle the request. It gets two
 arguments (four, to be honest. But the other two are not relevant for now):
 
-* The *request* object
-* The *response* object
+* The **request** object
+* The **response** object
 
 These objects are provided by the underlying ArangoDB actions and enhanced
-by the *BaseMiddleware* provided by Foxx.
+by the **BaseMiddleware** provided by Foxx.
 
 !SUBSECTION The Request Object
 
-The *request* object inherits several attributes from the underlying Actions:
+The **request** object inherits several attributes from the underlying Actions:
 
-* *compatibility*: an integer specifying the compatibility version sent by the
-  client (in request header *x-arango-version*). If the client does not send this
+* **compatibility**: an integer specifying the compatibility version sent by the
+  client (in request header **x-arango-version**). If the client does not send this
   header, ArangoDB will set this to the minimum compatible version number. The
   value is 10000 * major + 100 * minor (e.g. *10400* for ArangoDB version 1.4).
 
