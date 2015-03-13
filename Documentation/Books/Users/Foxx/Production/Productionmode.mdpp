@@ -7,34 +7,32 @@ This is the default mode for all newly installed apps and should always be used 
 
 Activating the production mode is done with a single command:
 
-    unix> foxx-manager production /example
-    Activated production mode for Application hello-foxx version 1.5.0 on mount point /example
+```
+unix> foxx-manager production /example
+Activated production mode for Application hello-foxx version 1.5.0 on mount point /example
+```
 
-Now the app will not be listed in *listDevelopment*:
+Now the app will not be listed in **listDevelopment**:
 
-    unix> foxx-manager listDevelopment
-    Mount       Name          Author          Description                                 Version    Development
-    ---------   -----------   -------------   -----------------------------------------   --------   ------------
-    ---------   -----------   -------------   -----------------------------------------   --------   ------------
-    0 application(s) found
-
+```
+unix> foxx-manager listDevelopment
+Mount       Name          Author          Description                                 Version    Development
+---------   -----------   -------------   -----------------------------------------   --------   ------------
+---------   -----------   -------------   -----------------------------------------   --------   ------------
+0 application(s) found
+```
 !SECTION Effects
 
 For a Foxx application in production mode the following effects apply:
-<dl>
-  <dt>Application Caching</dt>
-  <dl>
-    The first time an application is requested it's routing is computed and cached.
-    It is guaranteed that subsequent requests to this application will get the cached routing.
-    That implies that changing the sources of an app will not have any effect.
-    It also guarantees that requests will be answered at the highest possible speed.
-    The cache might be flushed whenever ArangoDB is restarted or an application in development mode is requested.
-  </dl>
-  <dt>Only internal Debugging information</dt>
-  <dl>
-    Whenever the application is requested and an unhandled error occurs only a generic error message will be returned.
-    Stack traces are never delivered via the public API.
-    For more information see the [Debugging](Debugging.md) section.
-  </dl>
-</dl>
 
+**Application Caching**
+The first time an application is requested it's routing is computed and cached.
+It is guaranteed that subsequent requests to this application will get the cached routing.
+That implies that changing the sources of an app will not have any effect.
+It also guarantees that requests will be answered at the highest possible speed.
+The cache might be flushed whenever ArangoDB is restarted or an application in development mode is requested.
+
+**Only internal Debugging information**
+Whenever the application is requested and an unhandled error occurs only a generic error message will be returned.
+Stack traces are never delivered via the public API.
+For more information see the [Debugging](Debugging.md) section.

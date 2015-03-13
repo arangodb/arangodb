@@ -1,6 +1,6 @@
 !CHAPTER Foxx Dependency Injection
 
-If you have runtime dependencies you want to access in your route handlers but don't want to define at load time (e.g. dependencies between multiple Foxx apps), *FoxxController* allows you to inject these dependencies into your route handlers by adding injectors to it.
+If you have runtime dependencies you want to access in your route handlers but don't want to define at load time (e.g. dependencies between multiple Foxx apps), **FoxxController** allows you to inject these dependencies into your route handlers by adding injectors to it.
 
 !SECTION Add an injector
 
@@ -8,18 +8,18 @@ Registers a dependency factory with the controller.
 
 `controller.addInjector(name, factory)`
 
-The injected dependency will be available as a property with the chosen *name* on the third argument passed to each route handler.
+The injected dependency will be available as a property with the chosen **name** on the third argument passed to each route handler.
 
-If *factory* is a function, it will be called the first time a route of that controller is handled and its result will be injected into each route handler. Otherwise the value will be injected as it is.
+If **factory** is a function, it will be called the first time a route of that controller is handled and its result will be injected into each route handler. Otherwise the value will be injected as it is.
 
 If you want to inject a function as a dependency, you need to wrap it in a function.
 
-*Parameter*
+**Parameter**
 
-* *name*: the name under which the dependency will be available in the route handler.
-* *factory*: a function returning the dependency or an arbitrary value that will be passed as-is.
+* **name**: the name under which the dependency will be available in the route handler
+* **factory**: a function returning the dependency or an arbitrary value that will be passed as-is
 
-*Examples*
+**Examples**
 
 ```js
 function myFunc() {
@@ -44,13 +44,13 @@ Registers multiple dependency factories with the controller.
 
 `controller.addInjector(object)`
 
-Equivalent to calling *addInjector(name, value)* for each property of the object.
+Equivalent to calling **addInjector(name, value)** for each property of the object.
 
-*Parameter*
+**Parameter**
 
-* *object*: an object mapping dependency names to dependency factories.
+* **object**: an object mapping dependency names to dependency factories
 
-*Examples*
+**Examples**
 
 ```js
 function myFunc() {

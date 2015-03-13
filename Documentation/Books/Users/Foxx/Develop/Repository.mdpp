@@ -1,6 +1,6 @@
 !CHAPTER Details on FoxxRepository
 
-A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as *repository*.
+A repository is a gateway to the database. It gets data from the database, updates it or saves new data. It uses the given model when it returns a model and expects instances of the model for methods like save. In your repository file, export the repository as **repository**.
 
 ```javascript
 var Foxx = require("org/arangodb/foxx");
@@ -21,7 +21,7 @@ You can define custom query methods using Foxx.createQuery and Foxx.Repository.e
 
 For more details see the chapter on [Foxx Queries](../Foxx/FoxxQueries.md).
 
-*Examples*
+**Examples**
 
 Making a simple query in the repository and using it from the controller:
 
@@ -103,7 +103,7 @@ ctrl.get("/:id", function(req, res) {
 
 Repository can take care of ensuring the existence of collection indexes for you.
 If you define indexes for a repository, instances of the repository will have
-access to additional index-specific methods like *range* or *fulltext* (see below).
+access to additional index-specific methods like **range** or **fulltext** (see below).
 
 The syntax for defining indexes is the same used in [*collection.ensureIndex*](../IndexHandling/README.md).
 
