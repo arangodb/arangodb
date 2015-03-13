@@ -1,8 +1,8 @@
 !CHAPTER Foxx console
 
-Foxx injects a *console* object into each Foxx app that allows writing log entries to the database and querying them from within the app itself.
+Foxx injects a **console** object into each Foxx app that allows writing log entries to the database and querying them from within the app itself.
 
-The *console* object supports the CommonJS Console API found in Node.js and modern browsers, while also providing some ArangoDB-specific additions.
+The **console** object supports the CommonJS Console API found in Node.js and modern browsers, while also providing some ArangoDB-specific additions.
 
 !SECTION Logging
 
@@ -16,7 +16,7 @@ Applies `util.format` to the arguments and writes the resulting string to the ap
 
 If the first argument is not a formatting string or any of the additional arguments are not used by the formatting string, they will be concatenated to the result string.
 
-*Examples*
+**Examples**
 
 ```js
 console.log("%s, %s!", "Hello", "World"); // => "Hello, World!"
@@ -27,22 +27,22 @@ console.log(1, 2, 3); // => "1 2 3"
 
 !SUBSECTION Logging with different log levels
 
-The *console* object provides additional methods to log messages with different log levels:
+The **console** object provides additional methods to log messages with different log levels:
 
-* `console.debug` for log level *DEBUG*
-* `console.info` for log level *INFO*
-* `console.warn` for log level *WARN*
-* `console.error` for log level *ERROR*
+* `console.debug` for log level **DEBUG**
+* `console.info` for log level **INFO**
+* `console.warn` for log level **WARN**
+* `console.error` for log level **ERROR**
 
-By default, `console.log` uses log level *INFO*, making it functionally equivalent to `console.info`. Other than the log level, all of these methods behave identically to `console.log`.
+By default, `console.log` uses log level **INFO**, making it functionally equivalent to `console.info`. Other than the log level, all of these methods behave identically to `console.log`.
 
 The built-in log levels are:
 
-* -2: *TRACE*
-* -1: *DEBUG*
-* 0: *INFO*
-* 1: *WARN*
-* 2: *ERROR*
+* -2: **TRACE**
+* -1: **DEBUG**
+* 0: **INFO**
+* 1: **WARN**
+* 2: **ERROR**
 
 !SUBSECTION Logging with timers
 
@@ -54,9 +54,9 @@ Passing a label to `console.time` starts the timer. Passing the same label to `c
 
 Calling `console.timeEnd` with an invalid label or calling it with the same label twice (without first starting a new timer with the same label) results in an error.
 
-By default, the timing messages will be logged with log level *INFO*.
+By default, the timing messages will be logged with log level **INFO**.
 
-*Examples*
+**Examples**
 
 ```js
 console.time('do something');
@@ -85,9 +85,9 @@ You can explicitly log a message with a stack trace.
 
 This creates a stack trace with the given message.
 
-By default the stack traces will be logged with a log level of *TRACE*.
+By default the stack traces will be logged with a log level of **TRACE**.
 
-*Examples*
+**Examples**
 
 ```js
 console.trace('Hello');
@@ -104,11 +104,11 @@ This creates an assertion that will log an error if it fails.
 
 `console.assert(statement, message)`
 
-If the given *statement* is not truthy (i.e. evaluates to `false` if treated as a boolean), an `AssertionError` with the given message will be created and its stack trace will be logged.
+If the given **statement** is not true (e.g. evaluates to `false` if treated as a boolean), an `AssertionError` with the given message will be created and its stack trace will be logged.
 
-By default, the stack trace will be logged with a log level of *ERROR* and the error will be discarded after logging it (instead of being thrown).
+By default, the stack trace will be logged with a log level of **ERROR** and the error will be discarded after logging it (instead of being thrown).
 
-*Examples*
+**Examples**
 
 ```js
 console.assert(2 + 2 === 5, "I'm bad at maths");
@@ -127,11 +127,11 @@ This logs a more detailed string representation of a given object.
 
 The regular logging functions try to format messages as nicely and readable as possible. Sometimes that may not provide you with all the information you actually want.
 
-The *dir* method instead logs the result of `util.inspect`.
+The **dir** method instead logs the result of `util.inspect`.
 
-By default, the message will be logged with the log level *INFO*.
+By default the message will be logged with the log level **INFO**.
 
-*Examples*
+**Examples**
 
 ```js
 console.log(require('org/arangodb').db); // => '[ArangoDatabase "_system"]'
@@ -153,14 +153,14 @@ This lets you define your own log levels.
 
 If you need more than the built-in log levels, you can easily define your own.
 
-This method returns a function that logs messages with the given log level (i.e. an equivalent to `console.log` that uses your custom log level instead).
+This method returns a function that logs messages with the given log level (e.g. an equivalent to `console.log` that uses your custom log level instead).
 
-*Parameter*
+**Parameter**
 
-* *name*: name of the log level as it appears in the database, usually all-uppercase.
-* *value* (optional): value of the log level. Default: `999`
+* **name**: name of the log level as it appears in the database, usually all-uppercase
+* **value** (optional): value of the log level. Default: `999`
 
-The *value* is used when determining whether a log entry meets the minimum log level that can be defined in various places. For a list of the built-in log levels and their values see the section on logging with different log levels above.
+The **value** is used when determining whether a log entry meets the minimum log level that can be defined in various places. For a list of the built-in log levels and their values see the section on logging with different log levels above.
 
 !SUBSECTION Preventing entries from being logged
 
@@ -168,7 +168,7 @@ You can define a minimum log level entries must match in order to be logged.
 
 `console.setLogLevel(level)`
 
-The *level* can be a numeric value or the case-sensitive name of an existing log level.
+The **level** can be a numeric value or the case-sensitive name of an existing log level.
 
 Any entries with a log level lower than the given value will be discarded silently.
 
@@ -182,7 +182,7 @@ You can toggle the logging of stack trace objects for every log entry.
 
 `console.setTracing(trace)`
 
-If *trace* is set to `true`, all log entries will be logged with a parsed stack trace as an additional `stack` property that can be useful for identifying where the entry originated and how the code triggering it was called.
+If **trace** is set to `true`, all log entries will be logged with a parsed stack trace as an additional `stack` property that can be useful for identifying where the entry originated and how the code triggering it was called.
 
 Because this results in every logging call creating a stack trace (which may have a significant performance impact), this option is disabled by default.
 
@@ -192,7 +192,7 @@ You can toggle whether console assertions should throw if they fail.
 
 `console.setAssertThrows(assertThrows)`
 
-If *assertThrows* is set to `true`, any failed assertions in `console.assert` will result in the generated error being thrown instead of being discarded after it is logged.
+If **assertThrows** is set to `true`, any failed assertions in `console.assert` will result in the generated error being thrown instead of being discarded after it is logged.
 
 By default, this setting is disabled.
 
@@ -200,15 +200,15 @@ By default, this setting is disabled.
 
 Most of the logging methods have an implied log level that is set to a reasonable default. If you would like to have them use different log levels, you can easily change them.
 
-* `console.log.level` defaults to *INFO*
-* `console.dir.level` defaults to *INFO*
-* `console.time.level` defaults to *INFO*
-* `console.trace.level` defaults to *TRACE*
-* `console.assert.level` defaults to *ERROR*
+* `console.log.level` defaults to **INFO**
+* `console.dir.level` defaults to **INFO**
+* `console.time.level` defaults to **INFO**
+* `console.trace.level` defaults to **TRACE**
+* `console.assert.level` defaults to **ERROR**
 
 To use different log levels, just set these properties to the case-sensitive name of the desired log level.
 
-*Examples*
+**Examples**
 
 ```js
 console.log('this uses "INFO"');
@@ -249,15 +249,15 @@ It provides three easy methods for querying the log entries:
 
 Each method takes an optional `opts` argument, which can be an object with any of the following properties:
 
-* *startTime*: the oldest time to include (in milliseconds). Default: 2 hours ago.
-* *endTime*: the most recent time to include (in milliseconds).
-* *level*: only return entries with this log level (name or value).
-* *minLevel*: only return entries with this log level or above (name or value).
-* *sort*: sorting direction of the result (*ASC* or *DESC* by time). Default: *ASC*.
-* *limit*: maximum number of entries to return.
-* *offset*: if *limit* is set, skip this many entries.
+* **startTime**: the oldest time to include (in milliseconds). Default: 2 hours ago.
+* **endTime**: the most recent time to include (in milliseconds).
+* **level**: only return entries with this log level (name or value).
+* **minLevel**: only return entries with this log level or above (name or value).
+* **sort**: sorting direction of the result (**ASC** or **DESC** by time). Default: **ASC**.
+* **limit**: maximum number of entries to return.
+* **offset**: if **limit** is set, skip this many entries.
 
-The default value for *startTime* can be changed by overriding `logs.defaultMaxAge` with a different time offset in milliseconds.
+The default value for **startTime** can be changed by overriding `logs.defaultMaxAge` with a different time offset in milliseconds.
 
 !SUBSUBSECTION Search by message
 
@@ -265,7 +265,7 @@ This lists all log entries with messages that contain the given token.
 
 `logs.searchByMessage(message, [opts])`
 
-This works like `logs.list` except it only returns log entries containing the given *message* part in their message.
+This works like `logs.list` except it only returns log entries containing the given **message** part in their message.
 
 !SUBSUBSECTION Search by file name
 
@@ -273,8 +273,8 @@ This lists all log entries with stack traces that contain the given token.
 
 `logs.searchByFileName(fileName, [opts])`
 
-This works like `logs.list` except it only returns log entries containing the given *fileName* part in one of the file names of their stack trace.
+This works like `logs.list` except it only returns log entries containing the given **fileName** part in one of the file names of their stack trace.
 
-This method can only be used if the console has *tracing* enabled. See the section on enabling extra stack traces.
+This method can only be used if the console has **tracing** enabled. See the section on enabling extra stack traces.
 
 Note that entries that were logged while tracing was not enabled can not be found with this method because they don't have any parsed stack traces associated with them. This method does not search the log entries messages for the file name, so entries generated by `console.assert` or `console.trace` are not treated differently.
