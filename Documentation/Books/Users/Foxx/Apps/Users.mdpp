@@ -1,10 +1,10 @@
 !CHAPTER The Users App
 
-The users app provides a username-based user storage JavaScript API that can be used in other Foxx apps.
+The users app provides an username-based user storage JavaScript API that can be used in other Foxx apps.
 
-!SECTION JavaScript API: *userStorage*
+!SECTION JavaScript API: **userStorage**
 
-This app exposes a user storage via a JavaScript API named *userStorage*.
+This app exposes an user storage via a JavaScript API named **userStorage**.
 
 @EXAMPLES
 
@@ -16,11 +16,11 @@ var userStorage = Foxx.requireApp('/_system/users').userStorage;
 
 !SUBSUBSECTION User Not Found
 
-Indicates a user could not be found in the database.
+Indicates an user could not be found in the database.
 
 `new userStorage.errors.UserNotFound(userId)`
 
-Thrown by the user storage's *delete* and *get* methods if passed a user ID that does not exist in the database.
+Thrown by the user storages **delete** and **get** methods if passed an user ID that does not exist in the database.
 
 @EXAMPLES
 
@@ -34,11 +34,11 @@ try {
 
 !SUBSUBSECTION Username Not Available
 
-Indicates a username is already in use.
+Indicates an username is already in use.
 
 `new userStorage.errors.UsernameNotAvailable(username)`
 
-Thrown by the user storage's *create* method if passed a *userData* object with a *username* that is already in use.
+Thrown by the user storages **create** method if passed a **userData** object with a **username** that is already in use.
 
 @EXAMPLES
 
@@ -54,25 +54,25 @@ try {
 
 User objects are instances of a Foxx model with the following attributes:
 
-* *user*: the user's unique *username*.
-* *userData*: application-specific user data.
-* *authData*: an arbitrary object used by authentication apps to store sensitive data. For password authentication this could be a hash, for third-party authentication services this could be information about the user's identity. This attribute should never be exposed to the user directly.
+* **user**: the user's unique **username**
+* **userData**: application-specific user data
+* **authData**: an arbitrary object used by authentication apps to store sensitive data. For password authentication this could be a hash, for third-party authentication services this could be information about the user's identity. This attribute should never be exposed to the user directly
 
-!SUBSECTION Create a user
+!SUBSECTION Create an user
 
 Creates and saves a new instance of the user model.
 
 `userStorage.create(username, [userData,] [authData])`
 
-Throws *UsernameNotAvailable* if a user with the given username already exists.
+Throws **UsernameNotAvailable** if an user with the given username already exists.
 
-**Note:** When using the system users app (mounted at */\_system/users*), new users will automatically have their *active* flag set to *true* if no value is provided in the *authData* (or if *authData* is omitted entirely).
+**Note:** When using the system users app (mounted at **/\_system/users**), new users will automatically have their **active** flag set to **true** if no value is provided in the **authData** (or if **authData** is omitted entirely).
 
-*Parameter*
+**Parameter**
 
-* *username*: an arbitrary string that will be used as the user's username
-* *userData* (optional): an arbitrary object that will be stored as the user's *userData* attribute when the model is saved to the database.
-* *authData* (optional): an arbitrary object that will be stored as the user's *authData* attribute when the model is saved to the database.
+* **username**: an arbitrary string that will be used as the user's username
+* **userData** (optional): an arbitrary object that will be stored as the user's **userData** attribute when the model is saved to the database
+* **authData** (optional): an arbitrary object that will be stored as the user's **authData** attribute when the model is saved to the database
 
 @EXAMPLES
 
@@ -83,22 +83,22 @@ assertEqual(user.get('userData').hair, 'fuzzy');
 
 !SUBSECTION Fetch an existing user
 
-There are two ways to fetch a user via the user storage API:
+There are two ways to fetch an user via the user storage API:
 
-* resolving a *username* with the user storage's *resolve* method
-* calling the user storage's *get* method with a user ID directly
+* resolving a **username** with the user storages **resolve** method
+* calling the user storages **get** method with an user ID directly
 
-!SUBSUBSECTION Resolve a *username*
+!SUBSUBSECTION Resolve a **username**
 
-Fetches a user with a given *username*.
+Fetches an user with a given **username**.
 
 `userStorage.resolve(username)`
 
-If the username can not be resolved, a *UserNotFound* exception will be thrown instead.
+If the username can not be resolved, a **UserNotFound** exception will be thrown instead.
 
-*Parameter*
+**Parameter**
 
-* *username*: an arbitrary string matching the username of the user you are trying to fetch.
+* **username**: an arbitrary string matching the username of the user you are trying to fetch.
 
 @EXAMPLES
 
@@ -107,17 +107,17 @@ var user = userStorage.resolve('malaclypse');
 assertEqual(user.user, 'malaclypse');
 ```
 
-!SUBSUBSECTION Resolve a user ID directly
+!SUBSUBSECTION Resolve an user ID directly
 
-Fetches a user with a given ID.
+Fetches an user with a given ID.
 
 `userStorage.get(userId)`
 
-Attempts to fetch the user with the given ID from the database. If the user does not exist, a *UserNotFound* exception will be thrown instead.
+Attempts to fetch the user with the given ID from the database. If the user does not exist, an **UserNotFound** exception will be thrown instead.
 
-*Parameter*
+**Parameter**
 
-* *userId*: a user *_key*.
+* **userId**: an user **_key**.
 
 @EXAMPLES
 
@@ -126,24 +126,24 @@ var user = userStorage.get(userId);
 assertEqual(user.get('_key'), userId);
 ```
 
-!SUBSECTION Delete a user
+!SUBSECTION Delete an user
 
-There are two ways to delete a user from the database:
+There are two ways to delete an user from the database:
 
-* calling the user storage's *delete* method with a user ID directly
-* telling a user to delete itself
+* calling the user storages **delete** method with an user ID directly
+* telling an user to delete itself
 
-!SUBSUBSECTION Delete a user by its ID
+!SUBSUBSECTION Delete an user by its ID
 
-Delete a user with a given ID.
+Delete an user with a given ID.
 
 `userStorage.delete(userId)`
 
-Attempts to delete the user with the given user ID from the database. If the user does not exist, a *UserNotFound* exception will be thrown. The method always returns *null*.
+Attempts to delete the user with the given user ID from the database. If the user does not exist, a **UserNotFound** exception will be thrown. The method always returns **null**.
 
-*Parameter*
+**Parameter**
 
-* *userId*: a user *_key*.
+* **userId**: an user **_key**.
 
 @EXAMPLES
 
@@ -151,17 +151,17 @@ Attempts to delete the user with the given user ID from the database. If the use
 userStorage.delete(userId);
 ```
 
-!SUBSUBSECTION Tell a user to delete itself
+!SUBSUBSECTION Tell an user to delete itself
 
-Delete a user from the database.
+Delete an user from the database.
 
 `user.delete()`
 
 Attempts to delete the user from the database.
 
-Returns *true* if the user was deleted successfully.
+Returns **true** if the user was deleted successfully.
 
-Returns *false* if the user already didn't exist.
+Returns **false** if the user already didn't exist.
 
 @EXAMPLES
 
@@ -170,13 +170,13 @@ var user = userStorage.get(userId);
 user.delete();
 ```
 
-!SUBSECTION Save a user
+!SUBSECTION Save an user
 
-Save a user to the database.
+Save an user to the database.
 
 `user.save()`
 
-In order to commit changes made to the user in your code, you need to call this method.
+In order to commit changes made to the user in your code you need to call this method.
 
 @EXAMPLES
 
