@@ -68,7 +68,7 @@ Task::~Task () {
 /// @brief get a JSON representation of the task
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_json_t* Task::toJson () {
+TRI_json_t* Task::toJson () const {
   TRI_json_t* json = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
 
   if (json != nullptr) {
@@ -107,7 +107,7 @@ bool Task::needsMainEventLoop () const {
 /// this does nothing for basic tasks, but derived classes may override it
 ////////////////////////////////////////////////////////////////////////////////
 
-void Task::getDescription (TRI_json_t* json) {
+void Task::getDescription (TRI_json_t* json) const {
 }
 
 // -----------------------------------------------------------------------------

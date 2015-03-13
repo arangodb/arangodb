@@ -72,7 +72,7 @@ void PeriodicTask::resetTimer (double offset, double interval) {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void PeriodicTask::getDescription (TRI_json_t* json) {
+void PeriodicTask::getDescription (TRI_json_t* json) const {
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "type", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "periodic", strlen("periodic")));
   TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, json, "period", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, interval));
 }

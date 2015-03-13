@@ -93,7 +93,7 @@ V8PeriodicTask::~V8PeriodicTask () {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8PeriodicTask::getDescription (TRI_json_t* json) {
+void V8PeriodicTask::getDescription (TRI_json_t* json) const {
   PeriodicTask::getDescription(json);
 
   TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
