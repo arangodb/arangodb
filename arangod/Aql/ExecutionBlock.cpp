@@ -3585,6 +3585,11 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _outReg(ExecutionNode::MaxRegisterId),
     _collection(ep->_collection) {
+  
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+  if (trxCollection != nullptr) {
+    _trx->orderBarrier(trxCollection);
+  }
 
   if (ep->_outVariable != nullptr) {
     /*
