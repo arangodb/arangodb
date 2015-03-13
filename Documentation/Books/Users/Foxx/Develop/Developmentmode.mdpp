@@ -2,7 +2,7 @@
 
 This chapter describes the development mode for Foxx applications.
 It is only useful if you have write access to the files in ArangoDB's application folder.
-The folder is located at `TODO!` by default and can be reconfigured using the startup option `--javascript.app-path`.
+The folder is printed in the web interface for development Foxxes and can be reconfigured using the startup option `--javascript.app-path`.
 If you do not have access to this folder, e.g. using a hosted service like [myArangoDB](https://myarangodb.com/), you cannot make use of this feature.
 You will have to stick to the procedure described in [New Versions](../Production/Upgrade.md).
 <div class="versionDifference">
