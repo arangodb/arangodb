@@ -60,13 +60,23 @@ case "$1" in
     ;;
 
   stop)
-    log_begin_msg "Stopping $DESC" "$NAME"
+    log_daemon_msg "Stopping $DESC" "$NAME"
 
     start-stop-daemon --stop --quiet --oknodo --pidfile $PIDFILE --exec $DAEMON
     RETVAL=$?
     log_end_msg $RETVAL
 
-    test -f $PIDFILE && rm -f $PIDFILE
+    log_daemon_msg "Waiting for shutdown" ""
+
+    c=0
+
+    while test -f $PIDFILE -a $c -lt 30 && ps --pid `cat $PIDFILE` > /dev/null; do
+      log_progress_msg "."
+      sleep 2
+      c=`expr $c + 1`
+    done
+
+    rm -f $PIDFILE
     exit $RETVAL
     ;;
 
