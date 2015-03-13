@@ -8,6 +8,156 @@
                 {
                     "errorResponses": [
                         {
+                            "reason": "Is returned when the list of queries can be retrieved successfully. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, <br><br> <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": " Returns the currently running AQL queries",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "ReturnsTheCurrentlyRunningAqlQueries"
+                }
+            ],
+            "path": "/_api/query/current"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "Is returned when the list of queries can be retrieved successfully. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, <br><br> <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": " Returns the list of slow AQL queries",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "ReturnsTheListOfSlowAqlQueries"
+                }
+            ],
+            "path": "/_api/query/slow"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "Is returned when the list of queries can be retrieved successfully. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, <br><br> <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": " Returns the properties for the AQL query tracking",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "ReturnsThePropertiesForTheAqlQueryTracking"
+                }
+            ],
+            "path": "/_api/query/properties"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "The server will respond with <em>HTTP 200</em> when the list of queries was cleared successfully. <br><br>",
+                            "code": "204"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request. <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": " Clears the list of slow AQL queries",
+                    "httpMethod": "DELETE",
+                    "examples": "",
+                    "nickname": "ClearsTheListOfSlowAqlQueries"
+                }
+            ],
+            "path": "/_api/query/slow"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "The server will respond with <em>HTTP 200</em> when the query was still running when the kill request was executed and the query's kill flag was set. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request. <br><br>",
+                            "code": "400"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 404</em> when no query with the specified id was found. <br><br>",
+                            "code": "404"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "",
+                    "summary": " Kills a running AQL query",
+                    "httpMethod": "DELETE",
+                    "examples": "",
+                    "nickname": "KillsARunningAqlQuery"
+                }
+            ],
+            "path": "/_api/query/{query-id}"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "Is returned if the properties were changed successfully. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, <br><br> <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [
+                        {
+                            "dataType": "Json",
+                            "paramType": "body",
+                            "required": true,
+                            "name": "properties",
+                            "description": "The properties for query tracking in the current database.  <br><br> The properties need to be passed in the attribute <em>properties</em> in the body of the HTTP request. <em>properties</em> needs to be a JSON object with the following properties: <br><br>  <ul class=\"swagger-list\"><li><em>enabled</em>: if set to <em>true</em>, then queries will be tracked. If set to  <em>false</em>, neither queries nor slow queries will be tracked.  <li><em>trackSlowQueries</em>: if set to <em>true</em>, then slow queries will be tracked in the list of slow queries if their runtime exceeds the value set in  <em>slowQueryThreshold</em>. In order for slow queries to be tracked, the <em>enabled</em> property must also be set to <em>true</em>.  <li><em>maxSlowQueries</em>: the maximum number of slow queries to keep in the list of slow queries. If the list of slow queries is full, the oldest entry in it will be discarded when additional slow queries occur.  <li><em>slowQueryThreshold</em>: the threshold value for treating a query as slow. A query with a runtime greater or equal to this threshold value will be put into the list of slow queries when slow query tracking is enabled. The value for <em>slowQueryThreshold</em> is specified in seconds.  <li><em>maxQueryStringLength</em>: the maximum query string length to keep in the list of queries. Query strings can have arbitrary lengths, and this property can be used to save memory in case very long query strings are used. The value is specified in bytes.  </ul> After the properties have been changed, the current set of properties will be returned in the HTTP response. <br><br>"
+                        }
+                    ],
+                    "notes": "",
+                    "summary": " Changes the properties for the AQL query tracking",
+                    "httpMethod": "PUT",
+                    "examples": "",
+                    "nickname": "ChangesThePropertiesForTheAqlQueryTracking"
+                }
+            ],
+            "path": "/_api/query/properties"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
                             "reason": "If the query is valid, the server will respond with <em>HTTP 200</em> and return the names of the bind parameters it found in the query (if any) in the <em>bindVars</em> attribute of the response. It will also return an array of the collections used in the query in the <em>collections</em> attribute.  If a query can be parsed successfully, the <em>ast</em> attribute of the returned JSON will contain the abstract syntax tree representation of the query. The format of the <em>ast</em> is subject to change in future versions of  ArangoDB, but it can be used to inspect how ArangoDB interprets a given query. Note that the abstract syntax tree will be returned without any optimizations applied to it. <br><br>",
                             "code": "200"
                         },

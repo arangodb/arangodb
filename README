@@ -2,10 +2,9 @@ ArangoDB
 
 ArangoDB is a multi-purpose, open-source database with flexible data models for
 documents, graphs, and key-values. Build high performance applications using a
-convenient SQL-like query language or JavaScript/Ruby extensions. Use ACID
-transaction if you require them. Scale horizontally and vertically with a few
+convenient SQL-like query language or JavaScript extensions. Use ACID
+transactions if you require them. Scale horizontally and vertically with a few
 mouse clicks.
-
 Key features include:
 
 * Schema-free schemata let you combine the space efficiency of MySQL with the
@@ -23,7 +22,7 @@ Key features include:
   durability or more performance
 * No-nonsense storage: ArangoDB uses all of the power of modern storage
   hardware, like SSD and large caches
-* Powerful query language (AQL) to retrieve data
+* Powerful query language (AQL) to retrieve and modify data
 * Transactions: run queries on multiple documents or collections with optional
   transactional consistency and isolation
 * Replication and Sharding: set up the database in a master-slave configuration
@@ -46,25 +45,28 @@ For Mac OSX users: execute
 
 For Windows and Linux users: use the installer script or distribution package
 from our download_page.
-If the package manager has not already started the ArangoDB server, use
+If the package manager has not already started the ArangoDB server, use the
+following command to start it.
 
   unix> /path/to/sbin/arangod
   2012-03-30T12:54:19Z [11794] INFO ArangoDB (version 2.x.y) is ready for
   business
   2012-03-30T12:54:19Z [11794] INFO Have Fun!
 
-/path/to/sbin is OS dependent. It will normally by either /usr/sbin or /user/
-local/sbin. Point your browser to
+/path/to/sbin is OS dependent. It will normally be either /usr/sbin or /user/
+local/sbin.
+To access ArangoDB in your browser, open the following URL
 
   http://localhost:8529/
 
 and select Tools / JS Shell. You can now use the Arango shell from within your
-browser. Alternative, it is available as command-line tool arangosh.
+browser.
+Alternatively, a scriptable shell is available as a command-line tool arangosh.
 
-  arangosh> db._create("hello");
-  arangosh> db.hello.save({ world: "earth" });
+  arangosh> db._create(&quot;hello&quot;);
+  arangosh> db.hello.save({ world: &quot;earth&quot; });
 
-Congratulations! You have created your first collection called hello and your
+Congratulations! You have created your first collection named hello and your
 first document. To verify your achievements, type:
 
   arangosh> db.hello.toArray();
@@ -81,8 +83,8 @@ locally.
 
 Stay in Contact
 
-Please note that there will be bugs and we'd really appreciate it if you report
-them:
+Please note that there will be bugs and we&#8217;d really appreciate it if you
+report them:
 https://github.com/triAGENS/ArangoDB/issues
 You can use the Google group for improvements, feature requests, comments
 http://www.arangodb.com/community
@@ -90,7 +92,12 @@ http://www.arangodb.com/community
 Citing ArangoDB
 
 Please kindly cite ArangoDB in your publications if it helps your research:
-bibtex @misc{ArangoDB2014, Author = {ArangoDB}, Title = { {ArangoDB 2.2}: An
-Open Source multi-purpose database supporting flexible data models for
-documents, graphs, and key-values.}, Year = {2014}, Howpublished = {\url{http:/
-/arangodb.com/} }
+
+  @misc{ArangoDB2014,
+     Author = {ArangoDB},
+     Title = { {ArangoDB 2.4}: An Open source, multi-purpose database
+  supporting flexible data models for documents, graphs, and key-values.},
+     Year  = {2014},
+     Howpublished = {\url{http://arangodb.com/}
+  }
+

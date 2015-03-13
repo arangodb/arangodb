@@ -7,15 +7,15 @@ content-type: application/json; charset=utf-8
 { 
   "result" : [ 
     { 
-      "_id" : "products/1339246743", 
-      "_key" : "1339246743", 
-      "_rev" : "1339246743", 
+      "_id" : "products/1338286024", 
+      "_key" : "1338286024", 
+      "_rev" : "1338286024", 
       "text" : "this text also has a word" 
     }, 
     { 
-      "_id" : "products/1339050135", 
-      "_key" : "1339050135", 
-      "_rev" : "1339050135", 
+      "_id" : "products/1338089416", 
+      "_key" : "1338089416", 
+      "_rev" : "1338089416", 
       "text" : "this text contains word" 
     } 
   ], 
