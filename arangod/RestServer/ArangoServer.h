@@ -457,6 +457,19 @@ namespace triagens {
         bool _disableReplicationApplier;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief disable the query tracking feature
+/// @startDocuBlock databaseDisableQueryTracking
+/// `--database.disable-query-tracking flag`
+///
+/// If *true*, the server's query tracking feature will be disabled by default.
+///
+/// The default is *false*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _disableQueryTracking;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
 /// @CMDOPT{\--javascript.unit-tests @CA{test-file}}

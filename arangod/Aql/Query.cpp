@@ -86,10 +86,13 @@ Profile::Profile (Query* query)
     stamp(TRI_microtime()) {
 
   auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
-  try {
-    queryList->insert(query, stamp);
-  }
-  catch (...) {
+
+  if (queryList != nullptr) {
+    try {
+      queryList->insert(query, stamp);
+    }
+    catch (...) {
+    }
   }
 }
 
@@ -99,7 +102,14 @@ Profile::Profile (Query* query)
       
 Profile::~Profile () { 
   auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
-  queryList->remove(query, stamp);
+
+  if (queryList != nullptr) {
+    try {
+      queryList->remove(query, stamp);
+    }
+    catch (...) {
+    }
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -133,6 +143,12 @@ TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       class Query
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not query tracking is disabled globally
+////////////////////////////////////////////////////////////////////////////////
+          
+bool Query::DoDisableQueryTracking = false;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors

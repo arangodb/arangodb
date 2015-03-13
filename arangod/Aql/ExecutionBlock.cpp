@@ -694,13 +694,18 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
     _atBeginning(false),
     _random(ep->_random) {
 
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+  if (trxCollection != nullptr) {
+    _trx->orderBarrier(trxCollection);
+  }
+
   if (_random) {
     // random scan
-    _scanner = new RandomCollectionScanner(_trx, _trx->trxCollection(_collection->cid()));
+    _scanner = new RandomCollectionScanner(_trx, trxCollection);
   }
   else {
     // default: linear scan
-    _scanner = new LinearCollectionScanner(_trx, _trx->trxCollection(_collection->cid()));
+    _scanner = new LinearCollectionScanner(_trx, trxCollection);
   }
 }
 
@@ -909,7 +914,12 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInRanges(0),
     _sortCoords(),
     _freeCondition(true) {
-  
+
+  auto trxCollection = _trx->trxCollection(_collection->cid());
+  if (trxCollection != nullptr) {
+    _trx->orderBarrier(trxCollection);
+  }
+     
   for (size_t i = 0; i < en->_ranges.size(); i++) {
     _condition->emplace_back(IndexAndCondition());
     for (auto ri: en->_ranges[i]) {

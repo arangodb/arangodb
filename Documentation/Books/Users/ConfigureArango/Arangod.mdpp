@@ -94,6 +94,10 @@ the option *--disable-figures*.
 @startDocuBlock databaseForceSyncProperties
 
 
+!SUBSECTION Disable AQL query tracking
+@startDocuBlock databaseDisableQueryTracking
+
+
 !SUBSECTION V8 Contexts
 @startDocuBlock v8Contexts
 
