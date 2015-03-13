@@ -876,6 +876,7 @@ if (MSVC)
 
   ##############################################################################
   ## Initializing variables
+  ## to be substituted into Installation/Windows/Templates/NSIS.template.in
   ##############################################################################
 
   set(CPACK_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/Installation/Windows/Templates")
@@ -890,20 +891,6 @@ if (MSVC)
     SET(BITS 32)
   endif()
 
-  # SetRegView controlls where die regkeys are written to
-  # SetRegView 32 writes the keys into Wow6432
-  # this variable was defined by eld and included in NSIS.template.in
-  # we probably need this for the install/uninstall software list.
-
-  SET(CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS  "SetRegView ${BITS}")
-
-  SET(CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS  
-    "     SetRegView ${BITS}
-          SimpleSC::StopService    'ArangoDB' 0 30
-          SimpleSC::RemoveService  'ArangoDB' 
-    "
-  )
-
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
 
@@ -917,25 +904,16 @@ if (MSVC)
     DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
     DESTINATION ${TRI_RESOURCEDIR})
 
+  set(CPACK_NSIS_DEFINES "
+    !define BITS ${BITS}
+    ")
+
   set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
 
   set(CPACK_NSIS_MODIFY_PATH ON)
   set(CPACK_NSIS_MUI_ICON ${ARANGO_ICON})
   set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
   set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
-  
-  set(CPACK_NSIS_CREATE_ICONS_EXTRA 
-    "CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Shell.lnk'  '$INSTDIR\\\\bin\\\\arangosh.exe'  '' '$INSTDIR\\\\resources\\\\Icons\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
-     CreateShortCut '$SMPROGRAMS\\\\$STARTMENU_FOLDER\\\\Arango Server.lnk'  '$INSTDIR\\\\bin\\\\arangod.exe'  '' '$INSTDIR\\\\resources\\\\Icons\\\\arangodb.ico' '0' SW_SHOWMAXIMIZED
-    ")
-
-  # Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
-  # they are deleted from '$SMPROGRAMS\$MUI_TEMP
-  set(CPACK_NSIS_DELETE_ICONS_EXTRA 
-    "Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Server.lnk'
-     Delete  '$SMPROGRAMS\\\\$MUI_TEMP\\\\Arango Shell.lnk'
-    ")
-
   set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
   set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")

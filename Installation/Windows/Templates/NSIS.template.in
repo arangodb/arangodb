@@ -20,6 +20,11 @@
   !define INST_DIR "@CPACK_TEMPORARY_DIRECTORY@"
 
 ;--------------------------------
+; custom defines
+  !define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
+@CPACK_NSIS_DEFINES@
+
+;--------------------------------
 ;Variables
 
   Var MUI_TEMP
@@ -34,6 +39,7 @@
 ; Variables for definition of instdir
 ; posible values: SingleUser | AllUsers | Service
   VAR TRI_INSTALL_TYPE
+
 ;--------------------------------
 ;Include Modern UI
 
@@ -167,7 +173,6 @@ ${EndSwitch}
 SetShellVarContext all
 FunctionEnd
 
-@CPACK_NSIS_DEFINES@
 
   !include Sections.nsh
 
@@ -204,7 +209,7 @@ Var AR_RegFlags
 
   ClearErrors
   ;Reading component status from registry
-  ReadRegDWORD $AR_RegFlags HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}" "Installed"
+  ReadRegDWORD $AR_RegFlags HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" "Installed"
   IfErrors "default_${SecName}"
     ;Status will stay default if registry value not found
     ;(component was never installed)
@@ -237,13 +242,13 @@ Var AR_RegFlags
     ;Section is not selected:
     ;Calling Section uninstall macro and writing zero installed flag
     !insertmacro "Remove_${${SecName}}"
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}" \
+    WriteRegDWORD HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" \
   "Installed" 0
     Goto "exit_${SecName}"
 
  "leave_${SecName}:"
     ;Section is selected:
-    WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@\Components\${SecName}" \
+    WriteRegDWORD HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" \
   "Installed" 1
 
  "exit_${SecName}:"
@@ -349,7 +354,7 @@ Function AddToPath
   StrLen $2 $1
   IntCmp $2 0 CheckPathLength_ShowPathWarning CheckPathLength_Done CheckPathLength_Done
     CheckPathLength_ShowPathWarning:
-    Messagebox MB_OK|MB_ICONEXCLAMATION "Warning! PATH too long installer unable to modify PATH!"
+    Messagebox MB_OK|MB_ICONEXCLAMATION "Warning! Your PATH environment is already to long; the installer unable to add ArangoDB to it."
     Goto AddToPath_done
   CheckPathLength_Done:
   Push "$1;"
@@ -619,15 +624,14 @@ Done:
 	Exch $R1
 FunctionEnd
 
-Function ConditionalAddToRegisty
+Function ConditionalAddToRegistry
   Pop $0
   Pop $1
-  StrCmp "$0" "" ConditionalAddToRegisty_EmptyString
-    WriteRegStr SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" \
-    "$1" "$0"
+  StrCmp "$0" "" ConditionalAddToRegistry_EmptyString
+    WriteRegStr SHCTX "${TRI_UNINSTALL_REG_PATH}" "$1" "$0"
     ;MessageBox MB_OK "Set Registry: '$1' to '$0'"
     DetailPrint "Set install registry entry: '$1' to '$0'"
-  ConditionalAddToRegisty_EmptyString:
+  ConditionalAddToRegistry_EmptyString:
 FunctionEnd
 
 ;--------------------------------
@@ -774,7 +778,11 @@ Section "-Core installation"
   ;Use the entire tree produced by the INSTALL target.  Keep the
   ;list of directories here in sync with the RMDir commands below.
   SetOutPath "$INSTDIR"
-  @CPACK_NSIS_EXTRA_PREINSTALL_COMMANDS@
+  ; SetRegView controlls where die regkeys are written to
+  ; SetRegView 32 writes the keys into Wow6432
+  ; this variable was defined by eld and included in NSIS.template.in
+  ; we probably need this for the install/uninstall software list.
+  SetRegView ${BITS}
   @CPACK_NSIS_FULL_INSTALL@
 
   ;Store installation folder
@@ -784,52 +792,52 @@ Section "-Core installation"
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   Push "DisplayName"
   Push "@CPACK_NSIS_DISPLAY_NAME@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "DisplayVersion"
   Push "@CPACK_PACKAGE_VERSION@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "Publisher"
   Push "@CPACK_PACKAGE_VENDOR@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "UninstallString"
   Push "$INSTDIR\Uninstall.exe"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "NoRepair"
   Push "1"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
 
   !ifdef CPACK_NSIS_ADD_REMOVE
   ;Create add/remove functionality
   Push "ModifyPath"
   Push "$INSTDIR\AddRemove.exe"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   !else
   Push "NoModify"
   Push "1"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   !endif
 
   ; Optional registration
   Push "DisplayIcon"
   Push "$INSTDIR\@CPACK_NSIS_INSTALLED_ICON_NAME@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "HelpLink"
   Push "@CPACK_NSIS_HELP_LINK@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "URLInfoAbout"
   Push "@CPACK_NSIS_URL_INFO_ABOUT@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "Contact"
   Push "@CPACK_NSIS_CONTACT@"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   !insertmacro MUI_INSTALLOPTIONS_READ $INSTALL_DESKTOP "NSIS.InstallOptions.ini" "Field 5" "State"
   !insertmacro MUI_STARTMENU_WRITE_BEGIN Application
 
   ;Create shortcuts
   CreateDirectory "$SMPROGRAMS\$STARTMENU_FOLDER"
-@CPACK_NSIS_CREATE_ICONS@
-@CPACK_NSIS_CREATE_ICONS_EXTRA@
-  CreateShortCut "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk" "$INSTDIR\Uninstall.exe"
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Shell.lnk"  "$INSTDIR\bin\arangosh.exe"  '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Arango Server.lnk" "$INSTDIR\bin\arangod.exe"   '' '$INSTDIR\resources\Icons\arangodb.ico' '0' SW_SHOWMAXIMIZED
+  CreateShortCut  "$SMPROGRAMS\$STARTMENU_FOLDER\Uninstall.lnk"     "$INSTDIR\Uninstall.exe"
 
   ;Read a value from an InstallOptions INI file
   !insertmacro MUI_INSTALLOPTIONS_READ $DO_NOT_ADD_TO_PATH "NSIS.InstallOptions.ini" "Field 2" "State"
@@ -839,19 +847,19 @@ Section "-Core installation"
   ; Write special uninstall registry entries
   Push "StartMenu"
   Push "$STARTMENU_FOLDER"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "DoNotAddToPath"
   Push "$DO_NOT_ADD_TO_PATH"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "AddToPathAllUsers"
   Push "$ADD_TO_PATH_ALL_USERS"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "AddToPathCurrentUser"
   Push "$ADD_TO_PATH_CURRENT_USER"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
   Push "InstallToDesktop"
   Push "$INSTALL_DESKTOP"
-  Call ConditionalAddToRegisty
+  Call ConditionalAddToRegistry
 
   !insertmacro MUI_STARTMENU_WRITE_END
 
@@ -866,7 +874,9 @@ Section "-Core installation"
 SectionEnd
 
 Function .onInstSuccess
-  ${OpenURL} "http://127.0.0.1:8529"
+  ${If} $TRI_INSTALL_TYPE == 'Service' 
+    ${OpenURL} "http://127.0.0.1:8529"
+  ${EndIf}
 FunctionEnd
 
 Section "-Add to path"
@@ -900,7 +910,7 @@ FunctionEnd
 
 ; when I am a child proces
 ; I read the state (from shared memory) of the install options page
-; these informations has to be written by the fathe process 
+; these informations has to be written by the father process 
 Function read_options
   ${If} ${UAC_IsInnerInstance} 
      sharedmem::ReadIntoSharedMem 
@@ -946,26 +956,25 @@ Function default_installation_directory
    ${EndIf}
 
   
-  ${If} $TRI_INSTALL_TYPE == 'Service' 
-    Call Tri_ChangePrivileges
-    SetShellVarContext all
-;MessageBox MB_OK "Service : $INSTDIR"
-    Return
-   ${EndIf}
-
-  ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
-    SetShellVarContext current
-    StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-;MessageBox MB_OK "SingleUser : $INSTDIR"
-    Return
-   ${EndIf}
-  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
-    Call Tri_ChangePrivileges
-    SetShellVarContext all
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-;MessageBox MB_OK "AllUsers : $INSTDIR"
-    Return
-   ${EndIf}
+  ${Switch} $TRI_INSTALL_TYPE
+    ${Case} 'Service' 
+      Call Tri_ChangePrivileges
+      SetShellVarContext all
+      ;MessageBox MB_OK "Service : $INSTDIR"
+      ${Break}
+    ${Case} 'SingleUser' 
+      SetShellVarContext current
+      StrCpy $INSTDIR "$LOCALAPPDATA\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      ;MessageBox MB_OK "SingleUser : $INSTDIR"
+      ${Break}
+    ${Case} 'AllUsers' 
+      Call Tri_ChangePrivileges
+      SetShellVarContext all
+      StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+      ;MessageBox MB_OK "AllUsers : $INSTDIR"
+      ${Break}
+   ${EndSwitch}
+   Return
 FunctionEnd
 
 Function assign_proper_access_rigths
@@ -1002,32 +1011,34 @@ FunctionEnd
 
 Function insert_registration_keys
   ClearErrors
-  ${If} $TRI_INSTALL_TYPE == 'Service' 
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
-; MessageBox MB_OK "Sevice in HKCC"
-  IfErrors there_are_erros
-    Return
-   ${EndIf}
+  ; MessageBox MB_OK "XXXX insert_registration_keys in HKCC ${BITS}"
+  ${Switch} $TRI_INSTALL_TYPE
+    ${Case} 'Service' 
+      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+       ; MessageBox MB_OK "Sevice in HKCC"
+      IfErrors there_are_erros
+      ${Break}
 
-  ${If} $TRI_INSTALL_TYPE == 'SingleUser' 
-    ${If}  ${UAC_IsAdmin}  
-      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
-; MessageBox MB_OK "SingleUser in HKCC"
-    ${Else}
-; normal user has not write rights to HKCC
-      WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
-; MessageBox MB_OK "SingleUser in HKCU"
-  IfErrors there_are_erros
-    ${EndIf}
-    Return
-   ${EndIf}
-  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
-    WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
-    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
-; MessageBox MB_OK "AllUsers in HKCC"
-  IfErrors there_are_erros
-    Return
-   ${EndIf}
+    ${Case} 'SingleUser' 
+      ${If}  ${UAC_IsAdmin}  
+        WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+         ; MessageBox MB_OK "SingleUser in HKCC"
+      ${Else}
+        ; normal user has not write rights to HKCC
+        WriteRegExpandStr HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'SingleUser'
+         ; MessageBox MB_OK "SingleUser in HKCU"
+        IfErrors there_are_erros
+      ${EndIf}
+      ${Break}
+
+    ${Case} 'AllUsers' 
+      WriteRegExpandStr HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 'Service'
+      StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+       ; MessageBox MB_OK "AllUsers in HKCC"
+      IfErrors there_are_erros
+      ${Break}
+   ${EndSwitch}
+   Return
 
  there_are_erros: ;nothing
 MessageBox MB_OK "There was an error during adding the installation keys to the registry$\nArango will work fine but there may be trouble during the deinstallation$\nplease contact @CPACK_NSIS_CONTACT@"
@@ -1153,34 +1164,53 @@ FunctionEnd
 ;Uninstaller Section
 
 Section "Uninstall"
-  @CPACK_NSIS_EXTRA_PREUNINSTALL_COMMANDS@
-  ReadRegStr $START_MENU SHCTX \
-   "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "StartMenu"
+  ; SetRegView controlls where die regkeys are written to
+  ; SetRegView 32 writes the keys into Wow6432
+  ; this variable was defined by eld and included in NSIS.template.in
+  ; we probably need this for the install/uninstall software list.
+  SetRegView ${BITS}
+  ; A single user isn't in HKCC...
+  StrCpy $TRI_INSTALL_TYPE 'SingleUser'
+  ReadRegStr $TRI_INSTALL_TYPE         HKCC "Software\@CPACK_NSIS_PACKAGE_NAME@" "type" 
+  ;MessageBox MB_OK "Type: $TRI_INSTALL_TYPE"
+  ${If} $TRI_INSTALL_TYPE == 'Service' 
+    Call un.Tri_ChangePrivileges
+    SetShellVarContext all
+    ;MessageBox MB_OK "Service : $INSTDIR"
+  ${EndIf}
+
+  ${If} $TRI_INSTALL_TYPE == 'AllUsers' 
+    Call un.Tri_ChangePrivileges
+    SetShellVarContext all
+    StrCpy $INSTDIR "$DOCUMENTS\@CPACK_PACKAGE_INSTALL_DIRECTORY@"
+    ;MessageBox MB_OK "AllUsers : $INSTDIR"
+  ${EndIf}
+
+  ReadRegStr $START_MENU               SHCTX "${TRI_UNINSTALL_REG_PATH}" "StartMenu"
   ;MessageBox MB_OK "Start menu is in: $START_MENU"
-  ReadRegStr $DO_NOT_ADD_TO_PATH SHCTX \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "DoNotAddToPath"
-  ReadRegStr $ADD_TO_PATH_ALL_USERS SHCTX \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "AddToPathAllUsers"
-  ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "AddToPathCurrentUser"
+  ReadRegStr $DO_NOT_ADD_TO_PATH       SHCTX "${TRI_UNINSTALL_REG_PATH}" "DoNotAddToPath"
+  ReadRegStr $ADD_TO_PATH_ALL_USERS    SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathAllUsers"
+  ReadRegStr $ADD_TO_PATH_CURRENT_USER SHCTX "${TRI_UNINSTALL_REG_PATH}" "AddToPathCurrentUser"
   ;MessageBox MB_OK "Add to path: $DO_NOT_ADD_TO_PATH all users: $ADD_TO_PATH_ALL_USERS"
-  ReadRegStr $INSTALL_DESKTOP SHCTX \
-    "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "InstallToDesktop"
+  ReadRegStr $INSTALL_DESKTOP          SHCTX "${TRI_UNINSTALL_REG_PATH}" "InstallToDesktop"
   ;MessageBox MB_OK "Install to desktop: $INSTALL_DESKTOP "
 
-@CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS@
-       StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-         SimpleSC::StopService  'ArangoDB' 0 30
-         SimpleSC::RemoveService  'ArangoDB' 
-         Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-         IntCmp $0 0 Done +1 +1 
-         Push $0
-         SimpleSC::GetErrorMessage
-         Pop $0
-         MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
-       Done:
-       nothing:
 
+  ;MessageBox MB_OK "Deleting Directory: $SMPROGRAMS\$START_MENU\ $TRI_INSTALL_TYPE "
+  Delete "$SMPROGRAMS\$START_MENU\"
+
+  StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
+  SimpleSC::StopService  'ArangoDB' 0 30
+  SimpleSC::RemoveService  'ArangoDB' 
+  Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+  IntCmp $0 0 Done +1 +1 
+  Push $0
+  SimpleSC::GetErrorMessage
+  Pop $0
+  MessageBox MB_OK 'Stopping ArangoDB fails - Reason: $0'
+
+  Done:
+  nothing:
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
@@ -1193,7 +1223,8 @@ Section "Uninstall"
 
   ;Remove the uninstaller itself.
   Delete "$INSTDIR\Uninstall.exe"
-  DeleteRegKey SHCTX "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
+  DeleteRegKey SHCTX "${TRI_UNINSTALL_REG_PATH}"
+  DeleteRegKey HKCC  "Software\@CPACK_NSIS_PACKAGE_NAME@"
 
   ;Remove the installation directory if it is empty.
   RMDir "$INSTDIR"
@@ -1207,8 +1238,10 @@ Section "Uninstall"
   !insertmacro MUI_STARTMENU_GETFOLDER Application $MUI_TEMP
 
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
-@CPACK_NSIS_DELETE_ICONS@
-@CPACK_NSIS_DELETE_ICONS_EXTRA@
+  ; Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
+  ; they are deleted from '$SMPROGRAMS\$MUI_TEMP
+  Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Server.lnk'
+  Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Shell.lnk'
 
   ;Delete empty start menu parent diretories
   StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
@@ -1227,7 +1260,10 @@ Section "Uninstall"
   ; try to fix it.
   StrCpy $MUI_TEMP "$START_MENU"
   Delete "$SMPROGRAMS\$MUI_TEMP\Uninstall.lnk"
-@CPACK_NSIS_DELETE_ICONS_EXTRA@
+  ; Note, short cuts are created in $SMPROGRAMS\$STARTMENU_FOLDER but
+  ; they are deleted from '$SMPROGRAMS\$MUI_TEMP
+  Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Server.lnk'
+  Delete  '$SMPROGRAMS\$MUI_TEMP\Arango Shell.lnk'
 
   ;Delete empty start menu parent diretories
   StrCpy $MUI_TEMP "$SMPROGRAMS\$MUI_TEMP"
@@ -1249,7 +1285,7 @@ Section "Uninstall"
   ${Else}
      DeleteRegKey HKCU "Software\@CPACK_NSIS_PACKAGE_NAME@" 
   ${EndIf} 
-  DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@"
+  DeleteRegKey HKLM "${TRI_UNINSTALL_REG_PATH}"
 
   Push $INSTDIR\bin
   StrCmp $DO_NOT_ADD_TO_PATH_ "1" doNotRemoveFromPath 0
@@ -1271,7 +1307,7 @@ SectionEnd
 Function .onInit
   StrCmp "@CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL@" "ON" 0 inst
 
-  ReadRegStr $0 HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@" "UninstallString"
+  ReadRegStr $0 HKLM "${TRI_UNINSTALL_REG_PATH}" "UninstallString"
   StrCmp $0 "" inst
 
   MessageBox MB_YESNOCANCEL|MB_ICONEXCLAMATION \
