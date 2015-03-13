@@ -28,8 +28,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "statistics.h"
-
-#include "Basics/locks.h"
+#include "Basics/Mutex.h"
+#include "Basics/MutexLocker.h"
 
 #ifndef BSD
 #ifdef __FreeBSD__
@@ -45,20 +45,6 @@
 using namespace triagens::basics;
 using namespace std;
 
-#ifdef TRI_USE_SPIN_LOCK_STATISTICS
-#define STATISTICS_TYPE TRI_spin_t
-#define STATISTICS_INIT TRI_InitSpin
-#define STATISTICS_DESTROY TRI_DestroySpin
-#define STATISTICS_LOCK TRI_LockSpin
-#define STATISTICS_UNLOCK TRI_UnlockSpin
-#else
-#define STATISTICS_TYPE TRI_mutex_t
-#define STATISTICS_INIT TRI_InitMutex
-#define STATISTICS_DESTROY TRI_DestroyMutex
-#define STATISTICS_LOCK TRI_LockMutex
-#define STATISTICS_UNLOCK TRI_UnlockMutex
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                              private request statistics variables
 // -----------------------------------------------------------------------------
@@ -67,7 +53,7 @@ using namespace std;
 /// @brief lock for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-static STATISTICS_TYPE RequestListLock;
+static triagens::basics::Mutex RequestListLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free list
@@ -86,14 +72,14 @@ static TRI_statistics_list_t RequestFreeList;
 TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
   TRI_request_statistics_t* statistics = nullptr;
 
-  STATISTICS_LOCK(&RequestListLock);
+  {
+    MUTEX_LOCKER(RequestListLock);
 
-  if (RequestFreeList._first != nullptr) {
-    statistics = (TRI_request_statistics_t*) RequestFreeList._first;
-    RequestFreeList._first = RequestFreeList._first->_next;
+    if (RequestFreeList._first != nullptr) {
+      statistics = (TRI_request_statistics_t*) RequestFreeList._first;
+      RequestFreeList._first = RequestFreeList._first->_next;
+    }
   }
-
-  STATISTICS_UNLOCK(&RequestListLock);
 
   return statistics;
 }
@@ -103,10 +89,9 @@ TRI_request_statistics_t* TRI_AcquireRequestStatistics () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
-  STATISTICS_LOCK(&RequestListLock);
+  MUTEX_LOCKER(RequestListLock);
 
   if (statistics == nullptr) {
-    STATISTICS_UNLOCK(&RequestListLock);
     return;
   }
 
@@ -158,9 +143,7 @@ void TRI_ReleaseRequestStatistics (TRI_request_statistics_t* statistics) {
     RequestFreeList._last = (TRI_statistics_entry_t*) statistics;
   }
 
-  RequestFreeList._last->_next = 0;
-
-  STATISTICS_UNLOCK(&RequestListLock);
+  RequestFreeList._last->_next = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -173,7 +156,7 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
                                 StatisticsDistribution& ioTime,
                                 StatisticsDistribution& bytesSent,
                                 StatisticsDistribution& bytesReceived) {
-  STATISTICS_LOCK(&RequestListLock);
+  MUTEX_LOCKER(RequestListLock);
 
   totalTime = *TRI_TotalTimeDistributionStatistics;
   requestTime = *TRI_RequestTimeDistributionStatistics;
@@ -181,8 +164,6 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
   ioTime = *TRI_IoTimeDistributionStatistics;
   bytesSent = *TRI_BytesSentDistributionStatistics;
   bytesReceived = *TRI_BytesReceivedDistributionStatistics;
-
-  STATISTICS_UNLOCK(&RequestListLock);
 }
 
 // -----------------------------------------------------------------------------
@@ -193,7 +174,7 @@ void TRI_FillRequestStatistics (StatisticsDistribution& totalTime,
 /// @brief lock for lists
 ////////////////////////////////////////////////////////////////////////////////
 
-static STATISTICS_TYPE ConnectionListLock;
+static triagens::basics::Mutex ConnectionListLock;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief free list
@@ -210,16 +191,16 @@ static TRI_statistics_list_t ConnectionFreeList;
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_connection_statistics_t* TRI_AcquireConnectionStatistics () {
-  TRI_connection_statistics_t* statistics = 0;
+  TRI_connection_statistics_t* statistics = nullptr;
 
-  STATISTICS_LOCK(&ConnectionListLock);
+  {
+    MUTEX_LOCKER(ConnectionListLock);
 
-  if (ConnectionFreeList._first != nullptr) {
-    statistics = (TRI_connection_statistics_t*) ConnectionFreeList._first;
-    ConnectionFreeList._first = ConnectionFreeList._first->_next;
+    if (ConnectionFreeList._first != nullptr) {
+      statistics = (TRI_connection_statistics_t*) ConnectionFreeList._first;
+      ConnectionFreeList._first = ConnectionFreeList._first->_next;
+    }
   }
-
-  STATISTICS_UNLOCK(&ConnectionListLock);
 
   return statistics;
 }
@@ -229,16 +210,15 @@ TRI_connection_statistics_t* TRI_AcquireConnectionStatistics () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
-  STATISTICS_LOCK(&ConnectionListLock);
+  MUTEX_LOCKER(ConnectionListLock);
 
   if (statistics == nullptr) {
-    STATISTICS_UNLOCK(&ConnectionListLock);
     return;
   }
 
   if (statistics->_http) {
-    if (statistics->_connStart != 0) {
-      if (statistics->_connEnd == 0) {
+    if (statistics->_connStart != 0.0) {
+      if (statistics->_connEnd == 0.0) {
         TRI_HttpConnectionsStatistics.incCounter();
       }
       else {
@@ -263,8 +243,6 @@ void TRI_ReleaseConnectionStatistics (TRI_connection_statistics_t* statistics) {
   }
 
   ConnectionFreeList._last->_next = nullptr;
-
-  STATISTICS_UNLOCK(&ConnectionListLock);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,15 +254,13 @@ void TRI_FillConnectionStatistics (StatisticsCounter& httpConnections,
                                    vector<StatisticsCounter>& methodRequests,
                                    StatisticsCounter& asyncRequests,
                                    StatisticsDistribution& connectionTime) {
-  STATISTICS_LOCK(&ConnectionListLock);
+  MUTEX_LOCKER(ConnectionListLock);
 
   httpConnections = TRI_HttpConnectionsStatistics;
   totalRequests   = TRI_TotalRequestsStatistics;
   methodRequests  = TRI_MethodRequestsStatistics;
   asyncRequests   = TRI_AsyncRequestsStatistics;
   connectionTime  = *TRI_ConnectionTimeDistributionStatistics;
-
-  STATISTICS_UNLOCK(&ConnectionListLock);
 }
 
 // -----------------------------------------------------------------------------
@@ -313,16 +289,13 @@ TRI_server_statistics_t TRI_GetServerStatistics () {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FillStatisticsList (TRI_statistics_list_t* list, size_t element, size_t count) {
-  size_t i;
-  TRI_statistics_entry_t* entry;
-
-  entry = (TRI_statistics_entry_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, element, true);
+  auto entry = static_cast<TRI_statistics_entry_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, element, true));
 
   list->_first = entry;
   list->_last = entry;
 
-  for (i = 1;  i < count;  ++i) {
-    entry = (TRI_statistics_entry_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, element, true);
+  for (size_t i = 1;  i < count;  ++i) {
+    entry = static_cast<TRI_statistics_entry_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, element, true));
 
     list->_last->_next = entry;
     list->_last = entry;
@@ -335,6 +308,7 @@ static void FillStatisticsList (TRI_statistics_list_t* list, size_t element, siz
 
 static void DestroyStatisticsList (TRI_statistics_list_t* list) {
   TRI_statistics_entry_t* entry = list->_first;
+
   while (entry != nullptr) {
     TRI_statistics_entry_t* next = entry->_next;
     TRI_Free(TRI_CORE_MEM_ZONE, entry);
@@ -598,8 +572,6 @@ void TRI_InitialiseStatistics () {
 
   FillStatisticsList(&RequestFreeList, sizeof(TRI_request_statistics_t), QUEUE_SIZE);
 
-  STATISTICS_INIT(&RequestListLock);
-
   // .............................................................................
   // generate the connection statistics queue
   // .............................................................................
@@ -607,8 +579,6 @@ void TRI_InitialiseStatistics () {
   ConnectionFreeList._first = ConnectionFreeList._last = nullptr;
 
   FillStatisticsList(&ConnectionFreeList, sizeof(TRI_connection_statistics_t), QUEUE_SIZE);
-
-  STATISTICS_INIT(&ConnectionListLock);
 #endif
 }
 
