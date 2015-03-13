@@ -1,6 +1,8 @@
 v2.4.5 (XXXX-XX-XX)
 -------------------
 
+* added elapsed time to HTTP request logging output (`--log.requests-file`)
+
 * added AQL current and slow query tracking, killing of AQL queries
 
   This change enables retrieving the list of currently running AQL queries inside the selected database.

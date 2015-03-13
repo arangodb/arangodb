@@ -64,7 +64,8 @@ namespace triagens {
 #ifdef TRI_ENABLE_FIGURES
 
         StatisticsAgent ()
-          : _statistics(nullptr) {
+          : _statistics(nullptr),
+            _lastReadStart(0.0) {
         }
 
 #else
@@ -105,6 +106,7 @@ namespace triagens {
             return _statistics;
           }
 
+          _lastReadStart = 0.0;
           return _statistics = FUNC::acquire();
 
 #else
@@ -149,7 +151,7 @@ namespace triagens {
 
           STAT* statistics = _statistics;
           _statistics = 0;
-
+          
           return statistics;
 
 #else
@@ -157,6 +159,16 @@ namespace triagens {
           return 0;
 
 #endif
+        }
+
+        double elapsedSinceReadStart () {
+#ifdef TRI_ENABLE_FIGURES
+
+          if (_lastReadStart != 0.0) {
+            return TRI_StatisticsTime() - _lastReadStart;
+          }
+#endif        
+          return 0.0;
         }
 
 // -----------------------------------------------------------------------------
@@ -172,6 +184,8 @@ namespace triagens {
 #ifdef TRI_ENABLE_FIGURES
         STAT* _statistics;
 #endif
+
+        double _lastReadStart;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -282,6 +296,8 @@ namespace triagens {
     if (TRI_ENABLE_STATISTICS) {                                                     \
       if ((a)->RequestStatisticsAgent::_statistics != nullptr) {                     \
         (a)->RequestStatisticsAgent::_statistics->_readStart = TRI_StatisticsTime(); \
+        (a)->RequestStatisticsAgent::_lastReadStart =                                \
+          (a)->RequestStatisticsAgent::_statistics->_readStart;                      \
       }                                                                              \
     }                                                                                \
   }                                                                                  \
