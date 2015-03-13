@@ -5,8 +5,8 @@ content-type: application/json; charset=utf-8
 
 { 
   "documents" : [ 
-    "/_api/document/products/1565788306", 
-    "/_api/document/products/1566115986", 
-    "/_api/document/products/1565460626" 
+    "/_api/document/products/1585634841", 
+    "/_api/document/products/1586290201", 
+    "/_api/document/products/1585962521" 
   ] 
 }
