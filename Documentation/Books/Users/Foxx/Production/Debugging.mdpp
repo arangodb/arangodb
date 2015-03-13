@@ -26,7 +26,7 @@ However you might create the following situation:
 In this case all routes of this Foxx will create a general, HTML page for third party clients stating that there was an internal error.
 This page does not contain any information specific for your Foxx.
 
-    TODO SCREEEEEEENNNN
+![Broken App Screenshot](ProductionErrorScreen.png)
 
 !SECTION Errors in routes
 
