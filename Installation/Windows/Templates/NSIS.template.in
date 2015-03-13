@@ -1224,6 +1224,7 @@ Section "Uninstall"
   ;Remove the uninstaller itself.
   Delete "$INSTDIR\Uninstall.exe"
   DeleteRegKey SHCTX "${TRI_UNINSTALL_REG_PATH}"
+  DeleteRegKey HKCC  "Software\@CPACK_NSIS_PACKAGE_NAME@"
 
   ;Remove the installation directory if it is empty.
   RMDir "$INSTDIR"
