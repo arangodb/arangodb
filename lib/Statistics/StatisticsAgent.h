@@ -110,7 +110,7 @@ namespace triagens {
           return _statistics = FUNC::acquire();
 
 #else
-          return 0;
+          return nullptr;
 #endif
         }
 
@@ -123,7 +123,7 @@ namespace triagens {
 
           if (_statistics != nullptr) {
             FUNC::release(_statistics);
-            _statistics = 0;
+            _statistics = nullptr;
           }
 
 #endif
@@ -137,7 +137,7 @@ namespace triagens {
 #ifdef TRI_ENABLE_FIGURES
 
           agent->replace(_statistics);
-          _statistics = 0;
+          _statistics = nullptr;
 
 #endif
         }
@@ -150,13 +150,13 @@ namespace triagens {
 #ifdef TRI_ENABLE_FIGURES
 
           STAT* statistics = _statistics;
-          _statistics = 0;
+          _statistics = nullptr;
           
           return statistics;
 
 #else
 
-          return 0;
+          return nullptr;
 
 #endif
         }
