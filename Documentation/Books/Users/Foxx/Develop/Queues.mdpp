@@ -4,11 +4,11 @@ If you have never build a Foxx App, then you can make your own [first Foxx App](
 
 Foxx allows defining job queues that let you perform slow or expensive actions asynchronously. These queues can be used to send e-mails, call external APIs or perform other actions that you do not want to perform directly or want to retry on failure.
 
-For the low-level functionality see the section *Task Management* in the chapter *JavaScript Modules*.
+For the low-level functionality see the section **Task Management** in the chapter **JavaScript Modules**.
 
-*Examples*
+**Examples**
 
-The following Foxx route handler will enqueue a job whenever the *"/log"* route is accessed that prints "Hello World!" to the server log.
+The following Foxx route handler will enqueue a job whenever the **"/log"** route is accessed that prints "Hello World!" to the server log.
 
 ```js
 var Foxx = require("org/arangodb/foxx");
@@ -30,14 +30,14 @@ Creates a queue with the given name and maximum number of workers.
 
 `Foxx.queues.create(name, [maxWorkers])`
 
-Returns the *Queue* instance for the given *name*. If the queue does not exist, a new queue with the given *name* will be created. If a queue with the given *name* already exists and *maxWorkers* is set, the queue's maximum number of workers will be updated.
+Returns the **Queue** instance for the given **name**. If the queue does not exist, a new queue with the given **name** will be created. If a queue with the given **name** already exists and **maxWorkers** is set, the queue's maximum number of workers will be updated.
 
-*Parameter*
+**Parameter**
 
-* *name*: the name of the queue to create.
-* *maxWorkers* (optional): the maximum number of workers. Default: *1*.
+* **name**: the name of the queue to create
+* **maxWorkers** (optional): the maximum number of workers. Default: **1**
 
-*Examples*
+**Examples**
 
 ```js
 // Create a queue with the default number of workers (i.e. one)
@@ -56,15 +56,15 @@ Fetches a queue with the given name.
 
 `Foxx.queues.get(name)`
 
-Returns the *Queue* instance for the given *name*. If the queue does not exist, an exception is thrown instead.
+Returns the **Queue** instance for the given **name**. If the queue does not exist an exception is thrown instead.
 
-*Parameter*
+**Parameter**
 
-* *name*: the name of the queue to fetch.
+* **name**: the name of the queue to fetch
 
-*Examples*
+**Examples**
 
-If the queue does not yet exist, an exception is thrown:
+If the queue does not yet exist an exception is thrown:
 
 ```js
 Foxx.queues.get("some-queue");
@@ -72,7 +72,7 @@ Foxx.queues.get("some-queue");
 //     at ...
 ```
 
-Otherwise, the *Queue* instance will be returned:
+Otherwise the **Queue** instance will be returned:
 
 ```js
 var queue1 = Foxx.queues.create("some-queue");
@@ -86,17 +86,17 @@ Deletes the queue with the given name from the database.
 
 `Foxx.queues.delete(name)`
 
-Returns *true* if the queue was deleted successfully. If the queue did not exist, it returns *false* instead.
+Returns **true** if the queue was deleted successfully. If the queue did not exist, it returns **false** instead.
 
 When a queue is deleted, jobs on that queue will no longer be executed.
 
 Deleting a queue will not delete any jobs on that queue.
 
-*Parameter*
+**Parameter**
 
-* *name*: the name of the queue to delete.
+* **name**: the name of the queue to delete
 
-*Examples*
+**Examples**
 
 ```js
 var queue = Foxx.queues.create("my-queue");
@@ -110,19 +110,19 @@ Registers a job type with the queue manager.
 
 `Foxx.queues.registerJobType(name, opts)`
 
-If *opts* is a function, it will be treated as the *execute* function.
+If **opts** is a function it will be treated as the **execute** function.
 
-*Parameter*
+**Parameter**
 
-* *name*: the name of the job type to register.
-* *opts*: an object with the following properties:
-  * *execute*: a function to pass the job data to when a job is executed.
-  * *maxFailures* (optional): the number of times a job will be re-tried before it is marked as *"failed"*. A negative value or *Infinity* means that the job will be re-tried on failure indefinitely. Default: *0*.
-  * *schema* (optional): a [Joi](https://github.com/hapijs/joi) schema to validate a job's data against before accepting it.
-  * *preprocess* (optional): a function to pre-process a job's (validated) data before serializing it in the queue.
-  * *backOff* (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or *0* for no delay. Default: *1000*.
+* **name**: the name of the job type to register
+* **opts**: an object with the following properties:
+  * **execute**: a function to pass the job data to when a job is executed
+  * **maxFailures** (optional): the number of times a job will be re-tried before it is marked as **"failed"**. A negative value or **Infinity** means that the job will be re-tried on failure indefinitely. Default: **0**
+  * **schema** (optional): a [Joi](https://github.com/hapijs/joi) schema to validate a job's data against before accepting it
+  * **preprocess** (optional): a function to pre-process a job's (validated) data before serializing it in the queue
+  * **backOff** (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or **0** for no delay. Default: **1000**
 
-*Examples*
+**Examples**
 
 ```js
 var Foxx = require("org/arangodb/foxx");
@@ -139,18 +139,18 @@ Adds a job of the given type to the given queue.
 
 Returns the job id.
 
-*Parameter*
+**Parameter**
 
-* *name*: the name of the job's job type.
-* *data*: the job data of the job; must be serializable to JSON.
-* *opts* (optional): an object with any of the following properties:
- * *success* (optional): a function to be called after the job has been completed successfully.
- * *failure* (optional): a function to be called after the job has failed too many times.
- * *delayUntil* (optional): a timestamp in milliseconds until which the execution of the job should be delayed. Default: *Date.now()*.
- * *backOff* (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or *0* for no delay. See [Registering a job type](#registering-a-job-type).
- * *allowUnknown* (optional): whether the job should be queued even if the job type name does not match a currently registered job type. Default: *false*.
- * *maxFailures* (optional): the number of times the job will be re-tried before it is marked as *"failed"*. A negative value or *Infinity* means that the job will be re-tried on failure indefinitely. See [Registering a job type](#registering-a-job-type).
- Note that if you pass a function for the *backOff* calculation, *success* callback or *failure* callback options the function must not rely on any external scope or external variables.
+* **name**: the name of the job's job type
+* **data**: the job data of the job; must be serializable to JSON
+* **opts** (optional): an object with any of the following properties:
+ * **success** (optional): a function to be called after the job has been completed successfully
+ * **failure** (optional): a function to be called after the job has failed too many times
+ * **delayUntil** (optional): a timestamp in milliseconds until which the execution of the job should be delayed. Default: **Date.now()**
+ * **backOff** (optional): either a function that takes the number of times the job has failed before as input and returns the number of milliseconds to wait before trying the job again, or the delay to be used to calculate an [exponential back-off](https://en.wikipedia.org/wiki/Exponential_backoff), or **0** for no delay. See [Registering a job type](#registering-a-job-type)
+ * **allowUnknown** (optional): whether the job should be queued even if the job type name does not match a currently registered job type. Default: **false**
+ * **maxFailures** (optional): the number of times the job will be re-tried before it is marked as *"*failed*"*. A negative value or **Infinity** means that the job will be re-tried on failure indefinitely. See [Registering a job type](#registering-a-job-type)
+ Note that if you pass a function for the **backOff** calculation, **success** callback or **failure** callback options the function must not rely on any external scope or external variables.
 
 *Examples*
 
@@ -162,7 +162,7 @@ var queue = Foxx.queues.create("my-queue");
 queue.push("log", "Hello World!");
 ```
 
-This will **not** work, because *console* was defined outside the callback function:
+This will **not** work, because **console** was defined outside the callback function:
 
 ```js
 var Foxx = require("org/arangodb/foxx");
@@ -181,13 +181,13 @@ Creates a proxy object representing a job with the given job id.
 
 `Queue::get(jobId)`
 
-Returns the *Job* instance for the given *jobId*. Properties of the job object will be fetched whenever they are referenced and can not be modified.
+Returns the **Job** instance for the given **jobId**. Properties of the job object will be fetched whenever they are referenced and can not be modified.
 
-*Parameter*
+**Parameter**
 
-* *jobId*: the id of the job to create a proxy object for.
+* **jobId**: the id of the job to create a proxy object for.
 
-*Examples*
+**Examples**
 ```js
 var jobId = queue.push("log", "Hello World!");
 var job = queue.get(jobId);
@@ -200,11 +200,11 @@ Deletes a job with the given job id.
 
 `Queue::delete(jobId)`
 
-Returns *true* if the job was deleted successfully. If the job did not exist, it returns *false* instead.
+Returns **true** if the job was deleted successfully. If the job did not exist it returns **false** instead.
 
-!SECTION Fetching an arry of jobs in a queue
+!SECTION Fetching an array of jobs in a queue
 
-*Examples*
+**Examples**
 
 ```js
 queue.push("log", "Hello World!", {delayUntil: Date.now() + 50});
@@ -221,41 +221,41 @@ assertEqual(queue.complete("log").length, 1);
 
 `Queue::pending([type])`
 
-Returns an array of job ids of jobs in the given queue with the status *"pending"*, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status **"pending"**, optionally filtered by the given job type.
 
-*Parameter*
+**Parameter**
 
-* *type* (optional): the name of the job type to filter the results.
+* **type** (optional): the name of the job type to filter the results
 
 !SUBSECTION Fetching an array of jobs that are currently in progress
 
 `Queue::progress([type])`
 
-Returns an array of job ids of jobs in the given queue with the status *"progress"*, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status **"progress"**, optionally filtered by the given job type.
 
-*Parameter*
+**Parameter**
 
-* *type* (optional): the name of the job type to filter the results.
+* **type** (optional): the name of the job type to filter the results
 
 !SUBSECTION Fetching an array of completed jobs in a queue
 
 `Queue::complete([type])`
 
-Returns an array of job ids of jobs in the given queue with the status *"complete"*, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status **"complete"**, optionally filtered by the given job type.
 
-*Parameter*
+**Parameter**
 
-* *type* (optional): the name of the job type to filter the results.
+* **type** (optional): the name of the job type to filter the results.
 
 !SUBSECTION Fetching an array of failed jobs in a queue
 
 `Queue::failed([type])`
 
-Returns an array of job ids of jobs in the given queue with the status *"failed"*, optionally filtered by the given job type.
+Returns an array of job ids of jobs in the given queue with the status **"failed"**, optionally filtered by the given job type.
 
-*Parameter*
+**Parameter**
 
-* *type* (optional): the name of the job type to filter the results.
+* **type** (optional): the name of the job type to filter the results.
 
 !SUBSECTION Fetching an array of all jobs in a queue
 
@@ -263,9 +263,9 @@ Returns an array of job ids of jobs in the given queue with the status *"failed"
 
 Returns an array of job ids of all jobs in the given queue, optionally filtered by the given job type.
 
-*Parameter*
+**Parameter**
 
-* *type* (optional): the name of the job type to filter the results.
+* **type** (optional): the name of the job type to filter the results.
 
 !SECTION Aborting a job
 
@@ -273,5 +273,5 @@ Aborts a non-completed job.
 
 `Job::abort()`
 
-Sets a job's status to *"failed"* if it is not already *"complete"*, without calling the job's *onFailure* callback.
+Sets a job's status to **"failed"** if it is not already **"complete"**, without calling the job's **onFailure** callback.
 

@@ -3,7 +3,7 @@
 !SECTION Quick navigation
 * [Quick start](#quick-start)
 * [Create a new Application](#new-application)
-* [Interactive Documentation](#Interactive Documentation)
+* [Interactive Documentation](#interactive-doc)
 * [Developing in Foxx](#developing)
 * [Foxx folder structure](#folder-structure)
 * [List content of a collection](#list-elements)
@@ -202,7 +202,7 @@ Now lets also allow to store an optional `name` by changing the following lines:
 ```
 
 To test it you can for example store the following object.
-Note the _key is the internal identifier for this
+Note the \_key is the internal identifier for this
 object and can either be user-defined or will be generated otherwise.
 In this tutorial we will refer to this key again.
 
@@ -253,7 +253,7 @@ controller.get('/firstCollection/:id', function (req, res) {
 
 This route now allows us to read exactly one specific document stored in our collection.
 In the last route we have inserted the "Alice" document, now we want to get that one back.
-In order to achieve this we have to replace the "_id" with the "_key" we have stored earlier.
+In order to achieve this we have to replace the "\_id" with the "\_key" we have stored earlier.
 In the interactive documentation there is a text field to enter the value, or you can execute the following CURL command:
 
 ```
@@ -470,7 +470,7 @@ Some details you should know about the code:
 !SUBSECTION Conclusion
 
 Now we have managed to create a very basic CRUD based Foxx.
-It is a REST-based wrapper arpund the interface of one of ArangoDBs collections and you can now start to include custom functionality into it.
+It is a REST-based wrapper around the interface of one of ArangoDBs collections and you can now start to include custom functionality into it.
 The first custom function we have created already is the byName query.
 It has stored an AQL on the server-side keeping your application clean of it.
-Now you can also access this query from several applications increasing the reusability of code.
+Now you can also access this query from several applications increasing the re-usability of code.
