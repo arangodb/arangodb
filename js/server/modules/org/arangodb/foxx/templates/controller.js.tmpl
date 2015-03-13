@@ -62,8 +62,11 @@
     var id = req.params('id'),
     <%= modelInstance %> = req.params('<%= modelInstance %>');
     res.json(<%= repositoryInstance %>.replaceById(id, <%= modelInstance %>));
-  }).pathParam('id', <%=model %>Description
-  ).bodyParam('<%= modelInstance %>', 'The <%= model %> you want your old one to be replaced with', <%= model %>);
+  }).pathParam('id', <%=model %>Description)
+  .bodyParam('<%= modelInstance %>', {
+    description: 'The <%= model %> you want your old one to be replaced with',
+    type: <%= model %>
+  });
 
   /** Removes a <%= model %>
    *

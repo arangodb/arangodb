@@ -30,7 +30,7 @@
 
 var RequestContext,
   RequestContextBuffer,
-  SwaggerDocs,
+  SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
   joi = require("joi"),
   _ = require("underscore"),
   extend = _.extend,
@@ -114,68 +114,6 @@ validateOrThrow = function (raw, schema, allowInvalid) {
   }
   return result.value;
 };
-
-// Wraps the docs object of a route to add swagger compatible documentation
-SwaggerDocs = function (docs, models) {
-  'use strict';
-  this.docs = docs;
-  this.models = models;
-};
-
-extend(SwaggerDocs.prototype, {
-  addNickname: function (httpMethod, match) {
-    'use strict';
-    this.docs.nickname = internal.constructNickname(httpMethod, match);
-  },
-
-  addPathParam: function (paramName, description, dataType, required) {
-    'use strict';
-    this.docs.parameters.push(internal.constructPathParamDoc(paramName, description, dataType, required));
-  },
-
-  addQueryParam: function (paramName, description, dataType, required, allowMultiple) {
-    'use strict';
-    this.docs.parameters.push(internal.constructQueryParamDoc(
-      paramName,
-      description,
-      dataType,
-      required,
-      allowMultiple
-    ));
-  },
-
-  addBodyParam: function (paramName, description, jsonSchema) {
-    'use strict';
-    this.models[jsonSchema.id] = jsonSchema;
-
-    var param = _.find(this.docs.parameters, function (parameter) {
-      return parameter.name === 'undocumented body';
-    });
-
-    if (_.isUndefined(param)) {
-      this.docs.parameters.push({
-        name: paramName,
-        paramType: "body",
-        description: description,
-        dataType: jsonSchema.id
-      });
-    } else {
-      param.name = paramName;
-      param.description = description;
-      param.dataType = jsonSchema.id;
-    }
-  },
-
-  addSummary: function (summary) {
-    'use strict';
-    this.docs.summary = summary;
-  },
-
-  addNotes: function (notes) {
-    'use strict';
-    this.docs.notes = notes;
-  }
-});
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_initializer
