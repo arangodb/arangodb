@@ -504,6 +504,22 @@ namespace triagens {
 
         triagens::arango::TransactionContext* createTransactionContext ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fetch the global query tracking value
+////////////////////////////////////////////////////////////////////////////////
+
+        static bool DisableQueryTracking () {
+          return DoDisableQueryTracking;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief turn off tracking globally
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void DisableQueryTracking (bool value) {
+          DoDisableQueryTracking = value;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -662,6 +678,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool                              _killed;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not query tracking is disabled globally
+////////////////////////////////////////////////////////////////////////////////
+          
+        static bool DoDisableQueryTracking;
 
     };
 

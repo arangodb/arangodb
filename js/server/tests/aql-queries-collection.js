@@ -131,6 +131,17 @@ function ahuacatlQueryCollectionTestSuite () {
 /// @brief return a single value as part of a document
 ////////////////////////////////////////////////////////////////////////////////
 
+    testFilterEmpty : function () {
+      var expected = [ ];
+      var actual = getQueryResults("FOR u in " + users.name() + " FILTER u.id < 0 SORT u.id RETURN { \"name\" : u.name }");
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a single value as part of a document
+////////////////////////////////////////////////////////////////////////////////
+
     testFilterSingleReturnDoc : function () {
       var expected = [ { "name" : "John" }, { "name" : "Fred" }, { "name" : "Jacob" }, { "name" : "Ethan" }, { "name" : "Michael" }, { "name" : "Alexander" }, { "name" : "Daniel" }, { "name" : "Anthony" }, { "name" : "Jim"} , { "name" : "Diego" } ];
       var actual = getQueryResults("FOR u in " + users.name() + " FILTER u.gender == \"m\" SORT u.id RETURN { \"name\" : u.name }");
