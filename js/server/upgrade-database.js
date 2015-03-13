@@ -1362,10 +1362,18 @@ function updateGlobals() {
         // 4. For each mounted app, reinstall appId from zipFile to mount
         
         var appsToInstall = aal.byExample({type: "mount", isSystem: false});
+        var opts = {};
         while (appsToInstall.hasNext()) {
+          opts = {};
           tmp = appsToInstall.next();
           if (mapAppZip.hasOwnProperty(tmp.app)) {
-            foxxManager.install(mapAppZip[tmp.app], tmp.mount, {}, false);
+            if (
+              tmp.hasOwnProperty("options") &&
+              tmp.options.hasOwnProperty("configuration")
+            ) {
+              opts.configuration = tmp.options.configuration;
+            }
+            foxxManager.install(mapAppZip[tmp.app], tmp.mount, opts, false);
             logger.log("Upgraded app '" + tmp.app + "' on mount: " + tmp.mount);
           }
         }
