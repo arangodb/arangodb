@@ -86,7 +86,9 @@ namespace triagens {
           _acceptDeflate(false),
           _newRequest(true),
           _startPosition(0),
-          _sinceCompactification(0) {
+          _sinceCompactification(0),
+          _originalBodyLength(0) {
+
           ConnectionStatisticsAgentSetHttp(this);
           ConnectionStatisticsAgent::release();
 
@@ -781,26 +783,31 @@ namespace triagens {
           }
 
           this->_writeBuffers.push_back(buffer);
+          
+          
+          LOG_TRACE("HTTP WRITE FOR %p: %s", (void*) this, buffer->c_str());
+          
+          // clear body
+          response->body().clear();
 
+          
+          double totalTime = 0.0;
 #ifdef TRI_ENABLE_FIGURES
           this->_writeBuffersStats.push_back(RequestStatisticsAgent::transfer());
+          totalTime = RequestStatisticsAgent::elapsedSinceReadStart();
 #endif
 
-          LOG_TRACE("HTTP WRITE FOR %p: %s", (void*) this, buffer->c_str());
-
           // disable the following statement to prevent excessive logging of incoming requests
-          LOG_USAGE(",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\"",
+          LOG_USAGE(",\"http-request\",\"%s\",\"%s\",\"%s\",%d,%llu,%llu,\"%s\",%.6f",
                     this->_connectionInfo.clientAddress.c_str(),
                     HttpRequest::translateMethod(this->_requestType).c_str(),
                     HttpRequest::translateVersion(this->_httpVersion).c_str(),
                     (int) response->responseCode(),
-                    (unsigned long long) this->_bodyLength,
+                    (unsigned long long) this->_originalBodyLength,
                     (unsigned long long) responseBodyLength,
-                    this->_fullUrl.c_str());
-
-          // clear body
-          response->body().clear();
-
+                    this->_fullUrl.c_str(),
+                    totalTime);
+          
           // start output
           this->fillWriteBuffer();
         }
@@ -809,7 +816,7 @@ namespace triagens {
 /// check the content-length header of a request and fail it is broken
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool checkContentLength (const bool expectContentLength) {
+        bool checkContentLength (bool expectContentLength) {
           const int64_t bodyLength = this->_request->contentLength();
 
           if (bodyLength < 0) {
@@ -843,6 +850,7 @@ namespace triagens {
 
           // set instance variable to content-length value
           this->_bodyLength = (size_t) bodyLength;
+          this->_originalBodyLength = this->_bodyLength;
 
           if (this->_bodyLength > 0) {
             // we'll read the body
@@ -914,6 +922,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         size_t _sinceCompactification;
+
+
+        size_t _originalBodyLength;
     };
   }
 }
