@@ -1,17 +1,17 @@
 !CHAPTER The Simple Authentication App
 
-The simple auth app provides hashed password-based authentication with automatically generated salts and constant-time password verification.
+The simple authentication app provides hashed password-based authentication with automatically generated salts and constant-time password verification.
 
 !SECTION Configuration
 
 This app has the following configuration options:
 
-* *saltLength* (optional): length of newly generated salts. Default: *16*.
-* *hashMethod* (optional): hash algorithm to use. Supported values: *sha1*, *sha224*, *sha256*, *md5*. Default: *"sha256"*.
+* **saltLength** (optional): length of newly generated salts. Default: **16**
+* **hashMethod** (optional): hash algorithm to use. Supported values: **sha1**, **sha224**, **sha256**, **md5**. Default: **"sha256"**
 
-!SECTION JavaScript API: *auth*
+!SECTION JavaScript API: **auth**
 
-This app exposes its functionality via a JavaScript API named *auth*.
+This app exposes its functionality via a JavaScript API named **auth**.
 
 @EXAMPLES
 
@@ -27,13 +27,13 @@ Generates an authentication object for a given password.
 
 Returns an authentication object with the following properties:
 
-* *hash*: the generated hex-encoded hash.
-* *salt*: the salt used to generate the hash.
-* *method*: the algorithm used to generate the hash.
+* **hash**: the generated hex-encoded hash
+* **salt**: the salt used to generate the hash
+* **method**: the algorithm used to generate the hash
 
-*Parameter*
+**Parameter**
 
-* *password*: the password to hash.
+* *password*: the password to hash
 
 !SUBSECTION Verify a password
 
@@ -41,9 +41,9 @@ Verifies a password against a given authentication object.
 
 `auth.verifyPassword(authData, password)`
 
-Generates a hash for the given password using the *salt* and *method* stored in the authentication object and performs a constant time string comparison on them. Returns *true* if the password is valid or *false* otherwise.
+Generates a hash for the given password using the **salt** and **method** stored in the authentication object and performs a constant time string comparison on them. Returns **true** if the password is valid or **false** otherwise.
 
-*Parameter*
+**Parameter**
 
-* *authData*: an authentication object.
-* *password*: a password to verify.
+* **authData**: an authentication object
+* **password**: a password to verify
