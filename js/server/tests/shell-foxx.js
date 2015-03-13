@@ -724,7 +724,8 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, paramName);
       assertEqual(routes[0].docs.parameters[0].paramType, "body");
       assertEqual(routes[0].docs.parameters[0].description, description);
-      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+      var token = routes[0].docs.parameters[0].dataType;
+      assertEqual(app.models.hasOwnProperty(token), true);
     },
 
     testAddBodyParamWithMultipleItems: function () {
@@ -748,7 +749,8 @@ function DocumentationAndConstraintsSpec () {
       assertEqual(routes[0].docs.parameters[0].name, paramName);
       assertEqual(routes[0].docs.parameters[0].paramType, "body");
       assertEqual(routes[0].docs.parameters[0].description, description);
-      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+      var token = routes[0].docs.parameters[0].dataType;
+      assertEqual(app.models.hasOwnProperty(token), true);
     },
 
     testDefineBodyParamAddsJSONSchemaToModels: function () {
@@ -768,7 +770,8 @@ function DocumentationAndConstraintsSpec () {
         type: ModelPrototype
       });
 
-      assertEqual(app.models[jsonSchema.id], jsonSchema);
+      var token = routes[0].docs.parameters[0].dataType;
+      assertEqual(app.models[token], jsonSchema);
     },
 
     testSetParamForBodyParam: function () {
