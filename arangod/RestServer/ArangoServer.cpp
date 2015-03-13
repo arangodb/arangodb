@@ -36,6 +36,7 @@
 #include "Admin/ApplicationAdminServer.h"
 #include "Admin/RestHandlerCreator.h"
 #include "Admin/RestShutdownHandler.h"
+#include "Aql/Query.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
@@ -288,6 +289,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
     _disableReplicationApplier(false),
+    _disableQueryTracking(false),
     _server(nullptr),
     _queryRegistry(nullptr),
     _pairForAql(nullptr),
@@ -530,6 +532,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
+    ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
   ;
 
@@ -671,6 +674,10 @@ void ArangoServer::buildApplicationServer () {
     // testing disables authentication
     _disableAuthentication = true;
   }
+  
+  // set global query tracking flag
+  triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
+
 
   // .............................................................................
   // now run arangod
