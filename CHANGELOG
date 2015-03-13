@@ -1,4 +1,4 @@
-v2.4.5-beta1 (XXXX-XX-XX)
+v2.4.5-beta2 (XXXX-XX-XX)
 -------------------
 
 * added elapsed time to HTTP request logging output (`--log.requests-file`)
