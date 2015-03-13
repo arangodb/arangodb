@@ -337,6 +337,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/Aql/arangod_libarangod_a-OptimizerRules.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Parser.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Query.$(OBJEXT) \
+	arangod/Aql/arangod_libarangod_a-QueryList.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-QueryRegistry.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-RangeInfo.$(OBJEXT) \
 	arangod/Aql/arangod_libarangod_a-Range.$(OBJEXT) \
@@ -1470,6 +1471,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/OptimizerRules.cpp \
 	arangod/Aql/Parser.cpp \
 	arangod/Aql/Query.cpp \
+	arangod/Aql/QueryList.cpp \
 	arangod/Aql/QueryRegistry.cpp \
 	arangod/Aql/RangeInfo.cpp \
 	arangod/Aql/Range.cpp \
@@ -1832,7 +1834,8 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
-               @top_srcdir@/js/common/tests/shell-graph.js
+               @top_srcdir@/js/common/tests/shell-graph.js \
+               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
 
 
 ################################################################################
@@ -2201,6 +2204,9 @@ arangod/Aql/arangod_libarangod_a-Parser.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-Query.$(OBJEXT):  \
+	arangod/Aql/$(am__dirstamp) \
+	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
+arangod/Aql/arangod_libarangod_a-QueryList.$(OBJEXT):  \
 	arangod/Aql/$(am__dirstamp) \
 	arangod/Aql/$(DEPDIR)/$(am__dirstamp)
 arangod/Aql/arangod_libarangod_a-QueryRegistry.$(OBJEXT):  \
@@ -3572,6 +3578,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-OptimizerRules.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Query.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryRegistry.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-Range.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Aql/$(DEPDIR)/arangod_libarangod_a-RangeInfo.Po@am__quote@
@@ -4233,6 +4240,20 @@ arangod/Aql/arangod_libarangod_a-Query.obj: arangod/Aql/Query.cpp
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/Query.cpp' object='arangod/Aql/arangod_libarangod_a-Query.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-Query.obj `if test -f 'arangod/Aql/Query.cpp'; then $(CYGPATH_W) 'arangod/Aql/Query.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/Query.cpp'; fi`
+
+arangod/Aql/arangod_libarangod_a-QueryList.o: arangod/Aql/QueryList.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-QueryList.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Tpo -c -o arangod/Aql/arangod_libarangod_a-QueryList.o `test -f 'arangod/Aql/QueryList.cpp' || echo '$(srcdir)/'`arangod/Aql/QueryList.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/QueryList.cpp' object='arangod/Aql/arangod_libarangod_a-QueryList.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-QueryList.o `test -f 'arangod/Aql/QueryList.cpp' || echo '$(srcdir)/'`arangod/Aql/QueryList.cpp
+
+arangod/Aql/arangod_libarangod_a-QueryList.obj: arangod/Aql/QueryList.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-QueryList.obj -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Tpo -c -o arangod/Aql/arangod_libarangod_a-QueryList.obj `if test -f 'arangod/Aql/QueryList.cpp'; then $(CYGPATH_W) 'arangod/Aql/QueryList.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/QueryList.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Tpo arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryList.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Aql/QueryList.cpp' object='arangod/Aql/arangod_libarangod_a-QueryList.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Aql/arangod_libarangod_a-QueryList.obj `if test -f 'arangod/Aql/QueryList.cpp'; then $(CYGPATH_W) 'arangod/Aql/QueryList.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Aql/QueryList.cpp'; fi`
 
 arangod/Aql/arangod_libarangod_a-QueryRegistry.o: arangod/Aql/QueryRegistry.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Aql/arangod_libarangod_a-QueryRegistry.o -MD -MP -MF arangod/Aql/$(DEPDIR)/arangod_libarangod_a-QueryRegistry.Tpo -c -o arangod/Aql/arangod_libarangod_a-QueryRegistry.o `test -f 'arangod/Aql/QueryRegistry.cpp' || echo '$(srcdir)/'`arangod/Aql/QueryRegistry.cpp

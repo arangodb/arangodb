@@ -5,17 +5,17 @@ content-type: application/json; charset=utf-8
 
 { 
   "server" : "arango", 
-  "version" : "2.4.4", 
+  "version" : "2.4.5-beta1", 
   "details" : { 
     "architecture" : "64bit", 
-    "build-date" : "2015-02-24 11:53:30", 
+    "build-date" : "2015-03-13 12:15:43", 
     "configure" : "'./configure' '--enable-maintainer-mode' '--disable-mruby'", 
     "icu-version" : "52.1", 
     "libev-version" : "4.11", 
     "maintainer-mode" : "true", 
     "openssl-version" : "OpenSSL 0.9.8za 5 Jun 2014", 
-    "repository-version" : "heads/2.4-0-ga0b834cdd6af02de593cee787cdf059d5c4d31f8-dirty", 
-    "server-version" : "2.4.4", 
+    "repository-version" : "heads/2.4-0-g1b9ef5db47c0cd6e641f7d6d34ed9b02e8406fc5-dirty", 
+    "server-version" : "2.4.5-beta1", 
     "sizeof int" : "4", 
     "sizeof void*" : "8", 
     "v8-version" : "3.29.59" 
