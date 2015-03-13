@@ -105,9 +105,7 @@ describe ArangoDB do
     it "should track at most n slow queries" do 
       max = 3
       ArangoDB.log_put("#{@prefix}-properties", @properties, :body => JSON.dump({slowQueryThreshold: 0.1, maxSlowQueries: max}))
-      send_fast_queries 6
-
-      sleep 2
+      send_fast_queries 6, "false"
 
       doc = ArangoDB.log_get("#{@prefix}-slow", @slow)
       doc.code.should eq(200)
