@@ -89,8 +89,8 @@ case "$1" in
 
     c=0
 
-    while test -f $PIDFILE -a $c -lt 30; do
-      log_progress_msg "$NAME"
+    while test -f $PIDFILE -a $c -lt 30 && ps --pid `cat $PIDFILE` > /dev/null; do
+      log_progress_msg "."
       sleep 2
       c=`expr $c + 1`
     done
