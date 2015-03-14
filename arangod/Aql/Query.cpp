@@ -83,13 +83,14 @@ static_assert(sizeof(StateNames) / sizeof(std::string) == static_cast<size_t>(Ex
 Profile::Profile (Query* query) 
   : query(query),
     results(static_cast<size_t>(INVALID_STATE)),
-    stamp(TRI_microtime()) {
+    stamp(TRI_microtime()),
+    tracked(false) {
 
   auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
 
   if (queryList != nullptr) {
     try {
-      queryList->insert(query, stamp);
+      tracked = queryList->insert(query, stamp);
     }
     catch (...) {
     }
@@ -101,13 +102,16 @@ Profile::Profile (Query* query)
 ////////////////////////////////////////////////////////////////////////////////
       
 Profile::~Profile () { 
-  auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
+  // only remove from list when the query was inserted into it...
+  if (tracked) {
+    auto queryList = static_cast<QueryList*>(query->vocbase()->_queries);
 
-  if (queryList != nullptr) {
-    try {
-      queryList->remove(query, stamp);
-    }
-    catch (...) {
+    if (queryList != nullptr) {
+      try {
+        queryList->remove(query, stamp);
+      }
+      catch (...) {
+      }
     }
   }
 }
