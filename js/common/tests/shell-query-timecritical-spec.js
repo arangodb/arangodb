@@ -4,6 +4,14 @@
   "use strict";
     
   describe("AQL query analyzer", function() {
+    var isServer = false;
+    try {
+      if (typeof arango.getEndpoint === "function") {
+        isServer = false;
+      }
+    }
+    catch (e) {
+    }
     var query = "FOR x IN 1..5 LET y = SLEEP(1) RETURN x";
     var internal = require("internal");
     var testee;
@@ -104,13 +112,15 @@
         }
       });
 
-      it("should not crash when inserting a query into the current list fails", function() {
-        internal.debugSetFailAt("QueryList::insert");
+      if (isServer && internal.debugCanUseFailAt()) {
+        it("should not crash when inserting a query into the current list fails", function() {
+          internal.debugSetFailAt("QueryList::insert");
 
-        // inserting the query will fail
-        sendQuery(1, true);
-        expect(testee.current().filter(filterQueries).length).toEqual(0);
-      });
+          // inserting the query will fail
+          sendQuery(1, true);
+          expect(testee.current().filter(filterQueries).length).toEqual(0);
+        });
+      }
 
       it("should be able to get currently running queries", function() {
         sendQuery(1, true);
@@ -181,17 +191,19 @@
         expect(testee.slow().filter(filterQueries).length).toEqual(max);
       });
 
-      it("should not crash when trying to move a query into the slow list", function() {
-        internal.debugSetFailAt("QueryList::remove");
+      if (isServer && internal.debugCanUseFailAt()) {
+        it("should not crash when trying to move a query into the slow list", function() {
+          internal.debugSetFailAt("QueryList::remove");
 
-        testee.properties({
-          slowQueryThreshold: 2
-        });
-        sendQuery(3, false);
+          testee.properties({
+            slowQueryThreshold: 2
+          });
+          sendQuery(3, false);
       
-        // no slow queries should have been logged  
-        expect(testee.slow().filter(filterQueries).length).toEqual(0);
-      });
+          // no slow queries should have been logged  
+          expect(testee.slow().filter(filterQueries).length).toEqual(0);
+        });
+      }
 
       it("should not track slow queries if turned off", function() {
         testee.properties({
