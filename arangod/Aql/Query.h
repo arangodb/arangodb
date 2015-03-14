@@ -122,6 +122,7 @@ namespace triagens {
       Query*                                         query;
       std::vector<std::pair<ExecutionState, double>> results;
       double                                         stamp;
+      bool                                           tracked;
     };
 
 // -----------------------------------------------------------------------------
