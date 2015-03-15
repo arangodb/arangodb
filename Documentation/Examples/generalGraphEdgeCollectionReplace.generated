@@ -4,13 +4,13 @@ arangosh> graph.relation.save("female/alice", "female/diana", {typo: "nose", _ke
 { 
   "error" : false, 
   "_id" : "relation/aliceAndDiana", 
-  "_rev" : "41016857", 
+  "_rev" : "41239988", 
   "_key" : "aliceAndDiana" 
 }
 arangosh> graph.relation.replace("relation/aliceAndDiana", {type: "knows"});
 { 
   "error" : false, 
   "_id" : "relation/aliceAndDiana", 
-  "_rev" : "41213465", 
+  "_rev" : "41436596", 
   "_key" : "aliceAndDiana" 
 }

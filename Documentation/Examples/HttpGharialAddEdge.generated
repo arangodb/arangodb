@@ -7,14 +7,14 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/gharial
 
 HTTP/1.1 202 Accepted
 content-type: application/json
-etag: 1564007961
+etag: 1547716020
 
 { 
   "error" : false, 
   "code" : 202, 
   "edge" : { 
-    "_id" : "relation/1564007961", 
-    "_rev" : "1564007961", 
-    "_key" : "1564007961" 
+    "_id" : "relation/1547716020", 
+    "_rev" : "1547716020", 
+    "_key" : "1547716020" 
   } 
 }
