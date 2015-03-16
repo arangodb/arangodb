@@ -10,7 +10,7 @@ Master: [![Build Status](https://secure.travis-ci.org/arangodb/arangodb.png?bran
 
 ArangoDB is a multi-model, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
-ArangoDB is Polyglot Persistence done right. The supported data models could be used combined and allow ArangoDB to be the aggregation point for your data request in mind.
+ArangoDB is Polyglot Persistence done right. The supported data models can be mixed in queries and allow ArangoDB to be the aggregation point for the data request you have in mind.
 
 To get started, try one of our 10 Minutes [Tutorials](https://www.arangodb.com/tutorials) in your favourite programming language or try one of our [ArangoDB Cookbook recipes](https://docs.arangodb.com/cookbook).
 
