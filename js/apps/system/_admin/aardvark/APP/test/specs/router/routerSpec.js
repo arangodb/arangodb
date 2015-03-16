@@ -172,7 +172,7 @@
         render: function () {
           throw "should be a spy";
         },
-        typeCheck: function () {
+        setType: function () {
           throw "should be a spy";
         }
       };
@@ -485,7 +485,7 @@
             docid = 6;
         spyOn(arangoHelper, "collectionApiType").andReturn(5);
         spyOn(documentViewDummy, "render");
-        spyOn(documentViewDummy, "typeCheck");
+        spyOn(documentViewDummy, "setType");
         simpleNavigationCheck(
           {
             url: "collection/:colid/:docid",
@@ -500,9 +500,8 @@
         );
         expect(r.documentView.colid).toEqual(colid);
         expect(r.documentView.docid).toEqual(docid);
-        expect(r.documentView.type).toEqual(5);
         expect(arangoHelper.collectionApiType).toHaveBeenCalledWith(colid);
-        expect(documentViewDummy.typeCheck).toHaveBeenCalledWith(colid);
+        expect(documentViewDummy.setType).toHaveBeenCalledWith(colid);
       });
 
 
