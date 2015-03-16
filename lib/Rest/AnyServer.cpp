@@ -263,7 +263,7 @@ AnyServer::~AnyServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::start () {
-  if (_applicationServer == 0) {
+  if (_applicationServer == nullptr) {
     buildApplicationServer();
   }
 
@@ -298,7 +298,7 @@ int AnyServer::start () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AnyServer::beginShutdown () {
-  if (_applicationServer != 0) {
+  if (_applicationServer != nullptr) {
     _applicationServer->beginShutdown();
   }
 }
