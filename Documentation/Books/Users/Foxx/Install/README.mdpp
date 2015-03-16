@@ -2,40 +2,43 @@
 
 !SECTION Introduction to Foxx manager
 
-The Foxx manager is a shell program. It should have been installed under */usr/bin* or */usr/local/bin*
-when installing the ArangoDB package. An instance of the ArangoDB server must be 
+The Foxx manager is a shell program. It should have been installed under **/usr/bin** or **/usr/local/bin**
+when installing the ArangoDB package. An instance of the ArangoDB server must be
 up and running.
 
-    unix> foxx-manager
-    Expecting a command, please try:
+```
+unix> foxx-manager
+Expecting a command, please try:
 
-    Example usage:
-     foxx-manager install <app-info> <mount-point> option1=value1
-     foxx-manager uninstall <mount-point>
+Example usage:
+ foxx-manager install <app-info> <mount-point> option1=value1
+ foxx-manager uninstall <mount-point>
 
-    Further help:
-     foxx-manager help   for the list of foxx-manager commands
-     foxx-manager --help for the list of options
-
+Further help:
+ foxx-manager help   for the list of foxx-manager commands
+ foxx-manager --help for the list of options
+```
 The most important commands are
 
-* *install*: Installs a Foxx application to a local URL and calls its setup method
-* *uninstall*: Deletes a Foxx application and calls its teardown method 
-* *list*: Lists all installed Foxx applications (alias: *installed*)
+* **install**: Installs a Foxx application to a local URL and calls its setup method
+* **uninstall**: Deletes a Foxx application and calls its teardown method 
+* **list**: Lists all installed Foxx applications (alias: **installed**)
 
-When dealing with a fresh install of ArangoDB, there should be no installed 
+When dealing with a fresh install of ArangoDB, there should be no installed
 applications besides the system applications that are shipped with ArangoDB.
 
-    unix> foxx-manager list
-    Mount                   Name           Author               Description                                       Version    Development
-    ---------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
-    /_admin/aardvark        aardvark       ArangoDB GmbH        ArangoDB Admin Web Interface                      1.0        no
-    /_api/gharial           gharial        ArangoDB GmbH        ArangoDB Graph Module                             0.1        no
-    /_system/cerberus       cerberus       ArangoDB GmbH        Password Manager                                  0.0.1      no
-    /_system/sessions       sessions       ArangoDB GmbH        Session storage for Foxx.                         0.1        no
-    /_system/simple-auth    simple-auth    ArangoDB GmbH        Simple password-based authentication for Foxx.    0.1        no
-    ---------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
-    5 application(s) found
+````
+unix> foxx-manager list
+Mount                   Name           Author               Description                                       Version    Development
+---------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
+/_admin/aardvark        aardvark       ArangoDB GmbH        ArangoDB Admin Web Interface                      1.0        no
+/_api/gharial           gharial        ArangoDB GmbH        ArangoDB Graph Module                             0.1        no
+/_system/cerberus       cerberus       ArangoDB GmbH        Password Manager                                  0.0.1      no
+/_system/sessions       sessions       ArangoDB GmbH        Session storage for Foxx.                         0.1        no
+/_system/simple-auth    simple-auth    ArangoDB GmbH        Simple password-based authentication for Foxx.    0.1        no
+---------------------   ------------   ------------------   -----------------------------------------------   --------   ------------
+5 application(s) found
+```
 
 There are currently several applications installed, all of them are system applications. 
 You can safely ignore system applications.  

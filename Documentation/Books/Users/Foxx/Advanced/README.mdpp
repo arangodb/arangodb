@@ -1,15 +1,15 @@
 !CHAPTER Advanced functions
 
-This chapter is about the more advanced features of foxx.
-It requires that you have understood all chapters before as these are getting rather close to the core of foxx.
+This chapter is about the more advanced features of Foxx.
+It requires that you have understood all chapters before as these are getting rather close to the core of Foxx.
 
-The first advanced feature of foxx is to write foxx exports.
-They are used to define an internal api that can be used by other foxxes but is not exposed publicly.
-One use case for foxx exports is a user management:
-You want to have it centralized and accessible by other foxxes as a shared user-base.
-Though each foxx should offer it's own customized login and register functionality on top of that and you only want this one exposed.
+The first advanced feature of Foxx is to write Foxx exports.
+They are used to define an internal API that can be used by other Foxxes but is not exposed publicly.
+One use case for Foxx exports is a user management:
+You want to have it centralized and accessible by other Foxxes as a shared user-base.
+Though each Foxx should offer its own customized login and register functionality on top of that and you only want this one exposed.
 
-So the user management can be implemented using [Exports](Foxx/Advanced/Exports.md).
+So the user management can be implemented using [Exports](../Advanced/Exports.md).
 
-But you would also like to make use of an application with exports in other foxxes.
-The counterpart of exports is [Dependency Injection](Foxx/Advanced/Injection.md) described thereafter.
+But you would also like to make use of an application with exports in other Foxxes.
+The counterpart of exports is [Dependency Injection](../Advanced/Injection.md) described thereafter.
