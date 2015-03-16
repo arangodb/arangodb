@@ -1789,7 +1789,8 @@ function ExtendFoxxControllerSpec () {
       assertEqual(routes[0].docs.parameters[0].name, paramName);
       assertEqual(routes[0].docs.parameters[0].paramType, "body");
       assertEqual(routes[0].docs.parameters[0].description, description);
-      assertEqual(routes[0].docs.parameters[0].dataType, jsonSchema.id);
+      var token = routes[0].docs.parameters[0].dataType;
+      assertEqual(app.models[token], jsonSchema);
     },
 
     testFunctionalityBodyParameterInExtension: function() {
