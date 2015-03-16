@@ -51,7 +51,7 @@ using namespace triagens::arango;
 extern ArangoServer* ArangoInstance;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                 Windows Service control functions
+// --SECTION--               Windows Service control functions - de/installation
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -216,8 +216,12 @@ static void DeleteService (int argc, char* argv[], bool force) {
   CloseServiceHandle(schService);
 }
 
+// -----------------------------------------------------------------------------
+// --SECTION--                   Windows Service control functions - emit status
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes a windows service
+/// @brief flips the status for a service
 ////////////////////////////////////////////////////////////////////////////////
 
 static void SetServiceStatus (DWORD dwCurrentState, DWORD dwWin32ExitCode, DWORD dwCheckPoint, DWORD dwWaitHint) {
@@ -355,7 +359,7 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e) {
   else {
     LOG_ERROR("Unhandled exception without ExceptionCode - will crash now.!");
   }
-  return EXCEPTION_CONTINUE_SEARCH; 
+  return EXCEPTION_CONTINUE_SEARCH;
 }
 
 
@@ -422,10 +426,37 @@ void TRI_GlobalExitFunction (int exitCode, void* data) {
   exit(exitCode);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief starts server as service
 ////////////////////////////////////////////////////////////////////////////////
+
+class WindowsArangoServer : public ArangoServer {
+
+protected:
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wrap ArangoDB server so we can properly emmit a status once we're
+  ///        really up and running.
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void startupFinished () {
+    // startup finished - signalize we're running.
+    SetServiceStatus(SERVICE_RUNNING, 0, 0, 0);
+  }
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
+  ///        starting
+  //////////////////////////////////////////////////////////////////////////////
+  virtual void shutDownBegins () {
+    // startup finished - signalize we're running.
+    SetServiceStatus(SERVICE_STOP_PENDING, 0, 0, 0);
+  }
+
+public:
+  WindowsArangoServer (int argc, char ** argv) :
+    ArangoServer(argc, argv) {
+  }
+};
 
 static int ARGC;
 static char** ARGV;
@@ -438,11 +469,8 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
   // set start pending
   SetServiceStatus(SERVICE_START_PENDING, 0, 0, 0);
 
-  // start palo
-  SetServiceStatus(SERVICE_RUNNING, 0, 0, 0);
-
   IsRunning = true;
-  ArangoInstance = new ArangoServer(ARGC, ARGV);
+  ArangoInstance = new WindowsArangoServer(ARGC, ARGV);
   ArangoInstance->start();
   IsRunning = false;
 
@@ -488,7 +516,7 @@ void TRI_StartService(int argc, char* argv[])
     { TEXT(""), (LPSERVICE_MAIN_FUNCTION) ServiceMain },
     { NULL, NULL }
   };
-  
+
   ARGC = argc;
   ARGV = argv;
 
@@ -499,4 +527,3 @@ void TRI_StartService(int argc, char* argv[])
 }
 
 #endif
-
