@@ -1,6 +1,20 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* make Foxx queues really database-specific.
+
+  Foxx queues were and are stored in a database-specific collection `_queues`. However, a global
+  cache variable for the queues led to the queue names being treated database-independently, which
+  was wrong.
+  Since 2.6, Foxx queues names are truly database-specific, so the same queue name can be used in
+  two different databases for two different queues. Until then, it is advisable to think of queues
+  as already being database-specific, and using the database name as a queue name prefix to be
+  avoid name conflicts, e.g.:
+
+      var queueName = "myQueue";
+      var Foxx = require("org/arangodb/foxx");
+      Foxx.queues.create(db._name() + ":" + queueName);
+
 * fixed issue #1247: debian init script problems
 
 * multi-threaded index creation on collection load
