@@ -928,6 +928,8 @@ int ArangoServer::startupServer () {
 
   LOG_INFO("ArangoDB (version " TRI_VERSION_FULL ") is ready for business. Have fun!");
 
+  startupFinished();
+
   int res;
 
   if (mode == OperationMode::MODE_CONSOLE) {
@@ -942,6 +944,8 @@ int ArangoServer::startupServer () {
   else {
     res = runServer(vocbase);
   }
+
+  shutDownBegins ();
 
   _applicationServer->stop();
 

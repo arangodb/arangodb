@@ -66,10 +66,10 @@ extern void TRI_GlobalExitFunction (int, void*);
 extern bool TRI_ParseMoreArgs(int argc, char* argv[]);
 extern void TRI_StartService(int argc, char* argv[]);
 #else
-static void TRI_GlobalEntryFunction()                        { }
-static void TRI_GlobalExitFunction(int exitCode, void* data) { }
-static bool TRI_ParseMoreArgs(int argc, char* argv[])        { return false; }
-static void TRI_StartService(int argc, char* argv[])         { }
+void TRI_GlobalEntryFunction()                        { }
+void TRI_GlobalExitFunction(int exitCode, void* data) { }
+bool TRI_ParseMoreArgs(int argc, char* argv[])        { return false; }
+void TRI_StartService(int argc, char* argv[])         { }
 #endif
 
 
