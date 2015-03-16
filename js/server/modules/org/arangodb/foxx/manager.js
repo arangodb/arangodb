@@ -83,7 +83,7 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var filterAppRoots = function(folder) {
-    return /APP$/i.test(folder);
+    return /[\\\/]APP$/i.test(folder) && !/(APP[\\\/])(.*)APP$/i.test(folder);
   };
 
   ////////////////////////////////////////////////////////////////////////////////
@@ -292,7 +292,6 @@
       mf = JSON.parse(fs.read(file));
     } catch (err) {
       msg = "Cannot parse app manifest '" + file + "': " + String(err);
-      console.errorLines(msg);
       throw new ArangoError({
         errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
         errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
@@ -300,6 +299,19 @@
     }
     try {
       checkManifest(file, mf);
+      if (!/^[a-zA-Z\-_][a-zA-Z0-9\-_]*$/.test(mf.name)) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+          errorMessage: "The App name can only contain a to z, A to Z, 0-9, '-' and '_'." 
+        });
+      }
+      if (!/^\d+\.\d+(\.\d+)?$$/.test(mf.version)) {
+        throw new ArangoError({
+          errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+          errorMessage: "The version requires the format: <major>.<minor>.<bugfix>, all have to be integer numbers." 
+        });
+
+      }
     } catch (err) {
       console.error("Manifest file '%s' is invald: %s", file, err.errorMessage);
       if (err.hasOwnProperty("stack")) {
