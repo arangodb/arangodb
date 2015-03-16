@@ -2857,16 +2857,16 @@ struct FilterCondition {
 
       if (lhs->isConstant() && 
          rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        found = true;
+        found = (lhs->type == NODE_TYPE_VALUE);
       }
       else if (rhs->isConstant() &&
                lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        found = true;
         // reverse the nodes
         lhs = node->getMember(1);
         rhs = node->getMember(0);
 
         op = Ast::ReverseOperator(node->type);
+        found = (lhs->type == NODE_TYPE_VALUE);
       }
 
       if (found) {
