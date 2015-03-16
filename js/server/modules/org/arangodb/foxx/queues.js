@@ -55,13 +55,14 @@ queues = {
   get: function (key) {
     'use strict';
 
-    if (!queueMap[key]) {
+    var queueKey = db._name() + ":" + key;
+    if (!queueMap[queueKey]) {
       if (!db._queues.exists(key)) {
         throw new Error('Queue does not exist: ' + key);
       }
-      queueMap[key] = new Queue(key);
+      queueMap[queueKey] = new Queue(key);
     }
-    return queueMap[key];
+    return queueMap[queueKey];
   },
   create: function (key, maxWorkers) {
     'use strict';
@@ -76,10 +77,11 @@ queues = {
         db._queues.update(key, {maxWorkers: maxWorkers});
       }
     }
-    if (!queueMap[key]) {
-      queueMap[key] = new Queue(key);
+    var queueKey = db._name() + ":" + key;
+    if (!queueMap[queueKey]) {
+      queueMap[queueKey] = new Queue(key);
     }
-    return queueMap[key];
+    return queueMap[queueKey];
   },
   delete: function (key) {
     'use strict';
@@ -249,6 +251,9 @@ _.extend(Queue.prototype, {
   },
   get: function (id) {
     'use strict';
+    if (id === undefined || id === null) {
+      throw new Error('Invalid job id');
+    }
     if (!id.match(/^_jobs\//)) {
       id = '_jobs/' + id;
     }
