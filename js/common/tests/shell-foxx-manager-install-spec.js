@@ -248,7 +248,7 @@ describe("Foxx Manager install", function() {
       } catch(e) {
         expect(true).toBeFalsy("Could not install a minimal valid app.");
       }
-      FoxxManager.uninstall("/unittest/broken");
+      FoxxManager.uninstall("/unittest/broken", {force: true});
     });
 
     it("an app containing a sub-folder 'app'", function() {
@@ -257,7 +257,7 @@ describe("Foxx Manager install", function() {
       } catch(e) {
         expect(true).toBeFalsy("Could not install an app with sub-folder 'app'.");
       }
-      FoxxManager.uninstall("/unittest/broken");
+      FoxxManager.uninstall("/unittest/broken", {force: true});
     });
 
   });
