@@ -14484,7 +14484,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     saveDocument: function () {
-      var model, result, fixedJSON;
+      var model, result;
 
       try {
         model = this.editor.get();
