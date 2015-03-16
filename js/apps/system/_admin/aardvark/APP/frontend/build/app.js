@@ -103584,6 +103584,15 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 (function() {
   "use strict";
+
+  var createDocumentLink = function(id) {
+    var split = id.split("/");
+    return "collection/"
+      + encodeURIComponent(split[0]) + "/"
+      + encodeURIComponent(split[1]);
+
+  };
+
   window.DocumentView = Backbone.View.extend({
     el: '#content',
     colid: 0,
@@ -103602,7 +103611,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
     editor: 0,
 
-    typeCheck: function (type) {
+    setType: function (type) {
       var result, type2;
       if (type === 'edge') {
         result = this.collection.getEdge(this.colid, this.docid);
@@ -103613,6 +103622,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         type2 = "Document: ";
       }
       if (result === true) {
+        this.type = type;
         this.fillInfo(type2);
         this.fillEditor();
         return true;
@@ -103672,11 +103682,12 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     fillInfo: function(type) {
-      var _id = this.collection.first().get("_id"),
-      _key = this.collection.first().get("_key"),
-      _rev = this.collection.first().get("_rev"),
-      _from = this.collection.first().get("_from"),
-      _to = this.collection.first().get("_to");
+      var mod = this.collection.first();
+      var _id = mod.get("_id"),
+        _key = mod.get("_key"),
+        _rev = mod.get("_rev"),
+        _from = mod.get("_from"),
+        _to = mod.get("_to");
 
       $('#document-type').text(type);
       $('#document-id').text(_id);
@@ -103685,13 +103696,8 @@ window.ArangoUsers = Backbone.Collection.extend({
 
       if (_from && _to) {
 
-        var hrefFrom = "collection/"
-        + encodeURIComponent(_from.split("/")[0]) + "/"
-        + encodeURIComponent(_from.split("/")[1]);
-        var hrefTo = "collection/"
-        + encodeURIComponent(_to.split("/")[0]) + "/"
-        + encodeURIComponent(_to.split("/")[1]);
-
+        var hrefFrom = createDocumentLink(_from);
+        var hrefTo = createDocumentLink(_to);
         $('#document-from').text(_from);
         $('#document-from').attr("documentLink", hrefFrom);
         $('#document-to').text(_to);
@@ -103768,12 +103774,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     removeReadonlyKeys: function (object) {
-      delete object._key;
-      delete object._rev;
-      delete object._id;
-      delete object._from;
-      delete object._to;
-      return object;
+      return _.omit(object, ["_key", "_id", "_from", "_to", "_rev"]);
     },
 
     saveDocument: function () {
@@ -103785,6 +103786,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       catch (e) {
         this.errorConfirmation();
         this.disableSaveButton();
+        return;
       }
 
       model = JSON.stringify(model);
@@ -103855,7 +103857,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       return value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
     }
-
   });
 }());
 
@@ -109491,8 +109492,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       this.documentView.docid = docid;
       this.documentView.render();
       var type = arangoHelper.collectionApiType(colid);
-      this.documentView.type = type;
-      this.documentView.typeCheck(type);
+      this.documentView.setType(type);
     },
 
     shell: function () {
