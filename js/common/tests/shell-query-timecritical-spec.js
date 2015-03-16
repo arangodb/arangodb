@@ -1,4 +1,4 @@
-/*global describe, require, beforeEach, it, expect, afterEach*/
+/*global describe, require, beforeEach, it, expect, afterEach, arango */
 
 (function() {
   "use strict";
