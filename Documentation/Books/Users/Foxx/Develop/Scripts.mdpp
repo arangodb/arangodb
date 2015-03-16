@@ -5,53 +5,60 @@ These scripts are used to create or drop collections, create indexes or insert s
 
 !SECTION Setup script
 
-The setup script will be executed during the install process of your foxx.
+The setup script will be executed during the install process of your Foxx.
 
-    unix>foxx-manager install hello-foxx /example
+```
+unix>foxx-manager install hello-foxx /example
+```
 
 It is typically used to setup collections, insert some seed data or create default user accounts.
 As one example for a setup script we can take a look at the one given with hello-foxx:
 
-    var console = require("console");
-    var arangodb = require("org/arangodb");
-    var db = arangodb.db;
+```
+var console = require("console");
+var arangodb = require("org/arangodb");
+var db = arangodb.db;
 
-    var texts = applicationContext.collectionName("texts");
+var texts = applicationContext.collectionName("texts");
 
-    if (db._collection(texts) === null) {
-      var collection = db._create(texts);
+if (db._collection(texts) === null) {
+  var collection = db._create(texts);
 
-      collection.save({ text: "entry 1 from collection texts" });
-      collection.save({ text: "entry 2 from collection texts" });
-      collection.save({ text: "entry 3 from collection texts" });
-    }
-    else {
-      console.log("collection '%s' already exists. Leaving it untouched.", texts);
-    }
+  collection.save({ text: "entry 1 from collection texts" });
+  collection.save({ text: "entry 2 from collection texts" });
+  collection.save({ text: "entry 3 from collection texts" });
+}
+else {
+  console.log("collection '%s' already exists. Leaving it untouched.", texts);
+}
+```
 
 It first creates the collection texts, specific for this application and inserts three default documents.
 
 !SECTION Teardown script
 
-The teardown script will be executed during the uninstall process of your foxx.
+The teardown script will be executed during the uninstall process of your Foxx.
 
+```
+unix>foxx-manager uninstall /example
+````
 
-    unix>foxx-manager uninstall /example
-
-This one is typically used to erase the data collected with the foxx.
-ArangoDB will never automatically delete collections attached to a foxx unless they are dropped in the teardown script.
+This one is typically used to erase the data collected with the Foxx.
+ArangoDB will never automatically delete collections attached to a Foxx unless they are dropped in the teardown script.
 So if you want to keep your data simply do not drop the collections here.
 As an example for a typical teardown script we can again take a look at the hello-foxx example:
 
-    var arangodb = require("org/arangodb");
-    var db = arangodb.db;
+```
+var arangodb = require("org/arangodb");
+var db = arangodb.db;
 
-    var texts = applicationContext.collectionName("texts");
-    var collection = db._collection(texts);
+var texts = applicationContext.collectionName("texts");
+var collection = db._collection(texts);
 
     if (collection !== null) {
       collection.drop();
     }
+```
 
 It drops the collection unless it has not yet been dropped.
 
@@ -60,13 +67,15 @@ It drops the collection unless it has not yet been dropped.
 In order to activate the scripts you have to define them inside the manifest, similar to controllers.
 So your manifest will look like this:
 
-    {
-      "name": "hello-foxx",
-      "version": "1.4.4",
-      "controllers": {},
-      "setup": "scripts/setup.js",
-      "teardown": "scripts/teardown.js"
-    }
+```
+{
+  "name": "hello-foxx",
+  "version": "1.4.4",
+  "controllers": {},
+  "setup": "scripts/setup.js",
+  "teardown": "scripts/teardown.js"
+}
+```
 
 Keep in mind that all scripts are optional and can be omitted.
 It is only possible to define one script of each type.

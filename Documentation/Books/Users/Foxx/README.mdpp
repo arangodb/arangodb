@@ -1,19 +1,30 @@
 !CHAPTER Foxx
 
-In the recent movements of software development many companies of all sizes talk about
-moving away from large monolithic applications and switch over to a microservice based
-software architecture.
-Because it yields many benefits in terms of scaling and zero-downtime.
+Foxx is a framework that allows you to write data-centric microservices.
+It is execute directly inside of ArangoDB and grants you raw access to your data.
+With the framework you can embed complex queries and data-focused business logic into your database.
 
-During the design of foxx we followed the concepts and ideas of microservices.
+Using Foxx will give you benefits above writing the code in a separate applications.
+First of all it yields performance benefits, the data analysis and modification is executed as close to the data as possible.
+Also it requires one network hop less as the Foxx has direct access to the data and does not have to query a database located on a different server.
+Second your application is completely free of any database related information like queries, it is just requesting a endpoint that gives the data in the expected format.
+This also allows to reuse this endpoint in different applications without copying the queries.
+Third Foxx adds another level of security to your application, you can manage the access rights on any level you like: application, collection, document or even attribute.
+Finally Foxx is automatically scaled alongside your database: if the number of ArangoDB servers grows so does your Foxx servers, both have their bottleneck at the same point.
+
+In the recent movements of software development many companies of all sizes talk about
+moving away from large monolithic applications and switch over to a microservice based software architecture.
+Because microservices yield many benefits in terms of scaling and zero-downtime.
+
+During the design of Foxx we followed the concepts and ideas of microservices.
 Our baseline is the definition by Martin Fowler and James Lewis given in their [microservice article](http://martinfowler.com/articles/microservices.html).
-The following table lists a mapping of microservice concepts and how they can be realized within foxx:
+The following table lists a mapping of microservice concepts and how they can be realized within Foxx:
 
 <table>
   <thead>
     <tr>
       <th>microservice</th>
-      <th>foxx</th>
+      <th>Foxx</th>
       <th>description</th>
     </tr>
   </thead>
@@ -111,14 +122,14 @@ The following table lists a mapping of microservice concepts and how they can be
   </tbody>
 </table>
 
-As you can see most concepts of microservices are natively available in foxx plus several additions that easy your development
+As you can see most concepts of microservices are natively available in Foxx plus several additions that easy your development
 process.
-That is why we like to call foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
+That is why we like to call Foxx a "microservice framework": It allows you to write and deploy data-centric microservices 
 on top of ArangoDB.
 
 If this short introduction has piqued your interest you can find more details in the sections below.
 We recommend to start with Foxx in a nutshell which gives a really quick introduction in how to
-create and use your first foxx.
+create and use your first Foxx.
 All other sections will give very detailed informations about the features available and a peak behind the curtains.
 
 !SECTION Foxx in a nutshell
@@ -128,7 +139,7 @@ of what Foxx is, how it works and how to get it up and running in short time.
 It is tutorial that should be solvable in 10 minutes or less and will guide you to your first
 application giving a few insights on the way.
 
-[Read More](Foxx/Nutshell/README.md)
+[Read More](Nutshell/README.md)
 
 !SECTION Install a Foxx Application
 
@@ -136,7 +147,7 @@ You would like to get some inspiration from running Applications?
 Or you already have an Application that does what you need?
 This chapter will guide you to get an Application up and running.
 
-[Read More](Foxx/Install/README.md)
+[Read More](Install/README.md)
 
 !SECTION Develop your own Foxx
 
@@ -146,7 +157,7 @@ It will explain how to use the development mode and which debugging mechanisms a
 It introduces the tips and tricks on how to build your own API.
 And presents all libraries that are available from a Foxx Application.
 
-[Read More](Foxx/Develop/README.md)
+[Read More](Develop/README.md)
 
 
 !SECTION Running Foxx Applications in production
@@ -155,7 +166,7 @@ This chapter is dedicated to all the possibilities on how to run a Foxx Applicat
 It will start with how to leverage it from development to production.
 We will continue with migration of the Application to a newer version.
 
-[Read More](Foxx/Production/README.md)
+[Read More](Production/README.md)
 
 !SECTION Available Foxx Applications
 
@@ -166,7 +177,7 @@ how to use each of them.
 Some of them can be integrated directly in your own applications.
 Others follow the micro-service philosophy and can be added independently.
 
-[Read More](Foxx/Apps/README.md)
+[Read More](Apps/README.md)
 
 !SECTION Foxx in a cluster
 
@@ -175,11 +186,13 @@ Want to setup your micro-service based application?
 This chapter will explain what has to be changed to run a Foxx application within a cluster setup.
 It will also explain how to move your application from a single server to an unlimited amount of servers.
 
-[Read More](Foxx/Cluster/README.md)
+[Read More](Cluster/README.md)
 
 !SECTION Advanced features
 
 This chapter will present the more advanced capabilities of Foxx.
 It requires that you know the details presented in the chapters before.
-Here you will learn about foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
-Furthermore you will learn about background and periodical tasks in foxx applications.
+Here you will learn about Foxx feature exports and imports to implement abstract APIs for reuse in several Apps.
+Furthermore you will learn about background and periodical tasks in Foxx applications.
+
+[Read More](Advanced/README.md)

@@ -10,7 +10,7 @@ Query Builder query objects can be used in any function that would normally expe
 
 For a full overview of the query builder API [see the project documentation](https://github.com/arangodb/aqbjs).
 
-*Examples*
+**Examples**
 
 ```js
 var db = require('org/arangodb').db;
@@ -29,27 +29,27 @@ Creates a query function that performs the given query and returns the result.
 
 The returned query function optionally takes an object as its argument. If an object is provided, its properties will be used as the query's bind parameters. Any additional arguments will be passed to the transform function (or dropped if no transform function is defined).
 
-*Parameter*
+**Parameter**
 
-* *cfg*: an object with the following properties:
-    * *query*: an AQL query string or an ArangoDB Query Builder query object.
-    * *params* (optional): an array of parameter names.
-    * *context* (optional): an *applicationContext*.
-    * *model* (optional): a *Foxx.Model* that will be applied to the query results.
-    * *defaults* (optional): default values for the query's bind parameters. These can be overridden by passing a value for the same name to the query function.
-    * *transform* (optional): a function that will be applied to the return value.
+* **cfg**: an object with the following properties:
+    * **query**: an AQL query string or an ArangoDB Query Builder query object.
+    * **params** (optional): an array of parameter names.
+    * **context** (optional): an **applicationContext**.
+    * **model** (optional): a **Foxx.Model** that will be applied to the query results.
+    * **defaults** (optional): default values for the query's bind parameters. These can be overridden by passing a value for the same name to the query function.
+    * **transform** (optional): a function that will be applied to the return value.
 
-If *cfg* is a string, it will be used as the value of *cfg.query* instead.
+If **cfg** is a string, it will be used as the value of **cfg.query** instead.
 
-If a *context* is specified, the values of all collection bind parameters will be passed through the context's *collectionName* method.
+If a **context** is specified, the values of all collection bind parameters will be passed through the context's **collectionName** method.
 
 Note that collection bind parameters in AQL need to be referenced with two at-signs instead of one, e.g. `@@myCollectionVar` and their parameter name needs to be prefixed with an at-sign as well, e.g. `{'@myCollectionVar': 'collection_name'}`.
 
-If *params* is provided, the query function will accept positional arguments instead of an object. If *params* is a string, it will be treated as an array containing that string.
+If **params** is provided, the query function will accept positional arguments instead of an object. If **params** is a string, it will be treated as an array containing that string.
 
-If both *model* and *transform* are provided, the *transform* function will be applied to the result array _after_ the results have been converted into model instances. The *transform* function is always passed the entire result array and its return value will be returned by the query function.
+If both *model*** and **transform** are provided, the **transform** function will be applied to the result array _after_ the results have been converted into model instances. The **transform** function is always passed the entire result array and its return value will be returned by the query function.
 
-*Examples*
+**Examples**
 
 Basic usage example:
 
