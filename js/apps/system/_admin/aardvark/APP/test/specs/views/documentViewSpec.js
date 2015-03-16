@@ -43,8 +43,7 @@
                 "click #confirmDeleteDocument" : "deleteDocument",
                 "click #document-from" : "navigateToDocument",
                 "click #document-to" : "navigateToDocument",
-                "dblclick #documentEditor tr" : "addProperty",
-                "focusout .ace_editor": "parseInvalidJson"
+                "dblclick #documentEditor tr" : "addProperty"
             });
         });
 
