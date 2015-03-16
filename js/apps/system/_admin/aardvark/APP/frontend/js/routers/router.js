@@ -176,8 +176,7 @@
       this.documentView.docid = docid;
       this.documentView.render();
       var type = arangoHelper.collectionApiType(colid);
-      this.documentView.type = type;
-      this.documentView.typeCheck(type);
+      this.documentView.setType(type);
     },
 
     shell: function () {
