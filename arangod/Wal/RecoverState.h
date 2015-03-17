@@ -216,7 +216,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_vocbase_col_t* useCollection (TRI_vocbase_t*,
-                                        TRI_voc_cid_t);
+                                        TRI_voc_cid_t,
+                                        int&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a collection
