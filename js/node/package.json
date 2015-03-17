@@ -12,7 +12,7 @@
     "htmlparser2": "3.7.2",
     "http-errors": "1.2.8",
     "iced-coffee-script": "1.7.1-f",
-    "joi": "6.0.6",
+    "joi": "6.0.8",
     "jshint": "2.5.5",
     "marked": "0.3.2",
     "moment": "2.6.0",

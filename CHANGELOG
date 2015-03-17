@@ -47,6 +47,9 @@ v2.6.0 (XXXX-XX-XX)
 
 * added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown` files as properties of the `scripts` object in your manifests.
 
+* updated `joi` package to 6.0.8.
+
+
 v2.5.2 (XXXX-XX-XX)
 -------------------
 
