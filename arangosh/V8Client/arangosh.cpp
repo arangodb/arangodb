@@ -2352,9 +2352,12 @@ int main (int argc, char* args[]) {
   // .............................................................................
 
   if (! Utf8Helper::DefaultUtf8Helper.setCollatorLanguage("en")) {
-    const char *ICU_env = getenv("ICU_DATA");
-    BaseClient.printErrLine("cannot initialize ICU; please make sure ICU*dat is available ; ICU_DATA='%s'",
-                            (ICU_env) ? ICU_env : "");
+    string msg = "cannot initialize ICU; please make sure ICU*dat is available ; ICU_DATA='";
+    if (getenv("ICU_DATA") != nullptr) {
+      msg += getenv("ICU_DATA");
+    }
+    msg += "'";
+    BaseClient.printErrLine(msg);
     return -1;
   }    
   v8::V8::InitializeICU();
