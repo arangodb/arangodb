@@ -51,10 +51,10 @@ using namespace triagens::aql;
 Collection::Collection (std::string const& name,
                         struct TRI_vocbase_s* vocbase,
                         TRI_transaction_type_e accessType) 
-  : currentShard(),
+  : collection(nullptr),
+    currentShard(),
     name(name),
     vocbase(vocbase),
-    collection(nullptr),
     accessType(accessType),
     isReadWrite(false) {
           
@@ -319,7 +319,7 @@ void Collection::fillIndexesDBServer () const {
       // assign the found local index
       idx->setInternals(data);
 
-      indexes.push_back(idx);
+      indexes.emplace_back(idx);
     }
   }
 }

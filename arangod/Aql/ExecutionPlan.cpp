@@ -92,7 +92,6 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 
   try {
     plan->_root = plan->fromNode(root);
-std::cout << "PLAN ROOT: " << plan->_root->getTypeString() << "\n"; 
     // insert fullCount flag
     if (plan->_lastLimitNode != nullptr && ast->query()->getBooleanOption("fullCount", false)) {
       static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
@@ -960,8 +959,6 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
   if (node->numMembers() > 3) {
     auto returnVarNode = node->getMember(3);
     outVariableOld = static_cast<Variable*>(returnVarNode->getData());
-
-    std::cout << "REMOVE NODE WITH OUTVARIABLE: " << outVariableOld->name << "\n";
   }
 
   if (expression->type == NODE_TYPE_REFERENCE) {
@@ -1457,7 +1454,6 @@ void ExecutionPlan::unlinkNode (ExecutionNode* node,
                                      "Cannot unlink root node of plan");
     }
     // adjust root node. the caller needs to make sure that a new root node gets inserted
-    std::cout << "SETTING ROOT NODE TO NULL\n";
     _root = nullptr;
   }
 

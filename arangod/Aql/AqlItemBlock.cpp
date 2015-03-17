@@ -85,7 +85,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
     }
     _docColls.reserve(_nrRegs);
     for (size_t i = 0; i < _nrRegs; ++i) {
-      _docColls.push_back(nullptr);
+      _docColls.emplace_back(nullptr);
     }
   }
 
@@ -123,6 +123,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             emptyRun--;
           }
           else if (n == -2) {
+            // a range
             Json lowBound(data.at(static_cast<int>(posInData++)));
             Json highBound(data.at(static_cast<int>(posInData++)));
             int64_t low = JsonHelper::getNumericValue<int64_t>(lowBound.json(), 0);
@@ -137,6 +138,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
             }
           }
           else if (n == 1) {
+            // a JSON value
             Json x(raw.at(static_cast<int>(posInRaw++)));
             AqlValue a(new Json(TRI_UNKNOWN_MEM_ZONE, x.copy().steal()));
             try {
@@ -146,7 +148,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
               a.destroy();
               throw;
             }
-            madeHere.push_back(a);
+            madeHere.emplace_back(a);
           }
           else if (n >= 2) {
             setValue(i, column, madeHere[static_cast<size_t>(n)]);

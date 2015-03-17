@@ -370,23 +370,17 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // find the collection to be used 
         if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
           collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
-std::cout << "ENUM COLLECTION: " << collection << "\n";          
         }
         else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
           collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
-std::cout << "INDEX RANGE: " << collection << "\n";          
         }
         else if ((*en)->getType() == ExecutionNode::INSERT ||
                  (*en)->getType() == ExecutionNode::UPDATE ||
                  (*en)->getType() == ExecutionNode::REPLACE ||
                  (*en)->getType() == ExecutionNode::REMOVE) {
           collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
-
-std::cout << ((*en)->getTypeString()) << ": " << collection << "\n";          
         }
       }
-
-      std::cout << "COLLECTION IS NOW: " << collection << "\n";
 
       TRI_ASSERT(collection != nullptr);
       return collection;
@@ -882,7 +876,7 @@ std::cout << ((*en)->getTypeString()) << ": " << collection << "\n";
     }
 
     // assign the current node to the current engine
-    engines[currentEngineId].nodes.push_back(en);
+    engines[currentEngineId].nodes.emplace_back(en);
   }
 };
 
@@ -912,10 +906,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 
     if (triagens::arango::ServerState::instance()->isCoordinator()) {
       // instanciate the engine on the coordinator
+
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
-
-      // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
 
 #if 0
       // Just for debugging
@@ -1091,7 +1084,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 void ExecutionEngine::addBlock (ExecutionBlock* block) {
   TRI_ASSERT(block != nullptr);
 
-  _blocks.push_back(block);
+  _blocks.emplace_back(block);
 }
 
 
