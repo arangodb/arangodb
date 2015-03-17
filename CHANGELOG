@@ -1,4 +1,13 @@
-v2.4.5-beta4 (XXXX-XX-XX)
+v2.4.6 (2015-03-XX)
+-------------------
+
+* never try to raise the privileges after dropping them, this can lead to a race condition while
+  running the recovery
+
+  If you require to run ArangoDB on port lower than 1024, you must run ArangoDB as root.
+
+
+v2.4.5 (2015-03-16)
 -------------------
 
 * added elapsed time to HTTP request logging output (`--log.requests-file`)
