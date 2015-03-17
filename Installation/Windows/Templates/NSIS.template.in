@@ -638,26 +638,24 @@ FunctionEnd
 ;--------------------------------
 
 Function WaitForServiceUp
-  Sleep 2000
-; TODO: alter arango so it claims 'running' state if its realy done starting
-;  Push 0
-;  Pop $retryCount
-;  try_again:
-;    SimpleSC::ServiceIsRunning "ArangoDB"
-;    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
-;    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
-;    ${If} $1 == 1
-;      ;MessageBox MB_OK "Service running : $retryCount "
-;      ; ok, running now.
-;      Return
-;    ${EndIf}
-;    Sleep 1000
-;    ${If} ${retryCount} == 20
-;      ;MessageBox MB_OK "Service waiting retry count reached"
-;      Return
-;    ${EndIf}
-;    IntOp $retryCount ${retryCount} + 1
-;    Goto try_again
+  Push 0
+  Pop $retryCount
+  try_again:
+    SimpleSC::ServiceIsRunning "ArangoDB"
+    Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+    Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
+    ${If} $1 == 1
+      ;MessageBox MB_OK "Service running : $retryCount "
+      ; ok, running now.
+      Return
+    ${EndIf}
+    Sleep 1000
+    ${If} ${retryCount} == 40
+      MessageBox MB_OK "Service waiting retry count reached"
+      Return
+    ${EndIf}
+    IntOp $retryCount ${retryCount} + 1
+    Goto try_again
 FunctionEnd
 
 ;--------------------------------
