@@ -215,16 +215,13 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
     // do we need to adjust the root node?
     auto const nodeType = en->getType();
 
-    if (nodeType == ExecutionNode::RETURN ||
-        nodeType == ExecutionNode::REMOVE ||
-        nodeType == ExecutionNode::INSERT ||
-        nodeType == ExecutionNode::UPDATE ||
-        nodeType == ExecutionNode::REPLACE) {
+    if (en->getParents().empty()) {
       root = eb;
     }
-    else if (nodeType == ExecutionNode::DISTRIBUTE ||
-             nodeType == ExecutionNode::SCATTER ||
-             nodeType == ExecutionNode::GATHER) {
+    
+    if (nodeType == ExecutionNode::DISTRIBUTE ||
+        nodeType == ExecutionNode::SCATTER ||
+        nodeType == ExecutionNode::GATHER) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
     }
 
@@ -242,12 +239,6 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       auto it2 = cache.find(*it);
       TRI_ASSERT(it2 != cache.end());
       eb->addDependency(it2->second);
-    }
-
-    if (root == nullptr &&
-        en->getParents().empty()) {
-      // adjust the root node if none was set already
-      root = eb;
     }
 
     cache.emplace(std::make_pair(en, eb));
@@ -1060,6 +1051,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       std::unique_ptr<Instanciator> inst(new Instanciator(engine));
       plan->root()->walk(inst.get());
       root = inst.get()->root;
+      TRI_ASSERT(root != nullptr);
     }
 
     TRI_ASSERT(root != nullptr);
