@@ -93,7 +93,7 @@ V8TimerTask::~V8TimerTask () {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8TimerTask::getDescription (TRI_json_t* json) {
+void V8TimerTask::getDescription (TRI_json_t* json) const {
   TimerTask::getDescription(json);
 
   TRI_json_t* created = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, _created);
