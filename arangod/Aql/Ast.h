@@ -255,10 +255,7 @@ namespace triagens {
 
         AstNode* createNodeRemove (AstNode const*,
                                    AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST insert node
@@ -266,11 +263,7 @@ namespace triagens {
 
         AstNode* createNodeInsert (AstNode const*,
                                    AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
-
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST update node
@@ -279,10 +272,7 @@ namespace triagens {
         AstNode* createNodeUpdate (AstNode const*,
                                    AstNode const*,
                                    AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST replace node
@@ -291,10 +281,7 @@ namespace triagens {
         AstNode* createNodeReplace (AstNode const*,
                                     AstNode const*,
                                     AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
+                                    AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node

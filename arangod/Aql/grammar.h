@@ -111,14 +111,14 @@ extern int Aqldebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 21 "arangod/Aql/grammar.y" /* yacc.c:1915  */
+#line 21 "arangod/Aql/grammar.y" /* yacc.c:1909  */
 
   triagens::aql::AstNode*  node;
   char*                    strval;
   bool                     boolval;
   int64_t                  intval;
 
-#line 122 "arangod/Aql/grammar.hpp" /* yacc.c:1915  */
+#line 122 "arangod/Aql/grammar.hpp" /* yacc.c:1909  */
 };
 # define YYSTYPE_IS_TRIVIAL 1
 # define YYSTYPE_IS_DECLARED 1

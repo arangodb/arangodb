@@ -44,6 +44,8 @@
 #include "Cluster/ClusterComm.h"
 
 struct TRI_hash_index_element_multi_s;
+struct TRI_doc_mptr_copy_t;
+struct TRI_df_marker_s;
 
 namespace triagens {
   namespace aql {
@@ -115,6 +117,12 @@ namespace triagens {
         virtual ~ExecutionBlock ();
       
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of rows in a vector of blocks
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t countBlocksRows (std::vector<AqlItemBlock*> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the query was killed
@@ -242,6 +250,11 @@ namespace triagens {
         void inheritRegisters (AqlItemBlock const* src,
                                AqlItemBlock* dst,
                                size_t row);
+        
+        void inheritRegisters (AqlItemBlock const* src,
+                               AqlItemBlock* dst,
+                               size_t,
+                               size_t);
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following is internal to pull one more block and append it to
@@ -1383,7 +1396,7 @@ namespace triagens {
 /// @brief the actual work horse 
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock*  work (std::vector<AqlItemBlock*>&) = 0;
+        virtual AqlItemBlock* work (std::vector<AqlItemBlock*>&) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from the AqlValue passed
@@ -1392,6 +1405,13 @@ namespace triagens {
         int extractKey (AqlValue const&,
                         TRI_document_collection_t const*,
                         std::string&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a master pointer from the marker passed
+////////////////////////////////////////////////////////////////////////////////
+
+        void constructMptr (TRI_doc_mptr_copy_t*,
+                            TRI_df_marker_s const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the result of a data-modification operation
@@ -1408,10 +1428,16 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output register
+/// @brief output register ($OLD)
 ////////////////////////////////////////////////////////////////////////////////
 
-        RegisterId _outReg;
+        RegisterId _outRegOld;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output register ($NEW)
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _outRegNew;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection
@@ -1452,7 +1478,7 @@ namespace triagens {
 /// @brief the actual work horse for removing data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -1487,7 +1513,7 @@ namespace triagens {
 /// @brief the actual work horse for inserting data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -1522,7 +1548,7 @@ namespace triagens {
 /// @brief the actual work horse for updating data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -1557,7 +1583,7 @@ namespace triagens {
 /// @brief the actual work horse for replacing data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 

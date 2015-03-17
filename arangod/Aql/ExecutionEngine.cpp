@@ -370,17 +370,23 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         // find the collection to be used 
         if ((*en)->getType() == ExecutionNode::ENUMERATE_COLLECTION) {
           collection = const_cast<Collection*>(static_cast<EnumerateCollectionNode*>((*en))->collection());
+std::cout << "ENUM COLLECTION: " << collection << "\n";          
         }
         else if ((*en)->getType() == ExecutionNode::INDEX_RANGE) {
           collection = const_cast<Collection*>(static_cast<IndexRangeNode*>((*en))->collection());
+std::cout << "INDEX RANGE: " << collection << "\n";          
         }
         else if ((*en)->getType() == ExecutionNode::INSERT ||
                  (*en)->getType() == ExecutionNode::UPDATE ||
                  (*en)->getType() == ExecutionNode::REPLACE ||
                  (*en)->getType() == ExecutionNode::REMOVE) {
           collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
+
+std::cout << ((*en)->getTypeString()) << ": " << collection << "\n";          
         }
       }
+
+      std::cout << "COLLECTION IS NOW: " << collection << "\n";
 
       TRI_ASSERT(collection != nullptr);
       return collection;

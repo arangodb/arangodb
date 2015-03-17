@@ -258,10 +258,7 @@ AstNode* Ast::createNodeReturn (AstNode const* expression) {
 
 AstNode* Ast::createNodeRemove (AstNode const* expression,
                                 AstNode const* collection,
-                                AstNode const* options,
-                                char const* newOld,
-                                char const* varInto,
-                                char const* varReturn) {
+                                AstNode const* options) {
 
   AstNode* node = createNode(NODE_TYPE_REMOVE);
 
@@ -274,10 +271,6 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
   node->addMember(collection);
   node->addMember(expression);
 
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-  }
-
   return node;
 }
 
@@ -287,10 +280,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
 
 AstNode* Ast::createNodeInsert (AstNode const* expression,
                                 AstNode const* collection,
-                                AstNode const* options,
-                                char const* newOld,
-                                char const* varInto,
-                                char const* varReturn) {
+                                AstNode const* options) {
   
   AstNode* node = createNode(NODE_TYPE_INSERT);
   
@@ -303,9 +293,6 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
   node->addMember(collection);
   node->addMember(expression);
   
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-  }
   return node;
 }
 
@@ -316,10 +303,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
 AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
                                 AstNode const* docExpression,
                                 AstNode const* collection,
-                                AstNode const* options,
-                                char const* newOld,
-                                char const* varInto,
-                                char const* varReturn) {
+                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPDATE);
   
   if (options == nullptr) {
@@ -337,12 +321,7 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
   else {
     node->addMember(&NopNode);    
   }
-
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-    node->addMember(createNodeValueBool(TRI_CaseEqualString(newOld, "NEW")));
-  }
-
+  
   return node;
 }
 
@@ -353,11 +332,7 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
 AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
                                  AstNode const* docExpression,
                                  AstNode const* collection,
-                                 AstNode const* options,
-                                 char const* newOld,
-                                 char const* varInto,
-                                 char const* varReturn) {
-
+                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REPLACE);
   
   if (options == nullptr) {
@@ -376,10 +351,6 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
 
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-    node->addMember(createNodeValueBool(TRI_CaseEqualString(newOld, "NEW")));
-  }
   return node;
 }
 

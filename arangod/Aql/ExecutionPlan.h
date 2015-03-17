@@ -164,8 +164,11 @@ namespace triagens {
 /// @brief set the root node
 ////////////////////////////////////////////////////////////////////////////////
         
-        inline void root (ExecutionNode* node) {
-          TRI_ASSERT(_root == nullptr);
+        inline void root (ExecutionNode* node,
+                          bool force = false) {
+          if (! force) {
+            TRI_ASSERT(_root == nullptr);
+          }
           _root = node;
         }
 

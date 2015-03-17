@@ -2857,16 +2857,16 @@ struct FilterCondition {
 
       if (lhs->isConstant() && 
          rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        found = true;
+        found = (lhs->type == NODE_TYPE_VALUE);
       }
       else if (rhs->isConstant() &&
                lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-        found = true;
         // reverse the nodes
         lhs = node->getMember(1);
         rhs = node->getMember(0);
 
         op = Ast::ReverseOperator(node->type);
+        found = (lhs->type == NODE_TYPE_VALUE);
       }
 
       if (found) {
@@ -3320,19 +3320,60 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     // we are a coordinator, we replace the root if it is a modification node
     
     // only replace if it is the last node in the plan
-    auto const& node = plan->root();
+    auto node = plan->root();
+    TRI_ASSERT(node != nullptr);
+
+    while (node != nullptr) {
+      // loop until we find a modification node or the end of the plan
+      auto nodeType = node->getType();
+
+      if (nodeType == ExecutionNode::INSERT  ||
+          nodeType == ExecutionNode::REMOVE  ||
+          nodeType == ExecutionNode::REPLACE ||
+          nodeType == ExecutionNode::UPDATE) {
+        // found a node!
+        break;
+      }
+
+      auto deps = node->getDependencies();
+
+      if (deps.size() != 1) {
+        // reached the end
+        opt->addPlan(plan, rule->level, wasModified);
+        return TRI_ERROR_NO_ERROR;
+      }
+
+      node = deps[0];
+    }
+
+    TRI_ASSERT(node != nullptr);
+
+   std::cout << "NODE IS: " << node->getTypeString() << "\n";
+   std::cout << "ROOT IS: " << plan->root()->getTypeString() << "\n";
+    ExecutionNode* originalParent = nullptr;
+    {
+      auto parents = node->getParents();
+      if (parents.size() == 1) {
+        originalParent = parents[0];
+        TRI_ASSERT(originalParent != nullptr);
+        TRI_ASSERT(node != plan->root());
+      }
+      else {
+        TRI_ASSERT(node == plan->root());
+      }
+    }
+
+    // when we get here, we have found a matching node!
     auto const nodeType = node->getType();
     
-    if (nodeType != ExecutionNode::INSERT  &&
-        nodeType != ExecutionNode::REMOVE  &&
-        nodeType != ExecutionNode::REPLACE &&
-        nodeType != ExecutionNode::UPDATE) {
-      opt->addPlan(plan, rule->level, wasModified);
-      return TRI_ERROR_NO_ERROR;
-    }
-    
+    TRI_ASSERT(nodeType == ExecutionNode::INSERT  ||
+               nodeType == ExecutionNode::REMOVE  ||
+               nodeType == ExecutionNode::REPLACE ||
+               nodeType == ExecutionNode::UPDATE);
+
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
-    
+   
+std::cout << "THE COLLECTION IS: " << collection << "\n";    
     bool const defaultSharding = collection->usesDefaultSharding();
 
     if (nodeType == ExecutionNode::REMOVE ||
@@ -3343,14 +3384,29 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         return TRI_ERROR_NO_ERROR;
       }
     }
-        
+    
+    
     // In the INSERT and REPLACE cases we use a DistributeNode...
 
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
+    
+    if (originalParent != nullptr) {
+   std::cout << "ORIGINALPARENT: " << originalParent->getTypeString() << "\n";
+      originalParent->removeDependency(node);
+      plan->unlinkNode(node, true);
+      plan->root(originalParent); // fix root node
+    }
+    else {
+   std::cout << "NO ORIGINALPARENT\n";
+      plan->unlinkNode(node, true);
+      plan->root(deps[0]); // fix root node
+    }
 
     // unlink the node
-    plan->unlinkNode(node, true);
+   std::cout << "NOW UNLINKING: " << node->getTypeString() << "\n";
+
+//    std::cout << "PLAN ROOT IS NOW: " << plan->root() << "\n";
 
     // extract database from plan node
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
@@ -3418,9 +3474,17 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
 
-    // we replaced the root node, set a new root node
-    plan->root(gatherNode);
+    if (originalParent != nullptr) {
+      // we did not replace the root node
+      originalParent->addDependency(gatherNode);
+    }
+    else {
+      // we replaced the root node, set a new root node
+      std::cout << "SETTING PLAN ROOT TO " << gatherNode->getTypeString() << "\n";
+      plan->root(gatherNode, true);
+    }
     wasModified = true;
+std::cout << "LEAVING\n";
   }
    
   opt->addPlan(plan, rule->level, wasModified);
@@ -3679,7 +3743,7 @@ int triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 ////////////////////////////////////////////////////////////////////////////////
 
-class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
+class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   std::unordered_set<ExecutionNode*>& _toUnlink;
   bool _remove;
@@ -3718,7 +3782,11 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
 
           // remove nodes always have one input variable
           TRI_ASSERT(varsToRemove.size() == 1);
+
           _setter = _plan->getVarSetBy(varsToRemove[0]->id);
+if (_setter == nullptr) {
+std::cout << "PLAN JSON: " << triagens::basics::JsonHelper::toString(_plan->toJson(_plan->getAst(), TRI_UNKNOWN_MEM_ZONE, true).json()) << "\n"; 
+}
           TRI_ASSERT(_setter != nullptr);
           auto enumColl = _setter;
 
