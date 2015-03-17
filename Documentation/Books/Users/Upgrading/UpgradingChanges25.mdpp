@@ -6,6 +6,63 @@ upgrading to ArangoDB 2.5, and adjust any client programs if necessary.
 
 !SECTION Changed behavior
 
+!SUBSECTION V8
+
+The V8 version shipped with ArangoDB was upgraded from 3.29.59 to 3.31.74.1.
+This leads to additional ECMAScript 6 (ES6 or "harmony") features being enabled by 
+default in ArangoDB's scripting environment.
+
+Apart from that, a change in the interpretation of command-line options by V8 may
+affect users. ArangoDB passes the value of the command-line option `--javascript.v8-options`
+to V8 and leaves interpretation of the contents to V8. For example, the ArangoDB option
+`--javascript.v8-options="--harmony"` could be used to tell V8 to enable its harmony 
+features.
+
+In ArangoDB 2.4, the following harmony options were made available by V8:
+
+* --harmony_scoping (enable harmony block scoping)
+* --harmony_modules (enable harmony modules (implies block scoping))
+* --harmony_proxies (enable harmony proxies)
+* --harmony_generators (enable harmony generators)
+* --harmony_numeric_literals (enable harmony numeric literals (0o77, 0b11))
+* --harmony_strings (enable harmony string)
+* --harmony_arrays (enable harmony arrays)
+* --harmony_arrow_functions (enable harmony arrow functions)
+* --harmony_classes (enable harmony classes)
+* --harmony_object_literals (enable harmony object literal extensions)
+* --harmony (enable all harmony features (except proxies))
+
+There was the option `--harmony`, which turned on almost all harmony features.
+
+In ArangoDB 2.5, V8 provides the following harmony-related options:
+  
+* --harmony (enable all completed harmony features)
+* --harmony_shipping (enable all shipped harmony fetaures)
+* --harmony_modules (enable "harmony modules (implies block scoping)" (in progress))
+* --harmony_arrays (enable "harmony array methods" (in progress))
+* --harmony_array_includes (enable "harmony Array.prototype.includes" (in progress))
+* --harmony_regexps (enable "harmony regular expression extensions" (in progress))
+* --harmony_arrow_functions (enable "harmony arrow functions" (in progress))
+* --harmony_proxies (enable "harmony proxies" (in progress))
+* --harmony_sloppy (enable "harmony features in sloppy mode" (in progress))
+* --harmony_unicode (enable "harmony unicode escapes" (in progress))
+* --harmony_tostring (enable "harmony toString")
+* --harmony_numeric_literals (enable "harmony numeric literals")
+* --harmony_strings (enable "harmony string methods")
+* --harmony_scoping (enable "harmony block scoping")
+* --harmony_classes (enable "harmony classes (implies block scoping & object literal extension)")
+* --harmony_object_literals (enable "harmony object literal extensions")
+* --harmony_templates (enable "harmony template literals")
+
+Note that there are extra options for better controlling the dedicated features,
+and especially that the meaning of the `--harmony` option has changed from enabling
+**all** harmony features to **all completed** harmony features!
+
+Users should adjust the value of `--javascript.v8-options` accordingly.
+
+Please note that incomplete harmony features are subject to change in future V8 releases.
+
+
 !SUBSECTION Sparse indexes 
 
 Hash indexes and skiplist indexes can now be created in a sparse variant. 
