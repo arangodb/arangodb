@@ -375,13 +375,13 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
     if (f != nullptr) {
-      LOG_ERROR("logic error when inserting shape");
+      LOG_ERROR("logic error when inserting shape into id dictionary");
     }
     TRI_ASSERT(f == nullptr);
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
     if (f != nullptr) {
-      LOG_ERROR("logic error when inserting shape");
+      LOG_ERROR("logic error when inserting shape into dictionary");
     }
     TRI_ASSERT(f == nullptr);
 
