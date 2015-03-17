@@ -32,7 +32,6 @@ var internal = require("internal");
 var db = require("org/arangodb").db;
 var jsunity = require("jsunity");
 var helper = require("org/arangodb/aql-helper");
-var cluster = require("org/arangodb/cluster");
 var getModifyQueryResults = helper.getModifyQueryResults;
 var getModifyQueryResultsRaw = helper.getModifyQueryResultsRaw;
 var isEqual = helper.isEqual;
@@ -238,7 +237,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidUsageOfNew : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "REMOVE 'abc' IN @@cn LET removed = NEW RETURN removed", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed = NEW RETURN removed", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -246,7 +245,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidUsageOfOld : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "INSERT { } IN @@cn LET inserted = OLD RETURN inserted", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "INSERT { } IN @@cn LET inserted = OLD RETURN inserted", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -254,7 +253,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidVariableNames1 : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "REMOVE 'abc' IN @@cn LET removed1 = OLD RETURN removed2", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed1 = OLD RETURN removed2", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,15 +261,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidVariableNames2 : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test variable names
-////////////////////////////////////////////////////////////////////////////////
-
-    testInvalidVariableNames3 : function () {
-      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR i IN 1..1 UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN i", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -460,11 +451,6 @@ function ahuacatlRemoveSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRemoveInvalid4 : function () {
-      if (cluster.isCluster()) {
-        // skip test in cluster as there are no distributed transactions yet
-        return;
-      }
-
       assertQueryError(errors.ERROR_ARANGO_DOCUMENT_NOT_FOUND.code, "FOR i iN 0..100 REMOVE CONCAT('test', TO_STRING(i)) IN @@cn", { "@cn": cn1 });
       assertEqual(100, c1.count());
     },

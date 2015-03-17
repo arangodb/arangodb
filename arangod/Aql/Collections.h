@@ -113,7 +113,7 @@ namespace triagens {
           result.reserve(_collections.size());
 
           for (auto it = _collections.begin(); it != _collections.end(); ++it) {
-            result.push_back((*it).first);
+            result.emplace_back((*it).first);
           }
           return result;
         }

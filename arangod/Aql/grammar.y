@@ -199,13 +199,33 @@ void Aqlerror (YYLTYPE* locp,
 query: 
     optional_statement_block_statements return_statement {
     }
-  | optional_statement_block_statements remove_statement {
+  | optional_statement_block_statements remove_statement optional_post_modification_block {
     }
-  | optional_statement_block_statements insert_statement {
+  | optional_statement_block_statements insert_statement optional_post_modification_block {
     }
-  | optional_statement_block_statements update_statement {
+  | optional_statement_block_statements update_statement optional_post_modification_block {
     }
-  | optional_statement_block_statements replace_statement {
+  | optional_statement_block_statements replace_statement optional_post_modification_block {
+    }
+  ;
+
+optional_post_modification_lets:
+    /* empty */ {
+    }
+  | optional_post_modification_lets let_statement {
+    }
+  ;
+
+optional_post_modification_block:
+    /* empty */ {
+      // still need to close the scope opened by the data-modification statement
+      parser->ast()->scopes()->endNested();
+    }
+  | {
+      // add automatic variables (e.g. OLD and/or NEW to the list of variables)
+      parser->addAutomaticVariables(); 
+    } optional_post_modification_lets return_statement {
+      // the RETURN statement will close the scope opened by the data-modification statement
     }
   ;
 
@@ -215,7 +235,7 @@ optional_statement_block_statements:
   | optional_statement_block_statements statement_block_statement {
     }
   ;
-  
+
 statement_block_statement: 
     for_statement {
     }
@@ -547,15 +567,7 @@ remove_statement:
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_REMOVE expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4, $8, $6, $10)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeRemove($2, $3, $4, $8, $6, $10);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
@@ -566,15 +578,7 @@ insert_statement:
       }
       auto node = parser->ast()->createNodeInsert($2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_INSERT expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4, $8, $6, $10)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeInsert($2, $3, $4, $8, $6, $10);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
@@ -585,7 +589,7 @@ update_statement:
       }
       auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   | T_UPDATE expression T_WITH expression in_or_into_collection query_options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6)) {
@@ -593,23 +597,7 @@ update_statement:
       }
       auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_UPDATE expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $3, $4, $8, $6, $10)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4, $8, $6, $10);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_UPDATE expression T_WITH expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6, $10, $8, $12)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6, $10, $8, $12);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
@@ -620,7 +608,7 @@ replace_statement:
       }
       auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   | T_REPLACE expression T_WITH expression in_or_into_collection query_options {
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6)) {
@@ -628,23 +616,7 @@ replace_statement:
       }
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_REPLACE expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4, $8, $6, $10)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4, $8, $6, $10);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_REPLACE expression T_WITH expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6, $10, $8, $12)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeReplace($2, $4, $5, $6, $10, $8, $12);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
@@ -653,6 +625,9 @@ expression:
       $$ = $2;
     }
   | T_OPEN {
+      if (parser->isModificationQuery()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
+      }
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query T_CLOSE {
@@ -802,6 +777,9 @@ expression_or_query:
       $$ = $1;
     }
   | {
+      if (parser->isModificationQuery()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
+      }
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query {

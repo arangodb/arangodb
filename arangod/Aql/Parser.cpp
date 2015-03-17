@@ -50,7 +50,8 @@ Parser::Parser (Query* query)
     _offset(0),
     _marker(nullptr),
     _stack(),
-    _type(AQL_QUERY_READ) {
+    _type(AQL_QUERY_READ),
+    _writeNode(nullptr) {
   
   _stack.reserve(16);
 }
@@ -72,10 +73,7 @@ Parser::~Parser () {
 
 bool Parser::configureWriteQuery (QueryType type,
                                   AstNode const* collectionNode,
-                                  AstNode* optionNode,
-                                  char const* newOld,
-                                  char const* varInto,
-                                  char const* varReturn) {
+                                  AstNode* optionNode) {
   TRI_ASSERT(type != AQL_QUERY_READ);
 
   // check if we currently are in a subquery
@@ -102,47 +100,28 @@ bool Parser::configureWriteQuery (QueryType type,
   // register query type 
   _type = type;
 
-  switch(_type) {
-    case AQL_QUERY_READ:
-      break;
-
-    case AQL_QUERY_REMOVE:
-      if (newOld != nullptr) {
-        if (! TRI_CaseEqualString(newOld, "OLD")) {
-          _query->registerError(TRI_ERROR_QUERY_PARSE, "remove operations can only refer to 'OLD' value");
-          return false;
-        }
-      }
-      break;
-
-    case AQL_QUERY_INSERT:
-      if (newOld != nullptr) {
-        if (! TRI_CaseEqualString(newOld, "NEW")) {
-          _query->registerError(TRI_ERROR_QUERY_PARSE, "insert operations can only refer to 'NEW' value");
-          return false;
-        }
-      }
-      break;
-
-    case AQL_QUERY_UPDATE:
-    case AQL_QUERY_REPLACE:
-      if (newOld != nullptr) {
-        if (! TRI_CaseEqualString(newOld, "OLD") && ! TRI_CaseEqualString(newOld, "NEW")) {
-          _query->registerError(TRI_ERROR_QUERY_PARSE, "update/replace operations can only refer to 'NEW' or 'OLD' values");
-          return false;
-        }
-      }
-      break;
-  }
-
-  if (varInto != nullptr && varReturn != nullptr) {
-    if (! TRI_CaseEqualString(varInto, varReturn)) {
-      _query->registerError(TRI_ERROR_QUERY_PARSE, "invalid variable used in data-modification operation return value");
-      return false;
-    }
-  }
-
   return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds automatic variables (e.g. OLD and NEW) to the query after a
+/// data modification operation
+////////////////////////////////////////////////////////////////////////////////
+
+void Parser::addAutomaticVariables () {
+  TRI_ASSERT(_writeNode != nullptr);
+
+  if (_type == AQL_QUERY_REMOVE || 
+      _type == AQL_QUERY_UPDATE || 
+      _type == AQL_QUERY_REPLACE) {
+    _writeNode->addMember(_ast->createNodeVariable("OLD", true)); 
+  }
+
+  if (_type == AQL_QUERY_INSERT || 
+      _type == AQL_QUERY_UPDATE || 
+      _type == AQL_QUERY_REPLACE) {
+    _writeNode->addMember(_ast->createNodeVariable("NEW", true)); 
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -175,7 +154,7 @@ QueryResult Parser::parse (bool withDetails) {
     Aqllex_destroy(_scanner);
     throw;
   }
-
+ 
   // end main scope
   scopes->endCurrent();
 
