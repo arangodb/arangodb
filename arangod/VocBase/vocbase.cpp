@@ -2345,7 +2345,12 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 
   int res = LoadCollectionVocBase(vocbase, const_cast<TRI_vocbase_col_t*>(collection), status);
 
-  return res == TRI_ERROR_NO_ERROR ? const_cast<TRI_vocbase_col_t*>(collection) : nullptr;
+  if (res == TRI_ERROR_NO_ERROR) {
+    return const_cast<TRI_vocbase_col_t*>(collection);
+  }
+
+  TRI_set_errno(res);  
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
