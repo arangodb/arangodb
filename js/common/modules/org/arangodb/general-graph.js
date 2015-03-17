@@ -1832,12 +1832,8 @@ var createHiddenProperty = function(obj, name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for updating binded collections
 ////////////////////////////////////////////////////////////////////////////////
-var removeEdge = function (edgeId, options, self) {
-  options = options || {};
-  var edgeCollection = edgeId.split("/")[0];
-  var graphs = getGraphCollection().toArray();
-  self.__idsToRemove.push(edgeId);
-  self.__collectionsToLock.push(edgeCollection);
+var removeEdge = function (graphs, edgeCollection, edgeId, self) {
+  self.__idsToRemove[edgeId] = 1;
   graphs.forEach(
     function(graph) {
       var edgeDefinitions = graph.edgeDefinitions;
@@ -1850,24 +1846,20 @@ var removeEdge = function (edgeId, options, self) {
             // if collection of edge to be deleted is in from or to
             if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
               //search all edges of the graph
-              var edges = db[collection].toArray();
-              edges.forEach(
-                function (edge) {
-                  // if from is
-                  if(self.__idsToRemove.indexOf(edge._id) === -1) {
-                    if (edge._from === edgeId || edge._to === edgeId) {
-                      removeEdge(edge._id, options, self);
-                    }
-                  }
+              var edges = db._collection(collection).edges(edgeId);
+              edges.forEach(function(edge) {
+                // if from is
+                if(! self.__idsToRemove.hasOwnProperty(edge._id)) {
+                  self.__collectionsToLock[collection] = 1;
+                  removeEdge(graphs, collection, edge._id, self);
                 }
-              );
+              });
             }
           }
         );
       }
     }
   );
-  return;
 };
 
 var bindEdgeCollections = function(self, edgeCollections) {
@@ -1914,12 +1906,15 @@ var bindEdgeCollections = function(self, edgeCollections) {
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
       }
-      removeEdge(edgeId, options, self);
+      var graphs = getGraphCollection().toArray();
+      var edgeCollection = edgeId.split("/")[0];
+      self.__collectionsToLock[edgeCollection] = 1;
+      removeEdge(graphs, edgeCollection, edgeId, self);
 
       try {
         db._executeTransaction({
           collections: {
-            write: self.__collectionsToLock
+            write: Object.keys(self.__collectionsToLock)
           },
           embed: true,
           action: function (params) {
@@ -1935,17 +1930,17 @@ var bindEdgeCollections = function(self, edgeCollections) {
             );
           },
           params: {
-            ids: self.__idsToRemove,
+            ids: Object.keys(self.__idsToRemove),
             options: options
           }
         });
       } catch (e) {
-        self.__idsToRemove = [];
-        self.__collectionsToLock = [];
+        self.__idsToRemove = {};
+        self.__collectionsToLock = {};
         throw e;
       }
-      self.__idsToRemove = [];
-      self.__collectionsToLock = [];
+      self.__idsToRemove = {};
+      self.__collectionsToLock = {};
 
       return true;
     };
@@ -1965,7 +1960,7 @@ var bindVertexCollections = function(self, vertexCollections) {
       if (vertexId.indexOf("/") === -1) {
         vertexId = key + "/" + vertexId;
       }
-      self.__collectionsToLock.push(vertexCollectionName);
+      self.__collectionsToLock[vertexCollectionName] = 1;
       graphs.forEach(
         function(graph) {
           var edgeDefinitions = graph.edgeDefinitions;
@@ -1978,14 +1973,13 @@ var bindVertexCollections = function(self, vertexCollections) {
                 if (from.indexOf(vertexCollectionName) !== -1
                   || to.indexOf(vertexCollectionName) !== -1
                   ) {
-                  var edges = db._collection(collection).toArray();
-                  edges.forEach(
-                    function(edge) {
-                      if (edge._from === vertexId || edge._to === vertexId) {
-                        removeEdge(edge._id, options, self);
-                      }
-                    }
-                  );
+                  var edges = db._collection(collection).edges(vertexId);
+                  if (edges.length > 0) {
+                    self.__collectionsToLock[collection] = 1;
+                    edges.forEach(function(edge) {
+                      removeEdge(graphs, collection, edge._id, self);
+                    });
+                  }
                 }
               }
             );
@@ -1996,7 +1990,7 @@ var bindVertexCollections = function(self, vertexCollections) {
       try {
         db._executeTransaction({
           collections: {
-            write: self.__collectionsToLock
+            write: Object.keys(self.__collectionsToLock)
           },
           embed: true,
           action: function (params) {
@@ -2017,18 +2011,18 @@ var bindVertexCollections = function(self, vertexCollections) {
             }
           },
           params: {
-            ids: self.__idsToRemove,
+            ids: Object.keys(self.__idsToRemove),
             options: options,
             vertexId: vertexId
           }
         });
       } catch (e) {
-        self.__idsToRemove = [];
-        self.__collectionsToLock = [];
+        self.__idsToRemove = {};
+        self.__collectionsToLock = {};
         throw e;
       }
-      self.__idsToRemove = [];
-      self.__collectionsToLock = [];
+      self.__idsToRemove = {};
+      self.__collectionsToLock = {};
 
       return true;
     };
@@ -2320,8 +2314,8 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__vertexCollections", vertexCollections);
   createHiddenProperty(this, "__edgeCollections", edgeCollections);
   createHiddenProperty(this, "__edgeDefinitions", edgeDefinitions);
-  createHiddenProperty(this, "__idsToRemove", []);
-  createHiddenProperty(this, "__collectionsToLock", []);
+  createHiddenProperty(this, "__idsToRemove", {});
+  createHiddenProperty(this, "__collectionsToLock", {});
   createHiddenProperty(this, "__id", id);
   createHiddenProperty(this, "__rev", revision);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);

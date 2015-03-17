@@ -350,7 +350,20 @@ v2.5.0-beta1 (2015-02-23)
 * Standard errors can now contain custom messages.
 
 
-v2.4.5 (XXXX-XX-XX)
+v2.4.6 (2015-03-XX)
+-------------------
+
+* fixed inefficiencies to `remove` methods of general-graph module
+
+* abort WAL recovery if one of the collection's database cannot be opened
+
+* never try to raise the privileges after dropping them, this can lead to a race condition while
+  running the recovery
+
+  If you require to run ArangoDB on a port lower than 1024, you must run ArangoDB as root.
+
+
+v2.4.5 (2015-03-16)
 -------------------
 
 * added elapsed time to HTTP request logging output (`--log.requests-file`)
