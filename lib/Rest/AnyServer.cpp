@@ -263,9 +263,14 @@ AnyServer::~AnyServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::start () {
+
+  startupProgress();
+
   if (_applicationServer == nullptr) {
     buildApplicationServer();
   }
+
+  startupProgress();
 
   if (_supervisorMode) {
     return startupSupervisor();
@@ -276,10 +281,14 @@ int AnyServer::start () {
   else {
     _applicationServer->setupLogging(true, false, false);
 
+    startupProgress();
+
     if (! _pidFile.empty()) {
       CheckPidFile(_pidFile);
       WritePidFile(_pidFile, TRI_CurrentProcessId());
     }
+
+    startupProgress();
 
     int res = startupServer();
 
@@ -288,6 +297,7 @@ int AnyServer::start () {
         LOG_DEBUG("cannot remove pid file '%s'", _pidFile.c_str());
       }
     }
+    startupProgress();
 
     return res;
   }
