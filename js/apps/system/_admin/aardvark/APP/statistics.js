@@ -430,7 +430,7 @@ function computeStatisticsLong (attrs, clusterId) {
 controller.activateSessions({
   type: "cookie",
   autoCreateSession: true,
-  cookie: {name: "aardvark_sid"}
+  cookie: {name: "arango_sid_" + db._name()}
 });
 
 ////////////////////////////////////////////////////////////////////////////////
