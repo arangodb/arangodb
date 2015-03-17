@@ -154,6 +154,12 @@ TRI_json_t* Profile::toJson (TRI_memory_zone_t*) {
           
 bool Query::DoDisableQueryTracking = false;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global slow query threshold value
+////////////////////////////////////////////////////////////////////////////////
+
+double Query::SlowQueryThresholdValue = 10.0;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------

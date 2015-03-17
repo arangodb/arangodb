@@ -521,6 +521,22 @@ namespace triagens {
           DoDisableQueryTracking = value;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global slow query threshold value
+////////////////////////////////////////////////////////////////////////////////
+
+        static double SlowQueryThreshold () {
+          return SlowQueryThresholdValue;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global slow query threshold value
+////////////////////////////////////////////////////////////////////////////////
+        
+        static void SlowQueryThreshold (double value) {
+          SlowQueryThresholdValue = value;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -684,7 +700,13 @@ namespace triagens {
 /// @brief whether or not query tracking is disabled globally
 ////////////////////////////////////////////////////////////////////////////////
           
-        static bool DoDisableQueryTracking;
+        static bool                       DoDisableQueryTracking;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global threshold for slow queries
+////////////////////////////////////////////////////////////////////////////////
+
+        static double                     SlowQueryThresholdValue;
 
     };
 

@@ -470,6 +470,20 @@ namespace triagens {
         bool _disableQueryTracking;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief threshold value for slow AQL queries
+/// @startDocuBlock databaseSlowQueryThreshold
+/// `--database.slow-query-threshold value`
+///
+/// Determines the default threshold value for slow AQL queries. The unit for
+/// this variable is *seconds*.
+///
+/// The default is *10.0*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+        
+        double _slowQueryThreshold;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unit tests
 ///
 /// @CMDOPT{\--javascript.unit-tests @CA{test-file}}

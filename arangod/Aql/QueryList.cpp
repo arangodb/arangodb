@@ -66,7 +66,6 @@ QueryEntryCopy::QueryEntryCopy (TRI_voc_tick_t id,
 // --SECTION--                                                   class QueryList
 // -----------------------------------------------------------------------------
 
-double const QueryList::DefaultSlowQueryThreshold   = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries       = 64;
 size_t const QueryList::DefaultMaxQueryStringLength = 4096;
 
@@ -85,7 +84,7 @@ QueryList::QueryList (TRI_vocbase_t*)
     _slowCount(0),
     _enabled(! Query::DisableQueryTracking()),
     _trackSlowQueries(true),
-    _slowQueryThreshold(QueryList::DefaultSlowQueryThreshold),
+    _slowQueryThreshold(Query::SlowQueryThreshold()),
     _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
     _maxQueryStringLength(QueryList::DefaultMaxQueryStringLength) {
 
