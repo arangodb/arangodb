@@ -10,13 +10,13 @@ more. Upgrading a database directory cannot be reverted. Therefore
 please make sure to create a full backup of your existing ArangoDB
 installation before performing an upgrade.
 
-In 2.5 we have also changed the paths for foxx applications.
-Please also make sure that you have a backup of all foxx apps in your `javascript.app-path` and `javascript.dev-app-path`.
-It is sufficient to have the source files for foxx somewhere else so you can reinstall them on error.
+In 2.5 we have also changed the paths for Foxx applications.
+Please also make sure that you have a backup of all Foxx apps in your `javascript.app-path` and `javascript.dev-app-path`.
+It is sufficient to have the source files for Foxx somewhere else so you can reinstall them on error.
 To check that everything has worked during upgrade you could use the web-interface Applications tab or
 
 ```
-unix>foxx-manager list
+unix> foxx-manager list
 ```
 
 for all your databases.
@@ -49,17 +49,17 @@ To make ArangoDB 2.5 start with a database directory created with an earlier
 ArangoDB version, you may need to invoke the upgrade procedure once.  This can
 be done by running ArangoDB from the command line and supplying the `--upgrade`
 option.
-Note: We have changed foxx folder structure and implemented an upgrade task to move your
+Note: We have changed Foxx folder structure and implemented an upgrade task to move your
 applications to the new structure. In order to tell this upgrade task to also move your
-development foxx apps please make sure you give the dev-app-path as well.
-If you have not used development mode for foxx apps you can drop the
+development Foxx apps please make sure you give the dev-app-path as well.
+If you have not used development mode for Foxx apps you can drop the
 `--javascript.dev-app-path`.
 It is only possible to upgrade one dev-app-path together with one data folder.
 
     unix> arangod data --upgrade --javascript.dev-app-path devapps
 
 where `data` is ArangoDB's main data directory 
-and `devapps` is the directory where you develop foxx apps.
+and `devapps` is the directory where you develop Foxx apps.
 
 Note: here the same database should be specified that is also specified when
 arangod is started regularly. Please do not run the `--upgrade` command on each
