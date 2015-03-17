@@ -788,6 +788,8 @@ int ArangoServer::startupServer () {
     _dispatcherThreads = 1;
   }
 
+  startupProgress();
+
   // open all databases
   bool const iterateMarkersOnOpen = ! wal::LogfileManager::instance()->hasFoundLastTick();
 
@@ -799,6 +801,8 @@ int ArangoServer::startupServer () {
     }
   }
 
+  startupProgress();
+
   // fetch the system database
   TRI_vocbase_t* vocbase = TRI_UseDatabaseServer(_server, TRI_VOC_SYSTEM_DATABASE);
 
@@ -808,6 +812,7 @@ int ArangoServer::startupServer () {
 
   TRI_ASSERT(vocbase != nullptr);
 
+  startupProgress();
 
   // initialise V8
   if (! _applicationServer->programOptions().has("javascript.v8-contexts")) {
@@ -833,6 +838,8 @@ int ArangoServer::startupServer () {
     }
   }
 
+  startupProgress();
+
   _applicationV8->setVocbase(vocbase);
   _applicationV8->setConcurrency(_v8Contexts);
   _applicationV8->defineDouble("DISPATCHER_THREADS", _dispatcherThreads);
@@ -841,6 +848,8 @@ int ArangoServer::startupServer () {
   // .............................................................................
   // prepare everything
   // .............................................................................
+
+  startupProgress();
 
   if (! startServer) {
     _applicationScheduler->disable();
@@ -852,26 +861,37 @@ int ArangoServer::startupServer () {
   // prepare scheduler and dispatcher
   _applicationServer->prepare();
 
+  startupProgress();
+
   // now we can create the queues
   if (startServer) {
     _applicationDispatcher->buildStandardQueue(_dispatcherThreads, (int) _dispatcherQueueSize);
   }
 
+  startupProgress();
+
   // and finish prepare
   _applicationServer->prepare2();
+
+  startupProgress();
 
   // run version check (will exit!)
   if (checkVersion) {
     _applicationV8->versionCheck();
   }
 
+  startupProgress();
+
   _applicationV8->upgradeDatabase(skipUpgrade, performUpgrade);
+
+  startupProgress();
 
   // setup the V8 actions
   if (startServer) {
     _applicationV8->prepareServer();
   }
 
+  startupProgress();
 
   _pairForAql = new std::pair<ApplicationV8*, aql::QueryRegistry*>;
   _pairForAql->first = _applicationV8;
@@ -904,6 +924,8 @@ int ArangoServer::startupServer () {
       RestHandlerCreator<RestActionHandler>::createData<RestActionHandler::action_options_t*>,
       (void*) &httpOptions);
   }
+
+  startupProgress();
 
   // .............................................................................
   // start the main event loop
