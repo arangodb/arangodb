@@ -181,7 +181,7 @@ static void DeleteService (int argc, char* argv[], bool force) {
 
   char serviceConfigMemory[8192]; // msdn says: 8k is enough.
   DWORD bytesNeeded = 0;
-  if (QueryServiceConfig(schService, 
+  if (QueryServiceConfig(schService,
                          (LPQUERY_SERVICE_CONFIGA)&serviceConfigMemory,
                          sizeof(serviceConfigMemory),
                          &bytesNeeded)) {
@@ -190,7 +190,7 @@ static void DeleteService (int argc, char* argv[], bool force) {
       if (!force) {
         std::cerr << "NOT removing service of other installation: " <<
           cfg->lpBinaryPathName <<
-          "Our path is: " << 
+          "Our path is: " <<
           path << std::endl;
 
         CloseServiceHandle(schSCManager);
@@ -199,7 +199,7 @@ static void DeleteService (int argc, char* argv[], bool force) {
       else {
         std::cerr << "Removing service of other installation because of FORCE: " <<
           cfg->lpBinaryPathName <<
-          "Our path is: " << 
+          "Our path is: " <<
           path << std::endl;
       }
     }
@@ -227,7 +227,8 @@ static void DeleteService (int argc, char* argv[], bool force) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Start the service and optionaly wait till its up & running
 ////////////////////////////////////////////////////////////////////////////////
-static void StartArangoService(bool WaitForRunning) {
+
+static void StartArangoService (bool WaitForRunning) {
   TRI_ERRORBUF;
   SERVICE_STATUS_PROCESS ssp;
   DWORD bytesNeeded;
@@ -239,9 +240,7 @@ static void StartArangoService(bool WaitForRunning) {
     std::cerr << "FATAL: OpenSCManager failed with " << windowsErrorBuf << std::endl;
     exit(EXIT_FAILURE);
   }
-
   // Get a handle to the service.
-
   auto arangoService = OpenService(schSCManager,
                                    ServiceName.c_str(),
                                    SERVICE_START |
@@ -254,7 +253,7 @@ static void StartArangoService(bool WaitForRunning) {
     exit(EXIT_FAILURE);
   }
 
-  // Make sure the service is not already stopped.
+  // Make sure the service is not already started.
   if ( !QueryServiceStatusEx(arangoService,
                              SC_STATUS_PROCESS_INFO,
                              (LPBYTE)&ssp,
@@ -271,23 +270,20 @@ static void StartArangoService(bool WaitForRunning) {
     exit(EXIT_SUCCESS);
   }
 
+  if (!StartService(arangoService, 0, NULL) ) {
+    TRI_SYSTEM_ERROR();
+    std::cout << "StartService failed " << windowsErrorBuf << std::endl;
+    CloseServiceHandle(arangoService);
+    CloseServiceHandle(schSCManager);
+    exit(EXIT_FAILURE);
+  }
+
   // Save the tick count and initial checkpoint.
-  auto startTickCount = GetTickCount();
-  auto oldCheckPoint = ssp.dwCheckPoint;
+  ssp.dwCurrentState = SERVICE_START_PENDING;
 
-  while (WaitForRunning && ssp.dwCurrentState == SERVICE_RUNNING) {
-    // Do not wait longer than the wait hint. A good interval is
-    // one-tenth the wait hint, but no less than 1 second and no
-    // more than 10 seconds.
-
-    auto dwWaitTime = ssp.dwWaitHint / 10;
-
-    if( dwWaitTime < 1000 )
-      dwWaitTime = 1000;
-    else if ( dwWaitTime > 10000 )
-      dwWaitTime = 10000;
-
-    Sleep( dwWaitTime );
+  while (WaitForRunning && ssp.dwCurrentState != SERVICE_START_PENDING) {
+    // we sleep 1 second before we re-check the status.
+    Sleep(1000);
 
     // Check the status again.
 
@@ -296,22 +292,12 @@ static void StartArangoService(bool WaitForRunning) {
                               (LPBYTE) &ssp,             // address of structure
                               sizeof(SERVICE_STATUS_PROCESS), // size of structure
                               &bytesNeeded ) ) {
-        printf("QueryServiceStatusEx failed (%d)\n", GetLastError());
-        break;
-    }
-
-    if ( ssp.dwCheckPoint > oldCheckPoint ) {
-      // Continue to wait and check.
-      startTickCount = GetTickCount();
-      oldCheckPoint = ssp.dwCheckPoint;
-    }
-    else {
-      if(GetTickCount() - startTickCount > ssp.dwWaitHint) {
-        // No progress made within the wait hint.
-        break;
-      }
+      TRI_SYSTEM_ERROR();
+      std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf << std::endl;
+      break;
     }
   }
+  CloseServiceHandle(arangoService);
   CloseServiceHandle(schSCManager);
   exit(EXIT_SUCCESS);
 }
@@ -319,7 +305,8 @@ static void StartArangoService(bool WaitForRunning) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Stop the service and optionaly wait till its all dead
 ////////////////////////////////////////////////////////////////////////////////
-static void StopArangoService(bool WaitForShutdown) {
+
+static void StopArangoService (bool WaitForShutdown) {
   TRI_ERRORBUF;
 
   SERVICE_STATUS_PROCESS ssp;
@@ -334,7 +321,6 @@ static void StopArangoService(bool WaitForShutdown) {
   }
 
   // Get a handle to the service.
-
   auto arangoService = OpenService(schSCManager,
                                    ServiceName.c_str(),
                                    SERVICE_STOP |
@@ -365,51 +351,36 @@ static void StopArangoService(bool WaitForShutdown) {
     exit(EXIT_SUCCESS);
   }
 
-  // Save the tick count and initial checkpoint.
-  auto startTickCount = GetTickCount();
-  auto oldCheckPoint = ssp.dwCheckPoint;
+  // Send a stop code to the service.
+  if ( !ControlService(arangoService,
+                       SERVICE_CONTROL_STOP,
+                       (LPSERVICE_STATUS) &ssp ) ) {
+    TRI_SYSTEM_ERROR();
+    std::cerr << "ControlService failed with " << windowsErrorBuf << std::endl;
+    CloseServiceHandle(arangoService);
+    CloseServiceHandle(schSCManager);
+    exit(EXIT_FAILURE);
+  }
 
   while (WaitForShutdown && ssp.dwCurrentState == SERVICE_STOPPED) {
-    // Do not wait longer than the wait hint. A good interval is
-    // one-tenth the wait hint, but no less than 1 second and no
-    // more than 10 seconds.
-
-    auto dwWaitTime = ssp.dwWaitHint / 10;
-
-    if( dwWaitTime < 1000 )
-      dwWaitTime = 1000;
-    else if ( dwWaitTime > 10000 )
-      dwWaitTime = 10000;
-
-    Sleep( dwWaitTime );
-
-    // Check the status again.
+    // we sleep 1 second before we re-check the status.
+    Sleep(1000);
 
     if (!QueryServiceStatusEx(arangoService,
-                              SC_STATUS_PROCESS_INFO, // info level
-                              (LPBYTE) &ssp,             // address of structure
-                              sizeof(SERVICE_STATUS_PROCESS), // size of structure
+                              SC_STATUS_PROCESS_INFO,
+                              (LPBYTE) &ssp,
+                              sizeof(SERVICE_STATUS_PROCESS),
                               &bytesNeeded ) ) {
       TRI_SYSTEM_ERROR();
       printf("QueryServiceStatusEx failed (%s)\n", windowsErrorBuf);
-      break;
-    }
-
-    if ( ssp.dwCheckPoint > oldCheckPoint ) {
-      // Continue to wait and check.
-      startTickCount = GetTickCount();
-      oldCheckPoint = ssp.dwCheckPoint;
-    }
-    else {
-      if(GetTickCount() - startTickCount > ssp.dwWaitHint) {
-        // No progress made within the wait hint.
-        break;
-      }
+      CloseServiceHandle(arangoService);
+      CloseServiceHandle(schSCManager);
+      exit(EXIT_FAILURE);
     }
   }
+  CloseServiceHandle(arangoService);
   CloseServiceHandle(schSCManager);
   exit(EXIT_SUCCESS);
-
 }
 
 
@@ -500,7 +471,7 @@ static void WINAPI ServiceCtrl (DWORD dwCtrlCode) {
 
 
 #include <DbgHelp.h>
-LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e) {
+LONG CALLBACK unhandledExceptionHandler (EXCEPTION_POINTERS *e) {
 #if HAVE_BACKTRACE
 
   if ((e != nullptr) && (e->ExceptionRecord != nullptr)) {
@@ -558,8 +529,6 @@ LONG CALLBACK unhandledExceptionHandler(EXCEPTION_POINTERS *e) {
   }
   return EXCEPTION_CONTINUE_SEARCH;
 }
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global entry function
@@ -628,14 +597,17 @@ void TRI_GlobalExitFunction (int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 class WindowsArangoServer : public ArangoServer {
+
 private:
   DWORD _progress;
+
 protected:
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief wrap ArangoDB server so we can properly emmit a status once we're
   ///        really up and running.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void startupProgress() {
+  virtual void startupProgress () {
     SetServiceStatus(SERVICE_START_PENDING, NO_ERROR, _progress++, 20000);
   }
 
@@ -668,7 +640,6 @@ static int ARGC;
 static char** ARGV;
 
 static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
-
   // register the service ctrl handler,  lpszArgv[0] contains service name
   ServiceStatus = RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION) ServiceCtrl);
 
@@ -684,12 +655,11 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
   SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0);
 }
 
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse windows specific commandline options
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseMoreArgs(int argc, char* argv[])
+bool TRI_ParseMoreArgs (int argc, char* argv[])
 {
   SetUnhandledExceptionFilter(unhandledExceptionHandler);
 
@@ -730,7 +700,7 @@ bool TRI_ParseMoreArgs(int argc, char* argv[])
 /// @brief start the windows service
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_StartService(int argc, char* argv[])
+void TRI_StartService (int argc, char* argv[])
 {
   // create and start an ArangoDB server
 
