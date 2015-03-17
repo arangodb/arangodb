@@ -4648,7 +4648,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_gatherBlockBuffer.at(index).front()->
+    colls.emplace_back(_gatherBlockBuffer.at(index).front()->
         getDocumentCollection(_sortRegisters[i].first));
   }
   
@@ -5870,7 +5870,7 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
   
   _engine->_stats.addDelta(_deltaStats, newStats);
   _deltaStats = newStats;
-
+  
   if (JsonHelper::getBooleanValue(responseBodyJson.json(), "exhausted", true)) {
     return nullptr;
   }

@@ -133,7 +133,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
     case SINGLETON:
       return new SingletonNode(plan, oneNode);
     case ENUMERATE_COLLECTION:
-    std::cout << "A: CREATING A COLLECTION WITH B\n";
       return new EnumerateCollectionNode(plan, oneNode);
     case ENUMERATE_LIST:
       return new EnumerateListNode(plan, oneNode);
@@ -1165,7 +1164,6 @@ ExecutionNode* EnumerateCollectionNode::clone (ExecutionPlan* plan,
     TRI_ASSERT(outVariable != nullptr);
   }
     
-    std::cout << "A: CREATING A COLLECTION WITH C\n";
   auto c = new EnumerateCollectionNode(plan, _id, _vocbase, _collection, outVariable, _random);
 
   CloneHelper(c, plan, withDependencies, withProperties);

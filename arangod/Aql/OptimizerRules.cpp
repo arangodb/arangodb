@@ -3088,8 +3088,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   for (auto n : nodes) {
 
     if (nodesSet.find(n) != nodesSet.end()) {
-      std::vector<ExecutionNode*> nn;
-      nn.push_back(n);
+      std::vector<ExecutionNode*> nn{ n };
       nodesSet.erase(n);
 
       // Now follow the dependencies as long as we see further such nodes:
@@ -3295,6 +3294,10 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       wasModified = true;
     }
   }
+      
+  if (wasModified) {
+    plan->findVarUsage();
+  }
    
   opt->addPlan(plan, rule->level, wasModified);
 
@@ -3315,7 +3318,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
                                             ExecutionPlan* plan,
                                             Optimizer::Rule const* rule) {
   bool wasModified = false;
-
+        
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator, we replace the root if it is a modification node
     
@@ -3347,9 +3350,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     }
 
     TRI_ASSERT(node != nullptr);
-
-   std::cout << "NODE IS: " << node->getTypeString() << "\n";
-   std::cout << "ROOT IS: " << plan->root()->getTypeString() << "\n";
+    
     ExecutionNode* originalParent = nullptr;
     {
       auto parents = node->getParents();
@@ -3363,7 +3364,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       }
     }
 
-    // when we get here, we have found a matching node!
+    // when we get here, we have found a matching data-modification node!
     auto const nodeType = node->getType();
     
     TRI_ASSERT(nodeType == ExecutionNode::INSERT  ||
@@ -3373,7 +3374,6 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
 
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
    
-std::cout << "THE COLLECTION IS: " << collection << "\n";    
     bool const defaultSharding = collection->usesDefaultSharding();
 
     if (nodeType == ExecutionNode::REMOVE ||
@@ -3392,21 +3392,18 @@ std::cout << "THE COLLECTION IS: " << collection << "\n";
     TRI_ASSERT(deps.size() == 1);
     
     if (originalParent != nullptr) {
-   std::cout << "ORIGINALPARENT: " << originalParent->getTypeString() << "\n";
       originalParent->removeDependency(node);
+      // unlink the node
+      auto root = plan->root();
       plan->unlinkNode(node, true);
-      plan->root(originalParent); // fix root node
+      plan->root(root, true); // fix root node
     }
     else {
-   std::cout << "NO ORIGINALPARENT\n";
+      // unlink the node
       plan->unlinkNode(node, true);
-      plan->root(deps[0]); // fix root node
+      plan->root(deps[0], true); // fix root node
     }
 
-    // unlink the node
-   std::cout << "NOW UNLINKING: " << node->getTypeString() << "\n";
-
-//    std::cout << "PLAN ROOT IS NOW: " << plan->root() << "\n";
 
     // extract database from plan node
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
@@ -3469,8 +3466,7 @@ std::cout << "THE COLLECTION IS: " << collection << "\n";
     remoteNode->addDependency(node);
     
     // insert a gather node 
-    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
-        collection);
+    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase, collection);
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
 
@@ -3480,11 +3476,11 @@ std::cout << "THE COLLECTION IS: " << collection << "\n";
     }
     else {
       // we replaced the root node, set a new root node
-      std::cout << "SETTING PLAN ROOT TO " << gatherNode->getTypeString() << "\n";
       plan->root(gatherNode, true);
     }
     wasModified = true;
-std::cout << "LEAVING\n";
+  
+    plan->findVarUsage();
   }
    
   opt->addPlan(plan, rule->level, wasModified);
@@ -3515,7 +3511,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
     if (parents.size() < 1) {
       continue;
     }
-    while (1) {
+    while (true) {
       bool stopSearching = false;
 
       auto inspectNode = parents[0];
@@ -3784,9 +3780,6 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
           TRI_ASSERT(varsToRemove.size() == 1);
 
           _setter = _plan->getVarSetBy(varsToRemove[0]->id);
-if (_setter == nullptr) {
-std::cout << "PLAN JSON: " << triagens::basics::JsonHelper::toString(_plan->toJson(_plan->getAst(), TRI_UNKNOWN_MEM_ZONE, true).json()) << "\n"; 
-}
           TRI_ASSERT(_setter != nullptr);
           auto enumColl = _setter;
 
