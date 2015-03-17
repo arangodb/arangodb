@@ -346,8 +346,8 @@
 
     if (!valid) {
       throw new ArangoError({
-        errorNum: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code,
-        errorMessage: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.message
+        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
       });
     }
   };
@@ -371,8 +371,8 @@
     } catch (err) {
       msg = "Cannot parse app manifest '" + file + "': " + String(err);
       throw new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-        errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
       });
     }
     try {
@@ -391,7 +391,7 @@
 
       }
     } catch (err) {
-      console.error("Manifest file '%s' is invald: %s", file, err.errorMessage);
+      console.error("Manifest file '%s' is invalid: %s", file, err.errorMessage);
       if (err.hasOwnProperty("stack")) {
         console.errorLines(err.stack);
       }

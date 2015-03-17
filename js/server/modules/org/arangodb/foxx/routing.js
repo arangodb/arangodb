@@ -446,7 +446,7 @@
 
       if (typeof appExports === "string") {
         app._exports = loadExport(app, appExports);
-      } else {
+      } else if (appExports) {
         Object.keys(appExports).forEach(function (key) {
           app._exports[key] = loadExport(app, appExports[key]);
         });
@@ -637,7 +637,7 @@ function escapeHTML (string) {
     try {
       if (typeof controllers === "string") {
         mountController(app, routes, "/", controllers);
-      } else {
+      } else if (controllers) {
         Object.keys(controllers).forEach(function (key) {
           mountController(app, routes, key, controllers[key]);
         });
