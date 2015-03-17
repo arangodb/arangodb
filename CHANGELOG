@@ -1,10 +1,14 @@
 v2.4.6 (2015-03-XX)
 -------------------
 
+* fixed inefficiencies to `remove` methods of general-graph module
+
+* abort WAL recovery if one of the collection's database cannot be opened
+
 * never try to raise the privileges after dropping them, this can lead to a race condition while
   running the recovery
 
-  If you require to run ArangoDB on port lower than 1024, you must run ArangoDB as root.
+  If you require to run ArangoDB on a port lower than 1024, you must run ArangoDB as root.
 
 
 v2.4.5 (2015-03-16)
