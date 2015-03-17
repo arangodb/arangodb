@@ -29,6 +29,7 @@
 (function() {
   "use strict";
 
+  var db = require("internal").db;
   var FoxxController = require("org/arangodb/foxx").Controller;
   var controller = new FoxxController(applicationContext);
   var ArangoError = require("org/arangodb").ArangoError;
@@ -54,7 +55,7 @@
   controller.activateSessions({
     type: "cookie",
     autoCreateSession: true,
-    cookie: {name: "aardvark_sid"}
+    cookie: {name: "arango_sid_" + db._name()}
   });
 
   controller.extend({
