@@ -133,9 +133,16 @@ PortFinder.prototype.next = function () {
   while (true) {   // will be left by return when port is found
     if (this.pos < this.list.length) {
       this.port = this.list[this.pos++];
+      if (this.dispatcher.hasOwnProperty("portOverlapIndex")) {
+        // add some value to the initial port if we had multiple 
+        // dispatchers on the same IP address. Otherwise, the
+        // dispatchers will try to bind the exact same ports, and
+        // this is prone to races
+        this.port += this.dispatcher.portOverlapIndex * 20;
+      }
     }
     else if (this.port === 0) {
-      this.port = Math.floor(Math.random()*(65536-1024))+1024;
+      this.port = Math.floor(Math.random() * (65536 - 1024)) + 1024;
     }
     else {
       this.port++;
@@ -151,7 +158,6 @@ PortFinder.prototype.next = function () {
         available = testPort("tcp://0.0.0.0:" + this.port);
       }
       else {
-	  require("internal").print(this.dispatcher.endpoint);
         var url = endpointToURL(this.dispatcher.endpoint) +
                   "/_admin/clusterCheckPort?port="+this.port;
         var hdrs = {};
@@ -225,6 +231,43 @@ function fillConfigWithDefaults (config, defaultConfig) {
     if (defaultConfig.hasOwnProperty(n)) {
       if (!config.hasOwnProperty(n)) {
         config[n] = copy(defaultConfig[n]);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if IP addresses of dispatchers are non-unique, and if yes,
+/// then set a flag for each dispatcher with non-unique address
+/// we need this to prevent race conditions when multiple dispatchers on the
+/// same physical server start coordinators or dbservers and compete for the 
+/// same ports
+////////////////////////////////////////////////////////////////////////////////
+
+function checkDispatcherIps (config) {
+  if (typeof config.dispatchers !== "object") {
+    return;
+  }
+
+  var d, dispatcherIps = { };
+  for (d in config.dispatchers) {
+    if (config.dispatchers.hasOwnProperty(d)) {
+      var ip = config.dispatchers[d].endpoint.replace(/:\d+$/, '').replace(/^(ssl|tcp):\/\//, '');
+      if (! dispatcherIps.hasOwnProperty(ip)) {
+        dispatcherIps[ip] = [ ];
+      }
+      dispatcherIps[ip].push(d);
+    }
+  }
+
+  for (d in dispatcherIps) {
+    if (dispatcherIps.hasOwnProperty(d)) {
+      if (dispatcherIps[d].length > 1) {
+        // more than one dispatcher for an IP address
+        // need to ensure that the port ranges do not overlap
+        for (var i = 0; i < dispatcherIps[d].length; ++i) {
+          config.dispatchers[dispatcherIps[d][i]].portOverlapIndex = i;
+        }
       }
     }
   }
@@ -395,6 +438,8 @@ function Planner (userConfig) {
     throw new Error("userConfig must be an object");
   }
   this.config = copy(userConfig);
+  checkDispatcherIps(this.config);
+
   fillConfigWithDefaults(this.config, PlannerLocalDefaults);
   this.commands = [];
   this.makePlan();

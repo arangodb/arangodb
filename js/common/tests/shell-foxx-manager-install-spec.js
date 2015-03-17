@@ -102,14 +102,13 @@ describe("Foxx Manager install", function() {
       }
     });
 
-    /*
     it("with malformed name", function() {
       try {
         FoxxManager.install(fs.join(basePath, "malformed-name"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
         expect(e instanceof ArangoError).toBeTruthy();
-        expect(e.errorNum).toEqual(errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code);
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
       }
     });
 
@@ -119,10 +118,9 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
         expect(e instanceof ArangoError).toBeTruthy();
-        expect(e.errorNum).toEqual(errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code);
+        expect(e.errorNum).toEqual(errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
       }
     });
-    */
 
     it("with malformed controller file", function() {
       try {
@@ -243,14 +241,25 @@ describe("Foxx Manager install", function() {
   });
 
   describe("success with", function() {
+
     it("a minimal app", function() {
       try {
         FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), "/unittest/broken");
       } catch(e) {
         expect(true).toBeFalsy("Could not install a minimal valid app.");
       }
-      FoxxManager.uninstall("/unittest/broken");
+      FoxxManager.uninstall("/unittest/broken", {force: true});
     });
+
+    it("an app containing a sub-folder 'app'", function() {
+      try {
+        FoxxManager.install(fs.join(basePath, "interior-app-path"), "/unittest/broken");
+      } catch(e) {
+        expect(true).toBeFalsy("Could not install an app with sub-folder 'app'.");
+      }
+      FoxxManager.uninstall("/unittest/broken", {force: true});
+    });
+
   });
 
   describe("should not install on invalid mountpoint", function() {

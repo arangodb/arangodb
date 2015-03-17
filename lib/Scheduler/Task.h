@@ -102,7 +102,7 @@ namespace triagens {
 /// @brief get a JSON representation of the task
 ////////////////////////////////////////////////////////////////////////////////
 
-        struct TRI_json_t* toJson ();
+        struct TRI_json_t* toJson () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is a user task
@@ -142,7 +142,7 @@ namespace triagens {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void getDescription (struct TRI_json_t*);
+        virtual void getDescription (struct TRI_json_t*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called to set up the callback information

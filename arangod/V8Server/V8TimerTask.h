@@ -88,13 +88,13 @@ namespace triagens {
 /// @brief get a task specific description in JSON format
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void getDescription (struct TRI_json_t*);
+        void getDescription (struct TRI_json_t*) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the task is user-defined
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isUserDefined () const {
+        bool isUserDefined () const override {
           return true;
         }
 
@@ -108,7 +108,7 @@ namespace triagens {
 /// @brief handles the timer event
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleTimeout ();
+        bool handleTimeout () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
