@@ -1,0 +1,32 @@
+!CHAPTER Module "queries"
+The query module provides the infrastructure for defining HTTP queries.
+
+!SUBSECTION Currently running queries
+
+`require("org/arangodb/aql/queries").current();`
+
+The function returns the currently running AQL queries as an array.
+
+!SUBSECTION Slow queries
+
+`require("org/arangodb/aql/queries").slow();`
+
+The function returns the last AQL queries that exceeded the slow query threshold as an array.
+
+!SUBSECTION Clear slow queries
+
+`require("org/arangodb/aql/queries").clearSlow();`
+
+Clears the list of slow AQL queries.
+
+!SUBSECTION Properties
+
+`require("org/arangodb/aql/queries").properties();`
+
+Returns the current query tracking configuration.
+
+!SUBSECTION Kill
+
+`require("org/arangodb/aql/queries").kill();`
+
+Kills a running AQL query.
