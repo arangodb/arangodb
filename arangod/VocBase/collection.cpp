@@ -579,7 +579,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         // file is a journal
         if (TRI_EqualString2("journal", first, firstLen)) {
           if (datafile->_isSealed) {
-            LOG_WARNING("strange, journal '%s' is already sealed; must be a left over; will use it as datafile", filename);
+            if (datafile->_state != TRI_DF_STATE_READ) {
+              LOG_WARNING("strange, journal '%s' is already sealed; must be a left over; will use it as datafile", filename);
+            }
 
             TRI_PushBackVectorPointer(&sealed, datafile);
           }
