@@ -746,7 +746,8 @@ int TRI_FillIndexesDocumentCollection (TRI_document_collection_t*);
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t*,
-                                                       TRI_vocbase_col_t*);
+                                                       TRI_vocbase_col_t*,
+                                                       bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
