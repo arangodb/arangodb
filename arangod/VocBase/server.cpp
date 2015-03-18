@@ -587,13 +587,14 @@ static int OpenDatabases (TRI_server_t* server,
 
     if (! TRI_ExistsFile(parametersFile)) {
       // no parameter.json file
-      LOG_ERROR("database directory '%s' does not contain parameters file",
+      LOG_ERROR("database directory '%s' does not contain parameters file or parameters file cannot be read",
                 databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      // skip this database
-      continue;
+      // abort
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     LOG_DEBUG("reading database parameters from file '%s'",
@@ -607,8 +608,9 @@ static int OpenDatabases (TRI_server_t* server,
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      // skip this database
-      continue;
+      // abort
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
@@ -640,8 +642,8 @@ static int OpenDatabases (TRI_server_t* server,
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      // skip this database
-      continue;
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     id = (TRI_voc_tick_t) TRI_UInt64String(idJson->_value._string.data);
@@ -654,8 +656,8 @@ static int OpenDatabases (TRI_server_t* server,
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      // skip this database
-      continue;
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,

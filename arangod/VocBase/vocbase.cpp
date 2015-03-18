@@ -931,7 +931,12 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_VOC_PARAMETER_FILE);
+        LOG_ERROR("cannot read collection info file in directory '%s': %s", file, TRI_errno_string(res));
+        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+        TRI_DestroyVectorString(&files);
+        TRI_FreeCollectionInfoOptions(&info);
+        regfree(&re);
+        return TRI_set_errno(res);
       }
       else if (info._deleted) {
         // we found a collection that is marked as deleted.

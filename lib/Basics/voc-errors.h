@@ -109,8 +109,8 @@
 ///   Will be raised when an error occurred during WAL log file recovery.
 /// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
-/// - 1101: @LIT{illegal parameter file}
-///   Will be raised if a parameter file is corrupted.
+/// - 1101: @LIT{illegal or unreadable parameter file}
+///   Will be raised if a parameter file is corrupted or cannot be read.
 /// - 1102: @LIT{corrupted collection}
 ///   Will be raised when a collection contains one or more corrupted data
 ///   files.
@@ -1095,9 +1095,9 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1101: ERROR_ARANGO_ILLEGAL_PARAMETER_FILE
 ///
-/// illegal parameter file
+/// illegal or unreadable parameter file
 ///
-/// Will be raised if a parameter file is corrupted.
+/// Will be raised if a parameter file is corrupted or cannot be read.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE                           (1101)

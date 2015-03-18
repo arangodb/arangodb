@@ -71,7 +71,7 @@ ERROR_ARANGO_RECOVERY,1008,"logfile recovery error","Will be raised when an erro
 ################################################################################
 
 ERROR_ARANGO_CORRUPTED_DATAFILE,1100,"corrupted datafile","Will be raised when a corruption is detected in a datafile."
-ERROR_ARANGO_ILLEGAL_PARAMETER_FILE,1101,"illegal parameter file","Will be raised if a parameter file is corrupted."
+ERROR_ARANGO_ILLEGAL_PARAMETER_FILE,1101,"illegal or unreadable parameter file","Will be raised if a parameter file is corrupted or cannot be read."
 ERROR_ARANGO_CORRUPTED_COLLECTION,1102,"corrupted collection","Will be raised when a collection contains one or more corrupted data files."
 ERROR_ARANGO_MMAP_FAILED,1103,"mmap failed","Will be raised when the system call mmap failed."
 ERROR_ARANGO_FILESYSTEM_FULL,1104,"filesystem full","Will be raised when the filesystem is full."
