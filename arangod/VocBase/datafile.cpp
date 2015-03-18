@@ -131,14 +131,15 @@ static int TruncateDatafile (TRI_datafile_t* const datafile, const off_t length)
   }
 
   // for anonymous regions, this is a non-op
-  return 0;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a CRC of a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckCrcMarker (TRI_df_marker_t const* marker) {
+static bool CheckCrcMarker (TRI_df_marker_t const* marker,
+                            char const* end) {
   TRI_voc_size_t zero = 0;
   off_t o = offsetof(TRI_df_marker_t, _crc);
   size_t n = sizeof(TRI_voc_crc_t);
@@ -146,6 +147,10 @@ static bool CheckCrcMarker (TRI_df_marker_t const* marker) {
   char const* ptr = (char const*) marker;
 
   if (marker->_size < sizeof(TRI_df_marker_t)) {
+    return false;
+  }
+  
+  if (reinterpret_cast<char const*>(marker) + marker->_size > end) {
     return false;
   }
 
@@ -508,7 +513,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       return scan;
     }
 
-    ok = CheckCrcMarker(marker);
+    ok = CheckCrcMarker(marker, end);
 
     if (! ok) {
       entry._status = 5;
@@ -642,7 +647,7 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
     }
 
     if (marker->_type != 0) {
-      bool ok = CheckCrcMarker(marker);
+      bool ok = CheckCrcMarker(marker, end);
 
       if (! ok) {
         if (ignoreFailures) {
@@ -808,9 +813,11 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
     TRI_CLOSE(fd);
     return nullptr;
   }
+  
+  char const* end = static_cast<char const*>(ptr) + len;
 
   // check CRC
-  ok = CheckCrcMarker(&header.base);
+  ok = CheckCrcMarker(&header.base, end);
 
   if (! ok) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);
