@@ -208,6 +208,7 @@ unittests-recovery:
 	@echo "================================================================================"
 	@echo
 
+	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="empty-datafiles"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="flush-drop-database-and-fail"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-database-flush-and-fail"
 	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-databases"
