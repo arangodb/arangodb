@@ -425,11 +425,10 @@ bool CollectorThread::collectLogfiles () {
     _logfileManager->setCollectionDone(logfile);
     return true;
   }
-  else {
-    // return the logfile to the logfile manager in case of errors
-    logfile->forceStatus(Logfile::StatusType::SEALED);
-    return false;
-  }
+    
+  // return the logfile to the logfile manager in case of errors
+  _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
