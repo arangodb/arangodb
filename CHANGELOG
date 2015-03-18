@@ -1,4 +1,4 @@
-v2.4.6 (2015-03-XX)
+v2.4.6 (2015-03-18)
 -------------------
 
 * added option `--database.ignore-logfile-errors`
@@ -55,6 +55,8 @@ v2.4.6 (2015-03-XX)
 
 * added option `--database.slow-query-threshold` for controlling the default AQL slow query
   threshold value on server start
+
+* fixed permissions of temp file
 
 
 v2.4.5 (2015-03-16)

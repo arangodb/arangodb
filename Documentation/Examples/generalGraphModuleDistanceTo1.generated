@@ -10,7 +10,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "644957620", 
+        "_rev" : "548446536", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -21,7 +21,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "644761012", 
+        "_rev" : "548249928", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -32,7 +32,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "644761012", 
+        "_rev" : "548249928", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -43,7 +43,18 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "644957620", 
+        "_rev" : "548446536", 
+        "isCapital" : true, 
+        "population" : 4000000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Berlin", 
+      "distance" : 1200, 
+      "vertex" : { 
+        "_id" : "frenchCity/Paris", 
+        "_key" : "Paris", 
+        "_rev" : "548446536", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -54,20 +65,9 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "644761012", 
+        "_rev" : "548249928", 
         "isCapital" : false, 
         "population" : 80000 
-      } 
-    }, 
-    { 
-      "startVertex" : "germanCity/Berlin", 
-      "distance" : 1200, 
-      "vertex" : { 
-        "_id" : "frenchCity/Paris", 
-        "_key" : "Paris", 
-        "_rev" : "644957620", 
-        "isCapital" : true, 
-        "population" : 4000000 
       } 
     } 
   ] 
