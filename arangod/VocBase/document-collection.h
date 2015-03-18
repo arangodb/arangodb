@@ -369,7 +369,7 @@ public:
   TRI_vector_pointer_t         _allIndexes;
   std::set<TRI_voc_tid_t>*     _failedTransactions;
 
-  int64_t                      _uncollectedLogfileEntries;
+  std::atomic<int64_t>         _uncollectedLogfileEntries;
   int64_t                      _numberDocuments;
   TRI_read_write_lock_t        _compactionLock;
   double                       _lastCompaction;
