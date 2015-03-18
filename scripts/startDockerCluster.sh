@@ -20,9 +20,9 @@ docker run --detach=true -p 4001:4001 --name=etcd -v /tmp/cluster/etcd:/data mic
 
 sleep 1
 echo Initializing agency...
-docker run -it --link=etcd:agency --rm arangodb_cluster arangosh --javascript.execute /scripts/init_agency.js > /tmp/cluster/init_agency.log
+docker run -it --link=etcd:agency --rm neunhoef/arangodb_cluster arangosh --javascript.execute /scripts/init_agency.js > /tmp/cluster/init_agency.log
 echo Starting discovery...
-docker run --detach=true --link=etcd:agency -v /tmp/cluster/discovery:/discovery --name discovery arangodb_cluster arangosh --javascript.execute scripts/discover.js > /tmp/cluster/discovery.id
+docker run --detach=true --link=etcd:agency -v /tmp/cluster/discovery:/discovery --name discovery neunhoef/arangodb_cluster arangosh --javascript.execute scripts/discover.js > /tmp/cluster/discovery.id
 
 start() {
     TYPE=$1
@@ -30,7 +30,8 @@ start() {
     mkdir /tmp/cluster/data$PORT
     echo Starting $TYPE on port $PORT
     docker run --detach=true -v /tmp/cluster/data$PORT:/data \
-           -v /tmp/cluster:/log --net=host --name=$TYPE$PORT arangodb_cluster \
+           -v /tmp/cluster:/log --net=host --name=$TYPE$PORT \
+           neunhoef/arangodb_cluster \
         arangod --database.directory /data \
                 --cluster.agency-endpoint tcp://localhost:4001 \
                 --cluster.my-address tcp://localhost:$PORT \
@@ -87,6 +88,6 @@ done
 
 echo Done, your cluster is ready at
 for p in `seq 8530 $PORTTOPCO` ; do
-    echo "   docker run -it --rm --net=host arangodb_cluster arangosh --server.endpoint tcp://localhost:$p"
+    echo "   docker run -it --rm --net=host neunhoef/arangodb_cluster arangosh --server.endpoint tcp://localhost:$p"
 done
 
