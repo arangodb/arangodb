@@ -797,6 +797,8 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+    
+  MUTEX_LOCKER(shaper->_shapeLock);
 
   void* f;
   f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
@@ -856,6 +858,8 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
    
   // remove an existing temporary attribute if present
   voc_shaper_t* shaper = reinterpret_cast<voc_shaper_t*>(s);
+  
+  MUTEX_LOCKER(shaper->_attributeLock);
 
   void* found;
   found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, name, (void*) marker, false);
