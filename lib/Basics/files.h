@@ -90,7 +90,7 @@ bool TRI_ExistsFile (char const* path);
 /// @brief sets the desired mode on a file, returns errno on error.
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t TRI_ChMod (char const* path, long mode, std::string &err);
+int TRI_ChMod (char const* path, long mode, std::string &err);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last modification date of a file

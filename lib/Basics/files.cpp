@@ -488,11 +488,19 @@ bool TRI_ExistsFile (char const* path) {
 #endif
 
 
-size_t TRI_ChMod (char const* path, long mode, std::string &err) {
-  if (chmod(path, mode) != 0) {
+int TRI_ChMod (char const* path, long mode, std::string& err) {
+  int res;
+#ifdef _WIN32
+  res = _chmod(path, static_cast<int>(mode));
+#else
+  res = chmod(path, mode);
+#endif
+
+  if (res != 0) {
     err = "error setting desired mode " + std::to_string(mode) + " for file " + path + ": " + strerror(errno);
     return errno;
   }
+
   return TRI_ERROR_NO_ERROR;
 }
 

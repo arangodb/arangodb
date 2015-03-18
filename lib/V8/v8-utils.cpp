@@ -1076,23 +1076,23 @@ static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   long mode = 0;
-  uint i;
-  for (i = 0; i < modeStr.length(); i++) {
-    if (!isdigit(modeStr[i])) {
+  for (uint32_t i = 0; i < modeStr.length(); i++) {
+    if (! isdigit(modeStr[i])) {
       TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
     }
     char buf[2];
     buf[0] = modeStr[i];
     buf[1] = '\0';
-    uint8_t digit = (uint8_t)atoi(buf);
+    uint8_t digit = (uint8_t) atoi(buf);
     if (digit >= 8) {
       TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
     }
-    mode =  mode | digit << ((modeStr.length() - i - 1) * 3);
+    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
   }
   string err;
   int rc = TRI_ChMod(*name, mode, err);
-  if (rc != 0) {
+
+  if (rc != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(rc, err);
   }
   TRI_V8_RETURN_TRUE();
