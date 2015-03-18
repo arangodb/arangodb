@@ -189,7 +189,8 @@ RecoverState::RecoverState (TRI_server_t* server,
     runningRemoteTransactions(),
     emptyLogfiles(),
     policy(TRI_DOC_UPDATE_ONLY_IF_NEWER, 0, nullptr),
-    ignoreRecoveryErrors(ignoreRecoveryErrors) {
+    ignoreRecoveryErrors(ignoreRecoveryErrors),
+    errorCount(0) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -733,6 +734,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply attribute marker: %s", TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -761,6 +763,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
           res != TRI_ERROR_ARANGO_DATABASE_NOT_FOUND && 
           res != TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND) {
         LOG_WARNING("could not apply shape marker: %s", TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -843,6 +846,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -926,6 +930,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -993,6 +998,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId,
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -1024,6 +1030,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (trx == nullptr) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1034,6 +1041,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("unable to start transaction: %s", TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY));
         delete trx;
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1091,6 +1099,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -1134,6 +1143,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
       
@@ -1166,6 +1176,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId,
                     TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -1219,6 +1230,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1228,6 +1240,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1250,6 +1263,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
                     (unsigned long long) indexId, 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
       else {
@@ -1302,6 +1316,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot unpack collection properties for collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1353,6 +1368,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
         LOG_WARNING("cannot create collection %llu in database %llu", 
                     (unsigned long long) collectionId, 
                     (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
       break;
@@ -1381,6 +1397,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
           TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         }
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1389,6 +1406,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
       if (! TRI_IsStringJson(nameValue)) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
         LOG_WARNING("cannot unpack database properties for database %llu", (unsigned long long) databaseId);
+        ++state->errorCount;
         return state->canContinue();
       }
 
@@ -1418,6 +1436,7 @@ bool RecoverState::ReplayMarker (TRI_df_marker_t const* marker,
 
       if (res != TRI_ERROR_NO_ERROR) {
         LOG_WARNING("cannot create database %llu: %s", (unsigned long long) databaseId, TRI_errno_string(res));
+        ++state->errorCount;
         return state->canContinue();
       }
       break;

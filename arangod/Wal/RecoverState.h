@@ -320,6 +320,7 @@ namespace triagens {
 
       TRI_doc_update_policy_t                                                     policy;
       bool                                                                        ignoreRecoveryErrors;
+      int64_t                                                                     errorCount;
     };
 
   }
