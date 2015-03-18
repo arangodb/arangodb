@@ -1045,6 +1045,60 @@ static void JS_Exists (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file of any type or directory exists
+/// @startDocuBlock JS_Exists
+/// `fs.exists(path)`
+///
+/// Returns true if a file (of any type) or a directory exists at a given
+/// path. If the file is a broken symbolic link, returns false.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path><mode>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+
+  string const modeStr = TRI_ObjectToString(args[1]);
+  
+  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+    TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+  }
+
+  long mode = 0;
+  uint i;
+  for (i = 0; i < modeStr.length(); i++) {
+    if (!isdigit(modeStr[i])) {
+      TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+    }
+    char buf[2];
+    buf[0] = modeStr[i];
+    buf[1] = '\0';
+    uint8_t digit = (uint8_t)atoi(buf);
+    if (digit >= 8) {
+      TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+    }
+    mode =  mode | digit << ((modeStr.length() - i - 1) * 3);
+  }
+  string err;
+  int rc = TRI_ChMod(*name, mode, err);
+  if (rc != 0) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(rc, err);
+  }
+  TRI_V8_RETURN_TRUE();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the size of a file
 /// @startDocuBlock JS_Size
 /// `fs.size(path)`
@@ -4128,6 +4182,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"), JS_GetTempFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"), JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
