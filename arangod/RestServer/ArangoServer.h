@@ -449,6 +449,8 @@ namespace triagens {
 
         bool _forceSyncProperties;
 
+        bool _ignoreDatafileErrors;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disable the replication applier on server startup
 /// @startDocuBlock serverDisableReplicationApplier
