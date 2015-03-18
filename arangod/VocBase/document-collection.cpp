@@ -2068,7 +2068,7 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
   document->_cleanupIndexes   = false;
   document->_failedTransactions = nullptr;
 
-  document->_uncollectedLogfileEntries = 0;
+  document->_uncollectedLogfileEntries.store(0);
 
   int res = InitBaseDocumentCollection(document, shaper);
 
@@ -3283,7 +3283,7 @@ void TRI_UpdateRevisionDocumentCollection (TRI_document_collection_t* document,
 bool TRI_IsFullyCollectedDocumentCollection (TRI_document_collection_t* document) {
   TRI_READ_LOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
-  int64_t uncollected = document->_uncollectedLogfileEntries;
+  int64_t uncollected = document->_uncollectedLogfileEntries.load();
 
   TRI_READ_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
 
