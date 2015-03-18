@@ -300,11 +300,6 @@ ArangoServer::ArangoServer (int argc, char** argv)
 
   TRI_SetApplicationName("arangod");
 
-  char* p = TRI_GetTempPath();
-  // copy the string
-  _tempPath = string(p);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, p);
-
   // set working directory and database directory
 #ifdef _WIN32
   _workingDirectory = ".";
@@ -622,6 +617,11 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("temp-path")) {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
+
+  // must be used after drop privileges and be called to set it to avoid raise conditions
+  char* pp = TRI_GetTempPath();
+  TRI_FreeString(TRI_CORE_MEM_ZONE, pp);
+
 
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
   
