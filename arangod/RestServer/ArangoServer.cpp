@@ -88,6 +88,8 @@ using namespace triagens::arango;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
+bool IGNORE_DATAFILE_ERRORS;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -288,6 +290,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
+    _ignoreDatafileErrors(true),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
     _server(nullptr),
@@ -533,6 +536,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
+    ("database.ignore-datafile-errors", &_ignoreDatafileErrors, "load collections even if datafiles may contain errors")
     ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
     ("database.index-threads", &_indexThreads, "threads to start for parallel background index creation")
   ;
@@ -619,6 +623,8 @@ void ArangoServer::buildApplicationServer () {
     TRI_SetUserTempPath((char*) _tempPath.c_str());
   }
 
+  IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
+  
   // .............................................................................
   // init nonces
   // .............................................................................
