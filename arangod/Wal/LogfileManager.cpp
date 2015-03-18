@@ -1532,7 +1532,12 @@ int LogfileManager::runRecovery () {
     return TRI_ERROR_NO_ERROR;
   }
     
-  LOG_INFO("running WAL recovery (%d logfiles)", (int) _recoverState->logfilesToProcess.size());
+  if (_ignoreRecoveryErrors) {
+    LOG_INFO("running WAL recovery (%d logfiles), ignoring recovery errors", (int) _recoverState->logfilesToProcess.size());
+  }
+  else {
+    LOG_INFO("running WAL recovery (%d logfiles)", (int) _recoverState->logfilesToProcess.size());
+  }
   
   // now iterate over all logfiles that we found during recovery
   // we can afford to iterate the files without _logfilesLock
@@ -1545,8 +1550,14 @@ int LogfileManager::runRecovery () {
       return res;
     }
   }
-  
-  LOG_INFO("WAL recovery finished successfully");
+
+  if (_recoverState->errorCount == 0) {
+    LOG_INFO("WAL recovery finished successfully");
+  }
+  else {
+    LOG_WARNING("WAL recovery finished, some errors ignored due to settings");
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
