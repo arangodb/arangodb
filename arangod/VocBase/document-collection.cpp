@@ -1798,6 +1798,11 @@ static bool OpenIterator (TRI_df_marker_t const* marker,
     res = OpenIteratorHandleAbortMarker(marker, datafile, (open_iterator_state_t*) data);
   }
   else {
+    if (marker->_type == TRI_DF_MARKER_HEADER) {
+      // ensure there is a datafile info entry for each datafile of the collection
+      TRI_FindDatafileInfoDocumentCollection(document, datafile->_fid, true);
+    }
+
     LOG_TRACE("skipping marker type %lu", (unsigned long) marker->_type);
     res = TRI_ERROR_NO_ERROR;
   }
