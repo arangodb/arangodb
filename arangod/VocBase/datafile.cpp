@@ -650,6 +650,27 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
       bool ok = CheckCrcMarker(marker, end);
 
       if (! ok) {
+        if (marker->_size > 0) {
+          auto next = reinterpret_cast<char const*>(marker) + marker->_size;
+          if (next < end) {
+            // check if the rest of the datafile is only followed by NULL bytes
+            bool isFollowedByNullBytes = true;
+            while (next < end) {
+              if (*next != '\0') {
+                isFollowedByNullBytes = false;
+                break;
+              }
+              ++next;
+            }
+
+            if (isFollowedByNullBytes) {
+              // only last marker in datafile was corrupt. fix the datafile in place
+              LOG_WARNING("datafile '%s' automatically truncated at last marker", datafile->getName(datafile));
+              ignoreFailures = true;
+            }
+          }
+        }
+
         if (ignoreFailures) {
           return FixDatafile(datafile, currentSize);
         }

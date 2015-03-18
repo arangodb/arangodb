@@ -87,6 +87,8 @@ using namespace triagens::arango;
 
 bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
 
+bool IGNORE_DATAFILE_ERRORS;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -287,6 +289,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _defaultMaximalSize(TRI_JOURNAL_DEFAULT_MAXIMAL_SIZE),
     _defaultWaitForSync(false),
     _forceSyncProperties(true),
+    _ignoreDatafileErrors(true),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
     _slowQueryThreshold(10.0),
@@ -522,6 +525,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.maximal-journal-size", &_defaultMaximalSize, "default maximal journal size, can be overwritten when creating a collection")
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
+    ("database.ignore-datafile-errors", &_ignoreDatafileErrors, "load collections even if datafiles may contain errors")
     ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
     ("database.slow-query-threshold", &_slowQueryThreshold, "threshold for slow AQL queries (in seconds)")
   ;
@@ -612,6 +616,8 @@ void ArangoServer::buildApplicationServer () {
   if (_applicationServer->programOptions().has("development-mode")) {
     _applicationV8->enableDevelopmentMode();
   }
+
+  IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
 
   // .............................................................................
   // set language of default collator

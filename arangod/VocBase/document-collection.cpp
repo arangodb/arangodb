@@ -2857,7 +2857,8 @@ int TRI_FillIndexesDocumentCollection (TRI_document_collection_t* document) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
-                                                       TRI_vocbase_col_t* col) {
+                                                       TRI_vocbase_col_t* col,
+                                                       bool ignoreErrors) {
   char const* path = col->_path;
 
   // first open the document collection
@@ -2874,7 +2875,7 @@ TRI_document_collection_t* TRI_OpenDocumentCollection (TRI_vocbase_t* vocbase,
 
   TRI_ASSERT(document != nullptr);
 
-  TRI_collection_t* collection = TRI_OpenCollection(vocbase, document, path);
+  TRI_collection_t* collection = TRI_OpenCollection(vocbase, document, path, ignoreErrors);
 
   if (collection == nullptr) {
     delete document;

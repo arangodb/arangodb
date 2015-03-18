@@ -417,7 +417,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 /// TODO: Use ScanCollectionDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckCollection (TRI_collection_t* collection) {
+static bool CheckCollection (TRI_collection_t* collection,
+                             bool ignoreErrors) {
   TRI_datafile_t* datafile;
   TRI_vector_pointer_t all;
   TRI_vector_pointer_t compactors;
@@ -537,7 +538,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         }
 
         TRI_ASSERT(filename != nullptr);
-        datafile = TRI_OpenDatafile(filename, true);
+        datafile = TRI_OpenDatafile(filename, ignoreErrors);
 
         if (datafile == nullptr) {
           collection->_lastError = TRI_errno();
@@ -1531,7 +1532,8 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 
 TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
                                       TRI_collection_t* collection,
-                                      char const* path) {
+                                      char const* path,
+                                      bool ignoreErrors) {
   TRI_ASSERT(collection != nullptr);
 
   if (! TRI_IsDirectory(path)) {
@@ -1556,7 +1558,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   TRI_FreeCollectionInfoOptions(&info);
 
   // check for journals and datafiles
-  bool ok = CheckCollection(collection);
+  bool ok = CheckCollection(collection, ignoreErrors);
 
   if (! ok) {
     LOG_DEBUG("cannot open '%s', check failed", collection->_directory);
