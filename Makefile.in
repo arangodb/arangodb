@@ -1834,9 +1834,10 @@ SHELL_COMMON = \
                @top_srcdir@/js/common/tests/shell-unique-constraint.js \
                @top_srcdir@/js/common/tests/shell-hash-index.js \
                @top_srcdir@/js/common/tests/shell-fulltext.js \
-               @top_srcdir@/js/common/tests/shell-graph.js \
-               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
+               @top_srcdir@/js/common/tests/shell-graph.js
 
+
+#               @top_srcdir@/js/common/tests/shell-query-timecritical-spec.js
 
 ################################################################################
 ### @brief SHELL SERVER TESTS (BASICS)
@@ -8558,6 +8559,7 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@	@echo "================================================================================"
 @ENABLE_FAILURE_TESTS_TRUE@	@echo
 
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="empty-datafiles"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="flush-drop-database-and-fail"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="drop-database-flush-and-fail"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-databases"

@@ -4,21 +4,21 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "time" : 1426414753.419431, 
+  "time" : 1426696866.089674, 
   "system" : { 
-    "minorPageFaults" : 71662, 
-    "majorPageFaults" : 2863, 
-    "userTime" : 8.972686, 
-    "systemTime" : 3.942478, 
-    "numberOfThreads" : 26, 
-    "residentSize" : 110870528, 
-    "residentSizePercent" : 0.025814056396484375, 
-    "virtualSize" : 5188919296 
+    "minorPageFaults" : 60159, 
+    "majorPageFaults" : 2806, 
+    "userTime" : 6.76881, 
+    "systemTime" : 3.682815, 
+    "numberOfThreads" : 30, 
+    "residentSize" : 139685888, 
+    "residentSizePercent" : 0.032523155212402344, 
+    "virtualSize" : 5196734464 
   }, 
   "client" : { 
     "httpConnections" : 1, 
     "connectionTime" : { 
-      "sum" : 0.00042510032653808594, 
+      "sum" : 0.000392913818359375, 
       "count" : 1, 
       "counts" : [ 
         1, 
@@ -28,36 +28,36 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "totalTime" : { 
-      "sum" : 61.9315710067749, 
-      "count" : 10342, 
+      "sum" : 29.708314657211304, 
+      "count" : 9048, 
       "counts" : [ 
-        9721, 
-        417, 
-        108, 
-        70, 
-        17, 
-        4, 
-        5 
+        8578, 
+        392, 
+        41, 
+        28, 
+        5, 
+        2, 
+        2 
       ] 
     }, 
     "requestTime" : { 
-      "sum" : 55.77610158920288, 
-      "count" : 10342, 
+      "sum" : 24.81981921195984, 
+      "count" : 9048, 
       "counts" : [ 
-        9744, 
-        399, 
-        105, 
-        69, 
-        16, 
-        4, 
-        5 
+        8595, 
+        382, 
+        35, 
+        27, 
+        5, 
+        2, 
+        2 
       ] 
     }, 
     "queueTime" : { 
-      "sum" : 0.24263644218444824, 
-      "count" : 10342, 
+      "sum" : 0.20400333404541016, 
+      "count" : 9048, 
       "counts" : [ 
-        10342, 
+        9048, 
         0, 
         0, 
         0, 
@@ -67,36 +67,36 @@ content-type: application/json; charset=utf-8
       ] 
     }, 
     "ioTime" : { 
-      "sum" : 5.912832975387573, 
-      "count" : 10342, 
+      "sum" : 4.684492111206055, 
+      "count" : 9048, 
       "counts" : [ 
-        10328, 
-        8, 
-        3, 
+        9040, 
+        5, 
         2, 
         1, 
+        0, 
         0, 
         0 
       ] 
     }, 
     "bytesSent" : { 
-      "sum" : 3779707, 
-      "count" : 10342, 
+      "sum" : 3383128, 
+      "count" : 9048, 
       "counts" : [ 
-        2676, 
-        7515, 
-        13, 
+        2251, 
+        6648, 
+        11, 
         10, 
         128, 
         0 
       ] 
     }, 
     "bytesReceived" : { 
-      "sum" : 2242892, 
-      "count" : 10342, 
+      "sum" : 1963231, 
+      "count" : 9048, 
       "counts" : [ 
-        8539, 
-        1803, 
+        7460, 
+        1588, 
         0, 
         0, 
         0, 
@@ -105,19 +105,19 @@ content-type: application/json; charset=utf-8
     } 
   }, 
   "http" : { 
-    "requestsTotal" : 10343, 
+    "requestsTotal" : 9049, 
     "requestsAsync" : 0, 
-    "requestsGet" : 3693, 
-    "requestsHead" : 297, 
-    "requestsPost" : 4656, 
-    "requestsPut" : 695, 
+    "requestsGet" : 3191, 
+    "requestsHead" : 225, 
+    "requestsPost" : 4188, 
+    "requestsPut" : 587, 
     "requestsPatch" : 31, 
-    "requestsDelete" : 971, 
+    "requestsDelete" : 827, 
     "requestsOptions" : 0, 
     "requestsOther" : 0 
   }, 
   "server" : { 
-    "uptime" : 67.81887698173523, 
+    "uptime" : 35.51586198806763, 
     "physicalMemory" : 4294967296 
   }, 
   "error" : false, 
