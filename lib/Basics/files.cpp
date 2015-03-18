@@ -487,6 +487,15 @@ bool TRI_ExistsFile (char const* path) {
 
 #endif
 
+
+size_t TRI_ChMod (char const* path, long mode, std::string &err) {
+  if (chmod(path, mode) != 0) {
+    err = "error setting desired mode " + std::to_string(mode) + " for file " + path + ": " + strerror(errno);
+    return errno;
+  }
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////

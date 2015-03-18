@@ -1,8 +1,9 @@
 /*jshint -W051: true */
 /*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
-  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_MAKE_ABSOLUTE, FS_FILESIZE,
-  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, FS_MTIME,
-  SYS_READ, SYS_READ_BUFFER, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
+  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_CHMOD, FS_IS_DIRECTORY, FS_IS_FILE,
+  FS_MAKE_ABSOLUTE, FS_FILESIZE, FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE,
+  FS_UNZIP_FILE, FS_ZIP_FILE, FS_MTIME, SYS_READ, SYS_READ_BUFFER, SYS_READ64, SYS_SAVE,
+  PATH_SEPARATOR, HOME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "js"
@@ -212,6 +213,16 @@
   if (typeof FS_EXISTS !== "undefined") {
     exports.exists = FS_EXISTS;
     delete FS_EXISTS;
+  }
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief chmod
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof FS_CHMOD !== "undefined") {
+    exports.chmod = FS_CHMOD;
+    delete FS_CHMOD;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
