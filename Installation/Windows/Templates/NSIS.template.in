@@ -20,8 +20,10 @@
   !define INST_DIR "@CPACK_TEMPORARY_DIRECTORY@"
 
 ;--------------------------------
-; custom defines
+; custom defines for the DRY people of us.
   !define TRI_UNINSTALL_REG_PATH "Software\Microsoft\Windows\CurrentVersion\Uninstall\@CPACK_PACKAGE_INSTALL_REGISTRY_KEY@";
+  !define TRI_SVC_NAME 'ArangoDB'
+; Put some of the more custom ones in from the CMakeFile:
 @CPACK_NSIS_DEFINES@
 
 ;--------------------------------
@@ -149,6 +151,7 @@ Function Tri_ChangePrivileges
   SetShellVarContext all
 FunctionEnd
 
+; same aagin for uninstall - NSIS requires the function name to have 'un.' - prefix
 Function un.Tri_ChangePrivileges
 uac_tryagain:
 !insertmacro UAC_RunElevated
@@ -243,14 +246,12 @@ Var AR_RegFlags
     ;Section is not selected:
     ;Calling Section uninstall macro and writing zero installed flag
     !insertmacro "Remove_${${SecName}}"
-    WriteRegDWORD HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" \
-  "Installed" 0
+    WriteRegDWORD HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" "Installed" 0
     Goto "exit_${SecName}"
 
  "leave_${SecName}:"
     ;Section is selected:
-    WriteRegDWORD HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" \
-  "Installed" 1
+    WriteRegDWORD HKLM "${TRI_UNINSTALL_REG_PATH}\Components\${SecName}" "Installed" 1
 
  "exit_${SecName}:"
 !macroend
@@ -641,7 +642,7 @@ Function WaitForServiceUp
   Push 0
   Pop $retryCount
   try_again:
-    SimpleSC::ServiceIsRunning "ArangoDB"
+    SimpleSC::ServiceIsRunning '${TRI_SVC_NAME}'
     Pop $0 ; returns an errorcode (<>0) otherwise success (0)
     Pop $1 ; returns 1 (service is running) - returns 0 (service is not running)
     ${If} $1 == 1
@@ -650,11 +651,11 @@ Function WaitForServiceUp
       Return
     ${EndIf}
     Sleep 1000
-    ${If} ${retryCount} == 40
+    ${If} $retryCount == 40
       MessageBox MB_OK "Service waiting retry count reached"
       Return
     ${EndIf}
-    IntOp $retryCount ${retryCount} + 1
+    IntOp $retryCount $retryCount + 1
     Goto try_again
 FunctionEnd
 
@@ -890,17 +891,18 @@ Section "-Core installation"
   
 @CPACK_NSIS_EXTRA_INSTALL_COMMANDS@
    StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-     SimpleSC::StopService  'ArangoDB' 0 30
-     SimpleSC::RemoveService  'ArangoDB' 
-     SimpleSC::InstallService 'ArangoDB'  'ArangoDB'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' ''
-     SimpleSC::StartService 'ArangoDB' '' 30
+     SimpleSC::StopService    '${TRI_SVC_NAME}' 0 30
+     SimpleSC::RemoveService  '${TRI_SVC_NAME}'
+     SimpleSC::InstallService '${TRI_SVC_NAME}' '${TRI_SVC_NAME}'  '16'  '2'  '"$INSTDIR\bin\arangod.exe" --start-service' '' '' ''
+     SimpleSC::SetServiceDescription '${TRI_SVC_NAME}' '${TRI_FRIENDLY_SVC_NAME}'
+     SimpleSC::StartService '${TRI_SVC_NAME}' '' 30
      Call WaitForServiceUp
    nothing:
 SectionEnd
 
 Function .onInstSuccess
   ${If} $TRI_INSTALL_TYPE == 'Service' 
-    ${OpenURL} "http://127.0.0.1:8529"
+    ${OpenURL} ${TRI_AARDVARK_URL}
   ${EndIf}
 FunctionEnd
 
@@ -1225,8 +1227,20 @@ Section "Uninstall"
   Delete "$SMPROGRAMS\$START_MENU\"
 
   StrCmp $TRI_INSTALL_TYPE  'Service' 0 nothing
-  SimpleSC::StopService  'ArangoDB' 0 30
-  SimpleSC::RemoveService  'ArangoDB' 
+  ;SimpleSC::GetServiceName '${TRI_SVC_NAME}'
+  ;Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+  ;Pop $1 ; returns the binary path of the service
+  ;MessageBox MB_OK "GetServiceName: : $0 $1 "
+  ; First get the installed service command.
+  SimpleSC::GetServiceBinaryPath '${TRI_SVC_NAME}'
+  Pop $0 ; returns an errorcode (<>0) otherwise success (0)
+  Pop $1 ; returns the binary path of the service
+  ; $1 should contain '"$INSTDIR\bin\arangod.exe" --start-service' - if $INSTDIR is equal
+  ; to our $INSTDIR uninstall the service - else its another installation and we jump to Done instead.
+  StrCmp $1 '"$INSTDIR\bin\arangod.exe" --start-service' '' Done
+  DetailPrint 'Shutting down Service'
+  SimpleSC::StopService  '${TRI_SVC_NAME}' 0 30
+  SimpleSC::RemoveService  '${TRI_SVC_NAME}'
   Pop $0 ; returns an errorcode (<>0) otherwise success (0)
   IntCmp $0 0 Done +1 +1 
   Push $0
@@ -1236,6 +1250,8 @@ Section "Uninstall"
 
   Done:
   nothing:
+  DetailPrint 'Removing files'
+
   ;Remove files we installed.
   ;Keep the list of directories here in sync with the File commands above.
 @CPACK_NSIS_DELETE_FILES@
