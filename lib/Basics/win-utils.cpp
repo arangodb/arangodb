@@ -461,6 +461,60 @@ int TRI_MapSystemError (DWORD error) {
   }
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message to the windows event log.
+/// we rather are keen on logging something at all then on being able to work
+/// with fancy dynamic buffers; thus we work with a static buffer.
+/// the arango internal logging will handle that usually.
+////////////////////////////////////////////////////////////////////////////////
+
+// No clue why there is no header for these...
+#define MSG_INVALID_COMMAND              ((DWORD)0xC0020100L)
+#define UI_CATEGORY                      ((WORD)0x00000003L)
+void TRI_LogWindowsEventlog (char const* func,
+                             char const* file,
+                             int line,
+                             char const* fmt,
+                             va_list ap) {
+
+  char buf[1024];
+  char linebuf[32];
+  LPCSTR logBuffers [] = {
+    buf,
+    file,
+    func,
+    linebuf,
+    NULL
+  };
+
+  HANDLE hEventLog = NULL;
+  
+  hEventLog = RegisterEventSource(NULL, "ArangoDB");
+  if (NULL == hEventLog) {
+      // well, fail then.
+      return;
+  }
+
+  snprintf(linebuf, sizeof(linebuf), "%d", line);
+
+  DWORD len = _vsnprintf(buf, sizeof(buf) - 1, fmt, ap);
+  buf[sizeof(buf) - 1] = '\0';
+
+  // Try to get messages through to windows syslog...
+  if (!ReportEvent(hEventLog,
+                   EVENTLOG_ERROR_TYPE,
+                   UI_CATEGORY,
+                   MSG_INVALID_COMMAND,
+                   NULL, 4, 0, (LPCSTR*) logBuffers,
+                   NULL)) {
+    // well, fail then...
+  }
+  DeregisterEventSource(hEventLog);
+}
+
+
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------

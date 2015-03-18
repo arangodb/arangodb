@@ -1317,14 +1317,24 @@ void TRI_Log (char const* func,
   TRI_tid_t threadId;
   va_list ap;
 
+  va_start(ap, fmt);
+#ifdef _WIN32
+  #include "win-utils.h"
+  if ((level == TRI_LOG_LEVEL_FATAL) || (level == TRI_LOG_LEVEL_ERROR)) {
+    va_list wva;
+    va_copy(wva, ap);
+    TRI_LogWindowsEventlog(func, file, line, fmt, ap);
+    va_end(wva);
+  }
+#endif
   if (! LoggingActive) {
     return;
+    va_end(ap);
   }
 
   processId = TRI_CurrentProcessId();
   threadId = TRI_CurrentThreadId();
 
-  va_start(ap, fmt);
   LogThread(func, file, line, level, severity, processId, threadId, fmt, ap);
   va_end(ap);
 }
