@@ -25,7 +25,9 @@ v2.4.6 (2015-03-XX)
   the WAL recovery will need to load a collection with a corrupted datafile,
   it will still stop when using the default values.
 
-* make the arangod server refuse to start if during startup it finds a non-readable
+* INCOMPATIBLE CHANGE:
+
+  make the arangod server refuse to start if during startup it finds a non-readable
   `parameter.json` file for a database or a collection.
 
   Stopping the startup process in this case requires manual intervention (fixing
@@ -38,9 +40,13 @@ v2.4.6 (2015-03-XX)
   
   Previously, these files were created with user read and write permissions only.
 
-* abort WAL recovery if one of the collection's datafiles cannot be opened
+* INCOMPATIBLE CHANGE:
 
-* never try to raise the privileges after dropping them, this can lead to a race condition while
+  abort WAL recovery if one of the collection's datafiles cannot be opened
+
+* INCOMPATIBLE CHANGE:
+
+  never try to raise the privileges after dropping them, this can lead to a race condition while
   running the recovery
 
   If you require to run ArangoDB on a port lower than 1024, you must run ArangoDB as root.
@@ -49,6 +55,7 @@ v2.4.6 (2015-03-XX)
 
 * added option `--database.slow-query-threshold` for controlling the default AQL slow query
   threshold value on server start
+
 
 v2.4.5 (2015-03-16)
 -------------------

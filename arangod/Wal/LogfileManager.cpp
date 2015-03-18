@@ -2027,13 +2027,12 @@ int LogfileManager::ensureDirectory () {
   }
 
   if (! basics::FileUtils::isDirectory(directory)) {
-    int res;
-    
     LOG_INFO("WAL directory '%s' does not exist. creating it...", directory.c_str());
 
+    int res;
     if (! basics::FileUtils::createDirectory(directory, &res)) {
-      LOG_ERROR("could not create WAL directory: '%s': %s", directory.c_str(), TRI_errno_string(res));
-      return res;
+      LOG_ERROR("could not create WAL directory: '%s': %s", directory.c_str(), TRI_last_error());
+      return TRI_ERROR_SYS_ERROR;
     }
   }
 
