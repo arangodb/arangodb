@@ -106,6 +106,19 @@ void TRI_FixIcuDataEnv ();
 
 int TRI_MapSystemError (DWORD);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief logs a message to the windows event log.
+/// we rather are keen on logging something at all then on being able to work
+/// with fancy dynamic buffers; thus we work with a static buffer.
+/// the arango internal logging will handle that usually.
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LogWindowsEventlog (char const* func,
+                             char const* file,
+                             int line,
+                             char const* fmt,
+                             va_list ap);
+
 #endif
 
 // -----------------------------------------------------------------------------
