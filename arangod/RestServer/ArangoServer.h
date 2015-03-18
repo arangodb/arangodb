@@ -435,6 +435,33 @@ namespace triagens {
 
         bool _forceSyncProperties;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ignore datafile errors when loading collections
+/// @startDocuBlock databaseIgnoreDatafileErrors
+/// `--database.ignore-datafile-errors boolean`
+///
+/// If set to `false`, CRC mismatch errors in collection datafiles will lead
+/// to a collection not being loaded at all. If a collection needs to be loaded
+/// during WAL recovery, the WAL recovery will also abort (if not forced with
+/// `--wal.ignore-recovery-errors true`). Setting this flag to `false` protects
+/// users from unintentionally using a collection with corrupted datafiles, from
+/// which only a subset of the original data can be recovered.
+///
+/// If set to `true`, CRC mismatch errors in collection datafiles will lead to
+/// the datafile being partially loaded. All data up to until the mismatch will
+/// be loaded. This will enable users to continue with a collection datafiles
+/// that are corrupted, but will result in only a partial load of the data.
+/// The WAL recovery will still abort when encountering a collection with a 
+/// corrupted datafile, at least if `--wal.ignore-recovery-errors` is not set to
+/// `true`.
+///
+/// The default value is *true*, so for collections with corrupted datafiles
+/// there might be partial data loads once the WAL recovery has finished. If
+/// the WAL recovery will need to load a collection with a corrupted datafile,
+/// it will still stop when using the default values.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
         bool _ignoreDatafileErrors;
 
 ////////////////////////////////////////////////////////////////////////////////
