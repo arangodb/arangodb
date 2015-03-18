@@ -621,11 +621,6 @@ void ArangoServer::buildApplicationServer () {
   char* pp = TRI_GetTempPath();
   TRI_FreeString(TRI_CORE_MEM_ZONE, pp);
 
-  // configure v8 w/ development-mode
-  if (_applicationServer->programOptions().has("development-mode")) {
-    _applicationV8->enableDevelopmentMode();
-  }
-
   IGNORE_DATAFILE_ERRORS = _ignoreDatafileErrors;
 
   // .............................................................................
