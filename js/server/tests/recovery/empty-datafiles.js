@@ -1,3 +1,5 @@
+/*jshint strict: true, unused : false */
+/*global require, assertEqual, assertTrue */
 
 var db = require("org/arangodb").db;
 var internal = require("internal");
@@ -5,6 +7,7 @@ var jsunity = require("jsunity");
 var fs = require("fs");
 
 function runSetup () {
+  "use strict";
   internal.debugClearFailAt();
 
   db._drop("UnitTestsRecovery");
@@ -28,6 +31,7 @@ function runSetup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
+  "use strict";
   jsunity.jsUnity.attachAssertions();
 
   return {
@@ -54,6 +58,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
+  "use strict";
   if (argv[1] === "setup") {
     runSetup();
     return 0;
