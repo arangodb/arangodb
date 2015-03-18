@@ -912,14 +912,18 @@ if (MSVC)
     SET(BITS 32)
   endif()
 
+  
+  file(TO_NATIVE_PATH "${TRI_RESOURCEDIR}/Icons/arangodb.ico" RELATIVE_ARANGO_ICON)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
 
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" RELATIVE_ARANGO_ICON "${RELATIVE_ARANGO_ICON}")
 
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
+  message(STATUS "RELATIVE_ARANGO_ICON: ${RELATIVE_ARANGO_ICON}")
 
   install(
     DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
@@ -927,6 +931,8 @@ if (MSVC)
 
   set(CPACK_NSIS_DEFINES "
     !define BITS ${BITS}
+    !define TRI_FRIENDLY_SVC_NAME 'ArangoDB - the multi-purpose database'
+    !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
     ")
 
   set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
@@ -934,7 +940,7 @@ if (MSVC)
   set(CPACK_NSIS_MODIFY_PATH ON)
   set(CPACK_NSIS_MUI_ICON ${ARANGO_ICON})
   set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
-  set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
+  set(CPACK_NSIS_INSTALLED_ICON_NAME ${RELATIVE_ARANGO_ICON})
   set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
   set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")
