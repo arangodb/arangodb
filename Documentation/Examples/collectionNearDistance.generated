@@ -1,9 +1,9 @@
 arangosh> db.geo.near(0, 0).distance().limit(2).toArray();
 [ 
   { 
-    "_id" : "geo/396036242", 
-    "_key" : "396036242", 
-    "_rev" : "396036242", 
+    "_id" : "geo/400115124", 
+    "_key" : "400115124", 
+    "_rev" : "400115124", 
     "name" : "Name/0/0", 
     "loc" : [ 
       0, 
@@ -12,9 +12,9 @@ arangosh> db.geo.near(0, 0).distance().limit(2).toArray();
     "distance" : 0 
   }, 
   { 
-    "_id" : "geo/388761746", 
-    "_key" : "388761746", 
-    "_rev" : "388761746", 
+    "_id" : "geo/392840628", 
+    "_key" : "392840628", 
+    "_rev" : "392840628", 
     "name" : "Name/-10/0", 
     "loc" : [ 
       -10, 

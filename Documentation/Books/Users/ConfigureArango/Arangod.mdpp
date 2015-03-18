@@ -98,6 +98,10 @@ the option *--disable-figures*.
 @startDocuBlock databaseDisableQueryTracking
 
 
+!SUBSECTION Slow AQL query threshold
+@startDocuBlock databaseSlowQueryThreshold
+
+
 !SUBSECTION V8 Contexts
 @startDocuBlock v8Contexts
 

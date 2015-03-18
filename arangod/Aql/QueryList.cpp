@@ -32,6 +32,7 @@
 #include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
+#include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;
@@ -65,7 +66,6 @@ QueryEntryCopy::QueryEntryCopy (TRI_voc_tick_t id,
 // --SECTION--                                                   class QueryList
 // -----------------------------------------------------------------------------
 
-double const QueryList::DefaultSlowQueryThreshold   = 10.0;
 size_t const QueryList::DefaultMaxSlowQueries       = 64;
 size_t const QueryList::DefaultMaxQueryStringLength = 4096;
 
@@ -84,7 +84,7 @@ QueryList::QueryList (TRI_vocbase_t*)
     _slowCount(0),
     _enabled(! Query::DisableQueryTracking()),
     _trackSlowQueries(true),
-    _slowQueryThreshold(QueryList::DefaultSlowQueryThreshold),
+    _slowQueryThreshold(Query::SlowQueryThreshold()),
     _maxSlowQueries(QueryList::DefaultMaxSlowQueries),
     _maxQueryStringLength(QueryList::DefaultMaxQueryStringLength) {
 
@@ -113,24 +113,34 @@ QueryList::~QueryList () {
 /// @brief insert a query
 ////////////////////////////////////////////////////////////////////////////////
 
-void QueryList::insert (Query const* query,
+bool QueryList::insert (Query const* query,
                         double stamp) {
-  // no query string
-  if (! _enabled || query == nullptr || query->queryString() == nullptr) {
-    return;
+  // not enable or no query string
+  if (! _enabled || 
+      query == nullptr || 
+      query->queryString() == nullptr) {
+    return false;
   }
 
   try { 
     std::unique_ptr<QueryEntry> entry(new QueryEntry(query, stamp));
 
     WRITE_LOCKER(_lock);
+
+    TRI_IF_FAILURE("QueryList::insert") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    } 
+
     auto it = _current.emplace(std::make_pair(query->id(), entry.get()));
     if (it.second) {
       entry.release();
+      return true;
     }
   }
   catch (...) {
   }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -139,11 +149,20 @@ void QueryList::insert (Query const* query,
 
 void QueryList::remove (Query const* query,
                         double now) {
+  // we're intentionally not checking _enabled here...
+
+  // note: there is the possibility that a query got inserted when the
+  // tracking was turned on, but is going to be removed when the tracking
+  // is turned off. in this case, removal is forced so the contents of 
+  // the list are correct
+
   // no query string
-  if (! _enabled || query == nullptr || query->queryString() == nullptr) {
+  if (query == nullptr || 
+      query->queryString() == nullptr) {
     return;
   }
 
+  size_t const maxLength = _maxQueryStringLength;
   QueryEntry* entry = nullptr;
   
   {
@@ -164,12 +183,13 @@ void QueryList::remove (Query const* query,
           // yes.
 
           char const* queryString = entry->query->queryString();
-          size_t const maxLength = _maxQueryStringLength;
           size_t const originalLength = entry->query->queryLength();
           size_t length = originalLength;
 
           if (length > maxLength) {
             length = maxLength;
+            TRI_ASSERT(length <= originalLength);
+
             // do not create invalid UTF-8 sequences
             while (length > 0) {
               uint8_t c = queryString[length - 1];
@@ -187,6 +207,10 @@ void QueryList::remove (Query const* query,
               }
             }
           }
+
+          TRI_IF_FAILURE("QueryList::remove") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          } 
 
           _slow.emplace_back(QueryEntryCopy(
             entry->query->id(), 
@@ -245,12 +269,11 @@ int QueryList::kill (TRI_voc_tick_t id) {
 
 std::vector<QueryEntryCopy> QueryList::listCurrent () {
   double const now = TRI_microtime();
+  size_t const maxLength = _maxQueryStringLength;
 
   std::vector<QueryEntryCopy> result;
 
   {
-    size_t const maxLength = _maxQueryStringLength;
-
     READ_LOCKER(_lock);
     result.reserve(_current.size());
 
@@ -268,6 +291,8 @@ std::vector<QueryEntryCopy> QueryList::listCurrent () {
 
       if (length > maxLength) {
         length = maxLength;
+        TRI_ASSERT(length <= originalLength);
+
         // do not create invalid UTF-8 sequences
         while (length > 0) {
           uint8_t c = queryString[length - 1];

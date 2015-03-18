@@ -2,7 +2,7 @@ shell> curl -X DELETE --data-binary @- --dump - http://localhost:8529/_api/ghari
 
 HTTP/1.1 200 OK
 content-type: application/json
-etag: 1514408082
+etag: 1517766068
 
 { 
   "error" : false, 
@@ -15,6 +15,6 @@ etag: 1514408082
       "male" 
     ], 
     "_id" : "_graphs/social", 
-    "_rev" : "1514408082" 
+    "_rev" : "1517766068" 
   } 
 }

@@ -57,6 +57,10 @@ function optimizerRuleTestSuite() {
   var hasNoFilterNode = function (plan) {
     assertEqual(findExecutionNodes(plan, "FilterNode").length, 0, "has no filter node");
   };
+  
+  var hasFilterNode = function (plan) {
+    assertEqual(findExecutionNodes(plan, "FilterNode").length, 1, "has filter node");
+  };
 
   var hasIndexRangeNodeWithRanges = function (plan) {
     var rn = findExecutionNodes(plan, "IndexRangeNode");
@@ -150,6 +154,61 @@ function optimizerRuleTestSuite() {
 
     },
 */
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test with non-scalar values
+////////////////////////////////////////////////////////////////////////////////
+
+    testRuleWithNonScalarValues : function () {
+      var queries = [ 
+        "FOR v IN " + colName + " FILTER v.a == [ ] RETURN 1",
+        "FOR v IN " + colName + " FILTER v.a == [ 1, 2, 3 ] RETURN 1",
+        "FOR v IN " + colName + " FILTER v.a == [ ] && v.b == [ ] RETURN 1",
+        "FOR v IN " + colName + " FILTER v.a == { } RETURN 1",
+        "FOR v IN " + colName + " FILTER v.a == { a: 1, b: 2 } RETURN 1",
+        "FOR v IN " + colName + " FILTER v.a == { } && v.b == { } RETURN 1",
+        "FOR v IN " + colName + " FILTER [ ] == v.a RETURN 1",
+        "FOR v IN " + colName + " FILTER [ 1, 2, 3 ] == v.a RETURN 1",
+        "FOR v IN " + colName + " FILTER [ ] == v.a && [ ] == v.b RETURN 1",
+        "FOR v IN " + colName + " FILTER { } == v.a RETURN 1",
+        "FOR v IN " + colName + " FILTER { a: 1, b: 2 } == v.a RETURN 1",
+        "FOR v IN " + colName + " FILTER { } == v.a && { } == v.b RETURN 1"
+      ];
+
+      queries.forEach(function(query) {
+        var result;
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeFilter);
+        assertEqual([ IndexRangeRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasFilterNode(result);
+
+        hasIndexRangeNodeWithRanges(result);
+
+        result = AQL_EXPLAIN(query, { }, paramIndexRangeSortFilter);
+        assertEqual([ IndexRangeRule ], removeAlwaysOnClusterRules(result.plan.rules), query);
+        hasFilterNode(result);
+        hasIndexRangeNodeWithRanges(result);
+
+        var QResults = [];
+        QResults[0] = AQL_EXECUTE(query, { }, paramNone).json;
+        QResults[1] = AQL_EXECUTE(query, { }, paramIndexRangeFilter).json;
+        QResults[2] = AQL_EXECUTE(query, { }, paramIndexRangeSortFilter).json;
+
+        assertTrue(isEqual(QResults[0], QResults[1]), "result is equal?");
+        assertTrue(isEqual(QResults[0], QResults[2]), "result is equal?");
+
+        var allResults = getQueryMultiplePlansAndExecutions(query, {});
+        for (var j = 1; j < allResults.results.length; j++) {
+            assertTrue(isEqual(allResults.results[0],
+                               allResults.results[j]),
+                       "while executing '" + query +
+                       "' this plan gave the wrong results: " + JSON.stringify(allResults.plans[j]) +
+                       " Should be: '" + JSON.stringify(allResults.results[0]) +
+                       "', but is: " + JSON.stringify(allResults.results[j]) + "'"
+                      );
+        }
+      });
+
+    },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test that rule has an effect on the FILTER and the SORT

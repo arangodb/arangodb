@@ -440,7 +440,7 @@ bool ApplicationServer::parse (int argc,
   // .............................................................................
 
   extractPrivileges();
-  dropPrivileges();
+  dropPrivilegesPermanently();
 
   // .............................................................................
   // setup logging
@@ -553,7 +553,8 @@ void ApplicationServer::start () {
   pthread_sigmask(SIG_SETMASK, &all, 0);
 #endif
 
-  raisePrivileges();
+  // this can lead to race condition with other threads
+  // raisePrivileges();
 
   // start all startable features
   for (vector<ApplicationFeature*>::iterator i = _features.begin();  i != _features.end();  ++i) {
@@ -583,7 +584,8 @@ void ApplicationServer::start () {
     LOG_TRACE("opened server feature '%s'", feature->getName().c_str());
   }
 
-  dropPrivilegesPermanently();
+  // this can lead to race condition with other threads
+  // dropPrivilegesPermanently();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

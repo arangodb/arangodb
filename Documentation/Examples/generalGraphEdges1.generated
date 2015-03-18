@@ -5,9 +5,9 @@ arangosh> db._query("FOR e IN GRAPH_EDGES("
 ........> ).toArray();
 [ 
   { 
-    "_id" : "internationalHighway/582420626", 
-    "_key" : "582420626", 
-    "_rev" : "582420626", 
+    "_id" : "internationalHighway/587744692", 
+    "_key" : "587744692", 
+    "_rev" : "587744692", 
     "_from" : "germanCity/Cologne", 
     "_to" : "frenchCity/Lyon", 
     "distance" : 700 

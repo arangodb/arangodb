@@ -1,4 +1,17 @@
-v2.4.5-beta3 (XXXX-XX-XX)
+v2.4.6 (2015-03-XX)
+-------------------
+
+* fixed inefficiencies to `remove` methods of general-graph module
+
+* abort WAL recovery if one of the collection's database cannot be opened
+
+* never try to raise the privileges after dropping them, this can lead to a race condition while
+  running the recovery
+
+  If you require to run ArangoDB on a port lower than 1024, you must run ArangoDB as root.
+
+
+v2.4.5 (2015-03-16)
 -------------------
 
 * added elapsed time to HTTP request logging output (`--log.requests-file`)
@@ -7,15 +20,16 @@ v2.4.5-beta3 (XXXX-XX-XX)
 
   This change enables retrieving the list of currently running AQL queries inside the selected database.
   AQL queries with an execution time beyond a certain threshold can be moved to a "slow query" facility
-  and retrieved from there. Queries can also be killed by specifying the query id.
+  and retrieved from there. AQL queries can also be killed by specifying the query id. When a query is
+  killed, it may not terminate instantly but at the next point the query checks for its termination.
 
   This change adds the following HTTP REST APIs:
 
-  - `GET /_api/query/current`: for retrieving the list of currently running queries
-  - `GET /_api/query/slow`: for retrieving the list of slow queries
-  - `DELETE /_api/query/slow`: for clearing the list of slow queries
-  - `GET /_api/query/properties`: for retrieving the properties for query tracking
-  - `PUT /_api/query/properties`: for adjusting the properties for query tracking
+  - `GET /_api/query/current`: for retrieving the list of currently running AQL queries
+  - `GET /_api/query/slow`: for retrieving the list of slow AQL queries
+  - `DELETE /_api/query/slow`: for clearing the list of slow AQL queries
+  - `GET /_api/query/properties`: for retrieving the properties for AQL query tracking
+  - `PUT /_api/query/properties`: for adjusting the properties for AQL query tracking
   - `DELETE /_api/query/<id>`: for killing an AQL query
 
   The following JavaScript APIs have been added:
@@ -25,6 +39,8 @@ v2.4.5-beta3 (XXXX-XX-XX)
   - require("org/arangodb/aql/queries").clearSlow();
   - require("org/arangodb/aql/queries").properties();
   - require("org/arangodb/aql/queries").kill();
+
+  There is also a section in the web interface listing currently running and slow queries.
 
 * fixed issue #1265: arangod crashed with SIGSEGV
 

@@ -289,6 +289,7 @@ ArangoServer::ArangoServer (int argc, char** argv)
     _forceSyncProperties(true),
     _disableReplicationApplier(false),
     _disableQueryTracking(false),
+    _slowQueryThreshold(10.0),
     _developmentMode(false),
     _server(nullptr),
     _queryRegistry(nullptr),
@@ -522,6 +523,7 @@ void ArangoServer::buildApplicationServer () {
     ("database.wait-for-sync", &_defaultWaitForSync, "default wait-for-sync behavior, can be overwritten when creating a collection")
     ("database.force-sync-properties", &_forceSyncProperties, "force syncing of collection properties to disk, will use waitForSync value of collection when turned off")
     ("database.disable-query-tracking", &_disableQueryTracking, "turn off AQL query tracking by default")
+    ("database.slow-query-threshold", &_slowQueryThreshold, "threshold for slow AQL queries (in seconds)")
   ;
 
   // .............................................................................
@@ -683,8 +685,9 @@ void ArangoServer::buildApplicationServer () {
     _disableAuthentication = true;
   }
   
-  // set global query tracking flag
+  // set global query tracking options
   triagens::aql::Query::DisableQueryTracking(_disableQueryTracking);
+  triagens::aql::Query::SlowQueryThreshold(_slowQueryThreshold);
 
 
   // .............................................................................

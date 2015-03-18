@@ -10,7 +10,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "639568018", 
+        "_rev" : "644957620", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -21,7 +21,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "639371410", 
+        "_rev" : "644761012", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -32,7 +32,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "639371410", 
+        "_rev" : "644761012", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -43,7 +43,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "639568018", 
+        "_rev" : "644957620", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -54,7 +54,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "639371410", 
+        "_rev" : "644761012", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -65,7 +65,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "639568018", 
+        "_rev" : "644957620", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
