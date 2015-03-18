@@ -382,7 +382,8 @@ void TRI_IterateIndexCollection (TRI_collection_t*,
 
 TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t*,
                                       TRI_collection_t*,
-                                      char const*);
+                                      char const*,
+                                      bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief closes an open collection
