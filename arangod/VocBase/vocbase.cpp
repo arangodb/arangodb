@@ -931,9 +931,10 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        char* tmpfile = TRI_Concatenate2File(path, ".tmp");
+        char* tmpfile = TRI_Concatenate2File(file, ".tmp");
 
         if (TRI_ExistsFile(tmpfile)) {
+          LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
           TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
           // temp file still exists. this means the collection was not created fully
           // and needs to be ignored
