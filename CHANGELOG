@@ -1,6 +1,16 @@
 v2.5.1 (XXXX-XX-XX)
 -------------------
 
+* add system error strings for windows on many places
+
+* rework service startup so we anounce 'RUNNING' only when we're finished starting.
+
+* use the windows eventlog for FATAL and ERROR - log messages
+
+* fix service handling in NSIS windows installer, specify human readable name
+
+* add the ICU_DATA environment variable to the fatal error messages
+
 * fixed issue #1265: arangod crashed with SIGSEGV
 
 * fixed issue #1241: Wildcards in examples
