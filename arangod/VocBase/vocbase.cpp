@@ -931,6 +931,20 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
+        char* tmpfile = TRI_Concatenate2File(path, ".tmp");
+
+        if (TRI_ExistsFile(tmpfile)) {
+          TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+          // temp file still exists. this means the collection was not created fully
+          // and needs to be ignored
+          TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+          TRI_FreeCollectionInfoOptions(&info);
+
+          continue; // ignore this directory
+        }
+        
+        TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+
         LOG_ERROR("cannot read collection info file in directory '%s': %s", file, TRI_errno_string(res));
         TRI_FreeString(TRI_CORE_MEM_ZONE, file);
         TRI_DestroyVectorString(&files);
