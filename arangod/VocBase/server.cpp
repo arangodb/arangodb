@@ -586,6 +586,7 @@ static int OpenDatabases (TRI_server_t* server,
 
     if (TRI_ExistsFile(tmpfile)) {
       // still a temporary... must ignore
+      LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
       TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       continue;
