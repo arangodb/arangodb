@@ -942,7 +942,7 @@ char* Query::registerString (std::string const& p,
 void Query::enterContext () {
   if (! _contextOwnedByExterior) {
     if (_context == nullptr) {
-      _context = _applicationV8->enterContext("STANDARD", _vocbase, false, false);
+      _context = _applicationV8->enterContext("STANDARD", _vocbase, false);
 
       if (_context == nullptr) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot enter V8 context");
