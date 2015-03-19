@@ -87,11 +87,13 @@ void AqlValue::destroy () {
           delete *it;
         }
         delete _vector;
+        _vector = nullptr;
       }
       break;
     }
     case RANGE: {
       delete _range;
+      _range = nullptr;
       break;
     }
     case SHAPED: {
