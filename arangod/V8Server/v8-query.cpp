@@ -552,12 +552,12 @@ static int SetupSearchValue (TRI_vector_t const* paths,
                              v8::Handle<v8::Object> example,
                              TRI_shaper_t* shaper,
                              TRI_index_search_value_t& result,
+                             std::string& errorMessage,
                              const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
-  size_t n;
 
   // extract attribute paths
-  n = paths->_length;
+  size_t n = paths->_length;
 
   // setup storage
   result._length = n;
@@ -572,10 +572,9 @@ static int SetupSearchValue (TRI_vector_t const* paths,
     TRI_ASSERT(pid != 0);
     char const* name = TRI_AttributeNameShapePid(shaper, pid);
 
-    if (name == NULL) {
+    if (name == nullptr) {
       DestroySearchValue(shaper->_memoryZone, result);
-      TRI_V8_SET_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "shaper failed");
+      errorMessage = "shaper failed";
       return TRI_ERROR_BAD_PARAMETER;
     }
 
@@ -595,8 +594,7 @@ static int SetupSearchValue (TRI_vector_t const* paths,
       DestroySearchValue(shaper->_memoryZone, result);
 
       if (res != TRI_RESULT_ELEMENT_NOT_FOUND) {
-        TRI_V8_SET_EXCEPTION_MESSAGE(res, "cannot convert value to JSON");
-        return res;
+        errorMessage = "cannot convert value to JSON";
       }
       return res;
     }
@@ -654,8 +652,6 @@ static void ExecuteSkiplistQuery (const v8::FunctionCallbackInfo<v8::Value>& arg
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  v8::Handle<v8::Object> err;
 
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx here
@@ -1449,7 +1445,6 @@ static void JS_ByExampleQuery (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Object> err;
   res = SetupExampleObject(example, shaper, n, pids, values, args);
 
   if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
@@ -1570,11 +1565,7 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   // extract the index
   TRI_index_t* idx = TRI_LookupIndexByHandle(isolate, trx.resolver(), collection, args[0], false);
 
-  if (idx == nullptr) {
-    return;
-  }
-
-  if (idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
+  if (idx == nullptr || idx->_type != TRI_IDX_TYPE_HASH_INDEX) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_NO_INDEX);
   }
 
@@ -1586,15 +1577,17 @@ static void ByExampleHashIndexQuery (SingleCollectionReadOnlyTransaction& trx,
   TRI_document_collection_t* document = trx.documentCollection();
   TRI_shaper_t* shaper = document->getShaper();  // PROTECTED by trx from above
   {
-    v8::TryCatch tryCatch;
-    int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, args);
+    std::string errorMessage;
+    int res = SetupSearchValue(&hashIndex->_paths, example, shaper, searchValue, errorMessage, args);
 
     if (res != TRI_ERROR_NO_ERROR) {
       if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
         TRI_V8_RETURN(EmptyResult(isolate));
       }
-      tryCatch.ReThrow();
-      return ;
+      if (errorMessage.empty()) {
+        TRI_V8_THROW_EXCEPTION(res);
+      }
+      TRI_V8_THROW_EXCEPTION_MESSAGE(res, errorMessage);
     }
   }
 
@@ -1667,8 +1660,6 @@ static void JS_ByExampleHashIndex (const v8::FunctionCallbackInfo<v8::Value>& ar
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  v8::Handle<v8::Object> err;
 
   // .............................................................................
   // inside a read transaction
@@ -2167,8 +2158,6 @@ static void JS_FulltextQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION(res);
   }
 
-  v8::Handle<v8::Object> err;
-
   // .............................................................................
   // inside a read transaction
   // .............................................................................
@@ -2476,8 +2465,6 @@ static void JS_WithinQuery (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (res != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION(res);
   }
-
-  v8::Handle<v8::Object> err;
 
   // .............................................................................
   // inside a read transaction
