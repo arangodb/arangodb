@@ -378,7 +378,7 @@ Query* Query::clone (QueryPart part,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Query::addNode (AstNode* node) {
-  _nodes.push_back(node);
+  _nodes.emplace_back(node);
 }
 
 // -----------------------------------------------------------------------------
@@ -915,7 +915,7 @@ char* Query::registerString (char const* p,
   }
 
   try {
-    _strings.push_back(copy);
+    _strings.emplace_back(copy);
   }
   catch (...) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);

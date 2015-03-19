@@ -283,43 +283,37 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
   std::unordered_map<AqlValue, AqlValue> cache;
   cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  AqlItemBlock* res = nullptr;
-  try {
-    res = new AqlItemBlock(to - from, _nrRegs);
+  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));
 
+  for (RegisterId col = 0; col < _nrRegs; col++) {
+    res->_docColls[col] = _docColls[col];
+  }
+
+  for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      res->_docColls[col] = _docColls[col];
-    }
-    for (size_t row = from; row < to; row++) {
-      for (RegisterId col = 0; col < _nrRegs; col++) {
-        AqlValue const& a(_data[row * _nrRegs + col]);
+      AqlValue const& a(_data[row * _nrRegs + col]);
 
-        if (! a.isEmpty()) {
-          auto it = cache.find(a);
-          if (it == cache.end()) {
-            AqlValue b = a.clone();
-            try {
-              res->setValue(row - from, col, b);
-            }
-            catch (...) {
-              b.destroy();
-              throw;
-            }
-            cache.emplace(a, b);
+      if (! a.isEmpty()) {
+        auto it = cache.find(a);
+        if (it == cache.end()) {
+          AqlValue b = a.clone();
+          try {
+            res->setValue(row - from, col, b);
           }
-          else {
-            res->setValue(row - from, col, it->second);
+          catch (...) {
+            b.destroy();
+            throw;
           }
+          cache.emplace(a, b);
+        }
+        else {
+          res->setValue(row - from, col, it->second);
         }
       }
     }
+  }
 
-    return res;
-  }
-  catch (...) {
-    delete res;
-    throw;
-  }
+  return res.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -333,44 +327,38 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unordered_map<AqlValue, AqlValue> cache;
-  cache.reserve((to-from)*_nrRegs / 4 + 1);
+  cache.reserve((to - from) * _nrRegs / 4 + 1);
 
-  AqlItemBlock* res = nullptr;
-  try {
-    res = new AqlItemBlock(to - from, _nrRegs);
+  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));
 
+  for (RegisterId col = 0; col < _nrRegs; col++) {
+    res->_docColls[col] = _docColls[col];
+  }
+
+  for (size_t row = from; row < to; row++) {
     for (RegisterId col = 0; col < _nrRegs; col++) {
-      res->_docColls[col] = _docColls[col];
-    }
-    for (size_t row = from; row < to; row++) {
-      for (RegisterId col = 0; col < _nrRegs; col++) {
-        AqlValue const& a(_data[chosen[row] * _nrRegs + col]);
+      AqlValue const& a(_data[chosen[row] * _nrRegs + col]);
 
-        if (! a.isEmpty()) {
-          auto it = cache.find(a);
-          if (it == cache.end()) {
-            AqlValue b = a.clone();
-            try {
-              res->setValue(row - from, col, b);
-            }
-            catch (...) {
-              b.destroy();
-            }
-            cache.emplace(a, b);
+      if (! a.isEmpty()) {
+        auto it = cache.find(a);
+        if (it == cache.end()) {
+          AqlValue b = a.clone();
+          try {
+            res->setValue(row - from, col, b);
           }
-          else {
-            res->setValue(row - from, col, it->second);
+          catch (...) {
+            b.destroy();
           }
+          cache.emplace(a, b);
+        }
+        else {
+          res->setValue(row - from, col, it->second);
         }
       }
     }
+  }
 
-    return res;
-  }
-  catch (...) {
-    delete res;
-    throw;
-  }
+  return res.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,35 +375,31 @@ AqlItemBlock* AqlItemBlock::steal (std::vector<size_t>& chosen,
                                    size_t from, size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
-  AqlItemBlock* res = new AqlItemBlock(to - from, _nrRegs);
+  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));
+
   for (RegisterId col = 0; col < _nrRegs; col++) {
     res->_docColls[col] = _docColls[col];
   }
-  try {
-    for (size_t row = from; row < to; row++) {
-      for (RegisterId col = 0; col < _nrRegs; col++) {
-        AqlValue& a(_data[chosen[row] * _nrRegs + col]);
 
-        if (! a.isEmpty()) {
-          steal(a);
-          try {
-            res->setValue(row - from, col, a);
-          }
-          catch (...) {
-            a.destroy();
-          }
-          eraseValue(chosen[row], col);
+  for (size_t row = from; row < to; row++) {
+    for (RegisterId col = 0; col < _nrRegs; col++) {
+      AqlValue& a(_data[chosen[row] * _nrRegs + col]);
+
+      if (! a.isEmpty()) {
+        steal(a);
+        try {
+          res->setValue(row - from, col, a);
         }
+        catch (...) {
+          a.destroy();
+        }
+        eraseValue(chosen[row], col);
       }
     }
   }
-  catch (...) {
-    delete res;
-    throw;
-  }
-  return res;
-}
 
+  return res.release();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief concatenate multiple blocks, note that the new block now owns all
@@ -442,44 +426,39 @@ AqlItemBlock* AqlItemBlock::concatenate (std::vector<AqlItemBlock*> const& block
   TRI_ASSERT(totalSize > 0);
   TRI_ASSERT(nrRegs > 0);
 
-  auto res = new AqlItemBlock(totalSize, nrRegs);
-  try {
-    size_t pos = 0;
-    for (it = blocks.begin(); it != blocks.end(); ++it) {
-      // handle collections
-      if (it == blocks.begin()) {
-        // copy collection info over
-        for (RegisterId col = 0; col < nrRegs; ++col) {
-          res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
-        }
-      }
-      else {
-        for (RegisterId col = 0; col < nrRegs; ++col) {
-          TRI_ASSERT(res->getDocumentCollection(col) ==
-                     (*it)->getDocumentCollection(col));
-        }
-      }
+  std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(totalSize, nrRegs));
 
-      TRI_ASSERT((*it) != res);
-      size_t const n = (*it)->size();
-      for (size_t row = 0; row < n; ++row) {
-        for (RegisterId col = 0; col < nrRegs; ++col) {
-          // copy over value
-          if (! (*it)->getValueReference(row, col).isEmpty()) {
-            res->setValue(pos + row, col, (*it)->getValue(row, col));
-          }
-        }
+  size_t pos = 0;
+  for (it = blocks.begin(); it != blocks.end(); ++it) {
+    // handle collections
+    if (it == blocks.begin()) {
+      // copy collection info over
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        res->setDocumentCollection(col, (*it)->getDocumentCollection(col));
       }
-      (*it)->eraseAll();
-      pos += (*it)->size();
     }
-  }
-  catch (...) {
-    delete res;
-    throw;
+    else {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        TRI_ASSERT(res->getDocumentCollection(col) ==
+                   (*it)->getDocumentCollection(col));
+      }
+    }
+
+    TRI_ASSERT((*it) != res.get());
+    size_t const n = (*it)->size();
+    for (size_t row = 0; row < n; ++row) {
+      for (RegisterId col = 0; col < nrRegs; ++col) {
+        // copy over value
+        if (! (*it)->getValueReference(row, col).isEmpty()) {
+          res->setValue(pos + row, col, (*it)->getValue(row, col));
+        }
+      }
+    }
+    (*it)->eraseAll();
+    pos += (*it)->size();
   }
 
-  return res;
+  return res.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
