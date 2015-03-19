@@ -2305,6 +2305,11 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
     delete document;
     return nullptr;
   }
+        
+  // remove the temporary file
+  char* tmpfile = TRI_Concatenate2File(collection->_directory, ".tmp");
+  TRI_UnlinkFile(tmpfile);
+  TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
 
   TransactionBase trx(true);  // just to protect the following call
   TRI_ASSERT(document->getShaper() != nullptr);  // ONLY IN COLLECTION CREATION, PROTECTED by trx here

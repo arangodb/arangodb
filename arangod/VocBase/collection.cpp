@@ -1055,8 +1055,12 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  // use a temporary directory first. this saves us from leaving an empty directory
+  // behind, an the server refusing to start
+  char* tmpname = TRI_Concatenate2String(filename, ".tmp");
+
   // create directory
-  int res = TRI_CreateDirectory(filename);
+  int res = TRI_CreateDirectory(tmpname);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create collection '%s' in directory '%s': %s",
@@ -1064,10 +1068,66 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
               path,
               TRI_errno_string(res));
 
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return nullptr;
   }
+
+  TRI_IF_FAILURE("CreateCollection::tempDirectory") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return nullptr;
+  }
+
+  // create a temporary file
+  char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
+  res = TRI_WriteFile(tmpfile, "", 0);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  
+  TRI_IF_FAILURE("CreateCollection::tempFile") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return nullptr;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot create collection '%s' in directory '%s': %s",
+              parameters->_name,
+              path,
+              TRI_errno_string(res));
+    TRI_RemoveDirectory(tmpname);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return nullptr;
+  }
+  
+  TRI_IF_FAILURE("CreateCollection::renameDirectory") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return nullptr;
+  }
+
+  res = TRI_RenameFile(tmpname, filename);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot create collection '%s' in directory '%s': %s",
+              parameters->_name,
+              path,
+              TRI_errno_string(res));
+    TRI_RemoveDirectory(tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return nullptr;
+  }
+    
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+
+  // now we have the collection directory in place with the correct name and a .tmp file in it
+
 
   // create collection structure
   if (collection == nullptr) {
@@ -1549,7 +1609,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   int res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot load collection parameter '%s': %s", path, TRI_last_error());
+    LOG_ERROR("cannot load collection parameter file '%s': %s", path, TRI_last_error());
     return nullptr;
   }
 
