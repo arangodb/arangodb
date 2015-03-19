@@ -36,24 +36,20 @@
 #include "Basics/StringUtils.h"
 
 using namespace std;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class V8Completer
 // -----------------------------------------------------------------------------
 
-bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t column) {
-  char const* ptr;
-  char const* end;
-  int openParen;
-  int openBrackets;
-  int openBraces;
+bool V8Completer::isComplete (std::string const& source, size_t lineno, size_t column) {
+  int openParen    = 0;
+  int openBrackets = 0;
+  int openBraces   = 0;
+  int openStrings  = 0;  // only used for template strings, which can be multi-line
+  int openComments = 0;
 
-
-  openParen = 0;
-  openBrackets = 0;
-  openBraces = 0;
-
-  ptr = source.c_str();
-  end = ptr + source.length();
+  char const* ptr = source.c_str();
+  char const* end = ptr + source.length();
   state = NORMAL;
 
   while (ptr < end) {
@@ -92,9 +88,32 @@ bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t co
 
       ++ptr;
     }
+    else if (state == BACKTICK) {
+      if (*ptr == '\\') {
+        state = BACKTICK_ESC;
+      }
+      else if (*ptr == '`') {
+        state = NORMAL;
+        --openStrings;
+      }
+
+      ++ptr;
+    }
+    else if (state == BACKTICK_ESC) {
+      state = BACKTICK;
+      ptr++;
+    }
+    else if (state == MULTI_COMMENT) {
+      if (*ptr == '*') {
+        state = MULTI_COMMENT_1;
+      }
+
+      ++ptr;
+    }
     else if (state == MULTI_COMMENT_1) {
       if (*ptr == '/') {
         state = NORMAL;
+        --openComments;
       }
 
       ++ptr;
@@ -104,17 +123,20 @@ bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t co
 
       if (ptr == end) {
         state = NORMAL;
+        --openComments;
       }
     }
     else if (state == NORMAL_1) {
       switch (*ptr) {
         case '/':
           state = SINGLE_COMMENT;
+          ++openComments;
           ++ptr;
           break;
 
         case '*':
           state = MULTI_COMMENT;
+          ++openComments;
           ++ptr;
           break;
 
@@ -131,6 +153,11 @@ bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t co
 
         case '\'':
           state = SINGLE_QUOTE;
+          break;
+
+        case '`':
+          state = BACKTICK;
+          ++openStrings;
           break;
 
         case '/':
@@ -170,14 +197,15 @@ bool V8Completer::isComplete(std::string const& source, size_t lineno, size_t co
     }
   }
 
-  return openParen <= 0 && openBrackets <= 0 && openBraces <= 0;
+  return (openParen <= 0 && openBrackets <= 0 && openBraces <= 0 && openStrings <= 0 && openComments <= 0);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief  computes all strings which begins with the given text
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Completer::getAlternatives(char const * text, vector<string> & result) {
+void V8Completer::getAlternatives (char const * text, 
+                                   std::vector<std::string>& result) {
   // locate global object or sub-object
   v8::Isolate* isolate = v8::Isolate::GetCurrent();
 
@@ -245,24 +273,30 @@ void V8Completer::getAlternatives(char const * text, vector<string> & result) {
   }
 
   // locate
-  if (! properties.IsEmpty()) {
-    const uint32_t n = properties->Length();
+  try {
+    if (! properties.IsEmpty()) {
+      uint32_t const n = properties->Length();
+      result.reserve(static_cast<size_t>(n));
 
-    for (uint32_t i = 0;  i < n;  ++i) {
-      v8::Handle<v8::Value> v = properties->Get(i);
+      for (uint32_t i = 0;  i < n;  ++i) {
+        v8::Handle<v8::Value> v = properties->Get(i);
 
-      TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
-      char const* s = *str;
+        TRI_Utf8ValueNFC str(TRI_UNKNOWN_MEM_ZONE, v);
+        char const* s = *str;
 
-      if (s != 0 && *s) {
-        string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
-        string name = path + s + suffix;
+        if (s != nullptr && *s) {
+          string suffix = (current->Get(v)->IsFunction()) ? "()" : "";
+          string name = path + s + suffix;
 
-        if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
-          result.push_back(name);
+          if (*prefix == '\0' || TRI_IsPrefixString(s, prefix)) {
+            result.emplace_back(name);
+          }
         }
       }
     }
+  }
+  catch (...) {
+    // ignore errors in case of OOM
   }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, prefix);
@@ -295,8 +329,8 @@ V8LineEditor::~V8LineEditor () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
-//
-void V8LineEditor::initializeShell() {
+
+void V8LineEditor::initializeShell () {
   ShellImplFactory factory;
   _shellImpl = factory.buildShell(_history, &_completer);
 }

@@ -66,20 +66,17 @@ namespace {
     if (currentIndex < result.size()) {
       return TRI_SystemDuplicateString(result[currentIndex++].c_str());
     }
-    else {
-      currentIndex = 0;
-      result.clear();
-      return 0;
-    }
+      
+    currentIndex = 0;
+    result.clear();
+    return nullptr;
   }
 
   static char** AttemptedCompletion (char const* text, int start, int end) {
-    char** result;
-
-    result = rl_completion_matches(text, CompletionGenerator);
+    char** result = rl_completion_matches(text, CompletionGenerator);
     rl_attempted_completion_over = true;
 
-    if (result != 0 && result[0] != 0 && result[1] == 0) {
+    if (result != nullptr && result[0] != nullptr && result[1] == nullptr) {
       size_t n = strlen(result[0]);
 
       if (result[0][n - 1] == ')') {
