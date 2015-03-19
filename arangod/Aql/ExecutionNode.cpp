@@ -311,16 +311,14 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonvarsUsedLater.size();
   _varsUsedLater.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto oneVarUsedLater = new Variable(jsonvarsUsedLater.at(i));
+    std::unique_ptr<Variable> oneVarUsedLater(new Variable(jsonvarsUsedLater.at(i)));
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
-      delete oneVarUsedLater;
       std::string errmsg = "varsUsedLater: ID not found in all-list: " + StringUtils::itoa(oneVarUsedLater->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
     _varsUsedLater.insert(oneVariable);
-    delete oneVarUsedLater;
   }
 
   auto jsonvarsValidList = json.get("varsValid");
@@ -331,15 +329,14 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   len = jsonvarsValidList.size();
   _varsValid.reserve(len);
   for (size_t i = 0; i < len; i++) {
-    auto oneVarValid = new Variable(jsonvarsValidList.at(i));
+    std::unique_ptr<Variable> oneVarValid(new Variable(jsonvarsValidList.at(i)));
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
+
     if (oneVariable == nullptr) {
-      delete oneVarValid;
       std::string errmsg = "varsValid: ID not found in all-list: " + StringUtils::itoa(oneVarValid->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
     _varsValid.insert(oneVariable);
-    delete oneVarValid;
   }
 }
 
@@ -372,6 +369,8 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
                                  ExecutionPlan* plan,
                                  bool withDependencies,
                                  bool withProperties) const {
+  plan->registerNode(other);
+
   if (withProperties) {
     other->_regsToClear = _regsToClear;
     other->_depth = _depth;
@@ -392,6 +391,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
       TRI_ASSERT(var != nullptr);
       other->_varsValid.insert(var);
     }
+
     if (_registerPlan.get() != nullptr) {
       auto otherRegisterPlan = std::shared_ptr<RegisterPlan>(_registerPlan->clone(plan, _plan));
       other->_registerPlan = otherRegisterPlan;
@@ -406,7 +406,6 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     other->_varsValid = _varsValid;
     other->_registerPlan = _registerPlan;
   }
-  plan->registerNode(other);
 
   if (withDependencies) {
     cloneDependencies(plan, other, withProperties);
@@ -424,8 +423,8 @@ void ExecutionNode::cloneDependencies (ExecutionPlan* plan,
   while (it != _dependencies.end()) {
     auto c = (*it)->clone(plan, true, withProperties);
     try {
-      c->_parents.push_back(theClone);
-      theClone->_dependencies.push_back(c);
+      c->_parents.emplace_back(theClone);
+      theClone->_dependencies.emplace_back(c);
     }
     catch (...) {
       delete c;

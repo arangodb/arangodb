@@ -319,7 +319,13 @@ void Collection::fillIndexesDBServer () const {
       // assign the found local index
       idx->setInternals(data);
 
-      indexes.push_back(idx);
+      try {
+        indexes.emplace_back(idx);
+      }
+      catch (...) {
+        delete idx;
+        throw;
+      }
     }
   }
 }
