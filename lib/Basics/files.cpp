@@ -896,7 +896,7 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile (char const* old, char const* filename, long *systemError, std::string *systemErrorStr) {
+int TRI_RenameFile (char const* old, char const* filename, long* systemError, std::string* systemErrorStr) {
   int res;
   TRI_ERRORBUF;
 #ifdef _WIN32
