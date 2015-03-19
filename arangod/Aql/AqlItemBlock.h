@@ -128,6 +128,7 @@ namespace triagens {
             _valueCount.emplace(std::make_pair(value, 1));
           }
           else {
+            TRI_ASSERT_EXPENSIVE(it->second > 0);
             it->second++;
           }
         }

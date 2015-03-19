@@ -176,6 +176,8 @@ void AqlItemBlock::destroy () {
       try {   // can find() really throw???
         auto it = _valueCount.find(_data[i]);
         if (it != _valueCount.end()) { // if we know it, we are still responsible
+          TRI_ASSERT_EXPENSIVE(it->second > 0);
+
           if (--(it->second) == 0) {
             _data[i].destroy();
             try {
@@ -221,6 +223,8 @@ void AqlItemBlock::shrink (size_t nrItems) {
       if (! a.isEmpty()) {
         auto it = _valueCount.find(a);
         if (it != _valueCount.end()) {
+          TRI_ASSERT_EXPENSIVE(it->second > 0);
+
           if (--it->second == 0) {
             a.destroy();
             try {
@@ -251,6 +255,8 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
       if (! a.isEmpty()) {
         auto it = _valueCount.find(a);
         if (it != _valueCount.end()) {
+          TRI_ASSERT_EXPENSIVE(it->second > 0);
+
           if (--it->second == 0) {
             a.destroy();
             try {

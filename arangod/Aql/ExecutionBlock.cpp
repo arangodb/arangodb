@@ -2446,12 +2446,12 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
       try {
         result->setValue(i, _outReg, a);
-        throwIfKilled(); // check if we were aborted
       }
       catch (...) {
         a.destroy();
         throw;
       }
+      throwIfKilled(); // check if we were aborted
     }
   }
 }
