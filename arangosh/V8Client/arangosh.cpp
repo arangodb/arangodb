@@ -1598,9 +1598,9 @@ static void RunShell (v8::Isolate* isolate, v8::Handle<v8::Context> context, boo
     }
 
 #ifdef __APPLE__
-  if (VoiceMode && promptError) {
-    system("say -v 'whisper' 'oh, no' &");
-  }
+    if (VoiceMode && promptError) {
+      system("say -v 'whisper' 'oh, no' &");
+    }
 #endif
 
     char* input = Console->prompt(promptError ? badPrompt.c_str() : goodPrompt.c_str());
@@ -2238,35 +2238,35 @@ int warmupEnvironment (v8::Isolate *isolate,
   return EXIT_SUCCESS;
 }
 
-int run(v8::Isolate *isolate, eRunMode runMode, bool promptError) {
+int run (v8::Isolate* isolate, eRunMode runMode, bool promptError) {
   auto context = isolate->GetCurrentContext();
   bool ok = false;
   try {
     switch (runMode) {
-    case eInteractive: 
-       RunShell(isolate, context, promptError);
-       ok = true; /// TODO
-      break;
-    case eExecuteScript:
-      // we have scripts to execute
-      ok = RunScripts(isolate, context, ExecuteScripts, true);
-      break;
-    case eExecuteString:
-      // we have string to execute
-      ok = RunString(isolate, context, ExecuteString);
-      break;
-    case eCheckScripts:
-      // we have scripts to syntax check
-      ok = RunScripts(isolate, context, CheckScripts, false);
-      break;
-    case eUnitTests:
-      // we have unit tests
-      ok = RunUnitTests(isolate, context);
-      break;
-    case eJsLint:
-      // we don't have unittests, but we have files to jslint
-      ok = RunJsLint(isolate, context);
-      break;
+      case eInteractive: 
+        RunShell(isolate, context, promptError);
+        ok = true; /// TODO
+        break;
+      case eExecuteScript:
+        // we have scripts to execute
+        ok = RunScripts(isolate, context, ExecuteScripts, true);
+        break;
+      case eExecuteString:
+        // we have string to execute
+        ok = RunString(isolate, context, ExecuteString);
+        break;
+      case eCheckScripts:
+        // we have scripts to syntax check
+        ok = RunScripts(isolate, context, CheckScripts, false);
+        break;
+      case eUnitTests:
+        // we have unit tests
+        ok = RunUnitTests(isolate, context);
+        break;
+      case eJsLint:
+        // we don't have unittests, but we have files to jslint
+        ok = RunJsLint(isolate, context);
+        break;
     }
   }
   catch (std::exception const& ex) {
