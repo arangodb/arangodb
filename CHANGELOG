@@ -1,3 +1,9 @@
+v2.4.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1282: Geo WITHIN_RECTANGLE for nested lat/lng 
+
+
 v2.4.6 (2015-03-18)
 -------------------
 
