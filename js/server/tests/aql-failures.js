@@ -1,4 +1,4 @@
-/*jshint strict: true, maxlen: 200 */
+/*jshint strict: true, maxlen: 400 */
 /*global require, fail, assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ function ahuacatlFailureSuite () {
   "use strict";
   var cn = "UnitTestsAhuacatlFailures";
   var c;
-  var count = 2000;
+  var count = 5000;
         
   var assertFailingQuery = function (query) {
     try {
@@ -53,9 +53,6 @@ function ahuacatlFailureSuite () {
       fail();
     }
     catch (err) {
-      if (err.errorNum === undefined) {
-        require("internal").print("\nERROR: ", query, err, "\n");
-      }
       assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
     }
   };
@@ -101,34 +98,30 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testSingletonBlock1 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSome");
-      assertFailingQuery("LET a = 1 FOR i IN 1..10 RETURN a");
-      assertFailingQuery("FOR i IN " + c.name() + " RETURN 1");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testSingletonBlock2 : function () {
       internal.debugSetFailAt("SingletonBlock::getOrSkipSomeSet");
-      assertFailingQuery("FOR i IN 1..10 RETURN 1");
-      assertFailingQuery("FOR i IN " + c.name() + " RETURN 1");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testReturnBlock : function () {
-      internal.debugSetFailAt("ReturnBlock::getOrSkipSome");
-      assertFailingQuery("RETURN 1");
-      assertFailingQuery("FOR i IN 1..10 RETURN 1");
-      assertFailingQuery("FOR i IN " + c.name() + " RETURN 1");
+      internal.debugSetFailAt("ReturnBlock::getSome");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,25 +147,23 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testSortBlock3 : function () {
       internal.debugSetFailAt("SortBlock::doSortingCache");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
+      c.ensureSkiplist("value");
+      assertFailingQuery("FOR v IN " + c.name() + " LIMIT 2 FOR w IN " + c.name() + " SORT v.value RETURN [v.value]");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testSortBlock4 : function () {
       internal.debugSetFailAt("SortBlock::doSortingNext1");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i._key SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value SORT key RETURN key");
-      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 SORT key RETURN key");
+      c.ensureSkiplist("value");
+      assertFailingQuery("FOR v IN " + c.name() + " LIMIT 2 FOR w IN " + c.name() + " SORT v.value RETURN [v.value]");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -187,43 +178,39 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testFilterBlock1 : function () {
       internal.debugSetFailAt("FilterBlock::getOrSkipSome1");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 7 RETURN i");
-      assertFailingQuery("FOR i IN 1..10000 FILTER i.value % 4 == 0 RETURN i");
+      assertFailingQuery("FOR c IN " + c.name() + " FILTER c.value >= 40 FILTER c.value <= 9999 LIMIT 50, 5 RETURN c");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testFilterBlock2 : function () {
       internal.debugSetFailAt("FilterBlock::getOrSkipSome2");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 7 RETURN i");
-      assertFailingQuery("FOR i IN 1..10000 FILTER i.value % 4 == 0 RETURN i");
+      assertFailingQuery("LET doc = { \"_id\": \"test/76689250173\", \"_rev\": \"76689250173\", \"_key\": \"76689250173\", \"test1\": \"something\", \"test2\": { \"DATA\": [ \"other\" ] } } FOR attr IN ATTRIBUTES(doc) LET prop = doc[attr] FILTER HAS(prop, 'DATA') RETURN [ attr, prop.DATA ]"); 
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testFilterBlock3 : function () {
       internal.debugSetFailAt("FilterBlock::getOrSkipSome3");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 7 RETURN i");
-      assertFailingQuery("FOR i IN 1..10000 FILTER i.value % 4 == 0 RETURN i");
+      assertFailingQuery("FOR i IN [1,2,3,4] FILTER i IN [1,2,3,4] RETURN i");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testFilterBlock4 : function () {
       internal.debugSetFailAt("FilterBlock::getOrSkipSomeConcatenate");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 7 RETURN i");
-      assertFailingQuery("FOR i IN 1..10000 FILTER i.value % 4 == 0 RETURN i");
+      assertFailingQuery("FOR c IN " + c.name() + " FILTER c.value >= 20 && c.value < 30 LIMIT 0, 10 SORT c.value RETURN c");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -250,32 +237,29 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testCalculationBlock2 : function () {
       internal.debugSetFailAt("CalculationBlock::executeExpression");
-      assertFailingQuery("FOR i IN " + c.name() + " LET v = i RETURN v");
       assertFailingQuery("FOR i IN " + c.name() + " LET v = CONCAT(i._key, 'foo') RETURN v");
-      assertFailingQuery("FOR i IN " + c.name() + " LET v = i._key RETURN v");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testEnumerateListBlock1 : function () {
       internal.debugSetFailAt("EnumerateListBlock::getSome");
       assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x");
       assertFailingQuery("FOR i IN 1..10000 RETURN i");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
     testEnumerateListBlock2 : function () {
       internal.debugSetFailAt("EnumerateListBlock::getAqlValue");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x");
-      assertFailingQuery("FOR i IN 1..10000 RETURN i");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,6 +268,7 @@ function ahuacatlFailureSuite () {
 
     testSubqueryBlock1 : function () {
       internal.debugSetFailAt("SubqueryBlock::getSome");
+      assertFailingQuery("FOR year IN [ 2010, 2011, 2012 ] LET quarters = ((FOR q IN [ 1, 2, 3, 4 ] RETURN q)) RETURN LENGTH(quarters)");
       assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values RETURN x");
       assertFailingQuery("LET values = (FOR i IN 1..10000 RETURN i) FOR x IN values RETURN x");
     },
@@ -301,12 +286,12 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testExecutionBlock1 : function () {
       internal.debugSetFailAt("ExecutionBlock::inheritRegisters");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value > 10 LIMIT 99 RETURN CONCAT(i, 'foo')");
+      assertFailingQuery("FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == 10 && i.value == j.value RETURN i.value");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,23 +308,37 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testExecutionBlock3 : function () {
-      internal.debugSetFailAt("ExecutionBlock::getOrSkipSome");
-      assertFailingQuery("FOR i IN 1..10000 FILTER i.value % 4 == 0 LIMIT 9999 RETURN CONCAT(i, 'foo')");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values LIMIT 9999 RETURN x");
-      assertFailingQuery("FOR i IN " + c.name() + " FILTER i.value2 == 9 COLLECT key = i._key LIMIT 9999 RETURN key");
+      internal.debugSetFailAt("ExecutionBlock::getOrSkipSome1");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT 0,4 RETURN u");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testExecutionBlock4 : function () {
-      internal.debugSetFailAt("ExecutionBlock::getOrSkipSomeConcatenate");
-      assertFailingQuery("FOR i IN 1..10000 FILTER i.value % 4 == 0 LIMIT 9999 RETURN CONCAT(i, 'foo')");
-      assertFailingQuery("LET values = (FOR i IN " + c.name() + " RETURN i) FOR x IN values LIMIT 9999 RETURN x");
-      assertFailingQuery("FOR i IN " + c.name() + " LIMIT 99999 COLLECT key = i._key LIMIT 9999 RETURN key");
+      internal.debugSetFailAt("ExecutionBlock::getOrSkipSome2");
+      assertFailingQuery("FOR u in " + c.name() + " SORT u.id DESC LIMIT " + (count - 1) + ",100 RETURN u");
     },
-*/
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test failure
+////////////////////////////////////////////////////////////////////////////////
+
+    testExecutionBlock5 : function () {
+      internal.debugSetFailAt("ExecutionBlock::getOrSkipSome3");
+      assertFailingQuery("FOR i IN [1,2,3,4] FILTER i IN [1,2,3,4] RETURN i");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test failure
+////////////////////////////////////////////////////////////////////////////////
+    
+    testExecutionBlock6 : function () {
+      internal.debugSetFailAt("ExecutionBlock::getOrSkipSomeConcatenate");
+      assertFailingQuery("FOR c IN UnitTestsAhuacatlFailures FILTER c.value >= 40 FILTER c.value <= 9999 LIMIT 50, 5 RETURN c");
+    },
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,23 +372,23 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testIndexRangeBlock3 : function () {
-      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value");
       internal.debugSetFailAt("IndexRangeBlock::sortConditions");
-      assertFailingQuery("FOR j IN 1..10 FOR k IN 1..2 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value2 == k RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FOR j IN " + c.name() + " FILTER i.value == j.value && 10 == i.value RETURN i.value");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+    
     testIndexRangeBlock4 : function () {
-      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value1", "value2");
       internal.debugSetFailAt("IndexRangeBlock::sortConditionsInner");
-      assertFailingQuery("FOR j IN 1..10 FOR k IN 1..2 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value2 == k RETURN i");
+      assertFailingQuery("FOR i IN " + c.name() + " FILTER (i.value1 == 30 || i.value1 == 29 || i.value1 == 32) && (i.value2 == 32 || i.value2 == 29 || i.value2 == 30 || i.value2 == 35) SORT i.value1, i.value2 RETURN [ i.value1, i.value2 ]");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
@@ -403,13 +402,13 @@ function ahuacatlFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
-/* TODO: make this test throw errors!
+
     testIndexRangeBlock6 : function () {
-      c.ensureHashIndex("value", "value2");
+      c.ensureSkiplist("value");
       internal.debugSetFailAt("IndexRangeBlock::andCombineRangeInfoVecs");
-      assertFailingQuery("FOR j IN 1..10 FOR k IN 1..2 FOR i IN " + c.name() + " FILTER i.value == j FILTER i.value2 == k RETURN i");
+      assertFailingQuery("LET a = PASSTHRU('test23') FOR i IN " + c.name() + " FILTER i._key IN APPEND([ 'test23' ], a) RETURN i._key");
     },
-*/
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
