@@ -186,6 +186,10 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
         int res;
         try {
+          TRI_IF_FAILURE("Optimizer::createPlansOom") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           // all optimizer rule functions must obey the following guidelines:
           // - the original plan passed to the rule function must be deleted if and only
           //   if it has not been added (back) to the optimizer (using addPlan). 
