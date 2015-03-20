@@ -71,7 +71,6 @@ namespace triagens {
       size_t lastRow;
       size_t groupLength;
       bool rowsAreValid;
-      bool virginity;
       bool const countOnly;
 
       explicit AggregatorGroup (bool);

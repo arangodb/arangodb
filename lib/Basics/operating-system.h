@@ -730,7 +730,7 @@ typedef unsigned char bool;
 
 #define TRI_LAST_ERROR_STR              strerror(errno)
 
-#define TRI_ERRORBUF                    char windowsErrorBuf[256]
+#define TRI_ERRORBUF                    char windowsErrorBuf[256] = "";
 #define TRI_GET_ERRORBUF                windowsErrorBuf
 
 ////////////////////////////////////////////////////////////////////////////////

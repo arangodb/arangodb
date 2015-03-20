@@ -106,7 +106,7 @@ Job::status_t V8Job::work () {
     return status_t(JOB_DONE);
   }
 
-  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, true, false);
+  ApplicationV8::V8Context* context = _v8Dealer->enterContext("STANDARD", _vocbase, false);
 
   // note: the context might be 0 in case of shut-down
   if (context == nullptr) {

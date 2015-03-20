@@ -1322,28 +1322,58 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       lonLower = this._longitude2;
       lonUpper = this._longitude1;
     }
-  
+      
+    var deref = function(doc, parts) {
+      if (parts.length === 1) {
+        return doc[parts[0]];
+      }
+
+      var i = 0;
+      try {
+        while (i < parts.length && doc !== null && doc !== undefined) {
+          doc = doc[parts[i]];
+          ++i;
+        }
+        return doc;
+      }
+      catch (err) {
+        return null;
+      }
+    }; 
+
     documents = [ ];
     if (idx.type === 'geo1') {
       // geo1, we have both coordinates in a list
       var attribute = idx.fields[0];
+      var parts = attribute.split(".");
+    
       if (idx.geoJson) {
-        result.documents.forEach(function(doc) {
+        result.documents.forEach(function(document) {
+          var doc = deref(document, parts);
+          if (! Array.isArray(doc)) {
+            return;
+          }
+
           // check if within bounding rectangle
           // first list value is longitude, then latitude
-          if (doc[attribute][1] >= latLower && doc[attribute][1] <= latUpper &&
-              doc[attribute][0] >= lonLower && doc[attribute][0] <= lonUpper) {
-            documents.push(doc);
+          if (doc[1] >= latLower && doc[1] <= latUpper &&
+              doc[0] >= lonLower && doc[0] <= lonUpper) {
+            documents.push(document);
           }
         });
       }
       else {
-        result.documents.forEach(function(doc) {
+        result.documents.forEach(function(document) {
+          var doc = deref(document, parts);
+          if (! Array.isArray(doc)) {
+            return;
+          }
+
           // check if within bounding rectangle
           // first list value is latitude, then longitude
-          if (doc[attribute][0] >= latLower && doc[attribute][0] <= latUpper &&
-              doc[attribute][1] >= lonLower && doc[attribute][1] <= lonUpper) {
-            documents.push(doc);
+          if (doc[0] >= latLower && doc[0] <= latUpper &&
+              doc[1] >= lonLower && doc[1] <= lonUpper) {
+            documents.push(document);
           }
         });
       }
@@ -1351,11 +1381,23 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     else {
       // geo2, we have dedicated latitude and longitude attributes
       var latAtt = idx.fields[0], lonAtt = idx.fields[1];
-      result.documents.forEach(function(doc) {
+      var latParts = latAtt.split(".");
+      var lonParts = lonAtt.split(".");
+
+      result.documents.forEach(function(document) {
+        var latDoc = deref(document, latParts);
+        if (latDoc === null || latDoc === undefined) {
+          return;
+        }
+        var lonDoc = deref(document, lonParts);
+        if (lonDoc === null || lonDoc === undefined) {
+          return;
+        }
+
         // check if within bounding rectangle
-        if (doc[latAtt] >= latLower && doc[latAtt] <= latUpper &&
-            doc[lonAtt] >= lonLower && doc[lonAtt] <= lonUpper) {
-          documents.push(doc);
+        if (latDoc >= latLower && latDoc <= latUpper &&
+            lonDoc >= lonLower && lonDoc <= lonUpper) {
+          documents.push(document);
         }
       });
     }

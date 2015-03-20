@@ -137,7 +137,7 @@ bool ServerJob::execute () {
     return false;
   }
 
-  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, false, true);
+  ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true);
 
   if (context == nullptr) {
     TRI_ReleaseDatabaseServer(_server, vocbase);

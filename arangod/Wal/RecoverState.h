@@ -216,7 +216,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       TRI_vocbase_col_t* useCollection (TRI_vocbase_t*,
-                                        TRI_voc_cid_t);
+                                        TRI_voc_cid_t,
+                                        int&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up a collection
@@ -319,6 +320,7 @@ namespace triagens {
 
       TRI_doc_update_policy_t                                                     policy;
       bool                                                                        ignoreRecoveryErrors;
+      int64_t                                                                     errorCount;
     };
 
   }

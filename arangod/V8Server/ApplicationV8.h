@@ -313,7 +313,6 @@ namespace triagens {
 
         V8Context* enterContext (std::string const& name,
                                  TRI_vocbase_s*,
-                                 bool initialise,
                                  bool useDatabase);
 
 ////////////////////////////////////////////////////////////////////////////////
