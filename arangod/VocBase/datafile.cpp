@@ -131,14 +131,15 @@ static int TruncateDatafile (TRI_datafile_t* const datafile, const off_t length)
   }
 
   // for anonymous regions, this is a non-op
-  return 0;
+  return TRI_ERROR_NO_ERROR;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks a CRC of a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckCrcMarker (TRI_df_marker_t const* marker) {
+static bool CheckCrcMarker (TRI_df_marker_t const* marker,
+                            char const* end) {
   TRI_voc_size_t zero = 0;
   off_t o = offsetof(TRI_df_marker_t, _crc);
   size_t n = sizeof(TRI_voc_crc_t);
@@ -146,6 +147,10 @@ static bool CheckCrcMarker (TRI_df_marker_t const* marker) {
   char const* ptr = (char const*) marker;
 
   if (marker->_size < sizeof(TRI_df_marker_t)) {
+    return false;
+  }
+  
+  if (reinterpret_cast<char const*>(marker) + marker->_size > end) {
     return false;
   }
 
@@ -168,18 +173,21 @@ static bool CheckCrcMarker (TRI_df_marker_t const* marker) {
 
 static int CreateSparseFile (char const* filename,
                              const TRI_voc_size_t maximalSize) {
+  TRI_ERRORBUF;
   TRI_lseek_t offset;
   char zero;
   ssize_t res;
   int fd;
 
   // open the file
-  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+  fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP);
 
   if (fd < 0) {
+    TRI_SYSTEM_ERROR();
+
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_last_error());
+    LOG_ERROR("cannot create datafile '%s': %s", filename, TRI_GET_ERRORBUF);
     return -1;
   }
 
@@ -187,13 +195,14 @@ static int CreateSparseFile (char const* filename,
   offset = TRI_LSEEK(fd, (TRI_lseek_t) (maximalSize - 1), SEEK_SET);
 
   if (offset == (TRI_lseek_t) -1) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot seek in datafile '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot seek in datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
     return -1;
   }
 
@@ -201,13 +210,14 @@ static int CreateSparseFile (char const* filename,
   res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
     return -1;
   }
 
@@ -281,6 +291,7 @@ static void InitDatafile (TRI_datafile_t* datafile,
 
 static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
                                     TRI_voc_size_t vocSize) {
+  TRI_ERRORBUF;
   char* oldname;
   char zero;
   int res;
@@ -305,7 +316,8 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   int fd = TRI_CREATE(filename, O_CREAT | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
 
   if (fd < 0) {
-    LOG_ERROR("cannot create new datafile '%s': '%s'", filename, TRI_last_error());
+    TRI_SYSTEM_ERROR();
+    LOG_ERROR("cannot create new datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
@@ -315,13 +327,14 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   TRI_lseek_t offset = TRI_LSEEK(fd, (TRI_lseek_t) (maximalSize - 1), SEEK_SET);
 
   if (offset == (TRI_lseek_t) -1) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot seek in new datafile '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot seek in new datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_ERROR_SYS_ERROR;
@@ -331,13 +344,14 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot create sparse datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_ERROR_SYS_ERROR;
@@ -347,13 +361,14 @@ static int TruncateAndSealDatafile (TRI_datafile_t* datafile,
   res = TRI_MMFile(0, maximalSize, PROT_WRITE | PROT_READ, MAP_SHARED, fd, &mmHandle, 0, &data);
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(res);
     TRI_CLOSE(fd);
 
     // remove empty file
     TRI_UnlinkFile(filename);
 
-    LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot memory map file '%s': '%s'", filename, TRI_GET_ERRORBUF);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return TRI_errno();
@@ -508,7 +523,7 @@ static TRI_df_scan_t ScanDatafile (TRI_datafile_t const* datafile) {
       return scan;
     }
 
-    ok = CheckCrcMarker(marker);
+    ok = CheckCrcMarker(marker, end);
 
     if (! ok) {
       entry._status = 5;
@@ -650,9 +665,30 @@ static bool CheckDatafile (TRI_datafile_t* datafile,
     }
 
     if (marker->_type != 0) {
-      bool ok = CheckCrcMarker(marker);
+      bool ok = CheckCrcMarker(marker, end);
 
       if (! ok) {
+        if (marker->_size > 0) {
+          auto next = reinterpret_cast<char const*>(marker) + marker->_size;
+          if (next < end) {
+            // check if the rest of the datafile is only followed by NULL bytes
+            bool isFollowedByNullBytes = true;
+            while (next < end) {
+              if (*next != '\0') {
+                isFollowedByNullBytes = false;
+                break;
+              }
+              ++next;
+            }
+
+            if (isFollowedByNullBytes) {
+              // only last marker in datafile was corrupt. fix the datafile in place
+              LOG_WARNING("datafile '%s' automatically truncated at last marker", datafile->getName(datafile));
+              ignoreFailures = true;
+            }
+          }
+        }
+
         if (ignoreFailures) {
           return FixDatafile(datafile, currentSize);
         }
@@ -753,6 +789,7 @@ static int WriteInitialHeaderMarker (TRI_datafile_t* datafile,
 
 static TRI_datafile_t* OpenDatafile (char const* filename,
                                      bool ignoreErrors) {
+  TRI_ERRORBUF;
   TRI_voc_size_t size;
   TRI_voc_fid_t fid;
   bool ok;
@@ -777,9 +814,10 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   fd = TRI_OPEN(filename, O_RDWR);
 
   if (fd < 0) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
-    LOG_ERROR("cannot open datafile '%s': '%s'", filename, TRI_last_error());
+    LOG_ERROR("cannot open datafile '%s': '%s'", filename, TRI_GET_ERRORBUF);
 
     return nullptr;
   }
@@ -788,10 +826,11 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
   res = TRI_FSTAT(fd, &status);
 
   if (res < 0) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
-    LOG_ERROR("cannot get status of datafile '%s': %s", filename, TRI_last_error());
+    LOG_ERROR("cannot get status of datafile '%s': %s", filename, TRI_GET_ERRORBUF);
 
     return nullptr;
   }
@@ -820,9 +859,11 @@ static TRI_datafile_t* OpenDatafile (char const* filename,
     TRI_CLOSE(fd);
     return nullptr;
   }
+  
+  char const* end = static_cast<char const*>(ptr) + len;
 
   // check CRC
-  ok = CheckCrcMarker(&header.base);
+  ok = CheckCrcMarker(&header.base, end);
 
   if (! ok) {
     TRI_set_errno(TRI_ERROR_ARANGO_CORRUPTED_DATAFILE);

@@ -487,6 +487,23 @@ bool TRI_ExistsFile (char const* path) {
 
 #endif
 
+
+int TRI_ChMod (char const* path, long mode, std::string& err) {
+  int res;
+#ifdef _WIN32
+  res = _chmod(path, static_cast<int>(mode));
+#else
+  res = chmod(path, mode);
+#endif
+
+  if (res != 0) {
+    err = "error setting desired mode " + std::to_string(mode) + " for file " + path + ": " + strerror(errno);
+    return errno;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last modification date of a file
 ////////////////////////////////////////////////////////////////////////////////
@@ -896,7 +913,7 @@ TRI_vector_string_t TRI_FullTreeDirectory (char const* path) {
 /// @brief renames a file
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_RenameFile (char const* old, char const* filename, long *systemError, std::string *systemErrorStr) {
+int TRI_RenameFile (char const* old, char const* filename, long* systemError, std::string* systemErrorStr) {
   int res;
   TRI_ERRORBUF;
 #ifdef _WIN32
@@ -1123,6 +1140,7 @@ char* TRI_SlurpFile (TRI_memory_zone_t* zone,
 #ifdef TRI_HAVE_WIN32_FILE_LOCKING
 
 int TRI_CreateLockFile (char const* filename) {
+  TRI_ERRORBUF;
   BOOL r;
   DWORD len;
   HANDLE fd;
@@ -1141,6 +1159,8 @@ int TRI_CreateLockFile (char const* filename) {
   fd = CreateFile(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 
   if (fd == INVALID_HANDLE_VALUE) {
+    TRI_SYSTEM_ERROR();
+    LOG_ERROR("cannot create Lockfile '%s': %s", filename, TRI_GET_ERRORBUF);
     return TRI_set_errno(TRI_ERROR_SYS_ERROR);
   }
 
@@ -1150,6 +1170,8 @@ int TRI_CreateLockFile (char const* filename) {
   r = WriteFile(fd, buf, (unsigned int) strlen(buf), &len, NULL);
 
   if (! r || len != strlen(buf)) {
+    TRI_SYSTEM_ERROR();
+    LOG_ERROR("cannot write Lockfile '%s': %s", filename, TRI_GET_ERRORBUF);
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, buf);
@@ -1169,6 +1191,8 @@ int TRI_CreateLockFile (char const* filename) {
   r = LockFileEx(fd, LOCKFILE_EXCLUSIVE_LOCK | LOCKFILE_FAIL_IMMEDIATELY, 0, 0, 128, &ol);
 
   if (! r) {
+    TRI_SYSTEM_ERROR();
+    LOG_ERROR("cannot set Lockfile status '%s': %s", filename, TRI_GET_ERRORBUF);
     res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
 
     CloseHandle(fd);

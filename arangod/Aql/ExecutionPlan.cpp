@@ -147,13 +147,13 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
 }
 
 ExecutionPlan* ExecutionPlan::clone (Query& onThatQuery) {
-  ExecutionPlan* OtherPlan = new ExecutionPlan(onThatQuery.ast());
+  std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(onThatQuery.ast()));
 
   for (auto it: _ids) {
-    OtherPlan->registerNode(it.second->clone(OtherPlan, false, true));
+    otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
   }
 
-  return OtherPlan;
+  return otherPlan.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -313,21 +313,13 @@ CalculationNode* ExecutionPlan::createTemporaryCalculation (AstNode const* expre
   TRI_ASSERT(out != nullptr);
 
   // generate a temporary calculation node
-  auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
+  std::unique_ptr<Expression> expr(new Expression(_ast, const_cast<AstNode*>(expression)));
 
-  try {
-    auto en = new CalculationNode(this, nextId(), expr, out);
-
-    registerNode(reinterpret_cast<ExecutionNode*>(en));
-    return en;
-  }
-  
-  catch (...) {
-    // prevent memleak
-    delete expr;
-    throw;
-    // no need to delete "out" as this is automatically freed by the variables management
-  }
+  auto en = new CalculationNode(this, nextId(), expr.get(), out);
+  expr.release();
+ 
+  registerNode(reinterpret_cast<ExecutionNode*>(en));
+  return en;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,16 +490,11 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
     }
 
     // operand is some misc expression, potentially including references to other variables
-    auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
+    std::unique_ptr<Expression> expr(new Expression(_ast, const_cast<AstNode*>(expression)));
 
-    try {
-      en = registerNode(new CalculationNode(this, nextId(), expr, conditionVariable, v));
-    }
-    catch (...) {
-      // prevent memleak
-      delete expr;
-      throw;
-    }
+    auto calc = new CalculationNode(this, nextId(), expr.get(), conditionVariable, v);
+    expr.release();
+    en = registerNode(calc);
   }
     
   return addDependency(previous, en);

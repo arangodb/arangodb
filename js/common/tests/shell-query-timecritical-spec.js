@@ -93,7 +93,9 @@
     describe("with active tracking", function() {
 
       beforeEach(function() {
-        internal.debugClearFailAt();
+        if (internal.debugCanUseFailAt()) {
+          internal.debugClearFailAt();
+        }
         testee.properties({
           enabled: true,
           slowQueryThreshold: 20
@@ -102,7 +104,9 @@
       });
 
       afterEach(function() {
-        internal.debugClearFailAt();
+        if (internal.debugCanUseFailAt()) {
+          internal.debugClearFailAt();
+        }
         var list = testee.current().filter(filterQueries);
         for (var k = 0; k < list.length; ++k) {
           try {

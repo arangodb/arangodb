@@ -52,6 +52,8 @@ class V8Completer : public Completer {
     DOUBLE_QUOTE_ESC,   // from DOUBLE_QUOTE: seen a backslash
     SINGLE_QUOTE,       // from NORMAL: seen a single '
     SINGLE_QUOTE_ESC,   // from SINGLE_QUOTE: seen a backslash
+    BACKTICK,           // from NORMAL: seen a single `
+    BACKTICK_ESC,       // from BACKTICK: seen a backslash
     MULTI_COMMENT,      // from NORMAL_1: seen a *
     MULTI_COMMENT_1,    // from MULTI_COMMENT, seen a *
     SINGLE_COMMENT      // from NORMAL_1; seen a /
@@ -107,7 +109,7 @@ class V8LineEditor : public LineEditor {
 
   protected:
 
-    virtual void initializeShell();
+    virtual void initializeShell ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

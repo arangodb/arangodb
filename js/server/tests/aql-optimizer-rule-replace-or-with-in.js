@@ -1,8 +1,8 @@
 /*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE */
+/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for Ahuacatl, skiplist index queries
+/// @brief tests for Ahuacatl, replace-or-with-in rule
 ///
 /// @file
 ///
@@ -68,6 +68,7 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     setUp : function () {
+      internal.debugClearFailAt();
       internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
       replace = internal.db._create("UnitTestsNewAqlReplaceORWithINTestSuite");
 
@@ -85,8 +86,27 @@ function NewAqlReplaceORWithINTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     tearDown : function () {
+      internal.debugClearFailAt();
       internal.db._drop("UnitTestsNewAqlReplaceORWithINTestSuite");
       replace = null;
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test OOM
+////////////////////////////////////////////////////////////////////////////////
+
+    testOom : function () {
+      if (! internal.debugCanUseFailAt()) {
+        return;
+      }
+      internal.debugSetFailAt("OptimizerRules::replaceOrWithInRuleOom");
+      try {
+        AQL_EXECUTE("FOR i IN 1..10 FILTER i == 1 || i == 2 RETURN i");
+        fail();
+      }
+      catch (err) {
+        assertEqual(internal.errors.ERROR_DEBUG.code, err.errorNum);
+      }
     },
     
 ////////////////////////////////////////////////////////////////////////////////

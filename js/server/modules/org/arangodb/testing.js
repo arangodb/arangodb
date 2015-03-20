@@ -402,7 +402,7 @@ function startInstance (protocol, options, addArgs, testname) {
       }
     }
   }
-  print("up and Running in " + (time () - startTime) + " seconds");
+  print("up and running in " + (time () - startTime) + " seconds");
   if (!options.cluster && (require("internal").platform.substr(0,3) === 'win')) {
     var procdumpArgs = [
       '-accepteula',

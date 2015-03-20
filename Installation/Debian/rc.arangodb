@@ -1,5 +1,4 @@
 #!/bin/sh
-set -e
 
 ### BEGIN INIT INFO
 # Provides:          arangodb
@@ -29,26 +28,14 @@ if [ `id -u` -ne 0 ]; then
 fi
 
 start () {
-    test -d $PIDDIR || mkdir $PIDDIR
-    chown arangodb:arangodb $PIDDIR
+    [ -d $PIDDIR ] || mkdir $PIDDIR || exit 1
+    [ -d /var/run/arangodb ] || mkdir /var/run/arangodb || exit 1
 
-    if test -d /var/log/arangodb;  then
-      chown -R arangodb:arangodb /var/log/arangodb
-    fi
-
-    if test -d /var/lib/arangodb;  then
-      chown -R arangodb:arangodb /var/lib/arangodb
-    fi
-
-    if test -d /var/lib/arangodb-apps;  then
-      chown -R arangodb:arangodb /var/lib/arangodb-apps
-    fi
-
-    [ -d /var/run/arangodb ]  ||  mkdir /var/run/arangodb
-
-    if test -d /var/run/arangodb;  then
-      chown -R arangodb:arangodb /var/run/arangodb
-    fi
+    ( cd /var/log/arangodb && chown -R arangodb:arangodb . ) || exit 1
+    ( cd /var/lib/arangodb && chown -R arangodb:arangodb . ) || exit 1
+    ( cd /var/lib/arangodb-apps && chown -R arangodb:arangodb . ) || exit 1
+    ( cd /var/run/arangodb && chown -R arangodb:arangodb . ) || exit 1
+    ( cd $PIDDIR && chown arangodb:arangodb . ) || exit 1
 
     if [ "$1" = "--upgrade" ]; then
       $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server $@
@@ -58,7 +45,7 @@ start () {
       $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server --check-version
       RETVAL=$?
 
-      if test $RETVAL -eq 0;  then
+      if [ "$RETVAL" -eq 0 ];  then
         $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
 	RETVAL=$?
 	log_end_msg $RETVAL
@@ -95,6 +82,7 @@ case "$1" in
       c=`expr $c + 1`
     done
 
+    log_progress_msg "done"
     log_end_msg 0
 
     rm -f $PIDFILE

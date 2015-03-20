@@ -374,13 +374,13 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
 
     void* f = TRI_InsertKeyAssociativeSynced(&s->_shapeIds, &sid, (void*) m, false);
     if (f != nullptr) {
-      LOG_ERROR("logic error when inserting shape");
+      LOG_ERROR("logic error when inserting shape into id dictionary");
     }
     TRI_ASSERT(f == nullptr);
 
     f = TRI_InsertElementAssociativeSynced(&s->_shapeDictionary, (void*) m, false);
     if (f != nullptr) {
-      LOG_ERROR("logic error when inserting shape");
+      LOG_ERROR("logic error when inserting shape into dictionary");
     }
     TRI_ASSERT(f == nullptr);
 
@@ -794,6 +794,8 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+    
+  MUTEX_LOCKER(shaper->_shapeLock);
 
   void* f;
   f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
@@ -853,6 +855,8 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
    
   // remove an existing temporary attribute if present
   voc_shaper_t* shaper = reinterpret_cast<voc_shaper_t*>(s);
+  
+  MUTEX_LOCKER(shaper->_attributeLock);
 
   void* found;
   found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, name, (void*) marker, false);
