@@ -210,6 +210,7 @@ static int CreateSparseFile (char const* filename,
   res = TRI_WRITE(fd, &zero, 1);
 
   if (res < 0) {
+    TRI_SYSTEM_ERROR();
     TRI_set_errno(TRI_ERROR_SYS_ERROR);
     TRI_CLOSE(fd);
 
