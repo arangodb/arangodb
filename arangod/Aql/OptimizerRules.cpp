@@ -4095,7 +4095,6 @@ int triagens::aql::replaceOrWithInRule (Optimizer* opt,
         expr = new Expression(plan->getAst(), inNode);
       }
       catch (...) {
-        delete inNode;
         throw;
       }
 
