@@ -4128,6 +4128,11 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void TRI_InitV8Env (v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
+                           string const& startupPath,
+                           string const& modules);
+
 void TRI_InitV8Utils (v8::Isolate* isolate,
                       v8::Handle<v8::Context> context,
                       string const& startupPath,
@@ -4278,6 +4283,8 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"), DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PLATFORM"), TRI_V8_ASCII_STRING(TRI_PLATFORM));
+
+  TRI_InitV8Env(isolate,  context, startupPath, modules);
 }
 
 // -----------------------------------------------------------------------------
