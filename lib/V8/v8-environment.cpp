@@ -46,17 +46,17 @@ static void EnvGetter(v8::Local<v8::String> property,
   }
 #else  // _WIN32
   WCHAR buffer[32767];  // The maximum size allowed for environment variables.
-  DWORD result = GetEnvironmentVariableW(reinterpret_cast<WCHAR*>(*key),
+  DWORD result = GetEnvironmentVariableW(reinterpret_cast<const WCHAR*>(*key),
                                          buffer,
-                                         ARRAY_SIZE(buffer));
+                                         sizeof(buffer));
   // If result >= sizeof buffer the buffer was too small. That should never
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
   if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
-      result < ARRAY_SIZE(buffer)) {
+      result < sizeof(buffer)) {
     const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(buffer);
-    v8::Local<v8::String> rc = v8::String::NewFromTwoByte(env->isolate(), two_byte_buffer);
-    TRI_V8_RETURN_STD_STRING(rc);
+    auto rc = TRI_V8_STRING_UTF16(two_byte_buffer, result);
+    TRI_V8_RETURN(rc);
   }
 #endif
   // Not found.  Fetch from prototype.
@@ -181,10 +181,7 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     }
     const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(p);
     const size_t two_byte_buffer_len = s - p;
-    v8::Local<v8::String> value = v8::String::NewFromTwoByte(env->isolate(),
-                                                             two_byte_buffer,
-                                                             String::kNormalString,
-                                                             two_byte_buffer_len);
+    auto value = TRI_V8_STRING_UTF16(two_byte_buffer, (int)two_byte_buffer_len);
     envarr->Set(i++, value);
     p = s + wcslen(s) + 1;
   }
