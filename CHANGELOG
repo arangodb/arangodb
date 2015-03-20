@@ -1,6 +1,8 @@
 v2.5.1 (2015-03-19)
 -------------------
 
+* by default debian and red-hat packages are build with debug symbols
+
 * added option `--database.ignore-logfile-errors`
 
   This option controls how collection datafiles with a CRC mismatch are treated.
