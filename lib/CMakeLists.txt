@@ -205,6 +205,7 @@ add_library(
     V8/v8-json.cpp
     V8/v8-shell.cpp
     V8/v8-utils.cpp
+    V8/v8-environment.cpp
     SimpleHttpClient/GeneralClientConnection.cpp
     SimpleHttpClient/ClientConnection.cpp
     SimpleHttpClient/ConnectionManager.cpp
