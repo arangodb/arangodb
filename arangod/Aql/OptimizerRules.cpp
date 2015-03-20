@@ -4097,6 +4097,10 @@ int triagens::aql::replaceOrWithInRule (Optimizer* opt,
       Expression* expr = new Expression(plan->getAst(), inNode);
 
       try {
+        TRI_IF_FAILURE("OptimizerRules::replaceOrWithInRuleOom") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
         newNode = new CalculationNode(plan, plan->nextId(), expr, outVar[0]);
       }
       catch (...) {
