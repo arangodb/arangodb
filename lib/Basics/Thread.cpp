@@ -99,7 +99,7 @@ Thread::Thread (std::string const& name)
     _asynchronousCancelation(false),
     _thread(),
     _threadId(),
-    _finishedCondition(0),
+    _finishedCondition(nullptr),
     _started(0),
     _running(0),
     _joined(0) {
@@ -268,7 +268,7 @@ void Thread::allowAsynchronousCancelation () {
         TRI_AllowCancelation();
       }
       else {
-        LOG_ERROR("cannot change cancelation type of an already running thread from the outside");
+        LOG_ERROR("cannot change cancellation type of an already running thread from the outside");
       }
     }
     else {
@@ -305,7 +305,7 @@ void Thread::runMe () {
 
   _running = 0;
 
-  if (_finishedCondition != 0) {
+  if (_finishedCondition != nullptr) {
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
   }
