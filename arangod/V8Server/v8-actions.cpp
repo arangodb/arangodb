@@ -128,9 +128,6 @@ class v8_action_t : public TRI_action_t {
                                  void** data) {
       TRI_action_result_t result;
 
-      // determine whether we should force a re-initialistion of the engine in development mode
-      bool allowEngineReset = false;
-
       // allow use datase execution in rest calls
       extern bool ALLOW_USE_DATABASE_IN_REST_ACTIONS;
       bool allowUseDatabaseInRestActions = ALLOW_USE_DATABASE_IN_REST_ACTIONS;
@@ -139,18 +136,11 @@ class v8_action_t : public TRI_action_t {
         allowUseDatabaseInRestActions = true;
       }
 
-      // only URLs starting with /dev will trigger an engine reset
-      string const& fullUrl = request->fullUrl();
-
-      if (fullUrl.find("/dev/") == 0) {
-        allowEngineReset = true;
-      }
-
       ApplicationV8::V8Context* context = GlobalV8Dealer->enterContext(
         "STANDARD",
         vocbase,
-        ! allowEngineReset,
-        allowUseDatabaseInRestActions);
+        allowUseDatabaseInRestActions
+      );
 
       // note: the context might be 0 in case of shut-down
       if (context == nullptr) {

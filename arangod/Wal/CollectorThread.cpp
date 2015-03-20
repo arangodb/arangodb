@@ -425,11 +425,10 @@ bool CollectorThread::collectLogfiles () {
     _logfileManager->setCollectionDone(logfile);
     return true;
   }
-  else {
-    // return the logfile to the logfile manager in case of errors
-    logfile->forceStatus(Logfile::StatusType::SEALED);
-    return false;
-  }
+    
+  // return the logfile to the logfile manager in case of errors
+  _logfileManager->forceStatus(logfile, Logfile::StatusType::SEALED);
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -878,6 +877,10 @@ int CollectorThread::transferMarkers (Logfile* logfile,
       // now sync the datafile
       res = syncDatafileCollection(document);
 
+      if (res != TRI_ERROR_NO_ERROR) {
+        THROW_ARANGO_EXCEPTION(res);
+      }
+
       // note: cache is passed by reference and can be modified by queueOperations
       // (i.e. set to nullptr!)
       queueOperations(logfile, cache);
@@ -1208,6 +1211,10 @@ int CollectorThread::updateDatafileStatistics (TRI_document_collection_t* docume
 ////////////////////////////////////////////////////////////////////////////////
 
 int CollectorThread::syncDatafileCollection (TRI_document_collection_t* document) {
+  TRI_IF_FAILURE("CollectorThread::syncDatafileCollection") {
+    return TRI_ERROR_DEBUG;
+  }
+
   TRI_collection_t* collection = document;
   int res = TRI_ERROR_NO_ERROR;
 

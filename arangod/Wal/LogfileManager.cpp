@@ -1424,6 +1424,20 @@ void LogfileManager::setCollectionDone (Logfile* logfile) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief force the status of a specific logfile
+////////////////////////////////////////////////////////////////////////////////
+
+void LogfileManager::forceStatus (Logfile* logfile, 
+                                  Logfile::StatusType status) {
+  TRI_ASSERT(logfile != nullptr);
+
+  {
+    WRITE_LOCKER(_logfilesLock);
+    logfile->forceStatus(status);
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief return the current state
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1518,7 +1532,12 @@ int LogfileManager::runRecovery () {
     return TRI_ERROR_NO_ERROR;
   }
     
-  LOG_INFO("running WAL recovery (%d logfiles)", (int) _recoverState->logfilesToProcess.size());
+  if (_ignoreRecoveryErrors) {
+    LOG_INFO("running WAL recovery (%d logfiles), ignoring recovery errors", (int) _recoverState->logfilesToProcess.size());
+  }
+  else {
+    LOG_INFO("running WAL recovery (%d logfiles)", (int) _recoverState->logfilesToProcess.size());
+  }
   
   // now iterate over all logfiles that we found during recovery
   // we can afford to iterate the files without _logfilesLock
@@ -1531,8 +1550,14 @@ int LogfileManager::runRecovery () {
       return res;
     }
   }
-  
-  LOG_INFO("WAL recovery finished successfully");
+
+  if (_recoverState->errorCount == 0) {
+    LOG_INFO("WAL recovery finished successfully");
+  }
+  else {
+    LOG_WARNING("WAL recovery finished, some errors ignored due to settings");
+  }
+
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -2002,13 +2027,12 @@ int LogfileManager::ensureDirectory () {
   }
 
   if (! basics::FileUtils::isDirectory(directory)) {
-    int res;
-    
     LOG_INFO("WAL directory '%s' does not exist. creating it...", directory.c_str());
 
+    int res;
     if (! basics::FileUtils::createDirectory(directory, &res)) {
-      LOG_ERROR("could not create WAL directory: '%s': %s", directory.c_str(), TRI_errno_string(res));
-      return res;
+      LOG_ERROR("could not create WAL directory: '%s': %s", directory.c_str(), TRI_last_error());
+      return TRI_ERROR_SYS_ERROR;
     }
   }
 
