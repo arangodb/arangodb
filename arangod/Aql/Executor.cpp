@@ -693,7 +693,7 @@ void Executor::generateCodeFunctionCall (AstNode const* node) {
     }
     else if (conversion == Function::CONVERSION_REQUIRED) {
       // the parameter at the position is not a collection name... fail
-      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->internalName.c_str());
+      THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, func->externalName.c_str());
     }
     else {
       generateCodeNode(args->getMember(i));
