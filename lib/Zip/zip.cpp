@@ -889,7 +889,7 @@ extern zipFile ZEXPORT zipOpen3 (const void *pathname, int append, zipcharpc* gl
         return NULL;
     }
 
-    memset(&ziinit, 0, sizeof(zip64_internal));
+    memset(zi, 0, sizeof(zip64_internal));
 
     /* now we add file in a zipfile */
 #    ifndef NO_ADDFILEINEXISTINGZIP
