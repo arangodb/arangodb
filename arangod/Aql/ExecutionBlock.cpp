@@ -549,7 +549,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         if (! skipping) { 
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
 
-          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome") {
+          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
@@ -565,7 +565,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
 
-          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome") {
+          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome2") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
 
@@ -581,7 +581,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result and is fresh:
         skipped += cur->size();
         if (! skipping) {
-          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome") {
+          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome3") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
           collector.emplace_back(cur);
@@ -986,7 +986,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
-    _allBoundsConstant.emplace_back(isConstant);
+    _allBoundsConstant.push_back(isConstant);
   }
 }
 
@@ -1441,7 +1441,7 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
 std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
     std::vector<RangeInfo>& riv1, 
     std::vector<RangeInfo>& riv2) {
-  
+ 
   std::vector<RangeInfo> out;
   for (RangeInfo ri1: riv1) {
     for (RangeInfo ri2: riv2) {
@@ -2305,7 +2305,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
         // requirements
         // Note that _index has been increased by 1 by getAqlValue!
         try {
-          TRI_IF_FAILURE("EnumerateListBlock::getsome") {
+          TRI_IF_FAILURE("EnumerateListBlock::getSome") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
           res->setValue(j, cur->getNrRegs(), a);
@@ -3468,6 +3468,7 @@ void SortBlock::doSorting () {
                   b.destroy();
                   throw;
                 }
+
                 try {
                   TRI_IF_FAILURE("SortBlock::doSortingNext1") {
                     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -4970,7 +4971,7 @@ int BlockWithClients::initializeCursor (AqlItemBlock* items, size_t pos) {
   _doneForClient.reserve(_nrClients);
 
   for (size_t i = 0; i < _nrClients; i++) {
-    _doneForClient.emplace_back(false);
+    _doneForClient.push_back(false);
   }
 
   return TRI_ERROR_NO_ERROR;
