@@ -524,7 +524,10 @@ static int CreateApplicationDirectory (char const* name,
 ////////////////////////////////////////////////////////////////////////////////
 
 static int OpenDatabases (TRI_server_t* server,
+                          regex_t* regex,  
                           bool isUpgrade) {
+  regmatch_t matches[2];
+
   if (server->_iterateMarkersOnOpen && ! server->_hasCreatedSystemDatabase) {
     LOG_WARNING("no shutdown info found. scanning datafiles for last tick...");
   }
@@ -572,6 +575,13 @@ static int OpenDatabases (TRI_server_t* server,
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       continue;
     }
+   
+    if (regexec(regex, name, sizeof(matches) / sizeof(matches[0]), matches, 0) != 0) {
+      // name does not match the pattern, ignore this directory
+
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      continue;
+    }
 
     // we have a directory...
 
@@ -588,6 +598,20 @@ static int OpenDatabases (TRI_server_t* server,
     }
 
     // we have a writable directory...
+    
+    char* tmpfile = TRI_Concatenate2File(databaseDirectory, ".tmp");
+
+    if (TRI_ExistsFile(tmpfile)) {
+      // still a temporary... must ignore
+      LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+      TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
+      continue;
+    }
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+
+    // a valid database directory
 
     // .............................................................................
     // read parameter.json file
@@ -604,13 +628,14 @@ static int OpenDatabases (TRI_server_t* server,
 
     if (! TRI_ExistsFile(parametersFile)) {
       // no parameter.json file
-      LOG_ERROR("database directory '%s' does not contain parameters file",
+      LOG_ERROR("database directory '%s' does not contain parameters file or parameters file cannot be read",
                 databaseDirectory);
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      // skip this database
-      continue;
+      // abort
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     LOG_DEBUG("reading database parameters from file '%s'",
@@ -624,8 +649,9 @@ static int OpenDatabases (TRI_server_t* server,
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
-      // skip this database
-      continue;
+      // abort
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     TRI_FreeString(TRI_CORE_MEM_ZONE, parametersFile);
@@ -657,8 +683,8 @@ static int OpenDatabases (TRI_server_t* server,
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      // skip this database
-      continue;
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     id = (TRI_voc_tick_t) TRI_UInt64String(idJson->_value._string.data);
@@ -671,8 +697,8 @@ static int OpenDatabases (TRI_server_t* server,
 
       TRI_FreeString(TRI_CORE_MEM_ZONE, databaseDirectory);
       TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
-      // skip this database
-      continue;
+      res = TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE;
+      break;
     }
 
     databaseName = TRI_DuplicateString2Z(TRI_CORE_MEM_ZONE,
@@ -1189,31 +1215,99 @@ static int CreateDatabaseDirectory (TRI_server_t* server,
 
     return TRI_ERROR_OUT_OF_MEMORY;
   }
+
+    
+  // use a temporary directory first. otherwise, if creation fails, the server
+  // might be left with an empty database directory at restart, and abort.
+  char* tmpname = TRI_Concatenate2String(file, ".tmp");
+
+  if (TRI_IsDirectory(tmpname)) {
+    TRI_RemoveDirectory(tmpname);
+  }
+
   std::string errorMessage;
   long systemError;
-  
-  res = TRI_CreateDirectory(file, systemError, errorMessage);
+    
+  res = TRI_CreateDirectory(tmpname, systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR){
     if (res != TRI_ERROR_FILE_EXISTS) {
       LOG_ERROR("failed to create database directory: %s", errorMessage.c_str());
     }
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, file);
     TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
-
     return res;
   }
+  
+  TRI_IF_FAILURE("CreateDatabase::tempDirectory") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    return TRI_ERROR_DEBUG;
+  }
 
-  res = SaveDatabaseParameters(tick, databaseName, false, defaults, file);
-  TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+  char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
+  res = TRI_WriteFile(tmpfile, "", 0);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  
+  TRI_IF_FAILURE("CreateDatabase::tempFile") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    return TRI_ERROR_DEBUG;
+  }
+  
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_RemoveDirectory(tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    return res;
+  }
+  
+  // finally rename
+  res = TRI_RenameFile(tmpname, file);
+  
+  TRI_IF_FAILURE("CreateDatabase::renameDirectory") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    return TRI_ERROR_DEBUG;
+  }
 
   if (res != TRI_ERROR_NO_ERROR) {
+    TRI_RemoveDirectory(tmpname); // clean up
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
     return res;
   }
+    
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+
+  // now everything is valid
+
+  res = SaveDatabaseParameters(tick, databaseName, false, defaults, file);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, dname);
+    return res;
+  }
+
+  // finally remove the .tmp file
+  {
+    char* tmpfile = TRI_Concatenate2File(file, ".tmp");
+    TRI_UnlinkFile(tmpfile);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  }
+    
+  TRI_FreeString(TRI_CORE_MEM_ZONE, file);
 
   // takes ownership of the string
   *name = dname;
-
+    
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -1905,8 +1999,19 @@ int TRI_StartServer (TRI_server_t* server,
   // open and scan all databases
   // .............................................................................
 
+  regex_t regex;
+  res = regcomp(&regex, "^database-([0-9][0-9]*)$", REG_EXTENDED);
+
+  if (res != 0) {
+    LOG_ERROR("unable to compile regular expression");
+
+    return TRI_ERROR_OUT_OF_MEMORY;
+  }
+  
   // scan all databases
-  res = OpenDatabases(server, performUpgrade);
+  res = OpenDatabases(server, &regex, performUpgrade);
+  
+  regfree(&regex);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("could not iterate over all databases: %s",

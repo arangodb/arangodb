@@ -54,6 +54,8 @@ struct TRI_vector_string_s;
 struct TRI_vocbase_defaults_s;
 struct TRI_replication_applier_t;
 
+extern bool IGNORE_DATAFILE_ERRORS;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     public macros
 // -----------------------------------------------------------------------------

@@ -1045,6 +1045,60 @@ static void JS_Exists (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file of any type or directory exists
+/// @startDocuBlock JS_Exists
+/// `fs.exists(path)`
+///
+/// Returns true if a file (of any type) or a directory exists at a given
+/// path. If the file is a broken symbolic link, returns false.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path><mode>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+
+  string const modeStr = TRI_ObjectToString(args[1]);
+  
+  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+    TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+  }
+
+  long mode = 0;
+  for (uint32_t i = 0; i < modeStr.length(); i++) {
+    if (! isdigit(modeStr[i])) {
+      TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+    }
+    char buf[2];
+    buf[0] = modeStr[i];
+    buf[1] = '\0';
+    uint8_t digit = (uint8_t) atoi(buf);
+    if (digit >= 8) {
+      TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+    }
+    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
+  }
+  string err;
+  int rc = TRI_ChMod(*name, mode, err);
+
+  if (rc != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(rc, err);
+  }
+  TRI_V8_RETURN_TRUE();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the size of a file
 /// @startDocuBlock JS_Size
 /// `fs.size(path)`
@@ -2937,8 +2991,6 @@ static void JS_DebugRemoveFailAt (const v8::FunctionCallbackInfo<v8::Value>& arg
 /// Remove all points for intentional system failures
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
-
 static void JS_DebugClearFailAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -2948,12 +3000,13 @@ static void JS_DebugClearFailAt (const v8::FunctionCallbackInfo<v8::Value>& args
     TRI_V8_THROW_EXCEPTION_USAGE("debugClearFailAt()");
   }
 
+  // if failure testing is not enabled, this is a no-op
+#ifdef TRI_ENABLE_FAILURE_TESTS
   TRI_ClearFailurePointsDebugging();
+#endif
 
   TRI_V8_RETURN_UNDEFINED();
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether failure points can be used
@@ -4128,6 +4181,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   // .............................................................................
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"), JS_GetTempFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"), JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
@@ -4197,8 +4251,8 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"), JS_DebugSegfault);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"), JS_DebugSetFailAt);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"), JS_DebugRemoveFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"), JS_DebugClearFailAt);
 #endif
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"), JS_DebugClearFailAt);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"), JS_DebugCanUseFailAt);
 
   // .............................................................................

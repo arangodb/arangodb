@@ -32,9 +32,9 @@
 #include "Basics/StringUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
-#include "V8/v8-globals.h"
 #include "HashIndex/hash-index.h"
 #include "Utils/Exception.h"
+#include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/vocbase.h"
@@ -66,7 +66,6 @@ AggregatorGroup::AggregatorGroup (bool countOnly)
     lastRow(0),
     groupLength(0),
     rowsAreValid(false),
-    virginity(true),
     countOnly(countOnly) {
 }
 
@@ -74,6 +73,9 @@ AggregatorGroup::~AggregatorGroup () {
   //reset();
   for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
     delete (*it);
+  }
+  for (auto& it : groupValues) {
+    it.destroy();
   }
 }
 
@@ -93,7 +95,7 @@ void AggregatorGroup::initialize (size_t capacity) {
 
     for (size_t i = 0; i < capacity; ++i) {
       groupValues.emplace_back();
-      collections.push_back(nullptr);
+      collections.emplace_back(nullptr);
     }
   }
 
@@ -101,8 +103,6 @@ void AggregatorGroup::initialize (size_t capacity) {
 }
 
 void AggregatorGroup::reset () {
-  virginity = false;
-
   for (auto it = groupBlocks.begin(); it != groupBlocks.end(); ++it) {
     delete (*it);
   }
@@ -110,6 +110,9 @@ void AggregatorGroup::reset () {
   groupBlocks.clear();
 
   if (! groupValues.empty()) {
+    for (auto& it : groupValues) {
+      it.destroy();
+    }
     groupValues[0].erase();   // only need to erase [0], because we have
                               // only copies of references anyway
   }
@@ -134,7 +137,10 @@ void AggregatorGroup::addValues (AqlItemBlock const* src,
     else {
       auto block = src->slice(firstRow, lastRow + 1);
       try {
-        groupBlocks.push_back(block);
+        TRI_IF_FAILURE("AggregatorGroup::addValues") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        groupBlocks.emplace_back(block);
       }
       catch (...) {
         delete block;
@@ -378,6 +384,9 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
       if (! src->getValue(row, i).isEmpty()) {
         AqlValue a = src->getValue(row, i).clone();
         try {
+          TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
           dst->setValue(0, i, a);
         }
         catch (...) {
@@ -405,7 +414,10 @@ bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
     return false;
   }
   try {
-    _buffer.push_back(docs);
+    TRI_IF_FAILURE("ExecutionBlock::getBlock") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+    _buffer.emplace_back(docs);
   }
   catch (...) {
     delete docs;
@@ -536,7 +548,12 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block is too large for atMost:
         if (! skipping) { 
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
-          collector.push_back(more.get());
+
+          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          collector.emplace_back(more.get());
           more.release(); // do not delete it!
         }
         _pos += atMost - skipped;
@@ -547,7 +564,12 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // half-eaten:
         if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->slice(_pos, cur->size()));
-          collector.push_back(more.get());
+
+          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          collector.emplace_back(more.get());
           more.release();
         }
         skipped += cur->size() - _pos;
@@ -559,7 +581,10 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
         // The current block fits into our result and is fresh:
         skipped += cur->size();
         if (! skipping) {
-          collector.push_back(cur);
+          TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          collector.emplace_back(cur);
         }
         else {
           delete cur;
@@ -581,6 +606,9 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
     }
     else if (! collector.empty()) {
       try {
+        TRI_IF_FAILURE("ExecutionBlock::getOrSkipSomeConcatenate") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         result = AqlItemBlock::concatenate(collector);
       }
       catch (...) {
@@ -646,10 +674,18 @@ int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
         skipped++;
         for (RegisterId reg = 0; reg < _inputRegisterValues->getNrRegs(); ++reg) {
 
+          TRI_IF_FAILURE("SingletonBlock::getOrSkipSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           AqlValue a = _inputRegisterValues->getValue(0, reg);
           _inputRegisterValues->steal(a);
 
           try {
+            TRI_IF_FAILURE("SingletonBlock::getOrSkipSomeSet") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+
             result->setValue(0, reg, a);
           }
           catch (...) {
@@ -710,9 +746,7 @@ EnumerateCollectionBlock::EnumerateCollectionBlock (ExecutionEngine* engine,
 }
 
 EnumerateCollectionBlock::~EnumerateCollectionBlock () {
-  if (_scanner != nullptr) {
-    delete _scanner;
-  }
+  delete _scanner;
 }
 
 bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
@@ -721,6 +755,10 @@ bool EnumerateCollectionBlock::moreDocuments (size_t hint) {
   }
 
   std::vector<TRI_doc_mptr_copy_t> newDocs;
+            
+  TRI_IF_FAILURE("EnumerateCollectionBlock::moreDocuments") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
 
   newDocs.reserve(hint);
 
@@ -948,11 +986,13 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
-    _allBoundsConstant.push_back(isConstant);
+    _allBoundsConstant.emplace_back(isConstant);
   }
 }
 
 IndexRangeBlock::~IndexRangeBlock () {
+  destroyHashIndexSearchValues();
+
   for (auto e : _allVariableBoundExpressions) {
     delete e;
   }
@@ -982,7 +1022,10 @@ int IndexRangeBlock::initialize () {
     // all new AstNodes are registered with the Ast in the Query
     auto e = new Expression(_engine->getQuery()->ast(), a);
     try {
-      _allVariableBoundExpressions.push_back(e);
+      TRI_IF_FAILURE("IndexRangeBlock::initialize") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+      _allVariableBoundExpressions.emplace_back(e);
     }
     catch (...) {
       delete e;
@@ -996,11 +1039,11 @@ int IndexRangeBlock::initialize () {
 
     std::unordered_set<Variable*> inVars = e->variables();
     for (auto v : inVars) {
-      inVarsCur.push_back(v);
+      inVarsCur.emplace_back(v);
       auto it = getPlanNode()->getRegisterPlan()->varInfo.find(v->id);
       TRI_ASSERT(it != getPlanNode()->getRegisterPlan()->varInfo.end());
       TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-      inRegsCur.push_back(it->second.registerId);
+      inRegsCur.emplace_back(it->second.registerId);
     }
 
   };
@@ -1019,6 +1062,9 @@ int IndexRangeBlock::initialize () {
           for (auto h : r._highs) {
             instanciateExpression(h);
           }
+        }
+        TRI_IF_FAILURE("IndexRangeBlock::initializeExpressions") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
       }
       catch (...) {
@@ -1099,12 +1145,12 @@ bool IndexRangeBlock::initRanges () {
       //collect the evaluated bounds here
       for (size_t k = 0; k < en->_ranges[i].size(); k++) {
         auto r = en->_ranges[i][k];
-        collector.push_back(std::vector<RangeInfo>());
+        collector.emplace_back(std::vector<RangeInfo>());
         // First create a new RangeInfo containing only the constant 
         // low and high bound of r:
         RangeInfo riConst(r._var, r._attr, r._lowConst, r._highConst,
             r.is1ValueRangeInfo());
-        collector[k].push_back(riConst);
+        collector[k].emplace_back(riConst);
 
         // Now work the actual values of the variable lows and highs into 
         // this constant range:
@@ -1304,8 +1350,12 @@ void IndexRangeBlock::sortConditions () {
   }
 
   for (size_t s = 0; s < n; s++) {
-    _sortCoords.push_back(s);
+    _sortCoords.emplace_back(s);
     std::vector<size_t> next;
+        
+    TRI_IF_FAILURE("IndexRangeBlock::sortConditions") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     next.reserve(en->_index->fields.size());
     prefix.emplace_back(next);
     // prefix[s][t] = position in _condition[s] corresponding to the <t>th index
@@ -1314,6 +1364,10 @@ void IndexRangeBlock::sortConditions () {
       for (size_t u = 0; u < _condition->at(s).size(); u++) {
         auto ri = _condition->at(s)[u];
         if (en->_index->fields[t].compare(ri._attr) == 0) {
+    
+          TRI_IF_FAILURE("IndexRangeBlock::sortConditionsInner") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
           prefix.at(s).insert(prefix.at(s).begin() + t, u);
           break;
         }
@@ -1394,7 +1448,10 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
       RangeInfo x = ri1.clone();
       x.fuse(ri2);
       if (x.isValid()){
-        out.push_back(x);
+        TRI_IF_FAILURE("IndexRangeBlock::andCombineRangeInfoVecs") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        out.emplace_back(x);
       }
     }
   }
@@ -1407,13 +1464,12 @@ std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
 /// "and" condition containing an "or" condition, which we must then distribute. 
 ////////////////////////////////////////////////////////////////////////////////
 
-IndexOrCondition* IndexRangeBlock::cartesian (
-    std::vector<std::vector<RangeInfo>> const& collector) {
+IndexOrCondition* IndexRangeBlock::cartesian (std::vector<std::vector<RangeInfo>> const& collector) {
   
   std::vector<size_t> indexes;
   indexes.reserve(collector.size());
   for (size_t i = 0; i < collector.size(); i++) {
-    indexes.push_back(0);
+    indexes.emplace_back(0);
   }
   
   auto out = new IndexOrCondition();
@@ -1422,6 +1478,9 @@ IndexOrCondition* IndexRangeBlock::cartesian (
       IndexAndCondition next;
       for (size_t i = 0; i < collector.size(); i++) {
         next.push_back(collector[i][indexes[i]].clone());
+      }
+      TRI_IF_FAILURE("IndexRangeBlock::cartesian") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
       }
       out->push_back(next);
       size_t j = collector.size() - 1;
@@ -1465,6 +1524,9 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
   // entire index when we only want a small number of documents. 
   
   if (_documents.empty()) {
+    TRI_IF_FAILURE("IndexRangeBlock::readIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
     _documents.reserve(atMost);
   }
   else { 
@@ -1563,7 +1625,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
           _pos = 0;           // this is in the first block
         }
         
-        if(! initRanges()) {
+        if (! initRanges()) {
           _done = true;
           return nullptr;
         }
@@ -1671,7 +1733,7 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
       // let's read the index if bounds are variable:
       if (! _buffer.empty()) {
-          if(! initRanges()) {
+          if (! initRanges()) {
             _done = true;
             return skipped;
           }
@@ -1841,6 +1903,7 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
 
   size_t const n = hashIndex->_paths._length;
 
+  TRI_ASSERT(_hashIndexSearchValue._values == nullptr); // to prevent leak
   _hashIndexSearchValue._length = 0;
     // initialize the whole range of shapes with zeros
   _hashIndexSearchValue._values = static_cast<TRI_shaped_json_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, 
@@ -1869,12 +1932,13 @@ bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range)
         }
 
         auto shaped = TRI_ShapedJsonJson(shaper, x._lowConst.bound().json(), false); 
-        // here x->_low->_bound = x->_high->_bound 
+        // here x->_low->_bound == x->_high->_bound 
         if (shaped == nullptr) {
           return false;
         }
 
         _hashIndexSearchValue._values[i] = *shaped;
+        // free only the pointer, but not the internals
         TRI_Free(shaper->_memoryZone, shaped);
         break; 
       }
@@ -1915,6 +1979,10 @@ void IndexRangeBlock::readHashIndex (size_t atMost) {
   size_t nrSent = 0;
   while (nrSent < atMost) { 
     size_t const n = _documents.size();
+
+    TRI_IF_FAILURE("IndexRangeBlock::readHashIndex") {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
 
     TRI_LookupHashIndex(idx, &_hashIndexSearchValue, _documents, _hashNextElement, atMost);
     size_t const numRead = _documents.size() - n;
@@ -2074,6 +2142,9 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
         }
       } 
       else {
+        TRI_IF_FAILURE("IndexRangeBlock::readSkiplistIndex") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         _documents.emplace_back(*(indexElement->_document));
         ++nrSent;
         ++_engine->_stats.scannedIndex;
@@ -2165,6 +2236,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
 
     // get the size of the thing we are looping over
     _collection = nullptr;
+
     switch (inVarReg._type) {
       case AqlValue::JSON: {
         if (! inVarReg._json->isArray()) {
@@ -2233,6 +2305,9 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
         // requirements
         // Note that _index has been increased by 1 by getAqlValue!
         try {
+          TRI_IF_FAILURE("EnumerateListBlock::getsome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
           res->setValue(j, cur->getNrRegs(), a);
         }
         catch (...) {
@@ -2241,6 +2316,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
         }
       }
     }
+
     if (_index == sizeInVar) {
       _index = 0;
       _thisblock = 0;
@@ -2342,6 +2418,10 @@ size_t EnumerateListBlock::skipSome (size_t atLeast, size_t atMost) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue EnumerateListBlock::getAqlValue (AqlValue const& inVarReg) {
+  TRI_IF_FAILURE("EnumerateListBlock::getAqlValue") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
+
   switch (inVarReg._type) {
     case AqlValue::JSON: {
       // FIXME: is this correct? What if the copy works, but the
@@ -2399,12 +2479,12 @@ CalculationBlock::CalculationBlock (ExecutionEngine* engine,
   _inRegs.reserve(inVars.size());
 
   for (auto it = inVars.begin(); it != inVars.end(); ++it) {
-    _inVars.push_back(*it);
+    _inVars.emplace_back(*it);
     auto it2 = en->getRegisterPlan()->varInfo.find((*it)->id);
 
     TRI_ASSERT(it2 != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it2->second.registerId < ExecutionNode::MaxRegisterId);
-    _inRegs.push_back(it2->second.registerId);
+    _inRegs.emplace_back(it2->second.registerId);
   }
 
   // check if the expression is "only" a reference to another variable
@@ -2449,6 +2529,9 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
     // care of correct freeing:
     AqlValue a = result->getValueReference(i, _inRegs[0]);
     try {
+      TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       result->setValue(i, _outReg, a);
     }
     catch (...) {
@@ -2479,6 +2562,9 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
       AqlValue conditionResult = result->getValueReference(i, _conditionReg);
 
       if (! conditionResult.isTrue()) {
+        TRI_IF_FAILURE("CalculationBlock::executeExpressionWithCondition") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         result->setValue(i, _outReg, AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, &Expression::NullJson, Json::NOFREE)));
         continue;
       }
@@ -2488,13 +2574,16 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
     try {
+      TRI_IF_FAILURE("CalculationBlock::executeExpression") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
       result->setValue(i, _outReg, a);
-      throwIfKilled(); // check if we were aborted
     }
     catch (...) {
       a.destroy();
       throw;
     }
+    throwIfKilled(); // check if we were aborted
   }
 }
 
@@ -2635,6 +2724,9 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
       subqueryResults = executeSubquery(); 
       TRI_ASSERT(subqueryResults != nullptr);
       try {
+        TRI_IF_FAILURE("SubqueryBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         res->setValue(i, _outReg, AqlValue(subqueryResults));
       }
       catch (...) {
@@ -2674,7 +2766,12 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
       if (tmp.get() == nullptr) {
         break;
       }
-      results->push_back(tmp.get());
+
+      TRI_IF_FAILURE("SubqueryBlock::executeSubquery") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      results->emplace_back(tmp.get());
       tmp.release();
     }
     while (true);
@@ -2740,7 +2837,11 @@ bool FilterBlock::getBlock (size_t atLeast, size_t atMost) {
     _chosen.reserve(cur->size());
     for (size_t i = 0; i < cur->size(); ++i) {
       if (takeItem(cur, i)) {
-        _chosen.push_back(i);
+        TRI_IF_FAILURE("FilterBlock::getBlock") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+
+        _chosen.emplace_back(i);
       }
     }
 
@@ -2789,7 +2890,12 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->slice(_chosen,
                                                    _pos, _pos + (atMost - skipped)));
-          collector.push_back(more.get());
+        
+          TRI_IF_FAILURE("FilterBlock::getOrSkipSome1") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          collector.emplace_back(more.get());
           more.release();
         }
         _pos += atMost - skipped;
@@ -2800,7 +2906,12 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         // half-eaten or needs to be copied anyway:
         if (! skipping) {
           unique_ptr<AqlItemBlock> more(cur->steal(_chosen, _pos, _chosen.size()));
-          collector.push_back(more.get());
+          
+          TRI_IF_FAILURE("FilterBlock::getOrSkipSome2") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
+          collector.emplace_back(more.get());
           more.release();
         }
         skipped += _chosen.size() - _pos;
@@ -2814,7 +2925,10 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
         // takes them all, so we can just hand it on:
         skipped += cur->size();
         if (! skipping) {
-          collector.push_back(cur);
+          TRI_IF_FAILURE("FilterBlock::getOrSkipSome3") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+          collector.emplace_back(cur);
         }
         else {
           delete cur;
@@ -2838,6 +2952,9 @@ int FilterBlock::getOrSkipSome (size_t atLeast,
     }
     else if (collector.size() > 1) {
       try {
+        TRI_IF_FAILURE("FilterBlock::getOrSkipSomeConcatenate") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
         result = AqlItemBlock::concatenate(collector);
       }
       catch (...) {
@@ -3096,6 +3213,10 @@ int AggregateBlock::getOrSkipSome (size_t atLeast,
         try {
           // emit last buffered group
           if (! skipping) {
+            TRI_IF_FAILURE("AggregateBlock::getOrSkipSome") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+
             emitGroup(cur, res.get(), skipped);
             ++skipped;
             TRI_ASSERT(skipped > 0);
@@ -3166,6 +3287,8 @@ void AggregateBlock::emitGroup (AqlItemBlock const* cur,
     else {
       res->setValue(row, (*it).first, _currentGroup.groupValues[i]);
     }
+    // ownership of value is transferred into res
+    _currentGroup.groupValues[i].erase();
     ++i;
   }
 
@@ -3212,7 +3335,7 @@ SortBlock::SortBlock (ExecutionEngine* engine,
     auto it = en->getRegisterPlan()->varInfo.find(p.first->id);
     TRI_ASSERT(it != en->getRegisterPlan()->varInfo.end());
     TRI_ASSERT(it->second.registerId < ExecutionNode::MaxRegisterId);
-    _sortRegisters.push_back(make_pair(it->second.registerId, p.second));
+    _sortRegisters.emplace_back(make_pair(it->second.registerId, p.second));
   }
 }
 
@@ -3254,6 +3377,9 @@ void SortBlock::doSorting () {
     sum += block->size();
   }
 
+  TRI_IF_FAILURE("SortBlock::doSorting") {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+  }
   coords.reserve(sum);
 
   // install the coords
@@ -3261,14 +3387,14 @@ void SortBlock::doSorting () {
 
   for (auto block : _buffer) {
     for (size_t i = 0; i < block->size(); i++) {
-      coords.push_back(std::make_pair(count, i));
+      coords.emplace_back(std::make_pair(count, i));
     }
     count++;
   }
 
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_buffer.front()->getDocumentCollection(_sortRegisters[i].first));
+    colls.emplace_back(_buffer.front()->getDocumentCollection(_sortRegisters[i].first));
   }
 
   // comparison function
@@ -3296,8 +3422,12 @@ void SortBlock::doSorting () {
     while (count < sum) {
       size_t sizeNext = (std::min)(sum - count, DefaultBatchSize);
       AqlItemBlock* next = new AqlItemBlock(sizeNext, nrregs);
+
       try {
-        newbuffer.push_back(next);
+        TRI_IF_FAILURE("SortBlock::doSortingInner") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
+        newbuffer.emplace_back(next);
       }
       catch (...) {
         delete next;
@@ -3329,6 +3459,9 @@ void SortBlock::doSorting () {
                 // Was already stolen for another block
                 AqlValue b = a.clone();
                 try {
+                  TRI_IF_FAILURE("SortBlock::doSortingCache") {
+                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                  }
                   cache.emplace(make_pair(a, b));
                 }
                 catch (...) {
@@ -3336,6 +3469,9 @@ void SortBlock::doSorting () {
                   throw;
                 }
                 try {
+                  TRI_IF_FAILURE("SortBlock::doSortingNext1") {
+                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                  }
                   next->setValue(i, j, b);
                 }
                 catch (...) {
@@ -3355,6 +3491,9 @@ void SortBlock::doSorting () {
                 // If this has worked, responsibility is now with the
                 // new block or indeed with us!
                 try {
+                  TRI_IF_FAILURE("SortBlock::doSortingNext2") {
+                    THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+                  }
                   next->setValue(i, j, a);
                 }
                 catch (...) {
@@ -3531,10 +3670,10 @@ int LimitBlock::getOrSkipSome (size_t atLeast,
 AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
                                     size_t atMost) {
 
-  auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+  std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
-  if (res == nullptr) {
-    return res;
+  if (res.get() == nullptr) {
+    return nullptr;
   }
 
   size_t const n = res->size();
@@ -3552,6 +3691,10 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
       if (! a.isEmpty()) {
         res->steal(a);
         try {
+          TRI_IF_FAILURE("ReturnBlock::getSome") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           stripped->setValue(i, 0, a);
         }
         catch (...) {
@@ -3566,12 +3709,12 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
   }
   catch (...) {
     delete stripped;
-    delete res;
     throw;
   }
 
   stripped->setDocumentCollection(0, res->getDocumentCollection(registerId));
-  delete res;
+  delete res.get();
+  res.release();
 
   return stripped;
 }
@@ -3612,7 +3755,7 @@ ModificationBlock::~ModificationBlock () {
 AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
                                           size_t atMost) {
   std::vector<AqlItemBlock*> blocks;
-  AqlItemBlock* replyBlocks = nullptr;
+  std::unique_ptr<AqlItemBlock>replyBlocks;
 
   auto freeBlocks = [](std::vector<AqlItemBlock*>& blocks) {
     for (auto it = blocks.begin(); it != blocks.end(); ++it) {
@@ -3628,33 +3771,44 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
     if (static_cast<ModificationNode const*>(_exeNode)->_options.readCompleteInput) {
       // read all input into a buffer first
       while (true) { 
-        auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+        std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
-        if (res == nullptr) {
+        if (res.get() == nullptr) {
           break;
         }
+          
+        TRI_IF_FAILURE("ModificationBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
        
-        blocks.push_back(res);
+        blocks.emplace_back(res.get());
+        res.release();
       }
 
       // now apply the modifications for the complete input
-      replyBlocks = work(blocks);
+      replyBlocks.reset(work(blocks));
     }
     else {
       // read input in chunks, and process it in chunks
       // this reduces the amount of memory used for storing the input
       while (true) {
         freeBlocks(blocks);
-        auto res = ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost);
+        std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
-        if (res == nullptr) {
+        if (res.get() == nullptr) {
           break;
         }
+        
+        TRI_IF_FAILURE("ModificationBlock::getSome") {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+        }
        
-        blocks.push_back(res);
-        replyBlocks = work(blocks);
+        blocks.emplace_back(res.get());
+        res.release();
 
-        if (replyBlocks != nullptr) {
+        replyBlocks.reset(work(blocks));
+
+        if (replyBlocks.get() != nullptr) {
           break;
         }
       }
@@ -3662,14 +3816,12 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
   }
   catch (...) {
     freeBlocks(blocks);
-
-    delete replyBlocks;
     throw;
   }
 
   freeBlocks(blocks);
         
-  return replyBlocks;
+  return replyBlocks.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -3690,7 +3842,7 @@ int ModificationBlock::extractKey (AqlValue const& value,
     TRI_json_t const* json = member.json();
 
     if (TRI_IsStringJson(json)) {
-      key = std::string(json->_value._string.data, json->_value._string.length - 1);
+      key.assign(json->_value._string.data, json->_value._string.length - 1);
       return TRI_ERROR_NO_ERROR;
     }
   }
@@ -4572,7 +4724,7 @@ AqlItemBlock* GatherBlock::getSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_gatherBlockBuffer.at(index).front()->
+    colls.emplace_back(_gatherBlockBuffer.at(index).front()->
         getDocumentCollection(_sortRegisters[i].first));
   }
   
@@ -4694,7 +4846,7 @@ size_t GatherBlock::skipSome (size_t atLeast, size_t atMost) {
   // get collections for ourLessThan . . .
   std::vector<TRI_document_collection_t const*> colls;
   for (RegisterId i = 0; i < _sortRegisters.size(); i++) {
-    colls.push_back(_gatherBlockBuffer.at(index).front()->
+    colls.emplace_back(_gatherBlockBuffer.at(index).front()->
         getDocumentCollection(_sortRegisters[i].first));
   }
   
@@ -4733,7 +4885,7 @@ bool GatherBlock::getBlock (size_t i, size_t atLeast, size_t atMost) {
   AqlItemBlock* docs = _dependencies.at(i)->getSome(atLeast, atMost);
   if (docs != nullptr) {
     try {
-      _gatherBlockBuffer.at(i).push_back(docs);
+      _gatherBlockBuffer.at(i).emplace_back(docs);
     }
     catch (...) {
       delete docs;
@@ -4823,7 +4975,7 @@ int BlockWithClients::initializeCursor (AqlItemBlock* items, size_t pos) {
   _doneForClient.reserve(_nrClients);
 
   for (size_t i = 0; i < _nrClients; i++) {
-    _doneForClient.push_back(false);
+    _doneForClient.emplace_back(false);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -4960,7 +5112,7 @@ int ScatterBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   _posForClient.clear();
   
   for (size_t i = 0; i < _nrClients; i++) {
-    _posForClient.push_back(std::make_pair(0, 0));
+    _posForClient.emplace_back(std::make_pair(0, 0));
   }
   return TRI_ERROR_NO_ERROR;
   LEAVE_BLOCK
@@ -5267,7 +5419,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
       std::vector<size_t> chosen;
       size_t const n = buf.front().first;
       while (buf.front().first == n && i < skipped) { 
-        chosen.push_back(buf.front().second);
+        chosen.emplace_back(buf.front().second);
         buf.pop_front();
         i++;
         
@@ -5278,7 +5430,7 @@ int DistributeBlock::getOrSkipSomeForShard (size_t atLeast,
       }
 
       unique_ptr<AqlItemBlock> more(_buffer.at(n)->slice(chosen, 0, chosen.size()));
-      collector.push_back(more.get());
+      collector.emplace_back(more.get());
       more.release(); // do not delete it!
     }
   }
@@ -5799,9 +5951,7 @@ AqlItemBlock* RemoteBlock::getSome (size_t atLeast,
     return nullptr;
   }
     
-  auto items = new triagens::aql::AqlItemBlock(responseBodyJson);
-
-  return items;
+  return new triagens::aql::AqlItemBlock(responseBodyJson);
   LEAVE_BLOCK
 }
 

@@ -282,7 +282,7 @@ namespace triagens {
 
 
       bool createDirectory (string const& name, int* errorNumber) {
-        if (errorNumber != 0) {
+        if (errorNumber != nullptr) {
           *errorNumber = 0;
         }
 
@@ -301,6 +301,9 @@ namespace triagens {
         int res = errno;
         if (result != 0 && res == EEXIST && isDirectory(name)) {
           result = 0;
+        }
+        else if (res != 0) {
+          TRI_set_errno(TRI_ERROR_SYS_ERROR);
         }
 
         if (errorNumber) {

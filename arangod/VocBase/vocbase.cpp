@@ -931,7 +931,27 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_VOC_PARAMETER_FILE);
+        char* tmpfile = TRI_Concatenate2File(file, ".tmp");
+
+        if (TRI_ExistsFile(tmpfile)) {
+          LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
+          TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+          // temp file still exists. this means the collection was not created fully
+          // and needs to be ignored
+          TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+          TRI_FreeCollectionInfoOptions(&info);
+
+          continue; // ignore this directory
+        }
+        
+        TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+
+        LOG_ERROR("cannot read collection info file in directory '%s': %s", file, TRI_errno_string(res));
+        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+        TRI_DestroyVectorString(&files);
+        TRI_FreeCollectionInfoOptions(&info);
+        regfree(&re);
+        return TRI_set_errno(res);
       }
       else if (info._deleted) {
         // we found a collection that is marked as deleted.
@@ -1149,7 +1169,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    document = TRI_OpenDocumentCollection(vocbase, collection);
+    document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
 
     // lock again the adjust the status
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
@@ -2345,7 +2365,12 @@ TRI_vocbase_col_t* TRI_UseCollectionByNameVocBase (TRI_vocbase_t* vocbase,
 
   int res = LoadCollectionVocBase(vocbase, const_cast<TRI_vocbase_col_t*>(collection), status);
 
-  return res == TRI_ERROR_NO_ERROR ? const_cast<TRI_vocbase_col_t*>(collection) : nullptr;
+  if (res == TRI_ERROR_NO_ERROR) {
+    return const_cast<TRI_vocbase_col_t*>(collection);
+  }
+
+  TRI_set_errno(res);  
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

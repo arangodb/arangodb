@@ -87,11 +87,13 @@ void AqlValue::destroy () {
           delete *it;
         }
         delete _vector;
+        _vector = nullptr;
       }
       break;
     }
     case RANGE: {
       delete _range;
+      _range = nullptr;
       break;
     }
     case SHAPED: {
@@ -145,10 +147,10 @@ AqlValue AqlValue::clone () const {
 
     case DOCVEC: {
       auto c = new std::vector<AqlItemBlock*>;
-      c->reserve(_vector->size());
       try {
+        c->reserve(_vector->size());
         for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-          c->push_back((*it)->slice(0, (*it)->size()));
+          c->emplace_back((*it)->slice(0, (*it)->size()));
         }
       }
       catch (...) {
