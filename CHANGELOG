@@ -1,7 +1,7 @@
 v2.5.1 (2015-03-19)
 -------------------
 
-* by default debian and red-hat packages are build with debug symbols
+* by default, Debian and RedHat packages are built with debug symbols
 
 * added option `--database.ignore-logfile-errors`
 
@@ -395,7 +395,13 @@ v2.5.0-beta2 (2015-02-23)
 * Standard Errors can now contain custom messages.
 
 
-v2.4.6 (2015-03-XX)
+v2.4.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1282: Geo WITHIN_RECTANGLE for nested lat/lng 
+
+
+v2.4.6 (2015-03-18)
 -------------------
 
 * added option `--database.ignore-logfile-errors`
