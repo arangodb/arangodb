@@ -2734,6 +2734,8 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
         throw;
       }
     } 
+      
+    throwIfKilled(); // check if we were aborted
 
   }
   // Clear out registers no longer needed later:
