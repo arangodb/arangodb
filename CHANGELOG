@@ -1,6 +1,11 @@
 v2.5.1 (2015-03-19)
 -------------------
 
+* fixed bug that caused undefined behavior when an AQL query was killed inside
+  a calculation block 
+
+* fixed memleaks in AQL query cleanup in case out-of-memory errors are thrown
+
 * by default, Debian and RedHat packages are built with debug symbols
 
 * added option `--database.ignore-logfile-errors`
