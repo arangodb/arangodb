@@ -110,49 +110,52 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   TRI_ASSERT(query != nullptr);
 
   TRI_GET_GLOBALS();
+    
+  v8::Handle<v8::Value> result;
+
   auto old = v8g->_query;
-  v8g->_query = static_cast<void*>(query);
-  TRI_ASSERT(v8g->_query != nullptr);
 
-  // set function arguments
-  v8::Handle<v8::Value> args[] = { values };
+  try {
+    v8g->_query = static_cast<void*>(query);
+    TRI_ASSERT(v8g->_query != nullptr);
 
-  // execute the function
-  v8::TryCatch tryCatch;
+    // set function arguments
+    v8::Handle<v8::Value> args[] = { values };
 
-  auto func = v8::Local<v8::Function>::New(isolate, _func);
-  v8::Handle<v8::Value> result = func->Call(func, 1, args);
+    // execute the function
+    v8::TryCatch tryCatch;
 
-  v8g->_query = old;
+    auto func = v8::Local<v8::Function>::New(isolate, _func);
+    result = func->Call(func, 1, args);
 
-  Executor::HandleV8Error(tryCatch, result);
+    v8g->_query = old;
+  
+    Executor::HandleV8Error(tryCatch, result);
+  }
+  catch (...) {
+    v8g->_query = old;
+    throw;
+  }
 
   // no exception was thrown if we get here
-  TRI_json_t* json = nullptr;
+  std::unique_ptr<TRI_json_t> json;
 
   if (result->IsUndefined()) {
     // expression does not have any (defined) value. replace with null
-    json = TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE);
+    json.reset(TRI_CreateNullJson(TRI_UNKNOWN_MEM_ZONE));
   }
   else {
     // expression had a result. convert it to JSON
-    json = TRI_ObjectToJson(isolate, result);
-    // TODO: json = TRI_SimplifiedObjectToJson(isolate, result);
+    json.reset(TRI_ObjectToJson(isolate, result));
   }
 
-  if (json == nullptr) {
+  if (json.get() == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  try {
-    auto j = new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json);
-    return AqlValue(j);
-  }
-  catch (...) {
-    // prevent memleak
-    TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
-    throw;
-  }
+  auto j = new triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.get());
+  json.release();
+  return AqlValue(j);
 }
 
 // -----------------------------------------------------------------------------

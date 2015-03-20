@@ -380,6 +380,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
   
     v8g->_vocbase = vocbase;
     v8g->_allowUseDatabase = allowUseDatabase;
+    v8g->_query = nullptr;
 
     LOG_TRACE("entering V8 context %d", (int) context->_id);
     context->handleGlobalContextMethods();
@@ -415,6 +416,7 @@ void ApplicationV8::exitContext (V8Context* context) {
   // check for cancelation requests
   bool const canceled = v8g->_canceled;
   v8g->_canceled = false;
+  v8g->_query = nullptr;
 
   // exit the context
   {

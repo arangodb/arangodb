@@ -78,11 +78,17 @@ static void* ThreadStarter (void* data) {
   prctl(PR_SET_NAME, d->_name, 0, 0, 0);
 #endif
 
-  d->starter(d->_data);
+  try {
+    d->starter(d->_data); 
+  }
+  catch (...) {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
+    TRI_Free(TRI_CORE_MEM_ZONE, d);
+    throw;
+  }
 
   TRI_FreeString(TRI_CORE_MEM_ZONE, d->_name);
   TRI_Free(TRI_CORE_MEM_ZONE, d);
-  d = nullptr;
 
   return nullptr;
 }
