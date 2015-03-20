@@ -316,18 +316,27 @@ TRI_json_t* Executor::executeExpression (Query* query,
   TRI_ASSERT(query != nullptr);
 
   TRI_GET_GLOBALS();
+  v8::Handle<v8::Value> result;
   auto old = v8g->_query;
-  v8g->_query = static_cast<void*>(query);
-  TRI_ASSERT(v8g->_query != nullptr);
+
+  try {
+    v8g->_query = static_cast<void*>(query);
+    TRI_ASSERT(v8g->_query != nullptr);
  
-  // execute the function
-  v8::Handle<v8::Value> args;
-  v8::Handle<v8::Value> result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(isolate), 0, &args);
+    // execute the function
+    v8::Handle<v8::Value> args;
+    result = v8::Handle<v8::Function>::Cast(func)->Call(v8::Object::New(isolate), 0, &args);
   
-  v8g->_query = old;
+    v8g->_query = old;
   
-  // exit if execution raised an error
-  HandleV8Error(tryCatch, result);
+    // exit if execution raised an error
+    HandleV8Error(tryCatch, result);
+  }
+  catch (...) {
+    v8g->_query = old;
+    throw;
+  }
+ 
 
   if (result->IsUndefined()) {
     // undefined => null
@@ -364,6 +373,7 @@ Function const* Executor::getFunctionByName (std::string const& name) {
 void Executor::HandleV8Error (v8::TryCatch& tryCatch,
                               v8::Handle<v8::Value>& result) {
   ISOLATE;
+
   if (tryCatch.HasCaught()) {
     // caught a V8 exception
     if (! tryCatch.CanContinue()) {
