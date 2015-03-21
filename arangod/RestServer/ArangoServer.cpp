@@ -61,6 +61,7 @@
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
+#include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestReplicationHandler.h"
 #include "RestHandler/RestUploadHandler.h"
 #include "RestServer/ConsoleThread.h"
@@ -98,6 +99,7 @@ bool IGNORE_DATAFILE_ERRORS;
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
+
   // First the "_api" handlers:
  
   // add "/version" handler
@@ -143,6 +145,11 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   factory->addPrefixHandler("/_api/aql",
                             RestHandlerCreator<aql::RestAqlHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
                             _pairForAql);
+
+  factory->addPrefixHandler("/_api/query",
+                            RestHandlerCreator<RestQueryHandler>::createData<ApplicationV8*>,
+                            _applicationV8);
+
 
   // And now the "_admin" handlers
 
@@ -1075,7 +1082,6 @@ int ArangoServer::runConsole (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int ArangoServer::runUnitTests (TRI_vocbase_t* vocbase) {
-
   ApplicationV8::V8Context* context = _applicationV8->enterContext("STANDARD", vocbase, true, true);
 
   auto isolate = context->isolate;

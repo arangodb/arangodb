@@ -379,6 +379,7 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/RestHandler/arangod_libarangod_a-RestEdgeHandler.$(OBJEXT) \
 	arangod/RestHandler/arangod_libarangod_a-RestImportHandler.$(OBJEXT) \
 	arangod/RestHandler/arangod_libarangod_a-RestPleaseUpgradeHandler.$(OBJEXT) \
+	arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.$(OBJEXT) \
 	arangod/RestHandler/arangod_libarangod_a-RestReplicationHandler.$(OBJEXT) \
 	arangod/RestHandler/arangod_libarangod_a-RestUploadHandler.$(OBJEXT) \
 	arangod/RestHandler/arangod_libarangod_a-RestVocbaseBaseHandler.$(OBJEXT) \
@@ -1528,6 +1529,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
+	arangod/RestHandler/RestQueryHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
@@ -2404,6 +2406,9 @@ arangod/RestHandler/arangod_libarangod_a-RestImportHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestHandler/arangod_libarangod_a-RestPleaseUpgradeHandler.$(OBJEXT):  \
+	arangod/RestHandler/$(am__dirstamp) \
+	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
+arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.$(OBJEXT):  \
 	arangod/RestHandler/$(am__dirstamp) \
 	arangod/RestHandler/$(DEPDIR)/$(am__dirstamp)
 arangod/RestHandler/arangod_libarangod_a-RestReplicationHandler.$(OBJEXT):  \
@@ -3654,6 +3659,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestEdgeHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestImportHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestPleaseUpgradeHandler.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestReplicationHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestUploadHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestVocbaseBaseHandler.Po@am__quote@
@@ -4862,6 +4868,20 @@ arangod/RestHandler/arangod_libarangod_a-RestPleaseUpgradeHandler.obj: arangod/R
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestHandler/RestPleaseUpgradeHandler.cpp' object='arangod/RestHandler/arangod_libarangod_a-RestPleaseUpgradeHandler.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/arangod_libarangod_a-RestPleaseUpgradeHandler.obj `if test -f 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestPleaseUpgradeHandler.cpp'; fi`
+
+arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.o: arangod/RestHandler/RestQueryHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Tpo -c -o arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.o `test -f 'arangod/RestHandler/RestQueryHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestQueryHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Tpo arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestHandler/RestQueryHandler.cpp' object='arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.o' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.o `test -f 'arangod/RestHandler/RestQueryHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestQueryHandler.cpp
+
+arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.obj: arangod/RestHandler/RestQueryHandler.cpp
+@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.obj -MD -MP -MF arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Tpo -c -o arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.obj `if test -f 'arangod/RestHandler/RestQueryHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestQueryHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestQueryHandler.cpp'; fi`
+@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Tpo arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestQueryHandler.Po
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/RestHandler/RestQueryHandler.cpp' object='arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.obj' libtool=no @AMDEPBACKSLASH@
+@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
+@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/RestHandler/arangod_libarangod_a-RestQueryHandler.obj `if test -f 'arangod/RestHandler/RestQueryHandler.cpp'; then $(CYGPATH_W) 'arangod/RestHandler/RestQueryHandler.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/RestHandler/RestQueryHandler.cpp'; fi`
 
 arangod/RestHandler/arangod_libarangod_a-RestReplicationHandler.o: arangod/RestHandler/RestReplicationHandler.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/RestHandler/arangod_libarangod_a-RestReplicationHandler.o -MD -MP -MF arangod/RestHandler/$(DEPDIR)/arangod_libarangod_a-RestReplicationHandler.Tpo -c -o arangod/RestHandler/arangod_libarangod_a-RestReplicationHandler.o `test -f 'arangod/RestHandler/RestReplicationHandler.cpp' || echo '$(srcdir)/'`arangod/RestHandler/RestReplicationHandler.cpp
