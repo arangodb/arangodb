@@ -15,6 +15,7 @@
 #include <Basics/tri-strings.h>
 
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Aql/Parser.h"
 %}
 

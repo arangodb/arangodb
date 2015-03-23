@@ -504,7 +504,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 
       // optimize the ast
       enterState(AST_OPTIMIZATION);
-      parser->ast()->optimize();
+      parser->ast()->validateAndOptimize();
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
@@ -790,8 +790,8 @@ QueryResult Query::explain () {
     parser.ast()->injectBindParameters(_bindParameters);
 
     enterState(AST_OPTIMIZATION);
-    // optimize the ast
-    parser.ast()->optimize();
+    // optimize and validate the ast
+    parser.ast()->validateAndOptimize();
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
