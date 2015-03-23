@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,7 +23,8 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -130,12 +131,58 @@
 #define THROW_PARAMETER_ERROR(parameter, details, func)                        \
   throw triagens::basics::ParameterError(parameter, details, func, __FILE__, __LINE__)
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an arango exception with an error code
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION(code)                                           \
+  throw triagens::basics::Exception(code, __FILE__, __LINE__)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an arango exception with an error code and arbitrary 
+/// arguments (to be inserted in printf-style manner)
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION_PARAMS(code, ...)                               \
+  throw triagens::basics::Exception(                                           \
+    code,                                                                      \
+    triagens::basics::Exception::FillExceptionString(                          \
+      code,                                                                    \
+      __VA_ARGS__),                                                            \
+    __FILE__, __LINE__)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an arango exception with an error code and arbitrary 
+/// arguments (to be inserted in printf-style manner)
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION_FORMAT(code, format, ...)                       \
+  throw triagens::basics::Exception(                                           \
+    code,                                                                      \
+    triagens::basics::Exception::FillFormatExceptionString(                    \
+      "%s: " format,                                                           \
+      TRI_errno_string(code),                                                  \
+      __VA_ARGS__),                                                            \
+    __FILE__, __LINE__)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief throws an arango exception with an error code and an already-built
+/// error message
+////////////////////////////////////////////////////////////////////////////////
+
+#define THROW_ARANGO_EXCEPTION_MESSAGE(code, message)                          \
+  throw triagens::basics::Exception(code, message, __FILE__, __LINE__)
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace basics {
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class TriagensError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base class for all errors
@@ -161,6 +208,10 @@ namespace triagens {
         int _line;
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class InternalError
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for internal errors
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,7 +220,13 @@ namespace triagens {
       public:
         InternalError (std::string const& details, char const* file, int line);
         InternalError (std::exception const& ex, char const* file, int line);
+
+        ~InternalError () throw ();
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class OutOfMemoryError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for out-of-memory errors
@@ -178,7 +235,13 @@ namespace triagens {
     class OutOfMemoryError : public TriagensError {
       public:
         OutOfMemoryError (char const* file, int line);
+
+        ~OutOfMemoryError () throw ();
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class FileError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for file errors
@@ -206,6 +269,10 @@ namespace triagens {
         int _error;
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class ParseError
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for parse errors
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,12 +284,18 @@ namespace triagens {
                     char const* file,
                     int line);
 
+        ~ParseError () throw ();
+
       public:
         void setLineNumber (int);
 
       protected:
         int _lineNumber;
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class ParameterError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for parameter errors
@@ -241,6 +314,45 @@ namespace triagens {
       protected:
         std::string _parameter;
         std::string _func;
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class Exception
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief arango exception type
+////////////////////////////////////////////////////////////////////////////////
+
+    class Exception : public virtual std::exception {
+      public:
+        static std::string FillExceptionString (int, ...);
+        static std::string FillFormatExceptionString (char const * format, ...);
+        static void SetVerbose (bool);
+
+      public:
+        Exception (int code,
+                   char const* file,
+                   int line);
+        
+        Exception (int code,
+                   std::string const& errorMessage,
+                   char const* file,
+                   int line);
+
+        ~Exception () throw ();
+
+      public:
+        char const * what () const throw (); 
+        std::string message () const throw ();
+        int code () const throw ();
+        void addToMessage (std::string More);
+
+      protected:
+        std::string       _errorMessage;
+        char const*       _file;
+        int const         _line;
+        int const         _code;
     };
   }
 }

@@ -41,7 +41,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/utf8-helper.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
@@ -218,7 +218,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
     return aid;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -387,7 +387,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

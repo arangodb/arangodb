@@ -33,7 +33,21 @@ using namespace std;
 using namespace triagens::basics;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief controls if backtraces are printed with exceptions
+////////////////////////////////////////////////////////////////////////////////
+
+static bool WithBackTrace = false;
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                      public types
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class TriagensError
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,19 +71,26 @@ TriagensError::TriagensError (string const& type, string const& details, char co
   TRI_GetBacktrace(_message);
 #endif
 #endif
-
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
 TriagensError::~TriagensError () throw () {
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the error messages
+////////////////////////////////////////////////////////////////////////////////
 
 char const * TriagensError::what () const throw() {
   return _message.c_str();
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               class InternalError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for internal errors
@@ -79,11 +100,24 @@ InternalError::InternalError (string const& details, char const* file, int line)
   : TriagensError("internal error", details, file, line) {
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief exception for internal errors
+////////////////////////////////////////////////////////////////////////////////
 
 InternalError::InternalError (std::exception const& ex, char const* file, int line)
   : TriagensError("internal exception", ex.what(), file, line) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+InternalError::~InternalError () throw () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class OutOfMemoryError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for out-of-memory errors
@@ -92,6 +126,17 @@ InternalError::InternalError (std::exception const& ex, char const* file, int li
 OutOfMemoryError::OutOfMemoryError (char const* file, int line)
   : TriagensError("out-of-memory", "", file, line) {
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+OutOfMemoryError::~OutOfMemoryError () throw () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class FileError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for file errors
@@ -122,12 +167,16 @@ FileError::FileError (string const& func,
   }
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
 FileError::~FileError () throw () {
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the filename
+////////////////////////////////////////////////////////////////////////////////
 
 void FileError::setFilename (string const& filename) {
   _filename = filename;
@@ -136,6 +185,10 @@ void FileError::setFilename (string const& filename) {
     _message += " file = '" + _filename + "'";
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class ParseError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for parse errors
@@ -152,7 +205,16 @@ ParseError::ParseError (string const& details,
   }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
+ParseError::~ParseError () throw () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the line number
+////////////////////////////////////////////////////////////////////////////////
 
 void ParseError::setLineNumber (int lineNumber) {
   _lineNumber = lineNumber;
@@ -161,6 +223,10 @@ void ParseError::setLineNumber (int lineNumber) {
     _message += " line-number = '" + StringUtils::itoa(_lineNumber) + "'";
   }
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class ParameterError
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief exception for parameter errors
@@ -181,10 +247,159 @@ ParameterError::ParameterError (string const& parameter,
   }
 }
 
-
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
 
 ParameterError::~ParameterError () throw () {
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class Exception
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief controls whether a backtrace is created for each exception
+////////////////////////////////////////////////////////////////////////////////
+
+void Exception::SetVerbose (bool verbose) {
+  WithBackTrace = verbose;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, without format string
+////////////////////////////////////////////////////////////////////////////////
+
+Exception::Exception (int code,
+                      char const* file,
+                      int line)
+  : _errorMessage(TRI_errno_string(code)),
+    _file(file),
+    _line(line),
+    _code(code) {
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
+  }
+#endif
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the error message
+////////////////////////////////////////////////////////////////////////////////
+
+string Exception::message () const throw () {
+  return _errorMessage;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the error code
+////////////////////////////////////////////////////////////////////////////////
+
+int Exception::code () const throw () {
+  return _code;
+}
+        
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds to the message
+////////////////////////////////////////////////////////////////////////////////
+
+void Exception::addToMessage (string More) {
+  _errorMessage += More;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor, for creating an exception with an already created
+/// error message (normally based on error templates containing %s, %d etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+Exception::Exception (int code,
+                      string const& errorMessage,
+                      char const* file,
+                      int line)
+  : _errorMessage(errorMessage),
+    _file(file),
+    _line(line),
+    _code(code) {
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+#if HAVE_BACKTRACE
+  if (WithBackTrace) {
+    _errorMessage += std::string("\n\n");
+    TRI_GetBacktrace(_errorMessage);
+    _errorMessage += std::string("\n\n");
+  }
+#endif
+#endif
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+Exception::~Exception () throw () {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return exception message
+////////////////////////////////////////////////////////////////////////////////
+
+const char* Exception::what () const throw () {
+  return _errorMessage.c_str();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct an error message from a template string
+////////////////////////////////////////////////////////////////////////////////
+        
+std::string Exception::FillExceptionString (int code, ...) {
+  char const* format = TRI_errno_string(code);
+  TRI_ASSERT(format != nullptr);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // Obviously the formatstring of the error code has to support parameters.
+  TRI_ASSERT(strchr(format, '%') != nullptr);
+#endif
+
+  char buffer[1024];
+  va_list ap;
+  va_start(ap, code);
+  vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  va_end(ap);
+  buffer[sizeof(buffer) - 1] = '\0'; // Windows
+
+  return std::string(buffer);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief construct an error message from a template string
+////////////////////////////////////////////////////////////////////////////////
+        
+std::string Exception::FillFormatExceptionString (char const* format, ...) {
+  TRI_ASSERT(format != nullptr);
+
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+  // Format #1 should come from the macro...
+  TRI_ASSERT(strchr(format, '%') != nullptr);
+  // Obviously the user has to give us a format string.
+  TRI_ASSERT(strchr(strchr(format, '%'), '%') != nullptr);
+#endif
+
+  char buffer[1024];
+  va_list ap;
+  va_start(ap, format);
+  vsnprintf(buffer, sizeof(buffer) - 1, format, ap);
+  va_end(ap);
+  buffer[sizeof(buffer) - 1] = '\0'; // Windows
+
+  return std::string(buffer);
+}
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

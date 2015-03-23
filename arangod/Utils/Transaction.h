@@ -34,7 +34,7 @@
 
 #include "Cluster/ServerState.h"
 
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/barrier.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
@@ -542,7 +542,7 @@ namespace triagens {
                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
                                                           forceSync);
           }
-          catch (triagens::arango::Exception const& ex) {
+          catch (triagens::basics::Exception const& ex) {
             return ex.code();
           }
           catch (...) {
@@ -648,7 +648,7 @@ namespace triagens {
                                                         mptr,
                                                         ! isLocked(trxCollection, TRI_TRANSACTION_READ));
           }
-          catch (triagens::arango::Exception const& ex) {
+          catch (triagens::basics::Exception const& ex) {
             return ex.code();
           }
           catch (...) {
@@ -1179,7 +1179,7 @@ namespace triagens {
                                                           forceSync,
                                                           false);
           }
-          catch (triagens::arango::Exception const& ex) {
+          catch (triagens::basics::Exception const& ex) {
             return ex.code();
           }
           catch (...) {
@@ -1218,7 +1218,7 @@ namespace triagens {
                                                           ! isLocked(trxCollection, TRI_TRANSACTION_WRITE),
                                                           forceSync);
           }
-          catch (triagens::arango::Exception const& ex) {
+          catch (triagens::basics::Exception const& ex) {
             return ex.code();
           }
           catch (...) {
@@ -1270,7 +1270,7 @@ namespace triagens {
               }
             }
           }
-          catch (triagens::arango::Exception const& ex) {
+          catch (triagens::basics::Exception const& ex) {
             res = ex.code();
           }
           catch (...) {
