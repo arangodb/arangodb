@@ -389,7 +389,6 @@ am_arangod_libarangod_a_OBJECTS =  \
 	arangod/RestServer/arangod_libarangod_a-arangod.$(OBJEXT) \
 	arangod/SkipLists/arangod_libarangod_a-skiplistIndex.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-DocumentHelper.$(OBJEXT) \
-	arangod/Utils/arangod_libarangod_a-Exception.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-StandaloneTransactionContext.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-Transaction.$(OBJEXT) \
 	arangod/Utils/arangod_libarangod_a-TransactionContext.$(OBJEXT) \
@@ -1539,7 +1538,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/arangod.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
-	arangod/Utils/Exception.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
 	arangod/Utils/TransactionContext.cpp \
@@ -1924,6 +1922,7 @@ SHELL_SERVER_AQL = @top_srcdir@/js/server/tests/aql-arithmetic.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-filters.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-indexes.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-keep.js \
+			@top_srcdir@/js/server/tests/aql-optimizer-plans.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-interchange-adjacent-enumerations-noncluster.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-down.js \
 			@top_srcdir@/js/server/tests/aql-optimizer-rule-move-calculations-up.js \
@@ -2454,9 +2453,6 @@ arangod/Utils/$(DEPDIR)/$(am__dirstamp):
 	@$(MKDIR_P) arangod/Utils/$(DEPDIR)
 	@: > arangod/Utils/$(DEPDIR)/$(am__dirstamp)
 arangod/Utils/arangod_libarangod_a-DocumentHelper.$(OBJEXT):  \
-	arangod/Utils/$(am__dirstamp) \
-	arangod/Utils/$(DEPDIR)/$(am__dirstamp)
-arangod/Utils/arangod_libarangod_a-Exception.$(OBJEXT):  \
 	arangod/Utils/$(am__dirstamp) \
 	arangod/Utils/$(DEPDIR)/$(am__dirstamp)
 arangod/Utils/arangod_libarangod_a-StandaloneTransactionContext.$(OBJEXT):  \
@@ -3670,7 +3666,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/RestServer/$(DEPDIR)/bin_arangod-arangod.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/SkipLists/$(DEPDIR)/arangod_libarangod_a-skiplistIndex.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-DocumentHelper.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-StandaloneTransactionContext.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Transaction.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@arangod/Utils/$(DEPDIR)/arangod_libarangod_a-TransactionContext.Po@am__quote@
@@ -5008,20 +5003,6 @@ arangod/Utils/arangod_libarangod_a-DocumentHelper.obj: arangod/Utils/DocumentHel
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Utils/DocumentHelper.cpp' object='arangod/Utils/arangod_libarangod_a-DocumentHelper.obj' libtool=no @AMDEPBACKSLASH@
 @AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
 @am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Utils/arangod_libarangod_a-DocumentHelper.obj `if test -f 'arangod/Utils/DocumentHelper.cpp'; then $(CYGPATH_W) 'arangod/Utils/DocumentHelper.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Utils/DocumentHelper.cpp'; fi`
-
-arangod/Utils/arangod_libarangod_a-Exception.o: arangod/Utils/Exception.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Utils/arangod_libarangod_a-Exception.o -MD -MP -MF arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Tpo -c -o arangod/Utils/arangod_libarangod_a-Exception.o `test -f 'arangod/Utils/Exception.cpp' || echo '$(srcdir)/'`arangod/Utils/Exception.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Tpo arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Utils/Exception.cpp' object='arangod/Utils/arangod_libarangod_a-Exception.o' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Utils/arangod_libarangod_a-Exception.o `test -f 'arangod/Utils/Exception.cpp' || echo '$(srcdir)/'`arangod/Utils/Exception.cpp
-
-arangod/Utils/arangod_libarangod_a-Exception.obj: arangod/Utils/Exception.cpp
-@am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Utils/arangod_libarangod_a-Exception.obj -MD -MP -MF arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Tpo -c -o arangod/Utils/arangod_libarangod_a-Exception.obj `if test -f 'arangod/Utils/Exception.cpp'; then $(CYGPATH_W) 'arangod/Utils/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Utils/Exception.cpp'; fi`
-@am__fastdepCXX_TRUE@	$(AM_V_at)$(am__mv) arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Tpo arangod/Utils/$(DEPDIR)/arangod_libarangod_a-Exception.Po
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	$(AM_V_CXX)source='arangod/Utils/Exception.cpp' object='arangod/Utils/arangod_libarangod_a-Exception.obj' libtool=no @AMDEPBACKSLASH@
-@AMDEP_TRUE@@am__fastdepCXX_FALSE@	DEPDIR=$(DEPDIR) $(CXXDEPMODE) $(depcomp) @AMDEPBACKSLASH@
-@am__fastdepCXX_FALSE@	$(AM_V_CXX@am__nodep@)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -c -o arangod/Utils/arangod_libarangod_a-Exception.obj `if test -f 'arangod/Utils/Exception.cpp'; then $(CYGPATH_W) 'arangod/Utils/Exception.cpp'; else $(CYGPATH_W) '$(srcdir)/arangod/Utils/Exception.cpp'; fi`
 
 arangod/Utils/arangod_libarangod_a-StandaloneTransactionContext.o: arangod/Utils/StandaloneTransactionContext.cpp
 @am__fastdepCXX_TRUE@	$(AM_V_CXX)$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) $(arangod_libarangod_a_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS) -MT arangod/Utils/arangod_libarangod_a-StandaloneTransactionContext.o -MD -MP -MF arangod/Utils/$(DEPDIR)/arangod_libarangod_a-StandaloneTransactionContext.Tpo -c -o arangod/Utils/arangod_libarangod_a-StandaloneTransactionContext.o `test -f 'arangod/Utils/StandaloneTransactionContext.cpp' || echo '$(srcdir)/'`arangod/Utils/StandaloneTransactionContext.cpp
@@ -8696,6 +8677,7 @@ curl-request-get:
 @ENABLE_FAILURE_TESTS_TRUE@	@echo "================================================================================"
 @ENABLE_FAILURE_TESTS_TRUE@	@echo
 
+@ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-with-temp"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-collection-fail"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="create-database-fail"
 @ENABLE_FAILURE_TESTS_TRUE@	$(MAKE) execute-recovery-test PID=$(PID) RECOVERY_SCRIPT="empty-datafiles"

@@ -115,7 +115,6 @@ add_executable(
     RestServer/arangod.cpp
     SkipLists/skiplistIndex.cpp
     Utils/DocumentHelper.cpp
-    Utils/Exception.cpp
     Utils/StandaloneTransactionContext.cpp
     Utils/Transaction.cpp
     Utils/TransactionContext.cpp

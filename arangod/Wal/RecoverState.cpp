@@ -31,12 +31,12 @@
 #include "Basics/FileUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/files.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/voc-shaper.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
-#include "Utils/Exception.h"
 
 using namespace triagens::wal;
 
@@ -452,7 +452,7 @@ int RecoverState::executeRemoteOperation (TRI_voc_tick_t databaseId,
       THROW_ARANGO_EXCEPTION(res);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -536,7 +536,7 @@ int RecoverState::executeSingleOperation (TRI_voc_tick_t databaseId,
     // commit the operation
     res = trx->commit();
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -1620,7 +1620,7 @@ int RecoverState::abortOpenTransactions () {
       }
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

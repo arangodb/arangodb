@@ -82,7 +82,14 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestPleaseUpgradeHandler::handleError (TriagensError const&) {
+void RestPleaseUpgradeHandler::handleError (const TriagensError&) {
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void RestPleaseUpgradeHandler::handleError (const Exception&) {
 }
 
 // -----------------------------------------------------------------------------

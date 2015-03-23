@@ -39,6 +39,7 @@
 #include "Basics/fasthash.h"
 #include "Basics/json-utilities.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/Exceptions.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "FulltextIndex/fulltext-wordlist.h"
@@ -46,7 +47,6 @@
 #include "HashIndex/hash-index.h"
 #include "ShapedJson/shape-accessor.h"
 #include "ShapedJson/shaped-json.h"
-#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/server.h"
@@ -386,7 +386,7 @@ int TRI_SaveIndex (TRI_document_collection_t* document,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return TRI_ERROR_NO_ERROR;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

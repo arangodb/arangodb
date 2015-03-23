@@ -89,7 +89,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/arangod.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
-	arangod/Utils/Exception.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
 	arangod/Utils/TransactionContext.cpp \
