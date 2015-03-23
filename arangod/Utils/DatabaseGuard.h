@@ -31,7 +31,7 @@
 #define ARANGODB_UTILS_DATABASE_GUARD_H 1
 
 #include "Basics/Common.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/server.h"
 
 struct TRI_vocbase_s;

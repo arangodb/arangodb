@@ -32,7 +32,7 @@
 #include "Basics/logging.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::aql;

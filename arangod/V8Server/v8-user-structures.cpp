@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-user-structures.h"
+#include "Basics/Exceptions.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/WriteLocker.h"
@@ -35,7 +36,6 @@
 #include "Basics/json.h"
 #include "Basics/json-utilities.h"
 #include "Basics/tri-strings.h"
-#include "Utils/Exception.h"
 #include "VocBase/vocbase.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"

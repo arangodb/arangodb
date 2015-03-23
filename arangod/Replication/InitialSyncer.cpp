@@ -29,6 +29,7 @@
 
 #include "InitialSyncer.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
@@ -37,7 +38,6 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/Exception.h"
 #include "Utils/transactions.h"
 #include "VocBase/index.h"
 #include "VocBase/document-collection.h"
@@ -858,7 +858,7 @@ int InitialSyncer::handleCollection (TRI_json_t const* parameters,
             TRI_WRITE_UNLOCK_DOCUMENTS_INDEXES_PRIMARY_COLLECTION(document);
           }
         }
-        catch (triagens::arango::Exception const& ex) {
+        catch (triagens::basics::Exception const& ex) {
           res = ex.code();
         }
         catch (...) {

@@ -32,8 +32,7 @@
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -648,7 +647,7 @@ static int WriteBeginMarker (TRI_transaction_t* trx) {
       trx->_beginWritten = true;
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -695,7 +694,7 @@ static int WriteAbortMarker (TRI_transaction_t* trx) {
       res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -738,7 +737,7 @@ static int WriteCommitMarker (TRI_transaction_t* trx) {
       res = GetLogfileManager()->allocateAndWrite(marker, false).errorCode;
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

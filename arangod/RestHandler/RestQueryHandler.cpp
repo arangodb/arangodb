@@ -132,6 +132,9 @@ bool RestQueryHandler::readQueryProperties () {
   catch (const TriagensError& err) {
     handleError(err);
   }
+  catch (const Exception& err) {
+    handleError(err);
+  }
   catch (std::exception const& ex) {
     triagens::basics::InternalError err(ex, __FILE__, __LINE__);
     handleError(err);
@@ -174,6 +177,9 @@ bool RestQueryHandler::readQuery (bool slow) {
   catch (const TriagensError& err) {
     handleError(err);
   }
+  catch (const Exception& err) {
+    handleError(err);
+  }
   catch (std::exception const& ex) {
     triagens::basics::InternalError err(ex, __FILE__, __LINE__);
     handleError(err);
@@ -197,7 +203,7 @@ bool RestQueryHandler::readQuery () {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting GET /_api/query/<type>");
-    return false;
+    return true;
   }
 
   const auto& name = suffix[0];
@@ -215,7 +221,7 @@ bool RestQueryHandler::readQuery () {
   generateError(HttpResponse::NOT_FOUND,
                 TRI_ERROR_HTTP_NOT_FOUND,
                 "unknown type '" + name + "', expecting 'slow', 'current', or 'properties'");
-  return false;
+  return true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +282,7 @@ bool RestQueryHandler::deleteQuery () {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting DELETE /_api/query/<id> or /_api/query/slow");
-    return false;
+    return true;
   }
 
   const auto& name = suffix[0];
@@ -300,16 +306,14 @@ bool RestQueryHandler::replaceProperties () {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting PUT /_api/query/properties");
-    return false;
-  }
-
-  TRI_json_t* json = parseJsonBody();
-
-  if (json == nullptr) {
     return true;
   }
 
-  if (JsonHelper::isObject(json)) {
+  unique_ptr<TRI_json_t> body(parseJsonBody());
+
+  if (body == nullptr) {
+    // error message generated in parseJsonBody
+    return true;
   }
 
   auto queryList = static_cast<triagens::aql::QueryList*>(_vocbase->_queries);
@@ -323,24 +327,24 @@ bool RestQueryHandler::replaceProperties () {
 
     // TODO(fc) add a "hasSomething" to JsonHelper?
 
-    if (JsonHelper::getObjectElement(json, "enabled") != nullptr) {
-      enabled = JsonHelper::checkAndGetBooleanValue(json, "enabled");
+    if (JsonHelper::getObjectElement(body.get(), "enabled") != nullptr) {
+      enabled = JsonHelper::checkAndGetBooleanValue(body.get(), "enabled");
     }
 
-    if (JsonHelper::getObjectElement(json, "trackSlowQueries") != nullptr) {
-      trackSlowQueries = JsonHelper::checkAndGetBooleanValue(json, "trackSlowQueries");
+    if (JsonHelper::getObjectElement(body.get(), "trackSlowQueries") != nullptr) {
+      trackSlowQueries = JsonHelper::checkAndGetBooleanValue(body.get(), "trackSlowQueries");
     }
 
-    if (JsonHelper::getObjectElement(json, "maxSlowQueries") != nullptr) {
-      maxSlowQueries = JsonHelper::checkAndGetNumericValue<size_t>(json, "maxSlowQueries");
+    if (JsonHelper::getObjectElement(body.get(), "maxSlowQueries") != nullptr) {
+      maxSlowQueries = JsonHelper::checkAndGetNumericValue<size_t>(body.get(), "maxSlowQueries");
     }
 
-    if (JsonHelper::getObjectElement(json, "slowQueryThreshold") != nullptr) {
-      slowQueryThreshold = JsonHelper::checkAndGetNumericValue<double>(json, "slowQueryThreshold");
+    if (JsonHelper::getObjectElement(body.get(), "slowQueryThreshold") != nullptr) {
+      slowQueryThreshold = JsonHelper::checkAndGetNumericValue<double>(body.get(), "slowQueryThreshold");
     }
 
-    if (JsonHelper::getObjectElement(json, "maxQueryStringLength") != nullptr) {
-      maxQueryStringLength = JsonHelper::checkAndGetNumericValue<size_t>(json, "maxQueryStringLength");
+    if (JsonHelper::getObjectElement(body.get(), "maxQueryStringLength") != nullptr) {
+      maxQueryStringLength = JsonHelper::checkAndGetNumericValue<size_t>(body.get(), "maxQueryStringLength");
     }
 
     queryList->enabled(enabled);
@@ -352,6 +356,9 @@ bool RestQueryHandler::replaceProperties () {
     return readQueryProperties();
   }
   catch (const TriagensError& err) {
+    handleError(err);
+  }
+  catch (const Exception& err) {
     handleError(err);
   }
   catch (std::exception const& ex) {
@@ -377,18 +384,18 @@ bool RestQueryHandler::parseQuery () {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_BAD_PARAMETER,
                   "expecting POST /_api/query");
-    return false;
+    return true;
   }
 
-  TRI_json_t* body = parseJsonBody();
+  unique_ptr<TRI_json_t> body(parseJsonBody());
 
-  if (body == nullptr) {
-    TRI_FreeJson(TRI_CORE_MEM_ZONE, body);
+  if (body.get() == nullptr) {
+    // error message generated in parseJsonBody
     return true;
   }
 
   try {
-    const string&& queryString = JsonHelper::checkAndGetStringValue(body, "query");
+    const string&& queryString = JsonHelper::checkAndGetStringValue(body.get(), "query");
 
     Query query(_applicationV8, true, _vocbase, queryString.c_str(), queryString.size(), nullptr, nullptr, PART_MAIN);
     
@@ -433,6 +440,9 @@ bool RestQueryHandler::parseQuery () {
     generateResult(HttpResponse::OK, result.json());
   }
   catch (const TriagensError& err) {
+    handleError(err);
+  }
+  catch (const Exception& err) {
     handleError(err);
   }
   catch (std::exception const& ex) {

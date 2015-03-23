@@ -45,8 +45,7 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
-
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
@@ -182,7 +181,7 @@ static int WriteDropCollectionMarker (TRI_vocbase_t* vocbase,
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -682,7 +681,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return collection;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -833,7 +832,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
     return TRI_ERROR_NO_ERROR;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
