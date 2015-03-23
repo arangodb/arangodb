@@ -3,6 +3,6 @@ shell> curl --data-binary @- --dump - http://localhost:8529/_api/replication/dum
 HTTP/1.1 200 OK
 content-type: application/x-arango-dump; charset=utf-8
 x-arango-replication-checkmore: false
-x-arango-replication-lastincluded: 1487905096
+x-arango-replication-lastincluded: 1469238111
 
-"{\"tick\":\"1487249736\",\"type\":2300,\"key\":\"123456\",\"rev\":\"1487184200\",\"data\":{\"_key\":\"123456\",\"_rev\":\"1487184200\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"1487708488\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"1487642952\"}\n{\"tick\":\"1487905096\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"1487839560\"}\n"
+"{\"tick\":\"1468582751\",\"type\":2300,\"key\":\"123456\",\"rev\":\"1468517215\",\"data\":{\"_key\":\"123456\",\"_rev\":\"1468517215\",\"c\":false,\"b\":1,\"d\":\"additional value\"}}\n{\"tick\":\"1469041503\",\"type\":2302,\"key\":\"foobar\",\"rev\":\"1468975967\"}\n{\"tick\":\"1469238111\",\"type\":2302,\"key\":\"abcdef\",\"rev\":\"1469172575\"}\n"

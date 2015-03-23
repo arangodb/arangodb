@@ -6,13 +6,13 @@ shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/graph/g
 
 HTTP/1.1 202 Accepted
 content-type: application/json; charset=utf-8
-etag: 1124639048
+etag: 1123208031
 
 { 
   "vertex" : { 
     "_id" : "vertices/v1", 
     "_key" : "v1", 
-    "_rev" : "1124639048", 
+    "_rev" : "1123208031", 
     "optional1" : "val1" 
   }, 
   "error" : false, 

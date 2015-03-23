@@ -9,35 +9,35 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/H
       { 
         "_id" : "germanCity/Hamburg", 
         "_key" : "Hamburg", 
-        "_rev" : "150511944", 
+        "_rev" : "154323807", 
         "isCapital" : false, 
         "population" : 1000000, 
         "connnection" : [ 
           { 
             "_id" : "germanCity/Cologne", 
             "_key" : "Cologne", 
-            "_rev" : "150315336", 
+            "_rev" : "154127199", 
             "isCapital" : false, 
             "population" : 1000000, 
             "connnection" : [ 
               { 
                 "_id" : "frenchCity/Lyon", 
                 "_key" : "Lyon", 
-                "_rev" : "150905160", 
+                "_rev" : "154717023", 
                 "isCapital" : false, 
                 "population" : 80000 
               }, 
               { 
                 "_id" : "frenchCity/Paris", 
                 "_key" : "Paris", 
-                "_rev" : "151101768", 
+                "_rev" : "154913631", 
                 "isCapital" : true, 
                 "population" : 4000000, 
                 "connnection" : [ 
                   { 
                     "_id" : "frenchCity/Lyon", 
                     "_key" : "Lyon", 
-                    "_rev" : "150905160", 
+                    "_rev" : "154717023", 
                     "isCapital" : false, 
                     "population" : 80000 
                   } 
@@ -48,14 +48,14 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/H
           { 
             "_id" : "frenchCity/Paris", 
             "_key" : "Paris", 
-            "_rev" : "151101768", 
+            "_rev" : "154913631", 
             "isCapital" : true, 
             "population" : 4000000, 
             "connnection" : [ 
               { 
                 "_id" : "frenchCity/Lyon", 
                 "_key" : "Lyon", 
-                "_rev" : "150905160", 
+                "_rev" : "154717023", 
                 "isCapital" : false, 
                 "population" : 80000 
               } 
@@ -64,7 +64,7 @@ arangosh> db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/H
           { 
             "_id" : "frenchCity/Lyon", 
             "_key" : "Lyon", 
-            "_rev" : "150905160", 
+            "_rev" : "154717023", 
             "isCapital" : false, 
             "population" : 80000 
           } 

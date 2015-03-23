@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/testCollectionBasics
 
 { 
-  "id" : "970957128", 
+  "id" : "971230047", 
   "name" : "testCollectionBasics", 
   "waitForSync" : false, 
   "isVolatile" : false, 
@@ -24,7 +24,7 @@ content-type: application/json; charset=utf-8
 location: /_db/_system/_api/collection/testCollectionEdges
 
 { 
-  "id" : "971088200", 
+  "id" : "971361119", 
   "name" : "testCollectionEdges", 
   "waitForSync" : false, 
   "isVolatile" : false, 
