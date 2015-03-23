@@ -28,6 +28,8 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
+#else
+extern char **environ;
 #endif
 
 #include "v8-utils.h"
