@@ -112,7 +112,7 @@ extern int Aqldebug;
 typedef union YYSTYPE YYSTYPE;
 union YYSTYPE
 {
-#line 21 "arangod/Aql/grammar.y" /* yacc.c:1909  */
+#line 22 "arangod/Aql/grammar.y" /* yacc.c:1909  */
 
   triagens::aql::AstNode*  node;
   char*                    strval;

@@ -1,5 +1,5 @@
 /*jshint strict: false, sub: true, maxlen: 500 */
-/*global require, assertEqual, assertFalse, assertNull, assertTrue, fail, AQL_EXECUTE */
+/*global require, assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, assertUndefined, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -196,6 +196,22 @@ function ahuacatlModifySuite () {
 /// @brief test subquery
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUpsertInSubquery1 : function () {
+      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (UPSERT { _key: 'test' } INSERT { foo: 1 } UPDATE { bar: 2 } IN @@cn) RETURN d", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInSubquery2 : function () {
+      assertQueryError(errors.ERROR_QUERY_MODIFY_IN_SUBQUERY.code, "FOR d IN @@cn LET x = (FOR i IN 1..2 UPSERT { _key: 'test' } INSERT { } UPDATE { } IN @@cn) RETURN d", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test subquery
+////////////////////////////////////////////////////////////////////////////////
+
     testMultiModify : function () {
       assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR d IN @@cn1 REMOVE d IN @@cn1 FOR e IN @@cn2 REMOVE e IN @@cn2", { "@cn1": cn1, "@cn2": cn2 });
     },
@@ -237,7 +253,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidUsageOfNew : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed = NEW RETURN removed", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, "REMOVE 'abc' IN @@cn LET removed = NEW RETURN removed", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,7 +261,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidUsageOfOld : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "INSERT { } IN @@cn LET inserted = OLD RETURN inserted", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, "INSERT { } IN @@cn LET inserted = OLD RETURN inserted", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -253,7 +269,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidVariableNames1 : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "REMOVE 'abc' IN @@cn LET removed1 = OLD RETURN removed2", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, "REMOVE 'abc' IN @@cn LET removed1 = OLD RETURN removed2", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,7 +277,7 @@ function ahuacatlModifySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testInvalidVariableNames2 : function () {
-      assertQueryError(errors.ERROR_ARANGO_COLLECTION_NOT_FOUND.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
+      assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, "UPDATE 'abc' WITH { } IN @@cn LET updated = NEW RETURN foo", { "@cn": cn1 });
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -314,6 +330,230 @@ function ahuacatlModifySuite () {
       assertEqual(1, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
       assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test usage of OLD/NEW variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testOldNewUsageRemove : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR OLD IN " + cn1 + " LET NEW = OLD REMOVE NEW IN " + cn1, {});
+
+      assertEqual(0, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test usage of OLD/NEW variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testOldNewUsageInsert : function () {
+      var expected = { writesExecuted: 0, writesIgnored: 1 };
+      var actual = AQL_EXECUTE("FOR OLD IN " + cn1 + " LET NEW = OLD INSERT NEW IN " + cn1 + " OPTIONS { ignoreErrors: true }", {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test usage of OLD/NEW variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testOldNewUsageUpdate : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR OLD IN " + cn1 + " LET NEW = OLD UPDATE NEW WITH NEW IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test usage of OLD/NEW variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testOldNewUsageReplace : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR OLD IN " + cn1 + " LET NEW = OLD REPLACE NEW WITH NEW IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmptyCollection : function () {
+      c1.truncate();
+
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { } INSERT { bar: 'baz' } UPDATE { bark: 'bart' } IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      var doc = c1.toArray()[0];
+      assertFalse(doc.hasOwnProperty("a"));
+      assertEqual("baz", doc.bar);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmpty : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { } INSERT { bar: 'baz' } UPDATE { bark: 'bart' } IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertEqual(1, doc.a);
+      assertEqual("bart", doc.bark);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with non existing search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertNonExisting : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { bart: 'bark' } INSERT { bar: 'baz', _key: 'testfoo' } UPDATE { bark: 'barx' } IN " + cn1, {});
+
+      assertEqual(2, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      var doc = c1.document("testfoo");
+      assertEqual("testfoo", doc._key);
+      assertFalse(doc.hasOwnProperty("a"));
+      assertEqual("baz", doc.bar);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertDynamicAttributes : function () {
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "UPSERT { [ 1 + 1 ] : true } INSERT { } UPDATE [ ] INTO @@cn", { "@cn": cn1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInvalidSearchDocument : function () {
+      c1.truncate();
+
+      var queries = [
+        [ "UPSERT 'test1' INSERT { } UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT null INSERT { } UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT false INSERT { } UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT true INSERT { } UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT [ ] INSERT { } UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT @val INSERT { } UPDATE { } INTO @@cn", { val: 'test1' } ],
+        [ "UPSERT @val INSERT { } UPDATE { } INTO @@cn", { val: null } ],
+        [ "UPSERT @val INSERT { } UPDATE { } INTO @@cn", { val: false } ],
+        [ "UPSERT @val INSERT { } UPDATE { } INTO @@cn", { val: [ ] } ],
+        [ "UPSERT @val INSERT { } UPDATE { } INTO @@cn", { val: { } } ]
+      ];
+
+      queries.forEach(function(query) { 
+        var params = query[1];
+        params["@cn"] = cn1;
+        assertQueryError(errors.ERROR_QUERY_PARSE.code, query[0], params, query[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInvalidDocumentsInsert : function () {
+      c1.truncate();
+
+      var queries = [
+        [ "UPSERT { } INSERT null UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT { } INSERT true UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT { } INSERT 'foo' UPDATE { } INTO @@cn", { } ],
+        [ "UPSERT { } INSERT [ ] UPDATE { } INTO @@cn", { } ], 
+        [ "UPSERT { } INSERT @val UPDATE { } INTO @@cn", { val: null } ], 
+        [ "UPSERT { } INSERT @val UPDATE { } INTO @@cn", { val: true } ], 
+        [ "UPSERT { } INSERT @val UPDATE { } INTO @@cn", { val: 'foo' } ],
+        [ "UPSERT { } INSERT @val UPDATE { } INTO @@cn", { val: [ 1, 2 ] } ],
+        [ "UPSERT { } INSERT @val UPDATE { } INTO @@cn", { val: [ ] } ]
+      ];
+
+      queries.forEach(function(query) { 
+        var params = query[1];
+        params["@cn"] = cn1;
+        assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, query[0], params, query[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInvalidDocumentsUpdate : function () {
+      var queries = [
+        [ "UPSERT { } INSERT { } UPDATE null INTO @@cn", { } ],
+        [ "UPSERT { } INSERT { } UPDATE true INTO @@cn", { } ],
+        [ "UPSERT { } INSERT { } UPDATE 'foo' INTO @@cn", { } ],
+        [ "UPSERT { } INSERT { } UPDATE [ ] INTO @@cn", { } ], 
+        [ "UPSERT { } INSERT { } UPDATE @val INTO @@cn", { val: null } ], 
+        [ "UPSERT { } INSERT { } UPDATE @val INTO @@cn", { val: true } ], 
+        [ "UPSERT { } INSERT { } UPDATE @val INTO @@cn", { val: 'foo' } ],
+        [ "UPSERT { } INSERT { } UPDATE @val INTO @@cn", { val: [ 1, 2 ] } ],
+        [ "UPSERT { } INSERT { } UPDATE @val INTO @@cn", { val: [ ] } ]
+      ];
+
+      queries.forEach(function(query) { 
+        var params = query[1];
+        params["@cn"] = cn1;
+        assertQueryError(errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code, query[0], params, query[0]);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertFollowedByDocumentAccess : function () {
+      var queries = [
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN DOCUMENT('foo')", 
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN PASSTHRU(DOCUMENT('foo'))", 
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN COLLECTIONS()", 
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN UNIQUE(@@cn)"
+      ];
+
+      queries.forEach(function(query) { 
+        assertQueryError(errors.ERROR_QUERY_ACCESS_AFTER_MODIFICATION.code, query, { "@cn": cn1 }, query);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertFollowedBySubquery : function () {
+      var queries = [
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn RETURN (FOR i IN @@cn RETURN i)", 
+        "UPSERT { } INSERT { } UPDATE { } INTO @@cn LET x = (FOR i IN @@cn RETURN i) RETURN x" 
+      ];
+
+      queries.forEach(function(query) { 
+        assertQueryError(errors.ERROR_QUERY_PARSE.code, query, { "@cn": cn1 }, query);
+      });
     }
 
   };
@@ -384,6 +624,62 @@ function ahuacatlRemoveSuite () {
 
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove - return what
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveReturnDoc : function () {
+      var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1 + " LET removed = OLD RETURN OLD", {}).json;
+
+      assertEqual(0, c1.count());
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i].hasOwnProperty("_key"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove - return what
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveReturnKey : function () {
+      var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1 + " LET removed = OLD RETURN removed._key", {}).json;
+
+      assertEqual(0, c1.count());
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i].startsWith("test"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove - return what
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveReturnCalculated : function () {
+      var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1 + " LET removed = OLD RETURN CONCAT('--', removed._key)", {}).json;
+
+      assertEqual(0, c1.count());
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i].startsWith("--test"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test remove - return what
+////////////////////////////////////////////////////////////////////////////////
+
+    testRemoveReturnMultiCalculated : function () {
+      var actual = AQL_EXECUTE("FOR d IN " + cn1 + " REMOVE d IN " + cn1 + " LET a = CONCAT('--', OLD._key) LET b = CONCAT('--', a) LET c = CONCAT('xx', b) RETURN SUBSTRING(c, 4)", {}).json;
+
+      assertEqual(0, c1.count());
+      assertEqual(100, actual.length);
+      for (var i = 0; i < actual.length; ++i) {
+        assertTrue(actual[i].startsWith("--test"));
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -987,6 +1283,74 @@ function ahuacatlInsertSuite () {
       assertEqual(0, actual.json.length);
       assertEqual(100, c1.count());
       assertEqual(expected, sanitizeStats(actual.stats));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertReturnDoc : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN " + cn1 + " INSERT { foxx: true } IN " + cn1 + " RETURN NEW", {});
+    
+      assertEqual(100, actual.json.length);
+      assertEqual(200, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        assertTrue(actual.json[i].hasOwnProperty("foxx"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertReturnKey : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN " + cn1 + " INSERT { foxx: true } IN " + cn1 + " RETURN NEW._key", {});
+    
+      assertEqual(100, actual.json.length);
+      assertEqual(200, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        assertTrue(typeof actual.json[i] === "string");
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertReturnCalculated : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN " + cn1 + " INSERT { foxx: 1, value: 42 } IN " + cn1 + " RETURN CONCAT(NEW.foxx, '/', NEW.value)", {});
+    
+      assertEqual(100, actual.json.length);
+      assertEqual(200, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        assertEqual("1/42", actual.json[i]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testInsertReturnMultiCalculated : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN " + cn1 + " INSERT { foxx: 1, value: 42 } IN " + cn1 + " LET a = NEW.foxx LET b = NEW.value LET c = CONCAT(a, '-', b) RETURN c", {});
+    
+      assertEqual(100, actual.json.length);
+      assertEqual(200, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        assertEqual("1-42", actual.json[i]);
+      }
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1790,6 +2154,92 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUpdateReturnOld : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value2: 'overwrite!' } IN @@cn RETURN OLD", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual(doc._key.substr(4), doc.value1);
+        assertEqual(doc._key, doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnOldKey : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value2: 'overwrite!' } IN @@cn RETURN OLD._key", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        assertEqual("test", actual.json[i].substr(0, 4));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnCalculated : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value2: 'overwrite!' } IN @@cn RETURN { newValue: NEW.value2, newKey: NEW._key }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        assertEqual("overwrite!", actual.json[i].newValue);
+        assertEqual("test", actual.json[i].newKey.substr(0, 4));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnMultiCalculated : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value2: 'overwrite!' } IN @@cn LET newValue = NEW.value2 LET newKey = NEW._key RETURN { newValue: newValue, newKey: newKey }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        assertEqual("overwrite!", actual.json[i].newValue);
+        assertEqual("test", actual.json[i].newKey.substr(0, 4));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateReturnNew : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value2: 'overwrite!' } IN @@cn RETURN NEW", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual(doc._key.substr(4), doc.value1);
+        assertEqual("overwrite!", doc.value2);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
     testUpdateOldValueWhatNew : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value1: d.value2, value2: d.value1, value3: d.value1 + 5 } IN @@cn LET updated = NEW RETURN updated", { "@cn": cn1 });
@@ -2386,6 +2836,451 @@ function ahuacatlUpdateSuite () {
         assertEqual(i + 5, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));
       }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertCopy : function () {
+      var i;
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR doc IN @@cn1 UPSERT { _key: doc._key } INSERT { _key: doc._key, value1: doc.value1, value2: doc.value2, new: true } UPDATE { new: false } INTO @@cn2", { "@cn1": cn1, "@cn2": cn2 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (i = 0; i < 100; ++i) {
+        var doc = c2.document("test" + i);
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+        if (i < 50) {
+          assertFalse(doc["new"]);
+        }
+        else {
+          assertTrue(doc["new"]);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInsertUniqueConstraint1 : function () {
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR i IN 1..100 UPSERT { notHere: true } INSERT { _key: 'test' } UPDATE { } IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInsertUniqueConstraint2 : function () {
+      assertQueryError(errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code, "FOR d IN @@cn UPSERT { notHere: true } INSERT d UPDATE { } IN @@cn", { "@cn": cn1 });
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test insert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInsertUniqueConstraintIgnore : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPSERT { } INSERT d UPDATE { } IN @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInsert : function () {
+      var i;
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { eule: i } INSERT { _key: CONCAT('owl', i), x: i } UPDATE { y: i } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (i = 0; i < 100; ++i) {
+        var doc = c1.document("owl" + i);
+        assertEqual(i, doc.x);
+        assertFalse(doc.hasOwnProperty("y"));
+        assertFalse(doc.hasOwnProperty("eule"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdate : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('owl', i), x: i } UPDATE { y: i } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i, doc.y);
+        assertFalse(doc.hasOwnProperty("x"));
+        assertTrue(doc.hasOwnProperty("value1"));
+        assertTrue(doc.hasOwnProperty("value2"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertMixed : function () {
+      var expected = { writesExecuted: 200, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..199 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('test', i), x: i } UPDATE { y: i } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < 200; ++i) {
+        var doc = c1.document("test" + i);
+        if (i <= 99) {
+          assertEqual(i, doc.y);
+          assertFalse(doc.hasOwnProperty("x"));
+          assertTrue(doc.hasOwnProperty("value1"));
+          assertTrue(doc.hasOwnProperty("value2"));
+        }
+        else {
+          assertEqual(i, doc.x);
+          assertFalse(doc.hasOwnProperty("y"));
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReferToOld : function () {
+      var expected = { writesExecuted: 200, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..199 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('test', i), new: true } UPDATE { value1: OLD.value1 * 2, new: false } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < 200; ++i) {
+        var doc = c1.document("test" + i);
+        if (i <= 99) {
+          assertFalse(doc.hasOwnProperty("x"));
+          assertEqual(i * 2, doc.value1);
+          assertFalse(doc["new"]);
+          assertTrue(doc.hasOwnProperty("value2"));
+        }
+        else {
+          assertFalse(doc.hasOwnProperty("y"));
+          assertTrue(doc["new"]);
+          assertFalse(doc.hasOwnProperty("value2"));
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReturnOld : function () {
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('test', i), new: true } UPDATE { value1: OLD.value1 * 2, new: false } INTO @@cn RETURN { value: OLD.value1, doc: OLD }", { "@cn": cn1 });
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        var doc = actual.json[i];
+        assertEqual(i, doc.value);
+        assertEqual(i, doc.doc.value1);
+        assertUndefined(doc["new"]);
+        assertFalse(doc.doc["new"]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReturnNew : function () {
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('test', i), new: true } UPDATE { value1: OLD.value1 * 2, new: false } INTO @@cn RETURN { value: OLD.value1, doc: NEW }", { "@cn": cn1 });
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        var doc = actual.json[i];
+        assertEqual(i, doc.value);
+        assertEqual(i * 2, doc.doc.value1);
+        assertUndefined(doc["new"]);
+        assertFalse(doc.doc["new"]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReturnOldEmpty : function () {
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { _key: CONCAT('floxx', i) } INSERT { new: true } UPDATE { value1: OLD.value1 * 2, new: false } INTO @@cn RETURN OLD", { "@cn": cn1 });
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        assertNull(actual.json[i]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReturnNewEmpty : function () {
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('test' , i), new: true } UPDATE { value1: OLD.value1 * 2, new: false } INTO @@cn RETURN NEW", { "@cn": cn1 });
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        var doc = actual.json[i];
+        assertEqual(i * 2, doc.value1);
+        assertFalse(doc["new"]);
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReturnOldNew : function () {
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..199 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('test', i), new: true, value1: 4 * i } UPDATE { value1: OLD.value1 * 2, new: false } INTO @@cn RETURN { value: i, old: OLD, new: NEW }", { "@cn": cn1 });
+
+      for (var i = 0; i < actual.json.length; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.new._key);
+
+        if (doc.value <= 99) {
+          assertEqual(i, doc["old"].value1);
+          assertFalse(doc["new"]["new"]);
+          assertNotNull(doc["old"]);
+          assertEqual(i * 2, doc["new"].value1);
+        }
+        else {
+          assertEqual(4 * i, doc["new"].value1);
+          assertTrue(doc["new"]["new"]);
+          assertNull(doc["old"]);
+        }
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInsertKey : function () {
+      var actual = getModifyQueryResultsRaw("UPSERT { _key: 'quux' } INSERT { _key: 'f0xx' } UPDATE { gotIt : true } INTO @@cn RETURN NEW", { "@cn": cn1 });
+
+      assertEqual(1, actual.json.length);
+      var doc = actual.json[0];
+      assertEqual("f0xx", doc._key);
+      assertEqual([ "_id", "_key", "_rev" ], Object.keys(doc).sort()); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertFilterConditionHit1 : function () {
+      c1.save({ foo: { bar: { baz: "a" }, foobar: [ 1, 2 ] } });
+
+      var actual = getModifyQueryResultsRaw("UPSERT { foo: { bar: { baz: 'a' } } } INSERT { _key: 'f0xx' } UPDATE { gotIt : true } INTO @@cn RETURN NEW", { "@cn": cn1 });
+
+      assertEqual(1, actual.json.length);
+      var doc = actual.json[0];
+      assertTrue(doc.hasOwnProperty("gotIt"));
+      assertTrue(doc.gotIt);
+      assertEqual("a", doc.foo.bar.baz);
+      assertEqual([ 1, 2 ], doc.foo.foobar);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertFilterConditionHit2 : function () {
+      c1.save({ foo: { bar: { baz: "a" }, foobar: [ 1, 2 ] } });
+
+      var actual = getModifyQueryResultsRaw("UPSERT { foo: { foobar: [ 1, 2 ], bar: { baz: 'a' } } } INSERT { _key: 'f0xx' } UPDATE { gotIt : true } INTO @@cn RETURN NEW", { "@cn": cn1 });
+
+      assertEqual(1, actual.json.length);
+      var doc = actual.json[0];
+      assertTrue(doc.hasOwnProperty("gotIt"));
+      assertTrue(doc.gotIt);
+      assertEqual("a", doc.foo.bar.baz);
+      assertEqual([ 1, 2 ], doc.foo.foobar);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertFilterConditionMiss : function () {
+      c1.save({ foo: { bar: { bazz: "a" }, foobar: [ 1, 2 ] } });
+
+      var actual = getModifyQueryResultsRaw("UPSERT { foo: { bar: { baz: 'a' } } } INSERT { _key: 'f0xx' } UPDATE { gotIt : true } INTO @@cn RETURN NEW", { "@cn": cn1 });
+
+      assertEqual(1, actual.json.length);
+      var doc = actual.json[0];
+      assertFalse(doc.hasOwnProperty("gotIt"));
+      assertFalse(doc.hasOwnProperty("foo"));
+      assertEqual("f0xx", doc._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReturnConditional : function () {
+      var actual = getModifyQueryResultsRaw("FOR i IN 98..100 LET a = PASSTHRU(CONCAT('test', i)) UPSERT { _key: a, value1: i, value2: a } INSERT { _key: a, wasInserted: true } UPDATE { value5: OLD.value1 + 1 } INTO @@cn RETURN { doc: NEW, type: OLD ? 'update' : 'insert'}", { "@cn": cn1 });
+
+      assertEqual(3, actual.json.length);
+      var doc = actual.json[0];
+      assertEqual("update", doc.type);
+      assertEqual("test98", doc.doc._key);
+      assertEqual(98, doc.doc.value1);
+      assertEqual("test98", doc.doc.value2);
+      assertEqual(99, doc.doc.value5);
+
+      doc = actual.json[1];
+      assertEqual("update", doc.type);
+      assertEqual("test99", doc.doc._key);
+      assertEqual(99, doc.doc.value1);
+      assertEqual("test99", doc.doc.value2);
+      assertEqual(100, doc.doc.value5);
+      
+      doc = actual.json[2];
+      assertEqual("insert", doc.type);
+      assertEqual("test100", doc.doc._key);
+      assertFalse(doc.doc.hasOwnProperty("value1"));
+      assertFalse(doc.doc.hasOwnProperty("value2"));
+      assertFalse(doc.doc.hasOwnProperty("value5"));
+      assertTrue(doc.doc.wasInserted);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertBind : function () {
+      var insert = { 
+        foo: "bar",
+        baz: [ true, 1, null, [ { bar: "baz" } ] ]
+      };
+      
+      var update = { 
+        boo: "far",
+        value2: { "foo": { "bar" : 1 } } 
+      };
+
+      var actual = getModifyQueryResultsRaw("FOR i IN 98..100 LET a = CONCAT('test', i) UPSERT { _key: a, value1: i, value2: a } INSERT @insert UPDATE @update INTO @@cn RETURN { doc: NEW, type: OLD ? 'update' : 'insert'}", { "@cn": cn1, insert: insert, update: update });
+
+      assertEqual(3, actual.json.length);
+      var doc = actual.json[0];
+      assertEqual("update", doc.type);
+      assertEqual("test98", doc.doc._key);
+      assertEqual(98, doc.doc.value1);
+      assertEqual("far", doc.doc.boo);
+      assertEqual({ foo: { bar: 1 } }, doc.doc.value2);
+
+      doc = actual.json[1];
+      assertEqual("update", doc.type);
+      assertEqual("test99", doc.doc._key);
+      assertEqual(99, doc.doc.value1);
+      assertEqual("far", doc.doc.boo);
+      assertEqual({ foo: { bar: 1 } }, doc.doc.value2);
+      
+      doc = actual.json[2];
+      assertEqual("insert", doc.type);
+      assertEqual("bar", doc.doc.foo);
+      assertEqual([ true, 1, null, [ { bar: "baz" } ] ], doc.doc.baz);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEdgeInvalid : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { foo: 'bar'} UPDATE { } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEdgeNoFrom : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _to: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)) } UPDATE { } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEdgeNoTo : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      assertQueryError(errors.ERROR_ARANGO_DOCUMENT_HANDLE_BAD.code, "FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _from: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)) } UPDATE { } INTO @@cn", { "@cn": edge.name() });
+      assertEqual(0, edge.count());
+
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEdge : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
+      var actual = getModifyQueryResults("FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _key: CONCAT('test', TO_STRING(i)), _from: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)), _to: CONCAT('UnitTestsAhuacatlUpdate2/', TO_STRING(i)), value: [ i ], sub: { foo: 'bar' } } UPDATE { } INTO @@cn", { "@cn": edge.name() });
+
+      assertEqual(expected, sanitizeStats(actual));
+      assertEqual(50, edge.count());
+
+      for (var i = 1; i <= 50; ++i) {
+        var doc = edge.document("test" + i);
+        assertEqual("UnitTestsAhuacatlUpdate1/" + i, doc._from);
+        assertEqual("UnitTestsAhuacatlUpdate2/" + i, doc._to);
+        assertEqual([ i ], doc.value);
+        assertEqual({ foo: "bar" }, doc.sub);
+      }
+      db._drop("UnitTestsAhuacatlEdge");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEdgeWhat : function () {
+      db._drop("UnitTestsAhuacatlEdge");
+      var edge = db._createEdgeCollection("UnitTestsAhuacatlEdge"); 
+
+      var expected = { writesExecuted: 50, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR i IN 1..50 UPSERT { foo: 1 } INSERT { _key: CONCAT('test', TO_STRING(i)), _from: CONCAT('UnitTestsAhuacatlUpdate1/', TO_STRING(i)), _to: CONCAT('UnitTestsAhuacatlUpdate2/', TO_STRING(i)), value: [ i ], sub: { foo: 'bar' } } UPDATE { } INTO @@cn LET inserted = NEW RETURN inserted", { "@cn": edge.name() });
+
+      validateModifyResultInsert(edge, actual.json);
+      validateDocuments(actual.json, true);
+      assertEqual(50, actual.json.length);
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(50, edge.count());
+
+      for (var i = 1; i <= 50; ++i) {
+        var doc = edge.document("test" + i);
+        assertEqual("UnitTestsAhuacatlUpdate1/" + i, doc._from);
+        assertEqual("UnitTestsAhuacatlUpdate2/" + i, doc._to);
+        assertEqual([ i ], doc.value);
+        assertEqual({ foo: "bar" }, doc.sub);
+      }
+      db._drop("UnitTestsAhuacatlEdge");
     }
 
   };

@@ -1126,11 +1126,15 @@ AstNode* Ast::replaceVariables (AstNode* node,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
+/// this does not only optimize but also performs a few validations after
+/// bind parameter injection. merging this pass with the regular AST 
+/// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ast::optimize () {
+void Ast::validateAndOptimize () {
   struct TraversalContext {
-    bool isInFilter  = false;
+    bool isInFilter       = false;
+    bool hasSeenWriteNode = false;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> void {
@@ -1142,6 +1146,14 @@ void Ast::optimize () {
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = false;
+    }
+
+    if (node->type == NODE_TYPE_REMOVE ||
+        node->type == NODE_TYPE_INSERT ||
+        node->type == NODE_TYPE_UPDATE ||
+        node->type == NODE_TYPE_REPLACE ||
+        node->type == NODE_TYPE_UPSERT) {
+      static_cast<TraversalContext*>(data)->hasSeenWriteNode = true;
     }
   };
 
@@ -1192,6 +1204,13 @@ void Ast::optimize () {
 
     // call to built-in function
     if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+
+      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode &&
+          ! func->canRunOnDBServer) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+      }
+
       return this->optimizeFunctionCall(node);
     }
     
@@ -1220,6 +1239,13 @@ void Ast::optimize () {
       return this->optimizeFor(node);
     }
 
+    // collection
+    if (node->type == NODE_TYPE_COLLECTION) {
+      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+      }
+    }
+  
     return node;
   };
 

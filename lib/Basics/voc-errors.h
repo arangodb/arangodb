@@ -437,6 +437,9 @@
 /// - 1578: @LIT{disallowed dynamic call to '\%s'}
 ///    "Will be raised when a dynamic function call is made to a function that
 ///   cannot be called dynamically."
+/// - 1579: @LIT{access after data-modification}
+///    "Will be raised when collection data is accessed after a
+///   data-modification query part."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -2412,6 +2415,17 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL                           (1578)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1579: ERROR_QUERY_ACCESS_AFTER_MODIFICATION
+///
+/// access after data-modification
+///
+///  "Will be raised when collection data is accessed after a data-modification
+/// query part."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION                         (1579)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

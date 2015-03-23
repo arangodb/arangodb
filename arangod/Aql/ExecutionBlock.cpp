@@ -4460,103 +4460,118 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
       // only copy 1st row of registers inherited from previous frame(s)
       inheritRegisters(res, result.get(), i, dstRow);
 
-      int errorCode = TRI_ERROR_NO_ERROR;
       std::string key;
-
-      if (a.isObject()) {
-        errorCode = extractKey(a, keyDocument, key);
-
-        if (errorCode == TRI_ERROR_NO_ERROR) {
-          TRI_doc_mptr_copy_t mptr;
-          AqlValue updateDoc = res->getValue(i, updateRegisterId);
-
-          if (updateDoc.isObject()) {
-            auto updateJson = updateDoc.toJson(_trx, updateDocument);
-
-            // use default value 
-            errorCode = TRI_ERROR_OUT_OF_MEMORY;
-
-            if (updateJson.isObject()) {
-              // all exceptions are caught in _trx->update()
-              errorCode = _trx->update(trxCollection, key, 0, &mptr, updateJson.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
         
-              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-                // store $NEW
-                result->setValue(dstRow,
-                                 _outRegNew,
-                                 AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
-              }
-            }
-          }
-          else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-          }
-        }
+      int errorCode = TRI_ERROR_NO_ERROR;
 
-      }
-      else {
-        // no document found => insert case
-        TRI_doc_mptr_copy_t mptr;
+      if (errorCode == TRI_ERROR_NO_ERROR) {
+        if (a.isObject()) {
 
-        AqlValue insertDoc = res->getValue(i, insertRegisterId);
-
-        if (insertDoc.isObject()) {
-          if (isEdgeCollection) {
-            // array must have _from and _to attributes
-            Json member(insertDoc.extractObjectMember(_trx, insertDocument, TRI_VOC_ATTRIBUTE_FROM, false));
-            TRI_json_t const* json = member.json();
-
-            if (TRI_IsStringJson(json)) {
-              errorCode = resolve(json->_value._string.data, edge._fromCid, from);
-            }
-            else {
-              errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-            }
-         
-            if (errorCode == TRI_ERROR_NO_ERROR) { 
-              Json member(insertDoc.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
-              json = member.json();
-              if (TRI_IsStringJson(json)) {
-                errorCode = resolve(json->_value._string.data, edge._toCid, to);
-              }
-              else {
-                errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-              }
-            }
-          }
+          // old document present => update case
+          errorCode = extractKey(a, keyDocument, key);
 
           if (errorCode == TRI_ERROR_NO_ERROR) {
-            auto insertJson = insertDoc.toJson(_trx, insertDocument);
+            TRI_doc_mptr_copy_t mptr;
+            AqlValue updateDoc = res->getValue(i, updateRegisterId);
 
-            // use default value
-            errorCode = TRI_ERROR_OUT_OF_MEMORY;
+            if (updateDoc.isObject()) {
+              auto updateJson = updateDoc.toJson(_trx, updateDocument);
+              auto searchJson = a.toJson(_trx, keyDocument);
 
-            if (insertJson.isObject()) {
-              // now insert
-              if (isEdgeCollection) {
-                // edge
-                edge._fromKey = (TRI_voc_key_t) from.c_str();
-                edge._toKey = (TRI_voc_key_t) to.c_str();
-                errorCode = _trx->create(trxCollection, &mptr, insertJson.json(), &edge, ep->_options.waitForSync);
+              // use default value 
+              if (! searchJson.isObject()) {
+                errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
               }
               else {
-                // document
-                errorCode = _trx->create(trxCollection, &mptr, insertJson.json(), nullptr, ep->_options.waitForSync);
+                errorCode = TRI_ERROR_OUT_OF_MEMORY;
               }
+
+              if (updateJson.isObject()) {
+                std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+
+                if (mergedJson.get() != nullptr) {
+                  // all exceptions are caught in _trx->update()
+                  errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
           
-              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-                result->setValue(dstRow,
-                                 _outRegNew,
-                                 AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+                  if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+                    // store $NEW
+                    result->setValue(dstRow,
+                                     _outRegNew,
+                                     AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+                  }
+                }
               }
+            }
+            else {
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             }
           }
 
         }
         else {
-          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-        }
+          // no document found => insert case
+          TRI_doc_mptr_copy_t mptr;
 
+          AqlValue insertDoc = res->getValue(i, insertRegisterId);
+
+          if (insertDoc.isObject()) {
+            if (isEdgeCollection) {
+              // array must have _from and _to attributes
+              Json member(insertDoc.extractObjectMember(_trx, insertDocument, TRI_VOC_ATTRIBUTE_FROM, false));
+              TRI_json_t const* json = member.json();
+
+              if (TRI_IsStringJson(json)) {
+                errorCode = resolve(json->_value._string.data, edge._fromCid, from);
+              }
+              else {
+                errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+              }
+           
+              if (errorCode == TRI_ERROR_NO_ERROR) { 
+                Json member(insertDoc.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
+                json = member.json();
+                if (TRI_IsStringJson(json)) {
+                  errorCode = resolve(json->_value._string.data, edge._toCid, to);
+                }
+                else {
+                  errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+                }
+              }
+            }
+
+            if (errorCode == TRI_ERROR_NO_ERROR) {
+              auto insertJson = insertDoc.toJson(_trx, insertDocument);
+
+              // use default value
+              errorCode = TRI_ERROR_OUT_OF_MEMORY;
+
+              if (insertJson.isObject()) {
+                // now insert
+                if (isEdgeCollection) {
+                  // edge
+                  edge._fromKey = (TRI_voc_key_t) from.c_str();
+                  edge._toKey = (TRI_voc_key_t) to.c_str();
+                  errorCode = _trx->create(trxCollection, &mptr, insertJson.json(), &edge, ep->_options.waitForSync);
+                }
+                else {
+                  // document
+                  errorCode = _trx->create(trxCollection, &mptr, insertJson.json(), nullptr, ep->_options.waitForSync);
+                }
+            
+                if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+                  result->setValue(dstRow,
+                                   _outRegNew,
+                                   AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+                }
+              }
+            }
+
+          }
+          else {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+          }
+
+        }
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
