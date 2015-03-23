@@ -422,6 +422,24 @@ function ahuacatlModifySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmptyReplace : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { } INSERT { bar: 'baz' } REPLACE { bark: 'bart' } IN " + cn1, {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertFalse(doc.hasOwnProperty("a"));
+      assertEqual("bart", doc.bark);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test upsert with non existing search document
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2923,6 +2941,24 @@ function ahuacatlUpdateSuite () {
         assertFalse(doc.hasOwnProperty("x"));
         assertTrue(doc.hasOwnProperty("value1"));
         assertTrue(doc.hasOwnProperty("value2"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReplace : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR i IN 0..99 UPSERT { _key: CONCAT('test', i) } INSERT { _key: CONCAT('owl', i), x: i } REPLACE { y: i } INTO @@cn", { "@cn": cn1 });
+      assertEqual(expected, sanitizeStats(actual.stats));
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = c1.document("test" + i);
+        assertEqual(i, doc.y);
+        assertFalse(doc.hasOwnProperty("x"));
+        assertFalse(doc.hasOwnProperty("value1"));
+        assertFalse(doc.hasOwnProperty("value2"));
       }
     },
 

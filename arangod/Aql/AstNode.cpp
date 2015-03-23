@@ -1003,6 +1003,7 @@ void AstNode::toJson (TRI_json_t* json,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the integer value of a node, provided the node is a value node
+/// this will return 0 for all non-value nodes and for all non-int value nodes!!
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t AstNode::getIntValue () const {
@@ -1020,6 +1021,7 @@ int64_t AstNode::getIntValue () const {
         return 0;
     }
   }
+
   return 0;
 }
 

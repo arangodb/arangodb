@@ -2795,11 +2795,13 @@ namespace triagens {
                     Variable const* inDocVariable,
                     Variable const* insertVariable,
                     Variable const* updateVariable,
-                    Variable const* outVariableNew) 
+                    Variable const* outVariableNew,
+                    bool isReplace) 
           : ModificationNode(plan, id, vocbase, collection, options, nullptr, outVariableNew),
             _inDocVariable(inDocVariable),
             _insertVariable(insertVariable),
-            _updateVariable(updateVariable) {
+            _updateVariable(updateVariable),
+            _isReplace(isReplace) {
 
           TRI_ASSERT(_inDocVariable != nullptr);
           TRI_ASSERT(_insertVariable != nullptr);
@@ -2868,6 +2870,11 @@ namespace triagens {
 
         Variable const* _updateVariable;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether to perform a REPLACE (or an UPDATE alternatively)
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _isReplace;
     };
 
 // -----------------------------------------------------------------------------

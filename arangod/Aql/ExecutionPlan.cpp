@@ -1205,10 +1205,12 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert (ExecutionNode* previous,
     updateVar = calc->outVariable();
   }
   TRI_ASSERT(updateVar != nullptr);
-    
+
+  bool isReplace = (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE)); 
+  
   ExecutionNode* en = registerNode(new UpsertNode(this, nextId(), _ast->query()->vocbase(),
                                      collection, options, docVariable, insertVar, updateVar,
-                                     outVariableNew));
+                                     outVariableNew, isReplace));
 
   return addDependency(previous, en);
 }

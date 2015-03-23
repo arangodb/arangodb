@@ -302,7 +302,8 @@ namespace triagens {
 /// @brief create an AST upsert node
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeUpsert (AstNode const*,
+        AstNode* createNodeUpsert (AstNodeType,
+                                   AstNode const*,
                                    AstNode const*,
                                    AstNode const*,
                                    AstNode const*,
@@ -394,14 +395,14 @@ namespace triagens {
 /// @brief create an AST unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeUnaryOperator (AstNodeType type,
+        AstNode* createNodeUnaryOperator (AstNodeType,
                                           AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeBinaryOperator (AstNodeType type,
+        AstNode* createNodeBinaryOperator (AstNodeType,
                                            AstNode const*,
                                            AstNode const*);
 
