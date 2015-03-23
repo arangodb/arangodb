@@ -97,8 +97,7 @@ pack-dmg:
 	rm -rf Build && mkdir Build
 
 	./configure \
-		--prefix=/opt/arangodb \
-		--enable-mruby
+		--prefix=/opt/arangodb
 
 	${MAKE} pack-dmg-cmake
 
