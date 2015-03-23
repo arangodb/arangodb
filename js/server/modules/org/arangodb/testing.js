@@ -71,6 +71,8 @@ var optionsDocumentation = [
   '   - `jasmineReportFormat`: this option is passed on to the `format`',
   '     option of the Jasmine options object, only for Jasmine tests.',
   '',
+  '   - benchargs : additional commandline arguments to arangob',
+  '',
   '   - `valgrind`: if set to true the arangods are run with the valgrind',
   '     memory checker',
   '   - `valgrindXmlFileBase`: string to prepend to the xml report name',
@@ -1366,14 +1368,20 @@ function runArangoDumpRestore (options, instanceInfo, which, database) {
 }
 
 function runArangoBenchmark (options, instanceInfo, cmds) {
-  var args = ["--configuration",               "none",
-              "--quiet",
-              "--server.username",             options.username,
-              "--server.password",             options.password,
-              "--server.endpoint",             instanceInfo.endpoint];
-  args = args.concat(cmds);
+  var args = {
+    "configuration":   "none",
+    "server.username": options.username,
+    "server.password": options.password,
+    "server.endpoint": instanceInfo.endpoint,
+  };
+
+  args = _.extend(args, cmds);
+
+  if (!args.hasOwnProperty('verbose')) {
+    args.quiet = "true";
+  }
   var exe = fs.join("bin","arangob");
-  return executeAndWait(exe, args);
+  return executeAndWait(exe, toArgv(args));
 }
 
 var impTodo = [
@@ -1579,24 +1587,23 @@ testFuncs.dump = function (options) {
 };
 
 var benchTodo = [
-  ["--requests","10000","--concurrency","2","--test","version", "--keep-alive","false"],
-  ["--requests","10000","--concurrency","2","--test","version", "--async","true"],
-  ["--requests","20000","--concurrency","1","--test","version", "--async","true"],
-  ["--requests","100000","--concurrency","2","--test","shapes", "--batch-size","16", "--complexity","2"],
-  ["--requests","100000","--concurrency","2","--test","shapes-append", "--batch-size","16", "--complexity","4"],
-  ["--requests","100000","--concurrency","2","--test","random-shapes", "--batch-size","16", "--complexity","2"],
-  ["--requests","1000","--concurrency","2","--test","version", "--batch-size", "16"],
-  ["--requests","100","--concurrency","1","--test","version", "--batch-size", "0"],
-  ["--requests","100","--concurrency","2","--test","document", "--batch-size",
-   "10", "--complexity", "1"],
-  ["--requests","2000","--concurrency","2","--test","crud", "--complexity", "1"],
-  ["--requests","4000","--concurrency","2","--test","crud-append", "--complexity", "4"],
-  ["--requests","4000","--concurrency","2","--test","edge", "--complexity", "4"],
-  ["--requests","5000","--concurrency","2","--test","hash","--complexity","1"],
-  ["--requests","5000","--concurrency","2","--test","skiplist","--complexity","1"],
-  ["--requests","500","--concurrency","3","--test","aqltrx","--complexity","1"],
-  ["--requests","100","--concurrency","3","--test","counttrx"],
-  ["--requests","500","--concurrency","3","--test","multitrx"]
+  {"requests":"10000", "concurrency":"2", "test":"version",       "keep-alive":"false"},
+  {"requests":"10000", "concurrency":"2", "test":"version",       "async":"true"},
+  {"requests":"20000", "concurrency":"1", "test":"version",       "async":"true"},
+  {"requests":"100000","concurrency":"2", "test":"shapes",        "batch-size":"16",  "complexity":"2"},
+  {"requests":"100000","concurrency":"2", "test":"shapes-append", "batch-size":"16",  "complexity":"4"},
+  {"requests":"100000","concurrency":"2", "test":"random-shapes", "batch-size":"16",  "complexity":"2"},
+  {"requests":"1000",  "concurrency":"2", "test":"version",       "batch-size":"16"},
+  {"requests":"100",   "concurrency":"1", "test":"version",       "batch-size": "0"},
+  {"requests":"100",   "concurrency":"2", "test":"document",      "batch-size":"10",  "complexity":"1"},
+  {"requests":"2000",  "concurrency":"2", "test":"crud",                              "complexity":"1"},
+  {"requests":"4000",  "concurrency":"2", "test":"crud-append",                       "complexity":"4"},
+  {"requests":"4000",  "concurrency":"2", "test":"edge",                              "complexity":"4"},
+  {"requests":"5000",  "concurrency":"2", "test":"hash",                              "complexity":"1"},
+  {"requests":"5000",  "concurrency":"2", "test":"skiplist",                          "complexity":"1"},
+  {"requests":"500",   "concurrency":"3", "test":"aqltrx",                            "complexity":"1"},
+  {"requests":"100",   "concurrency":"3", "test":"counttrx"},
+  {"requests":"500",   "concurrency":"3", "test":"multitrx"}
 ];
 
 testFuncs.arangob = function (options) {
@@ -1621,8 +1628,11 @@ testFuncs.arangob = function (options) {
         instanceInfo.exitStatus = "server is gone.";
         continue;
       }
-
-      r = runArangoBenchmark(options, instanceInfo, benchTodo[i]);
+      var args = benchTodo[i];
+      if (options.hasOwnProperty('benchargs')) {
+        args = _.extend(args, options.benchargs);
+      }
+      r = runArangoBenchmark(options, instanceInfo, args);
       results[i] = r;
 
       continueTesting = checkInstanceAlive(instanceInfo, options);
