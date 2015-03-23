@@ -38,10 +38,10 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Exception.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8Server/ApplicationV8.h"
@@ -597,7 +597,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     _engine = engine;
     return QueryResult();
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   }
@@ -667,7 +667,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   }
@@ -739,7 +739,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
 
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResultV8(ex.code(), ex.message() + getStateString());
   }
@@ -766,7 +766,7 @@ QueryResult Query::parse () {
     Parser parser(this);
     return parser.parse(true);
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
   catch (...) {
@@ -854,7 +854,7 @@ QueryResult Query::explain () {
 
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message() + getStateString());
   }
   catch (std::bad_alloc const&) {

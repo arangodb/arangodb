@@ -1073,7 +1073,7 @@ void RestReplicationHandler::handleCommandLoggerFollow () {
       insertClient(dump._lastFoundTick);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -1987,7 +1987,7 @@ int RestReplicationHandler::processRestoreIndexes (TRI_json_t const* collection,
       }
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     errorMsg = "could not create index: " + string(TRI_errno_string(ex.code()));
   }
   catch (...) {
@@ -2161,7 +2161,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
 
       return res;
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (triagens::basics::Exception const& ex) {
       TRI_FreeShapedJson(zone, shaped);
       return ex.code();
     }
@@ -2186,7 +2186,7 @@ int RestReplicationHandler::applyCollectionDumpMarker (CollectionNameResolver co
         res = TRI_ERROR_NO_ERROR;
       }
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (triagens::basics::Exception const& ex) {
       res = ex.code();
     }
     catch (...) {
@@ -2960,7 +2960,7 @@ void RestReplicationHandler::handleCommandDump () {
     // avoid double freeing
     TRI_StealStringBuffer(dump._buffer);
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

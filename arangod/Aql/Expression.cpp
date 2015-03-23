@@ -38,7 +38,7 @@
 #include "Basics/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -169,7 +169,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
         return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
       }
-      catch (triagens::arango::Exception& ex) {
+      catch (triagens::basics::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
           ex.addToMessage(" while evaluating expression ");
           auto json = _node->toJson(TRI_UNKNOWN_MEM_ZONE, false);

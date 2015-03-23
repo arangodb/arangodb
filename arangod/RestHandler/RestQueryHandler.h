@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default handler for error handling and json in-/output
+/// @brief query request handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,32 +23,34 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_ADMIN_REST_BASE_HANDLER_H
-#define ARANGODB_ADMIN_REST_BASE_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_QUERY_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_QUERY_HANDLER_H 1
 
 #include "Basics/Common.h"
 
-#include "HttpServer/HttpHandler.h"
-
-#include "Basics/json.h"
-#include "Rest/HttpResponse.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                             class RestBaseHandler
+// --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace admin {
+  namespace arango {
+    class ApplicationV8;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                            class RestQueryHandler
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief default handler for error handling and json in-/output
+/// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class RestBaseHandler : public rest::HttpHandler {
+    class RestQueryHandler : public RestVocbaseBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -60,7 +62,7 @@ namespace triagens {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestBaseHandler (rest::HttpRequest* request);
+        RestQueryHandler (rest::HttpRequest*, ApplicationV8*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -72,54 +74,79 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::TriagensError const&);
+        bool isDirect ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::Exception const&);
+        status_t execute ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
 
-      public:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from JSON
+/// @brief returns the list of properties
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateResult (TRI_json_t const* json);
+        bool readQueryProperties ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a result from JSON
+/// @brief returns the list of slow queries
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateResult (rest::HttpResponse::HttpResponseCode,
-                                     TRI_json_t const*);
+        bool readQuery (bool slow);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates a cancel message
+/// @brief returns AQL query tracking
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateCanceled ();
+        bool readQuery ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
+/// @brief removes the slow log
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateError (rest::HttpResponse::HttpResponseCode,
-                                    int);
+        bool deleteQuerySlow ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief generates an error
+/// @brief interrupts a named query
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void generateError (rest::HttpResponse::HttpResponseCode,
-                                    int,
-                                    std::string const&);
+        bool deleteQuery (const std::string& name);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief interrupts a query
+////////////////////////////////////////////////////////////////////////////////
+
+        bool deleteQuery ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief changes the settings
+////////////////////////////////////////////////////////////////////////////////
+
+        bool replaceProperties ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses a query
+////////////////////////////////////////////////////////////////////////////////
+
+        bool parseQuery ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief application V8
+////////////////////////////////////////////////////////////////////////////////
+
+        ApplicationV8* _applicationV8;
     };
   }
 }

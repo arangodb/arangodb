@@ -33,7 +33,7 @@
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
 

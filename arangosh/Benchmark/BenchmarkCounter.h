@@ -61,6 +61,7 @@ namespace triagens {
           _mutex(),
           _value(initialValue),
           _maxValue(maxValue),
+          _incompleteFailures(0),
           _failures(0),
           _done(0) {
         }
@@ -94,6 +95,15 @@ namespace triagens {
         size_t failures () {
           MUTEX_LOCKER(this->_mutex);
           return _failures;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the failures value
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t incompleteFailures () {
+          MUTEX_LOCKER(this->_mutex);
+          return _incompleteFailures;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -148,6 +158,15 @@ namespace triagens {
           _failures += value;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a failure
+////////////////////////////////////////////////////////////////////////////////
+
+        void incIncompleteFailures (const size_t value) {
+          MUTEX_LOCKER(this->_mutex);
+          _incompleteFailures += value;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
@@ -171,6 +190,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         const T _maxValue;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the number of incomplete replies
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t _incompleteFailures;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the number of errors
