@@ -985,7 +985,7 @@ bool ApplicationServer::readConfigurationFile () {
         }
       }
       else {
-        LOG_DEBUG("no system init override file '%s' found", sysDir.c_str());
+        LOG_DEBUG("no system init override file '%s' found", localSysDir.c_str());
       }
 
       // check and see if file exists
