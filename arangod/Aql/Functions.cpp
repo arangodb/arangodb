@@ -30,7 +30,7 @@
 #include "Aql/Functions.h"
 #include "Basics/fpconv.h"
 #include "Basics/JsonHelper.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;

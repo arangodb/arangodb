@@ -38,7 +38,7 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using namespace triagens::basics;

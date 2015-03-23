@@ -29,7 +29,7 @@
 
 #include "Aql/BindParameters.h"
 #include "Basics/json.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 
