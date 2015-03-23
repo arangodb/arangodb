@@ -28,10 +28,17 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
-#endif
+#else
 
 #include "v8-utils.h"
 
+#ifdef __APPLE__
+#include <crt_externs.h>
+#define environ (*_NSGetEnviron())
+#elif !defined(_MSC_VER)
+extern char **environ;
+#endif
+#endif
 
 
 static void EnvGetter(v8::Local<v8::String> property,

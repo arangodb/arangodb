@@ -31,10 +31,10 @@
 #define ARANGODB_AQL_ASTNODE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
-#include "Utils/Exception.h"
 #include "Aql/Query.h"
 
 namespace triagens {

@@ -53,12 +53,26 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
 }
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
-void RestBaseHandler::handleError (TriagensError const& error) {
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::handleError (const TriagensError& error) {
   generateError(HttpResponse::SERVER_ERROR,
                 TRI_ERROR_INTERNAL,
+                DIAGNOSTIC_INFORMATION(error));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void RestBaseHandler::handleError (const Exception& error) {
+  generateError(HttpResponse::responseCode(error.code()),
+                error.code(),
                 DIAGNOSTIC_INFORMATION(error));
 }
 

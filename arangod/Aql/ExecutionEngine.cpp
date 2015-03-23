@@ -34,7 +34,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 
 using namespace triagens::aql;

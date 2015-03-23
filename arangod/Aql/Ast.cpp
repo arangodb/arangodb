@@ -32,7 +32,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
 #include "Basics/tri-strings.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
 
 using namespace triagens::aql;

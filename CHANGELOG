@@ -40,6 +40,12 @@ v2.6.0 (XXXX-XX-XX)
 * removed remainders of MRuby integration, removed arangoirb
 
 
+v2.5.2 (XXXX-XX-XX)
+-------------------
+
+* moved /_api/query to C++
+
+
 v2.5.1 (2015-03-19)
 -------------------
 

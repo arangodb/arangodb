@@ -29,6 +29,7 @@
 
 #include "ContinuousSyncer.h"
 
+#include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
@@ -38,7 +39,6 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
-#include "Utils/Exception.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
@@ -647,7 +647,7 @@ int ContinuousSyncer::changeCollection (TRI_json_t const* json) {
     bool doSync = _vocbase->_settings.forceSyncProperties;
     return TRI_UpdateCollectionInfo(_vocbase, guard.collection()->_collection, &parameters, doSync);
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return ex.code();
   }
   catch (...) {

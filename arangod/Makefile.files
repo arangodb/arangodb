@@ -79,6 +79,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
 	arangod/RestHandler/RestPleaseUpgradeHandler.cpp \
+	arangod/RestHandler/RestQueryHandler.cpp \
 	arangod/RestHandler/RestReplicationHandler.cpp \
 	arangod/RestHandler/RestUploadHandler.cpp \
 	arangod/RestHandler/RestVocbaseBaseHandler.cpp \
@@ -88,7 +89,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/arangod.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
 	arangod/Utils/DocumentHelper.cpp \
-	arangod/Utils/Exception.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
 	arangod/Utils/TransactionContext.cpp \
