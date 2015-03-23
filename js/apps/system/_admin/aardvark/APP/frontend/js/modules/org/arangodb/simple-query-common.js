@@ -1330,7 +1330,7 @@ SimpleQueryWithinRectangle.prototype._PRINT = function (context) {
        + ", "
        + this._longitude1
        + ", "
-       + this._latitude1
+       + this._latitude2
        + ", "
        + this._longitude2
        + ", "
