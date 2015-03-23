@@ -443,13 +443,16 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
 /// @brief create an AST upsert node
 ////////////////////////////////////////////////////////////////////////////////
 
-AstNode* Ast::createNodeUpsert (AstNode const* docVariable,
+AstNode* Ast::createNodeUpsert (AstNodeType type,
+                                AstNode const* docVariable,
                                 AstNode const* insertExpression,
                                 AstNode const* updateExpression,
                                 AstNode const* collection,
                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPSERT);
   
+  node->setIntValue(static_cast<int64_t>(type));
+
   if (options == nullptr) {
     // no options given. now use default options
     options = &NopNode;
@@ -1372,6 +1375,9 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_REFERENCE ||
            type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
+  }
+  else if (type == NODE_TYPE_UPSERT) {
+    copy->setIntValue(node->getIntValue());
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {

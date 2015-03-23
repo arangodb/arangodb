@@ -2830,7 +2830,8 @@ UpsertNode::UpsertNode (ExecutionPlan* plan,
   : ModificationNode(plan, base),
     _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
     _insertVariable(varFromJson(plan->getAst(), base, "insertVariable")),
-    _updateVariable(varFromJson(plan->getAst(), base, "updateVariable")) {
+    _updateVariable(varFromJson(plan->getAst(), base, "updateVariable")),
+    _isReplace(JsonHelper::checkAndGetBooleanValue(base.json(), "isReplace")) {
 
 }
 
@@ -2852,6 +2853,7 @@ void UpsertNode::toJsonHelper (triagens::basics::Json& nodes,
   json("inDocVariable", _inDocVariable->toJson());
   json("insertVariable", _insertVariable->toJson());
   json("updateVariable", _updateVariable->toJson());
+  json("isReplace", triagens::basics::Json(_isReplace));
   
   // And add it:
   nodes(json);
@@ -2878,7 +2880,18 @@ ExecutionNode* UpsertNode::clone (ExecutionPlan* plan,
     updateVariable = plan->getAst()->variables()->createVariable(updateVariable);
   }
 
-  auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options, inDocVariable, insertVariable, updateVariable, outVariableNew);
+  auto c = new UpsertNode(
+    plan, 
+    _id, 
+    _vocbase, 
+    _collection, 
+    _options, 
+    inDocVariable, 
+    insertVariable, 
+    updateVariable, 
+    outVariableNew, 
+    _isReplace
+  );
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -2899,6 +2912,7 @@ void NoResultsNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }

@@ -4487,18 +4487,27 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
               }
 
               if (updateJson.isObject()) {
-                std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+                std::unique_ptr<TRI_json_t> mergedJson;
 
-                if (mergedJson.get() != nullptr) {
-                  // all exceptions are caught in _trx->update()
-                  errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
-          
-                  if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-                    // store $NEW
-                    result->setValue(dstRow,
-                                     _outRegNew,
-                                     AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+                if (ep->_isReplace) {
+                  // replace
+                  errorCode = _trx->update(trxCollection, key, 0, &mptr, updateJson.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                }
+                else {
+                  // update
+                  std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+                
+                  if (mergedJson.get() != nullptr) {
+                    // all exceptions are caught in _trx->update()
+                    errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
                   }
+                }
+
+                if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+                  // store $NEW
+                  result->setValue(dstRow,
+                                   _outRegNew,
+                                   AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
                 }
               }
             }

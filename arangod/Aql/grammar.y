@@ -191,6 +191,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
+%type <intval> update_or_replace;
 
 
 /* define start token of language */
@@ -624,12 +625,21 @@ replace_statement:
     }
   ;
 
+update_or_replace:
+    T_UPDATE {
+      $$ = static_cast<int64_t>(NODE_TYPE_UPDATE);
+    }
+  | T_REPLACE {
+      $$ = static_cast<int64_t>(NODE_TYPE_REPLACE);
+    }
+  ;
+
 upsert_statement:
     T_UPSERT { 
       // reserve a variable named "OLD", we might need it in the update expression
       // and in a later return thing
       parser->pushStack(parser->ast()->createNodeVariable("OLD", true));
-    } expression T_INSERT expression T_UPDATE expression in_or_into_collection query_options {
+    } expression T_INSERT expression update_or_replace expression in_or_into_collection query_options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
         YYABORT;
       }
@@ -673,8 +683,8 @@ upsert_statement:
       auto index = parser->ast()->createNodeValueInt(0);
       auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName.c_str()), index));
       parser->ast()->addOperation(firstDoc);
-    
-      auto node = parser->ast()->createNodeUpsert(parser->ast()->createNodeReference("OLD"), $5, $7, $8, $9);
+
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference("OLD"), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }
