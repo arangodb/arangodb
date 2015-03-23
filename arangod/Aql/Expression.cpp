@@ -245,7 +245,7 @@ bool Expression::findInList (AqlValue const& left,
                              AstNode const* node) const {
   TRI_ASSERT_EXPENSIVE(right.isArray());
  
-  size_t const n = right.listSize();
+  size_t const n = right.arraySize();
 
   if (node->getMember(1)->isSorted()) {
     // node values are sorted. can use binary search

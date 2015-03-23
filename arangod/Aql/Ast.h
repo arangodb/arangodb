@@ -219,7 +219,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeFor (char const*,
-                                AstNode const*);
+                                AstNode const*,
+                                bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node, without an IF condition
@@ -228,6 +229,13 @@ namespace triagens {
         AstNode* createNodeLet (char const*,
                                 AstNode const*,
                                 bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST let node, without creating a variable
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeLet (AstNode const*,
+                                AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node, with an IF condition
@@ -242,6 +250,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeFilter (AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST filter node for an UPSERT query
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeUpsertFilter (AstNode const*, 
+                                         AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST return node
@@ -282,6 +297,16 @@ namespace triagens {
                                     AstNode const*,
                                     AstNode const*,
                                     AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST upsert node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeUpsert (AstNode const*,
+                                   AstNode const*,
+                                   AstNode const*,
+                                   AstNode const*,
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
@@ -387,13 +412,6 @@ namespace triagens {
         AstNode* createNodeTernaryOperator (AstNode const*,
                                             AstNode const*,
                                             AstNode const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST subquery node
-////////////////////////////////////////////////////////////////////////////////
-
-        AstNode* createNodeSubquery (char const*,
-                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST attribute access node

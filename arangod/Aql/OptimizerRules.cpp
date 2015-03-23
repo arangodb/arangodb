@@ -1934,6 +1934,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
@@ -2736,6 +2737,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       case EN::REMOVE:
       case EN::REPLACE:
       case EN::UPDATE:
+      case EN::UPSERT:
       case EN::RETURN:
       case EN::NORESULTS:
       case EN::SCATTER:
@@ -3528,6 +3530,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
           parents = inspectNode->getParents();
           continue;
         case EN::SUBQUERY:
@@ -3621,6 +3624,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
         case EN::CALCULATION:
         case EN::FILTER:
         case EN::SUBQUERY:
@@ -3902,6 +3906,7 @@ class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::INSERT:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:

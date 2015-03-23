@@ -92,6 +92,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 
   try {
     plan->_root = plan->fromNode(root);
+
     // insert fullCount flag
     if (plan->_lastLimitNode != nullptr && ast->query()->getBooleanOption("fullCount", false)) {
       static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
@@ -164,7 +165,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
                                               TRI_memory_zone_t* zone,
                                               bool verbose) const {
   triagens::basics::Json result = _root->toJson(zone, verbose); 
- 
+
   // set up rules 
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
   triagens::basics::Json rules(Json::Array, appliedRules.size());
@@ -1152,6 +1153,67 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST UPSERT node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* ExecutionPlan::fromNodeUpsert (ExecutionNode* previous,
+                                              AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
+  TRI_ASSERT(node->numMembers() >= 5);
+ 
+  auto options = createOptions(node->getMember(0));
+  char const* collectionName = node->getMember(1)->getStringValue();
+  auto collections = _ast->query()->collections();
+  auto collection = collections->get(collectionName);
+  auto docExpression = node->getMember(2);
+  auto insertExpression = node->getMember(3);
+  auto updateExpression = node->getMember(4);
+  Variable const* outVariableNew = nullptr;
+
+  if (node->numMembers() > 5) {
+    auto returnVarNode = node->getMember(5);
+    outVariableNew = static_cast<Variable*>(returnVarNode->getData());
+  }
+
+  TRI_ASSERT(docExpression->type == NODE_TYPE_REFERENCE);
+  // doc operand is already a variable
+  auto docVariable = static_cast<Variable*>(docExpression->getData());
+  TRI_ASSERT(docVariable != nullptr);
+
+  Variable const* insertVar;
+  if (insertExpression->type == NODE_TYPE_REFERENCE) {
+    // insert operand is already a variable
+    insertVar = static_cast<Variable*>(insertExpression->getData());
+  }
+  else {
+    auto calc = createTemporaryCalculation(insertExpression);
+    calc->addDependency(previous);
+    previous = calc;
+    insertVar = calc->outVariable();
+  }
+  TRI_ASSERT(insertVar != nullptr);
+
+  Variable const* updateVar;
+  if (updateExpression->type == NODE_TYPE_REFERENCE) {
+    // insert operand is already a variable
+    updateVar = static_cast<Variable*>(updateExpression->getData());
+  }
+  else {
+    auto calc = createTemporaryCalculation(updateExpression);
+    calc->addDependency(previous);
+    previous = calc;
+    updateVar = calc->outVariable();
+  }
+  TRI_ASSERT(updateVar != nullptr);
+    
+  ExecutionNode* en = registerNode(new UpsertNode(this, nextId(), _ast->query()->vocbase(),
+                                     collection, options, docVariable, insertVar, updateVar,
+                                     outVariableNew));
+
+  return addDependency(previous, en);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an abstract syntax tree node
 ////////////////////////////////////////////////////////////////////////////////
   
@@ -1232,6 +1294,11 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
     
       case NODE_TYPE_REPLACE: {
         en = fromNodeReplace(en, member);
+        break;
+      }
+
+      case NODE_TYPE_UPSERT: {
+        en = fromNodeUpsert(en, member);
         break;
       }
 

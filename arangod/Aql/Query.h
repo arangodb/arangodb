@@ -84,7 +84,8 @@ namespace triagens {
       AQL_QUERY_REMOVE,
       AQL_QUERY_INSERT,
       AQL_QUERY_UPDATE,
-      AQL_QUERY_REPLACE
+      AQL_QUERY_REPLACE,
+      AQL_QUERY_UPSERT
     };
 
 ////////////////////////////////////////////////////////////////////////////////

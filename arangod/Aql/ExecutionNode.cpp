@@ -74,7 +74,8 @@ std::unordered_map<int, std::string const> const ExecutionNode::TypeNames{
   { static_cast<int>(SCATTER),                      "ScatterNode" },
   { static_cast<int>(DISTRIBUTE),                   "DistributeNode" },
   { static_cast<int>(GATHER),                       "GatherNode" },
-  { static_cast<int>(NORESULTS),                    "NoResultsNode" }
+  { static_cast<int>(NORESULTS),                    "NoResultsNode" },
+  { static_cast<int>(UPSERT),                       "UpsertNode" }
 };
           
 // -----------------------------------------------------------------------------
@@ -198,10 +199,12 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       return new InsertNode(plan, oneNode);
     case REMOVE:
       return new RemoveNode(plan, oneNode);
-    case REPLACE:
-      return new ReplaceNode(plan, oneNode);
     case UPDATE:
       return new UpdateNode(plan, oneNode);
+    case REPLACE:
+      return new ReplaceNode(plan, oneNode);
+    case UPSERT:
+      return new UpsertNode(plan, oneNode);
     case RETURN:
       return new ReturnNode(plan, oneNode);
     case NORESULTS:
@@ -1026,6 +1029,22 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
                                  VarInfo(depth, totalNrRegs)));
         totalNrRegs++;
       }
+      if (ep->_outVariableNew != nullptr) {
+        nrRegsHere[depth]++;
+        nrRegs[depth]++;
+        varInfo.emplace(make_pair(ep->_outVariableNew->id,
+                                 VarInfo(depth, totalNrRegs)));
+        totalNrRegs++;
+      }
+      break;
+    }
+
+    case ExecutionNode::UPSERT: {
+      depth++;
+      nrRegsHere.push_back(0);
+      nrRegs.push_back(nrRegs.back());
+
+      auto ep = static_cast<UpsertNode const*>(en);
       if (ep->_outVariableNew != nullptr) {
         nrRegsHere[depth]++;
         nrRegs[depth]++;
@@ -2659,7 +2678,6 @@ ExecutionNode* InsertNode::clone (ExecutionPlan* plan,
   return static_cast<ExecutionNode*>(c);
 }
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                             methods of UpdateNode
 // -----------------------------------------------------------------------------
@@ -2802,6 +2820,72 @@ ExecutionNode* ReplaceNode::clone (ExecutionPlan* plan,
 
   return static_cast<ExecutionNode*>(c);
 }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                             methods of UpsertNode
+// -----------------------------------------------------------------------------
+
+UpsertNode::UpsertNode (ExecutionPlan* plan, 
+                        triagens::basics::Json const& base)
+  : ModificationNode(plan, base),
+    _inDocVariable(varFromJson(plan->getAst(), base, "inDocVariable")),
+    _insertVariable(varFromJson(plan->getAst(), base, "insertVariable")),
+    _updateVariable(varFromJson(plan->getAst(), base, "updateVariable")) {
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief toJson
+////////////////////////////////////////////////////////////////////////////////
+
+void UpsertNode::toJsonHelper (triagens::basics::Json& nodes,
+                               TRI_memory_zone_t* zone,
+                               bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
+  if (json.isEmpty()) {
+    return;
+  }
+
+  ModificationNode::toJsonHelper(json, zone, verbose);
+
+  json("inDocVariable", _inDocVariable->toJson());
+  json("insertVariable", _insertVariable->toJson());
+  json("updateVariable", _updateVariable->toJson());
+  
+  // And add it:
+  nodes(json);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* UpsertNode::clone (ExecutionPlan* plan,
+                                  bool withDependencies,
+                                  bool withProperties) const {
+  auto outVariableNew = _outVariableNew;
+  auto inDocVariable = _inDocVariable;
+  auto insertVariable = _insertVariable;
+  auto updateVariable = _updateVariable;
+
+  if (withProperties) {
+    if (_outVariableNew != nullptr) {
+      outVariableNew = plan->getAst()->variables()->createVariable(outVariableNew);
+    }
+    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
+    insertVariable = plan->getAst()->variables()->createVariable(insertVariable);
+    updateVariable = plan->getAst()->variables()->createVariable(updateVariable);
+  }
+
+  auto c = new UpsertNode(plan, _id, _vocbase, _collection, _options, inDocVariable, insertVariable, updateVariable, outVariableNew);
+
+  CloneHelper(c, plan, withDependencies, withProperties);
+
+  return static_cast<ExecutionNode*>(c);
+}
+
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          methods of NoResultsNode
