@@ -128,7 +128,7 @@ But in most cases you will install you own application that is probably not publ
 
 The Application identifier supports several input formats:
 * `appname:version` Install an App from the ArangoDB store [Read More](Store.md)
-* `git:user/repository:tag` Install an App from github [Read More](github.md)
-* `http(s)://example.com/app.zip` Install an App from an URL [Read More](remote.md)
+* `git:user/repository:tag` Install an App from github [Read More](Github.md)
+* `http(s)://example.com/app.zip` Install an App from an URL [Read More](Remote.md)
 * `/usr/tmp/app.zip` Install an App from local file system [Read More](Local.md)
 * `EMPTY` Generate a new Application [Read More](Generate.md)

@@ -97,8 +97,7 @@ pack-dmg:
 	rm -rf Build && mkdir Build
 
 	./configure \
-		--prefix=/opt/arangodb \
-		--enable-mruby
+		--prefix=/opt/arangodb
 
 	${MAKE} pack-dmg-cmake
 
@@ -112,7 +111,6 @@ pack-dmg-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
-		-D "USE_MRUBY=ON" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
@@ -120,7 +118,6 @@ pack-dmg-cmake:
 	${MAKE} .libev-build-64
 	${MAKE} .zlib-build-64
 	${MAKE} .v8-build-64
-	${MAKE} .mruby-build-64
 
 	${MAKE} ${BUILT_SOURCES}
 
@@ -145,8 +142,7 @@ pack-macosx:
 	rm -rf Build && mkdir Build
 
 	./configure \
-		--prefix=/opt/arangodb \
-		--enable-mruby
+		--prefix=/opt/arangodb
 
 	${MAKE} pack-macosx-cmake
 
@@ -160,7 +156,6 @@ pack-macosx-cmake:
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
-		-D "USE_MRUBY=ON" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		..
@@ -168,7 +163,6 @@ pack-macosx-cmake:
 	${MAKE} .libev-build-64
 	${MAKE} .zlib-build-64
 	${MAKE} .v8-build-64
-	${MAKE} .mruby-build-64
 
 	${MAKE} ${BUILT_SOURCES}
 
@@ -190,8 +184,7 @@ pack-arm:
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-mruby
+		--localstatedir=/var
 
 	touch .libev-build-32
 	touch .v8-build-32
@@ -212,7 +205,6 @@ pack-arm-cmake:
 		-D "ETCDIR=${sysconfdir}" \
 		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
-		-D "USE_MRUBY=OFF" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "VARDIR=${localstatedir}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
@@ -270,7 +262,6 @@ winXX-cmake: checkcmake
 		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
 		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
 		-D "LIBEV_VERSION=4.11" \
-		-D "USE_MRUBY=OFF" \
 		-D "V8_VERSION=3.31.74.1" \
 		-D "ZLIB_VERSION=1.2.7" \
 		$(MOREOPTS) \
@@ -301,8 +292,7 @@ pack-tar-config:
 	./configure \
 		--prefix=/usr \
 		--sysconfdir=/etc \
-		--localstatedir=/var \
-		--disable-mruby
+		--localstatedir=/var
 
 pack-tar:
 	rm -rf /tmp/pack-arangodb
