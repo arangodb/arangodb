@@ -412,6 +412,7 @@ int main (int argc, char* argv[]) {
   }
 
   size_t failures = operationsCounter.failures();
+  size_t incomplete = operationsCounter.incompleteFailures();
 
   cout << endl;
   cout << "Total number of operations: " << Operations <<
@@ -436,6 +437,9 @@ int main (int argc, char* argv[]) {
 
   if (failures > 0) {
     cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
+  }
+  if (incomplete > 0) {
+    cerr << "WARNING: " << incomplete << " arangob requests with incomplete results!!" << endl;
   }
 
   testCase->tearDown();
