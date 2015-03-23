@@ -838,7 +838,7 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
         }
       }
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (basics::Exception const& ex) {
       TRI_FreeJson(zone, subNodes);
       TRI_FreeJson(zone, node);
       throw;

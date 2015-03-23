@@ -175,7 +175,6 @@ add_library(
     HttpServer/HttpHandler.cpp
     HttpServer/HttpHandlerFactory.cpp
     HttpServer/PathHandler.cpp
-    HttpServer/ServiceUnavailableHandler.cpp
     Scheduler/ApplicationScheduler.cpp
     Scheduler/AsyncTask.cpp
     Scheduler/ListenTask.cpp
