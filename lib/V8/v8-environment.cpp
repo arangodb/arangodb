@@ -26,12 +26,12 @@
 /// https://github.com/joyent/node/blob/master/src/node.cc
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Basics/Common.h"
+#include "v8-utils.h"
+
 #ifdef _WIN32
 #include "Basics/win-utils.h"
 #else
-
-#include "v8-utils.h"
-
 #ifdef __APPLE__
 #include <crt_externs.h>
 #define environ (*_NSGetEnviron())

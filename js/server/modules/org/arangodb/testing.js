@@ -179,7 +179,7 @@ function printUsage () {
 }
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
-  if (options.hasOwnProperty('test')) {
+  if (options.hasOwnProperty('test') && (typeof(options.test) !== 'undefined')) {
     whichFilter.filter = "testcase";
     return testname === options.test;
   }
