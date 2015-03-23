@@ -28,9 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SynchroniserThread.h"
+
 #include "Basics/logging.h"
 #include "Basics/ConditionLocker.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
 #include "Wal/Slots.h"
@@ -137,7 +138,7 @@ void SynchroniserThread::run () {
           }
         }
       }
-      catch (triagens::arango::Exception const& ex) {
+      catch (triagens::basics::Exception const& ex) {
         int res = ex.code();
         LOG_ERROR("got unexpected error in synchroniserThread: %s", TRI_errno_string(res));
       }

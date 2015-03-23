@@ -31,8 +31,8 @@
 #define ARANGODB_AQL_COLLECTIONS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Aql/Collection.h"
-#include "Utils/Exception.h"
 
 struct TRI_vocbase_s;
 

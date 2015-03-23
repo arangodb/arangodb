@@ -2257,7 +2257,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
           THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
         }
       }
-      catch (triagens::arango::Exception const& ex) {
+      catch (triagens::basics::Exception const& ex) {
         res = ex.code();
       }
       catch (...) {

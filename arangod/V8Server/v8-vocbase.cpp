@@ -582,7 +582,7 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
     TRI_V8_THROW_EXCEPTION_USAGE("ENABLE_NATIVE_BACKTRACES(<value>)");
   }
 
-  triagens::arango::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
+  triagens::basics::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
 
   TRI_V8_RETURN_UNDEFINED();
 }
