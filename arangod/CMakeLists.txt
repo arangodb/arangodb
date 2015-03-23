@@ -106,6 +106,7 @@ add_executable(
     RestHandler/RestEdgeHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
+    RestHandler/RestQueryHandler.cpp
     RestHandler/RestReplicationHandler.cpp
     RestHandler/RestUploadHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
