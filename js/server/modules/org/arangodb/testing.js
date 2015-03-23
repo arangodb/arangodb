@@ -177,6 +177,10 @@ function printUsage () {
 }
 
 function filterTestcaseByOptions (testname, options, whichFilter) {
+  if (options.hasOwnProperty('test')) {
+    whichFilter.filter = "testcase";
+    return testname === options.test;
+  }
   if ((testname.indexOf("-cluster") !== -1) && (options.cluster === false)) {
     whichFilter.filter = 'noncluster';
     return false;
