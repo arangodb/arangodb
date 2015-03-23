@@ -33,7 +33,6 @@ set(BIN_ARANGOB       arangob)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOIMP     arangoimp)
-set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
@@ -744,14 +743,6 @@ add_subdirectory(arangosh)
 ################################################################################
 
 add_subdirectory(arangod)
-
-################################################################################
-### @brief arangoirb
-################################################################################
-
-if (USE_MRUBY)
-  add_subdirectory(arangoirb)
-endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                    DOCUMENTATIONS
