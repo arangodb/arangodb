@@ -466,6 +466,9 @@ function processQuery (query, explain) {
           return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);
         }
         return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);
+      case "UpsertNode":
+        modificationFlags = node.modificationFlags;
+        return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword("UPDATE") + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);
       case "RemoveNode":
         modificationFlags = node.modificationFlags;
         return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);

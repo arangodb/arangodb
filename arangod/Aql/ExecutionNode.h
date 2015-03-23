@@ -102,7 +102,8 @@ namespace triagens {
           UPDATE                  = 17,
           RETURN                  = 18,
           NORESULTS               = 19,
-          DISTRIBUTE              = 20
+          DISTRIBUTE              = 20,
+          UPSERT                  = 21
         };
 
 // -----------------------------------------------------------------------------
@@ -1447,9 +1448,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~CalculationNode () {
-          if (_expression != nullptr) {
-            delete _expression;
-          }
+          delete _expression;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2765,6 +2764,109 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Variable const* _inKeyVariable;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class UpsertNode
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief class UpsertNode
+////////////////////////////////////////////////////////////////////////////////
+
+    class UpsertNode : public ModificationNode {
+      
+      friend class ExecutionNode;
+      friend class ExecutionBlock;
+      friend class UpsertBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
+
+      public:
+
+        UpsertNode (ExecutionPlan* plan,
+                    size_t id, 
+                    TRI_vocbase_t* vocbase, 
+                    Collection* collection,
+                    ModificationOptions const& options,
+                    Variable const* inDocVariable,
+                    Variable const* insertVariable,
+                    Variable const* updateVariable,
+                    Variable const* outVariableNew) 
+          : ModificationNode(plan, id, vocbase, collection, options, nullptr, outVariableNew),
+            _inDocVariable(inDocVariable),
+            _insertVariable(insertVariable),
+            _updateVariable(updateVariable) {
+
+          TRI_ASSERT(_inDocVariable != nullptr);
+          TRI_ASSERT(_insertVariable != nullptr);
+          TRI_ASSERT(_updateVariable != nullptr);
+        }
+        
+        UpsertNode (ExecutionPlan*, 
+                    triagens::basics::Json const& base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override final {
+          return UPSERT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
+          std::vector<Variable const*> v{ _inDocVariable, _insertVariable, _updateVariable };
+          return v;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input variable for the search document
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _inDocVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert case expression
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _insertVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update case expression
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _updateVariable;
 
     };
 

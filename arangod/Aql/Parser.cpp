@@ -119,7 +119,8 @@ void Parser::addAutomaticVariables () {
 
   if (_type == AQL_QUERY_INSERT || 
       _type == AQL_QUERY_UPDATE || 
-      _type == AQL_QUERY_REPLACE) {
+      _type == AQL_QUERY_REPLACE ||
+      _type == AQL_QUERY_UPSERT) {
     _writeNode->addMember(_ast->createNodeVariable("NEW", true)); 
   }
 }
@@ -130,6 +131,7 @@ void Parser::addAutomaticVariables () {
 
 QueryResult Parser::parse (bool withDetails) {
   char const* q = queryString();
+
   if (q == nullptr || *q == '\0') {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_EMPTY);
   }

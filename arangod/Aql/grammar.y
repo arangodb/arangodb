@@ -78,6 +78,7 @@ void Aqlerror (YYLTYPE* locp,
 %token T_INSERT "INSERT command"
 %token T_UPDATE "UPDATE command"
 %token T_REPLACE "REPLACE command"
+%token T_UPSERT "UPSERT command"
 
 %token T_NULL "null" 
 %token T_TRUE "true" 
@@ -206,6 +207,8 @@ query:
   | optional_statement_block_statements update_statement optional_post_modification_block {
     }
   | optional_statement_block_statements replace_statement optional_post_modification_block {
+    }
+  | optional_statement_block_statements upsert_statement optional_post_modification_block {
     }
   ;
 
@@ -615,6 +618,62 @@ replace_statement:
         YYABORT;
       }
       auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
+      parser->ast()->addOperation(node);
+      parser->setWriteNode(node);
+    }
+  ;
+
+upsert_statement:
+    T_UPSERT { 
+      // reserve a variable named "OLD", we might need it in the update expression
+      // and in a later return thing
+      parser->pushStack(parser->ast()->createNodeVariable("OLD", true));
+    } expression T_INSERT expression T_UPDATE expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
+        YYABORT;
+      }
+
+      AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      
+      auto scopes = parser->ast()->scopes();
+      
+      scopes->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+      
+      scopes->start(triagens::aql::AQL_SCOPE_FOR);
+      std::string const variableName = parser->ast()->variables()->nextName();
+      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), $8, false);
+      parser->ast()->addOperation(forNode);
+
+      if ($3 == nullptr || $3->type != NODE_TYPE_OBJECT) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting object literal for upsert search document", yylloc.first_line, yylloc.first_column);
+      }
+
+      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName.c_str()), $3);
+      parser->ast()->addOperation(filterNode);
+      
+      auto offsetValue = parser->ast()->createNodeValueInt(0);
+      auto limitValue = parser->ast()->createNodeValueInt(1);
+      auto limitNode = parser->ast()->createNodeLimit(offsetValue, limitValue);
+      parser->ast()->addOperation(limitNode);
+      
+      auto refNode = parser->ast()->createNodeReference(variableName.c_str());
+      auto returnNode = parser->ast()->createNodeReturn(refNode);
+      parser->ast()->addOperation(returnNode);
+      scopes->endNested();
+
+      AstNode* subqueryNode = parser->ast()->endSubQuery();
+      scopes->endCurrent();
+      
+      std::string const subqueryName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(subqueryName.c_str(), subqueryNode, false);
+      parser->ast()->addOperation(subQuery);
+      
+      auto index = parser->ast()->createNodeValueInt(0);
+      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName.c_str()), index));
+      parser->ast()->addOperation(firstDoc);
+    
+      auto node = parser->ast()->createNodeUpsert(parser->ast()->createNodeReference("OLD"), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }

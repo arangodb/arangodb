@@ -109,6 +109,10 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
       return new ReplaceBlock(engine,
                               static_cast<ReplaceNode const*>(en));
     }
+    case ExecutionNode::UPSERT: {
+      return new UpsertBlock(engine,
+                             static_cast<UpsertNode const*>(en));
+    }
     case ExecutionNode::NORESULTS: {
       return new NoResultsBlock(engine,
                                 static_cast<NoResultsNode const*>(en));
@@ -368,7 +372,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         else if ((*en)->getType() == ExecutionNode::INSERT ||
                  (*en)->getType() == ExecutionNode::UPDATE ||
                  (*en)->getType() == ExecutionNode::REPLACE ||
-                 (*en)->getType() == ExecutionNode::REMOVE) {
+                 (*en)->getType() == ExecutionNode::REMOVE ||
+                 (*en)->getType() == ExecutionNode::UPSERT) {
           collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
         }
       }

@@ -175,14 +175,15 @@ void Ast::addOperation (AstNode* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeFor (char const* variableName,
-                             AstNode const* expression) {
+                             AstNode const* expression,
+                             bool isUserDefinedVariable) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
 
-  AstNode* variable = createNodeVariable(variableName, true);
+  AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -203,6 +204,23 @@ AstNode* Ast::createNodeLet (char const* variableName,
   AstNode* node = createNode(NODE_TYPE_LET);
 
   AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
+  node->addMember(variable);
+  node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST let node, without creating a variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeLet (AstNode const* variable,
+                             AstNode const* expression) {
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_LET);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -237,6 +255,73 @@ AstNode* Ast::createNodeLet (char const* variableName,
 AstNode* Ast::createNodeFilter (AstNode const* expression) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
   node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST filter node for an UPSERT query
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeUpsertFilter (AstNode const* variable,
+                                      AstNode const* object) {
+  AstNode* node = createNode(NODE_TYPE_FILTER);
+
+  if (object->type != NODE_TYPE_OBJECT) {
+    // type of the object should have been validated before
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expecting object literal for upsert");
+  }
+
+  AstNode* result = nullptr;
+  std::vector<char const*> attributeParts{ }; 
+
+  std::function<void(AstNode const*)> createCondition = [&] (AstNode const* object) -> void {
+    TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+
+    auto const n = object->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = object->getMember(i); 
+   
+      if (member->type != NODE_TYPE_OBJECT_ELEMENT) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting object literal with literal attribute names for upsert");
+      }
+
+      attributeParts.emplace_back(member->getStringValue());
+
+      auto value = member->getMember(0);
+
+      if (value->type == NODE_TYPE_OBJECT) {
+        createCondition(value);
+      }
+      else {
+        auto access = variable;
+        for (size_t i = 0; i < attributeParts.size(); ++i) {
+          access = createNodeAttributeAccess(access, attributeParts[i]);
+        }
+
+        auto condition = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
+
+        if (result == nullptr) {
+          result = condition;
+        }
+        else {
+          // AND-combine with previous condition
+          result = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, result, condition);
+        }
+      }
+
+      attributeParts.pop_back();
+    }
+  };
+
+  createCondition(object);
+
+  if (result == nullptr) {
+    result = createNodeValueBool(true);
+  }
+
+  node->addMember(result);
 
   return node;
 }
@@ -351,6 +436,31 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
 
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST upsert node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeUpsert (AstNode const* docVariable,
+                                AstNode const* insertExpression,
+                                AstNode const* updateExpression,
+                                AstNode const* collection,
+                                AstNode const* options) {
+  AstNode* node = createNode(NODE_TYPE_UPSERT);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+
+  node->addMember(options);
+  node->addMember(collection);
+  node->addMember(docVariable);
+  node->addMember(insertExpression);
+  node->addMember(updateExpression);
+  
   return node;
 }
 
@@ -610,24 +720,6 @@ AstNode* Ast::createNodeTernaryOperator (AstNode const* condition,
   node->addMember(condition);
   node->addMember(truePart);
   node->addMember(falsePart);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST subquery node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeSubquery (char const* variableName,
-                                  AstNode const* subQuery) {
-  if (variableName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* node = createNode(NODE_TYPE_SUBQUERY);
-  AstNode* variable = createNodeVariable(variableName, false);
-  node->addMember(variable);
-  node->addMember(subQuery);
 
   return node;
 }
