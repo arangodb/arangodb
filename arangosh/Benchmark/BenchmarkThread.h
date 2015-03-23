@@ -296,6 +296,9 @@ namespace triagens {
           _time += TRI_microtime() - start;
 
           if (result == nullptr || ! result->isComplete()) {
+            if (result != nullptr){
+              _operationsCounter->incIncompleteFailures(numOperations);
+            }
             _operationsCounter->incFailures(numOperations);
             if (result != nullptr) {
               delete result;
@@ -333,6 +336,10 @@ namespace triagens {
 
               if (errorCount > 0) {
                 _operationsCounter->incFailures(errorCount);
+                _warningCount++;
+                if (_warningCount < MaxWarnings) {
+                  LOG_WARNING("Server side warning count: %lu", errorCount);
+                }
               }
             }
           }
@@ -369,6 +376,7 @@ namespace triagens {
           if (result == nullptr || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
             if (result != nullptr) {
+              _operationsCounter->incIncompleteFailures(1);
               delete result;
             }
             _warningCount++;
