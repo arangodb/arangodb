@@ -78,6 +78,8 @@ The following events are emitted by a model:
 - beforeRemove
 - afterRemove
 
+Equivalent events will also be emitted by the repository handling the model.
+
 Model lifecycle:
 
 ```js
