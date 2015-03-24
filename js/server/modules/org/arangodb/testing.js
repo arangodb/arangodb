@@ -1619,8 +1619,8 @@ testFuncs.arangob = function (options) {
   for (i = 0; i < benchTodo.length; i++) {
     // On the cluster we do not yet have working transaction functionality:
     if (! options.cluster ||
-        (benchTodo[i].indexOf("counttrx") === -1 &&
-         benchTodo[i].indexOf("multitrx") === -1)) {
+        (benchTodo[i].test !== "counttrx" &&
+         benchTodo[i].test !== "multitrx")) {
 
       if (!continueTesting) {
         print("Skipping " + benchTodo[i] + ", server is gone.");
