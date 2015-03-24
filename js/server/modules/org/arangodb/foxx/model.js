@@ -35,6 +35,7 @@ var Model,
   toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema,
   EventEmitter = require('events').EventEmitter,
   util = require('util'),
+  internal = require('internal'),
   excludeExtraAttributes,
   metadataSchema = {
     _id: joi.string().optional(),
@@ -121,7 +122,11 @@ Model = function (attributes) {
       }
     );
   } else if (attributes) {
-    instance.attributes = _.clone(attributes);
+    if (attributes instanceof internal.ShapedJson) {
+      instance.attributes = _.pick(attributes, _.keys(attributes));
+    } else {
+      instance.attributes = _.clone(attributes);
+    }
   }
   EventEmitter.call(instance);
 };

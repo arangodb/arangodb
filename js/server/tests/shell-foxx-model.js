@@ -59,6 +59,14 @@ function ModelSpec () {
       assertEqual(instance.get("a"), 1);
     },
 
+    testFromDB: function () {
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new FoxxModel(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
     testSettingMultipleAttributes: function () {
       instance = new FoxxModel({
         a: 1,
