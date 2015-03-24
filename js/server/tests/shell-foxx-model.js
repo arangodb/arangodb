@@ -69,7 +69,9 @@ function ModelSpec () {
 
     testFromDbWithSchema: function () {
       var Model = FoxxModel.extend({
-        user: joi.string()
+        schema: {
+          user: joi.string()
+        }
       });
       var doc = require("org/arangodb").db._users.any();
       assertEqual(typeof doc._PRINT, 'function');
@@ -89,7 +91,9 @@ function ModelSpec () {
 
     testSettingFromDbWithSchema: function () {
       var Model = FoxxModel.extend({
-        user: joi.string()
+        schema: {
+          user: joi.string()
+        }
       });
       var doc = require("org/arangodb").db._users.any();
       assertEqual(typeof doc._PRINT, 'function');
