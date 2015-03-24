@@ -147,11 +147,7 @@ Model = function (attributes) {
       }
     });
   } else if (attributes) {
-    if (attributes instanceof internal.ShapedJson) {
-      instance.attributes = _.pick(attributes, _.keys(attributes));
-    } else {
-      instance.attributes = _.clone(attributes);
-    }
+    instance.attributes = _.clone(attributes);
   }
   EventEmitter.call(instance);
 };
