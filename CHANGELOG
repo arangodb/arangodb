@@ -49,6 +49,8 @@ v2.6.0 (XXXX-XX-XX)
 
 * updated `joi` package to 6.0.8.
 
+* added `extendible` package.
+
 
 v2.5.2 (XXXX-XX-XX)
 -------------------

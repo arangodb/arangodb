@@ -34,7 +34,7 @@ var Repository,
   ArangoError = arangodb.ArangoError,
   ArangoCollection = arangodb.ArangoCollection,
   errors = arangodb.errors,
-  extend = require('org/arangodb/extend').extend;
+  extend = require('extendible');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
