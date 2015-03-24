@@ -106,7 +106,13 @@ Repository = function (collection, opts) {
     configurable: false,
     enumerable: true,
     get: function () {
-      return this.model.prototype.schema;
+      var schema = this.model.prototype.schema;
+      if (schema && schema.isJoi) {
+        return _.object(_.map(schema._inner.children, function (prop) {
+          return [prop.key, prop.schema];
+        }));
+      }
+      return schema;
     }
   });
 
