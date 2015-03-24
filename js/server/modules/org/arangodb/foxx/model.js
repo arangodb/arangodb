@@ -133,17 +133,6 @@ Model.fromClient = function (attributes) {
   return new this(excludeExtraAttributes(attributes, this));
 };
 
-// "Class" Properties
-_.extend(Model, {
-  // TODO: Docs
-
-  toJSONSchema: function (id) {
-    'use strict';
-    require('console').log('Model.toJSONSchema(id) is deprecated, use Foxx.toJSONSchema(id, Model) instead');
-    return toJSONSchema(id, this);
-  }
-});
-
 // Instance Properties
 _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
