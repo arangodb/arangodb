@@ -45,25 +45,27 @@ static void EnvGetter(v8::Local<v8::String> property,
                       const v8::PropertyCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
-  v8::String::Utf8Value const key(property);
 #ifndef _WIN32
+  v8::String::Utf8Value const key(property);
   const char* val = getenv(*key);
   if (val) {
     TRI_V8_RETURN_STRING(val);
   }
 #else  // _WIN32
+  v8::String::Value key(property);
   WCHAR buffer[32767];  // The maximum size allowed for environment variables.
   DWORD result = GetEnvironmentVariableW(reinterpret_cast<const WCHAR*>(*key),
                                          buffer,
                                          sizeof(buffer));
+
+  // ERROR_ENVVAR_NOT_FOUND is possibly returned.
   // If result >= sizeof buffer the buffer was too small. That should never
   // happen. If result == 0 and result != ERROR_SUCCESS the variable was not
   // not found.
   if ((result > 0 || GetLastError() == ERROR_SUCCESS) &&
       result < sizeof(buffer)) {
     const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(buffer);
-    auto rc = TRI_V8_STRING_UTF16(two_byte_buffer, result);
-    TRI_V8_RETURN(rc);
+    TRI_V8_RETURN(TRI_V8_STRING_UTF16(two_byte_buffer, result));
   }
 #endif
   // Not found.  Fetch from prototype.
@@ -104,8 +106,10 @@ static void EnvQuery(v8::Local<v8::String> property,
   if (getenv(*key))
     rc = 0;
 #else  // _WIN32
-  v8::String::Utf8Value key(property);
+  v8::String::Value key(property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
+  SetLastError(ERROR_SUCCESS);
+
   if (GetEnvironmentVariableW(key_ptr, NULL, 0) > 0 ||
       GetLastError() == ERROR_SUCCESS) {
     rc = 0;
@@ -127,12 +131,13 @@ static void EnvDeleter(v8::Local<v8::String> property,
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
   bool rc = true;
-  v8::String::Utf8Value key(property);
 #ifndef _WIN32
+  v8::String::Utf8Value key(property);
   rc = getenv(*key) != NULL;
   if (rc)
     unsetenv(*key);
 #else
+  v8::String::Value key(property);
   WCHAR* key_ptr = reinterpret_cast<WCHAR*>(*key);
   if (key_ptr[0] == L'=' || !SetEnvironmentVariableW(key_ptr, NULL)) {
     // Deletion failed. Return true if the key wasn't there in the first place,
@@ -189,8 +194,10 @@ static void EnvEnumerator(const v8::PropertyCallbackInfo<v8::Array>& args) {
     const uint16_t* two_byte_buffer = reinterpret_cast<const uint16_t*>(p);
     const size_t two_byte_buffer_len = s - p;
     auto value = TRI_V8_STRING_UTF16(two_byte_buffer, (int)two_byte_buffer_len);
-    envarr->Set(i++, value);
+    
+    envarr->Set(i, value);
     p = s + wcslen(s) + 1;
+    i++;
   }
   FreeEnvironmentStringsW(environment);
 #endif
