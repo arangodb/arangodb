@@ -33,6 +33,7 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/json-utilities.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ClusterMethods.h"
 #include "HashIndex/hash-index.h"
 #include "V8/v8-globals.h"
 #include "VocBase/edge-collection.h"
@@ -3773,7 +3774,9 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
   : ExecutionBlock(engine, ep),
     _outRegOld(ExecutionNode::MaxRegisterId),
     _outRegNew(ExecutionNode::MaxRegisterId),
-    _collection(ep->_collection) {
+    _collection(ep->_collection),
+    _isDBServer(false),
+    _usesDefaultSharding(true) {
   
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
@@ -3792,6 +3795,10 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
     TRI_ASSERT(it != registerPlan.end());
     _outRegNew = (*it).second.registerId;
   }
+            
+  // check if we're a DB server in a cluster
+  _isDBServer = triagens::arango::ServerState::instance()->isDBserver();
+  _usesDefaultSharding = _collection->usesDefaultSharding();
 }
 
 ModificationBlock::~ModificationBlock () {
@@ -3908,7 +3915,7 @@ int ModificationBlock::extractKey (AqlValue const& value,
 ////////////////////////////////////////////////////////////////////////////////
 
 void ModificationBlock::constructMptr (TRI_doc_mptr_copy_t* dst,
-                                       TRI_df_marker_t const* marker) { 
+                                       TRI_df_marker_t const* marker) const { 
   dst->_rid = TRI_EXTRACT_MARKER_RID(marker);
   dst->_fid = 0;
   dst->_hash = 0;
@@ -3916,6 +3923,35 @@ void ModificationBlock::constructMptr (TRI_doc_mptr_copy_t* dst,
   dst->_next = nullptr;
   dst->setDataPtr(marker);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a shard key value has changed
+////////////////////////////////////////////////////////////////////////////////
+                
+bool ModificationBlock::isShardKeyChange (TRI_json_t const* oldJson,
+                                          TRI_json_t const* newJson,
+                                          bool isPatch) const {
+  TRI_ASSERT(_isDBServer);
+
+  auto planId = _collection->documentCollection()->_info._planId;
+  auto vocbase = static_cast<ModificationNode const*>(_exeNode)->_vocbase;
+  return triagens::arango::shardKeysChanged(vocbase->_name, std::to_string(planId), oldJson, newJson, isPatch);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether the _key attribute is specified when it must not be
+/// specified
+////////////////////////////////////////////////////////////////////////////////
+              
+bool ModificationBlock::isShardKeyError (TRI_json_t const* json) const {
+  TRI_ASSERT(_isDBServer);
+              
+  if (_usesDefaultSharding) {
+    return false;
+  }
+
+  return (TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr);
+}                 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the result of a data-modification operation
@@ -3927,22 +3963,21 @@ void ModificationBlock::handleResult (int code,
   if (code == TRI_ERROR_NO_ERROR) {
     // update the success counter
     ++_engine->_stats.writesExecuted;
+    return;
   }
-  else {
-    if (ignoreErrors) {
-      // update the ignored counter
-      ++_engine->_stats.writesIgnored;
-    }
-    else {
-      // bubble up the error
-      if (errorMessage != nullptr && ! errorMessage->empty()) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
-      }
-      else {
-        THROW_ARANGO_EXCEPTION(code);
-      }
-    }
+    
+  if (ignoreErrors) {
+    // update the ignored counter
+    ++_engine->_stats.writesIgnored;
+    return;
   }
+      
+  // bubble up the error
+  if (errorMessage != nullptr && ! errorMessage->empty()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(code, *errorMessage);
+  }
+        
+  THROW_ARANGO_EXCEPTION(code);
 }
 
 // -----------------------------------------------------------------------------
@@ -4043,8 +4078,7 @@ AqlItemBlock* RemoveBlock::work (std::vector<AqlItemBlock*>& blocks) {
                                 nullptr,
                                 ep->_options.waitForSync);
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
-            triagens::arango::ServerState::instance()->isDBserver()) {
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
           auto* node = static_cast<RemoveNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             // Ignore document not found on the DBserver:
@@ -4355,8 +4389,7 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
         }
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
-            triagens::arango::ServerState::instance()->isDBserver()) {
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) {
           auto* node = static_cast<UpdateNode const*>(getPlanNode());
           if (node->getOptions().ignoreDocumentNotFound) {
             // Ignore document not found on the DBserver:
@@ -4386,7 +4419,6 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
 UpsertBlock::UpsertBlock (ExecutionEngine* engine,
                           UpsertNode const* ep)
   : ModificationBlock(engine, ep) {
-    
 }
 
 UpsertBlock::~UpsertBlock () {
@@ -4464,98 +4496,106 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
         
       int errorCode = TRI_ERROR_NO_ERROR;
 
-      if (errorCode == TRI_ERROR_NO_ERROR) {
-        if (a.isObject()) {
+      if (a.isObject()) {
 
-          // old document present => update case
-          errorCode = extractKey(a, keyDocument, key);
+        // old document present => update case
+        errorCode = extractKey(a, keyDocument, key);
 
-          if (errorCode == TRI_ERROR_NO_ERROR) {
-            TRI_doc_mptr_copy_t mptr;
-            AqlValue updateDoc = res->getValue(i, updateRegisterId);
+        if (errorCode == TRI_ERROR_NO_ERROR) {
+          AqlValue updateDoc = res->getValue(i, updateRegisterId);
 
-            if (updateDoc.isObject()) {
-              auto updateJson = updateDoc.toJson(_trx, updateDocument);
-              auto searchJson = a.toJson(_trx, keyDocument);
+          if (updateDoc.isObject()) {
+            auto updateJson = updateDoc.toJson(_trx, updateDocument);
+            auto searchJson = a.toJson(_trx, keyDocument);
 
-              // use default value 
-              if (! searchJson.isObject()) {
-                errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
-              }
-              else {
-                errorCode = TRI_ERROR_OUT_OF_MEMORY;
-              }
-
-              if (updateJson.isObject()) {
-                std::unique_ptr<TRI_json_t> mergedJson;
-
-                if (ep->_isReplace) {
-                  // replace
-                  errorCode = _trx->update(trxCollection, key, 0, &mptr, updateJson.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
-                }
-                else {
-                  // update
-                  std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
-                
-                  if (mergedJson.get() != nullptr) {
-                    // all exceptions are caught in _trx->update()
-                    errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
-                  }
-                }
-
-                if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
-                  // store $NEW
-                  result->setValue(dstRow,
-                                   _outRegNew,
-                                   AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
-                }
-              }
-            }
-            else {
+            if (! searchJson.isObject()) {
               errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
             }
+
+            if (errorCode == TRI_ERROR_NO_ERROR && 
+                updateJson.isObject()) {
+              TRI_doc_mptr_copy_t mptr;
+              
+              // use default value 
+              errorCode = TRI_ERROR_OUT_OF_MEMORY;
+
+              // check for shard key change
+              if (_isDBServer && 
+                  isShardKeyChange(searchJson.json(), updateJson.json(), ! ep->_isReplace)) {
+                // a shard key value has changed. this is not allowed!
+                errorCode = TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES;
+              }
+              else if (ep->_isReplace) {
+                // replace
+
+                errorCode = _trx->update(trxCollection, key, 0, &mptr, updateJson.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+              }
+              else {
+                // update
+                std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+              
+                if (mergedJson.get() != nullptr) {
+                  // all exceptions are caught in _trx->update()
+                  errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                }
+              }
+
+              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+                // store $NEW
+                result->setValue(dstRow,
+                                  _outRegNew,
+                                  AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+              }
+            }
           }
-
+          else {
+            errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+          }
         }
-        else {
-          // no document found => insert case
-          TRI_doc_mptr_copy_t mptr;
 
-          AqlValue insertDoc = res->getValue(i, insertRegisterId);
+      }
+      else {
+        // no document found => insert case
+        AqlValue insertDoc = res->getValue(i, insertRegisterId);
 
-          if (insertDoc.isObject()) {
-            if (isEdgeCollection) {
-              // array must have _from and _to attributes
-              Json member(insertDoc.extractObjectMember(_trx, insertDocument, TRI_VOC_ATTRIBUTE_FROM, false));
-              TRI_json_t const* json = member.json();
+        if (insertDoc.isObject()) {
+          if (isEdgeCollection) {
+            // array must have _from and _to attributes
+            Json member(insertDoc.extractObjectMember(_trx, insertDocument, TRI_VOC_ATTRIBUTE_FROM, false));
+            TRI_json_t const* json = member.json();
 
+            if (TRI_IsStringJson(json)) {
+              errorCode = resolve(json->_value._string.data, edge._fromCid, from);
+            }
+            else {
+              errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+            }
+          
+            if (errorCode == TRI_ERROR_NO_ERROR) { 
+              Json member(insertDoc.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
+              json = member.json();
               if (TRI_IsStringJson(json)) {
-                errorCode = resolve(json->_value._string.data, edge._fromCid, from);
+                errorCode = resolve(json->_value._string.data, edge._toCid, to);
               }
               else {
                 errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
               }
-           
-              if (errorCode == TRI_ERROR_NO_ERROR) { 
-                Json member(insertDoc.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
-                json = member.json();
-                if (TRI_IsStringJson(json)) {
-                  errorCode = resolve(json->_value._string.data, edge._toCid, to);
-                }
-                else {
-                  errorCode = TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
-                }
-              }
             }
+          }
 
-            if (errorCode == TRI_ERROR_NO_ERROR) {
-              auto insertJson = insertDoc.toJson(_trx, insertDocument);
+          if (errorCode == TRI_ERROR_NO_ERROR) {
+            auto insertJson = insertDoc.toJson(_trx, insertDocument);
 
-              // use default value
-              errorCode = TRI_ERROR_OUT_OF_MEMORY;
+            // use default value
+            if (insertJson.isObject()) {
+              // now insert
+              if (_isDBServer && isShardKeyError(insertJson.json())) {
+                errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
+              }
 
-              if (insertJson.isObject()) {
-                // now insert
+              if (errorCode == TRI_ERROR_NO_ERROR) {
+                TRI_doc_mptr_copy_t mptr;
+
                 if (isEdgeCollection) {
                   // edge
                   edge._fromKey = (TRI_voc_key_t) from.c_str();
@@ -4566,21 +4606,24 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
                   // document
                   errorCode = _trx->create(trxCollection, &mptr, insertJson.json(), nullptr, ep->_options.waitForSync);
                 }
-            
+          
                 if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
                   result->setValue(dstRow,
-                                   _outRegNew,
-                                   AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+                                    _outRegNew,
+                                    AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
                 }
               }
             }
-
           }
           else {
-            errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+            errorCode = TRI_ERROR_OUT_OF_MEMORY;
           }
 
         }
+        else {
+          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+        }
+
       }
 
       handleResult(errorCode, ep->_options.ignoreErrors, &errorMessage);
@@ -4703,8 +4746,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
         // all exceptions are caught in _trx->update()
         errorCode = _trx->update(trxCollection, key, 0, &mptr, json.json(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
 
-        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && 
-            triagens::arango::ServerState::instance()->isDBserver()) {
+        if (errorCode == TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND && _isDBServer) { 
           auto* node = static_cast<ReplaceNode const*>(getPlanNode());
           if (! node->getOptions().ignoreDocumentNotFound) {
             errorCode = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND_OR_SHARDING_ATTRIBUTES_CHANGED;

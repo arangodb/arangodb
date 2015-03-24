@@ -145,7 +145,17 @@ std::vector<std::string> Collection::shardIds () const {
 
 std::vector<std::string> Collection::shardKeys () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+  
+  std::string id;
+  if (triagens::arango::ServerState::instance()->isDBserver() && 
+      documentCollection()->_info._planId > 0) {
+    id = std::to_string(documentCollection()->_info._planId);
+  }
+  else {
+    id = name;
+  }
+
+  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), id);
   if (collectionInfo.get() == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
                                   "collection not found '%s' -> '%s'",
