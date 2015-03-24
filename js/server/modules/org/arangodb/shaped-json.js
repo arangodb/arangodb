@@ -55,14 +55,18 @@ exports.ShapedJson = ShapedJson;
 /// @brief prints a shaped json
 ////////////////////////////////////////////////////////////////////////////////
 
-ShapedJson.prototype._PRINT = function(context) {
-  if (this instanceof ShapedJson) {
-    internal.printObject(this, context);
+Object.defineProperty(ShapedJson.prototype, '_PRINT', {
+  configurable: true,
+  enumerable: false,
+  writable: true,
+  value: function (context) {
+    if (this instanceof ShapedJson) {
+      internal.printObject(this, context);
+    } else {
+      context.output += this.toString();
+    }
   }
-  else {
-    context.output += this.toString();
-  }
-};
+});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
