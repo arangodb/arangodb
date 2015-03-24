@@ -191,7 +191,7 @@ _.extend(Model.prototype, {
       _.each(attributeName, function (value, key) {
         this.set(key, value);
       }, this);
-      return;
+      return this;
     }
 
     if (this.schema) {
@@ -216,6 +216,8 @@ _.extend(Model.prototype, {
     } else {
       this.attributes[attributeName] = value;
     }
+
+    return this;
   },
 
 ////////////////////////////////////////////////////////////////////////////////
