@@ -64,7 +64,9 @@ var Model,
 
 excludeExtraAttributes = function (attributes, model) {
   'use strict';
-  if (!model.schema) return _.clone(attributes);
+  if (!model.schema) {
+    return _.clone(attributes);
+  }
   return _.omit(attributes, _.difference(
     _.keys(metadataSchema),
     _.keys(model.schema)
