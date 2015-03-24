@@ -16,13 +16,15 @@
           <a class="large" href="javascript:void(0);">Jump To &hellip;</a>
           <a class="small" href="javascript:void(0);">+</a>
           <div id="jump_wrapper">
-          <div id="jump_page">
-            <% for (var i=0, l=sources.length; i<l; i++) { %>
-              <% var source = sources[i]; %>
-              <a class="source" href="<%= path.basename(destination(source)) %>">
-                <%= path.basename(source) %>
-              </a>
-            <% } %>
+          <div id="jump_page_wrapper">
+            <div id="jump_page">
+              <% for (var i=0, l=sources.length; i<l; i++) { %>
+                <% var source = sources[i]; %>
+                <a class="source" href="<%= path.basename(destination(source)) %>">
+                  <%= path.basename(source) %>
+                </a>
+              <% } %>
+            </div>
           </div>
         </li>
       </ul>
