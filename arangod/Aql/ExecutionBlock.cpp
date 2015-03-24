@@ -4816,6 +4816,7 @@ GatherBlock::~GatherBlock () {
 
 int GatherBlock::initialize () {
   ENTER_BLOCK
+  _atDep = 0;
   auto res = ExecutionBlock::initialize();
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4868,7 +4869,9 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
- 
+  
+  _atDep = 0;
+  
   if (! _isSimple) {
     for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
       for (AqlItemBlock* y: x) {
@@ -5574,7 +5577,9 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
                                   std::vector<std::string> const& shardIds, 
                                   Collection const* collection)
   : BlockWithClients(engine, ep, shardIds), 
-    _collection(collection) {
+    _collection(collection),
+    _regId(ExecutionNode::MaxRegisterId),
+    _alternativeRegId(ExecutionNode::MaxRegisterId) {
     
   // get the variable to inspect . . .
   VariableId varId = ep->_varId;
@@ -5583,6 +5588,17 @@ DistributeBlock::DistributeBlock (ExecutionEngine* engine,
   auto it = ep->getRegisterPlan()->varInfo.find(varId);
   TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
   _regId = (*it).second.registerId;
+  
+  TRI_ASSERT(_regId < ExecutionNode::MaxRegisterId);
+
+  if (ep->_alternativeVarId != ep->_varId) {
+    // use second variable
+    auto it = ep->getRegisterPlan()->varInfo.find(ep->_alternativeVarId);
+    TRI_ASSERT(it != ep->getRegisterPlan()->varInfo.end());
+    _alternativeRegId = (*it).second.registerId;
+    
+    TRI_ASSERT(_alternativeRegId < ExecutionNode::MaxRegisterId);
+  }
 
   _usesDefaultSharding = collection->usesDefaultSharding();
 }
@@ -5814,6 +5830,41 @@ bool DistributeBlock::getBlockForClient (size_t atLeast,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the JSON that is used to determine the initial shard
+////////////////////////////////////////////////////////////////////////////////
+  
+TRI_json_t const* DistributeBlock::getInputJson (AqlItemBlock const* cur) const {
+  auto const& val = cur->getValueReference(_pos, _regId);
+
+  if (val._type != AqlValue::JSON) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "DistributeBlock: can only send JSON");
+  }
+
+  TRI_json_t const* json = val._json->json();
+  
+  if (json != nullptr &&
+      TRI_IsNullJson(json) && 
+      _alternativeRegId != ExecutionNode::MaxRegisterId) {
+    // json is set, but null
+    // check if there is a second input register available (UPSERT makes use of two input registers,
+    // one for the search document, the other for the insert document)
+    auto const& val = cur->getValueReference(_pos, _alternativeRegId);
+
+    if (val._type != AqlValue::JSON) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, "DistributeBlock: can only send JSON");
+    } 
+
+    json = val._json->json();
+  }
+    
+  if (json == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
+  }
+
+  return json;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the
 /// attributes <shardKeys> of the Aql value <val> to determine to which shard
 /// the row should be sent and return its clientId
@@ -5823,20 +5874,12 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
   ENTER_BLOCK
       
   // inspect cur in row _pos and check to which shard it should be sent . .
-  auto const& val = cur->getValueReference(_pos, _regId);
+  auto json = getInputJson(cur);
 
-  if (val._type != AqlValue::JSON) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED, 
-        "DistributeBlock: can only send JSON");
-  }
+  TRI_ASSERT(json != nullptr);
 
   bool hasCreatedKeyAttribute = false;
-  TRI_json_t const* json = val._json->json();
-  
-  if (json == nullptr) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "json is a nullptr");
-  }
-  
+
   if (TRI_IsStringJson(json)) {
     TRI_json_t* obj = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, 1);
 
@@ -5866,7 +5909,8 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
     if (_usesDefaultSharding) {
       // the collection is sharded by _key...
 
-      if (! hasCreatedKeyAttribute && TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
+      if (! hasCreatedKeyAttribute && 
+          TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) == nullptr) {
         // there is no _key attribute present, so we are responsible for creating one
         std::string const&& keyString(createKey());
 
@@ -5889,7 +5933,8 @@ size_t DistributeBlock::sendToClient (AqlItemBlock* cur) {
     else {
       // the collection is not sharded by _key
 
-      if (hasCreatedKeyAttribute || TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
+      if (hasCreatedKeyAttribute || 
+          TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY) != nullptr) {
         // a _key was given, but user is not allowed to specify _key
         THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY);
       }
@@ -6089,7 +6134,7 @@ ClusterCommResult* RemoteBlock::sendRequest (
 
   // Later, we probably want to set these sensibly:
   ClientTransactionID const clientTransactionId = "AQL";
-  CoordTransactionID const coordTransactionId = 1;
+  CoordTransactionID const coordTransactionId = TRI_NewTickServer(); //1;
   std::map<std::string, std::string> headers;
   if (! _ownName.empty()) {
     headers.emplace(make_pair("Shard-Id", _ownName));

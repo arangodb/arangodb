@@ -43,9 +43,10 @@
 #include "Utils/V8TransactionContext.h"
 #include "Cluster/ClusterComm.h"
 
-struct TRI_hash_index_element_multi_s;
 struct TRI_doc_mptr_copy_t;
 struct TRI_df_marker_s;
+struct TRI_hash_index_element_multi_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace aql {
@@ -2120,6 +2121,12 @@ namespace triagens {
                                 size_t clientId);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the JSON that is used to determine the initial shard
+////////////////////////////////////////////////////////////////////////////////
+  
+        struct TRI_json_t const* getInputJson (AqlItemBlock const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the 
 /// attributes <shardKeys> of the register <id> to determine to which shard the
 /// row should be sent. 
@@ -2157,6 +2164,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RegisterId _regId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a second register to inspect (used only for UPSERT nodes at the
+/// moment to distinguish between search and insert)
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _alternativeRegId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the collection uses the default sharding

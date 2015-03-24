@@ -3246,12 +3246,13 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       else if (nodeType == ExecutionNode::INSERT ||
                nodeType == ExecutionNode::UPDATE ||
                nodeType == ExecutionNode::REPLACE ||
-               nodeType == ExecutionNode::REMOVE) {
+               nodeType == ExecutionNode::REMOVE ||
+               nodeType == ExecutionNode::UPSERT) {
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
         if (nodeType == ExecutionNode::REMOVE ||
             nodeType == ExecutionNode::UPDATE) {
-          // Note that in the REPLACE case we are not getting here, since
+          // Note that in the REPLACE or UPSERT case we are not getting here, since
           // the distributeInClusterRule fires and a DistributionNode is
           // used.
           auto* modNode = static_cast<ModificationNode*>(node);
@@ -3338,8 +3339,9 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
 
       if (nodeType == ExecutionNode::INSERT  ||
           nodeType == ExecutionNode::REMOVE  ||
+          nodeType == ExecutionNode::UPDATE ||
           nodeType == ExecutionNode::REPLACE ||
-          nodeType == ExecutionNode::UPDATE) {
+          nodeType == ExecutionNode::UPSERT) {
         // found a node!
         break;
       }
@@ -3375,8 +3377,9 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     
     TRI_ASSERT(nodeType == ExecutionNode::INSERT  ||
                nodeType == ExecutionNode::REMOVE  ||
+               nodeType == ExecutionNode::UPDATE  ||
                nodeType == ExecutionNode::REPLACE ||
-               nodeType == ExecutionNode::UPDATE);
+               nodeType == ExecutionNode::UPSERT);
 
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
    
@@ -3416,6 +3419,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
 
     // insert a distribute node
     ExecutionNode* distNode = nullptr;
+    Variable const* inputVariable;
     if (nodeType == ExecutionNode::INSERT ||
         nodeType == ExecutionNode::REMOVE) {
       TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
@@ -3423,37 +3427,50 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       // in case of an INSERT, the DistributeNode is responsible for generating keys
       // if none present
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
+      inputVariable = node->getVariablesUsedHere()[0];
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, node->getVariablesUsedHere()[0]->id, createKeys);
+          vocbase, collection, inputVariable->id, createKeys);
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
         // We only look into _inKeyVariable
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[1]->id, false);
+        inputVariable = v[1];
       }
       else {
         // We only look into _inDocVariable
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[0]->id, false);
+        inputVariable = v[0];
       }
+      distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, inputVariable->id, false);
     }
-    else {   // if (nodeType == ExecutionNode::UPDATE)
+    else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
         // If there is a key variable:
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[1]->id, false);
+        inputVariable = v[1];
         // This is the _inKeyVariable! This works, since we use a ScatterNode
         // for non-default-sharding attributes.
       }
       else {
         // was only UPDATE <doc> IN <collection>
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[0]->id, false);
+        inputVariable = v[0];
       }
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, inputVariable->id, false);
     }
+    else if (nodeType == ExecutionNode::UPSERT) {
+      // an UPSERT nodes has two input variables!
+      std::vector<Variable const*> const&& v = node->getVariablesUsedHere();
+      TRI_ASSERT(v.size() >= 2);
+
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, v[0]->id, v[2]->id, false);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
 
