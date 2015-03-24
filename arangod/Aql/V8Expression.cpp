@@ -88,7 +88,11 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     auto const varname = vars[i]->name;
     auto reg = regs[i];
 
-    TRI_ASSERT_EXPENSIVE(! argv[reg].isEmpty());
+    // TODO: decide which is better
+    // TRI_ASSERT_EXPENSIVE(! argv[reg].isEmpty());
+    if (argv[reg].isEmpty()) {
+      continue;
+    }
 
     if (hasRestrictions && argv[startPos + reg]._type == AqlValue::JSON) { 
       // check if we can get away with constructing a partial JSON object

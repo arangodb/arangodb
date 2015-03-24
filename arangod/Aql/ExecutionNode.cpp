@@ -3047,14 +3047,15 @@ DistributeNode::DistributeNode (ExecutionPlan* plan,
     _vocbase(plan->getAst()->query()->vocbase()),
     _collection(plan->getAst()->query()->collections()->get(JsonHelper::checkAndGetStringValue(base.json(), "collection"))),
     _varId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "varId")),
+    _alternativeVarId(JsonHelper::checkAndGetNumericValue<VariableId>(base.json(), "alternativeVarId")),
     _createKeys(JsonHelper::checkAndGetBooleanValue(base.json(), "createKeys")) {
 }
 
 void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
-                                TRI_memory_zone_t* zone,
-                                bool verbose) const {
-  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone,
-        verbose));  // call base class method
+                                   TRI_memory_zone_t* zone,
+                                   bool verbose) const {
+  triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
+
   if (json.isEmpty()) {
     return;
   }
@@ -3062,6 +3063,7 @@ void DistributeNode::toJsonHelper (triagens::basics::Json& nodes,
   json("database", triagens::basics::Json(_vocbase->_name))
       ("collection", triagens::basics::Json(_collection->getName()))
       ("varId", triagens::basics::Json(static_cast<int>(_varId)))
+      ("alternativeVarId", triagens::basics::Json(static_cast<int>(_alternativeVarId)))
       ("createKeys", triagens::basics::Json(_createKeys));
 
   // And add it:

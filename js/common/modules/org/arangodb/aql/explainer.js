@@ -595,7 +595,7 @@ function explain (data, options) {
   setColors(options.colors === undefined ? true : options.colors);
 
   var stmt = db._createStatement(data);
-  var result = stmt.explain();
+  var result = stmt.explain(options);
 
   print();
   processQuery(data.query, result);

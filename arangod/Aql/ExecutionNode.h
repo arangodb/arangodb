@@ -3245,12 +3245,24 @@ namespace triagens {
                         TRI_vocbase_t* vocbase,
                         Collection const* collection, 
                         VariableId const varId,
+                        VariableId const alternativeVarId,
                         bool createKeys)
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
             _varId(varId),
+            _alternativeVarId(alternativeVarId),
             _createKeys(createKeys) {
+        }
+        
+        DistributeNode (ExecutionPlan* plan, 
+                        size_t id,
+                        TRI_vocbase_t* vocbase,
+                        Collection const* collection, 
+                        VariableId const varId,
+                        bool createKeys)
+          : DistributeNode(plan, id, vocbase, collection, varId, varId, createKeys) {
+          // just delegates to the other constructor
         }
 
         DistributeNode (ExecutionPlan*, 
@@ -3279,7 +3291,7 @@ namespace triagens {
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
                                       bool withProperties) const {
-          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _createKeys);
+          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId, _createKeys);
           
           CloneHelper(c, plan, withDependencies, withProperties);
 
@@ -3327,6 +3339,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         VariableId const _varId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an optional second variable we must inspect to know where to 
+/// distribute
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId const _alternativeVarId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the node is responsible for creating document keys
@@ -3411,7 +3430,7 @@ namespace triagens {
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
-            v.push_back(p.first);
+            v.emplace_back(p.first);
           }
           return v;
         }
