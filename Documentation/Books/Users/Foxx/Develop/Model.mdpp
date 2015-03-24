@@ -37,6 +37,18 @@ var PersonModel = Foxx.Model.extend({
 exports.model = PersonModel;
 ```
 
+You can also use `joi.object` schemas directly:
+
+```js
+var PersonModel = Foxx.Model.extend({
+  schema: joi.object().keys({
+    name: joi.string().required(),
+    age: joi.number().integer(),
+    active: joi.boolean().default(true)
+  })
+});
+```
+
 This has two effects: On the one hand it provides documentation. If you annotated
 your model, you can use it in the **bodyParam** method for documentation.
 On the other hand it will influence the behavior of the constructor: If you provide

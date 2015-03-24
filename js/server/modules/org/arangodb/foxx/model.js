@@ -62,16 +62,13 @@ var Model,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-excludeExtraAttributes = function (attributes, Model) {
+excludeExtraAttributes = function (attributes, model) {
   'use strict';
-  var extraAttributeNames;
-  if (Model.prototype.schema) {
-    extraAttributeNames = _.difference(
-      _.keys(metadataSchema),
-      _.keys(Model.prototype.schema)
-    );
-  }
-  return _.omit(attributes, extraAttributeNames);
+  if (!model.schema) return _.clone(attributes);
+  return _.omit(attributes, _.difference(
+    _.keys(metadataSchema),
+    _.keys(model.schema)
+  ));
 };
 
 Model = function (attributes) {
@@ -111,25 +108,32 @@ Model = function (attributes) {
 
   this.errors = {};
 
-  var instance = this;
-  if (instance.schema) {
+  if (this.schema) {
+    if (this.schema.isJoi) {
+      this.schema = _.object(_.map(this.schema._inner.children, function (prop) {
+        return [prop.key, prop.schema];
+      }));
+    }
     _.each(
-      _.union(_.keys(instance.schema), _.keys(attributes)),
-      function (attributeName) {
-        instance.set(attributeName, attributes ? attributes[attributeName] : undefined);
-      }
+      _.union(_.keys(this.schema), _.keys(attributes)),
+      function (key) {
+        this.set(key, attributes && attributes[key]);
+      },
+      this
     );
   } else if (attributes) {
     instance.attributes = _.clone(attributes);
   }
-  EventEmitter.call(instance);
+  EventEmitter.call(this);
 };
 
 util.inherits(Model, EventEmitter);
 
 Model.fromClient = function (attributes) {
   'use strict';
-  return new this(excludeExtraAttributes(attributes, this));
+  var model = new this();
+  model.set(excludeExtraAttributes(attributes, model));
+  return model;
 };
 
 // Instance Properties
@@ -191,14 +195,8 @@ _.extend(Model.prototype, {
     }
 
     if (this.schema) {
-      var schema = (
-          this.schema[attributeName] ||
-          metadataSchema[attributeName] ||
-          joi.forbidden()
-        ),
-        result = (
-          schema.isJoi ? schema : joi.object().keys(schema)
-        ).validate(value);
+      var schema = this.schema[attributeName] || metadataSchema[attributeName] || joi.forbidden();
+      var result = schema.validate(value);
 
       if (result.error) {
         this.errors[attributeName] = result.error;
@@ -209,6 +207,7 @@ _.extend(Model.prototype, {
           this.isValid = true;
         }
       }
+
       if (result.value === undefined) {
         delete this.attributes[attributeName];
       } else {
@@ -270,7 +269,7 @@ _.extend(Model.prototype, {
 
   forClient: function () {
     'use strict';
-    return excludeExtraAttributes(this.attributes, this.constructor);
+    return excludeExtraAttributes(this.attributes, this);
   }
 });
 
