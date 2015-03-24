@@ -2877,8 +2877,8 @@ struct FilterCondition {
         TRI_ASSERT(lhs->type == NODE_TYPE_VALUE);
         TRI_ASSERT(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS);
 
-        std::function<void(AstNode const*, std::string&, std::string&)> buildName = 
-          [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
+        std::function<void(AstNode const*, std::string&, std::string&)> buildName;
+        buildName = [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
           if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
             buildName(node->getMember(0), variableName, attributeName);
 
