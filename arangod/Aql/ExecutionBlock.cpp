@@ -3798,7 +3798,10 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
             
   // check if we're a DB server in a cluster
   _isDBServer = triagens::arango::ServerState::instance()->isDBserver();
-  _usesDefaultSharding = _collection->usesDefaultSharding();
+
+  if (_isDBServer) {
+    _usesDefaultSharding = _collection->usesDefaultSharding();
+  }
 }
 
 ModificationBlock::~ModificationBlock () {
@@ -4587,13 +4590,14 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
             auto insertJson = insertDoc.toJson(_trx, insertDocument);
 
             // use default value
+            errorCode = TRI_ERROR_OUT_OF_MEMORY;
+
             if (insertJson.isObject()) {
               // now insert
               if (_isDBServer && isShardKeyError(insertJson.json())) {
                 errorCode = TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY;
               }
-
-              if (errorCode == TRI_ERROR_NO_ERROR) {
+              else {
                 TRI_doc_mptr_copy_t mptr;
 
                 if (isEdgeCollection) {
@@ -4614,9 +4618,6 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
                 }
               }
             }
-          }
-          else {
-            errorCode = TRI_ERROR_OUT_OF_MEMORY;
           }
 
         }
