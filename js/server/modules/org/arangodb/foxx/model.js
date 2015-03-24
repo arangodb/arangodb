@@ -35,7 +35,6 @@ var Model,
   toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema,
   EventEmitter = require('events').EventEmitter,
   util = require('util'),
-  internal = require('internal'),
   excludeExtraAttributes,
   metadataSchema = {
     _id: joi.string().optional(),
