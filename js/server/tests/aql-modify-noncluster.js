@@ -440,6 +440,112 @@ function ahuacatlModifySuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmptyUpdateKeepNullTrue : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { } INSERT { bar: 'baz' } UPDATE { bark: 'bart', foxx: null, a: null } IN " + cn1 + " OPTIONS { keepNull: true }", {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertTrue(doc.hasOwnProperty("a"));
+      assertTrue(doc.hasOwnProperty("foxx"));
+      assertNull(doc.a);
+      assertNull(doc.foxx);
+      assertEqual("bart", doc.bark);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmptyUpdateKeepNullFalse : function () {
+      var expected = { writesExecuted: 1, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("UPSERT { } INSERT { bar: 'baz' } UPDATE { bark: 'bart', foxx: null, a: null } IN " + cn1 + " OPTIONS { keepNull: false }", {});
+
+      assertEqual(1, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual([ ], actual.json);
+
+      var doc = c1.toArray()[0];
+      assertEqual("foo", doc._key);
+      assertFalse(doc.hasOwnProperty("a"));
+      assertFalse(doc.hasOwnProperty("foxx"));
+      assertEqual("bart", doc.bark);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmptyUpdateMergeObjectsTrue : function () {
+      c1.save({ "c" : { a: 1, b: 2 } });
+
+      var actual = AQL_EXECUTE("UPSERT { `c` : { a: 1, b: 2 } } INSERT { } UPDATE { `c` : { c : 3 } } IN " + cn1 + " OPTIONS { mergeObjects: true } RETURN NEW", {});
+      assertEqual(2, c1.count());
+
+      assertEqual(1, actual.json.length);
+      var doc = actual.json[0];
+      assertTrue(doc.hasOwnProperty("c"));
+      assertEqual({ a: 1, b: 2, c: 3 }, doc["c"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertEmptyUpdateMergeObjectsFalse : function () {
+      c1.save({ "c" : { a: 1, b: 2 } });
+
+      var actual = AQL_EXECUTE("UPSERT { 'c' : { a: 1, b: 2 } } INSERT { } UPDATE { 'c' : { c : 3 } } IN " + cn1 + " OPTIONS { mergeObjects: false } RETURN NEW", {});
+
+      assertEqual(2, c1.count());
+      assertEqual(1, actual.json.length);
+      var doc = actual.json[0];
+      assertTrue(doc.hasOwnProperty("c"));
+      assertEqual({ c: 3 }, doc["c"]);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateEmpty: function () {
+      c1.save({ "c" : { a: 1, b: 2 } });
+
+      var actual = AQL_EXECUTE("UPSERT { 'c' : { a: 1, b: 2 } } INSERT { } UPDATE { } IN " + cn1 + " RETURN NEW", {});
+      
+      assertEqual(2, c1.count());
+      assertEqual(1, actual.json.length);
+      assertTrue(actual.json[0].hasOwnProperty("_key"));
+      assertTrue(actual.json[0].hasOwnProperty("_id"));
+      assertTrue(actual.json[0].hasOwnProperty("_rev"));
+      assertTrue(actual.json[0].hasOwnProperty("c"));
+      assertEqual(4, Object.keys(actual.json[0]).length);
+      assertEqual({ a: 1, b: 2 }, actual.json[0].c);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert with no search document
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertInsertEmpty: function () {
+      var actual = AQL_EXECUTE("UPSERT { 'c' : { a: 1 } } INSERT { } UPDATE { } IN " + cn1 + " RETURN NEW", {});
+
+      assertEqual(1, actual.json.length);
+      assertTrue(actual.json[0].hasOwnProperty("_key"));
+      assertTrue(actual.json[0].hasOwnProperty("_id"));
+      assertTrue(actual.json[0].hasOwnProperty("_rev"));
+      assertEqual(3, Object.keys(actual.json[0]).length);
+      assertEqual(2, c1.count());
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test upsert with non existing search document
 ////////////////////////////////////////////////////////////////////////////////
 

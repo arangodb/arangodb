@@ -65,7 +65,7 @@ function collection (v) {
 
 function attribute (v) {
   "use strict";
-  return colors.COLOR_YELLOW + v + colors.COLOR_RESET;
+  return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";
 }
 
 function header (v) {
