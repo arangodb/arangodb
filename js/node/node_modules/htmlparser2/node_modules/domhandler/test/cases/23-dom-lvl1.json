@@ -14,6 +14,7 @@
         {
           "type": "text",
           "nodeType": 3,
+          "tagName": null,
           "data": "some stray text",
           "nodeValue": "some stray text",
           "childNodes": null,
@@ -31,6 +32,7 @@
             {
               "type": "text",
               "nodeType": 3,
+              "tagName": null,
               "data": "Hello, world.",
               "nodeValue": "Hello, world.",
               "childNodes": null,
@@ -41,6 +43,7 @@
           "firstChild": {
             "type": "text",
             "nodeType": 3,
+            "tagName": null,
             "data": "Hello, world.",
             "nodeValue": "Hello, world.",
             "childNodes": null,
@@ -50,6 +53,7 @@
           "lastChild": {
             "type": "text",
             "nodeType": 3,
+            "tagName": null,
             "data": "Hello, world.",
             "nodeValue": "Hello, world.",
             "childNodes": null,
@@ -60,6 +64,7 @@
         {
           "type": "comment",
           "nodeType": 8,
+          "tagName": null,
           "data": " comment node ",
           "nodeValue": " comment node ",
           "childNodes": null,
@@ -79,16 +84,19 @@
           },
           "next": {
             "type": "text",
+            "tagName": null,
             "data": "more stray text"
           },
           "nextSibling": {
             "type": "text",
+            "tagName": null,
             "data": "more stray text"
           }
         },
         {
           "type": "text",
           "nodeType": 3,
+          "tagName": null,
           "data": "more stray text",
           "nodeValue": "more stray text",
           "childNodes": null,
@@ -101,6 +109,7 @@
       "firstChild": {
         "type": "text",
         "nodeType": 3,
+        "tagName": null,
         "data": "some stray text",
         "nodeValue": "some stray text",
         "childNodes": null,
@@ -110,6 +119,7 @@
        "lastChild": {
           "type": "text",
           "nodeType": 3,
+          "tagName": null,
           "data": "more stray text",
           "nodeValue": "more stray text",
           "childNodes": null,

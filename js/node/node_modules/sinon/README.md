@@ -1,6 +1,6 @@
 # Sinon.JS
 
-[![Build status](https://secure.travis-ci.org/cjohansen/Sinon.JS.png?branch=master)](http://travis-ci.org/cjohansen/Sinon.JS)
+[![Build status](https://secure.travis-ci.org/cjohansen/Sinon.JS.svg?branch=master)](http://travis-ci.org/cjohansen/Sinon.JS)
 
 Standalone and test framework agnostic JavaScript test spies, stubs and mocks.
 
@@ -22,7 +22,15 @@ Don't forget to include the parts of Sinon.JS that you want to use as well
 
 ## Usage
 
-See the [sinon project homepage](http://sinonjs.org/)
+See the [sinon project homepage](http://sinonjs.org/) for documentation on usage.
+
+If you have questions that are not covered by the documentation, please post them to the [Sinon.JS mailinglist](http://groups.google.com/group/sinonjs) or drop by <a href="irc://irc.freenode.net:6667/sinon.js">#sinon.js on irc.freenode.net:6667</a>
+
+### Important: AMD needs pre-built version
+
+Sinon.JS *as source* **doesn't work with AMD loaders** (when they're asynchronous, like loading via script tags in the browser). For that you will have to use a pre-built version. You can either [build it yourself](CONTRIBUTING.md#testing-a-built-version) or get a numbered version from http://sinonjs.org.
+
+This might or might not change in future versions, depending of outcome of investigations. Please don't report this as a bug, just use pre-built versions.
 
 ## Goals
 
@@ -35,46 +43,4 @@ See the [sinon project homepage](http://sinonjs.org/)
 
 ## Contribute?
 
-Pick [an issue](http://github.com/cjohansen/Sinon.JS/issues) to fix, or pitch
-new features. To avoid wasting your time, please ask for feedback on feature
-suggestions either with [an issue](http://github.com/cjohansen/Sinon.JS/issues/new)
-or on [the mailing list](http://groups.google.com/group/sinonjs).
-
-## Run the tests
-
-The Sinon.JS developer environment requires Node/NPM. Please make sure you have
-Node installed, and install Sinon's dependencies:
-
-    $ npm install
-
-### On Node
-
-    $ npm test
-
-### In the browser
-
-Open `test/sinon.html` in a browser. To test against a built distribution, first
-make sure you have a build (requires [Ruby][ruby] and [Juicer][juicer]):
-
-    $ ./build
-
-[ruby]: https://www.ruby-lang.org/en/
-[juicer]: http://rubygems.org/gems/juicer
-
-Then open `test/sinon-dist.html` in a browser.
-
-If the build script is unable to find Juicer, try
-
-    $ ruby -rubygems build
-
-Some tests needs working XHR to pass. To run the tests over an HTTP server, run
-
-    $ node_modules/http-server/bin/http-server
-
-Then open [localhost:8080/test/sinon.html](http://localhost:8080/test/sinon.html)
-in a browser.
-
-### On Rhino
-
-The Rhino tests are currently out of commission (pending update after switch to
-Buster.JS for tests).
+See [CONTRIBUTING.md](CONTRIBUTING.md) for details on how you can contribute to Sinon.JS

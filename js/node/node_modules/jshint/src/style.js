@@ -1,6 +1,6 @@
 "use strict";
 
-exports.register = function (linter) {
+exports.register = function(linter) {
   // Check for properties named __proto__. This special property was
   // deprecated and then re-introduced for ES6.
 
@@ -56,15 +56,9 @@ exports.register = function (linter) {
 
   linter.on("String", function style_scanQuotes(data) {
     var quotmark = linter.getOption("quotmark");
-    var esnext = linter.getOption("esnext");
     var code;
 
     if (!quotmark) {
-      return;
-    }
-
-    // If quotmark is enabled, return if this is a template literal.
-    if (esnext && data.quote === "`") {
       return;
     }
 

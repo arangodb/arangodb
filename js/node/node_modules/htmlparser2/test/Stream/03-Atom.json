@@ -592,28 +592,56 @@
       ]
     },
     {
-      "event": "opentagname",
+    "event": "opentagname",
       "data": [
-        "summary"
+        "content"
+      ]
+    },
+    {
+      "event": "attribute",
+      "data": [
+        "type",
+        "html"
       ]
     },
     {
       "event": "opentag",
       "data": [
-        "summary",
+        "content",
+        {
+          "type": "html"
+        }
+      ]
+    },
+    {
+      "event": "opentagname",
+      "data": [
+        "p"
+      ]
+    },
+    {
+      "event": "opentag",
+      "data": [
+        "p",
         {}
       ]
     },
     {
       "event": "text",
       "data": [
-        "Some text."
+        "Some content."
       ]
     },
     {
       "event": "closetag",
       "data": [
-        "summary"
+        "p"
+      ]
+    },
+    {
+      "event": "closetag",
+      "data": [
+        "content"
       ]
     },
     {
@@ -638,6 +666,12 @@
       "event": "closetag",
       "data": [
         "feed"
+      ]
+    },
+    {
+      "event": "text",
+      "data": [
+        "\n"
       ]
     }
   ]

@@ -60,4 +60,16 @@ describe("API", function(){
 		assert(processed);
 
 	});
+
+	it("should update the position", function(){
+		var p = new htmlparser2.Parser(null);
+
+		p.write("foo");
+
+		assert.equal(p.startIndex, 0);
+
+		p.write("<bar>");
+
+		assert.equal(p.startIndex, 3);
+	});
 });
