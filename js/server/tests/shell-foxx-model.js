@@ -78,6 +78,27 @@ function ModelSpec () {
       assertFalse(instance.has('_PRINT'));
     },
 
+    testSettingFromDb: function () {
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new FoxxModel();
+      instance.set(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
+    testSettingFromDbWithSchema: function () {
+      var Model = FoxxModel.extend({
+        user: joi.string()
+      });
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new Model();
+      instance.set(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
     testSettingMultipleAttributes: function () {
       instance = new FoxxModel({
         a: 1,
