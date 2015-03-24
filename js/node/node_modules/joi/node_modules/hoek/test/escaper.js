@@ -1,7 +1,8 @@
 // Load modules
 
-var Lab = require('lab');
+var Code = require('code');
 var Hoek = require('../lib');
+var Lab = require('lab');
 
 
 // Declare internals
@@ -12,9 +13,9 @@ var internals = {};
 // Test shortcuts
 
 var lab = exports.lab = Lab.script();
-var expect = Lab.expect;
 var describe = lab.experiment;
 var it = lab.test;
+var expect = Code.expect;
 
 
 describe('escapeJavaScript()', function () {
@@ -85,6 +86,3 @@ describe('escapeHtml()', function () {
         done();
     });
 });
-
-
-

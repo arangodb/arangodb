@@ -27,22 +27,25 @@ The file **doodads.js** in the app's base path could look like this:
 
 ```js
 var Foxx = require('org/arangodb/foxx');
-var Doodad = Foxx.Model.extend({}, {});
+var Doodad = Foxx.Model.extend({});
 var doodadRepo = new Foxx.Repository(
     applicationContext.collection('doodads'),
     {model: Doodad}
 );
 exports.repo = doodadRepo;
 exports.model = Doodad;
+// or simply
+module.exports = {
+    repo: doodadRepo,
+    model: Doodad
+};
 ```
 
 This module would then export the name "repo" bound to the variable **doodads** as well as the name "model" bound to the **Doodad** model.
 
 **Note**: The **applicationContext** is available to your Foxx exports just like in your Foxx controllers.
 
-**Warning**
-
-Foxx exports only support CommonJS exports using the special **exports** variable. Node-style exports via **module.exports** are not supported.
+**Note**: Node.js style exports by assigning values directly to the `module.exports` property are supported, too.
 
 !SECTION Import from another app
 
@@ -94,3 +97,49 @@ var doodads = Foxx.requireApp(applicationContext.mount).doodads;
 ```
 
 If you don't need direct access to ArangoDB's functionality or the **applicationContext**, it is a better idea to use a regular NPM module instead.
+
+!SECTION Default exports
+
+If you want more control over the object other apps receive when they load your app using **Foxx.requireApp**, you can specify a single filename instead of an object in your manifest file:
+
+```json
+{
+    "name": "foxx_exports_example",
+    "version": "1.0.0",
+    "description": "Demonstrates Foxx exports.",
+    "exports": "./exports.js",
+    "controllers": {
+        "/etc": "./controllers.js"
+    }
+}
+```
+
+To replicate the same behaviour as in the earlier example, the file **exports.js** could look like this:
+
+```js
+exports.doodads = require('./doodads');
+exports.anotherModule = require('./someOtherFilename');
+
+// or Node.js-style
+
+module.exports = {
+    doodads: require('./doodads'),
+    anotherModule: require('./someOtherFilename')
+};
+```
+
+Let's assume the file **exports.js** exports something else instead:
+
+```js
+module.exports = function () {
+    return "Hello!";
+};
+```
+
+Assuming the app is mounted at `/hello`, we could now use it in other apps like this:
+
+```js
+var Foxx = require('org/arangodb/foxx');
+var helloExport = Foxx.requireApp('/hello');
+var greeting = helloExport(); // "Hello!"
+```
