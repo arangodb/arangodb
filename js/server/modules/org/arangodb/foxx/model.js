@@ -34,7 +34,6 @@ var Model,
   extend = require('org/arangodb/extend').extend,
   EventEmitter = require('events').EventEmitter,
   util = require('util'),
-  internal = require('internal'),
   excludeExtraAttributes,
   metadataSchema = {
     _id: joi.string().optional(),
