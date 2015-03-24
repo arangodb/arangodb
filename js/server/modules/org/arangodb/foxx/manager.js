@@ -39,6 +39,7 @@
 
   var db = require("internal").db;
   var fs = require("fs");
+  var joi = require("joi");
   var utils = require("org/arangodb/foxx/manager-utils");
   var store = require("org/arangodb/foxx/store");
   var console = require("console");
@@ -59,6 +60,97 @@
 
   var throwDownloadError = arangodb.throwDownloadError;
   var throwFileNotFound = arangodb.throwFileNotFound;
+
+  // Regular expressions for joi patterns
+  var RE_FQPATH = /^\//;
+  var RE_EMPTY = /^$/;
+  var RE_NOT_FQPATH = /^[^\/]/;
+  var RE_NOT_EMPTY = /./;
+
+  var manifestSchema = {
+    assets: (
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, (
+        joi.object().required()
+        .keys({
+          files: (
+            joi.array().required()
+            .items(joi.string().required())
+          ),
+          contentType: joi.string().optional()
+        })
+      ))
+    ),
+    author: joi.string().allow("").default(""),
+    configuration: (
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, (
+        joi.object().required()
+        .keys({
+          default: joi.any().optional(),
+          type: (
+            joi.string().required()
+            .valid(Object.keys(utils.typeToRegex))
+          ),
+          description: joi.string().optional()
+        })
+      ))
+    ),
+    contributors: joi.array().optional(),
+    controllers: joi.alternatives().try(
+      joi.string().optional(),
+      (
+        joi.object().optional()
+        .pattern(RE_NOT_FQPATH, joi.forbidden())
+        .pattern(RE_FQPATH, joi.string().required())
+      )
+    ),
+    defaultDocument: joi.string().allow("").optional(),
+    description: joi.string().allow("").default(""),
+    engines: (
+      joi.object().optional()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
+    ),
+    exports: joi.alternatives().try(
+      joi.string().optional(),
+      (
+        joi.object().optional()
+        .pattern(RE_EMPTY, joi.forbidden())
+        .pattern(RE_NOT_EMPTY, joi.string().required())
+      )
+    ),
+    files: (
+      joi.object().optional()
+      .pattern(RE_NOT_FQPATH, joi.forbidden())
+      .pattern(RE_FQPATH, joi.string().required())
+    ),
+    isSystem: joi.boolean().default(false),
+    keywords: joi.array().optional(),
+    lib: joi.string().optional(),
+    license: joi.string().optional(),
+    name: joi.string().required(),
+    repository: (
+      joi.object().optional()
+      .keys({
+        type: joi.string().required(),
+        url: joi.string().required()
+      })
+    ),
+    scripts: (
+      joi.object()
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
+      .default(function () {return {};}, 'empty scripts object')
+    ),
+    setup: joi.string().optional(), // TODO remove in 2.8
+    teardown: joi.string().optional(), // TODO remove in 2.8
+    thumbnail: joi.string().optional(),
+    version: joi.string().required(),
+    rootElement: joi.boolean().default(false)
+  };
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                 private variables
@@ -184,93 +276,79 @@
   /// this implements issue #590: Manifest Lint
   ////////////////////////////////////////////////////////////////////////////////
 
-  var checkManifest = function(filename, mf) {
-    // add some default attributes
-    if (! mf.hasOwnProperty("author")) {
-      // add a default (empty) author
-      mf.author = "";
-    }
+  var checkManifest = function(filename, manifest) {
+    var valid = true;
 
-    if (! mf.hasOwnProperty("description")) {
-      // add a default (empty) description
-      mf.description = "";
-    }
-
-    // Validate all attributes specified in the manifest
-    // the following attributes are allowed with these types...
-    var expected = {
-      "assets":             [ false, "object" ],
-      "author":             [ false, "string" ],
-      "configuration":      [ false, "object" ],
-      "contributors":       [ false, "array" ],
-      "controllers":        [ false, "object" ],
-      "defaultDocument":    [ false, "string" ],
-      "description":        [ true, "string" ],
-      "engines":            [ false, "object" ],
-      "files":              [ false, "object" ],
-      "isSystem":           [ false, "boolean" ],
-      "keywords":           [ false, "array" ],
-      "lib":                [ false, "string" ],
-      "license":            [ false, "string" ],
-      "name":               [ true, "string" ],
-      "repository":         [ false, "object" ],
-      "setup":              [ false, "string" ],
-      "teardown":           [ false, "string" ],
-      "thumbnail":          [ false, "string" ],
-      "version":            [ true, "string" ],
-      "rootElement":        [ false, "boolean" ],
-      "exports":            [ false, "object" ]
-    };
-
-    var att, failed = false;
-    var expectedType, actualType;
-
-    for (att in expected) {
-      if (expected.hasOwnProperty(att)) {
-        if (mf.hasOwnProperty(att)) {
-          // attribute is present in manifest, now check data type
-          expectedType = expected[att][1];
-          actualType = Array.isArray(mf[att]) ? "array" : typeof(mf[att]);
-
-          if (actualType !== expectedType) {
-            console.error("Manifest '%s' uses an invalid data type (%s) for %s attribute '%s'",
-              filename,
-              actualType,
-              expectedType,
-              att);
-            failed = true;
-          }
-        }
-        else {
-          // attribute not present in manifest
-          if (expected[att][0]) {
-            // required attribute
-            console.error("Manifest '%s' does not provide required attribute '%s'",
-              filename,
-              att);
-
-            failed = true;
-          }
-        }
+    Object.keys(manifestSchema).forEach(function (key) {
+      var schema = manifestSchema[key];
+      var value = manifest[key];
+      var result = joi.validate(value, schema);
+      if (result.value !== undefined) {
+        manifest[key] = result.value;
       }
-    }
-
-    if (failed) {
-      throw new ArangoError({
-        errorNum: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.code,
-        errorMessage: errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING.message
-      });
-    }
-
-    // additionally check if there are superfluous attributes in the manifest
-    for (att in mf) {
-      if (mf.hasOwnProperty(att)) {
-        if (! expected.hasOwnProperty(att)) {
-          console.warn("Manifest '%s' contains an unknown attribute '%s'",
+      if (result.error) {
+        valid = false;
+        if (value === undefined) {
+          console.error(
+            "Manifest '%s' %s for attribute '%s'",
             filename,
-            att);
+            result.error.message,
+            key
+          );
+        } else {
+          console.error(
+            "Manifest '%s' %s (%s) for attribute '%s'",
+            filename,
+            result.error.message,
+            manifest[key],
+            key
+          );
         }
       }
+    });
+
+    // TODO Emit deprecation warnings in 2.7
+
+    if (manifest.setup) {
+      // console.warn(
+      //   "Manifest '%s' contains deprecated attribute 'setup', use 'scripts.setup' instead.",
+      //   filename
+      // );
+      manifest.scripts.setup = manifest.setup;
+      delete manifest.setup;
+    }
+
+    if (manifest.teardown) {
+      // console.warn(
+      //   "Manifest '%s' contains deprecated attribute 'teardown', use 'scripts.teardown' instead.",
+      //   filename
+      // );
+      manifest.scripts.teardown = manifest.teardown;
+      delete manifest.teardown;
+    }
+
+    // if (manifest.assets) {
+    //   console.warn(
+    //     "Manifest '%s' contains deprecated attribute 'assets', use 'files' and an external build tool instead.",
+    //     filename
+    //   );
+    // }
+
+    Object.keys(manifest).forEach(function (key) {
+      if (!manifestSchema[key]) {
+        console.warn(
+          "Manifest '%s' contains an unknown attribute '%s'",
+          filename,
+          key
+        );
+      }
+    });
+
+    if (!valid) {
+      throw new ArangoError({
+        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
+        errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+      });
     }
   };
 
@@ -293,8 +371,8 @@
     } catch (err) {
       msg = "Cannot parse app manifest '" + file + "': " + String(err);
       throw new ArangoError({
-        errorNum: errors.ERROR_INVALID_APPLICATION_MANIFEST.code,
-        errorMessage: errors.ERROR_INVALID_APPLICATION_MANIFEST.message
+        errorNum: errors.ERROR_MALFORMED_MANIFEST_FILE.code,
+        errorMessage: errors.ERROR_MALFORMED_MANIFEST_FILE.message
       });
     }
     try {
@@ -313,7 +391,7 @@
 
       }
     } catch (err) {
-      console.error("Manifest file '%s' is invald: %s", file, err.errorMessage);
+      console.error("Manifest file '%s' is invalid: %s", file, err.errorMessage);
       if (err.hasOwnProperty("stack")) {
         console.errorLines(err.stack);
       }
@@ -376,9 +454,9 @@
   ////////////////////////////////////////////////////////////////////////////////
 
   var executeAppScript = function(app, name) {
-    var desc = app._manifest;
-    if (desc.hasOwnProperty(name)) {
-      app.loadAppScript(desc[name]);
+    var scripts = app._manifest.scripts;
+    if (scripts.hasOwnProperty(name)) {
+      app.loadAppScript(scripts[name]);
     }
   };
 

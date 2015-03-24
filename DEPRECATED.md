@@ -23,3 +23,13 @@ ArangoDB and shouldn't be used if possible.
 
 ## 2.6
 * Foxx: method `Model#toJSONSchema(id)` has been removed entirely. Please use `Foxx.toJSONSchema(id, model)` instead.
+
+
+## 2.7
+* Foxx: the property `assets` in manifests is deprecated, it will raise a warning if you use it. Please use the `files` property and an external build tool instead.
+* Foxx: properties `setup` and `teardown` in manifests are deprecated, they will raise a warning if you use them. Please use the `scripts` property instead.
+
+
+## 2.8
+* Foxx: the property `assets` in manifests has been removed entirely. Please use the `files` property and an external build tool instead.
+* Foxx: properties `setup` and `teardown` in manifests have been removed entirely. Please use the `scripts` property instead.
