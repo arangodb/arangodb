@@ -151,8 +151,10 @@
 
         controllers: {},
 
-        setup: "scripts/setup.js",
-        teardown: "scripts/teardown.js"
+        scripts: {
+          setup: "scripts/setup.js",
+          teardown: "scripts/teardown.js"
+        }
       };
 
       _.each(this.controllers, function (controller) {

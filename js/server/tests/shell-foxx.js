@@ -885,7 +885,7 @@ function DocumentationAndConstraintsSpec () {
         paramName = 'flurb',
         description = stub(),
         requestBody = [{x: 1}],
-        schema = joi.array().includes({x: joi.number().integer().required()}),
+        schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
       allow(req)
@@ -911,7 +911,7 @@ function DocumentationAndConstraintsSpec () {
         paramName = 'flurb',
         description = stub(),
         requestBody = 'banana',
-        schema = joi.array().includes({x: joi.number().integer().required()}),
+        schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
       allow(req)
@@ -938,7 +938,7 @@ function DocumentationAndConstraintsSpec () {
         paramName = 'flurb',
         description = stub(),
         requestBody = 'banana',
-        schema = joi.array().includes({x: joi.number().integer().required()}),
+        schema = joi.array().items({x: joi.number().integer().required()}),
         called = false;
 
       allow(req)
@@ -964,7 +964,7 @@ function DocumentationAndConstraintsSpec () {
         paramName = 'flurb',
         description = stub(),
         requestBody = 'banana',
-        schema = joi.array().includes({x: joi.number().integer().required()}),
+        schema = joi.array().items({x: joi.number().integer().required()}),
         called = false,
         thrown = false;
 
