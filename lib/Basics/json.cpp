@@ -839,7 +839,7 @@ TRI_json_t* TRI_LookupObjectJson (TRI_json_t const* object, char const* name) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief deletes an element from a json array
+/// @brief deletes an element from a json object
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_DeleteObjectJson (TRI_memory_zone_t* zone, TRI_json_t* object, char const* name) {

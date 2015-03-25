@@ -19,7 +19,7 @@
   REQUEST_TIME_DISTRIBUTION, THREAD_NUMBER, LOGFILE_PATH,
   SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_EXECUTE_EXTERNAL_AND_WAIT, 
   SYS_KILL_EXTERNAL, SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT,
-  SYS_IS_IP, ENV */
+  SYS_IS_IP, SYS_OPTIONS, ENV */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -1868,14 +1868,22 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief exponentialBackoff
+/// @brief env
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof(ENV) !== 'undefined') {
+  if (typeof ENV !== 'undefined') {
     exports.env = new ENV();
     delete ENV;
   }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief options
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_OPTIONS !== 'undefined') {
+    exports.options = SYS_OPTIONS;
+    delete SYS_OPTIONS;
+  }
 
 }());
 
