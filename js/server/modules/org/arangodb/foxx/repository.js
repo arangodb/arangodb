@@ -34,7 +34,7 @@ var Repository,
   ArangoError = arangodb.ArangoError,
   ArangoCollection = arangodb.ArangoCollection,
   errors = arangodb.errors,
-  extend = require('extendible');
+  extend = require('extendible'),
   EventEmitter = require('events').EventEmitter,
   util = require('util');
 
