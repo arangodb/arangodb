@@ -1045,7 +1045,9 @@ bool ApplicationV8::prepare2 () {
   static const string name = "STANDARD";
   size_t nrInstances = _nrInstances[name];
   v8::V8::InitializeICU();
-  v8::Platform* _platform = v8::platform::CreateDefaultPlatform();
+
+  TRI_ASSERT(_platform == nullptr);
+  _platform = v8::platform::CreateDefaultPlatform();
   v8::V8::InitializePlatform(_platform);
   v8::V8::Initialize();
 
@@ -1177,6 +1179,7 @@ void ApplicationV8::stop () {
 
   v8::V8::Dispose();
   v8::V8::ShutdownPlatform();
+
   delete _platform;
   // delete GC thread after all action threads have been stopped
   delete _gcThread;
