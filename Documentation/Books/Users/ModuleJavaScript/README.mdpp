@@ -128,6 +128,30 @@ arangosh> test1.func1();
 *require* follows the specification
 [Modules/1.1.1](http://wiki.commonjs.org/wiki/Modules/1.1.1).
 
+
+*require* will inject two variables into the context of the required code:
+
+- `__filename`: contains the name of the required file/module
+
+- `__dirname`: contains the directory name of the required file/module
+
+The values in `__filename` and `__dirname` can be used for generic debugging and for
+creating filename relative to the required file, e.g.
+
+```js
+var fs = require("fs");
+var relativeFile = fs.join(__dirname, "scripts", "test.js");
+```
+
+
+*require* can also be used to load JSON data. If the name of the required module ends
+with *.json*, *require* will run a `JSON.parse()` on the file/module contents and return
+the result.
+
+Note: the purpose of *require* is to load modules or packages. It cannot be used to load 
+arbitrary JavaScript files.
+
+
 !SECTION Modules Path versus Modules Collection
 
 ArangoDB comes with predefined modules defined in the file-system under the path
