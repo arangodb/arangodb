@@ -28,3 +28,4 @@ Usage: docco [options] FILES
     -t, --template [file]  use a custom .jst template
     -e, --extension [ext]  use the given file extension for all inputs
     -L, --languages [file] use a custom languages.json
+    -m, --marked [file]    use custom marked options

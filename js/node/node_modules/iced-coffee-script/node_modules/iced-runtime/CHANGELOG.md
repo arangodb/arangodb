@@ -1,3 +1,8 @@
+## 1.0.2 (2014-09-29)
+
+Nit:
+  - Support https://github.com/maxtaco/coffee-script/pull/133 with a new constant
+
 ## 1.0.1 (2014-06-24)
 
 Bugfix:

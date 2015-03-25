@@ -34,7 +34,7 @@ exports.builtins = {
   CHAR_LENGTH: 1, LENGTH: 1, LOWER: 1, UPPER: 1, SUBSTRING: [2, 3],
   LEFT: 2, RIGHT: 2, TRIM: [1, 2], REVERSE: 1, CONTAINS: 3, LIKE: 3,
   LTRIM: [1, 2], RTRIM: [1, 2], FIND_FIRST: [2, 3, 4], FIND_LAST: [2, 3, 4],
-  SPLIT: [1, 2, 3], SUBSTITUTE: [2, 3, 4],
+  SPLIT: [1, 2, 3], SUBSTITUTE: [2, 3, 4], MD5: 1, SHA1: 1, RANDOM_TOKEN: 1,
   // Numeric functions
   FLOOR: 1, CEIL: 1, ROUND: 1, ABS: 1, SQRT: 1, RAND: 0,
   // Date functions

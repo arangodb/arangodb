@@ -1,4 +1,3 @@
-/*global sinon*/
 /**
  * Helps IE run the fake XDomainRequest. By defining global functions, IE allows
  * them to be overwritten at a later point. If these are not defined like

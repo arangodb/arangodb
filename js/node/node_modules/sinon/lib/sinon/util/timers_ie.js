@@ -1,4 +1,3 @@
-/*global sinon, setTimeout, setInterval, clearTimeout, clearInterval, Date*/
 /**
  * Helps IE run the fake timers. By defining global functions, IE allows
  * them to be overwritten at a later point. If these are not defined like

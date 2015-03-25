@@ -82,20 +82,25 @@
 * http://coffeescript.org
 * MIT
 
+### extendible
+
+* https://github.com/3rd-Eden/extendible
+* MIT
+
 ### swagger
 
 * http://swagger.io
 * Apache License 2
 
-### Backbone.js 
+### Backbone.js
 
 - MIT
 
-### Bootstrap 
+### Bootstrap
 
 - MIT
 
-### D3js 
+### D3js
 
 - [BSD](http://opensource.org/licenses/BSD-3-Clause)
 
@@ -107,7 +112,7 @@
 
 - MIT
 
-### Handlebars 
+### Handlebars
 
 - MIT
 

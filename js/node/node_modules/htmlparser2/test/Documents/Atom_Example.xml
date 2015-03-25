@@ -19,7 +19,7 @@
 		<link rel="edit" href="http://example.org/2003/12/13/atom03/edit"/>
 		<id>urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a</id>
 		<updated>2003-12-13T18:30:02Z</updated>
-		<summary>Some text.</summary>
+		<content type="html"><p>Some content.</p></content>
 	</entry>
 
 </feed>
