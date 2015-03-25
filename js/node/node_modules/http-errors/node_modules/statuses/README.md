@@ -19,8 +19,8 @@ var status = require('statuses');
 If `Integer` or `String` is a valid HTTP code or status message, then the appropriate `code` will be returned. Otherwise, an error will be thrown.
 
 ```js
-status(403) // => 403
-status('403') // => 403
+status(403) // => 'Forbidden'
+status('403') // => 'Forbidden'
 status('forbidden') // => 403
 status('Forbidden') // => 403
 status(306) // throws, as it's not supported by node.js

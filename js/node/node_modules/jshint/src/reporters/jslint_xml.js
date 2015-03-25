@@ -1,7 +1,6 @@
 module.exports =
 {
-  reporter: function (results)
-  {
+  reporter: function(results) {
     "use strict";
 
     var files = {},
@@ -25,7 +24,7 @@ module.exports =
     }
 
 
-    results.forEach(function (result) {
+    results.forEach(function(result) {
       result.file = result.file.replace(/^\.\//, '');
       if (!files[result.file]) {
         files[result.file] = [];

@@ -1,0 +1,15 @@
+<% for (var i = 0, l = sections.length; i<l; i++) { %>
+
+<% var section = sections[i]; %>
+
+<%= section.docsText %>
+
+<% if (!(/^\s*$/).test(section.codeText)) { %>  
+
+```
+<%= section.codeText %>
+```
+
+<% } %>
+
+<% } %>

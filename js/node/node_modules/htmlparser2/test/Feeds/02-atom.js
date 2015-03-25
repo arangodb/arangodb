@@ -12,7 +12,7 @@ exports.expected = {
 		id: "urn:uuid:1225c695-cfb8-4ebb-aaaa-80da344efa6a",
 		title: "Atom-Powered Robots Run Amok",
 		link: "http://example.org/2003/12/13/atom03",
-		description: "Some text.",
+		description: "Some content.",
 		pubDate: new Date("2003-12-13T18:30:02Z")
 	}]
 };

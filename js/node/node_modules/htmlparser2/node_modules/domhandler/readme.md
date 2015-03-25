@@ -100,3 +100,6 @@ The following HTML will be used:
     }]
 }]
 ```
+
+##Option: withStartIndices
+Indicates whether a `startIndex` property will be added to nodes. When the parser is used in a non-streaming fashion, `startIndex` is an integer indicating the position of the start of the node in the document. The default value is "false".
