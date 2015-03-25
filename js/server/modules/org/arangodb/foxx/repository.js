@@ -514,6 +514,24 @@ _.extend(Repository.prototype, {
     return this.collection.updateByExample(example, data);
   },
 
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_exists
+/// `FoxxRepository#exists(id)`
+///
+/// Checks whether a model with the given ID or key exists.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.exists(model.get('_id'));
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  exists: function (id) {
+    'use strict';
+    return this.collection.exists(id);
+  },
+
 // -----------------------------------------------------------------------------
 // --SUBSECTION--                                               Counting Entries
 // -----------------------------------------------------------------------------

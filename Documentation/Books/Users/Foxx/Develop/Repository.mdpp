@@ -162,6 +162,8 @@ var FulltextRepository = Foxx.Repository.extend({
 
 @startDocuBlock JSF_foxx_repository_updateByExample
 
+@startDocuBlock JSF_foxx_repository_exists
+
 !SUBSECTION Counting entries in the repository
 
 @startDocuBlock JSF_foxx_repository_count
