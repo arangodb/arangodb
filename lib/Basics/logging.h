@@ -72,35 +72,6 @@ typedef enum {
 TRI_log_severity_e;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief log categories
-////////////////////////////////////////////////////////////////////////////////
-
-typedef enum {
-
-  // exceptions
-  TRI_LOG_CATEGORY_FATAL             = 1000,
-  TRI_LOG_CATEGORY_ERROR             = 1001,
-  TRI_LOG_CATEGORY_WARNING           = 1002,
-
-  // technical
-  TRI_LOG_CATEGORY_HEARTBEAT         = 2000,
-  TRI_LOG_CATEGORY_REQUEST_IN_END    = 2001,
-  TRI_LOG_CATEGORY_REQUEST_IN_START  = 2002,
-  TRI_LOG_CATEGORY_REQUEST_OUT_END   = 2003,
-  TRI_LOG_CATEGORY_REQUEST_OUT_START = 2004,
-
-  // development
-  TRI_LOG_CATEGORY_FUNCTION_IN_END   = 4000,
-  TRI_LOG_CATEGORY_FUNCTION_IN_START = 4001,
-  TRI_LOG_CATEGORY_HEARTPULSE        = 4002,
-  TRI_LOG_CATEGORY_LOOP              = 4003,
-  TRI_LOG_CATEGORY_MODULE_IN_END     = 4004,
-  TRI_LOG_CATEGORY_MODULE_IN_START   = 4005,
-  TRI_LOG_CATEGORY_STEP              = 4006
-}
-TRI_log_category_e;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief buffer type
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -524,7 +495,13 @@ bool TRI_ShutdownLogging (bool);
 /// @brief reopens all log appenders
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_ReopenLogging (void);
+void TRI_ReopenLogging ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief makes sure all log messages are flushed
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_FlushLogging ();
 
 #endif
 
