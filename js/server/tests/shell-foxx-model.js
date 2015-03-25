@@ -60,6 +60,7 @@ function ModelSpec () {
     },
 
     testFromDb: function () {
+      require("internal").wal.flush(true, true);
       var doc = require("org/arangodb").db._users.any();
       assertEqual(typeof doc._PRINT, 'function');
       instance = new FoxxModel(doc);
@@ -73,6 +74,7 @@ function ModelSpec () {
           user: joi.string()
         }
       });
+      require("internal").wal.flush(true, true);
       var doc = require("org/arangodb").db._users.any();
       assertEqual(typeof doc._PRINT, 'function');
       instance = new Model(doc);
@@ -81,6 +83,7 @@ function ModelSpec () {
     },
 
     testSettingFromDb: function () {
+      require("internal").wal.flush(true, true);
       var doc = require("org/arangodb").db._users.any();
       assertEqual(typeof doc._PRINT, 'function');
       instance = new FoxxModel();
@@ -95,6 +98,7 @@ function ModelSpec () {
           user: joi.string()
         }
       });
+      require("internal").wal.flush(true, true);
       var doc = require("org/arangodb").db._users.any();
       assertEqual(typeof doc._PRINT, 'function');
       instance = new Model();
