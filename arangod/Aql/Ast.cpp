@@ -355,6 +355,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
+  node->addMember(createNodeVariable("$OLD", false)); 
 
   return node;
 }
@@ -377,6 +378,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
+  node->addMember(createNodeVariable("$NEW", false)); 
   
   return node;
 }
@@ -407,6 +409,9 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
     node->addMember(&NopNode);    
   }
   
+  node->addMember(createNodeVariable("$OLD", false)); 
+  node->addMember(createNodeVariable("$NEW", false)); 
+  
   return node;
 }
 
@@ -435,6 +440,9 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
   else {
     node->addMember(&NopNode);    
   }
+  
+  node->addMember(createNodeVariable("$OLD", false)); 
+  node->addMember(createNodeVariable("$NEW", false)); 
 
   return node;
 }
@@ -463,6 +471,9 @@ AstNode* Ast::createNodeUpsert (AstNodeType type,
   node->addMember(docVariable);
   node->addMember(insertExpression);
   node->addMember(updateExpression);
+  
+  node->addMember(createNodeReference("$OLD")); 
+  node->addMember(createNodeVariable("$NEW", false)); 
   
   return node;
 }
@@ -622,7 +633,7 @@ AstNode* Ast::createNodeCollection (char const* name,
   }
 
   if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
-    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
 

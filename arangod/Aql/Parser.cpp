@@ -104,28 +104,6 @@ bool Parser::configureWriteQuery (QueryType type,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief adds automatic variables (e.g. OLD and NEW) to the query after a
-/// data modification operation
-////////////////////////////////////////////////////////////////////////////////
-
-void Parser::addAutomaticVariables () {
-  TRI_ASSERT(_writeNode != nullptr);
-
-  if (_type == AQL_QUERY_REMOVE || 
-      _type == AQL_QUERY_UPDATE || 
-      _type == AQL_QUERY_REPLACE) {
-    _writeNode->addMember(_ast->createNodeVariable("OLD", true)); 
-  }
-
-  if (_type == AQL_QUERY_INSERT || 
-      _type == AQL_QUERY_UPDATE || 
-      _type == AQL_QUERY_REPLACE ||
-      _type == AQL_QUERY_UPSERT) {
-    _writeNode->addMember(_ast->createNodeVariable("NEW", true)); 
-  }
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief parse the query
 ////////////////////////////////////////////////////////////////////////////////
 

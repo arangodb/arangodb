@@ -758,6 +758,17 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the JSON object has a specific attribute
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool has (char const* name) const {
+          if (! TRI_IsObjectJson(_json)) {
+            throw JsonException("Json is no object");
+          }
+          return (TRI_LookupObjectJson(_json, name) != nullptr);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief append a Json value to the end of a Json array, an exception
 /// is thrown if *this is not a Json array. The pointer managed by sub is
 /// stolen. The purpose of this method is that you can do
@@ -931,6 +942,17 @@ namespace triagens {
             throw JsonException("Json is no array");
           }
           return _json->_value._objects._length;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the length of the array
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t members () const {
+          if (! TRI_IsObjectJson(_json)) {
+            throw JsonException("Json is no object");
+          }
+          return _json->_value._objects._length / 2;
         }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -222,6 +222,13 @@ namespace triagens {
     int replaceOrWithInRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
     int removeRedundantOrRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove $OLD and $NEW variables from data-modification statements
+/// if not required
+////////////////////////////////////////////////////////////////////////////////
+
+    int removeDataModificationOutVariablesRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
     
   }  // namespace aql
 }  // namespace triagens
