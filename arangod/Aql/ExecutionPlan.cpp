@@ -928,7 +928,7 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
-  TRI_ASSERT(node->numMembers() >= 3);
+  TRI_ASSERT(node->numMembers() == 4);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -942,12 +942,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
   auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld = nullptr;
-
-  if (node->numMembers() > 3) {
-    auto returnVarNode = node->getMember(3);
-    outVariableOld = static_cast<Variable*>(returnVarNode->getData());
-  }
+  auto returnVarNode = node->getMember(3);
+  Variable const* outVariableOld = static_cast<Variable*>(returnVarNode->getData());
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
@@ -973,7 +969,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() <= 4);
+  TRI_ASSERT(node->numMembers() == 4);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -981,12 +977,8 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
 
-  Variable const* outVariableNew = nullptr;
-
-  if (node->numMembers() > 3) {
-    auto returnVarNode = node->getMember(3);
-    outVariableNew = static_cast<Variable*>(returnVarNode->getData());
-  }
+  auto returnVarNode = node->getMember(3);
+  Variable const* outVariableNew = static_cast<Variable*>(returnVarNode->getData());
 
   ExecutionNode* en = nullptr;
 
@@ -1016,7 +1008,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() >= 4);
+  TRI_ASSERT(node->numMembers() == 6);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -1027,17 +1019,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld = nullptr;
-  Variable const* outVariableNew = nullptr;
-
-  if (node->numMembers() > 4) {
-    auto returnVarNode = node->getMember(4);
-    outVariableOld = static_cast<Variable*>(returnVarNode->getData());
-  }
-  if (node->numMembers() > 5) {
-    auto returnVarNode = node->getMember(5);
-    outVariableNew = static_cast<Variable*>(returnVarNode->getData());
-  }
+  Variable const* outVariableOld = static_cast<Variable*>(node->getMember(4)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(5)->getData());
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -1087,7 +1070,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() >= 4);
+  TRI_ASSERT(node->numMembers() == 6);
 
   auto options        = createOptions(node->getMember(0));
   auto collectionName = node->getMember(1)->getStringValue();
@@ -1099,17 +1082,8 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariableOld = nullptr;
-  Variable const* outVariableNew = nullptr;
-
-  if (node->numMembers() > 4) {
-    auto returnVarNode = node->getMember(4);
-    outVariableOld = static_cast<Variable*>(returnVarNode->getData());
-  }
-  if (node->numMembers() > 5) {
-    auto returnVarNode = node->getMember(5);
-    outVariableNew = static_cast<Variable*>(returnVarNode->getData());
-  }
+  Variable const* outVariableOld = static_cast<Variable*>(node->getMember(4)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(5)->getData());
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -1159,7 +1133,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeUpsert (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
-  TRI_ASSERT(node->numMembers() >= 5);
+  TRI_ASSERT(node->numMembers() == 7);
  
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -1168,12 +1142,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert (ExecutionNode* previous,
   auto docExpression = node->getMember(2);
   auto insertExpression = node->getMember(3);
   auto updateExpression = node->getMember(4);
-  Variable const* outVariableNew = nullptr;
 
-  if (node->numMembers() > 5) {
-    auto returnVarNode = node->getMember(5);
-    outVariableNew = static_cast<Variable*>(returnVarNode->getData());
-  }
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(6)->getData());
 
   TRI_ASSERT(docExpression->type == NODE_TYPE_REFERENCE);
   // doc operand is already a variable

@@ -446,7 +446,7 @@ std::string Query::extractRegion (int line,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error
+/// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -460,6 +460,28 @@ void Query::registerError (int code,
   }
   
   THROW_ARANGO_EXCEPTION_PARAMS(code, details);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error with a custom error message
+/// this also makes the query abort
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::registerErrorCustom (int code,
+                                 char const* details) {
+
+  TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+
+  if (details == nullptr) {
+    THROW_ARANGO_EXCEPTION(code);
+  }
+  
+  std::string errorMessage(TRI_errno_string(code));
+  errorMessage.append(": ");
+  errorMessage.append(details);
+
+std::cout << "REGISTER ERROR CUSTOM: " << errorMessage << "\n";
+  THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -713,7 +735,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
       /// json.reserve(n);
       
       for (size_t i = 0; i < n; ++i) {
-        AqlValue val = value->getValue(i, 0);
+        AqlValue val = value->getValueReference(i, 0);
 
         if (! val.isEmpty()) {
           result.result->Set(j++, val.toV8(isolate, _trx, doc)); 

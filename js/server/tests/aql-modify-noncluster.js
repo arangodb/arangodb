@@ -1,5 +1,6 @@
 /*jshint strict: false, sub: true, maxlen: 500 */
-/*global require, assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, assertUndefined, fail, AQL_EXECUTE */
+/*global require, assertEqual, assertFalse, assertNull, assertNotNull, assertTrue, 
+  assertNotEqual, assertUndefined, fail, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters
@@ -2364,6 +2365,52 @@ function ahuacatlUpdateSuite () {
 /// @brief test update
 ////////////////////////////////////////////////////////////////////////////////
 
+    testUpdateWithNothing : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPDATE d WITH { } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.old._key);
+        assertEqual("test" + i, doc["new"]._key);
+        assertEqual(i, doc.old.value1);
+        assertEqual(i, doc["new"].value1);
+        assertEqual("test" + i, doc.old.value2);
+        assertEqual("test" + i, doc["new"].value2);
+        assertEqual(doc.old._rev, doc["new"]._rev); // _rev should not have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpdateWithSomething : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPDATE d WITH { value1: d.value1, value2: d.value2 } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.old._key);
+        assertEqual("test" + i, doc["new"]._key);
+        assertEqual(i, doc.old.value1);
+        assertEqual(i, doc["new"].value1);
+        assertEqual("test" + i, doc.old.value2);
+        assertEqual("test" + i, doc["new"].value2);
+        assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev should have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test update
+////////////////////////////////////////////////////////////////////////////////
+
     testUpdateOldValueWhatNew : function () {
       var expected = { writesExecuted: 100, writesIgnored: 0 };
       var actual = getModifyQueryResultsRaw("FOR d IN @@cn UPDATE { _key: d._key, value1: d.value2, value2: d.value1, value3: d.value1 + 5 } IN @@cn LET updated = NEW RETURN updated", { "@cn": cn1 });
@@ -2959,6 +3006,99 @@ function ahuacatlUpdateSuite () {
         var doc = c1.document("test" + i);
         assertEqual(i + 5, doc.value1);
         assertFalse(doc.hasOwnProperty("value2"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateWithNothing : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPSERT { _key: d._key } INSERT { } UPDATE { } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.old._key);
+        assertEqual("test" + i, doc["new"]._key);
+        assertEqual(i, doc.old.value1);
+        assertEqual(i, doc["new"].value1);
+        assertEqual("test" + i, doc.old.value2);
+        assertEqual("test" + i, doc["new"].value2);
+        assertEqual(doc.old._rev, doc["new"]._rev); // _rev should not have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReplaceWithNothing : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPSERT { _key: d._key } INSERT { } REPLACE { } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.old._key);
+        assertEqual("test" + i, doc["new"]._key);
+        assertEqual(i, doc.old.value1);
+        assertFalse(doc["new"].hasOwnProperty("value1"));
+        assertEqual("test" + i, doc.old.value2);
+        assertFalse(doc["new"].hasOwnProperty("value2"));
+        assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev should have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertUpdateWithSomething : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPSERT { _key: d._key } INSERT { } UPDATE { value1: OLD.value1, value2: OLD.value2 } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.old._key);
+        assertEqual("test" + i, doc["new"]._key);
+        assertEqual(i, doc.old.value1);
+        assertEqual(i, doc["new"].value1);
+        assertEqual("test" + i, doc.old.value2);
+        assertEqual("test" + i, doc["new"].value2);
+        assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev should have changed
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test upsert
+////////////////////////////////////////////////////////////////////////////////
+
+    testUpsertReplaceWithSomething : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = getModifyQueryResultsRaw("FOR d IN @@cn SORT d.value1 UPSERT { _key: d._key } INSERT { } REPLACE { value1: OLD.value1, value2: OLD.value2, value3: OLD.value1 } IN @@cn RETURN { old: OLD, new: NEW }", { "@cn": cn1 });
+
+      assertEqual(expected, sanitizeStats(actual.stats));
+      assertEqual(100, actual.json.length);
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc.old._key);
+        assertEqual("test" + i, doc["new"]._key);
+        assertEqual(i, doc.old.value1);
+        assertEqual(i, doc["new"].value1);
+        assertEqual("test" + i, doc.old.value2);
+        assertEqual("test" + i, doc["new"].value2);
+        assertEqual(i, doc["new"].value3);
+        assertNotEqual(doc.old._rev, doc["new"]._rev); // _rev should have changed
       }
     },
 

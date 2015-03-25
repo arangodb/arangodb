@@ -2366,6 +2366,38 @@ namespace triagens {
           return v;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the "$OLD" out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* getOutVariableOld () const {
+          return _outVariableOld;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the "$NEW" out variable
+////////////////////////////////////////////////////////////////////////////////
+        
+        Variable const* getOutVariableNew () const {
+          return _outVariableNew;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the "$OLD" out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearOutVariableOld () {
+          _outVariableOld = nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the "$NEW" out variable
+////////////////////////////////////////////////////////////////////////////////
+        
+        void clearOutVariableNew () {
+          _outVariableNew = nullptr;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -2806,6 +2838,8 @@ namespace triagens {
           TRI_ASSERT(_inDocVariable != nullptr);
           TRI_ASSERT(_insertVariable != nullptr);
           TRI_ASSERT(_updateVariable != nullptr);
+
+          TRI_ASSERT(_outVariableOld == nullptr);
         }
         
         UpsertNode (ExecutionPlan*, 

@@ -4353,22 +4353,34 @@ AqlItemBlock* UpdateBlock::work (std::vector<AqlItemBlock*>& blocks) {
           errorCode = _trx->readSingle(trxCollection, &oldDocument, key);
         }
 
+        if (! json.isObject()) {
+          errorCode = TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
+        }
+
         if (errorCode == TRI_ERROR_NO_ERROR) {
           if (oldDocument.getDataPtr() != nullptr) {
-            TRI_shaped_json_t shapedJson;
-            TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
-            std::unique_ptr<TRI_json_t> old(TRI_JsonShapedJson(_collection->documentCollection()->getShaper(), &shapedJson));
 
-            // the default
-            errorCode = TRI_ERROR_OUT_OF_MEMORY;
+            if (json.members() > 0) {
+              // only update the document if the update value is not empty
+              TRI_shaped_json_t shapedJson;
+              TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, oldDocument.getDataPtr()); // PROTECTED by trx here
+              std::unique_ptr<TRI_json_t> old(TRI_JsonShapedJson(_collection->documentCollection()->getShaper(), &shapedJson));
 
-            if (old.get() != nullptr) {
-              std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+              // the default
+              errorCode = TRI_ERROR_OUT_OF_MEMORY;
 
-              if (patchedJson.get() != nullptr) {
-                // all exceptions are caught in _trx->update()
-                errorCode = _trx->update(trxCollection, key, 0, &mptr, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+              if (old.get() != nullptr) {
+                std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+
+                if (patchedJson.get() != nullptr) {
+                  // all exceptions are caught in _trx->update()
+                  errorCode = _trx->update(trxCollection, key, 0, &mptr, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                }
               }
+            }
+            else {
+              // copy the existing master pointer for OLD into NEW
+              mptr = oldDocument;
             }
           }
           else {
@@ -4521,6 +4533,7 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
               
               // use default value 
               errorCode = TRI_ERROR_OUT_OF_MEMORY;
+              bool wasEmpty = false;
 
               // check for shard key change
               if (_isDBServer && 
@@ -4535,15 +4548,31 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
               }
               else {
                 // update
-                std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
+                if (updateJson.members() == 0) {
+                  // empty object. nothing to do
+                  errorCode = TRI_ERROR_NO_ERROR;
+
+                  if (producesOutput) {
+                    // copy OLD into NEW
+                    result->setValue(dstRow,
+                                      _outRegNew,
+                                      AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, searchJson.steal())));
+                    wasEmpty = true;
+                  }
+                }
+                else {
+                  std::unique_ptr<TRI_json_t> mergedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, searchJson.json(), updateJson.json(), ep->_options.nullMeansRemove, ep->_options.mergeObjects));
               
-                if (mergedJson.get() != nullptr) {
-                  // all exceptions are caught in _trx->update()
-                  errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                  if (mergedJson.get() != nullptr) {
+                    // all exceptions are caught in _trx->update()
+                    errorCode = _trx->update(trxCollection, key, 0, &mptr, mergedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, 0, nullptr, ep->_options.waitForSync);
+                  }
                 }
               }
 
-              if (producesOutput && errorCode == TRI_ERROR_NO_ERROR) {
+              if (producesOutput && 
+                  errorCode == TRI_ERROR_NO_ERROR && 
+                  ! wasEmpty) {
                 // store $NEW
                 result->setValue(dstRow,
                                   _outRegNew,

@@ -277,7 +277,7 @@ namespace triagens {
   * literals
   * --------------------------------------------------------------------------- */
 
-([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
+($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
   /* unquoted string */
   yylval->strval = yyextra->query()->registerString(yytext, yyleng, false);
   return T_STRING; 

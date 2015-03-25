@@ -4391,6 +4391,52 @@ int triagens::aql::removeRedundantOrRule (Optimizer* opt,
   return TRI_ERROR_NO_ERROR;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove $OLD and $NEW variables from data-modification statements
+/// if not required
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeDataModificationOutVariablesRule (Optimizer* opt, 
+                                                           ExecutionPlan* plan, 
+                                                           Optimizer::Rule const* rule) {
+  bool modified = false;
+  std::vector<ExecutionNode::NodeType> const types = {
+    EN::REMOVE,
+    EN::INSERT,
+    EN::UPDATE,
+    EN::REPLACE,
+    EN::UPSERT
+  };
+
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(types, true);
+  
+  for (auto n : nodes) {
+    auto node = static_cast<ModificationNode*>(n);
+    TRI_ASSERT(node != nullptr);
+
+    auto varsUsedLater = n->getVarsUsedLater();
+    if (varsUsedLater.find(node->getOutVariableOld()) == varsUsedLater.end()) {
+      // "$OLD" is not used later
+      node->clearOutVariableOld();
+      modified = true;
+    }
+    
+    if (varsUsedLater.find(node->getOutVariableNew()) == varsUsedLater.end()) {
+      // "$NEW" is not used later
+      node->clearOutVariableNew();
+      modified = true;
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
 // Local Variables:
 // mode: outline-minor
 // outline-regexp: "^\\(/// @brief\\|/// {@inheritDoc}\\|/// @addtogroup\\|// --SECTION--\\|/// @\\}\\)"
