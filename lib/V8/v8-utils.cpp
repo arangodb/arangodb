@@ -348,6 +348,8 @@ static void JS_Options (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   if (json != nullptr) {
     auto result = TRI_ObjectJson(isolate, json);
+
+    result->ToObject()->ForceDelete(TRI_V8_STRING("server.password"));
     TRI_V8_RETURN(result);
   }
 
