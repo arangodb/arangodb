@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $*/
 
 (function() {

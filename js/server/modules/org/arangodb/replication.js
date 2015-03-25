@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
@@ -45,8 +46,6 @@ var applier = { };
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.state = function () {
-  'use strict';
-
   return internal.getStateReplicationLogger();
 };
 
@@ -55,8 +54,6 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.start = function (initialTick) {
-  'use strict';
-
   if (initialTick === undefined) {
     return internal.startReplicationApplier();
   }
@@ -69,8 +66,6 @@ applier.start = function (initialTick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.shutdown = applier.stop = function () {
-  'use strict';
-
   return internal.shutdownReplicationApplier();
 };
 
@@ -79,8 +74,6 @@ applier.shutdown = applier.stop = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.state = function () {
-  'use strict';
-
   return internal.getStateReplicationApplier();
 };
 
@@ -89,8 +82,6 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.forget = function () {
-  'use strict';
-
   return internal.forgetStateReplicationApplier();
 };
 
@@ -99,8 +90,6 @@ applier.forget = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.properties = function (config) {
-  'use strict';
-
   if (config === undefined) {
     return internal.configureReplicationApplier();
   }
@@ -117,8 +106,6 @@ applier.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {
-  'use strict';
-
   return internal.synchroniseReplication(config);
 };
 
@@ -127,8 +114,6 @@ var sync = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var serverId = function () {
-  'use strict';
-
   return internal.serverId();
 };
 

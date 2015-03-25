@@ -1,3 +1,4 @@
+/*jshint globalstrict: false */
 /*global require, describe, beforeEach, it, expect, createSpy, afterEach */
 
 ////////////////////////////////////////////////////////////////////////////////

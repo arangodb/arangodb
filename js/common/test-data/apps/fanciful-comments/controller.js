@@ -58,7 +58,7 @@
 /** Crazy
              * indention
  * of
-stuff     */
+stuff */
   controller.get("/k", function() {});
 
   /** This

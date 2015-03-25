@@ -1,5 +1,4 @@
-/*jshint browser: true, evil: true */
-/*jshint unused: false */
+/*jshint browser: true, evil: true, unused: false */
 /*global Backbone, templateEngine, $, window*/
 
 (function() {

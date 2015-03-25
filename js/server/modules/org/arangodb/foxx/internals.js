@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx internals
@@ -54,7 +55,6 @@ var _ = require("underscore"),
 ////////////////////////////////////////////////////////////////////////////////
 
 constructUrlObject = function (url, constraint, method) {
-  'use strict';
   var urlObject = {};
 
   if (is.noString(url)) {
@@ -77,7 +77,6 @@ constructUrlObject = function (url, constraint, method) {
 ////////////////////////////////////////////////////////////////////////////////
 
 constructNickname = function (httpMethod, url) {
-  'use strict';
   return (httpMethod + "_" + url)
     .replace(/\W/g, '_')
     .replace(/((_){2,})/g, '_')
@@ -85,7 +84,6 @@ constructNickname = function (httpMethod, url) {
 };
 
 constructRoute = function (method, route, callback, controller, constraints) {
-  'use strict';
   var res = {};
   res.url = constructUrlObject(route, undefined, method);
   res.docs = {
@@ -117,7 +115,6 @@ constructRoute = function (method, route, callback, controller, constraints) {
 };
 
 constructPathParamDoc = function (paramName, description, dataType, required) {
-  'use strict';
   return {
     paramType: "path",
     name: paramName,
@@ -128,7 +125,6 @@ constructPathParamDoc = function (paramName, description, dataType, required) {
 };
 
 constructQueryParamDoc = function (paramName, description, dataType, required, allowMultiple) {
-  'use strict';
   return {
     paramType: "query",
     name: paramName,
@@ -140,7 +136,6 @@ constructQueryParamDoc = function (paramName, description, dataType, required, a
 };
 
 constructErrorResponseDoc = function (code, reason) {
-  'use strict';
   return {
     code: code,
     reason: reason

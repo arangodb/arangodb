@@ -1,4 +1,5 @@
 /*global exports */
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if something is something
@@ -29,25 +30,21 @@
 
 // Check if a value is not undefined or null
 var existy = function (x) {
-  "use strict";
   return x !== null && x !== undefined;
 };
 
 // Check if a value is undefined or null
 var notExisty = function (x) {
-  "use strict";
   return !existy(x);
 };
 
 // Check if a value is existy and not false
 var truthy = function (x) {
-  "use strict";
   return (x !== false) && existy(x);
 };
 
 // Check if a value is not truthy
 var falsy = function (x) {
-  "use strict";
   return !truthy(x);
 };
 
@@ -62,7 +59,6 @@ var falsy = function (x) {
   'String',
   'RegExp'
 ].forEach(function(type) {
-  "use strict";
   exports[type.toLowerCase()] = function(obj) {
     return Object.prototype.toString.call(obj) === '[object '+type+']';
   };

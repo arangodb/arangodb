@@ -1,7 +1,5 @@
-/*jshint unused: false */
+/*jshint unused: false, globalstrict: false */
 /*global require, start_pretty_print */
-
-var yaml = require("js-yaml");
 
 var UnitTest = require("org/arangodb/testing");
 

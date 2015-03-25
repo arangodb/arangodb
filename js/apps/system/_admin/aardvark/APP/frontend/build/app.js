@@ -99664,8 +99664,7 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, window, $, _ */
 (function () {
 
@@ -99751,8 +99750,7 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
 (function() {
   "use strict";
@@ -100081,8 +100079,7 @@ window.Users = Backbone.Model.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global require, exports, Backbone, window, arangoDocument, arangoDocumentModel, $, arangoHelper */
 
 window.arangoDocument = Backbone.Collection.extend({
@@ -100304,8 +100301,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
 });
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
 (function() {
   "use strict";
@@ -100598,8 +100594,7 @@ window.arangoDocument = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, $, _ */
 (function () {
 
@@ -100665,8 +100660,7 @@ window.arangoDocument = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
 (function() {
   "use strict";
@@ -100779,8 +100773,7 @@ window.arangoDocument = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global window, Backbone, $, window */
 
 window.ArangoReplication = Backbone.Collection.extend({
@@ -100827,16 +100820,14 @@ window.ArangoReplication = Backbone.Collection.extend({
 
 });
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, window */
 window.StatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
   url: "/_admin/statistics"
 });
 
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global require, exports, Backbone, window */
 window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   model: window.StatisticsDescription,
@@ -100846,8 +100837,7 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   }
 });
 
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global window, Backbone, $,_, window */
 
 window.ArangoUsers = Backbone.Collection.extend({
@@ -100962,8 +100952,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 });
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, Backbone, alert, $ */
 (function() {
   "use strict";
@@ -101099,8 +101088,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, Backbone */
 (function () {
   "use strict";
@@ -101137,8 +101125,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, Backbone */
 (function() {
   "use strict";
@@ -101148,8 +101135,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, Backbone, $ */
 (function() {
   "use strict";
@@ -101175,8 +101161,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, Backbone, $ */
 (function() {
   "use strict";
@@ -101197,8 +101182,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine */
 
 (function() {
@@ -101271,8 +101255,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, document, Backbone, SwaggerUi, hljs, templateEngine, $ */
 (function() {
   "use strict";
@@ -101317,8 +101300,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
 /*global templateEngine*/
 
@@ -101761,8 +101743,7 @@ window.ArangoUsers = Backbone.Collection.extend({
    */
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, window, exports, Backbone, EJS, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
@@ -102071,8 +102052,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global _, Backbone, templateEngine, window, setTimeout, clearTimeout, arangoHelper, Joi, $*/
 
 (function() {
@@ -102473,8 +102453,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, console, Dygraph, _,templateEngine */
 
@@ -103206,8 +103185,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine, Joi*/
 (function() {
 
@@ -103563,8 +103541,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global templateEngine, window, Backbone, $*/
 (function() {
   "use strict";
@@ -103598,8 +103575,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
 /*global document, _ */
 
@@ -103881,8 +103857,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 
 (function() {
@@ -105022,8 +104997,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true, evil: true */
-/*jshint unused: false */
+/*jshint browser: true, evil: true, unused: false */
 /*global Backbone, templateEngine, $, window*/
 
 (function() {
@@ -105080,8 +105054,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, templateEngine, $, arangoHelper, window*/
 
 (function() {
@@ -105228,8 +105201,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 // obsolete file
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, $, window, EJS, arangoHelper, _, templateEngine, Joi*/
 
 (function() {
@@ -105617,8 +105589,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   window.FoxxInstallView = FoxxInstallView;
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, $, _, window, templateEngine, arangoHelper, GraphViewerUI, require */
 
 (function() {
@@ -106297,8 +106268,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
 
 (function() {
@@ -106373,8 +106343,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, arangoHelper, $, window, templateEngine*/
 
 (function () {
@@ -106939,8 +106908,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, templateEngine, $, window, arangoHelper*/
 (function () {
   "use strict";
@@ -107078,8 +107046,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
@@ -107149,8 +107116,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, $, window, setTimeout, Joi, _ */
 /*global templateEngine*/
 
@@ -107213,8 +107179,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
 /*global _, arangoHelper, templateEngine, jQuery, Joi*/
 
@@ -107422,8 +107387,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
@@ -108353,8 +108317,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     });
   }());
 
-/*jshint browser: true, evil: true */
-/*jshint unused: false */
+/*jshint browser: true, evil: true, unused: false */
 /*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 /*global templateEngine*/
 
@@ -108484,8 +108447,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
@@ -108581,8 +108543,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, window, templateEngine, $ */
 
 (function() {
@@ -108637,8 +108598,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, $, _, window, document, templateEngine, FileReader */
 
 (function() {
@@ -108679,8 +108639,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, templateEngine, $, window*/
 (function () {
   "use strict";
@@ -108776,8 +108735,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global _, window, document, Backbone, EJS, SwaggerUi, hljs, $, arangoHelper, templateEngine,
   CryptoJS, Joi */
 (function() {

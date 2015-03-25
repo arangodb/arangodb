@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Request Context
@@ -44,7 +45,6 @@ var RequestContext,
   UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError;
 
 createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
-  'use strict';
   var extractElement;
 
   if (rootElement) {
@@ -71,7 +71,6 @@ createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
 };
 
 createModelInstantiator = function (Model, allowInvalid) {
-  'use strict';
   var multiple = is.array(Model);
   Model = multiple ? Model[0] : Model;
   var instantiate = function (raw) {
@@ -89,7 +88,6 @@ createModelInstantiator = function (Model, allowInvalid) {
 };
 
 isJoi = function (schema) {
-  'use strict';
   if (!schema || typeof schema !== 'object' || is.array(schema)) {
     return false;
   }
@@ -104,7 +102,6 @@ isJoi = function (schema) {
 };
 
 validateOrThrow = function (raw, schema, allowInvalid) {
-  'use strict';
   if (!isJoi(schema)) {
     return raw;
   }
@@ -123,7 +120,6 @@ validateOrThrow = function (raw, schema, allowInvalid) {
 ////////////////////////////////////////////////////////////////////////////////
 
 RequestContext = function (executionBuffer, models, route, rootElement, constraints, extensions) {
-  'use strict';
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
@@ -192,7 +188,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
-    'use strict';
     var url = this.route.url,
       urlConstraint = url.constraint || {},
       type = attributes.type,
@@ -302,7 +297,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   queryParam: function (paramName, attributes) {
-    'use strict';
     var type = attributes.type,
       required = attributes.required,
       description = attributes.description,
@@ -448,7 +442,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, attributes) {
-    'use strict';
     var type = attributes.type,
       description = attributes.description,
       allowInvalid = attributes.allowInvalid,
@@ -515,7 +508,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   summary: function (summary) {
-    'use strict';
     if (summary.length > 8192) {
       throw new Error("Summary can't be longer than 8192 characters");
     }
@@ -530,7 +522,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
-    'use strict';
     this.docs.addNotes(notes);
     return this;
   },
@@ -578,7 +569,6 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   errorResponse: function (errorClass, code, reason, errorHandler) {
-    'use strict';
     this.route.action.errorResponses.push({
       errorClass: errorClass,
       code: code,
@@ -608,7 +598,6 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check) {
-    'use strict';
     this.route.action.checks.push({
       check: check
     });
@@ -636,7 +625,6 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
-    'use strict';
     var check;
 
     check = function (req) {
@@ -663,13 +651,11 @@ extend(RequestContext.prototype, {
 });
 
 RequestContextBuffer = function () {
-  'use strict';
   this.applyChain = [];
 };
 
 extend(RequestContextBuffer.prototype, {
   applyEachFunction: function (target) {
-    'use strict';
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
     });
@@ -740,7 +726,6 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
   "onlyIfAuthenticated"
 ], function (functionName) {
-  'use strict';
   extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
       functionName: functionName,

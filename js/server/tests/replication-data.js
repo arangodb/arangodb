@@ -1,5 +1,6 @@
 /*jshint unused: false */
 /*global require, fail, assertEqual, assertTrue, assertFalse, assertNull, arango */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the replication
@@ -48,7 +49,6 @@ var slaveEndpoint = masterEndpoint.replace(/:3(\d+)$/, ':4$1');
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationSuite () {
-  "use strict";
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 

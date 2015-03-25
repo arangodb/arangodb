@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global window, Backbone, $, window */
 
 window.ArangoReplication = Backbone.Collection.extend({

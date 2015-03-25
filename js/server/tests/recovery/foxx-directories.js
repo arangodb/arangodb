@@ -1,4 +1,4 @@
-/*jshint strict: true, unused : false */
+/*jshint globalstrict: false, unused : false */
 /*global require, module, fail, assertTrue, assertFalse, assertEqual, TRANSACTION */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for transactions

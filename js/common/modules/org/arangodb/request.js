@@ -1,4 +1,4 @@
-/*jshint globalstrict: true, sub: true */
+/*jshint sub: true */
 /*global module, require, exports: true */
 'use strict';
 

@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Foxx Repository
@@ -66,7 +67,6 @@ var Repository,
 ////////////////////////////////////////////////////////////////////////////////
 
 Repository = function (collection, opts) {
-  'use strict';
 
   if (! collection instanceof ArangoCollection) {
     throw new ArangoError({
@@ -154,7 +154,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   save: function (model) {
-    'use strict';
     model.emit('beforeCreate');
     model.emit('beforeSave');
     var id_and_rev = this.collection.save(model.forDB());
@@ -186,7 +185,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   byId: function (id) {
-    'use strict';
     var data = this.collection.document(id);
     return (new this.model(data));
   },
@@ -206,7 +204,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   byExample: function (example) {
-    'use strict';
     var rawDocuments = this.collection.byExample(example).toArray();
     return _.map(rawDocuments, function (rawDocument) {
       return (new this.model(rawDocument));
@@ -228,7 +225,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   firstExample: function (example) {
-    'use strict';
     var rawDocument = this.collection.firstExample(example);
     return (new this.model(rawDocument));
   },
@@ -258,7 +254,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   all: function (options) {
-    'use strict';
     if (!options) {
       options = {};
     }
@@ -288,7 +283,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   any: function () {
-    'use strict';
     var data = this.collection.any();
     if (!data) {
       return null;
@@ -315,7 +309,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   remove: function (model) {
-    'use strict';
     model.emit('beforeRemove');
     var id = model.get('_id'),
       result = this.collection.remove(id);
@@ -339,7 +332,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   removeById: function (id) {
-    'use strict';
     return this.collection.remove(id);
   },
 
@@ -357,7 +349,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   removeByExample: function (example) {
-    'use strict';
     return this.collection.removeByExample(example);
   },
 
@@ -382,7 +373,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   replace: function (model) {
-    'use strict';
     var id = model.get("_id") || model.get("_key"),
       data = model.forDB(),
       id_and_rev = this.collection.replace(id, data);
@@ -408,7 +398,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   replaceById: function (id, data) {
-    'use strict';
     if (data instanceof Model) {
       var id_and_rev = this.collection.replace(id, data.forDB());
       data.set(id_and_rev);
@@ -432,7 +421,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   replaceByExample: function (example, data) {
-    'use strict';
     return this.collection.replaceByExample(example, data);
   },
 
@@ -456,7 +444,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   update: function (model, data) {
-    'use strict';
     model.emit('beforeUpdate', data);
     model.emit('beforeSave', data);
     var id = model.get("_id") || model.get("_key"),
@@ -486,7 +473,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   updateById: function (id, data) {
-    'use strict';
     if (data instanceof Model) {
       var id_and_rev = this.collection.update(id, data.forDB());
       data.set(id_and_rev);
@@ -510,7 +496,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   updateByExample: function (example, data) {
-    'use strict';
     return this.collection.updateByExample(example, data);
   },
 
@@ -528,7 +513,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   exists: function (id) {
-    'use strict';
     return this.collection.exists(id);
   },
 
@@ -550,7 +534,6 @@ _.extend(Repository.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   count: function () {
-    'use strict';
     return this.collection.count();
   }
 });
@@ -583,7 +566,6 @@ var indexPrototypes = {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     range: function (attribute, left, right) {
-      'use strict';
       var rawDocuments = this.collection.range(attribute, left, right).toArray();
       return _.map(rawDocuments, function (rawDocument) {
         return (new this.model(rawDocument));
@@ -622,7 +604,6 @@ var indexPrototypes = {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     near: function (latitude, longitude, options) {
-      'use strict';
       var collection = this.collection,
         rawDocuments;
       if (!options) {
@@ -682,7 +663,6 @@ var indexPrototypes = {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     within: function (latitude, longitude, radius, options) {
-      'use strict';
       var collection = this.collection,
         rawDocuments;
       if (!options) {
@@ -739,7 +719,6 @@ var indexPrototypes = {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
     fulltext: function (attribute, query, options) {
-      'use strict';
       if (!options) {
         options = {};
       }
@@ -755,7 +734,6 @@ var indexPrototypes = {
 };
 
 var addIndexMethods = function (prototype) {
-  'use strict';
   _.each(prototype.indexes, function (index) {
     var protoMethods = indexPrototypes[index.type];
     if (!protoMethods) {
@@ -770,7 +748,6 @@ var addIndexMethods = function (prototype) {
 };
 
 Repository.extend = function (prototypeProperties, constructorProperties) {
-  'use strict';
   var constructor = extend.call(this, prototypeProperties, constructorProperties);
   if (constructor.prototype.hasOwnProperty('indexes')) {
     addIndexMethods(constructor.prototype);

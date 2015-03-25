@@ -1,4 +1,4 @@
-/*jshint strict: true, maxlen : 4000 */
+/*jshint globalstrict: false, maxlen : 4000 */
 /*global require */
 
 ////////////////////////////////////////////////////////////////////////////////

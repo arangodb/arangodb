@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global require, exports, Backbone, window, arangoDocument, arangoDocumentModel, $, arangoHelper */
 
 window.arangoDocument = Backbone.Collection.extend({

@@ -1,4 +1,4 @@
-/*jshint strict: true */
+/*jshint globalstrict: false */
 /*global require */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup for import tests

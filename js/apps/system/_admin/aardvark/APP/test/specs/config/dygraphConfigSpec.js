@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global describe, jasmine, beforeEach, afterEach, Backbone, it, spyOn, expect*/
 /*global $*/
 

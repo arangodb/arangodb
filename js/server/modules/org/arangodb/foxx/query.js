@@ -1,4 +1,5 @@
 /*global exports, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queries
@@ -31,8 +32,6 @@ var _ = require('underscore'),
   db = require('org/arangodb').db;
 
 exports.createQuery = function createQuery (cfg) {
-  'use strict';
-
   if (!cfg) {
     cfg = {};
   } else if (typeof cfg === 'string' || typeof cfg.toAQL === 'function') {

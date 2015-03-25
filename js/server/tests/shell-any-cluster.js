@@ -1,4 +1,4 @@
-/*jshint strict: true */
+/*jshint globalstrict: false */
 /*global require, assertTrue */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the random document selector 

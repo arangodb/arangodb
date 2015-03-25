@@ -1,4 +1,5 @@
 /*global require, exports, print */
+'use strict';
 
 var runTest = require('jsunity').runTest,
   _ = require('underscore'),
@@ -12,7 +13,6 @@ var runTest = require('jsunity').runTest,
 ////////////////////////////////////////////////////////////////////////////////
 
 runJSUnityTests = function (tests) {
-  'use strict';
   var result = true;
   var allResults = [];
   var res;
@@ -53,7 +53,6 @@ runJSUnityTests = function (tests) {
 ////////////////////////////////////////////////////////////////////////////////
 
 runJasmineTests = function (testFiles, options) {
-  'use strict';
   var result = true;
 
   if (testFiles.length > 0) {
@@ -69,7 +68,6 @@ runJasmineTests = function (testFiles, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 runCommandLineTests = function (opts) {
-  'use strict';
   var result = true,
     options = opts || {},
     jasmineReportFormat = options.jasmineReportFormat || 'progress',

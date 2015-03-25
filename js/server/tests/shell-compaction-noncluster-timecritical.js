@@ -1,6 +1,7 @@
-/*jshint strict: true, sub: true */
+/*jshint sub: true */
 /*global require, fail, assertEqual, assertTrue, assertFalse */
-// enable ['bla'] notation...
+'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the compaction
 ///
@@ -41,7 +42,6 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CompactionSuite () {
-  "use strict";
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

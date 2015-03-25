@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global window, Backbone, $,_, window */
 
 window.ArangoUsers = Backbone.Collection.extend({

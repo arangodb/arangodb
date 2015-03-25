@@ -1,4 +1,4 @@
-/*jshint unused: false, -W051: true */
+/*jshint unused: false, globalstrict: false, -W051: true */
 /*global require, console: true, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Format Middleware
@@ -27,14 +28,11 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var FormatMiddleware;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief FormatMiddleware
 ////////////////////////////////////////////////////////////////////////////////
 
-FormatMiddleware = function (allowedFormats, defaultFormat) {
-  "use strict";
+function FormatMiddleware(allowedFormats, defaultFormat) {
   var stringRepresentation, middleware = function (request, response, options, next) {
     var parsed, determinePathAndFormat;
 
@@ -113,7 +111,7 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
     .replace("defaultFormat", JSON.stringify(defaultFormat));
 
   return middleware;
-};
+}
 
 exports.FormatMiddleware = FormatMiddleware;
 

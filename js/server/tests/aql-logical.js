@@ -1,4 +1,4 @@
-/*jshint strict: false, sub: true, maxlen: 500 */
+/*jshint globalstrict: false, strict: false, sub: true, maxlen: 500 */
 /*global require, assertEqual, assertException */
 
 ////////////////////////////////////////////////////////////////////////////////

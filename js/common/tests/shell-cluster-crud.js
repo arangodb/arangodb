@@ -1,3 +1,4 @@
+/*jshint globalstrict: false */
 /*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertUndefined, assertNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
