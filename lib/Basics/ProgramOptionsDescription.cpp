@@ -28,11 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ProgramOptionsDescription.h"
-
-#include "Basics/terminal-utils.h"
-
 #include "Basics/Exceptions.h"
+#include "Basics/json.h"
 #include "Basics/StringUtils.h"
+#include "Basics/terminal-utils.h"
 
 #include <iterator>
 
@@ -75,7 +74,7 @@ ProgramOptionsDescription::ProgramOptionsDescription ()
 #if __WORDSIZE == 32
     _timeOptions(),
 #endif
-    _positionals(0) {
+    _positionals(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,10 +182,10 @@ void ProgramOptionsDescription::setName (const string& name) {
 
 ProgramOptionsDescription& ProgramOptionsDescription::operator() (ProgramOptionsDescription& sub, bool hidden) {
   if (hidden) {
-    _hiddenSubDescriptions.push_back(sub);
+    _hiddenSubDescriptions.emplace_back(sub);
   }
   else {
-    _subDescriptions.push_back(sub);
+    _subDescriptions.emplace_back(sub);
   }
 
   return *this;
@@ -546,6 +545,93 @@ set<string> ProgramOptionsDescription::helpOptions () const {
   }
 
   return options;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get default value for an option
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) const {
+  auto it = _optionTypes.find(option);
+  if (it == _optionTypes.end()) {
+    return nullptr;
+  }
+  auto type = (*it).second;
+
+  auto it2 = _values.find(option);
+  if (it2 == _values.end()) {
+    return nullptr;
+  }
+  auto value = (*it2).second;
+
+  TRI_json_t* json = nullptr;
+
+  switch (type) {
+    case OPTION_TYPE_STRING: {
+      auto v = static_cast<std::string*>(value);
+      if (v != nullptr && v->empty()) {
+        json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "", 0);
+      }
+      else {
+        json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, v->c_str(), v->size());
+      }
+      break;
+    }
+     
+    case OPTION_TYPE_BOOL: {
+      auto v = static_cast<bool*>(value);
+      if (v != nullptr) {
+        json = TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, *v);
+      }
+      break;
+    }
+    
+    case OPTION_TYPE_DOUBLE: {
+      auto v = static_cast<double*>(value);
+      if (v != nullptr) {
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+      }
+      break;
+    }
+
+    case OPTION_TYPE_INT32: {
+      auto v = static_cast<int32_t*>(value);
+      if (v != nullptr) {
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+      }
+      break;
+    }
+
+    case OPTION_TYPE_INT64: {
+      auto v = static_cast<int64_t*>(value);
+      if (v != nullptr) {
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+      }
+      break;
+    }
+    
+    case OPTION_TYPE_UINT32: {
+      auto v = static_cast<uint32_t*>(value);
+      if (v != nullptr) {
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+      }
+      break;
+    }
+
+    case OPTION_TYPE_UINT64: {
+      auto v = static_cast<uint64_t*>(value);
+      if (v != nullptr) {
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+      }
+      break;
+    }
+
+    default: {
+      TRI_ASSERT(json == nullptr);
+    }
+  }
+
+  return json;
 }
 
 // -----------------------------------------------------------------------------
