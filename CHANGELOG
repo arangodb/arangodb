@@ -9,6 +9,8 @@ v2.5.2 (XXXX-XX-XX)
 
 * issue #1289: Foxx models created from database documents expose an internal method
 
+* added `Foxx.Repository#exists`
+
 
 v2.5.1 (2015-03-19)
 -------------------
