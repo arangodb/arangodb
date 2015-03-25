@@ -3010,6 +3010,32 @@ function ahuacatlUpdateSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test replace
+////////////////////////////////////////////////////////////////////////////////
+
+    testReplaceReturnOld : function () {
+      var expected = { writesExecuted: 100, writesIgnored: 0 };
+      var actual = AQL_EXECUTE("FOR d IN @@cn REPLACE d WITH { value3: d.value1 + 5 } IN @@cn LET previous = OLD RETURN previous", { "@cn": cn1 });
+
+      assertEqual(100, c1.count());
+      assertEqual(expected, sanitizeStats(actual.stats));
+      
+      actual.json = actual.json.sort(function(l, r) {
+        return l.value1 - r.value1;
+      });
+
+      for (var i = 0; i < 100; ++i) {
+        var doc = actual.json[i];
+        assertEqual("test" + i, doc._key);
+        assertTrue(doc.hasOwnProperty("_id"));
+        assertTrue(doc.hasOwnProperty("_rev"));
+        assertEqual(i, doc.value1);
+        assertEqual("test" + i, doc.value2);
+        assertFalse(doc.hasOwnProperty("value3"));
+      }
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test upsert
 ////////////////////////////////////////////////////////////////////////////////
 

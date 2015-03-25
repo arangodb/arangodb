@@ -4796,7 +4796,7 @@ AqlItemBlock* ReplaceBlock::work (std::vector<AqlItemBlock*>& blocks) {
           if (ep->_outVariableOld != nullptr) {
             result->setValue(dstRow,
                              _outRegOld,
-                             AqlValue(reinterpret_cast<TRI_df_marker_t const*>(mptr.getDataPtr())));
+                             AqlValue(reinterpret_cast<TRI_df_marker_t const*>(nptr.getDataPtr())));
           }
 
           if (ep->_outVariableNew != nullptr) {
