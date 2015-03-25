@@ -124,7 +124,7 @@ Model = function (attributes) {
       this
     );
   } else if (attributes) {
-    instance.attributes = _.clone(attributes);
+    this.attributes = _.clone(attributes);
   }
   EventEmitter.call(this);
 };
