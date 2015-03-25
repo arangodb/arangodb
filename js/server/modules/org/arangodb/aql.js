@@ -5840,11 +5840,11 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
   }
   // merge other options
-  for (var att in options) {
+  Object.keys(options).forEach(function (att) {
     if (! params.hasOwnProperty(att)) {
       params[att] = options[att];
     }
-  }
+  });
   var result = [], fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options),
     toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options, "GRAPH_SHORTEST_PATH");
 
@@ -6527,11 +6527,11 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     params.filterVertexCollections = options.endVertexCollectionRestriction;
   }
   // merge other options
-  for (var att in options) {
+  Object.keys(options).forEach(function (att) {
     if (! params.hasOwnProperty(att)) {
       params[att] = options[att];
     }
-  }
+  });
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
