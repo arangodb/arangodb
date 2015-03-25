@@ -37,6 +37,7 @@ var Foxx = require("org/arangodb/foxx"),
   cluster = require("org/arangodb/cluster"),
   joi = require("joi"),
   util = require("util"),
+  internal = require("internal"),
   notifications = require("org/arangodb/configuration").notifications,
   db = require("internal").db,
   foxxInstallKey = joi.string().required().description(
@@ -81,7 +82,7 @@ controller.get("/whoAmI", function(req, res) {
       }
       req.session.setUser(null);
     }
-  } else if (!"TODO check if authentication is disabled") {
+  } else if (internal.options()["server.disable-authentication"]) {
     user = false;
   }
   res.json({user: user});
