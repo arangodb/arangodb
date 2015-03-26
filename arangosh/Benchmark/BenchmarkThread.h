@@ -343,6 +343,10 @@ namespace triagens {
                   LOG_WARNING("Server side warning count: %lu", errorCount);
                   if (_verbose) {
                     LOG_WARNING("Server reply: %s", result->getBody().c_str());
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+                    LOG_WARNING("We tried to send this size:\n %llu", (unsigned long long) batchPayload.length());
+                    LOG_WARNING("We tried to send this:\n %s", batchPayload.c_str());
+#endif
                   }
                 }
               }
