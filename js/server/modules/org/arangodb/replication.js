@@ -105,17 +105,17 @@ applier.properties = function (config) {
 /// @brief performs a one-time synchronisation with a remote endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var sync = function (config) {
+function sync(config) {
   return internal.synchroniseReplication(config);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the server's id
 ////////////////////////////////////////////////////////////////////////////////
 
-var serverId = function () {
+function serverId() {
   return internal.serverId();
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports

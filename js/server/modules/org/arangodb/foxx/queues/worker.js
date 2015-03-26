@@ -33,10 +33,9 @@ var db = require('org/arangodb').db,
   flatten = require('internal').flatten,
   exponentialBackOff = require('internal').exponentialBackOff,
   console = require('console'),
-  queues = require('org/arangodb/foxx').queues,
-  getBackOffDelay;
+  queues = require('org/arangodb/foxx').queues;
 
-getBackOffDelay = function (job, cfg) {
+function getBackOffDelay(job, cfg) {
   var n = job.failures.length - 1;
   if (typeof job.backOff === 'string') {
     try {

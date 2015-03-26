@@ -33,37 +33,41 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function FormatMiddleware(allowedFormats, defaultFormat) {
-  var stringRepresentation, middleware = function (request, response, options, next) {
-    var parsed, determinePathAndFormat;
+  var stringRepresentation;
 
-    determinePathAndFormat = function (path, headers) {
+  function middleware(request, response, options, next) {
+    var parsed;
+
+    function determinePathAndFormat(path, headers) {
       var mimeTypes = require("org/arangodb/mimetypes").mimeTypes,
         extensions = require("org/arangodb/mimetypes").extensions,
-        urlFormatToMime = function (urlFormat) {
-          var mimeType;
-
-          if (mimeTypes[urlFormat]) {
-            mimeType = mimeTypes[urlFormat][0];
-          } else {
-            mimeType = undefined;
-          }
-
-          return mimeType;
-        },
-        mimeToUrlFormat = function (mimeType) {
-          var urlFormat;
-
-          if (extensions[mimeType]) {
-            urlFormat = extensions[mimeType][0];
-          } else {
-            urlFormat = undefined;
-          }
-
-          return urlFormat;
-        },
         parsed = {
           contentType: headers.accept
         };
+
+      function urlFormatToMime(urlFormat) {
+        var mimeType;
+
+        if (mimeTypes[urlFormat]) {
+          mimeType = mimeTypes[urlFormat][0];
+        } else {
+          mimeType = undefined;
+        }
+
+        return mimeType;
+      }
+
+      function mimeToUrlFormat(mimeType) {
+        var urlFormat;
+
+        if (extensions[mimeType]) {
+          urlFormat = extensions[mimeType][0];
+        } else {
+          urlFormat = undefined;
+        }
+
+        return urlFormat;
+      }
 
       path = path.split('.');
 
@@ -92,7 +96,7 @@ function FormatMiddleware(allowedFormats, defaultFormat) {
       }
 
       return parsed;
-    };
+    }
 
     try {
       parsed = determinePathAndFormat(request.path, request.headers);
@@ -104,7 +108,7 @@ function FormatMiddleware(allowedFormats, defaultFormat) {
       response.responseCode = 406;
       response.body = e;
     }
-  };
+  }
 
   stringRepresentation = String(middleware)
     .replace("allowedFormats", JSON.stringify(allowedFormats))

@@ -52,7 +52,7 @@ var arangodb = require("org/arangodb"),
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name) {
+function findOrCreateCollectionByName(name) {
   var col = db._collection(name);
 
   if (col === null) {
@@ -66,13 +66,13 @@ var findOrCreateCollectionByName = function (name) {
   }
 
   return col;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create an edge collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateEdgeCollectionByName = function (name) {
+function findOrCreateEdgeCollectionByName(name) {
   var col = db._collection(name);
 
   if (col === null) {
@@ -86,7 +86,7 @@ var findOrCreateEdgeCollectionByName = function (name) {
   }
 
   return col;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Edge
@@ -644,10 +644,11 @@ Graph.prototype.getVertex = function (id) {
 
 Graph.prototype.getVertices = function () {
   var all = this._vertices.all(),
-    graph = this,
-    wrapper = function(object) {
-      return graph.constructVertex(object);
-    };
+    graph = this;
+
+  function wrapper(object) {
+    return graph.constructVertex(object);
+  }
 
   return new Iterator(wrapper, all, "[edge iterator]");
 };
@@ -703,10 +704,12 @@ Graph.prototype.getEdge = function (id) {
 
 Graph.prototype.getEdges = function () {
   var all = this._edges.all(),
-  graph = this,
-  wrapper = function(object) {
+    graph = this;
+
+  function wrapper(object) {
     return graph.constructEdge(object);
-  };
+  }
+
   return new Iterator(wrapper, all, "[edge iterator]");
 };
 

@@ -29,33 +29,20 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var RequestContext,
-  RequestContextBuffer,
-  SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
+var SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
   joi = require("joi"),
   _ = require("underscore"),
-  extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   is = require("org/arangodb/is"),
-  isJoi,
-  createBodyParamExtractor,
-  createModelInstantiator,
-  validateOrThrow,
   UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError;
 
-createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
-  var extractElement;
-
-  if (rootElement) {
-    extractElement = function (req) {
-      return req.body()[paramName];
-    };
-  } else {
-    extractElement = function (req) {
-      return req.body();
-    };
-  }
+function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
+  var extractElement = rootElement ? function (req) {
+    return req.body()[paramName];
+  } : function (req) {
+    return req.body();
+  };
 
   if (!allowInvalid) {
     return extractElement;
@@ -68,26 +55,28 @@ createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
       return {};
     }
   };
-};
+}
 
-createModelInstantiator = function (Model, allowInvalid) {
+function createModelInstantiator(Model, allowInvalid) {
   var multiple = is.array(Model);
   Model = multiple ? Model[0] : Model;
-  var instantiate = function (raw) {
+
+  function instantiate(raw) {
     if (!allowInvalid) {
       raw = validateOrThrow(raw, Model.prototype.schema, allowInvalid);
     }
     return new Model(raw);
-  };
+  }
+
   if (!multiple) {
     return instantiate;
   }
   return function (raw) {
     return _.map(raw, instantiate);
   };
-};
+}
 
-isJoi = function (schema) {
+function isJoi(schema) {
   if (!schema || typeof schema !== 'object' || is.array(schema)) {
     return false;
   }
@@ -99,9 +88,9 @@ isJoi = function (schema) {
   return Object.keys(schema).some(function (key) {
     return schema[key].isJoi;
   });
-};
+}
 
-validateOrThrow = function (raw, schema, allowInvalid) {
+function validateOrThrow(raw, schema, allowInvalid) {
   if (!isJoi(schema)) {
     return raw;
   }
@@ -110,7 +99,7 @@ validateOrThrow = function (raw, schema, allowInvalid) {
     throw result.error;
   }
   return result.value;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_initializer
@@ -119,7 +108,7 @@ validateOrThrow = function (raw, schema, allowInvalid) {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route, rootElement, constraints, extensions) {
+function RequestContext(executionBuffer, models, route, rootElement, constraints, extensions) {
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
@@ -134,20 +123,22 @@ RequestContext = function (executionBuffer, models, route, rootElement, constrai
 
   executionBuffer.applyEachFunction(this);
   var attr;
-  var extensionWrapper = function(scope, func) {
+
+  function extensionWrapper(scope, func) {
     return function() {
       func.apply(this, arguments);
       return this;
     }.bind(scope);
-  };
+  }
+
   for (attr in extensions) {
     if (extensions.hasOwnProperty(attr)) {
       this[attr] = extensionWrapper(this, extensions[attr]);
     }
   }
-};
+}
 
-extend(RequestContext.prototype, {
+_.extend(RequestContext.prototype, {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_RequestContext_pathParam
@@ -547,9 +538,9 @@ extend(RequestContext.prototype, {
 ///
 /// ```js
 /// /* define our own error type, FoxxyError */
-/// var FoxxyError = function (message) {
+/// function FoxxyError(message) {
 ///   this.message = "the following FoxxyError occurred: ' + message;
-/// };
+/// }
 /// FoxxyError.prototype = new Error();
 ///
 /// app.get("/foxx", function {
@@ -625,16 +616,14 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
-    var check;
-
-    check = function (req) {
+    function check(req) {
       if (
         !(req.session && req.session.get('uid')) // new and shiny
           && !(req.user && req.currentSession) // old and busted
       ) {
         throw new UnauthorizedError();
       }
-    };
+    }
 
     if (is.notExisty(code)) {
       code = 401;
@@ -650,11 +639,11 @@ extend(RequestContext.prototype, {
   }
 });
 
-RequestContextBuffer = function () {
+function RequestContextBuffer() {
   this.applyChain = [];
-};
+}
 
-extend(RequestContextBuffer.prototype, {
+_.extend(RequestContextBuffer.prototype, {
   applyEachFunction: function (target) {
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
@@ -726,7 +715,7 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
   "onlyIfAuthenticated"
 ], function (functionName) {
-  extend(RequestContextBuffer.prototype[functionName] = function () {
+  _.extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
       functionName: functionName,
       argumentList: arguments

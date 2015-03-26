@@ -28,8 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Repository,
-  Model = require("org/arangodb/foxx/model").Model,
+var Model = require("org/arangodb/foxx/model").Model,
   _ = require("underscore"),
   arangodb = require("org/arangodb"),
   ArangoError = arangodb.ArangoError,
@@ -66,7 +65,7 @@ var Repository,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Repository = function (collection, opts) {
+function Repository(collection, opts) {
 
   if (! collection instanceof ArangoCollection) {
     throw new ArangoError({
@@ -733,7 +732,7 @@ var indexPrototypes = {
   }
 };
 
-var addIndexMethods = function (prototype) {
+function addIndexMethods(prototype) {
   _.each(prototype.indexes, function (index) {
     var protoMethods = indexPrototypes[index.type];
     if (!protoMethods) {

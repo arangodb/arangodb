@@ -47,20 +47,20 @@ var ArangoError = arangodb.ArangoError;
 /// @brief converts a user document to the legacy format
 ////////////////////////////////////////////////////////////////////////////////
 
-var convertToLegacyFormat = function (doc) {
+function convertToLegacyFormat(doc) {
   return {
     user: doc.user,
     active: doc.authData.active,
     extra: doc.userData || {},
     changePassword: doc.authData.changePassword
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encode password using SHA256
 ////////////////////////////////////////////////////////////////////////////////
 
-var hashPassword = function (password) {
+function hashPassword(password) {
   var salt = internal.genRandomAlphaNumbers(16);
 
   return {
@@ -68,13 +68,13 @@ var hashPassword = function (password) {
     salt: salt,
     method: "sha256"
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validates a username
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateName = function (username) {
+function validateName(username) {
   if (typeof username !== "string" || username === "") {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_INVALID_NAME.code;
@@ -82,13 +82,13 @@ var validateName = function (username) {
 
     throw err;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validates password
 ////////////////////////////////////////////////////////////////////////////////
 
-var validatePassword = function (password) {
+function validatePassword(password) {
   if (typeof password !== "string") {
     var err = new ArangoError();
     err.errorNum = arangodb.errors.ERROR_USER_INVALID_PASSWORD.code;
@@ -96,13 +96,13 @@ var validatePassword = function (password) {
 
     throw err;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the users collection
 ////////////////////////////////////////////////////////////////////////////////
 
-var getStorage = function () {
+function getStorage() {
   var users = db._collection("_users");
 
   if (users === null) {
@@ -113,7 +113,7 @@ var getStorage = function () {
   }
 
   return users;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

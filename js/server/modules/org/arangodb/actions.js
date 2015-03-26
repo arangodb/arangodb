@@ -529,7 +529,6 @@ function splitUrl (url) {
   var parts;
   var re1;
   var re2;
-  var cut;
   var ors;
 
   re1 = /^(:[a-zA-Z]+)(\|:[a-zA-Z]+)*$/;
@@ -538,9 +537,9 @@ function splitUrl (url) {
   parts = url.split("/");
   cleaned = [];
 
-  cut = function (x) {
+  function cut(x) {
     return x.substr(1);
-  };
+  }
 
   for (i = 0;  i < parts.length;  ++i) {
     var part = parts[i];

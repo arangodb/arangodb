@@ -429,7 +429,7 @@ function main (argv) {
   var databases = internal.db._listDatabases();
   var i;
 
-  var collectionSorter = function (l, r) {
+  function collectionSorter(l, r) {
     var lName = l.name().toLowerCase();
     var rName = r.name().toLowerCase();
 
@@ -438,7 +438,7 @@ function main (argv) {
     }
 
     return 0;
-  };
+  }
 
   printf("%s\n", "    ___      _         __ _ _           ___  ___    ___ ");
   printf("%s\n", "   /   \\__ _| |_ __ _ / _(_) | ___     /   \\/ __\\  / _ \\");

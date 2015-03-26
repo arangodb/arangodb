@@ -39,11 +39,11 @@ var internal = require("internal");
 function addIndexOptions (body, parameters) {
   body.fields = [ ];
 
-  var setOption = function(k) {
+  function setOption(k) {
     if (! body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }
-  };
+  }
 
   var i;
   for (i = 0; i < parameters.length; ++i) {

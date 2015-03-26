@@ -37,7 +37,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function BaseMiddleware() {
-  var middleware = function (request, response, options, next) {
+  function middleware(request, response, options, next) {
     var responseFunctions,
       requestFunctions,
       trace,
@@ -456,7 +456,7 @@ function BaseMiddleware() {
                     response.contentType);
       }
     }
-  };
+  }
 
   return {
     stringRepresentation: String(middleware),

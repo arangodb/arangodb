@@ -28,8 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Controller,
-  RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
+var RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
   _ = require("underscore"),
@@ -63,7 +62,7 @@ var Controller,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Controller = function (context, options) {
+function Controller(context, options) {
   var urlPrefix, baseMiddleware;
   context.clearComments();
 
@@ -126,7 +125,7 @@ Controller = function (context, options) {
   }
 
   this.applicationContext = context;
-};
+}
 
 extend(Controller.prototype, {
   currentPriority: 0,

@@ -34,23 +34,16 @@
 exports.Communication = function() {
   "use strict";
   var agency,
-    AgencyWrapper,
-    splitServerName,
-    storeServersInCache,
-    Target,
-    mapCollectionIDsToNames,
-    updateCollectionRouteForName,
-    updateDatabaseRoutes,
     self = this,
     _ = require("underscore");
 
-  splitServerName = function(route) {
+  function splitServerName(route) {
     var splits = route.split("/");
     return splits[splits.length - 1];
-  };
+  }
 
 
-  mapCollectionIDsToNames = function(list) {
+  function mapCollectionIDsToNames(list) {
     var res = {};
     _.each(list, function(v, k) {
       var n = splitServerName(k);
@@ -60,7 +53,7 @@ exports.Communication = function() {
       res[v.name] = n;
     });
     return res;
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     AgencyWrapper
@@ -73,7 +66,7 @@ exports.Communication = function() {
 /// And defines specific operations allowed on these routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-  AgencyWrapper = function() {
+  function AgencyWrapper() {
     var _agency = exports._createAgency();
     var stubs = {
       get: function(route, recursive) {
@@ -99,7 +92,7 @@ exports.Communication = function() {
         return _.map(_agency.list(route, false, true), splitServerName).sort();
       }
     };
-    var addLevel = function(base, name, route, functions) {
+    function addLevel(base, name, route, functions) {
       var newRoute = base.route;
       if (newRoute) {
         newRoute += "/";
@@ -115,7 +108,7 @@ exports.Communication = function() {
       });
       base[name] = newLevel;
       return newLevel;
-    };
+    }
     var target = addLevel(this, "target", "Target");
     addLevel(target, "dbServers", "DBServers", ["get", "set", "remove", "checkVersion"]);
     addLevel(target, "db", "Databases", ["list"]);
@@ -136,7 +129,7 @@ exports.Communication = function() {
     addLevel(sync, "interval", "HeartbeatIntervalMs", ["get"]);
 
     this.addLevel = addLevel;
-  };
+  }
 
   agency = new AgencyWrapper();
 
@@ -145,7 +138,7 @@ exports.Communication = function() {
 // --SECTION--                                                  Helper Functions
 // -----------------------------------------------------------------------------
 
-  updateDatabaseRoutes = function(base, writeAccess) {
+  function updateDatabaseRoutes(base, writeAccess) {
     var list = self.plan.Databases().getList();
     _.each(_.keys(base), function(k) {
       if (k !== "route" && k !== "list") {
@@ -158,9 +151,9 @@ exports.Communication = function() {
       agency.addLevel(base, d, d, ["get", "checkVersion"]);
     });
     base.route = oldRoute;
-  };
+  }
 
-  updateCollectionRouteForName = function(route, db, name, writeAccess) {
+  function updateCollectionRouteForName(route, db, name, writeAccess) {
     var list = self.plan.Databases().select(db).getCollectionObjects();
     var cId = null;
     _.each(list, function(v, k) {
@@ -173,7 +166,7 @@ exports.Communication = function() {
       acts.push("set");
     }
     agency.addLevel(route, name, cId, acts);
-  };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Stores database servers in cache
@@ -182,7 +175,7 @@ exports.Communication = function() {
 /// It will convert their roles accordingly.
 ////////////////////////////////////////////////////////////////////////////////
 
-  storeServersInCache = function(place, servers) {
+  function storeServersInCache(place, servers) {
     _.each(servers, function(v, k) {
       var pName = splitServerName(k);
       place[pName] = place[pName] || {};
@@ -195,7 +188,7 @@ exports.Communication = function() {
         place[pName].secondary = v;
       }
     });
-  };
+  }
 
 
 // -----------------------------------------------------------------------------
@@ -210,17 +203,17 @@ exports.Communication = function() {
 /// and remove servers are allowed.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var DBServersObject = function(route, endpoints, writeAccess) {
+  function DBServersObject(route, endpoints, writeAccess) {
     var cache = {};
     var servers;
-    var getList = function() {
+    function getList() {
       if (!route.checkVersion()) {
         cache = {};
         servers = route.get(true);
         storeServersInCache(cache, servers);
       }
       return cache;
-    };
+    }
     this.getList = function() {
       return getList();
     };
@@ -266,7 +259,7 @@ exports.Communication = function() {
         return res;
       };
     }
-  };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Object for Coordinator configuration
@@ -275,17 +268,17 @@ exports.Communication = function() {
 /// If write access is granted also options to add
 /// and remove servers are allowed.
 ////////////////////////////////////////////////////////////////////////////////
-  var CoordinatorsObject = function(route, endpoints, writeAccess) {
+  function CoordinatorsObject(route, endpoints, writeAccess) {
     var cache = {};
     var servers;
-    var getList = function() {
+    function getList() {
       if (!route.checkVersion()) {
         cache = {};
         servers = route.get(true);
         storeServersInCache(cache, servers);
       }
       return cache;
-    };
+    }
     this.getList = function() {
       return getList();
       //return route.list();
@@ -305,7 +298,7 @@ exports.Communication = function() {
         return route.remove(name);
       };
     }
-  };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Object for Collection configuration
@@ -317,7 +310,7 @@ exports.Communication = function() {
 /// and a mapping shard -> server.
 /// If write access is granted also an option to move a shard is added.
 ////////////////////////////////////////////////////////////////////////////////
-  var ColObject = function(route, writeAccess) {
+  function ColObject(route, writeAccess) {
     this.info = function() {
       var res = route.get();
       return _.values(res)[0];
@@ -364,7 +357,7 @@ exports.Communication = function() {
         return route.set(toUpdate);
       };
     }
-  };
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Object for content of a Database
@@ -373,19 +366,19 @@ exports.Communication = function() {
 /// It allos to get a list of collections and to select one of them for
 /// further information.
 ////////////////////////////////////////////////////////////////////////////////
-  var DBObject = function(route, db, writeAccess) {
+  function DBObject(route, db, writeAccess) {
     var cache;
-    var getRaw = function() {
+    function getRaw() {
       if (!cache || !route.checkVersion()) {
         cache = route.get(true);
       }
       return cache;
-    };
-    var getList = function() {
+    }
+    function getList() {
       return _.keys(mapCollectionIDsToNames(
         self.plan.Databases().select(db).getCollectionObjects()
       )).sort();
-    };
+    }
     this.getCollectionObjects = function() {
       return getRaw();
     };
@@ -409,7 +402,7 @@ exports.Communication = function() {
 /// Also allows to select one database for further information.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var DatabasesObject = function(route, writeAccess) {
+  function DatabasesObject(route, writeAccess) {
     this.getList = function() {
       return route.list();
     };
@@ -421,7 +414,7 @@ exports.Communication = function() {
       }
       return new DBObject(subroute, name, writeAccess);
     };
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                            Vision
@@ -441,7 +434,7 @@ exports.Communication = function() {
 /// Also grants write access.
 ////////////////////////////////////////////////////////////////////////////////
 
-  Target = function() {
+  function Target() {
     var DBServers;
     var Databases;
     var Coordinators;
@@ -466,7 +459,7 @@ exports.Communication = function() {
       }
       return Coordinators;
     };
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Plan
@@ -480,7 +473,7 @@ exports.Communication = function() {
 /// Does not grant write access.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var Plan = function () {
+  function Plan() {
     var DBServers;
     var Databases;
     var Coordinators;
@@ -505,7 +498,7 @@ exports.Communication = function() {
       }
       return Coordinators;
     };
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Current
@@ -520,15 +513,15 @@ exports.Communication = function() {
 /// Does not grant write access.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var Current = function () {
+  function Current() {
     var DBServers;
     var Databases;
     var Coordinators;
 
-    var DBServersObject = function() {
+    function DBServersObject() {
       var cache = {};
       var servers;
-      var getList = function() {
+      function getList() {
         if (
             !agency.current.dbServers.checkVersion()
             || !agency.current.registered.checkVersion()
@@ -551,8 +544,8 @@ exports.Communication = function() {
       this.getList = function() {
         return getList();
       };
-    };
-    var CoordinatorsObject = function() {
+    }
+    function CoordinatorsObject() {
       var cache;
       var servers;
       this.getList = function() {
@@ -578,7 +571,7 @@ exports.Communication = function() {
         }
         return cache;
       };
-    };
+    }
 
     this.DBServers = function() {
       if (!DBServers) {
@@ -601,7 +594,7 @@ exports.Communication = function() {
       return Coordinators;
     };
 
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Sync
@@ -621,29 +614,29 @@ exports.Communication = function() {
 /// Does not grant write access.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var Sync = function() {
+  function Sync() {
     var Heartbeats;
     var interval = agency.sync.interval.get();
     interval = _.values(interval)[0];
 
-    var didBeatInTime = function(time) {
+    function didBeatInTime(time) {
 
-    };
+    }
 
-    var isInSync = function(status) {
+    function isInSync(status) {
       return (status === "SERVINGSYNC" || status === "INSYNC");
-    };
-    var isOutSync = function(status) {
+    }
+    function isOutSync(status) {
       return (status === "SERVINGASYNC" || status === "SYNCING");
-    };
-    var isServing = function(status) {
+    }
+    function isServing(status) {
       return (status === "SERVINGASYNC" || status === "SERVINGSYNC");
-    };
-    var isInactive = function(status) {
+    }
+    function isInactive(status) {
       return !isInSync(status) && !isOutSync(status);
-    };
+    }
 
-    var HeartbeatsObject = function() {
+    function HeartbeatsObject() {
       this.list = function() {
         var res = agency.sync.beat.get(true);
         _.each(res, function(v, k) {
@@ -717,7 +710,7 @@ exports.Communication = function() {
       return Heartbeats;
     };
 
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Diff
@@ -736,9 +729,8 @@ exports.Communication = function() {
 /// Databases not yet included.
 ////////////////////////////////////////////////////////////////////////////////
 
-  var Diff = function(target, plan, current) {
-
-    var DiffObject = function(supRoute, infRoute, supName) {
+  function Diff(target, plan, current) {
+    function DiffObject(supRoute, infRoute, supName) {
       var infName;
       switch (supName) {
         case "target":
@@ -750,7 +742,7 @@ exports.Communication = function() {
         default:
           throw "Sorry please give a correct superior name";
       }
-      var difference = function(superior, inferior, getEndpoint, getProtocol) {
+      function difference(superior, inferior, getEndpoint, getProtocol) {
         var diff = {
           missing: [],
           difference: {}
@@ -809,12 +801,12 @@ exports.Communication = function() {
                           supRoute.Coordinators().getEndpoint,
                           supRoute.Coordinators().getProtocol);
       };
-    };
+    }
 
     this.plan = new DiffObject(target, plan, "target");
     this.current = new DiffObject(plan, current, "plan");
 
-  };
+  }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             Global Object binding

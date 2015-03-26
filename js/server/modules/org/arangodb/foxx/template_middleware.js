@@ -53,7 +53,7 @@ var db = require("org/arangodb").db,
 ////////////////////////////////////////////////////////////////////////////////
 
 function TemplateMiddleware(templateCollection, helper) {
-  var middleware = function (request, response) {
+  function middleware(request, response) {
     var responseFunctions,
       _ = require("underscore");
 
@@ -97,7 +97,7 @@ function TemplateMiddleware(templateCollection, helper) {
     };
 
     _.extend(response, responseFunctions);
-  };
+  }
 
   if (_.isString(templateCollection)) {
     templateCollection = db._collection(templateCollection) ||

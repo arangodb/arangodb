@@ -242,9 +242,9 @@ extend(Console.prototype, {
     weight = Number(weight);
     weight = weight === weight ? weight : 999;
     this._logLevels[level] = weight;
-    var logWithLevel = function() {
+    var logWithLevel = (function () {
       this._log(level, util.format.apply(null, arguments), logWithLevel);
-    }.bind(this);
+    }.bind(this));
     return logWithLevel;
   },
 

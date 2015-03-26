@@ -50,7 +50,7 @@ var SimpleQueryWithinRectangle = sq.SimpleQueryWithinRectangle;
 /// @brief rewrites an index id by stripping the collection name from it
 ////////////////////////////////////////////////////////////////////////////////
 
-var rewriteIndex = function (id) {
+function rewriteIndex(id) {
   if (id === null || id === undefined) {
     return;
   }
@@ -62,7 +62,7 @@ var rewriteIndex = function (id) {
     return id.id.replace(/^[a-zA-Z0-9_\-]+\//, '');
   }
   return id;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  SIMPLE QUERY ALL
@@ -1281,7 +1281,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     };
   }
   else {
-    var distanceMeters = function (lat1, lon1, lat2, lon2) {  
+    function distanceMeters(lat1, lon1, lat2, lon2) {
       var deltaLat = (lat2 - lat1) * Math.PI / 180;
       var deltaLon = (lon2 - lon1) * Math.PI / 180;
       var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
@@ -1289,10 +1289,10 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
               Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
       var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
-      return 6378.137 /* radius of earth in kilometers */  
-             * c 
+      return 6378.137 /* radius of earth in kilometers */
+             * c
              * 1000; // kilometers to meters;
-    };
+    }
 
     var diameter = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
     var midpoint = [ 
@@ -1322,8 +1322,8 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       lonLower = this._longitude2;
       lonUpper = this._longitude1;
     }
-      
-    var deref = function(doc, parts) {
+
+    function deref(doc, parts) {
       if (parts.length === 1) {
         return doc[parts[0]];
       }
@@ -1339,7 +1339,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       catch (err) {
         return null;
       }
-    }; 
+    }
 
     documents = [ ];
     if (idx.type === 'geo1') {

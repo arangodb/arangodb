@@ -3213,10 +3213,10 @@ function AQL_INTERSECTION () {
 
   var result = [ ], i, first = true, keys = { };
 
-  var func = function (value) {
+  function func(value) {
     var normalized = NORMALIZE(value);
     keys[JSON.stringify(normalized)] = normalized;
-  };
+  }
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -3278,9 +3278,9 @@ function AQL_FLATTEN (values, maxDepth, depth) {
 
   var value, result = [ ];
   var i, n;
-  var p = function(v) {
+  function p(v) {
     result.push(v);
-  };
+  }
 
   for (i = 0, n = values.length; i < n; ++i) {
     value = values[i];
@@ -4170,11 +4170,11 @@ function AQL_MERGE () {
 
   var result = { }, i;
 
-  var add = function (element) {
+  function add(element) {
     Object.keys(element).forEach(function(k) {
       result[k] = element[k];
     });
-  };
+  }
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -4200,9 +4200,9 @@ function AQL_MERGE () {
 function AQL_MERGE_RECURSIVE () {
   "use strict";
 
-  var result = { }, i, recurse;
+  var result = { }, i;
 
-  recurse = function (old, element) {
+  function recurse(old, element) {
     var r = CLONE(old);
 
     Object.keys(element).forEach(function(k) {
@@ -4215,7 +4215,7 @@ function AQL_MERGE_RECURSIVE () {
     });
 
     return r;
-  };
+  }
 
   for (i in arguments) {
     if (arguments.hasOwnProperty(i)) {
@@ -5347,9 +5347,9 @@ function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options, funcname) {
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
+  function removeDuplicates(elem, pos, self) {
     return self.indexOf(elem) === pos;
-  };
+  }
   if (options.includeOrphans) {
     collections.fromCollections = collections.fromCollections.concat(collections.orphanCollections);
   }
@@ -5365,7 +5365,7 @@ function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options, funcname) {
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
+  function removeDuplicates(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
 
@@ -5386,9 +5386,9 @@ function RESOLVE_GRAPH_START_VERTICES (graphName, options, funcname) {
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
+  function removeDuplicates(elem, pos, self) {
     return self.indexOf(elem) === pos;
-  };
+  }
   return DOCUMENTS_BY_EXAMPLE(
     collections.fromCollections.filter(removeDuplicates), options.fromVertexExample
   );
@@ -5407,9 +5407,9 @@ function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options, funcname) {
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
-  var removeDuplicates = function(elem, pos, self) {
+  function removeDuplicates(elem, pos, self) {
     return self.indexOf(elem) === pos;
-  };
+  }
 
   var result =  {
     fromVertices : DOCUMENTS_BY_EXAMPLE(
@@ -5657,9 +5657,9 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
     vertices[e._to] = 1;
     vertices[e._from] = 1;
   });
-  var removeDuplicates = function(elem, pos, self) {
+  function removeDuplicates(elem, pos, self) {
     return self.indexOf(elem) === pos;
-  };
+  }
   Object.keys(graph.fromVerticesIDs).forEach(function (v) {
     vertices[v] = 1;
   });
@@ -5707,7 +5707,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
     });
   });
 
-  var transformPath = function (paths) {
+  function transformPath(paths) {
     paths.forEach(function (p) {
       var vTmp = [];
       p.vertices.forEach(function (v) {
@@ -5725,7 +5725,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
       p.vertices = vTmp;
     });
     return paths;
-  };
+  }
 
   Object.keys(paths).forEach(function (from) {
     if (!graph.fromVerticesIDs[from]) {

@@ -33,19 +33,9 @@ var _ = require('underscore'),
   arangodb = require('org/arangodb'),
   console = require('console'),
   db = arangodb.db,
-  failImmutable,
   queueMap,
   jobMap,
-  queues,
-  getJobs,
-  Job,
-  Queue;
-
-failImmutable = function (name) {
-  return function () {
-    throw new Error(name + ' is not mutable');
-  };
-};
+  queues;
 
 queueMap = Object.create(null);
 jobMap = Object.create(null);
@@ -111,7 +101,7 @@ queues = {
   }
 };
 
-getJobs = function (queue, status, type) {
+function getJobs(queue, status, type) {
   var vars = {},
     aql = 'FOR job IN _jobs';
   if (queue !== undefined) {
@@ -131,9 +121,9 @@ getJobs = function (queue, status, type) {
     query: aql,
     bindVars: vars
   }).execute().toArray();
-};
+}
 
-Job = function Job(id) {
+function Job(id) {
   var self = this;
   Object.defineProperty(self, 'id', {
     get: function () {
@@ -148,12 +138,11 @@ Job = function Job(id) {
         var value = db._jobs.document(this.id)[key];
         return (value && typeof value === 'object') ? Object.freeze(value) : value;
       },
-      set: failImmutable(key),
       configurable: false,
       enumerable: true
     });
   });
-};
+}
 
 _.extend(Job.prototype, {
   abort: function () {
@@ -184,16 +173,15 @@ _.extend(Job.prototype, {
   }
 });
 
-Queue = function Queue(name) {
+function Queue(name) {
   Object.defineProperty(this, 'name', {
     get: function () {
       return name;
     },
-    set: failImmutable('name'),
     configurable: false,
     enumerable: true
   });
-};
+}
 
 _.extend(Queue.prototype, {
   push: function (name, data, opts) {

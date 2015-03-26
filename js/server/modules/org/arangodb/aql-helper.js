@@ -31,7 +31,10 @@
 
 var internal = require("internal");
 var ShapedJson = internal.ShapedJson;
-var printYaml = function (plan) { require("internal").print(require("js-yaml").safeDump(plan));};
+
+function printYaml(plan) {
+  require("internal").print(require("js-yaml").safeDump(plan));
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         AQL test helper functions

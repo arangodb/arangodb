@@ -35,30 +35,13 @@ var db = require("org/arangodb").db,
   _ = require("underscore"),
   errors = require("internal").errors,
   defaultsFor = {},
-  checkAuthenticationOptions,
-  createStandardLoginHandler,
-  createStandardLogoutHandler,
-  createStandardRegistrationHandler,
-  createStandardChangePasswordHandler,
-  createAuthenticationMiddleware,
-  createSessionUpdateMiddleware,
-  createAuthObject,
-  generateToken,
-  cloneDocument,
-  checkPassword,
-  encodePassword,
-  Users,
-  Sessions,
-  CookieAuthentication,
-  Authentication,
-  UserAlreadyExistsError,
   UnauthorizedError = require("./sessions").UnauthorizedError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
-createAuthenticationMiddleware = function (auth, applicationContext) {
+function createAuthenticationMiddleware(auth, applicationContext) {
   return function (req) {
     var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
@@ -71,9 +54,9 @@ createAuthenticationMiddleware = function (auth, applicationContext) {
       req.user = null;
     }
   };
-};
+}
 
-createSessionUpdateMiddleware = function () {
+function createSessionUpdateMiddleware() {
   return function (req) {
     var session = req.currentSession;
 
@@ -81,9 +64,9 @@ createSessionUpdateMiddleware = function () {
       session.update();
     }
   };
-};
+}
 
-createAuthObject = function (applicationContext, opts) {
+function createAuthObject(applicationContext, opts) {
   var sessions,
     cookieAuth,
     auth,
@@ -96,9 +79,9 @@ createAuthObject = function (applicationContext, opts) {
   auth = new Authentication(applicationContext, sessions, cookieAuth);
 
   return auth;
-};
+}
 
-checkAuthenticationOptions = function (options) {
+function checkAuthenticationOptions(options) {
   if (options.type !== "cookie") {
     throw new Error("Currently only the following auth types are supported: cookie");
   }
@@ -111,7 +94,7 @@ checkAuthenticationOptions = function (options) {
   if (is.falsy(options.sessionLifetime)) {
     throw new Error("Please provide the sessionLifetime");
   }
-};
+}
 
 defaultsFor.login = {
   usernameField: "username",
@@ -132,7 +115,7 @@ defaultsFor.login = {
   }
 };
 
-createStandardLoginHandler = function (auth, users, opts) {
+function createStandardLoginHandler(auth, users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.login);
 
   return function (req, res) {
@@ -147,7 +130,7 @@ createStandardLoginHandler = function (auth, users, opts) {
       options.onError(req, res);
     }
   };
-};
+}
 
 defaultsFor.logout = {
   onSuccess: function (req, res) {
@@ -164,7 +147,7 @@ defaultsFor.logout = {
   }
 };
 
-createStandardLogoutHandler = function (auth, opts) {
+function createStandardLogoutHandler(auth, opts) {
   var options = _.defaults(opts || {}, defaultsFor.logout);
 
   return function (req, res) {
@@ -177,7 +160,7 @@ createStandardLogoutHandler = function (auth, opts) {
       options.onError(req, res);
     }
   };
-};
+}
 
 defaultsFor.registration = {
   usernameField: "username",
@@ -199,7 +182,7 @@ defaultsFor.registration = {
   }
 };
 
-createStandardRegistrationHandler = function (auth, users, opts) {
+function createStandardRegistrationHandler(auth, users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.registration);
 
   return function (req, res) {
@@ -222,7 +205,7 @@ createStandardRegistrationHandler = function (auth, users, opts) {
     req.currentSession = auth.beginSession(req, res, username, {});
     options.onSuccess(req, res);
   };
-};
+}
 
 defaultsFor.changePassword = {
   passwordField: "password",
@@ -241,7 +224,7 @@ defaultsFor.changePassword = {
   }
 };
 
-createStandardChangePasswordHandler = function (users, opts) {
+function createStandardChangePasswordHandler(users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.changePassword);
 
   return function (req, res) {
@@ -259,22 +242,21 @@ createStandardChangePasswordHandler = function (users, opts) {
       options.onError(req, res);
     }
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-generateToken = function () {
-
+function generateToken() {
   return internal.genRandomAlphaNumbers(32);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deep-copies a document
 ////////////////////////////////////////////////////////////////////////////////
 
-cloneDocument = function (obj) {
+function cloneDocument(obj) {
   var copy, a;
 
   if (obj === null || typeof obj !== "object") {
@@ -296,24 +278,24 @@ cloneDocument = function (obj) {
   }
 
   return copy;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the plain text password matches the encoded one
 ////////////////////////////////////////////////////////////////////////////////
 
-checkPassword = function (plain, encoded) {
+function checkPassword(plain, encoded) {
   var salted = encoded.substr(3, 8) + plain,
     hex = crypto.sha256(salted);
 
   return (encoded.substr(12) === hex);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encodes a password
 ////////////////////////////////////////////////////////////////////////////////
 
-encodePassword = function (password) {
+function encodePassword(password) {
   var salt,
     encoded,
     random;
@@ -331,7 +313,7 @@ encodePassword = function (password) {
   encoded = "$1$" + salt + "$" + crypto.sha256(salt + password);
 
   return encoded;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        FOXX-USERS
@@ -345,7 +327,7 @@ encodePassword = function (password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Users = function (applicationContext, options) {
+function Users(applicationContext, options) {
 
   this._options = options || {};
   this._collection = null;
@@ -355,7 +337,7 @@ Users = function (applicationContext, options) {
   } else {
     this._collectionName = applicationContext.collectionName("users");
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -686,7 +668,7 @@ Users.prototype.isValid = function (identifier, password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Sessions = function (applicationContext, options) {
+function Sessions(applicationContext, options) {
 
   this._applicationContext = applicationContext;
   this._options = options || {};
@@ -701,7 +683,7 @@ Sessions = function (applicationContext, options) {
   } else {
     this._collectionName = applicationContext.collectionName("sessions");
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -929,7 +911,7 @@ Sessions.prototype.get = function (token) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CookieAuthentication = function (applicationContext, options) {
+function CookieAuthentication(applicationContext, options) {
 
   options = options || {};
 
@@ -946,7 +928,7 @@ CookieAuthentication = function (applicationContext, options) {
 
   this._collectionName = applicationContext.collectionName("sessions");
   this._collection = null;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1071,7 +1053,7 @@ CookieAuthentication.prototype.isResponsible = function () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Authentication = function (applicationContext, sessions, authenticators) {
+function Authentication(applicationContext, sessions, authenticators) {
 
   this._applicationContext = applicationContext;
   this._sessions = sessions;
@@ -1081,7 +1063,7 @@ Authentication = function (applicationContext, sessions, authenticators) {
   }
 
   this._authenticators = authenticators;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1191,17 +1173,17 @@ Authentication.prototype.updateSession = function (req, res, session) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-UserAlreadyExistsError = function (message) {
+function UserAlreadyExistsError(message) {
   this.message = message || "User already exists";
   this.statusCode = 400;
-};
+}
 
 UserAlreadyExistsError.prototype = new Error();
 
-UnauthorizedError = function (message) {
+function UnauthorizedError(message) {
   this.message = message || "Unauthorized";
   this.statusCode = 401;
-};
+}
 
 UnauthorizedError.prototype = new Error();
 
