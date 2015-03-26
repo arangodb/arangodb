@@ -121,7 +121,7 @@ SimpleQueryAll.prototype.execute = function () {
         toLimit = null;
       }
 
-      result.forEach(function(part) {
+      result.forEach(function (part) {
         var body = JSON.parse(part.body);
         total += body.count;
 
@@ -421,7 +421,7 @@ function byExample (data) {
       ];
 
       if (containsNullAttributes(example)) {
-        checks.forEach(function(check) {
+        checks.forEach(function (check) {
           check.sparse = false;
         });
       }
@@ -559,7 +559,7 @@ SimpleQueryByExample.prototype.execute = function () {
         toLimit = null;
       }
 
-      result.forEach(function(part) {
+      result.forEach(function (part) {
         var body = JSON.parse(part.body);
         total += body.count;
 
@@ -717,7 +717,7 @@ SimpleQueryByCondition.prototype.execute = function () {
         toLimit = null;
       }
 
-      result.forEach(function(part) {
+      result.forEach(function (part) {
         var body = JSON.parse(part.body);
         total += body.count;
 
@@ -816,7 +816,7 @@ function rangedQuery (collection, attribute, left, right, type, skip, limit) {
     var _documents = [ ], total = 0;
     var result = cluster.wait(coord, shards);
 
-    result.forEach(function(part) {
+    result.forEach(function (part) {
       var body = JSON.parse(part.body);
       total += body.count;
 
@@ -999,7 +999,7 @@ SimpleQueryNear.prototype.execute = function () {
     var _documents = [ ], total = 0;
     result = cluster.wait(coord, shards);
 
-    result.forEach(function(part) {
+    result.forEach(function (part) {
       var body = JSON.parse(part.body);
       total += body.total;
 
@@ -1134,7 +1134,7 @@ SimpleQueryWithin.prototype.execute = function () {
     var _documents = [ ], total = 0;
     result = cluster.wait(coord, shards);
 
-    result.forEach(function(part) {
+    result.forEach(function (part) {
       var body = JSON.parse(part.body);
       total += body.total;
 
@@ -1263,7 +1263,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     var _documents = [ ], total = 0;
     result = cluster.wait(coord, shards);
 
-    result.forEach(function(part) {
+    result.forEach(function (part) {
       var body = JSON.parse(part.body);
       total += body.total;
 
@@ -1281,7 +1281,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
     };
   }
   else {
-    function distanceMeters(lat1, lon1, lat2, lon2) {
+    var distanceMeters = function (lat1, lon1, lat2, lon2) {
       var deltaLat = (lat2 - lat1) * Math.PI / 180;
       var deltaLon = (lon2 - lon1) * Math.PI / 180;
       var a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2) +
@@ -1292,7 +1292,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       return 6378.137 /* radius of earth in kilometers */
              * c
              * 1000; // kilometers to meters;
-    }
+    };
 
     var diameter = distanceMeters(this._latitude1, this._longitude1, this._latitude2, this._longitude2);
     var midpoint = [ 
@@ -1323,7 +1323,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       lonUpper = this._longitude1;
     }
 
-    function deref(doc, parts) {
+    var deref = function (doc, parts) {
       if (parts.length === 1) {
         return doc[parts[0]];
       }
@@ -1339,7 +1339,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       catch (err) {
         return null;
       }
-    }
+    };
 
     documents = [ ];
     if (idx.type === 'geo1') {
@@ -1348,7 +1348,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       var parts = attribute.split(".");
     
       if (idx.geoJson) {
-        result.documents.forEach(function(document) {
+        result.documents.forEach(function (document) {
           var doc = deref(document, parts);
           if (! Array.isArray(doc)) {
             return;
@@ -1363,7 +1363,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
         });
       }
       else {
-        result.documents.forEach(function(document) {
+        result.documents.forEach(function (document) {
           var doc = deref(document, parts);
           if (! Array.isArray(doc)) {
             return;
@@ -1384,7 +1384,7 @@ SimpleQueryWithinRectangle.prototype.execute = function () {
       var latParts = latAtt.split(".");
       var lonParts = lonAtt.split(".");
 
-      result.documents.forEach(function(document) {
+      result.documents.forEach(function (document) {
         var latDoc = deref(document, latParts);
         if (latDoc === null || latDoc === undefined) {
           return;
@@ -1476,7 +1476,7 @@ SimpleQueryFulltext.prototype.execute = function () {
     var _documents = [ ], total = 0;
     result = cluster.wait(coord, shards);
 
-    result.forEach(function(part) {
+    result.forEach(function (part) {
       var body = JSON.parse(part.body);
       total += body.total;
 

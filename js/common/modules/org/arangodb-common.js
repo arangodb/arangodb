@@ -335,7 +335,7 @@ exports.printTable = function  (list, columns, options) {
     });
   });
 
-  var divider = function () {
+  function divider() {
     var parts = [ ];
     descriptions.forEach(function (desc) {
       parts.push(exports.stringPadding('', desc.length, '-', 'r'));
@@ -346,9 +346,9 @@ exports.printTable = function  (list, columns, options) {
     }
 
     return parts.join('   ') + '\n';
-  };
+  }
 
-  var compose = function () {
+  function compose() {
     var result = '';
 
     if (options.framed) {
@@ -384,7 +384,7 @@ exports.printTable = function  (list, columns, options) {
       result += internal.sprintf(options.totalString, String(list.length));
     }
     return result;
-  };
+  }
 
   if (! Array.isArray(list)) {
     // not an array

@@ -54,7 +54,7 @@ function Engine(opts) {
 }
 
 _.extend(Engine.prototype, {
-  write: function() {
+  write: function () {
     fs.makeDirectory(this.folder);
     fs.makeDirectory(fs.join(this.folder, 'controllers'));
     fs.makeDirectory(fs.join(this.folder, 'models'));
@@ -79,7 +79,7 @@ _.extend(Engine.prototype, {
     fs.write(fs.join(this.folder, "scripts", "teardown.js"), this.buildTeardown(this.collectionNames));
   },
 
-  template: function(name) {
+  template: function (name) {
     return _.template(fs.read(fs.join(this._path, name)));
   },
 
@@ -135,7 +135,7 @@ _.extend(Engine.prototype, {
     }, this);
   },
 
-  buildManifest: function() {
+  buildManifest: function () {
     var manifest = {
       name: this.name,
       description: this.description,
@@ -162,7 +162,7 @@ _.extend(Engine.prototype, {
   },
 
 
-  buildSetup: function(collections) {
+  buildSetup: function (collections) {
     var templ = this.template("setup.js.tmpl");
 
     return templ({
@@ -170,7 +170,7 @@ _.extend(Engine.prototype, {
     });
   },
 
-  buildTeardown: function(collections) {
+  buildTeardown: function (collections) {
     var templ = this.template("teardown.js.tmpl");
 
     return templ({
@@ -178,20 +178,20 @@ _.extend(Engine.prototype, {
     });
   },
 
-  buildController: function(controller) {
+  buildController: function (controller) {
     var templ = this.template("controller.js.tmpl");
 
     return templ(controller);
   },
 
 
-  buildRepository: function() {
+  buildRepository: function () {
     var templ = this.template("repository.js.tmpl");
 
     return templ();
   },
 
-  buildModel: function() {
+  buildModel: function () {
     var templ = this.template("model.js.tmpl");
 
     return templ();

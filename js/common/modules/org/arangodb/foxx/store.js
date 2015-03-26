@@ -66,7 +66,7 @@ function getFishbowlUrl () {
 /// used in context of the database.
 ////////////////////////////////////////////////////////////////////////////////
 
-var getFishbowlStorage = function() {
+function getFishbowlStorage() {
 
   var c = db._collection('_fishbowl');
   if (c ===  null) {
@@ -81,13 +81,13 @@ var getFishbowlStorage = function() {
   }
 
   return c;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for applications
 ////////////////////////////////////////////////////////////////////////////////
 
-var compareApps =  function(l, r) {
+function compareApps(l, r) {
   var left = l.name.toLowerCase();
   var right = r.name.toLowerCase();
 
@@ -100,13 +100,13 @@ var compareApps =  function(l, r) {
   }
 
   return 0;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for versions
 ////////////////////////////////////////////////////////////////////////////////
 
-var compareVersions = function (a, b) {
+function compareVersions(a, b) {
   var i;
 
   if (a === b) {
@@ -150,14 +150,14 @@ var compareVersions = function (a, b) {
 
   // Otherwise they are the same.
   return 0;
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief updates the fishbowl from a zip archive
 ////////////////////////////////////////////////////////////////////////////////
 
-var updateFishbowlFromZip = function(filename) {
+function updateFishbowlFromZip(filename) {
   var i;
   var tempPath = fs.getTempPath();
   var toSave = [ ];
@@ -224,7 +224,7 @@ var updateFishbowlFromZip = function(filename) {
           var c = require("internal").db._collection(params.collection);
           c.truncate();
 
-          params.apps.forEach(function(app) {
+          params.apps.forEach(function (app) {
             c.save(app);
           });
         },
@@ -249,7 +249,7 @@ var updateFishbowlFromZip = function(filename) {
 
     throw err;
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -259,7 +259,7 @@ var updateFishbowlFromZip = function(filename) {
 /// @brief returns the search result for FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-var searchJson = function (name) {
+function searchJson(name) {
 
   var fishbowl = getFishbowlStorage();
 
@@ -301,14 +301,14 @@ var searchJson = function (name) {
   }
 
   return docs;
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief searchs for an available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-var search = function (name) {
+function search(name) {
   var docs = searchJson(name);
 
   arangodb.printTable(
@@ -325,21 +325,21 @@ var search = function (name) {
       }
     }
   );
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the highest version number from the document
 ////////////////////////////////////////////////////////////////////////////////
 
 function extractMaxVersion (versionDoc) {
-var maxVersion = "-";
-var versions = Object.keys(versionDoc);
-versions.sort(compareVersions);
-if (versions.length > 0) {
-  versions.reverse();
-  maxVersion = versions[0];
-}
-return maxVersion;
+  var maxVersion = "-";
+  var versions = Object.keys(versionDoc);
+  versions.sort(compareVersions);
+  if (versions.length > 0) {
+    versions.reverse();
+    maxVersion = versions[0];
+  }
+  return maxVersion;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -347,26 +347,26 @@ return maxVersion;
 ////////////////////////////////////////////////////////////////////////////////
 
 function availableJson() {
-var fishbowl = getFishbowlStorage();
-var cursor = fishbowl.all();
-var result = [];
-var doc, maxVersion, res;
+  var fishbowl = getFishbowlStorage();
+  var cursor = fishbowl.all();
+  var result = [];
+  var doc, maxVersion, res;
 
-while (cursor.hasNext()) {
-  doc = cursor.next();
-  maxVersion = extractMaxVersion(doc.versions);
+  while (cursor.hasNext()) {
+    doc = cursor.next();
+    maxVersion = extractMaxVersion(doc.versions);
 
-  res = {
-    name: doc.name,
-    description: doc.description || "",
-    author: doc.author || "",
-    latestVersion: maxVersion
-  };
+    res = {
+      name: doc.name,
+      description: doc.description || "",
+      author: doc.author || "",
+      latestVersion: maxVersion
+    };
 
-  result.push(res);
-}
+    result.push(res);
+  }
 
-return result;
+  return result;
 }
 
 
@@ -377,7 +377,7 @@ return result;
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var update = function() {
+function update() {
   var url = utils.buildGithubUrl(getFishbowlUrl());
   var filename = fs.getTempFile("downloads", false);
   var path = fs.getTempFile("zip", false);
@@ -410,13 +410,13 @@ var update = function() {
 
     throw err;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints all available FOXX applications
 ////////////////////////////////////////////////////////////////////////////////
 
-var available = function () {
+function available() {
   var list = availableJson();
 
   arangodb.printTable(
@@ -434,39 +434,39 @@ var available = function () {
       }
     }
   );
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief gets json-info for an available FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-var infoJson = function (name) {
-utils.validateAppName(name);
+function infoJson(name) {
+  utils.validateAppName(name);
 
-var fishbowl = getFishbowlStorage();
+  var fishbowl = getFishbowlStorage();
 
-if (fishbowl.count() === 0) {
-  arangodb.print("Repository is empty, please use 'update'");
-  return;
+  if (fishbowl.count() === 0) {
+    arangodb.print("Repository is empty, please use 'update'");
+    return;
+  }
+
+  var desc;
+
+  try {
+    desc = fishbowl.document(name);
+    return desc;
+  }
+  catch (err) {
+    arangodb.print("No application '" + name + "' available, please try 'search'");
+    return;
+  }
 }
-
-var desc;
-
-try {
-  desc = fishbowl.document(name);
-  return desc;
-}
-catch (err) {
-  arangodb.print("No application '" + name + "' available, please try 'search'");
-  return;
-}
-};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a download URL for the given app information
 ////////////////////////////////////////////////////////////////////////////////
 
-var buildUrl = function(appInfo) {
+function buildUrl(appInfo) {
   // TODO Validate
   var infoSplit = appInfo.split(":");
   var name = infoSplit[0];
@@ -486,13 +486,13 @@ var buildUrl = function(appInfo) {
     versionInfo = versions[version];
   }
   return utils.buildGithubUrl(versionInfo.location, versionInfo.tag);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints info for an available FOXX application
 ////////////////////////////////////////////////////////////////////////////////
 
-var info = function (name) {
+function info(name) {
   var desc = infoJson(name);
   arangodb.printf("Name:        %s\n", desc.name);
 
@@ -533,7 +533,7 @@ var info = function (name) {
   });
 
   arangodb.printf("\n");
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 export public API

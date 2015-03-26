@@ -85,7 +85,7 @@ var optionsDocumentation = [
 
 var _ = require("underscore");
 var cleanupDirectories = [];
-var testFuncs = {'all': function(){}};
+var testFuncs = {'all': function (){}};
 var print = require("internal").print;
 var time = require("internal").time;
 var fs = require("fs");
@@ -660,7 +660,7 @@ function findTests () {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
-            function(x) {
+            function (x) {
               return fs.join(makePathUnix("js/common/tests"),x);
             }).sort();
   tests_shell_server_only = _.filter(fs.list(makePathUnix("js/server/tests")),
@@ -668,7 +668,7 @@ function findTests () {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
-            function(x) {
+            function (x) {
               return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_client_only = _.filter(fs.list(makePathUnix("js/client/tests")),
@@ -676,7 +676,7 @@ function findTests () {
               return p.substr(0,6) === "shell-" &&
                      p.substr(-3) === ".js";
             }).map(
-            function(x) {
+            function (x) {
               return fs.join(makePathUnix("js/client/tests"),x);
             }).sort();
   tests_shell_server_aql = _.filter(fs.list(makePathUnix("js/server/tests")),
@@ -685,7 +685,7 @@ function findTests () {
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") === -1;
             }).map(
-            function(x) {
+            function (x) {
               return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql_extended = 
@@ -695,7 +695,7 @@ function findTests () {
                      p.substr(-3) === ".js" &&
                      p.indexOf("ranges-combined") !== -1;
             }).map(
-            function(x) {
+            function (x) {
               return fs.join(makePathUnix("js/server/tests"),x);
             }).sort();
   tests_shell_server_aql_performance = 
@@ -703,7 +703,7 @@ function findTests () {
             function (p) {
               return p.substr(-3) === ".js";
             }).map(
-            function(x) {
+            function (x) {
               return fs.join(makePathUnix("js/server/perftests"),x);
             }).sort();
 
@@ -1042,7 +1042,7 @@ testFuncs.single_client = function (options) {
   }
 };
 
-testFuncs.shell_server_perf = function(options) {
+testFuncs.shell_server_perf = function (options) {
   findTests();
   return performTests(options,
                       tests_shell_server_aql_performance,
@@ -1063,7 +1063,7 @@ testFuncs.shell_server_only = function (options) {
                       true);
 };
 
-testFuncs.shell_server_aql = function(options) {
+testFuncs.shell_server_aql = function (options) {
   findTests();
   if (! options.skipAql) {
     if (options.skipRanges) {
@@ -1083,7 +1083,7 @@ testFuncs.shell_server_aql = function(options) {
   return "skipped";
 };
 
-testFuncs.shell_server_aql_local = function(options) {
+testFuncs.shell_server_aql_local = function (options) {
   if (!options.hasOwnProperty('cluster')) {
     print('need to specify whether this is a coordinator or not! Add "Cluster":true/false to the options.');
     return;
@@ -1108,7 +1108,7 @@ testFuncs.shell_server_aql_local = function(options) {
   }
 };
 
-testFuncs.shell_client = function(options) {
+testFuncs.shell_client = function (options) {
   findTests();
   var instanceInfo = startInstance("tcp", options, [], "shell_client");
   var results = {};

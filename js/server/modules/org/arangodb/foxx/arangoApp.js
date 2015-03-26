@@ -264,7 +264,7 @@ ArangoApp.prototype.simpleJSON = function () {
 /// @brief toggles development mode
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype.development = function(activate) {
+ArangoApp.prototype.development = function (activate) {
   this._isDevelopment = activate;
 };
 
@@ -281,7 +281,7 @@ ArangoApp.prototype.getAppContext = function () {
 /// @brief set app configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype.configure = function(config) {
+ArangoApp.prototype.configure = function (config) {
   if (!this._manifest.hasOwnProperty("configuration")) {
     return [];
   }
@@ -311,7 +311,7 @@ ArangoApp.prototype.configure = function(config) {
 /// @brief get app configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype.getConfiguration = function(simple) {
+ArangoApp.prototype.getConfiguration = function (simple) {
   if (!this._manifest.hasOwnProperty("configuration")) {
     return {};
   }
@@ -348,7 +348,7 @@ ArangoApp.prototype.getConfiguration = function(simple) {
 /// @brief App needs to be configured
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoApp.prototype.needsConfiguration = function() {
+ArangoApp.prototype.needsConfiguration = function () {
   var config = this.getConfiguration();
   var attr;
   for (attr in config) {

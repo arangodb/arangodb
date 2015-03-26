@@ -425,10 +425,10 @@ Graph.prototype.initialize = function (name, vertices, edges, waitForSync) {
 
         // check if edge is used in a graph
         gdb.toArray().forEach(
-          function(singleGraph) {
+          function (singleGraph) {
             var sGEDs = singleGraph.edgeDefinitions;
             sGEDs.forEach(
-              function(sGED) {
+              function (sGED) {
                 if (sGED.collection === edges) {
                   graphProperties = "";
                 }
@@ -505,7 +505,7 @@ Graph.getAll = function getAllGraphs () {
   var gdb = db._collection("_graphs"),
     graphs = [ ];
 
-  gdb.toArray().forEach(function(doc) {
+  gdb.toArray().forEach(function (doc) {
     try {
       var g = new Graph(doc._key);
 
@@ -559,7 +559,7 @@ Graph.prototype.drop = function (waitForSync) {
 /// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, shallow, waitForSync) {
+Graph.prototype._saveEdge = function (id, out_vertex_id, in_vertex_id, shallow, waitForSync) {
   this.emptyCachedPredecessors();
 
   if (id !== undefined && id !== null) {

@@ -8,7 +8,7 @@ var measurements = ["time",
                     "execution",
                     "initialization"];
 
-var loadTestRunner = function (tests, options, testMethods) {
+function loadTestRunner(tests, options, testMethods) {
   "use strict";
   // declare some useful modules and functions
   var internal = require("internal"), 
@@ -16,15 +16,15 @@ var loadTestRunner = function (tests, options, testMethods) {
       print = internal.print; 
 
   // calculate statistical values from series
-  var calc = function (values, options) {
+  function calc(values, options) {
     var resultList = {};
     var i, j;
     var times = [];
-    var sum = function (times) {
+    function sum(times) {
       return times.reduce(function (previous, current) {
         return previous + current;
       });
-    };
+    }
     for (i = 0; i < measurements.length; i++) {
       if (values[0].hasOwnProperty(measurements[i])) {
         times = [];
@@ -43,19 +43,19 @@ var loadTestRunner = function (tests, options, testMethods) {
       }
     }
     return resultList;
-  };
+  }
 
   // execute callback function as many times as we have runs
   // call setup() and teardown() if defined
   // will return series of execution times (not including setup/teardown)
-  var measure = function (test, options) {
-    var timedExecution = function (testMethodName, testMethodsOptions) { 
+  function measure(test, options) {
+    function timedExecution(testMethodName, testMethodsOptions) {
       var ret = {};
       var start = time();
       ret = test.func(test.params, testMethodName, testMethodsOptions, options); 
       ret.time = time() - start;
       return ret;
-    }; 
+    }
 
     var results = {};
     var i;
@@ -67,7 +67,6 @@ var loadTestRunner = function (tests, options, testMethods) {
     }
 
     if (typeof test.setUp === "function") {
-
       test.setUp(options);
     }
 
@@ -84,11 +83,11 @@ var loadTestRunner = function (tests, options, testMethods) {
       test.tearDown();
     }
     return results;
-  };
+  }
 
   // run all the tests and print the test results
-  var run = function (tests, options) {
-    var pad = function (s, l, type) {
+  function run(tests, options) {
+    function pad(s, l, type) {
       if (s.length >= l) {
         return s.substr(0, l);
       }
@@ -96,7 +95,7 @@ var loadTestRunner = function (tests, options, testMethods) {
         return s + new Array(l - s.length).join(" ");
       }
       return new Array(l - s.length).join(" ") + s;
-    };
+    }
 
     var headLength = 25, 
         runsLength = 8, 
@@ -185,10 +184,10 @@ var loadTestRunner = function (tests, options, testMethods) {
     }
     results.status = true;
     return results;
-  };
+  }
 
   return run(tests, options);
-};
+}
 
 
 exports.loadTestRunner = loadTestRunner;

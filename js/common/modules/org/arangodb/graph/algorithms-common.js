@@ -71,16 +71,15 @@ function removeLastOccurrenceOf (l, element) {
 Vertex.prototype.commonNeighborsWith = function (target_vertex, options) {
   var neighbor_set_one,
     neighbor_set_two,
-    id_only,
     common_neighbors,
     all_neighbors,
     return_value;
 
   options = options || {};
 
-  id_only = function (neighbor) {
+  function id_only(neighbor) {
     return neighbor.id;
-  };
+  }
 
   if (typeof(target_vertex) !== 'object') {
     throw "<target_vertex> must be a vertex object";
@@ -305,8 +304,7 @@ Vertex.prototype.pathesForTree = function (tree, path_to_here) {
 
 Vertex.prototype.getNeighbors = function (options) {
   var current_vertex,
-    target_array = [],
-    addNeighborToList;
+    target_array = [];
 
   if (! options) {
     options = { };
@@ -319,7 +317,7 @@ Vertex.prototype.getNeighbors = function (options) {
     default_weight = options.default_weight || Infinity,
     only = options.only;
 
-  addNeighborToList = function (current_edge, current_vertex) {
+  function addNeighborToList(current_edge, current_vertex) {
     var neighbor_info, current_label = current_edge.getLabel();
 
     if ((labels === undefined) || (labels.lastIndexOf(current_label) > -1)) {
@@ -327,7 +325,7 @@ Vertex.prototype.getNeighbors = function (options) {
       if (weight !== undefined) {
         neighbor_info.weight = current_edge.getProperty(weight) || default_weight;
       } else if (weight_function !== undefined) {
-        neighbor_info.weight = weight_function(current_edge);
+        neighbor_info.weight = weight_function (current_edge);
       } else {
         neighbor_info.weight = 1;
       }
@@ -336,7 +334,7 @@ Vertex.prototype.getNeighbors = function (options) {
         target_array.push(neighbor_info);
       }
     }
-  };
+  }
 
   if ((direction === 'both') || (direction === 'outbound')) {
     this.getOutEdges().forEach(function (current_edge) {
@@ -453,14 +451,13 @@ Graph.prototype.geodesics = function (options) {
   var sources = this._vertices.toArray(),
     targets = sources.slice(),
     geodesics = [],
-    graph = this,
-    vertexConstructor;
+    graph = this;
 
   options = options || {};
 
-  vertexConstructor = function (raw_vertex) {
+  function vertexConstructor(raw_vertex) {
     return graph.constructVertex(raw_vertex._id);
-  };
+  }
 
   sources = sources.map(vertexConstructor);
   targets = targets.map(vertexConstructor);
@@ -575,7 +572,7 @@ Graph.prototype.normalizedMeasurement = function (measurement) {
     return map;
   }, {});
 
-  Object.keys(vertex_map).forEach(function(key) {
+  Object.keys(vertex_map).forEach(function (key) {
     vertex_map[key] = vertex_map[key] / max;
   });
 

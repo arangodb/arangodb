@@ -237,7 +237,7 @@ function reloadUserFunctions () {
   var functions = { };
 
   c.toArray().forEach(function (f) {
-    var code = "(function() { var callback = " + f.code + "; return callback; })();";
+    var code = "(function () { var callback = " + f.code + "; return callback; })();";
     var key = f._key.replace(/:{1,}/g, '::');
 
     try {
@@ -511,7 +511,7 @@ function CLONE (obj) {
   }
   else if (obj instanceof Object) {
     copy = { };
-    Object.keys(obj).forEach(function(k) {
+    Object.keys(obj).forEach(function (k) {
       copy[k] = CLONE(obj[k]);
     });
   }
@@ -554,7 +554,7 @@ function FIX_VALUE (value) {
   if (type === 'object') {
     var result = { };
 
-    Object.keys(value).forEach(function(k) {
+    Object.keys(value).forEach(function (k) {
       if (typeof value[k] !== 'function') {
         result[k] = FIX_VALUE(value[k]);
       }
@@ -845,7 +845,7 @@ function VALUES (value) {
 
   var values = [ ];
 
-  Object.keys(value).forEach(function(k) {
+  Object.keys(value).forEach(function (k) {
     values.push(value[k]);
   });
 
@@ -2073,7 +2073,7 @@ function AQL_SPLIT (value, separator, limit) {
 
   if (TYPEWEIGHT(separator) === TYPEWEIGHT_ARRAY) {
     var patterns = [];
-    separator.forEach(function(s) {
+    separator.forEach(function (s) {
       patterns.push(CREATE_REGEX_PATTERN(AQL_TO_STRING(s)));
     });
 
@@ -2095,7 +2095,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
 
   if (sWeight === TYPEWEIGHT_OBJECT) {
     patterns = [ ];
-    KEYS(search, false).forEach(function(k) {
+    KEYS(search, false).forEach(function (k) {
       patterns.push(CREATE_REGEX_PATTERN(k));
       replacements[k] = AQL_TO_STRING(search[k]);
     });
@@ -2122,7 +2122,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
 
     if (TYPEWEIGHT(replace) === TYPEWEIGHT_ARRAY) {
       // replace each occurrence with a member from the second list
-      search.forEach(function(k, i) {
+      search.forEach(function (k, i) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
         if (i < replace.length) {
@@ -2141,7 +2141,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
       else {
         replace = AQL_TO_STRING(replace);
       }
-      search.forEach(function(k, i) {
+      search.forEach(function (k, i) {
         k = AQL_TO_STRING(k);
         patterns.push(CREATE_REGEX_PATTERN(k));
         replacements[k] = replace;
@@ -2162,7 +2162,7 @@ function AQL_SUBSTITUTE (value, search, replace, limit) {
     return null;
   }
 
-  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function(match) {
+  return AQL_TO_STRING(value).replace(new RegExp(pattern, 'g'), function (match) {
     if (limit === undefined) {
       return replacements[match];
     } 
@@ -2739,7 +2739,7 @@ function AQL_UNIQUE (values) {
     }
   });
 
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
@@ -2807,7 +2807,7 @@ function AQL_UNION_DISTINCT () {
   }
 
   var result = [ ];
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
@@ -3197,7 +3197,7 @@ function AQL_MINUS () {
   }
 
   var result = [ ];
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
@@ -3248,7 +3248,7 @@ function AQL_INTERSECTION () {
     }
   }
 
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     result.push(keys[k]);
   });
 
@@ -4049,7 +4049,7 @@ function AQL_ATTRIBUTES (element, removeInternal, sort) {
   if (removeInternal) {
     var result = [ ];
 
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       if (k[0] !== '_') {
         result.push(k);
       }
@@ -4128,7 +4128,7 @@ function AQL_UNSET (value) {
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
   // copy over all that is left
 
-  Object.keys(value).forEach(function(k) {
+  Object.keys(value).forEach(function (k) {
     if (keys[k] !== true) {
       result[k] = CLONE(value[k]);
     }
@@ -4152,7 +4152,7 @@ function AQL_KEEP (value) {
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
 
   // copy over all that is left
-  Object.keys(keys).forEach(function(k) {
+  Object.keys(keys).forEach(function (k) {
     if (value.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
@@ -4171,7 +4171,7 @@ function AQL_MERGE () {
   var result = { }, i;
 
   function add(element) {
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       result[k] = element[k];
     });
   }
@@ -4205,7 +4205,7 @@ function AQL_MERGE_RECURSIVE () {
   function recurse(old, element) {
     var r = CLONE(old);
 
-    Object.keys(element).forEach(function(k) {
+    Object.keys(element).forEach(function (k) {
       if (r.hasOwnProperty(k) && TYPEWEIGHT(element[k]) === TYPEWEIGHT_OBJECT) {
         r[k] = recurse(r[k], element[k]);
       }
@@ -5365,9 +5365,10 @@ function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options, funcname) {
   }
 
   collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
+
   function removeDuplicates(elem, pos, self) {
     return self.indexOf(elem) === pos;
-  };
+  }
 
   return DOCUMENTS_BY_EXAMPLE(
     collections.toCollection.filter(removeDuplicates), options.toVertexExample
@@ -5608,7 +5609,7 @@ function CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL (graphData, options) {
   var paths = {};
 
   var vertices = {};
-  graph.edges.forEach(function(e) {
+  graph.edges.forEach(function (e) {
     if (options.direction === "outbound") {
       if (!paths[e._from]) {
         paths[e._from] = {};
@@ -5801,8 +5802,8 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
     Object.keys(examples).length === 0)) {
     return edges;
   }
-  edges.forEach(function(edge) {
-    examples.forEach(function(example) {
+  edges.forEach(function (edge) {
+    examples.forEach(function (example) {
       filter = CLONE(example);
       if (!(filter._id || filter._key)) {
         filter._id = edge._id;
@@ -7063,7 +7064,7 @@ function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
 
   var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample, {}, options), 
       result = {};
-  distanceMap.forEach(function(d) {
+  distanceMap.forEach(function (d) {
     if (!result[d.startVertex]) {
       result[d.startVertex] = d.distance;
     } else {
@@ -7240,7 +7241,7 @@ function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
   }
 
   var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
-  distanceMap.forEach(function(d) {
+  distanceMap.forEach(function (d) {
     if (options.direction !==  'any' && options.calcNormalized) {
       d.distance = d.distance === 0 ?  0 : 1 / d.distance;
     }
@@ -7423,7 +7424,7 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 
   var distanceMap = AQL_GRAPH_SHORTEST_PATH(graphName, {} , {}, options),
     result = {};
-  distanceMap.forEach(function(d) {
+  distanceMap.forEach(function (d) {
     var tmp = {};
     if (!result[d.startVertex]) {
       result[d.startVertex] = 0;

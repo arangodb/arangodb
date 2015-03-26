@@ -180,7 +180,7 @@ ArangoCollection.prototype.truncate = function () {
 /// *Examples*
 ///
 /// @code
-/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// arango> db.example.getIndexes().map(function (x) { return x.id; });
 /// ["example/0"]
 /// arango> db.example.index("93013/0");
 /// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }

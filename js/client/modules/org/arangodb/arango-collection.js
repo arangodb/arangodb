@@ -43,7 +43,7 @@ var arangosh = require("org/arangodb/arangosh");
 function addIndexOptions (body, parameters) {
   body.fields = [ ];
 
-  var setOption = function(k) {
+  var setOption = function (k) {
     if (! body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }

@@ -56,7 +56,7 @@ var store = require("org/arangodb/foxx/store");
 /// @brief extracts command-line options
 ////////////////////////////////////////////////////////////////////////////////
 
-var extractCommandLineOptions = function(args) {
+var extractCommandLineOptions = function (args) {
 
   var options = {};
   var nargs = [];
@@ -205,7 +205,7 @@ var help = function () {
 /// Output:
 /// -
 ////////////////////////////////////////////////////////////////////////////////
-var setup = function(mount) {
+var setup = function (mount) {
   checkParameter(
     "setup(<mount>)",
     [ [ "Mount path", "string" ] ],
@@ -233,7 +233,7 @@ var setup = function(mount) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var teardown = function(mount) {
+var teardown = function (mount) {
   checkParameter(
     "teardown(<mount>)",
     [ [ "Mount path", "string" ] ],
@@ -257,7 +257,7 @@ var teardown = function(mount) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-var moveAppToServer = function(appInfo) {
+var moveAppToServer = function (appInfo) {
   if (!fs.exists(appInfo)) {
     throwFileNotFound("Cannot find file: " + appInfo + ".");
   }
@@ -298,7 +298,7 @@ var moveAppToServer = function(appInfo) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var install = function(appInfo, mount, options) {
+var install = function (appInfo, mount, options) {
   checkParameter(
     "install(<appInfo>, <mount>, [<options>])",
     [ [ "Install information", "string" ],
@@ -331,7 +331,7 @@ var install = function(appInfo, mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var uninstall = function(mount, options) {
+var uninstall = function (mount, options) {
   checkParameter(
     "uninstall(<mount>, [<options>])",
     [ [ "Mount path", "string" ] ],
@@ -357,7 +357,7 @@ var uninstall = function(mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var replace = function(appInfo, mount, options) {
+var replace = function (appInfo, mount, options) {
   checkParameter(
     "replace(<appInfo>, <mount>, [<options>])",
     [ [ "Install information", "string" ],
@@ -387,7 +387,7 @@ var replace = function(appInfo, mount, options) {
 /// TODO: Long Documentation!
 ////////////////////////////////////////////////////////////////////////////////
 
-var upgrade = function(appInfo, mount, options) {
+var upgrade = function (appInfo, mount, options) {
   checkParameter(
     "upgrade(<appInfo>, <mount>, [<options>])",
     [ [ "Install information", "string" ],
@@ -414,7 +414,7 @@ var upgrade = function(appInfo, mount, options) {
 /// @brief Activate the development mode for the application on the given mount point.
 ////////////////////////////////////////////////////////////////////////////////
 
-var development = function(mount) {
+var development = function (mount) {
   checkParameter(
     "development(<mount>)",
     [ [ "Mount path", "string" ] ],
@@ -438,7 +438,7 @@ var development = function(mount) {
 /// @brief Activate the production mode for the application on the given mount point.
 ////////////////////////////////////////////////////////////////////////////////
 
-var production = function(mount) {
+var production = function (mount) {
   checkParameter(
     "production(<mount>)",
     [ [ "Mount path", "string" ] ],
@@ -462,7 +462,7 @@ var production = function(mount) {
 /// @brief Configure the app at the mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var configure = function(mount, options) {
+var configure = function (mount, options) {
   checkParameter(
     "configure(<mount>)",
     [ [ "Mount path", "string" ] ],
@@ -485,7 +485,7 @@ var configure = function(mount, options) {
 /// @brief Get the configuration for the app at the given mountpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-var configuration = function(mount) {
+var configuration = function (mount) {
   checkParameter(
     "configuration(<mount>)",
     [ [ "Mount path", "string" ] ],

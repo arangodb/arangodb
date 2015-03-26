@@ -125,7 +125,7 @@ function RequestContext(executionBuffer, models, route, rootElement, constraints
   var attr;
 
   function extensionWrapper(scope, func) {
-    return function() {
+    return function () {
       func.apply(this, arguments);
       return this;
     }.bind(scope);

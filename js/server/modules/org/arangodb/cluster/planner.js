@@ -449,7 +449,7 @@ function Planner (userConfig) {
 /// @brief the actual planning method
 ////////////////////////////////////////////////////////////////////////////////
 
-Planner.prototype.makePlan = function() {
+Planner.prototype.makePlan = function () {
   // This sets up the plan for the cluster according to the options
 
   var config = this.config;
@@ -682,7 +682,7 @@ Planner.prototype.makePlan = function() {
     tmp.push(tmp2);
   }
   var agencyPos = { "agencyPrefix": config.agencyPrefix,
-                    "endpoints": agents.map(function(a) {
+                    "endpoints": agents.map(function (a) {
                         return exchangePort(dispatchers[a.dispatcher].endpoint,
                                             a.extPort);}) };
   tmp.push( { "action": "sendConfiguration",
@@ -747,7 +747,7 @@ Planner.prototype.makePlan = function() {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Planner.prototype.getPlan = function() {
+Planner.prototype.getPlan = function () {
   // Computes the dispatcher commands and returns them as JSON
   return { "dispatchers": this.dispatchers,
            "commands": this.commands };

@@ -514,7 +514,7 @@ function routeNeedsConfigurationApp(app) {
         methods: actions.ALL_METHODS
       },
       "action": {
-        "callback": function(req, res) {
+        "callback": function (req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = "text/html; charset=utf-8";
           if (app._isDevelopment) {
@@ -557,7 +557,7 @@ function routeBrokenApp(app, err) {
         methods: actions.ALL_METHODS
       },
       "action": {
-        "callback": function(req, res) {
+        "callback": function (req, res) {
           res.responseCode = actions.HTTP_SERVICE_UNAVAILABLE;
           res.contentType = "text/html; charset=utf-8";
           if (app._isDevelopment) {

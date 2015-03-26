@@ -30,7 +30,7 @@
 
 var Graph = require("org/arangodb/general-graph");
 
-var createTraversalExample = function() {
+function createTraversalExample() {
   var g = Graph._create("knows_graph",
     [Graph._relation("knows", "persons", "persons")]
   );
@@ -45,9 +45,9 @@ var createTraversalExample = function() {
   g.knows.save(e, a, {});
   g.knows.save(e, b, {});
   return g;
-};
+}
 
-var createSocialGraph = function() {
+function createSocialGraph() {
   var edgeDefinition = [];
   edgeDefinition.push(Graph._relation("relation", ["female", "male"], ["female", "male"]));
   var g = Graph._create("social", edgeDefinition);
@@ -60,9 +60,9 @@ var createSocialGraph = function() {
   g.relation.save(c._id, d._id, {type: "married", _key: "charlyAndDiana"});
   g.relation.save(b._id, d._id, {type: "friend", _key: "bobAndDiana"});
   return g;
-};
+}
 
-var createRoutePlannerGraph = function() {
+function createRoutePlannerGraph() {
   var edgeDefinition = [];
   edgeDefinition.push(Graph._relation(
     "germanHighway", ["germanCity"], ["germanCity"])
@@ -90,16 +90,16 @@ var createRoutePlannerGraph = function() {
   g.internationalHighway.save(cologne._id, lyon._id, {distance: 700});
   g.internationalHighway.save(cologne._id, paris._id, {distance: 550});
   return g;
-};
+}
 
 
-var dropGraph = function(name) {
+function dropGraph(name) {
   if (Graph._exists(name)) {
     return Graph._drop(name, true);
   }
-};
+}
 
-var loadGraph = function(name) {
+function loadGraph(name) {
   dropGraph(name);
   switch (name) {
     case "knows_graph":
@@ -110,7 +110,7 @@ var loadGraph = function(name) {
       return createSocialGraph();
   }
 
-};
+}
 
 exports.loadGraph = loadGraph;
 exports.dropGraph = dropGraph;

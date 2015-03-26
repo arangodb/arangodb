@@ -119,7 +119,7 @@ ArangoStatement.prototype.parse = function () {
 ArangoStatement.prototype.explain = function (options) {
   var opts = this._options || { };
   if (typeof opts === 'object' && typeof options === 'object') {
-    Object.keys(options).forEach(function(o) {
+    Object.keys(options).forEach(function (o) {
       // copy options
       opts[o] = options[o];
     });

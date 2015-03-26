@@ -1165,7 +1165,7 @@ Kickstarter.prototype.relaunch = function (username, password) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Kickstarter.prototype.shutdown = function() {
+Kickstarter.prototype.shutdown = function () {
   var clusterPlan = this.clusterPlan;
   var myname = this.myname;
   var dispatchers = clusterPlan.dispatchers;
@@ -1246,7 +1246,7 @@ Kickstarter.prototype.shutdown = function() {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Kickstarter.prototype.cleanup = function() {
+Kickstarter.prototype.cleanup = function () {
   var clusterPlan = this.clusterPlan;
   var myname = this.myname;
   var dispatchers = clusterPlan.dispatchers;
@@ -1322,7 +1322,7 @@ Kickstarter.prototype.cleanup = function() {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Kickstarter.prototype.isHealthy = function() {
+Kickstarter.prototype.isHealthy = function () {
   var clusterPlan = this.clusterPlan;
   var myname = this.myname;
   var dispatchers = clusterPlan.dispatchers;

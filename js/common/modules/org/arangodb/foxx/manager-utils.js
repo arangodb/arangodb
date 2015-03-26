@@ -44,20 +44,20 @@ var mountAppRegEx = /\/APP(\/|$)/i;
 var mountNumberRegEx = /^\/[\d\-%]/;
 var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
-var getStorage = function() {
+function getStorage() {
   var c = db._collection("_apps");
   if (c === null) {
     c = db._create("_apps", {isSystem: true});
     c.ensureUniqueConstraint("mount");
   }
   return c;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for mount points
 ////////////////////////////////////////////////////////////////////////////////
 
-var compareMounts = function(l, r) {
+function compareMounts(l, r) {
   var left = l.mount.toLowerCase();
   var right = r.mount.toLowerCase();
 
@@ -65,13 +65,13 @@ var compareMounts = function(l, r) {
     return -1;
   }
   return 1;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
 
-function buildGithubUrl (repository, version) {
+function buildGithubUrl(repository, version) {
 
   if (version === undefined) {
     version = "master";
@@ -84,7 +84,7 @@ function buildGithubUrl (repository, version) {
 /// @brief extracts the name and version from a manifest file
 ////////////////////////////////////////////////////////////////////////////////
 
-function extractNameAndVersionManifest (source, filename) {
+function extractNameAndVersionManifest(source, filename) {
 
   var manifest = JSON.parse(fs.read(filename));
 
@@ -97,7 +97,7 @@ function extractNameAndVersionManifest (source, filename) {
 /// @brief processes files in a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-function processDirectory (source) {
+function processDirectory(source) {
 
   var location = source.location;
 
@@ -145,7 +145,7 @@ function processDirectory (source) {
 /// @brief extracts the name and version from a zip
 ////////////////////////////////////////////////////////////////////////////////
 
-function repackZipFile (source) {
+function repackZipFile(source) {
 
   var i;
 
@@ -159,7 +159,7 @@ function repackZipFile (source) {
   // locate the manifest file
   // .............................................................................
 
-  var tree = fs.listTree(path).sort(function(a,b) {
+  var tree = fs.listTree(path).sort(function (a,b) {
     return a.length - b.length;
   });
   var found;
@@ -232,7 +232,7 @@ function repackZipFile (source) {
 /// @brief processes files from a github repository
 ////////////////////////////////////////////////////////////////////////////////
 
-function processGithubRepository (source) {
+function processGithubRepository(source) {
 
   var url = buildGithubUrl(source.location, source.version);
   var tempFile = fs.getTempFile("downloads", false);
@@ -271,7 +271,7 @@ function processGithubRepository (source) {
 /// @brief returns all running Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function listJson (showPrefix, onlyDevelopment) {
+function listJson(showPrefix, onlyDevelopment) {
 
   var mounts = getStorage();
   var cursor;
@@ -439,7 +439,7 @@ var typeToRegex = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a zip archive of a foxx app. Returns the absolute path
 ////////////////////////////////////////////////////////////////////////////////
-var zipDirectory = function(directory) {
+function zipDirectory(directory) {
   if (!fs.isDirectory(directory)) {
     throw directory + " is not a directory.";
   }
@@ -462,7 +462,7 @@ var zipDirectory = function(directory) {
   }
   fs.zipFile(tempFile, directory, files);
   return tempFile;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports

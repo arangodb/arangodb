@@ -32,12 +32,6 @@ var arangodb = require("org/arangodb");
 
 var ArangoError = arangodb.ArangoError;
 
-// forward declaration
-var SimpleQueryArray;
-var SimpleQueryNear;
-var SimpleQueryWithin;
-var SimpleQueryWithinRectangle;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                              GENERAL ARRAY CURSOR
 // -----------------------------------------------------------------------------
@@ -59,7 +53,7 @@ function GeneralArrayCursor (documents, skip, limit, data) {
   
   var self = this;
   if (data !== null && data !== undefined && typeof data === 'object') {
-    [ 'stats', 'warnings', 'profile' ].forEach(function(d) {
+    [ 'stats', 'warnings', 'profile' ].forEach(function (d) {
       if (data.hasOwnProperty(d)) {
         self._extra[d] = data[d];
       }
@@ -178,7 +172,7 @@ GeneralArrayCursor.prototype.hasNext = function () {
 /// @brief returns the next result document
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralArrayCursor.prototype.next = function() {
+GeneralArrayCursor.prototype.next = function () {
   if (this._current < this._stop) {
     return this._documents[this._current++];
   }
@@ -190,7 +184,7 @@ GeneralArrayCursor.prototype.next = function() {
 /// @brief drops the result
 ////////////////////////////////////////////////////////////////////////////////
 
-GeneralArrayCursor.prototype.dispose = function() {
+GeneralArrayCursor.prototype.dispose = function () {
   this._documents = null;
   this._skip = null;
   this._limit = null;
@@ -610,7 +604,7 @@ SimpleQuery.prototype.next = function () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQuery.prototype.dispose = function() {
+SimpleQuery.prototype.dispose = function () {
   if (this._execution !== null) {
     this._execution.dispose();
   }
@@ -689,9 +683,9 @@ SimpleQueryAll.prototype._PRINT = function (context) {
 /// @brief array query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryArray = function (documents) {
+function SimpleQueryArray(documents) {
   this._documents = documents;
-};
+}
 
 SimpleQueryArray.prototype = new SimpleQuery();
 SimpleQueryArray.prototype.constructor = SimpleQueryArray;
@@ -1010,7 +1004,7 @@ SimpleQueryGeo.prototype.withinRectangle = function (lat1, lon1, lat2, lon2) {
 /// @brief near query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryNear = function (collection, latitude, longitude, iid) {
+function SimpleQueryNear(collection, latitude, longitude, iid) {
   var idx;
   var i;
 
@@ -1043,7 +1037,7 @@ SimpleQueryNear = function (collection, latitude, longitude, iid) {
     err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
-};
+}
 
 SimpleQueryNear.prototype = new SimpleQuery();
 SimpleQueryNear.prototype.constructor = SimpleQueryNear;
@@ -1130,7 +1124,7 @@ SimpleQueryNear.prototype.distance = function (attribute) {
 /// @brief within query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
+function SimpleQueryWithin(collection, latitude, longitude, radius, iid) {
   var idx;
   var i;
 
@@ -1164,7 +1158,7 @@ SimpleQueryWithin = function (collection, latitude, longitude, radius, iid) {
     err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
-};
+}
 
 SimpleQueryWithin.prototype = new SimpleQuery();
 SimpleQueryWithin.prototype.constructor = SimpleQueryWithin;
@@ -1253,7 +1247,7 @@ SimpleQueryWithin.prototype.distance = function (attribute) {
 /// @brief within-rectangle query
 ////////////////////////////////////////////////////////////////////////////////
 
-SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitude2, longitude2, iid) {
+function SimpleQueryWithinRectangle(collection, latitude1, longitude1, latitude2, longitude2, iid) {
   var idx;
   var i;
 
@@ -1287,7 +1281,7 @@ SimpleQueryWithinRectangle = function (collection, latitude1, longitude1, latitu
     err.errorMessage = arangodb.errors.ERROR_QUERY_GEO_INDEX_MISSING.message;
     throw err;
   }
-};
+}
 
 SimpleQueryWithinRectangle.prototype = new SimpleQuery();
 SimpleQueryWithinRectangle.prototype.constructor = SimpleQueryWithinRectangle;

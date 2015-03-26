@@ -126,7 +126,7 @@ function Repository(collection, opts) {
       this.collection.ensureIndex(index);
     }, this);
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Methods
@@ -744,7 +744,7 @@ function addIndexMethods(prototype) {
       }
     });
   });
-};
+}
 
 Repository.extend = function (prototypeProperties, constructorProperties) {
   var constructor = extend.call(this, prototypeProperties, constructorProperties);

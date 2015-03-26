@@ -2,7 +2,7 @@
  */
 var fs = require("fs");
 
-var generatePerfReportXML = function (reportName, testdata) {
+function generatePerfReportXML(reportName, testdata) {
   "use strict";
   var x = '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<report name="' + reportName + '" categ="' + reportName + '">\n' + 
@@ -38,9 +38,9 @@ var generatePerfReportXML = function (reportName, testdata) {
   x = x + '\n</report>\n';
   fs.write(reportName + ".xml", x);
 
-};
+}
 
-var generatePerfReportGrinderCSV = function (reportName, testdata) {
+function generatePerfReportGrinderCSV(reportName, testdata) {
   "use strict";
   var x = "Thread, Run, Test 1, Start time (ms since Epoch), Test time, Errors, TPS , HTTP response length, HTTP response errors, Time to resolve host, Time to establish connection, Time to first byte, New connections";
 
@@ -60,11 +60,10 @@ var generatePerfReportGrinderCSV = function (reportName, testdata) {
     }
   }
   fs.write("out_" + reportName + "_perftest.log", x);
+}
 
-};
 
-
-var generatePerfReportJTL = function(reportName, testdata) {
+function generatePerfReportJTL(reportName, testdata) {
   var testFileName = "out_" + reportName + "_perftest.jtl";
   var x = '<?xml version="1.0" encoding="UTF-8"?>\n<testResults version="1.2">\n';
 

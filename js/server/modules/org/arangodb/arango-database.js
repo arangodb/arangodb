@@ -70,7 +70,7 @@ ArangoDatabase.prototype._PRINT = function (context) {
 /// @brief strng representation of a database
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype.toString = function(seen, path, names, level) {
+ArangoDatabase.prototype.toString = function (seen, path, names, level) {
   return "[ArangoDatabase \"" + this._name() + "\"]";
 };
 
@@ -187,7 +187,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._drop = function(name) {
+ArangoDatabase.prototype._drop = function (name) {
   var collection = name;
 
   if (! (name instanceof ArangoCollection)) {
@@ -248,7 +248,7 @@ ArangoDatabase.prototype._drop = function(name) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._truncate = function(name) {
+ArangoDatabase.prototype._truncate = function (name) {
   var collection = name;
 
   if (! (name instanceof ArangoCollection)) {
@@ -282,7 +282,7 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 /// @EXAMPLES
 ///
 /// ```js
-/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// arango> db.example.getIndexes().map(function (x) { return x.id; });
 /// ["example/0"]
 /// arango> db._index("example/0");
 /// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }
@@ -291,7 +291,7 @@ ArangoDatabase.indexRegex = /^([a-zA-Z0-9\-_]+)\/([0-9]+)$/;
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoDatabase.prototype._index = function(id) {
+ArangoDatabase.prototype._index = function (id) {
   if (id.hasOwnProperty("id")) {
     id = id.id;
   }

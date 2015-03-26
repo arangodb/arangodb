@@ -28,16 +28,13 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Preprocessor,
-  preprocess,
-  ArrayIterator,
-  extend = require("underscore").extend,
+var extend = require("underscore").extend,
   coffeeScript = require("coffee-script");
 
-ArrayIterator = function (arr) {
+function ArrayIterator(arr) {
   this.array = arr;
   this.currentLineNumber = -1;
-};
+}
 
 extend(ArrayIterator.prototype, {
   next: function () {
@@ -68,7 +65,7 @@ extend(ArrayIterator.prototype, {
   }
 });
 
-Preprocessor = function (input, type) {
+function Preprocessor(input, type) {
 
   if (type === 'coffee') {
     input = coffeeScript.compile(input, {bare: true});
@@ -76,7 +73,7 @@ Preprocessor = function (input, type) {
 
   this.iterator = new ArrayIterator(input.replace('\r', '').split("\n"));
   this.inJSDoc = false;
-};
+}
 
 extend(Preprocessor.prototype, {
   result: function () {
@@ -144,10 +141,10 @@ extend(Preprocessor.prototype, {
   }
 });
 
-preprocess = function (input, type) {
+function preprocess(input, type) {
   var processor = new Preprocessor(input, type);
   return processor.convert().result();
-};
+}
 
 // Only Exported for Tests, please use `process`
 exports.Preprocessor = Preprocessor;

@@ -63,7 +63,7 @@ function getBackOffDelay(job, cfg) {
     return exponentialBackOff(n, cfg.backOff);
   }
   return exponentialBackOff(n, 1000);
-};
+}
 
 exports.work = function (job) {
   var cfg = queues._jobTypes[job.type],

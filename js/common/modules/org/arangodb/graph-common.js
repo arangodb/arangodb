@@ -28,18 +28,13 @@
 /// @author Copyright 2011-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var is = require("org/arangodb/is"),
-  Edge,
-  Graph,
-  Vertex,
-  GraphArray,
-  Iterator;
+var is = require("org/arangodb/is");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                             module "org/arangodb/graph-blueprint"
 // -----------------------------------------------------------------------------
 
-Iterator = function (wrapper, cursor, stringRepresentation) {
+function Iterator(wrapper, cursor, stringRepresentation) {
   this.next = function next() {
     if (cursor.hasNext()) {
       return wrapper(cursor.next());
@@ -55,7 +50,7 @@ Iterator = function (wrapper, cursor, stringRepresentation) {
   this._PRINT = function (context) {
     context.output += stringRepresentation;
   };
-};
+}
 
 
 // -----------------------------------------------------------------------------
@@ -70,11 +65,11 @@ Iterator = function (wrapper, cursor, stringRepresentation) {
 /// @brief constructs a graph arrays
 ////////////////////////////////////////////////////////////////////////////////
 
-GraphArray = function (len) {
+function GraphArray(len) {
   if (len !== undefined) {
     this.length = len;
   }
-};
+}
 
 GraphArray.prototype = new Array(0);
 
@@ -110,7 +105,7 @@ GraphArray.prototype.map = function (fun, thisp) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.getInVertex = function () {
-  return this.map(function(a) {return a.getInVertex();});
+  return this.map(function (a) {return a.getInVertex();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -118,7 +113,7 @@ GraphArray.prototype.getInVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.getOutVertex = function () {
-  return this.map(function(a) {return a.getOutVertex();});
+  return this.map(function (a) {return a.getOutVertex();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -126,7 +121,7 @@ GraphArray.prototype.getOutVertex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.getPeerVertex = function (vertex) {
-  return this.map(function(a) {return a.getPeerVertex(vertex);});
+  return this.map(function (a) {return a.getPeerVertex(vertex);});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -134,7 +129,7 @@ GraphArray.prototype.getPeerVertex = function (vertex) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.setProperty = function (name, value) {
-  return this.map(function(a) {return a.setProperty(name, value);});
+  return this.map(function (a) {return a.setProperty(name, value);});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,7 +137,7 @@ GraphArray.prototype.setProperty = function (name, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.edges = function () {
-  return this.map(function(a) {return a.edges();});
+  return this.map(function (a) {return a.edges();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -150,7 +145,7 @@ GraphArray.prototype.edges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.outbound = function () {
-  return this.map(function(a) {return a.outbound();});
+  return this.map(function (a) {return a.outbound();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -158,7 +153,7 @@ GraphArray.prototype.outbound = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.inbound = function () {
-  return this.map(function(a) {return a.inbound();});
+  return this.map(function (a) {return a.inbound();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -167,7 +162,7 @@ GraphArray.prototype.inbound = function () {
 
 GraphArray.prototype.getInEdges = function () {
   var args = arguments;
-  return this.map(function(a) {return a.getInEdges.apply(a, args);});
+  return this.map(function (a) {return a.getInEdges.apply(a, args);});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -176,7 +171,7 @@ GraphArray.prototype.getInEdges = function () {
 
 GraphArray.prototype.getOutEdges = function () {
   var args = arguments;
-  return this.map(function(a) {return a.getOutEdges.apply(a, args);});
+  return this.map(function (a) {return a.getOutEdges.apply(a, args);});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -185,7 +180,7 @@ GraphArray.prototype.getOutEdges = function () {
 
 GraphArray.prototype.getEdges = function () {
   var args = arguments;
-  return this.map(function(a) {return a.getEdges.apply(a, args);});
+  return this.map(function (a) {return a.getEdges.apply(a, args);});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -193,7 +188,7 @@ GraphArray.prototype.getEdges = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.degree = function () {
-  return this.map(function(a) {return a.degree();});
+  return this.map(function (a) {return a.degree();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +196,7 @@ GraphArray.prototype.degree = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.inDegree = function () {
-  return this.map(function(a) {return a.inDegree();});
+  return this.map(function (a) {return a.inDegree();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +204,7 @@ GraphArray.prototype.inDegree = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.inDegree = function () {
-  return this.map(function(a) {return a.outDegree();});
+  return this.map(function (a) {return a.outDegree();});
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -217,18 +212,18 @@ GraphArray.prototype.inDegree = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 GraphArray.prototype.properties = function () {
-  return this.map(function(a) {return a.properties();});
+  return this.map(function (a) {return a.properties();});
 };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                              Edge
 // -----------------------------------------------------------------------------
 
-Edge = function (graph, properties) {
+function Edge(graph, properties) {
   this._graph = graph;
   this._id = properties._key;
   this._properties = properties;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -414,11 +409,11 @@ Edge.prototype._PRINT = function (context) {
 // --SECTION--                                                            Vertex
 // -----------------------------------------------------------------------------
 
-Vertex = function (graph, properties) {
+function Vertex(graph, properties) {
   this._graph = graph;
   this._id = properties._key;
   this._properties = properties;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -608,9 +603,9 @@ Vertex.prototype._PRINT = function (context) {
 // --SECTION--                                                             Graph
 // -----------------------------------------------------------------------------
 
-Graph = function (name, vertices, edges, waitForSync) {
+function Graph(name, vertices, edges, waitForSync) {
   this.initialize(name, vertices, edges, waitForSync);
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods

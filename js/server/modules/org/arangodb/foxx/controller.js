@@ -344,7 +344,7 @@ extend(Controller.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-/// app.before('/high/way', function(req, res) {
+/// app.before('/high/way', function (req, res) {
 ///   //Do some crazy request logging
 /// });
 /// ```
@@ -383,7 +383,7 @@ extend(Controller.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-/// app.after('/high/way', function(req, res) {
+/// app.after('/high/way', function (req, res) {
 ///   //Do some crazy response logging
 /// });
 /// ```
@@ -421,7 +421,7 @@ extend(Controller.prototype, {
 /// @EXAMPLES
 ///
 /// ```js
-/// app.around('/high/way', function(req, res, opts, next) {
+/// app.around('/high/way', function (req, res, opts, next) {
 ///   //Do some crazy request logging
 ///   next();
 ///   //Do some more crazy request logging
@@ -760,7 +760,7 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-  extend: function(extensions) {
+  extend: function (extensions) {
     var attr;
     for (attr in extensions) {
       if (extensions.hasOwnProperty(attr)) {

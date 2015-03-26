@@ -225,7 +225,7 @@ Graph.prototype.drop = function () {
 /// @brief saves an edge to the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._saveEdge = function(id, out_vertex_id, in_vertex_id, params) {
+Graph.prototype._saveEdge = function (id, out_vertex_id, in_vertex_id, params) {
   var results;
 
   this.emptyCachedPredecessors();
@@ -290,7 +290,7 @@ Graph.prototype.getVertex = function (id) {
 Graph.prototype.getVertices = function () {
   var cursor = GraphAPI.getVertices(this._vertices._database, this._properties._key, {}),
     graph = this,
-    wrapper = function(object) {
+    wrapper = function (object) {
       return new Vertex(graph, object);
     };
 
@@ -318,7 +318,7 @@ Graph.prototype.getEdge = function (id) {
 Graph.prototype.getEdges = function () {
   var cursor = GraphAPI.getEdges(this._vertices._database, this._properties._key, {}),
     graph = this,
-    wrapper = function(object) {
+    wrapper = function (object) {
       return new Edge(graph, object);
     };
   return new Iterator(wrapper, cursor, "[edge iterator]");
