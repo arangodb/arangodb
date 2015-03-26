@@ -1934,6 +1934,7 @@ class FilterToEnumCollFinder : public WalkerWorker<ExecutionNode> {
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
@@ -2736,6 +2737,7 @@ class SortToIndexNode : public WalkerWorker<ExecutionNode> {
       case EN::REMOVE:
       case EN::REPLACE:
       case EN::UPDATE:
+      case EN::UPSERT:
       case EN::RETURN:
       case EN::NORESULTS:
       case EN::SCATTER:
@@ -2877,8 +2879,8 @@ struct FilterCondition {
         TRI_ASSERT(lhs->type == NODE_TYPE_VALUE);
         TRI_ASSERT(rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS);
 
-        std::function<void(AstNode const*, std::string&, std::string&)> buildName = 
-          [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
+        std::function<void(AstNode const*, std::string&, std::string&)> buildName;
+        buildName = [&] (AstNode const* node, std::string& variableName, std::string& attributeName) -> void {
           if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
             buildName(node->getMember(0), variableName, attributeName);
 
@@ -3092,8 +3094,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   for (auto n : nodes) {
 
     if (nodesSet.find(n) != nodesSet.end()) {
-      std::vector<ExecutionNode*> nn;
-      nn.push_back(n);
+      std::vector<ExecutionNode*> nn{ n };
       nodesSet.erase(n);
 
       // Now follow the dependencies as long as we see further such nodes:
@@ -3245,12 +3246,13 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       else if (nodeType == ExecutionNode::INSERT ||
                nodeType == ExecutionNode::UPDATE ||
                nodeType == ExecutionNode::REPLACE ||
-               nodeType == ExecutionNode::REMOVE) {
+               nodeType == ExecutionNode::REMOVE ||
+               nodeType == ExecutionNode::UPSERT) {
         vocbase = static_cast<ModificationNode*>(node)->vocbase();
         collection = static_cast<ModificationNode*>(node)->collection();
         if (nodeType == ExecutionNode::REMOVE ||
             nodeType == ExecutionNode::UPDATE) {
-          // Note that in the REPLACE case we are not getting here, since
+          // Note that in the REPLACE or UPSERT case we are not getting here, since
           // the distributeInClusterRule fires and a DistributionNode is
           // used.
           auto* modNode = static_cast<ModificationNode*>(node);
@@ -3299,6 +3301,10 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
       wasModified = true;
     }
   }
+      
+  if (wasModified) {
+    plan->findVarUsage();
+  }
    
   opt->addPlan(plan, rule->level, wasModified);
 
@@ -3319,24 +3325,64 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
                                             ExecutionPlan* plan,
                                             Optimizer::Rule const* rule) {
   bool wasModified = false;
-
+        
   if (triagens::arango::ServerState::instance()->isCoordinator()) {
     // we are a coordinator, we replace the root if it is a modification node
     
     // only replace if it is the last node in the plan
-    auto const& node = plan->root();
+    auto node = plan->root();
+    TRI_ASSERT(node != nullptr);
+
+    while (node != nullptr) {
+      // loop until we find a modification node or the end of the plan
+      auto nodeType = node->getType();
+
+      if (nodeType == ExecutionNode::INSERT  ||
+          nodeType == ExecutionNode::REMOVE  ||
+          nodeType == ExecutionNode::UPDATE ||
+          nodeType == ExecutionNode::REPLACE ||
+          nodeType == ExecutionNode::UPSERT) {
+        // found a node!
+        break;
+      }
+
+      auto deps = node->getDependencies();
+
+      if (deps.size() != 1) {
+        // reached the end
+        opt->addPlan(plan, rule->level, wasModified);
+        return TRI_ERROR_NO_ERROR;
+      }
+
+      node = deps[0];
+    }
+
+    TRI_ASSERT(node != nullptr);
+    
+    ExecutionNode* originalParent = nullptr;
+    {
+      auto parents = node->getParents();
+      if (parents.size() == 1) {
+        originalParent = parents[0];
+        TRI_ASSERT(originalParent != nullptr);
+        TRI_ASSERT(node != plan->root());
+      }
+      else {
+        TRI_ASSERT(node == plan->root());
+      }
+    }
+
+    // when we get here, we have found a matching data-modification node!
     auto const nodeType = node->getType();
     
-    if (nodeType != ExecutionNode::INSERT  &&
-        nodeType != ExecutionNode::REMOVE  &&
-        nodeType != ExecutionNode::REPLACE &&
-        nodeType != ExecutionNode::UPDATE) {
-      opt->addPlan(plan, rule->level, wasModified);
-      return TRI_ERROR_NO_ERROR;
-    }
-    
+    TRI_ASSERT(nodeType == ExecutionNode::INSERT  ||
+               nodeType == ExecutionNode::REMOVE  ||
+               nodeType == ExecutionNode::UPDATE  ||
+               nodeType == ExecutionNode::REPLACE ||
+               nodeType == ExecutionNode::UPSERT);
+
     Collection const* collection = static_cast<ModificationNode*>(node)->collection();
-    
+   
     bool const defaultSharding = collection->usesDefaultSharding();
 
     if (nodeType == ExecutionNode::REMOVE ||
@@ -3347,20 +3393,33 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         return TRI_ERROR_NO_ERROR;
       }
     }
-        
+    
+    
     // In the INSERT and REPLACE cases we use a DistributeNode...
 
     auto deps = node->getDependencies();
     TRI_ASSERT(deps.size() == 1);
+    
+    if (originalParent != nullptr) {
+      originalParent->removeDependency(node);
+      // unlink the node
+      auto root = plan->root();
+      plan->unlinkNode(node, true);
+      plan->root(root, true); // fix root node
+    }
+    else {
+      // unlink the node
+      plan->unlinkNode(node, true);
+      plan->root(deps[0], true); // fix root node
+    }
 
-    // unlink the node
-    plan->unlinkNode(node, true);
 
     // extract database from plan node
     TRI_vocbase_t* vocbase = static_cast<ModificationNode*>(node)->vocbase();
 
     // insert a distribute node
     ExecutionNode* distNode = nullptr;
+    Variable const* inputVariable;
     if (nodeType == ExecutionNode::INSERT ||
         nodeType == ExecutionNode::REMOVE) {
       TRI_ASSERT(node->getVariablesUsedHere().size() == 1);
@@ -3368,37 +3427,50 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
       // in case of an INSERT, the DistributeNode is responsible for generating keys
       // if none present
       bool const createKeys = (nodeType == ExecutionNode::INSERT);
+      inputVariable = node->getVariablesUsedHere()[0];
       distNode = new DistributeNode(plan, plan->nextId(), 
-          vocbase, collection, node->getVariablesUsedHere()[0]->id, createKeys);
+          vocbase, collection, inputVariable->id, createKeys);
     }
     else if (nodeType == ExecutionNode::REPLACE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (defaultSharding && v.size() > 1) {
         // We only look into _inKeyVariable
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[1]->id, false);
+        inputVariable = v[1];
       }
       else {
         // We only look into _inDocVariable
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[0]->id, false);
+        inputVariable = v[0];
       }
+      distNode = new DistributeNode(plan, plan->nextId(), 
+            vocbase, collection, inputVariable->id, false);
     }
-    else {   // if (nodeType == ExecutionNode::UPDATE)
+    else if (nodeType == ExecutionNode::UPDATE) {
       std::vector<Variable const*> v = node->getVariablesUsedHere();
       if (v.size() > 1) {
         // If there is a key variable:
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[1]->id, false);
+        inputVariable = v[1];
         // This is the _inKeyVariable! This works, since we use a ScatterNode
         // for non-default-sharding attributes.
       }
       else {
         // was only UPDATE <doc> IN <collection>
-        distNode = new DistributeNode(plan, plan->nextId(), 
-            vocbase, collection, v[0]->id, false);
+        inputVariable = v[0];
       }
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, inputVariable->id, false);
     }
+    else if (nodeType == ExecutionNode::UPSERT) {
+      // an UPSERT nodes has two input variables!
+      std::vector<Variable const*> const&& v = node->getVariablesUsedHere();
+      TRI_ASSERT(v.size() >= 2);
+
+      distNode = new DistributeNode(plan, plan->nextId(), 
+          vocbase, collection, v[0]->id, v[2]->id, false);
+    }
+    else {
+      TRI_ASSERT(false);
+    }
+
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
 
@@ -3417,14 +3489,21 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     remoteNode->addDependency(node);
     
     // insert a gather node 
-    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase,
-        collection);
+    ExecutionNode* gatherNode = new GatherNode(plan, plan->nextId(), vocbase, collection);
     plan->registerNode(gatherNode);
     gatherNode->addDependency(remoteNode);
 
-    // we replaced the root node, set a new root node
-    plan->root(gatherNode);
+    if (originalParent != nullptr) {
+      // we did not replace the root node
+      originalParent->addDependency(gatherNode);
+    }
+    else {
+      // we replaced the root node, set a new root node
+      plan->root(gatherNode, true);
+    }
     wasModified = true;
+  
+    plan->findVarUsage();
   }
    
   opt->addPlan(plan, rule->level, wasModified);
@@ -3455,7 +3534,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
     if (parents.size() < 1) {
       continue;
     }
-    while (1) {
+    while (true) {
       bool stopSearching = false;
 
       auto inspectNode = parents[0];
@@ -3468,6 +3547,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
           parents = inspectNode->getParents();
           continue;
         case EN::SUBQUERY:
@@ -3561,6 +3641,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
         case EN::REMOVE:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
         case EN::CALCULATION:
         case EN::FILTER:
         case EN::SUBQUERY:
@@ -3683,7 +3764,7 @@ int triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
 /// WalkerWorker for undistributeRemoveAfterEnumColl
 ////////////////////////////////////////////////////////////////////////////////
 
-class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
+class RemoveToEnumCollFinder : public WalkerWorker<ExecutionNode> {
   ExecutionPlan* _plan;
   std::unordered_set<ExecutionNode*>& _toUnlink;
   bool _remove;
@@ -3722,6 +3803,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
 
           // remove nodes always have one input variable
           TRI_ASSERT(varsToRemove.size() == 1);
+
           _setter = _plan->getVarSetBy(varsToRemove[0]->id);
           TRI_ASSERT(_setter != nullptr);
           auto enumColl = _setter;
@@ -3841,6 +3923,7 @@ class RemoveToEnumCollFinder: public WalkerWorker<ExecutionNode> {
         case EN::INSERT:
         case EN::REPLACE:
         case EN::UPDATE:
+        case EN::UPSERT:
         case EN::RETURN:
         case EN::NORESULTS:
         case EN::ILLEGAL:
@@ -4303,6 +4386,52 @@ int triagens::aql::removeRedundantOrRule (Optimizer* opt,
   if (modified) {
     plan->findVarUsage();
   }
+  opt->addPlan(plan, rule->level, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief remove $OLD and $NEW variables from data-modification statements
+/// if not required
+////////////////////////////////////////////////////////////////////////////////
+
+int triagens::aql::removeDataModificationOutVariablesRule (Optimizer* opt, 
+                                                           ExecutionPlan* plan, 
+                                                           Optimizer::Rule const* rule) {
+  bool modified = false;
+  std::vector<ExecutionNode::NodeType> const types = {
+    EN::REMOVE,
+    EN::INSERT,
+    EN::UPDATE,
+    EN::REPLACE,
+    EN::UPSERT
+  };
+
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(types, true);
+  
+  for (auto n : nodes) {
+    auto node = static_cast<ModificationNode*>(n);
+    TRI_ASSERT(node != nullptr);
+
+    auto varsUsedLater = n->getVarsUsedLater();
+    if (varsUsedLater.find(node->getOutVariableOld()) == varsUsedLater.end()) {
+      // "$OLD" is not used later
+      node->clearOutVariableOld();
+      modified = true;
+    }
+    
+    if (varsUsedLater.find(node->getOutVariableNew()) == varsUsedLater.end()) {
+      // "$NEW" is not used later
+      node->clearOutVariableNew();
+      modified = true;
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+  
   opt->addPlan(plan, rule->level, modified);
 
   return TRI_ERROR_NO_ERROR;

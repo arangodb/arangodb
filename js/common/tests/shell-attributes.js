@@ -127,6 +127,31 @@ function AttributesSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief dollar signs
+////////////////////////////////////////////////////////////////////////////////
+
+    testDollarSignAttributes : function () {
+      var doc = { "$foo" : "$bar", "$bar" : "$baz" };
+
+      var d1 = c.save(doc);
+      var d2 = c.document(d1._id);
+
+      assertEqual("$bar", d2.$foo);
+      assertEqual("$baz", d2.$bar);
+      assertEqual(undefined, d2.$boo);
+
+      d2 = c.toArray()[0];
+      assertEqual("$bar", d2.$foo);
+      assertEqual("$baz", d2.$bar);
+
+      c.update(d1, { "$baz" : "$barbaz$" });
+      d2 = c.document(d1._id);
+      assertEqual("$bar", d2.$foo);
+      assertEqual("$baz", d2.$bar);
+      assertEqual("$barbaz$", d2.$baz);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief "numeric" attribute names
 ////////////////////////////////////////////////////////////////////////////////
 

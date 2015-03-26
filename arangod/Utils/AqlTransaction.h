@@ -143,7 +143,7 @@ namespace triagens {
 
           if (res == TRI_ERROR_NO_ERROR &&
               col != nullptr) {
-            collection->collection = const_cast<TRI_vocbase_col_t*>(col);
+            collection->setCollection(const_cast<TRI_vocbase_col_t*>(col));
           }
 
           return res;

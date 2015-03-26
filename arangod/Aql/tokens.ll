@@ -137,6 +137,10 @@ namespace triagens {
   return T_REPLACE;
 }
 
+(?i:UPSERT) {
+  return T_UPSERT;
+}
+
  /* ---------------------------------------------------------------------------
   * predefined type literals
   * --------------------------------------------------------------------------- */
@@ -273,7 +277,7 @@ namespace triagens {
   * literals
   * --------------------------------------------------------------------------- */
 
-([a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
+($?[a-zA-Z][_a-zA-Z0-9]*|_+[a-zA-Z]+[_a-zA-Z0-9]*) { 
   /* unquoted string */
   yylval->strval = yyextra->query()->registerString(yytext, yyleng, false);
   return T_STRING; 
@@ -410,7 +414,7 @@ namespace triagens {
   * bind parameters
   * --------------------------------------------------------------------------- */
 
-@@?[a-zA-Z0-9][a-zA-Z0-9_]* {
+@@?(_+[a-zA-Z0-9]+[a-zA-Z0-9_]*|[a-zA-Z0-9][a-zA-Z0-9_]*) {
   /* bind parameters must start with a @
      if followed by another @, this is a collection name parameter */
   yylval->strval = yyextra->query()->registerString(yytext + 1, yyleng - 1, false); 

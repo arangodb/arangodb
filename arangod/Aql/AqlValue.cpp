@@ -297,13 +297,14 @@ bool AqlValue::isObject () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the length of an AqlValue containing a list
+/// @brief returns the length of an AqlValue containing an array
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t AqlValue::listSize () const {
+size_t AqlValue::arraySize () const {
   switch (_type) {
     case JSON: {
       TRI_json_t const* json = _json->json();
+
       if (TRI_IsArrayJson(json)) {
         return TRI_LengthArrayJson(json);
       }

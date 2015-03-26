@@ -310,16 +310,15 @@ Handler::status_t RestBatchHandler::execute () {
       try {
         status = handler->execute();
       }
-      catch (triagens::basics::TriagensError const& ex) {
+      catch (triagens::basics::Exception const& ex) {
         handler->handleError(ex);
       }
       catch (std::exception const& ex) {
-        triagens::basics::InternalError err(ex, __FILE__, __LINE__);
-
+        triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
         handler->handleError(err);
       }
       catch (...) {
-        triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+        triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
         handler->handleError(err);
       }
       handler->finalizeExecute();

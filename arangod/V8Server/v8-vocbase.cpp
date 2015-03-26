@@ -582,7 +582,7 @@ static void JS_EnableNativeBacktraces (const v8::FunctionCallbackInfo<v8::Value>
     TRI_V8_THROW_EXCEPTION_USAGE("ENABLE_NATIVE_BACKTRACES(<value>)");
   }
 
-  triagens::arango::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
+  triagens::basics::Exception::SetVerbose(TRI_ObjectToBoolean(args[0]));
 
   TRI_V8_RETURN_UNDEFINED();
 }
@@ -1597,6 +1597,21 @@ static void JS_QueriesKillAql (const v8::FunctionCallbackInfo<v8::Value>& args) 
   }
 
   TRI_V8_THROW_EXCEPTION(res);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a query is killed
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  TRI_GET_GLOBALS();
+  if (v8g->_query != nullptr && static_cast<triagens::aql::Query*>(v8g->_query)->killed()) {
+    TRI_V8_RETURN_TRUE();
+  }
+  TRI_V8_RETURN_FALSE();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2913,6 +2928,7 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_SLOW"), JS_QueriesSlowAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
 
   TRI_InitV8replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 

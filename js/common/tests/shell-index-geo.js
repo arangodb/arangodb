@@ -825,6 +825,145 @@ function GeoIndexSimpleQueriesSuite() {
 
       assertEqual(1, r.length);
       assertEqual([0, 50], r[0].gloc);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: within rectangle
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithinRectangleFlat : function () {
+      collection.ensureGeoIndex("lat", "lon");
+      var doc = collection.save({ location: [ 50, 50 ] });
+      doc = collection.save({ lat: 2, lon: 2 });
+
+      var r = collection.near(0, 0).limit(1).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+
+      r = collection.within(0, 0, 1000000).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+      
+      r = collection.withinRectangle(0, 0, 5, 5).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: within rectangle
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithinRectangleFlatNoDocs : function () {
+      collection.ensureGeoIndex("lat", "lon");
+      collection.save({ location: { lat: 2, lon: 2 } });
+      collection.save({ lat: "2222", lon: "2222" });
+      collection.save({ lat: 2, lon: "2222" });
+      collection.save({ lat: "2222", lon: 2 });
+      collection.save({ lat: 2, lon: null });
+      collection.save({ lat: null, lon: 2 });
+      collection.save({ lat: null, lon: null });
+      collection.save({ lat: true, lon: true });
+      collection.save({ lat: [ 2, 2 ], lon: [ 2, 2 ] });
+
+      var r = collection.near(0, 0).toArray();
+      assertEqual(0, r.length);
+
+      r = collection.within(0, 0, 1000000).toArray();
+      assertEqual(0, r.length);
+      
+      r = collection.withinRectangle(0, 0, 5, 5).toArray();
+      assertEqual(0, r.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: within rectangle
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithinRectangleSingleFlat : function () {
+      collection.ensureGeoIndex("location");
+      var doc = collection.save({ location: [ 50, 50 ] });
+      doc = collection.save({ location: [ 2, 2 ] });
+
+      var r = collection.near(0, 0).limit(1).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+
+      r = collection.within(0, 0, 1000000).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+      
+      r = collection.withinRectangle(0, 0, 5, 5).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: within rectangle
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithinRectangleSingleFlatNoDocs : function () {
+      collection.ensureGeoIndex("location");
+      collection.save({ location: { lat: 2, lon: 2 } });
+      collection.save({ location: "2222" });
+      collection.save({ location: 2 });
+      collection.save({ location: null });
+      collection.save({ location: true });
+
+      var r = collection.near(0, 0).toArray();
+      assertEqual(0, r.length);
+
+      r = collection.within(0, 0, 1000000).toArray();
+      assertEqual(0, r.length);
+      
+      r = collection.withinRectangle(0, 0, 5, 5).toArray();
+      assertEqual(0, r.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: within rectangle
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithinRectangleNested : function () {
+      collection.ensureGeoIndex("location.lat", "location.lon");
+      var doc = collection.save({ location: { lat: 50, lon: 50 } });
+      doc = collection.save({ location: { lat: 2, lon: 2 } });
+
+      var r = collection.near(0, 0).limit(1).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+
+      r = collection.within(0, 0, 1000000).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+      
+      r = collection.withinRectangle(0, 0, 5, 5).toArray();
+      assertEqual(1, r.length);
+      assertEqual(doc._key, r[0]._key);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: within rectangle
+////////////////////////////////////////////////////////////////////////////////
+
+    testWithinRectangleNestedNoDocs : function () {
+      collection.ensureGeoIndex("location.lat", "location.lon");
+      collection.save({ location: { foo: 2, bar: 2 } });
+      collection.save({ location: { lat: "2222", lon: "2222" } });
+      collection.save({ location: { lat: [ 2, 2 ], lon: [ 2, 2 ] } });
+      collection.save({ location: [ 2, 2 ] });
+      collection.save({ location: "2222" });
+      collection.save({ location: null });
+      collection.save({ location: true });
+      collection.save({ lat: 2, lon: 2 });
+
+      var r = collection.near(0, 0).toArray();
+      assertEqual(0, r.length);
+
+      r = collection.within(0, 0, 1000000).toArray();
+      assertEqual(0, r.length);
+      
+      r = collection.withinRectangle(0, 0, 5, 5).toArray();
+      assertEqual(0, r.length);
     }
 
   };

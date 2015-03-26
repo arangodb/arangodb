@@ -450,10 +450,6 @@ enum WRAP_CLASS_TYPES {WRAP_TYPE_CONNECTION = 1};
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses the program options
-////////////////////////////////////////////////////////////////////////////////
-
 typedef enum __eRunMode {
   eInteractive,
   eExecuteScript,
@@ -461,7 +457,12 @@ typedef enum __eRunMode {
   eCheckScripts,
   eUnitTests,
   eJsLint
-} eRunMode;
+} 
+eRunMode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief parses the program options
+////////////////////////////////////////////////////////////////////////////////
 
 static vector<string> ParseProgramOptions (int argc, char* args[], eRunMode *runMode) {
   ProgramOptionsDescription description("STANDARD options");
@@ -566,7 +567,7 @@ static vector<string> ParseProgramOptions (int argc, char* args[], eRunMode *run
 /// @brief copies v8::Object to std::map<string, string>
 ////////////////////////////////////////////////////////////////////////////////
 
-static void objectToMap (v8::Isolate* isolate, map<string, string>& myMap, v8::Handle<v8::Value> val) {
+static void ObjectToMap (v8::Isolate* isolate, map<string, string>& myMap, v8::Handle<v8::Value> val) {
   v8::Handle<v8::Object> v8Headers = val.As<v8::Object>();
 
   if (v8Headers->IsObject()) {
@@ -844,7 +845,7 @@ static void ClientConnection_httpGetAny (const v8::FunctionCallbackInfo<v8::Valu
   map<string, string> headerFields;
 
   if (args.Length() > 1) {
-    objectToMap(isolate, headerFields, args[1]);
+    ObjectToMap(isolate, headerFields, args[1]);
   }
 
   TRI_V8_RETURN(connection->getData(isolate, *url, headerFields, raw));
@@ -893,7 +894,7 @@ static void ClientConnection_httpHeadAny (const v8::FunctionCallbackInfo<v8::Val
   map<string, string> headerFields;
 
   if (args.Length() > 1) {
-    objectToMap(isolate, headerFields, args[1]);
+    ObjectToMap(isolate, headerFields, args[1]);
   }
 
   TRI_V8_RETURN(connection->headData(isolate, *url, headerFields, raw));
@@ -941,7 +942,7 @@ static void ClientConnection_httpDeleteAny (const v8::FunctionCallbackInfo<v8::V
   // check header fields
   map<string, string> headerFields;
   if (args.Length() > 1) {
-    objectToMap(isolate, headerFields, args[1]);
+    ObjectToMap(isolate, headerFields, args[1]);
   }
 
   TRI_V8_RETURN(connection->deleteData(isolate, *url, headerFields, raw));
@@ -990,7 +991,7 @@ static void ClientConnection_httpOptionsAny (const v8::FunctionCallbackInfo<v8::
   // check header fields
   map<string, string> headerFields;
   if (args.Length() > 2) {
-    objectToMap(isolate, headerFields, args[2]);
+    ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(connection->optionsData(isolate, *url, *body, headerFields, raw));
@@ -1039,7 +1040,7 @@ static void ClientConnection_httpPostAny (const v8::FunctionCallbackInfo<v8::Val
   // check header fields
   map<string, string> headerFields;
   if (args.Length() > 2) {
-    objectToMap(isolate, headerFields, args[2]);
+    ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(connection->postData(isolate, *url, *body, headerFields, raw));
@@ -1088,7 +1089,7 @@ static void ClientConnection_httpPutAny (const v8::FunctionCallbackInfo<v8::Valu
   // check header fields
   map<string, string> headerFields;
   if (args.Length() > 2) {
-    objectToMap(isolate, headerFields, args[2]);
+    ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(connection->putData(isolate, *url, *body, headerFields, raw));
@@ -1137,7 +1138,7 @@ static void ClientConnection_httpPatchAny (const v8::FunctionCallbackInfo<v8::Va
   // check header fields
   map<string, string> headerFields;
   if (args.Length() > 2) {
-    objectToMap(isolate, headerFields, args[2]);
+    ObjectToMap(isolate, headerFields, args[2]);
   }
 
   TRI_V8_RETURN(connection->patchData(isolate, *url, *body, headerFields, raw));
@@ -1919,7 +1920,7 @@ void arangoshEntryFunction() {
   TRI_Application_Exit_SetExit(arangoshExitFunction);
 }
 
-static void arangoshExitFunction(int exitCode, void* data) {
+static void arangoshExitFunction (int exitCode, void* data) {
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
@@ -1938,12 +1939,12 @@ static void arangoshExitFunction(int exitCode, void* data) {
 static void arangoshEntryFunction() {
 }
 
-static void arangoshExitFunction(int exitCode, void* data) {
+static void arangoshExitFunction (int exitCode, void* data) {
 }
 
 #endif
 
-bool print_helo(bool useServer, bool promptError) {
+static bool printHelo(bool useServer, bool promptError) {
   // .............................................................................
   // banner
   // .............................................................................
@@ -2095,9 +2096,9 @@ bool print_helo(bool useServer, bool promptError) {
   return promptError;
 }
 
-void InitCallbacks(v8::Isolate *isolate,
-                   bool useServer,
-                   eRunMode runMode) {
+void InitCallbacks (v8::Isolate *isolate,
+                    bool useServer,
+                    eRunMode runMode) {
 
   auto context = isolate->GetCurrentContext();
   // set pretty print default: (used in print.js)
@@ -2358,7 +2359,7 @@ int main (int argc, char* args[]) {
     }
     msg += "'";
     BaseClient.printErrLine(msg);
-    return -1;
+    return EXIT_FAILURE;
   }    
   v8::V8::InitializeICU();
 
@@ -2407,7 +2408,7 @@ int main (int argc, char* args[]) {
 
       InitCallbacks(isolate, useServer, runMode);
 
-      promptError = print_helo(useServer, promptError);
+      promptError = printHelo(useServer, promptError);
 
       ret = warmupEnvironment(isolate, positionals, runMode);
       if (ret == EXIT_SUCCESS) {

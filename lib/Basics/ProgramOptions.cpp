@@ -31,13 +31,23 @@
 
 #include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
+#include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/Exceptions.h"
-
 #include "ProgramOptions/program-options.h"
 
 using namespace std;
 using namespace triagens::basics;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief global JSON-ified program options value
+////////////////////////////////////////////////////////////////////////////////
+
+static std::unique_ptr<TRI_json_t> ProgramOptionsJson;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -85,7 +95,8 @@ static T find (map<string, T> const& m, string const& key) {
   typename map<string, T>::const_iterator i = m.find(key);
 
   if (i == m.end()) {
-    THROW_INTERNAL_ERROR("cannot find option '" + key + "'");
+    std::string message("cannot find option '" + key + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   return i->second;
@@ -95,25 +106,41 @@ static T find (map<string, T> const& m, string const& key) {
 /// @brief extracts a double
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractDouble (char const* ptr, double* value) {
+static void ExtractDouble (char const* name, 
+                           char const* ptr, 
+                           double* value) {
   *value = TRI_DoubleString(ptr);
+ 
+  // add to global JSON object                
+  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *value);
+
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a double vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractVectorDouble (TRI_vector_string_t* ptr, vector<double>* value) {
-  size_t i;
+static void ExtractVectorDouble (char const* name,
+                                 TRI_vector_string_t* ptr, 
+                                 vector<double>* value) {
+  auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
-  for (i = 0;  i < ptr->_length;  ++i) {
-    char const* elem;
-    double e;
+  for (size_t i = 0;  i < ptr->_length;  ++i) {
 
-    elem = ptr->_buffer[i];
-    e = TRI_DoubleString(elem);
-
-    value->push_back(e);
+    char const* elem = ptr->_buffer[i];
+    double e = TRI_DoubleString(elem);
+    
+    value->emplace_back(e);
+    if (json != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, e));
+    }
+  }
+  
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
   }
 }
 
@@ -121,25 +148,40 @@ static void ExtractVectorDouble (TRI_vector_string_t* ptr, vector<double>* value
 /// @brief extracts an int32
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractInt32 (char const* ptr, int32_t* value) {
+static void ExtractInt32 (char const* name, 
+                          char const* ptr, 
+                          int32_t* value) {
   *value = TRI_Int32String(ptr);
+  
+  // add to global JSON object                
+  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*value));
+
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a int32 vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractVectorInt32 (TRI_vector_string_t* ptr, vector<int32_t>* value) {
-  size_t i;
+static void ExtractVectorInt32 (char const* name,
+                                TRI_vector_string_t* ptr, 
+                                vector<int32_t>* value) {
+  auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
-  for (i = 0;  i < ptr->_length;  ++i) {
-    char const* elem;
-    int32_t e;
+  for (size_t i = 0;  i < ptr->_length;  ++i) {
+    char const* elem = ptr->_buffer[i];
+    int32_t e = TRI_Int32String(elem);
 
-    elem = ptr->_buffer[i];
-    e = TRI_Int32String(elem);
-
-    value->push_back(e);
+    value->emplace_back(e);
+    if (json != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(e)));
+    }
+  }
+ 
+  if (json != nullptr) { 
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
   }
 }
 
@@ -147,25 +189,40 @@ static void ExtractVectorInt32 (TRI_vector_string_t* ptr, vector<int32_t>* value
 /// @brief extracts an int64
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractInt64 (char const* ptr, int64_t* value) {
+static void ExtractInt64 (char const* name, 
+                          char const* ptr, 
+                          int64_t* value) {
   *value = TRI_Int64String(ptr);
+  
+  // add to global JSON object                
+  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*value));
+
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a int64 vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractVectorInt64 (TRI_vector_string_t* ptr, vector<int64_t>* value) {
-  size_t i;
+static void ExtractVectorInt64 (char const* name,
+                                TRI_vector_string_t* ptr, 
+                                vector<int64_t>* value) {
+  auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
-  for (i = 0;  i < ptr->_length;  ++i) {
-    char const* elem;
-    int64_t e;
+  for (size_t i = 0;  i < ptr->_length;  ++i) {
+    char const* elem = ptr->_buffer[i];
+    int64_t e = TRI_Int64String(elem);
 
-    elem = ptr->_buffer[i];
-    e = TRI_Int64String(elem);
-
-    value->push_back(e);
+    value->emplace_back(e);
+    if (json != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(e)));
+    }
+  }
+  
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
   }
 }
 
@@ -173,23 +230,38 @@ static void ExtractVectorInt64 (TRI_vector_string_t* ptr, vector<int64_t>* value
 /// @brief extracts a string
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractString (char const* ptr, string* value) {
+static void ExtractString (char const* name, 
+                           char const* ptr, 
+                           string* value) {
   *value = ptr;
+  
+  // add to global JSON object                
+  auto json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, (*value).c_str(), (*value).size());
+
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a string vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractVectorString (TRI_vector_string_t* ptr, vector<string>* value) {
-  size_t i;
+static void ExtractVectorString (char const* name,
+                                 TRI_vector_string_t* ptr, 
+                                 vector<string>* value) {
+  auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
-  for (i = 0;  i < ptr->_length;  ++i) {
-    char const* elem;
-
-    elem = ptr->_buffer[i];
-
-    value->push_back(elem);
+  for (size_t i = 0;  i < ptr->_length;  ++i) {
+    char const* elem = ptr->_buffer[i];
+    value->emplace_back(elem);
+    if (json != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, elem, strlen(elem)));
+    }
+  }
+  
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
   }
 }
 
@@ -197,25 +269,40 @@ static void ExtractVectorString (TRI_vector_string_t* ptr, vector<string>* value
 /// @brief extracts an uint32
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractUInt32 (char const* ptr, uint32_t* value) {
+static void ExtractUInt32 (char const* name, 
+                           char const* ptr, 
+                           uint32_t* value) {
   *value = TRI_UInt32String(ptr);
+  
+  // add to global JSON object                
+  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*value));
+
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a uint32 vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractVectorUInt32 (TRI_vector_string_t* ptr, vector<uint32_t>* value) {
-  size_t i;
+static void ExtractVectorUInt32 (char const* name,
+                                 TRI_vector_string_t* ptr, 
+                                 vector<uint32_t>* value) {
+  auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
-  for (i = 0;  i < ptr->_length;  ++i) {
-    char const* elem;
-    uint32_t e;
+  for (size_t i = 0;  i < ptr->_length;  ++i) {
+    char const* elem = ptr->_buffer[i];
+    uint32_t e = TRI_UInt32String(elem);
 
-    elem = ptr->_buffer[i];
-    e = TRI_UInt32String(elem);
-
-    value->push_back(e);
+    value->emplace_back(e);
+    if (json != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(e)));
+    }
+  }
+  
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
   }
 }
 
@@ -223,25 +310,40 @@ static void ExtractVectorUInt32 (TRI_vector_string_t* ptr, vector<uint32_t>* val
 /// @brief extracts an uint64
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractUInt64 (char const* ptr, uint64_t* value) {
+static void ExtractUInt64 (char const* name, 
+                           char const* ptr, 
+                           uint64_t* value) {
   *value = TRI_UInt64String(ptr);
+  
+  // add to global JSON object                
+  auto json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*value));
+
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts a uint64 vector
 ////////////////////////////////////////////////////////////////////////////////
 
-static void ExtractVectorUInt64 (TRI_vector_string_t* ptr, vector<uint64_t>* value) {
-  size_t i;
+static void ExtractVectorUInt64 (char const* name,
+                                 TRI_vector_string_t* ptr, 
+                                 vector<uint64_t>* value) {
+  auto json = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE, ptr->_length);
 
-  for (i = 0;  i < ptr->_length;  ++i) {
-    char const* elem;
-    uint64_t e;
+  for (size_t i = 0;  i < ptr->_length;  ++i) {
+    char const* elem = ptr->_buffer[i];
+    uint64_t e = TRI_UInt64String(elem);
 
-    elem = ptr->_buffer[i];
-    e = TRI_UInt64String(elem);
-
-    value->push_back(e);
+    value->emplace_back(e);
+    if (json != nullptr) {
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, json, TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(e)));
+    }
+  }
+  
+  if (json != nullptr) {
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name, json);
   }
 }
 
@@ -277,7 +379,7 @@ ProgramOptions::~ProgramOptions () {
   for (map<string, char**>::iterator i = _valuesString.begin();  i != _valuesString.end();  ++i) {
     char** ptr = i->second;
 
-    if (*ptr != 0) {
+    if (*ptr != nullptr) {
       TRI_FreeString(TRI_CORE_MEM_ZONE, *ptr);
     }
 
@@ -285,13 +387,13 @@ ProgramOptions::~ProgramOptions () {
   }
 
   for (map<string, TRI_vector_string_t*>::iterator i = _valuesVector.begin();  i != _valuesVector.end();  ++i) {
-    if ((*i).second != 0) {
+    if ((*i).second != nullptr) {
       TRI_FreeVectorString(TRI_CORE_MEM_ZONE, (*i).second);
     }
   }
 
   for (map<string, bool*>::iterator i = _valuesBool.begin();  i != _valuesBool.end();  ++i) {
-    if ((*i).second != 0) {
+    if ((*i).second != nullptr) {
       TRI_Free(TRI_CORE_MEM_ZONE, (*i).second);
     }
   }
@@ -305,13 +407,19 @@ ProgramOptions::~ProgramOptions () {
 /// @brief parse command line
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ProgramOptions::parse (ProgramOptionsDescription const& description, int argc, char** argv) {
+bool ProgramOptions::parse (ProgramOptionsDescription const& description, 
+                            int argc, 
+                            char** argv) {
   TRI_PO_section_t* desc = setupDescription(description);
   set<string> const& ho = description.helpOptions();
   _helpOptions.insert(ho.begin(), ho.end());
 
   // set the program name from the argument vector
   _programName = argv[0];
+
+  if (ProgramOptionsJson == nullptr) {
+    ProgramOptionsJson.reset(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+  }
 
   // parse the options
   TRI_program_options_t* options = TRI_CreateProgramOptions(desc);
@@ -348,6 +456,10 @@ bool ProgramOptions::parse (ProgramOptionsDescription const& description, string
   TRI_PO_section_t* desc = setupDescription(description);
   set<string> const& ho = description.helpOptions();
   _helpOptions.insert(ho.begin(), ho.end());
+  
+  if (ProgramOptionsJson == nullptr) {
+    ProgramOptionsJson.reset(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+  }
 
   TRI_program_options_t* options = TRI_CreateProgramOptions(desc);
 
@@ -409,6 +521,14 @@ string ProgramOptions::lastError () {
   return _errorMessage;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get global program options as JSON
+////////////////////////////////////////////////////////////////////////////////
+
+TRI_json_t const* ProgramOptions::getJson () {
+  return ProgramOptionsJson.get();
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
@@ -418,6 +538,9 @@ string ProgramOptions::lastError () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_PO_section_t* ProgramOptions::setupDescription (ProgramOptionsDescription const& description) {
+  if (ProgramOptionsJson == nullptr) {
+    ProgramOptionsJson.reset(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE));
+  }
 
   // generate description file
   TRI_PO_section_t* desc = TRI_CreatePODescription("STANDARD");
@@ -465,24 +588,27 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
 
     if (j != description._optionTypes.end()) {
       ProgramOptionsDescription::option_type_e type = j->second;
-      char** ptr;
-      bool* btr;
-      TRI_vector_string_t* wtr;
 
       switch (type) {
         case ProgramOptionsDescription::OPTION_TYPE_FLAG:
-          TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), 0);
+          TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), nullptr);
           break;
 
-        case ProgramOptionsDescription::OPTION_TYPE_BOOL:
-          btr = _valuesBool[option];
+        case ProgramOptionsDescription::OPTION_TYPE_BOOL: {
+          bool* btr = _valuesBool[option];
 
           if (btr == nullptr) {
             btr = _valuesBool[option] = (bool*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(bool), true);
           }
 
           TRI_AddFlagPODescription(desc, option.c_str(), shortOption, help.c_str(), btr);
+          
+          TRI_json_t* defJson = description.getDefault(option);
+          if (defJson != nullptr) {
+            TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), option.c_str(), defJson);
+          }
           break;
+        }
 
         case ProgramOptionsDescription::OPTION_TYPE_DOUBLE:
         case ProgramOptionsDescription::OPTION_TYPE_INT32:
@@ -490,34 +616,41 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
         case ProgramOptionsDescription::OPTION_TYPE_STRING:
         case ProgramOptionsDescription::OPTION_TYPE_UINT32:
         case ProgramOptionsDescription::OPTION_TYPE_UINT64:
-        case ProgramOptionsDescription::OPTION_TYPE_TIME:
-          ptr = _valuesString[option];
+        case ProgramOptionsDescription::OPTION_TYPE_TIME: {
+          char** ptr = _valuesString[option];
 
-          if (ptr == 0) {
+          if (ptr == nullptr) {
             ptr = _valuesString[option] = (char**) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(char*), true);
           }
 
           TRI_AddStringPODescription(desc, option.c_str(), shortOption, help.c_str(), ptr);
+         
+          TRI_json_t* defJson = description.getDefault(option);
+          if (defJson != nullptr) {
+            TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), option.c_str(), defJson);
+          }
           break;
+        }
 
         case ProgramOptionsDescription::OPTION_TYPE_VECTOR_DOUBLE:
         case ProgramOptionsDescription::OPTION_TYPE_VECTOR_INT32:
         case ProgramOptionsDescription::OPTION_TYPE_VECTOR_INT64:
         case ProgramOptionsDescription::OPTION_TYPE_VECTOR_STRING:
         case ProgramOptionsDescription::OPTION_TYPE_VECTOR_UINT32:
-        case ProgramOptionsDescription::OPTION_TYPE_VECTOR_UINT64:
-          wtr = _valuesVector[option];
+        case ProgramOptionsDescription::OPTION_TYPE_VECTOR_UINT64: {
+          TRI_vector_string_t* wtr = _valuesVector[option];
 
-          if (wtr == 0) {
-            wtr = _valuesVector[option] = (TRI_vector_string_t*) TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_string_t), false);
+          if (wtr == nullptr) {
+            wtr = _valuesVector[option] = static_cast<TRI_vector_string_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(TRI_vector_string_t), false));
             TRI_InitVectorString(wtr, TRI_CORE_MEM_ZONE);
           }
 
           TRI_AddVectorStringPODescription(desc, option.c_str(), shortOption, help.c_str(), wtr);
           break;
+        }
 
         default:
-          THROW_INTERNAL_ERROR("unknown option type");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown option type");
       }
     }
   }
@@ -542,13 +675,9 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ProgramOptions::extractValues (ProgramOptionsDescription const& description, TRI_program_options_t* options, set<string> seen) {
-  size_t i;
-  char** ptr;
-  bool* btr;
-  bool* b;
-  TRI_vector_string_t* wtr;
+  TRI_ASSERT(ProgramOptionsJson != nullptr);
 
-  for (i = 0;  i < options->_items._length;  ++i) {
+  for (size_t i = 0;  i < options->_items._length;  ++i) {
     TRI_PO_item_t * item = static_cast<TRI_PO_item_t*>(TRI_AtVector(&options->_items, i));
 
     if (item->_used) {
@@ -562,20 +691,27 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
       _seen.insert(name);
 
       if (item->_desc->_type == TRI_PO_FLAG) {
-        btr = _valuesBool[name];
+        bool* btr = _valuesBool[name];
 
         if (btr != nullptr) {
           ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
 
           switch (type) {
-            case ProgramOptionsDescription::OPTION_TYPE_BOOL:
-              b = lookup(description._boolOptions, name);
+            case ProgramOptionsDescription::OPTION_TYPE_BOOL: {
+              bool* b = lookup(description._boolOptions, name);
 
               if (b != nullptr) {
                 *b = *btr;
+
+                // add to global JSON object                
+                auto json = TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, *btr);
+                if (json != nullptr) {
+                  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, ProgramOptionsJson.get(), name.c_str(), json);
+                }
               }
 
               break;
+            }
 
             default:
               break;
@@ -583,39 +719,39 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
         }
       }
       else if (item->_desc->_type == TRI_PO_STRING) {
-        ptr = _valuesString[name];
+        char** ptr = _valuesString[name];
 
         if (ptr != nullptr) {
           ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
 
           switch (type) {
             case ProgramOptionsDescription::OPTION_TYPE_DOUBLE:
-              ExtractDouble(*ptr, lookup(description._doubleOptions, name));
+              ExtractDouble(name.c_str(), *ptr, lookup(description._doubleOptions, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_INT32:
-              ExtractInt32(*ptr, lookup(description._int32Options, name));
+              ExtractInt32(name.c_str(), *ptr, lookup(description._int32Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_INT64:
-              ExtractInt64(*ptr, lookup(description._int64Options, name));
+              ExtractInt64(name.c_str(), *ptr, lookup(description._int64Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_STRING:
-              ExtractString(*ptr, lookup(description._stringOptions, name));
+              ExtractString(name.c_str(), *ptr, lookup(description._stringOptions, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_UINT32:
-              ExtractUInt32(*ptr, lookup(description._uint32Options, name));
+              ExtractUInt32(name.c_str(), *ptr, lookup(description._uint32Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_UINT64:
-              ExtractUInt64(*ptr, lookup(description._uint64Options, name));
+              ExtractUInt64(name.c_str(), *ptr, lookup(description._uint64Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_TIME:
 #if __WORDSIZE == 32
-              ExtractInt32(*ptr, (int32_t*) lookup(description._timeOptions, name));
+              ExtractInt32(name.c_str(), *ptr, (int32_t*) lookup(description._timeOptions, name));
 #endif
               break;
 
@@ -629,34 +765,34 @@ bool ProgramOptions::extractValues (ProgramOptionsDescription const& description
         }
       }
       else if (item->_desc->_type == TRI_PO_VECTOR_STRING) {
-        wtr = _valuesVector[name];
+        TRI_vector_string_t* wtr = _valuesVector[name];
 
-        if (wtr != 0) {
+        if (wtr != nullptr) {
           ProgramOptionsDescription::option_type_e type = lookup(description._optionTypes, name);
 
           switch (type) {
             case ProgramOptionsDescription::OPTION_TYPE_VECTOR_DOUBLE:
-              ExtractVectorDouble(wtr, lookup(description._vectorDoubleOptions, name));
+              ExtractVectorDouble(name.c_str(), wtr, lookup(description._vectorDoubleOptions, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_VECTOR_INT32:
-              ExtractVectorInt32(wtr, lookup(description._vectorInt32Options, name));
+              ExtractVectorInt32(name.c_str(), wtr, lookup(description._vectorInt32Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_VECTOR_INT64:
-              ExtractVectorInt64(wtr, lookup(description._vectorInt64Options, name));
+              ExtractVectorInt64(name.c_str(), wtr, lookup(description._vectorInt64Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_VECTOR_STRING:
-              ExtractVectorString(wtr, lookup(description._vectorStringOptions, name));
+              ExtractVectorString(name.c_str(), wtr, lookup(description._vectorStringOptions, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_VECTOR_UINT32:
-              ExtractVectorUInt32(wtr, lookup(description._vectorUInt32Options, name));
+              ExtractVectorUInt32(name.c_str(), wtr, lookup(description._vectorUInt32Options, name));
               break;
 
             case ProgramOptionsDescription::OPTION_TYPE_VECTOR_UINT64:
-              ExtractVectorUInt64(wtr, lookup(description._vectorUInt64Options, name));
+              ExtractVectorUInt64(name.c_str(), wtr, lookup(description._vectorUInt64Options, name));
               break;
 
             default:

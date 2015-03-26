@@ -38,6 +38,7 @@
 #include <signal.h>
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 
 
@@ -99,7 +100,7 @@ Thread::Thread (std::string const& name)
     _asynchronousCancelation(false),
     _thread(),
     _threadId(),
-    _finishedCondition(0),
+    _finishedCondition(nullptr),
     _started(0),
     _running(0),
     _joined(0) {
@@ -268,7 +269,7 @@ void Thread::allowAsynchronousCancelation () {
         TRI_AllowCancelation();
       }
       else {
-        LOG_ERROR("cannot change cancelation type of an already running thread from the outside");
+        LOG_ERROR("cannot change cancellation type of an already running thread from the outside");
       }
     }
     else {
@@ -295,17 +296,28 @@ void Thread::runMe () {
   try {
     run();
   }
+  catch (Exception const& ex) {
+    LOG_ERROR("exception caught in thread '%s': %s", _name.c_str(), ex.what());
+    TRI_FlushLogging();
+    throw;
+  }
+  catch (std::exception const& ex) {
+    LOG_ERROR("exception caught in thread '%s': %s", _name.c_str(), ex.what());
+    TRI_FlushLogging();
+    throw;
+  }
   catch (...) {
     _running = 0;
     if (! isSilent()) {
       LOG_ERROR("exception caught in thread '%s'", _name.c_str());
+      TRI_FlushLogging();
     }
     throw;
   }
 
   _running = 0;
 
-  if (_finishedCondition != 0) {
+  if (_finishedCondition != nullptr) {
     CONDITION_LOCKER(locker, *_finishedCondition);
     locker.broadcast();
   }

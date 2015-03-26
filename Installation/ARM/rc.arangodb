@@ -42,11 +42,11 @@ start () {
       RETVAL=$?
       log_end_msg $RETVAL
     else
-      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server --check-version
+      $DAEMON -c $CONF --uid arangodb --gid arangodb --no-server --log.tty "" --check-version
       RETVAL=$?
 
       if [ "$RETVAL" -eq 0 ];  then
-        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --supervisor $@
+        $DAEMON -c $CONF --uid arangodb --gid arangodb --pid-file "$PIDFILE" --temp-path "/var/tmp/arangod" --log.tty "" --supervisor $@
 	RETVAL=$?
 	log_end_msg $RETVAL
       else

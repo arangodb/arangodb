@@ -297,7 +297,7 @@ bool JsonHelper::checkAndGetBooleanValue (TRI_json_t const* json,
   if (! isBoolean(sub)) { 
     std::string msg = "The attribute '" + std::string(name) 
       + "' was not found or is not a boolean.";
-    THROW_INTERNAL_ERROR(msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
   return sub->_value._boolean;
@@ -315,7 +315,7 @@ std::string JsonHelper::checkAndGetStringValue (TRI_json_t const* json,
   if (! isString(sub)) {
     std::string msg = "The attribute '" + std::string(name)  
       + "' was not found or is not a string.";
-    THROW_INTERNAL_ERROR(msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
   return string(sub->_value._string.data, sub->_value._string.length - 1);
 }
@@ -332,7 +332,7 @@ TRI_json_t const* JsonHelper::checkAndGetObjectValue (TRI_json_t const* json,
   if (! isObject(sub)) {
     std::string msg = "The attribute '" + std::string(name)
       + "' was not found or is not an object.";
-    THROW_INTERNAL_ERROR(msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
   return sub;
@@ -350,7 +350,7 @@ TRI_json_t const* JsonHelper::checkAndGetArrayValue (TRI_json_t const* json,
   if (! isArray(sub)) {
     std::string msg = "The attribute '" + std::string(name)
       + "' was not found or is not an array.";
-    THROW_INTERNAL_ERROR(msg);
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, msg);
   }
 
   return sub;

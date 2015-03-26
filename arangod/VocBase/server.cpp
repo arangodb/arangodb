@@ -46,7 +46,7 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
@@ -1503,7 +1503,7 @@ static int WriteCreateMarker (TRI_voc_tick_t id,
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -1533,7 +1533,7 @@ static int WriteDropMarker (TRI_voc_tick_t id) {
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

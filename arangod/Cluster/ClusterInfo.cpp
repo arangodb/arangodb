@@ -2180,7 +2180,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
               shardKeys[i] = shardKeysPtr->at(i).c_str();
             }
             usesDefaultShardingAttributes = shardKeysPtr->size() == 1 &&
-                                            shardKeysPtr->at(0) == "_key";
+                                            shardKeysPtr->at(0) == TRI_VOC_ATTRIBUTE_KEY;
             found = true;
             break;  // all OK
           }
@@ -2189,6 +2189,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
     }
     loadPlannedCollections();
   }
+
   if (! found) {
     return TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
   }

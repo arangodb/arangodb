@@ -34,7 +34,7 @@ var Repository,
   ArangoError = arangodb.ArangoError,
   ArangoCollection = arangodb.ArangoCollection,
   errors = arangodb.errors,
-  extend = require('org/arangodb/extend').extend;
+  extend = require('extendible');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
@@ -512,6 +512,24 @@ _.extend(Repository.prototype, {
   updateByExample: function (example, data) {
     'use strict';
     return this.collection.updateByExample(example, data);
+  },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_foxx_repository_exists
+/// `FoxxRepository#exists(id)`
+///
+/// Checks whether a model with the given ID or key exists.
+///
+/// @EXAMPLES
+///
+/// ```javascript
+/// repository.exists(model.get('_id'));
+/// ```
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+  exists: function (id) {
+    'use strict';
+    return this.collection.exists(id);
   },
 
 // -----------------------------------------------------------------------------

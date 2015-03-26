@@ -35,6 +35,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/ThreadPool.h"
+#include "Basics/Exceptions.h"
 #include "CapConstraint/cap-constraint.h"
 #include "FulltextIndex/fulltext-index.h"
 #include "GeoIndex/geo-index.h"
@@ -44,7 +45,6 @@
 #include "Utils/transactions.h"
 #include "Utils/CollectionReadLocker.h"
 #include "Utils/CollectionWriteLocker.h"
-#include "Utils/Exception.h"
 #include "VocBase/edge-collection.h"
 #include "VocBase/index.h"
 #include "VocBase/key-generator.h"
@@ -3505,7 +3505,7 @@ bool TRI_DropIndexDocumentCollection (TRI_document_collection_t* document,
 
         return true;
       }
-      catch (triagens::arango::Exception const& ex) {
+      catch (triagens::basics::Exception const& ex) {
         res = ex.code();
       }
       catch (...) {

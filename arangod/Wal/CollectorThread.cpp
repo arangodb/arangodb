@@ -28,13 +28,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "CollectorThread.h"
+
 #include "Basics/MutexLocker.h"
 #include "Basics/hashes.h"
 #include "Basics/logging.h"
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DatabaseGuard.h"
-#include "Utils/Exception.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/server.h"
@@ -365,7 +366,7 @@ void CollectorThread::run () {
         throw;
       }
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (triagens::basics::Exception const& ex) {
       int res = ex.code();
       LOG_ERROR("got unexpected error in collectorThread::run: %s", TRI_errno_string(res));
     }
@@ -468,7 +469,7 @@ bool CollectorThread::processQueuedOperations () {
       try {
         res = processCollectionOperations((*it2));
       }
-      catch (triagens::arango::Exception const& ex) {
+      catch (triagens::basics::Exception const& ex) {
         res = ex.code();
       }
 
@@ -704,7 +705,7 @@ int CollectorThread::processCollectionOperations (CollectorCache* cache) {
 
     res = TRI_ERROR_NO_ERROR;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -807,7 +808,7 @@ int CollectorThread::collect (Logfile* logfile) {
       try {
         res = transferMarkers(logfile, cid, state.collections[cid], state.operationsCount[cid], sortedOperations);
       }
-      catch (triagens::arango::Exception const& ex) {
+      catch (triagens::basics::Exception const& ex) {
         res = ex.code();
       }
       catch (...) {
@@ -886,7 +887,7 @@ int CollectorThread::transferMarkers (Logfile* logfile,
       queueOperations(logfile, cache);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

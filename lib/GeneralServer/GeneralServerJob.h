@@ -222,7 +222,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::TriagensError const& ex) {
+        void handleError (basics::Exception const& ex) {
           _handler->handleError(ex);
         }
 

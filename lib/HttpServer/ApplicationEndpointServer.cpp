@@ -126,6 +126,7 @@ ApplicationEndpointServer::~ApplicationEndpointServer () {
   // code. Granted however, that explicitly writing down the type for an
   // overloaded class operator is a little unwieldy.
   // ..........................................................................
+
   for_each(_servers.begin(), _servers.end(), triagens::basics::DeleteObjectAny());
   _servers.clear();
 

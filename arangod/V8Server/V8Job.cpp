@@ -200,7 +200,7 @@ bool V8Job::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8Job::handleError (TriagensError const& ex) {
+void V8Job::handleError (Exception const& ex) {
 }
 
 // -----------------------------------------------------------------------------
