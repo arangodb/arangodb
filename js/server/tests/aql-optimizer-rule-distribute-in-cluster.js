@@ -339,27 +339,31 @@ function optimizerRuleTestSuite () {
       var expectedRules = [
                             [ 
                               "distribute-in-cluster", 
-                              "scatter-in-cluster", 
+                              "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll" 
                             ], 
                             [ 
                               "distribute-in-cluster", 
-                              "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
+                              "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll" 
                             ],
                             [ 
                               "distribute-in-cluster", 
-                              "scatter-in-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "remove-data-modification-out-variables",
+                              "remove-unnecessary-remote-scatter", 
+                              "scatter-in-cluster"
                             ], 
                             [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "distribute-in-cluster", 
+                              "remove-data-modification-out-variables",
+                              "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster"
                             ]
                           ];
 
@@ -408,7 +412,7 @@ function optimizerRuleTestSuite () {
         // can't turn this rule off so should always get the same answer
         var result = AQL_EXPLAIN(query, { }, rulesAll);
 
-        assertEqual(expectedRules[i], result.plan.rules, query);
+        assertEqual(expectedRules[i].sort(), result.plan.rules.sort(), query);
         result = AQL_EXPLAIN(query, { }, thisRuleDisabled);
         assertEqual(expectedNodes[i], explain(result), query);
       });
@@ -429,27 +433,31 @@ function optimizerRuleTestSuite () {
       var expectedRules = [
                             [ 
                               "distribute-in-cluster", 
-                              "scatter-in-cluster", 
+                              "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll" 
                             ], 
                             [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
+                              "distribute-in-cluster", 
+                              "remove-data-modification-out-variables",
                               "remove-unnecessary-remote-scatter",
+                              "scatter-in-cluster", 
                               "undistribute-remove-after-enum-coll" 
                             ],
                             [ 
                               "distribute-in-cluster", 
-                              "scatter-in-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "remove-data-modification-out-variables",
+                              "remove-unnecessary-remote-scatter", 
+                              "scatter-in-cluster"
                             ], 
                             [ 
-                              "distribute-in-cluster", 
-                              "scatter-in-cluster", 
                               "distribute-filtercalc-to-cluster", 
-                              "remove-unnecessary-remote-scatter" 
+                              "distribute-in-cluster", 
+                              "remove-data-modification-out-variables",
+                              "remove-unnecessary-remote-scatter", 
+                              "scatter-in-cluster"
                             ]
                           ];
 
@@ -497,7 +505,7 @@ function optimizerRuleTestSuite () {
       queries.forEach(function(query, i) {
         // can't turn this rule off so should always get the same answer
         var result = AQL_EXPLAIN(query, { }, rulesAll);
-        assertEqual(expectedRules[i], result.plan.rules, query);
+        assertEqual(expectedRules[i].sort(), result.plan.rules.sort(), query);
         assertEqual(expectedNodes[i], explain(result), query);
       });
     },
