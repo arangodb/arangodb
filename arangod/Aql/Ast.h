@@ -219,7 +219,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeFor (char const*,
-                                AstNode const*);
+                                AstNode const*,
+                                bool = false);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node, without an IF condition
@@ -228,6 +229,13 @@ namespace triagens {
         AstNode* createNodeLet (char const*,
                                 AstNode const*,
                                 bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST let node, without creating a variable
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeLet (AstNode const*,
+                                AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST let node, with an IF condition
@@ -244,6 +252,13 @@ namespace triagens {
         AstNode* createNodeFilter (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST filter node for an UPSERT query
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeUpsertFilter (AstNode const*, 
+                                         AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST return node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -255,10 +270,7 @@ namespace triagens {
 
         AstNode* createNodeRemove (AstNode const*,
                                    AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST insert node
@@ -266,11 +278,7 @@ namespace triagens {
 
         AstNode* createNodeInsert (AstNode const*,
                                    AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
-
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST update node
@@ -279,10 +287,7 @@ namespace triagens {
         AstNode* createNodeUpdate (AstNode const*,
                                    AstNode const*,
                                    AstNode const*,
-                                   AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST replace node
@@ -291,10 +296,18 @@ namespace triagens {
         AstNode* createNodeReplace (AstNode const*,
                                     AstNode const*,
                                     AstNode const*,
+                                    AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST upsert node
+////////////////////////////////////////////////////////////////////////////////
+
+        AstNode* createNodeUpsert (AstNodeType,
                                    AstNode const*,
-                                   char const* NewOld = nullptr,
-                                   char const* varInto = nullptr,
-                                   char const* varReturn = nullptr);
+                                   AstNode const*,
+                                   AstNode const*,
+                                   AstNode const*,
+                                   AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST collect node
@@ -382,14 +395,14 @@ namespace triagens {
 /// @brief create an AST unary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeUnaryOperator (AstNodeType type,
+        AstNode* createNodeUnaryOperator (AstNodeType,
                                           AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST binary operator
 ////////////////////////////////////////////////////////////////////////////////
 
-        AstNode* createNodeBinaryOperator (AstNodeType type,
+        AstNode* createNodeBinaryOperator (AstNodeType,
                                            AstNode const*,
                                            AstNode const*);
 
@@ -400,13 +413,6 @@ namespace triagens {
         AstNode* createNodeTernaryOperator (AstNode const*,
                                             AstNode const*,
                                             AstNode const*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST subquery node
-////////////////////////////////////////////////////////////////////////////////
-
-        AstNode* createNodeSubquery (char const*,
-                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST attribute access node
@@ -536,7 +542,7 @@ namespace triagens {
 /// @brief optimizes the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-        void optimize ();
+        void validateAndOptimize ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief determines the variables referenced in an expression

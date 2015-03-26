@@ -140,10 +140,17 @@ static bool Progress = true;
 static string TestCase = "version";
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief print out replies on error
+////////////////////////////////////////////////////////////////////////////////
+
+static bool verbose = false;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief includes all the test cases
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Benchmark/test-cases.h"
+
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -194,6 +201,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("complexity", &Complexity, "complexity parameter for the test")
     ("delay", &Delay, "use a startup delay (necessary only when run in series)")
     ("progress", &Progress, "show progress")
+    ("verbose", &verbose, "print out replies if the http-header indicates db-errors")
   ;
 
   BaseClient.setupGeneral(description);
@@ -355,7 +363,8 @@ int main (int argc, char* argv[]) {
         BaseClient.connectTimeout(),
         BaseClient.sslProtocol(),
         KeepAlive,
-        Async);
+        Async,
+        verbose);
 
     threads.push_back(thread);
     thread->setOffset((size_t) (i * realStep));
@@ -412,6 +421,7 @@ int main (int argc, char* argv[]) {
   }
 
   size_t failures = operationsCounter.failures();
+  size_t incomplete = operationsCounter.incompleteFailures();
 
   cout << endl;
   cout << "Total number of operations: " << Operations <<
@@ -436,6 +446,9 @@ int main (int argc, char* argv[]) {
 
   if (failures > 0) {
     cerr << "WARNING: " << failures << " arangob request(s) failed!!" << endl;
+  }
+  if (incomplete > 0) {
+    cerr << "WARNING: " << incomplete << " arangob requests with incomplete results!!" << endl;
   }
 
   testCase->tearDown();

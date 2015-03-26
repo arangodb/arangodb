@@ -38,10 +38,10 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ServerState.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/CollectionNameResolver.h"
-#include "Utils/Exception.h"
 #include "Utils/StandaloneTransactionContext.h"
 #include "Utils/V8TransactionContext.h"
 #include "V8Server/ApplicationV8.h"
@@ -446,7 +446,7 @@ std::string Query::extractRegion (int line,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error
+/// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -460,6 +460,28 @@ void Query::registerError (int code,
   }
   
   THROW_ARANGO_EXCEPTION_PARAMS(code, details);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error with a custom error message
+/// this also makes the query abort
+////////////////////////////////////////////////////////////////////////////////
+
+void Query::registerErrorCustom (int code,
+                                 char const* details) {
+
+  TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
+
+  if (details == nullptr) {
+    THROW_ARANGO_EXCEPTION(code);
+  }
+  
+  std::string errorMessage(TRI_errno_string(code));
+  errorMessage.append(": ");
+  errorMessage.append(details);
+
+std::cout << "REGISTER ERROR CUSTOM: " << errorMessage << "\n";
+  THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -504,7 +526,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
 
       // optimize the ast
       enterState(AST_OPTIMIZATION);
-      parser->ast()->optimize();
+      parser->ast()->validateAndOptimize();
       // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
@@ -597,7 +619,7 @@ QueryResult Query::prepare (QueryRegistry* registry) {
     _engine = engine;
     return QueryResult();
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   }
@@ -667,7 +689,7 @@ QueryResult Query::execute (QueryRegistry* registry) {
 
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResult(ex.code(), ex.message() + getStateString());
   }
@@ -713,7 +735,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
       /// json.reserve(n);
       
       for (size_t i = 0; i < n; ++i) {
-        AqlValue val = value->getValue(i, 0);
+        AqlValue val = value->getValueReference(i, 0);
 
         if (! val.isEmpty()) {
           result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
@@ -739,7 +761,7 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
 
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     cleanupPlanAndEngine(ex.code());
     return QueryResultV8(ex.code(), ex.message() + getStateString());
   }
@@ -766,7 +788,7 @@ QueryResult Query::parse () {
     Parser parser(this);
     return parser.parse(true);
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message());
   }
   catch (...) {
@@ -790,8 +812,8 @@ QueryResult Query::explain () {
     parser.ast()->injectBindParameters(_bindParameters);
 
     enterState(AST_OPTIMIZATION);
-    // optimize the ast
-    parser.ast()->optimize();
+    // optimize and validate the ast
+    parser.ast()->validateAndOptimize();
     // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser.ast()->toJson(TRI_UNKNOWN_MEM_ZONE)) << "\n";
 
     // create the transaction object, but do not start it yet
@@ -854,7 +876,7 @@ QueryResult Query::explain () {
 
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return QueryResult(ex.code(), ex.message() + getStateString());
   }
   catch (std::bad_alloc const&) {

@@ -447,7 +447,7 @@ namespace triagens {
             try {
               status = handler->execute();
             }
-            catch (basics::TriagensError const& ex) {
+            catch (basics::Exception const& ex) {
               RequestStatisticsAgentSetExecuteError(handler);
 
               handler->handleError(ex);
@@ -455,14 +455,14 @@ namespace triagens {
             catch (std::exception const& ex) {
               RequestStatisticsAgentSetExecuteError(handler);
 
-              basics::InternalError err(ex, __FILE__, __LINE__);
+              basics::Exception err(TRI_ERROR_SYS_ERROR, ex.what(), __FILE__, __LINE__);
               handler->handleError(err);
             }
             catch (...) {
               RequestStatisticsAgentSetExecuteError(handler);
 
-              basics::InternalError err("handleRequestDirectly", __FILE__, __LINE__);
-              handler->handleError(err);
+              basics::Exception ex(TRI_ERROR_SYS_ERROR, __FILE__, __LINE__);
+              handler->handleError(ex);
             }
             handler->finalizeExecute();
 
@@ -474,9 +474,9 @@ namespace triagens {
             typename HF::GeneralResponse * response = handler->getResponse();
 
             if (response == nullptr) {
-              basics::InternalError err("no response received from handler", __FILE__, __LINE__);
+              basics::Exception ex(TRI_ERROR_INTERNAL, "no response received from handler", __FILE__, __LINE__);
 
-              handler->handleError(err);
+              handler->handleError(ex);
               response = handler->getResponse();
             }
 
@@ -490,10 +490,10 @@ namespace triagens {
               LOG_ERROR("cannot get any response");
             }
           }
-          catch (basics::TriagensError const& ex) {
+          catch (basics::Exception const& ex) {
             RequestStatisticsAgentSetExecuteError(handler);
 
-            LOG_ERROR("caught exception: %s", DIAGNOSTIC_INFORMATION(ex));
+            LOG_ERROR("caught exception: %s", ex.what());
           }
           catch (std::exception const& ex) {
             RequestStatisticsAgentSetExecuteError(handler);

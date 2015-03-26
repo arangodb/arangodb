@@ -33,6 +33,8 @@
 #include "Basics/Common.h"
 #include <functional>
 
+struct TRI_json_t;
+
 namespace triagens {
   namespace basics {
 
@@ -210,6 +212,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::set<std::string> helpOptions () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get default value for an option
+////////////////////////////////////////////////////////////////////////////////
+
+        struct TRI_json_t* getDefault (std::string const&) const;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      public types

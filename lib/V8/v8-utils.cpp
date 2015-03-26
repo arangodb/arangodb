@@ -38,6 +38,7 @@
 
 #include "Basics/Dictionary.h"
 #include "Basics/Nonce.h"
+#include "Basics/ProgramOptions.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
@@ -330,6 +331,30 @@ static void FillDistribution (v8::Isolate* isolate,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      JS functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the program options
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Options (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("options()");
+  }
+      
+  auto json = triagens::basics::ProgramOptions::getJson();
+
+  if (json != nullptr) {
+    auto result = TRI_ObjectJson(isolate, json);
+
+    result->ToObject()->ForceDelete(TRI_V8_STRING("server.password"));
+    TRI_V8_RETURN(result);
+  }
+
+  TRI_V8_RETURN(v8::Object::New(isolate));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decodes a base64-encoded string
@@ -1095,6 +1120,7 @@ static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (rc != TRI_ERROR_NO_ERROR) {
     TRI_V8_THROW_EXCEPTION_MESSAGE(rc, err);
   }
+
   TRI_V8_RETURN_TRUE();
 }
 
@@ -1622,6 +1648,16 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   v8::Handle<v8::Value> filename = args[0];
+    
+  // save state of __dirname and __filename
+  v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+  auto oldFilename = current->Get(TRI_V8_ASCII_STRING("__filename"));
+  current->ForceSet(TRI_V8_ASCII_STRING("__filename"), filename);
+  
+  auto oldDirname = current->Get(TRI_V8_ASCII_STRING("__dirname"));
+  auto dirname = TRI_Dirname(TRI_ObjectToString(filename).c_str());
+  current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
 
   v8::Handle<v8::Value> result =
     TRI_ExecuteJavaScriptString(isolate,
@@ -1629,6 +1665,20 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                 TRI_V8_PAIR_STRING(content, length),
                                 filename->ToString(),
                                 false);
+ 
+  // restore old values for __dirname and __filename
+  if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
+    current->ForceDelete(TRI_V8_ASCII_STRING("__filename"));
+  }
+  else {
+    current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
+  }
+  if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
+    current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
+  }
+  else {
+    current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+  }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);
@@ -4128,6 +4178,11 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void TRI_InitV8Env (v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
+                           string const& startupPath,
+                           string const& modules);
+
 void TRI_InitV8Utils (v8::Isolate* isolate,
                       v8::Handle<v8::Context> context,
                       string const& startupPath,
@@ -4136,6 +4191,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
 
   // check the isolate
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
+  TRI_ASSERT(v8g != nullptr);
 
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::ObjectTemplate> rt;
@@ -4176,12 +4232,13 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   rt = ft->InstanceTemplate();
   v8g->SleepAndRequeueTempl.Reset(isolate, rt);
   v8g->SleepAndRequeueFuncTempl.Reset(isolate, ft);
+
   // .............................................................................
   // create the global functions
   // .............................................................................
 
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"), JS_GetTempFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"), JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
@@ -4221,6 +4278,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_LOG"), JS_Log);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_LOG_LEVEL"), JS_LogLevel);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_MD5"), JS_Md5);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_OPTIONS"), JS_Options);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_OUTPUT"), JS_Output);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
@@ -4278,6 +4336,8 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"), DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PLATFORM"), TRI_V8_ASCII_STRING(TRI_PLATFORM));
+
+  TRI_InitV8Env(isolate,  context, startupPath, modules);
 }
 
 // -----------------------------------------------------------------------------

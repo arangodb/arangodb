@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Utils/Exception.h"
 #include "Aql/VariableGenerator.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;

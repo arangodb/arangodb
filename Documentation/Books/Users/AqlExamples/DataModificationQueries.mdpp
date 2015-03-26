@@ -163,3 +163,97 @@ FOR u IN users
 
 This will continue execution of the query even if errors occur during the
 *REPLACE* operation. It works similar for *UPDATE*, *INSERT*, and *REMOVE*.
+
+
+###Altering substructures
+
+To modify lists in documents we have to work with temporary variables.
+We will collect the sublist in there and alter it. We choose a simple
+boolean filter condition to make the query better comprehensible.
+
+First lets create a collection with a sample:
+
+```js
+database = db._create('complexCollection')
+database.save({ 
+  "topLevelAttribute" : "a", 
+  "subList" : [ 
+    { 
+      "attributeToAlter" : "oldValue", 
+      "filterByMe" : true 
+    }, 
+    { 
+      "attributeToAlter" : "moreOldValues", 
+      "filterByMe" : true 
+    }, 
+    { 
+      "attributeToAlter" : "unchangedValue", 
+      "filterByMe" : false 
+    } 
+  ] 
+})
+```
+
+Heres the Query which keeps the *subList* on *alteredList* to update it later:
+
+```js
+FOR document in complexCollection
+  LET alteredList = (
+    FOR element IN document.subList 
+       LET newItem = (! element.filterByMe ?
+                      element :
+                      MERGE(element, { attributeToAlter: "shiny New Value" }))
+       RETURN newItem)
+  UPDATE document WITH { subList:  alteredList } IN complexCollection
+```
+
+While the query as it is is now functional:
+
+```js
+db.complexCollection.toArray()
+[ 
+  { 
+    "_id" : "complexCollection/392671569467", 
+    "_key" : "392671569467", 
+    "_rev" : "392799430203", 
+    "topLevelAttribute" : "a", 
+    "subList" : [ 
+      { 
+        "filterByMe" : true, 
+        "attributeToAlter" : "shiny New Value" 
+      }, 
+      { 
+        "filterByMe" : true, 
+        "attributeToAlter" : "shiny New Value" 
+      }, 
+      { 
+        "filterByMe" : false, 
+        "attributeToAlter" : "unchangedValue" 
+      } 
+    ] 
+  } 
+]
+```
+
+It will probably be soonish a performance bottleneck, since it **modifies**
+all documents in the collection **regardless whether the values change or not**.
+Therefore we want to only *UPDATE* the documents if we really change their value.
+Hence we employ a second *FOR* to test whether *subList* will be altered or not:
+
+```js
+FOR document in complexCollection
+  LET willUpdateDocument = (
+    FOR element IN docToAlter.subList 
+      FILTER element.filterByMe LIMIT 1 RETURN 1)
+
+  FILTER LENGTH(willUpdateDocument) > 0
+
+  LET alteredList = (
+    FOR element IN document.subList 
+       LET newItem = (! element.filterByMe ?
+                      element :
+                      MERGE(element, { attributeToAlter: "shiny New Value" }))
+       RETURN newItem)
+
+  UPDATE document WITH { subList:  alteredList } IN complexCollection
+```

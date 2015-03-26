@@ -29,7 +29,8 @@
     catchExceptions: 'catchExceptions',
     runtime_modes: ["node", "inline", "window", "none", "browserify", "interp"],
     trampoline: "trampoline",
-    context: "context"
+    context: "context",
+    defer_arg: "__iced_defer_"
   };
 
 }).call(this);

@@ -43,8 +43,8 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::arango;
 
-double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 3.0;
-double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 300.0;
+double const ArangoClient::DEFAULT_CONNECTION_TIMEOUT = 5.0;
+double const ArangoClient::DEFAULT_REQUEST_TIMEOUT    = 1200.0;
 size_t const ArangoClient::DEFAULT_RETRIES            = 2;
 
 double const ArangoClient::LONG_TIMEOUT               = 86400.0;
@@ -53,7 +53,7 @@ bool cygwinShell = false;
 #endif
 namespace {
 #ifdef _WIN32
-bool _newLine () {
+  bool _newLine () {
     COORD pos;
     CONSOLE_SCREEN_BUFFER_INFO  bufferInfo;
     GetConsoleScreenBufferInfo(GetStdHandle(STD_OUTPUT_HANDLE), &bufferInfo);
@@ -95,6 +95,7 @@ bool _newLine () {
 
 #endif
 }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                class ArangoClient
 // -----------------------------------------------------------------------------
@@ -109,7 +110,7 @@ bool _newLine () {
 /// This sequence must be used before any non-visible characters in the prompt.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const * ArangoClient::PROMPT_IGNORE_START = "\001";
+char const* ArangoClient::PROMPT_IGNORE_START = "\001";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ignore sequence used for prompt length calculation (end point)
@@ -117,7 +118,7 @@ char const * ArangoClient::PROMPT_IGNORE_START = "\001";
 /// This sequence must be used behind any non-visible characters in the prompt.
 ////////////////////////////////////////////////////////////////////////////////
 
-char const * ArangoClient::PROMPT_IGNORE_END = "\002";
+char const* ArangoClient::PROMPT_IGNORE_END = "\002";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -149,7 +150,7 @@ ArangoClient::ArangoClient (char const* appName)
     _usePager(false),
 
     _logFile(""),
-    _log(0),
+    _log(nullptr),
     _logOptions(false),
 
     _serverOptions(false),
@@ -353,7 +354,7 @@ void ArangoClient::parse (ProgramOptions& options,
   else {
     char* d = TRI_LocateConfigDirectory();
 
-    if (d != 0) {
+    if (d != nullptr) {
       string sysDir = string(d) + initFilename;
       TRI_FreeString(TRI_CORE_MEM_ZONE, d);
 
@@ -567,7 +568,7 @@ void ArangoClient::_printLine (const string &s) {
 
 void ArangoClient::printLine (const string& s, bool forceNewLine) {
 #if _WIN32
-  if (!cygwinShell) {
+  if (! cygwinShell) {
     // no, we cannot use std::cout as this doesn't support UTF-8 on Windows
     //fprintf(stdout, "%s\r\n", s.c_str());
     TRI_vector_string_t subStrings = TRI_SplitString(s.c_str(), '\n');
@@ -612,7 +613,7 @@ void ArangoClient::printContinuous (const string& s) {
 
 void ArangoClient::startPager () {
   // not supported
-  if (!_usePager || _usePager) {
+  if (! _usePager || _usePager) {
     return;
   }
 }
@@ -627,7 +628,7 @@ void ArangoClient::startPager () {
 
   _pager = popen(_outputPager.c_str(), "w");
 
-  if (_pager == 0) {
+  if (_pager == nullptr) {
     printf("popen() failed! Using stdout instead!\n");
     _pager = stdout;
     _usePager = false;
@@ -725,7 +726,7 @@ void ArangoClient::openLog () {
     _log = fopen(_logFile.c_str(), "w");
 
     ostringstream s;
-    if (_log == 0) {
+    if (_log == nullptr) {
       s << "Cannot open file '" << _logFile << "' for logging.";
       printErrLine(s.str());
     }
@@ -741,9 +742,9 @@ void ArangoClient::openLog () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ArangoClient::closeLog () {
-  if (! _logFile.empty() && _log != 0) {
+  if (! _logFile.empty() && _log != nullptr) {
     fclose(_log);
-    _log = 0;
+    _log = nullptr;
   }
 }
 
@@ -832,8 +833,9 @@ void ArangoClient::createEndpoint () {
 
 void ArangoClient::createEndpoint (string const& definition) {
   // close previous endpoint
-  if (_endpointServer != 0) {
+  if (_endpointServer != nullptr) {
     delete _endpointServer;
+    _endpointServer = nullptr;
   }
 
   _endpointServer = Endpoint::clientFactory(definition);

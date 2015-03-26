@@ -600,7 +600,7 @@ int TRI_CopyDataVectorPointer (TRI_vector_pointer_t* dst,
 /// @brief returns true if the vector is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EmptyVectorPointer (TRI_vector_pointer_t* vector) {
+bool TRI_EmptyVectorPointer (TRI_vector_pointer_t const* vector) {
   return vector->_length == 0;
 }
 
@@ -966,7 +966,7 @@ int TRI_CopyDataFromVectorPointerVectorString (TRI_memory_zone_t* zone,
 /// @brief returns true if the vector is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_EmptyVectorString (TRI_vector_string_t* vector) {
+bool TRI_EmptyVectorString (TRI_vector_string_t const* vector) {
   return vector->_length == 0;
 }
 

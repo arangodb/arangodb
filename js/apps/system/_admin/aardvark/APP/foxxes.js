@@ -209,7 +209,7 @@
   controller.patch("/config", function(req, res) {
     var mount = validateMount(req);
     var data = req.body();
-    res.json(FoxxManager.configure(mount, data));
+    res.json(FoxxManager.configure(mount, {configuration: data}));
   }).queryParam("mount", mountPoint);
 
   /** Trigger setup script for an app

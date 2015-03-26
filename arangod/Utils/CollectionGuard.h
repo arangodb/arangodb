@@ -31,7 +31,7 @@
 #define ARANGODB_UTILS_COLLECTION_GUARD_H 1
 
 #include "Basics/Common.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/vocbase.h"
 
 namespace triagens {

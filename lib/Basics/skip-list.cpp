@@ -74,7 +74,7 @@ SkipListNode* SkipList::allocNode (int height) {
   void* ptr = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(SkipListNode) + sizeof(SkipListNode*) * height, false);
 
   if (ptr == nullptr) {
-    THROW_OUT_OF_MEMORY_ERROR();
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   SkipListNode* newNode;

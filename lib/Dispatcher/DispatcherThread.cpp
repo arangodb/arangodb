@@ -135,12 +135,12 @@ void DispatcherThread::run () {
         // and do all the dirty work
         status = job->work();
       }
-      catch (TriagensError const& ex) {
+      catch (Exception const& ex) {
         try {
           job->handleError(ex);
         }
-        catch (TriagensError const& ex) {
-          LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
+        catch (Exception const& ex) {
+          LOG_WARNING("caught error while handling error: %s", ex.what());
         }
         catch (std::exception const& ex) {
           LOG_WARNING("caught error while handling error: %s", ex.what());
@@ -153,12 +153,12 @@ void DispatcherThread::run () {
       }
       catch (std::exception const& ex) {
         try {
-          InternalError err(string("job failed with unknown in work: ") + ex.what(), __FILE__, __LINE__);
+          Exception ex(TRI_ERROR_INTERNAL, string("job failed with unknown in work: ") + ex.what(), __FILE__, __LINE__);
 
-          job->handleError(err);
+          job->handleError(ex);
         }
-        catch (TriagensError const& ex) {
-          LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
+        catch (Exception const& ex) {
+          LOG_WARNING("caught error while handling error: %s", ex.what());
         }
         catch (std::exception const& ex) {
           LOG_WARNING("caught error while handling error: %s", ex.what());
@@ -178,11 +178,11 @@ void DispatcherThread::run () {
 #endif
 
         try {
-          InternalError err("job failed with unknown error in work", __FILE__, __LINE__);
+          Exception ex(TRI_ERROR_INTERNAL, "job failed with unknown error in work", __FILE__, __LINE__);
 
-          job->handleError(err);
+          job->handleError(ex);
         }
-        catch (TriagensError const& ex) {
+        catch (Exception const& ex) {
           LOG_WARNING("caught error while handling error: %s", DIAGNOSTIC_INFORMATION(ex));
         }
         catch (std::exception const& ex) {

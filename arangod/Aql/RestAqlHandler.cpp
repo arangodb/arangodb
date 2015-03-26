@@ -434,7 +434,7 @@ void RestAqlHandler::useQuery (std::string const& operation,
       }
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     generateError(HttpResponse::SERVER_ERROR, 
                   ex.code(),
@@ -549,7 +549,7 @@ void RestAqlHandler::getInfoQuery (std::string const& operation,
       return;
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     _queryRegistry->close(_vocbase, _qId);
     LOG_ERROR("failed during use of query: %s", ex.message().c_str());    
     generateError(HttpResponse::SERVER_ERROR, 

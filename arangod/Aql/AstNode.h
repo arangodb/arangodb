@@ -31,10 +31,10 @@
 #define ARANGODB_AQL_ASTNODE_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/vector.h"
 #include "Basics/JsonHelper.h"
-#include "Utils/Exception.h"
 #include "Aql/Query.h"
 
 namespace triagens {
@@ -168,7 +168,8 @@ namespace triagens {
       NODE_TYPE_NOP                           = 50,
       NODE_TYPE_COLLECT_COUNT                 = 51,
       NODE_TYPE_COLLECT_EXPRESSION            = 52,
-      NODE_TYPE_CALCULATED_OBJECT_ELEMENT     = 53
+      NODE_TYPE_CALCULATED_OBJECT_ELEMENT     = 53,
+      NODE_TYPE_UPSERT                        = 54
     };
 
     static_assert(NODE_TYPE_VALUE < NODE_TYPE_ARRAY, "incorrect node types");
@@ -186,7 +187,7 @@ namespace triagens {
 
       static std::unordered_map<int, std::string const> const Operators;
       static std::unordered_map<int, std::string const> const TypeNames;
-      static std::unordered_map<int, std::string const> const valueTypeNames;
+      static std::unordered_map<int, std::string const> const ValueTypeNames;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -595,9 +596,18 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the int value of a node
+/// this will return 0 for all non-value nodes and for all non-int value nodes!!
 ////////////////////////////////////////////////////////////////////////////////
 
         int64_t getIntValue () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the int value stored for a node, regardless of the node type
+////////////////////////////////////////////////////////////////////////////////
+
+        int64_t getIntValue (bool) const {
+          return value.value._int;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the int value of a node

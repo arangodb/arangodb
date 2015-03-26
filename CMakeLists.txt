@@ -33,7 +33,6 @@ set(BIN_ARANGOB       arangob)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOIMP     arangoimp)
-set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
@@ -132,7 +131,7 @@ endif ()
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   option(DARWIN "Building for MacOS" ON)
 else ()
-  option(DARWIN "Building for MacOS" OF)
+  option(DARWIN "Building for MacOS" OFF)
 endif ()
 
 
@@ -147,16 +146,6 @@ endif ()
 set(ARANGODB_VERSION "1.x.y-rc1" CACHE path "ArangoDB version")
 
 ################################################################################
-### @brief MRUBY
-################################################################################
-
-option(USE_MRUBY "Do you want to use MRUBY" OFF)
-
-if (USE_MRUBY)
-  add_definitions("-DTRI_ENABLE_MRUBY=1")
-endif ()
-
-################################################################################
 ### @brief VISTA LOCKS
 ################################################################################
 
@@ -164,15 +153,6 @@ option(USE_VISTA_LOCKS "Do you want to use Windows Vista R/W locks" OFF)
 
 if (USE_VISTA_LOCKS)
   add_definitions("-DTRI_WINDOWS_VISTA_LOCKS=1")
-endif ()
-
-################################################################################
-### @brief etcd
-################################################################################
-
-if (DARWIN)
-  install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
-          DESTINATION ${TRI_BINDIR_INSTALL})
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -387,6 +367,16 @@ else()
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
 
+endif ()
+
+
+################################################################################
+### @brief etcd
+################################################################################
+
+if (DARWIN)
+  install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
+          DESTINATION ${TRI_BINDIR_INSTALL})
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -744,14 +734,6 @@ add_subdirectory(arangosh)
 ################################################################################
 
 add_subdirectory(arangod)
-
-################################################################################
-### @brief arangoirb
-################################################################################
-
-if (USE_MRUBY)
-  add_subdirectory(arangoirb)
-endif ()
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                    DOCUMENTATIONS

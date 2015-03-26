@@ -63,7 +63,7 @@ namespace triagens {
         RestBaseHandler (rest::HttpRequest* request);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               HttpHandler methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
       public:
@@ -72,7 +72,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::TriagensError const&);
+        void handleError (basics::Exception const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

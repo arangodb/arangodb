@@ -66,6 +66,61 @@ function ahuacatlBindTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with underscored variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindNamesWithUnderscore1 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      var actual = getQueryResults("FOR u IN @_values FILTER u != @_value RETURN u", { "_values" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "_value" : 8 });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with underscored variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindNamesWithUnderscore2 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      var actual = getQueryResults("FOR u IN @values_to_look_in FILTER u != @value_to_look_for RETURN u", { "values_to_look_in" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "value_to_look_for" : 8 });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with underscored variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindNamesWithUnderscore3 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      var actual = getQueryResults("FOR u IN @values_ FILTER u != @value_ RETURN u", { "values_" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "value_" : 8 });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with underscored variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindNamesWithUnderscore4 : function () {
+      var expected = [ 1, 2, 3, 4, 5, 6, 7, 9 ];
+      var actual = getQueryResults("FOR u IN @___values___ FILTER u != @___value___ RETURN u", { "___values___" : [ 1, 2, 3, 4, 5, 6, 7, 8, 9 ], "___value___" : 8 });
+
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test bind with underscored variables
+////////////////////////////////////////////////////////////////////////////////
+
+    testBindNamesWithUnderscoreInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @@_", { "_" : 1 });
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @@__", { "__" : 1 });
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @_", { "_" : 1 });
+      assertQueryError(errors.ERROR_QUERY_PARSE.code, "FOR u IN [ 1, 2 ] RETURN @__", { "__" : 1 });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test asc / desc variable
 ////////////////////////////////////////////////////////////////////////////////
 

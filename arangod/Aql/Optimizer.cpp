@@ -486,7 +486,13 @@ void Optimizer::setupRules () {
                removeCollectIntoRule,
                removeCollectIntoRule_pass5,
                true);
-
+  
+  // remove unused out variables for data-modification queries
+  registerRule("remove-data-modification-out-variables",
+               removeDataModificationOutVariablesRule,
+               removeDataModificationOutVariablesRule_pass5,
+               true);
+        
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes",
                propagateConstantAttributesRule,

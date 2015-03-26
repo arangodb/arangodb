@@ -189,7 +189,7 @@ bool V8QueueJob::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void V8QueueJob::handleError (TriagensError const& ex) {
+void V8QueueJob::handleError (Exception const& ex) {
 }
 
 // -----------------------------------------------------------------------------
