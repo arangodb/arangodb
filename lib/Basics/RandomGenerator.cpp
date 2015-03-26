@@ -266,19 +266,19 @@ namespace RandomHelper {
       uint32_t random () { return 0; }
 #else
     public:
-      RandomDeviceWin32 () : cryptoHandle(nullptr), pos(0)  {
+      RandomDeviceWin32 () : cryptoHandle(0), pos(0)  {
         BOOL result;
         result = CryptAcquireContext(&cryptoHandle, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-        if (cryptoHandle == nullptr || result == FALSE) {
+        if (cryptoHandle == 0 || result == FALSE) {
           std::string message("cannot create cryptographic windows handle");
-          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, message);
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
         }
         fillBuffer();
       }
 
 
       ~RandomDeviceWin32 () {
-        if (cryptoHandle != nullptr) {
+        if (cryptoHandle != 0) {
           CryptReleaseContext(cryptoHandle, 0);
         }
       }
