@@ -124,8 +124,8 @@
     ),
     files: (
       joi.object().optional()
-      .pattern(RE_NOT_FQPATH, joi.forbidden())
-      .pattern(RE_FQPATH, joi.string().required())
+      .pattern(RE_EMPTY, joi.forbidden())
+      .pattern(RE_NOT_EMPTY, joi.string().required())
     ),
     isSystem: joi.boolean().default(false),
     keywords: joi.array().optional(),
