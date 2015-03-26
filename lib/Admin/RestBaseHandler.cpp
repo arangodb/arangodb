@@ -60,20 +60,10 @@ RestBaseHandler::RestBaseHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void RestBaseHandler::handleError (const TriagensError& error) {
-  generateError(HttpResponse::SERVER_ERROR,
-                TRI_ERROR_INTERNAL,
-                DIAGNOSTIC_INFORMATION(error));
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void RestBaseHandler::handleError (const Exception& error) {
-  generateError(HttpResponse::responseCode(error.code()),
-                error.code(),
-                DIAGNOSTIC_INFORMATION(error));
+void RestBaseHandler::handleError (Exception const& ex) {
+  generateError(HttpResponse::responseCode(ex.code()),
+                ex.code(),
+                ex.what());
 }
 
 // -----------------------------------------------------------------------------

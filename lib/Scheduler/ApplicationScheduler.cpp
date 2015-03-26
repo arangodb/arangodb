@@ -190,7 +190,7 @@ static SignalTask* localSignalTask;
       bool handleSignal () {
         Scheduler* scheduler = this->_scheduler->scheduler();
 
-        if (scheduler != 0) {
+        if (scheduler != nullptr) {
           bool isActive = scheduler->isActive();
 
           LOG_INFO("sigusr1 received - setting active flag to %d", (int) (! isActive));
@@ -334,7 +334,7 @@ static SignalTask* localSignalTask;
 ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer)
   : ApplicationFeature("scheduler"),
     _applicationServer(applicationServer),
-    _scheduler(0),
+    _scheduler(nullptr),
     _tasks(),
     _reportInterval(60.0),
     _multiSchedulerAllowed(true),
@@ -348,9 +348,7 @@ ApplicationScheduler::ApplicationScheduler (ApplicationServer* applicationServer
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationScheduler::~ApplicationScheduler () {
-  if (_scheduler != 0) {
-    delete _scheduler;
-  }
+  delete _scheduler;
 }
 
 // -----------------------------------------------------------------------------
@@ -378,11 +376,10 @@ Scheduler* ApplicationScheduler::scheduler () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::installSignalHandler (SignalTask* task) {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot install signal handler");
   }
 
-  TRI_ASSERT(_scheduler != 0);
   _scheduler->registerTask(task);
 }
 
@@ -488,11 +485,6 @@ bool ApplicationScheduler::start () {
 
   if (! ok) {
     LOG_FATAL_AND_EXIT("the scheduler cannot be started");
-
-    delete _scheduler;
-    _scheduler = 0;
-
-    return false;
   }
 
   while (! _scheduler->isStarted()) {
@@ -512,7 +504,7 @@ bool ApplicationScheduler::open () {
     return true;
   }
 
-  if (_scheduler != 0) {
+  if (_scheduler != nullptr) {
     return _scheduler->open();
   }
 
@@ -528,7 +520,7 @@ void ApplicationScheduler::stop () {
     return;
   }
 
-  if (_scheduler != 0) {
+  if (_scheduler != nullptr) {
     static size_t const MAX_TRIES = 10;
 
     // remove all helper tasks
@@ -552,7 +544,7 @@ void ApplicationScheduler::stop () {
 
     // delete the scheduler
     delete _scheduler;
-    _scheduler = 0;
+    _scheduler = nullptr;
   }
 }
 
@@ -565,7 +557,7 @@ void ApplicationScheduler::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::buildScheduler () {
-  if (_scheduler != 0) {
+  if (_scheduler != nullptr) {
     LOG_FATAL_AND_EXIT("a scheduler has already been created");
   }
 
@@ -577,11 +569,9 @@ void ApplicationScheduler::buildScheduler () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::buildSchedulerReporter () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
-
-  TRI_ASSERT(_scheduler != 0);
 
   if (0.0 < _reportInterval) {
     Task* reporter = new SchedulerReporterTask(_scheduler, _reportInterval);
@@ -596,11 +586,9 @@ void ApplicationScheduler::buildSchedulerReporter () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationScheduler::buildControlCHandler () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_FATAL_AND_EXIT("no scheduler is known, cannot create control-c handler");
   }
-
-  TRI_ASSERT(_scheduler != 0);
 
   // control C handler
   Task* controlC = new ControlCTask(_applicationServer);

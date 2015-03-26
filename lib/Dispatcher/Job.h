@@ -32,7 +32,7 @@
 #define ARANGODB_DISPATCHER_JOB_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/Exceptions.h"
 #include "Statistics/StatisticsAgent.h"
 
 // -----------------------------------------------------------------------------
@@ -208,7 +208,7 @@ namespace triagens {
 /// @brief handle error and delete
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void handleError (basics::TriagensError const&) = 0;
+        virtual void handleError (basics::Exception const&) = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

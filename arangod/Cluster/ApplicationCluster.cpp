@@ -65,7 +65,7 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
     _server(server),
     _dispatcher(dispatcher),
     _applicationV8(applicationV8),
-    _heartbeat(0),
+    _heartbeat(nullptr),
     _heartbeatInterval(0),
     _agencyEndpoints(),
     _agencyPrefix(),
@@ -92,10 +92,7 @@ ApplicationCluster::ApplicationCluster (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationCluster::~ApplicationCluster () {
-  if (_heartbeat != nullptr) {
-    // flat line.....
-    delete _heartbeat;
-  }
+  delete _heartbeat;
 }
 
 // -----------------------------------------------------------------------------

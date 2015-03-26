@@ -100,7 +100,8 @@ namespace RandomHelper {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
         if (fd < 0) {
-          THROW_INTERNAL_ERROR("cannot open random source '" + path + "'");
+          std::string message("cannot open random source '" + path + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
         }
 
         fillBuffer();
@@ -163,7 +164,8 @@ namespace RandomHelper {
         fd = TRI_OPEN(path.c_str(), O_RDONLY);
 
         if (fd < 0) {
-          THROW_INTERNAL_ERROR("cannot open random source '" + path + "'");
+          std::string message("cannot open random source '" + path + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
         }
 
         // ..............................................................................
@@ -180,7 +182,8 @@ namespace RandomHelper {
               ok = (flags >= 0);
             }
             if (! ok) {
-              THROW_INTERNAL_ERROR("cannot switch random source '" + path + "' to non-blocking");
+              std::string message("cannot switch random source '" + path + "' to non-blocking");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
             }
           #endif
         }
@@ -260,21 +263,22 @@ namespace RandomHelper {
     public:
       RandomDeviceWin32 () { TRI_ASSERT(false); }
       ~RandomDeviceWin32 () {}
-      uint32_t random () { return 0;}
+      uint32_t random () { return 0; }
 #else
     public:
-      RandomDeviceWin32 () : cryptoHandle(0), pos(0)  {
+      RandomDeviceWin32 () : cryptoHandle(nullptr), pos(0)  {
         BOOL result;
-        result = CryptAcquireContext(&cryptoHandle, NULL, NULL, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-        if (cryptoHandle == 0 || result == FALSE) {
-          THROW_INTERNAL_ERROR("cannot create cryptographic windows handle");
+        result = CryptAcquireContext(&cryptoHandle, nullptr, nullptr, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
+        if (cryptoHandle == nullptr || result == FALSE) {
+          std::string message("cannot create cryptographic windows handle");
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL, message);
         }
         fillBuffer();
       }
 
 
       ~RandomDeviceWin32 () {
-        if (cryptoHandle != 0) {
+        if (cryptoHandle != nullptr) {
           CryptReleaseContext(cryptoHandle, 0);
         }
       }
@@ -494,8 +498,8 @@ namespace triagens {
       int32_t UniformInteger::random () {
         MUTEX_LOCKER(RandomLock);
 
-        if (uniformInteger == 0) {
-          THROW_INTERNAL_ERROR("unknown random generator");
+        if (uniformInteger == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown random generator");
         }
 
         return uniformInteger->random(left, right);
@@ -559,9 +563,9 @@ namespace triagens {
         random_e oldVersion = version;
         version = newVersion;
 
-        if (uniformInteger != 0) {
+        if (uniformInteger != nullptr) {
           delete uniformInteger;
-          uniformInteger = 0;
+          uniformInteger = nullptr;
         }
 
 
@@ -573,7 +577,7 @@ namespace triagens {
            }
 
           case RAND_RANDOM: {
-            if (RandomHelper::randomDevice == 0) {
+            if (RandomHelper::randomDevice == nullptr) {
               RandomHelper::randomDevice = new RandomHelper::RandomDeviceDirect<1024>("/dev/random");
             }
 
@@ -583,7 +587,7 @@ namespace triagens {
           }
 
           case RAND_URANDOM: {
-            if (RandomHelper::urandomDevice == 0) {
+            if (RandomHelper::urandomDevice == nullptr) {
               RandomHelper::urandomDevice = new RandomHelper::RandomDeviceDirect<1024>("/dev/urandom");
             }
 
@@ -593,7 +597,7 @@ namespace triagens {
           }
 
           case RAND_COMBINED: {
-            if (RandomHelper::combinedDevice == 0) {
+            if (RandomHelper::combinedDevice == nullptr) {
               RandomHelper::combinedDevice = new RandomHelper::RandomDeviceCombined<600>("/dev/random");
             }
 
@@ -603,7 +607,7 @@ namespace triagens {
           }
 
           case RAND_WIN32: {
-            if (RandomHelper::win32Device == 0) {
+            if (RandomHelper::win32Device == nullptr) {
               RandomHelper::win32Device = new RandomHelper::RandomDeviceWin32<1024>();
             }
             uniformInteger = new UniformIntegerWin32(RandomHelper::win32Device);
@@ -611,7 +615,7 @@ namespace triagens {
           }
 
           default: {
-            THROW_INTERNAL_ERROR("unknown random generator");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown random generator");
           }
 
         }
@@ -627,19 +631,19 @@ namespace triagens {
 
 
       void shutdown () {
-        if (RandomHelper::randomDevice != 0) {
+        if (RandomHelper::randomDevice != nullptr) {
           delete RandomHelper::randomDevice;
-          RandomHelper::randomDevice = 0;
+          RandomHelper::randomDevice = nullptr;
         }
 
-        if (RandomHelper::urandomDevice != 0) {
+        if (RandomHelper::urandomDevice != nullptr) {
           delete RandomHelper::urandomDevice;
-          RandomHelper::urandomDevice = 0;
+          RandomHelper::urandomDevice = nullptr;
         }
 
-        if (RandomHelper::combinedDevice != 0) {
+        if (RandomHelper::combinedDevice != nullptr) {
           delete RandomHelper::combinedDevice;
-          RandomHelper::combinedDevice = 0;
+          RandomHelper::combinedDevice = nullptr;
         }
       }
 
@@ -653,8 +657,8 @@ namespace triagens {
       int32_t interval (int32_t left, int32_t right) {
         MUTEX_LOCKER(RandomLock);
 
-        if (uniformInteger == 0) {
-          THROW_INTERNAL_ERROR("unknown random generator");
+        if (uniformInteger == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown random generator");
         }
 
         return uniformInteger->random(left, right);
@@ -665,8 +669,8 @@ namespace triagens {
       uint32_t interval (uint32_t left, uint32_t right) {
         MUTEX_LOCKER(RandomLock);
 
-        if (uniformInteger == 0) {
-          THROW_INTERNAL_ERROR("unknown random generator");
+        if (uniformInteger == nullptr) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown random generator");
         }
 
         int32_t l = left + INT32_MIN;

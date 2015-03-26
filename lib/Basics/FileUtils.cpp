@@ -48,6 +48,36 @@ using namespace std;
 namespace triagens {
   namespace basics {
     namespace FileUtils {
+            
+      void throwFileReadError (int fd, std::string const& filename) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        int res = TRI_errno();
+
+        if (fd >= 0) {
+          TRI_CLOSE(fd);
+        }
+
+        std::string message("read failed for file '" + filename + "': " + strerror(res));
+        LOG_TRACE("%s", message.c_str());
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
+      }
+      
+      void throwFileWriteError (int fd, std::string const& filename) {
+        TRI_set_errno(TRI_ERROR_SYS_ERROR);
+        int res = TRI_errno();
+
+        if (fd >= 0) {
+          TRI_CLOSE(fd);
+        }
+
+        std::string message("write failed for file '" + filename + "': " + strerror(res));
+        LOG_TRACE("%s", message.c_str());
+
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_SYS_ERROR);
+      }
+
+
       ifstream * createInput (string const& filename) {
         ifstream * s = new ifstream(filename.c_str());
 
@@ -78,8 +108,7 @@ namespace triagens {
         int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
 
         if (fd == -1) {
-          TRI_set_errno(errno);
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
+          throwFileReadError(fd, filename);
         }
 
         char buffer[10240];
@@ -93,16 +122,7 @@ namespace triagens {
           }
 
           if (n < 0) {
-            TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-            LOG_TRACE("read failed for '%s' with %s and result %d on fd %d",
-                      filename.c_str(),
-                      strerror(errno),
-                      (int) n,
-                      fd);
-
-            TRI_CLOSE(fd);
-            THROW_FILE_FUNC_ERROR("read", "", errno);
+            throwFileReadError(fd, filename);
           }
 
           result.appendText(buffer, n);
@@ -121,7 +141,7 @@ namespace triagens {
         int fd = TRI_OPEN(filename.c_str(), O_RDONLY);
 
         if (fd == -1) {
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY", errno);
+          throwFileReadError(fd, filename);
         }
 
         // reserve space in the output buffer
@@ -140,13 +160,7 @@ namespace triagens {
           }
 
           if (n < 0) {
-            TRI_CLOSE(fd);
-            LOG_TRACE("read failed for '%s' with %s and result %d on fd %d",
-                      filename.c_str(),
-                      strerror(errno),
-                      (int) n,
-                      fd);
-            THROW_FILE_FUNC_ERROR("read", "", errno);
+            throwFileReadError(fd, filename);
           }
 
           result.appendText(buffer, n);
@@ -160,21 +174,14 @@ namespace triagens {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
-          LOG_TRACE("open failed for '%s' with '%s'", filename.c_str(), strerror(errno));
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC", errno);
+          throwFileWriteError(fd, filename);
         }
 
         while (0 < len) {
           ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t) len);
 
           if (n < 1) {
-            TRI_CLOSE(fd);
-            LOG_TRACE("write failed for '%s' with %s and result %d on %d",
-                      filename.c_str(),
-                      strerror(errno),
-                      (int) n,
-                      fd);
-            THROW_FILE_FUNC_ERROR("write", "", errno);
+            throwFileWriteError(fd, filename);
           }
 
           ptr += n;
@@ -188,8 +195,7 @@ namespace triagens {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
-          LOG_TRACE("open failed for '%s' with %s", filename.c_str(), strerror(errno));
-          THROW_FILE_OPEN_ERROR("open", filename, "O_RDONLY | O_CREAT | O_TRUNC", errno);
+          throwFileWriteError(fd, filename);
         }
 
         char const* ptr = content.c_str();
@@ -199,13 +205,7 @@ namespace triagens {
           ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t) len);
 
           if (n < 1) {
-            TRI_CLOSE(fd);
-            LOG_TRACE("write failed for '%s' with %s and result %d on %d",
-                      filename.c_str(),
-                      strerror(errno),
-                      (int) n,
-                      fd);
-            THROW_FILE_FUNC_ERROR("write", "", errno);
+            throwFileWriteError(fd, filename);
           }
 
           ptr += n;
@@ -221,8 +221,7 @@ namespace triagens {
         int fd = TRI_CREATE(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR | S_IRGRP);
 
         if (fd == -1) {
-          LOG_TRACE("open failed for '%s' with %s", filename.c_str(), strerror(errno));
-          THROW_FILE_OPEN_ERROR("open", filename, "O_WRONLY | O_CREAT | O_TRUNC", errno);
+          throwFileWriteError(fd, filename);
         }
 
         char const* ptr = content.c_str();
@@ -232,13 +231,7 @@ namespace triagens {
           ssize_t n = TRI_WRITE(fd, ptr, (TRI_write_t) len);
 
           if (n < 1) {
-            TRI_CLOSE(fd);
-            LOG_TRACE("write failed for '%s' with %s and result %d on %d",
-                      filename.c_str(),
-                      strerror(errno),
-                      (int) n,
-                      fd);
-            THROW_FILE_FUNC_ERROR("write", "", errno);
+            throwFileWriteError(fd, filename);
           }
 
           ptr += n;

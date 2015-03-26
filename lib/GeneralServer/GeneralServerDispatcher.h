@@ -164,9 +164,9 @@ namespace triagens {
           typename HF::GeneralResponse * response = handler->getResponse();
 
           if (response == nullptr) {
-            basics::InternalError err("no response received from handler", __FILE__, __LINE__);
+            basics::Exception ex(TRI_ERROR_INTERNAL, "no response received from handler", __FILE__, __LINE__);
 
-            handler->handleError(err);
+            handler->handleError(ex);
             response = handler->getResponse();
           }
 

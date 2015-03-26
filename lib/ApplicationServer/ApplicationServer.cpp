@@ -225,14 +225,14 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     }
 
     // this appender consumes all usage log messages, so they are not propagated to any others
-    struct TRI_log_appender_s* appender = TRI_CreateLogAppenderFile(filename.c_str(),
-                                                                    0,
-                                                                    TRI_LOG_SEVERITY_USAGE,
-                                                                    true,
-                                                                    false);
+    int res = TRI_CreateLogAppenderFile(filename.c_str(),
+                                        nullptr,
+                                        TRI_LOG_SEVERITY_USAGE,
+                                        true,
+                                        false);
 
     // the user specified a requests log file to use but it could not be created. bail out
-    if (appender == nullptr) {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("failed to create requests logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
   }
@@ -245,14 +245,13 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
     bool ttyOut = (_logTty == "+" || _logTty == "-");
 
     if (! regularOut || ! ttyOut) {
-      struct TRI_log_appender_s* appender
-        = TRI_CreateLogAppenderFile(_logTty.c_str(),
-                                    contentFilter,
-                                    TRI_LOG_SEVERITY_UNKNOWN,
-                                    false,
-                                    true);
+      int res = TRI_CreateLogAppenderFile(_logTty.c_str(),
+                                          contentFilter,
+                                          TRI_LOG_SEVERITY_UNKNOWN,
+                                          false,
+                                          true);
 
-      if (appender) {
+      if (res == TRI_ERROR_NO_ERROR) {
         ttyLogger = true;
       }
     }
@@ -266,15 +265,14 @@ void ApplicationServer::setupLogging (bool threaded, bool daemon, bool backgroun
       filename = filename + ".daemon";
     }
 
-    struct TRI_log_appender_s* appender
-      = TRI_CreateLogAppenderFile(filename.c_str(),
-                                  contentFilter,
-                                  TRI_LOG_SEVERITY_UNKNOWN,
-                                  false,
-                                  ! ttyLogger);
+    int res = TRI_CreateLogAppenderFile(filename.c_str(),
+                                        contentFilter,
+                                        TRI_LOG_SEVERITY_UNKNOWN,
+                                        false,
+                                        ! ttyLogger);
 
     // the user specified a log file to use but it could not be created. bail out
-    if (appender == nullptr) {
+    if (res != TRI_ERROR_NO_ERROR) {
       LOG_FATAL_AND_EXIT("failed to create logfile '%s'. Please check the path and permissions.", filename.c_str());
     }
   }

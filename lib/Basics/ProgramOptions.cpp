@@ -95,7 +95,8 @@ static T find (map<string, T> const& m, string const& key) {
   typename map<string, T>::const_iterator i = m.find(key);
 
   if (i == m.end()) {
-    THROW_INTERNAL_ERROR("cannot find option '" + key + "'");
+    std::string message("cannot find option '" + key + "'");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   return i->second;
@@ -649,7 +650,7 @@ void ProgramOptions::setupSubDescription (ProgramOptionsDescription const& descr
         }
 
         default:
-          THROW_INTERNAL_ERROR("unknown option type");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown option type");
       }
     }
   }

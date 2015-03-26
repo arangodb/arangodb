@@ -172,7 +172,7 @@ LogfileManager::LogfileManager (TRI_server_t* server,
   int res = regcomp(&_filenameRegex, "^logfile-([0-9][0-9]*)\\.db$", REG_EXTENDED);
 
   if (res != 0) {
-    THROW_INTERNAL_ERROR("could not compile regex");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "could not compile regex");
   }
 }
 

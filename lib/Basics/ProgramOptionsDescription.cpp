@@ -457,12 +457,12 @@ ProgramOptionsDescription& ProgramOptionsDescription::operator() (const string& 
 ////////////////////////////////////////////////////////////////////////////////
 
 void ProgramOptionsDescription::arguments (vector<string>* value) {
-  if (value == 0) {
-    THROW_INTERNAL_ERROR("value is 0");
+  if (value == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "value is nullptr");
   }
 
-  if (_positionals != 0) {
-    THROW_INTERNAL_ERROR("_positional arguments are already defined");
+  if (_positionals != nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "_positional arguments are already defined");
   }
 
   _positionals = value;
@@ -862,17 +862,19 @@ string ProgramOptionsDescription::check (const string& name) {
   vector<string> s = StringUtils::split(name, ',');
 
   if (name.empty()) {
-    THROW_INTERNAL_ERROR("option name is empty");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "option name is empty");
   }
 
   if (s.size() > 2) {
-    THROW_INTERNAL_ERROR("option '" + name + "' should be <long-option>,<short-option> or <long-option>");
+    std::string message("option '" + name + "' should be <long-option>,<short-option> or <long-option>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   string longOption = s[0];
 
   if (_optionTypes.find(longOption) != _optionTypes.end()) {
-    THROW_INTERNAL_ERROR("option '" + longOption + "' is already defined");
+    std::string message("option '" + longOption + "' is already defined");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
   }
 
   if (s.size() > 1) {
@@ -887,8 +889,8 @@ string ProgramOptionsDescription::check (const string& name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 string ProgramOptionsDescription::check (const string& name, void* value) {
-  if (value == 0) {
-    THROW_INTERNAL_ERROR("value is 0");
+  if (value == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "value is nullptr");
   }
 
   return check(name);

@@ -96,9 +96,7 @@ ApplicationDispatcher::ApplicationDispatcher ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationDispatcher::~ApplicationDispatcher () {
-  if (_dispatcher != nullptr) {
-    delete _dispatcher;
-  }
+  delete _dispatcher;
 }
 
 // -----------------------------------------------------------------------------
