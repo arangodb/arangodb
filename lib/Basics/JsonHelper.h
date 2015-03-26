@@ -251,7 +251,7 @@ namespace triagens {
           if (! isNumber(sub)) {
             std::string msg = "The attribute '" + std::string(name)  
               + "' was not found or is not a number.";
-            THROW_INTERNAL_ERROR(msg);
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
           }
           return static_cast<T>(sub->_value._number);
         }

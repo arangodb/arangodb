@@ -368,7 +368,7 @@ void SchedulerLibev::eventLoop (EventLoop loop) {
 
 void SchedulerLibev::wakeupLoop (EventLoop loop) {
   if (size_t(loop) >= nrThreads) {
-    THROW_INTERNAL_ERROR("unknown loop");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown loop");
   }
 
   ev_async_send(((struct ev_loop**) _loops)[loop], ((ev_async**) _wakers)[loop]);
@@ -689,7 +689,7 @@ void* SchedulerLibev::lookupWatcher (EventToken token, EventType& type) {
 
 void* SchedulerLibev::lookupLoop (EventLoop loop) {
   if (size_t(loop) >= nrThreads) {
-    THROW_INTERNAL_ERROR("unknown loop");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unknown loop");
   }
 
   return ((struct ev_loop**) _loops)[loop];

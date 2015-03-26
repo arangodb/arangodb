@@ -226,15 +226,6 @@ void TRI_Log (char const*,
               ...);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief logs a new raw message
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_RawLog (TRI_log_level_e,
-                 TRI_log_severity_e,
-                 char const*,
-                 size_t);
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the last log entries
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -427,12 +418,6 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 // --SECTION--                                                     private types
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief base structure for log appenders
-////////////////////////////////////////////////////////////////////////////////
-
-struct TRI_log_appender_s;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -441,22 +426,22 @@ struct TRI_log_appender_s;
 /// @brief creates a log append for file output
 ////////////////////////////////////////////////////////////////////////////////
 
-struct TRI_log_appender_s* TRI_CreateLogAppenderFile (char const*,
-                                                      char const*,
-                                                      TRI_log_severity_e,
-                                                      bool consume,
-                                                      bool fatal2error);
+int TRI_CreateLogAppenderFile (char const*,
+                               char const*,
+                               TRI_log_severity_e,
+                               bool consume,
+                               bool fatal2error);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a log append for syslog
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifdef TRI_ENABLE_SYSLOG
-struct TRI_log_appender_s* TRI_CreateLogAppenderSyslog (char const*,
-                                                        char const*,
-                                                        char const*,
-                                                        TRI_log_severity_e,
-                                                        bool);
+int TRI_CreateLogAppenderSyslog (char const*,
+                                 char const*,
+                                 char const*,
+                                 TRI_log_severity_e,
+                                 bool);
 #endif
 
 // -----------------------------------------------------------------------------

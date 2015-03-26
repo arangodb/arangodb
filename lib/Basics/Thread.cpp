@@ -38,6 +38,7 @@
 #include <signal.h>
 
 #include "Basics/ConditionLocker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 
 
@@ -295,10 +296,21 @@ void Thread::runMe () {
   try {
     run();
   }
+  catch (Exception const& ex) {
+    LOG_ERROR("exception caught in thread '%s': %s", _name.c_str(), ex.what());
+    TRI_FlushLogging();
+    throw;
+  }
+  catch (std::exception const& ex) {
+    LOG_ERROR("exception caught in thread '%s': %s", _name.c_str(), ex.what());
+    TRI_FlushLogging();
+    throw;
+  }
   catch (...) {
     _running = 0;
     if (! isSilent()) {
       LOG_ERROR("exception caught in thread '%s'", _name.c_str());
+      TRI_FlushLogging();
     }
     throw;
   }

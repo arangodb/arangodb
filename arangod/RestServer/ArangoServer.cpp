@@ -983,7 +983,7 @@ int ArangoServer::startupServer () {
     res = runServer(vocbase);
   }
 
-  shutDownBegins ();
+  shutDownBegins();
 
   _applicationServer->stop();
 

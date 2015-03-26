@@ -129,18 +129,15 @@ bool RestQueryHandler::readQueryProperties () {
 
     generateResult(HttpResponse::OK, result.json());
   }
-  catch (const TriagensError& err) {
-    handleError(err);
-  }
-  catch (const Exception& err) {
+  catch (Exception const& err) {
     handleError(err);
   }
   catch (std::exception const& ex) {
-    triagens::basics::InternalError err(ex, __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   }
   catch (...) {
-    triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -174,18 +171,15 @@ bool RestQueryHandler::readQuery (bool slow) {
 
     generateResult(HttpResponse::OK, result.json());
   }
-  catch (const TriagensError& err) {
-    handleError(err);
-  }
-  catch (const Exception& err) {
+  catch (Exception const& err) {
     handleError(err);
   }
   catch (std::exception const& ex) {
-    triagens::basics::InternalError err(ex, __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   }
   catch (...) {
-    triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -355,18 +349,15 @@ bool RestQueryHandler::replaceProperties () {
 
     return readQueryProperties();
   }
-  catch (const TriagensError& err) {
-    handleError(err);
-  }
-  catch (const Exception& err) {
+  catch (Exception const& err) {
     handleError(err);
   }
   catch (std::exception const& ex) {
-    triagens::basics::InternalError err(ex, __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   }
   catch (...) {
-    triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
@@ -439,18 +430,15 @@ bool RestQueryHandler::parseQuery () {
 
     generateResult(HttpResponse::OK, result.json());
   }
-  catch (const TriagensError& err) {
-    handleError(err);
-  }
-  catch (const Exception& err) {
+  catch (Exception const& err) {
     handleError(err);
   }
   catch (std::exception const& ex) {
-    triagens::basics::InternalError err(ex, __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
     handleError(err);
   }
   catch (...) {
-    triagens::basics::InternalError err("executeDirectHandler", __FILE__, __LINE__);
+    triagens::basics::Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
     handleError(err);
   }
 
