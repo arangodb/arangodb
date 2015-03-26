@@ -1298,7 +1298,7 @@ int main (int argc, char* argv[]) {
   }
 
   if (isDirectory && ! Overwrite) {
-    cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
+    cerr << "output directory '" << OutputDirectory << "' already exists. use \"--overwrite true\" to overwrite data in it" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
