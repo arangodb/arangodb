@@ -69,7 +69,8 @@ namespace {
         result = result * 10 + (*str - '0');
       }
       else {
-        THROW_PARSE_ERROR("cannot parse date, expecting integer, got '" + string(1, *str) + "'");
+        std::string message("cannot parse date, expecting integer, got '" + string(1, *str) + "'");
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
       }
     }
 
@@ -395,7 +396,8 @@ namespace triagens {
         size_t len = name.length();
 
         if (len == 0) {
-          THROW_PARSE_ERROR("name must not be empty");
+          std::string message("name must not be empty");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         char * buffer = new char[len + 1];
@@ -406,7 +408,8 @@ namespace triagens {
         }
 
         if (len == 0) {
-          THROW_PARSE_ERROR("object or attribute name must not be empty");
+          std::string message("object or attribute name must not be empty");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         bool upper = first;
@@ -441,7 +444,8 @@ namespace triagens {
         size_t len = name.length();
 
         if (len == 0) {
-          THROW_PARSE_ERROR("name must not be empty");
+          std::string message("name must not be empty");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         char * buffer = new char[len + 1];
@@ -452,7 +456,8 @@ namespace triagens {
         }
 
         if (len == 0) {
-          THROW_PARSE_ERROR("name must not be empty");
+          std::string message("name must not be empty");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         bool useSeparator = false;
@@ -494,7 +499,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 2) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char * buffer = new char [2 * len + 1];
@@ -549,7 +554,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 2) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char * buffer = new char [2 * len + 1];
@@ -606,7 +611,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 6) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         bool corrupted = false;
@@ -806,7 +811,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 8) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char * buffer = new char [8 * len + 1];
@@ -874,7 +879,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 3) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char * buffer = new char [3 * len + 1];
@@ -916,7 +921,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 3) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char * buffer = new char [3 * len + 1];
@@ -994,7 +999,7 @@ namespace triagens {
         }
 
         if (len >= (SIZE_MAX - 1) / 4) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char * buffer = new char [4 * len + 1];
@@ -1363,7 +1368,7 @@ namespace triagens {
         size_t mt = max(static_cast<size_t>(1),toLength);
 
         if ((sourceLength / fromLength) + 1 >= (SIZE_MAX - toLength) / mt) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         maxLength = (((sourceLength / fromLength) + 1) * mt) + toLength;
@@ -1599,7 +1604,7 @@ namespace triagens {
         char const* end = src + len;
 
         if (len >= (SIZE_MAX - 1) / 3) {
-          THROW_OUT_OF_MEMORY_ERROR();
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
         char* buffer = new char[3 * len + 1];
@@ -2191,7 +2196,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown time format '" + string(f) + "', expecting 'HH'");
+              std::string message("unknown time format '" + string(f) + "', expecting 'HH'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'M') {
@@ -2200,7 +2206,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown time format '" + string(f) + "', expecting 'MI'");
+              std::string message("unknown time format '" + string(f) + "', expecting 'MI'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'S') {
@@ -2217,7 +2224,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown time format '" + string(f) + "', expecting 'SS'");
+              std::string message("unknown time format '" + string(f) + "', expecting 'SS'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == *s) {
@@ -2225,20 +2233,24 @@ namespace triagens {
             s++;
           }
           else {
-            THROW_PARSE_ERROR("cannot match time '" + str + "' with format '" + format + "'");
+            std::string message("cannot match time '" + str + "' with format '" + format + "'");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
           }
         }
 
         if (23 < hour || hour < 0) {
-          THROW_PARSE_ERROR("illegal hour '" + itoa(hour) + "'");
+          std::string message("illegal hour '" + itoa(hour) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         if (59 < minute || minute < 0) {
-          THROW_PARSE_ERROR("illegal minute '" + itoa(minute) + "'");
+          std::string message("illegal minute '" + itoa(minute) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         if (59 < second || second < 0) {
-          THROW_PARSE_ERROR("illegal second '" + itoa(second) + "'");
+          std::string message("illegal second '" + itoa(second) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         return hour * 3600 + minute * 60 + second;
@@ -2287,7 +2299,8 @@ namespace triagens {
               f += 4;
             }
             else {
-              THROW_PARSE_ERROR("unknown date format '" + string(f) + "', expecting 'YYYY'");
+              std::string message("unknown date format '" + string(f) + "', expecting 'YYYY'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'M') {
@@ -2296,7 +2309,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown date format '" + string(f) + "', expecting 'MM'");
+              std::string message("unknown date format '" + string(f) + "', expecting 'MM'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'D') {
@@ -2305,7 +2319,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown date format '" + string(f) + "', expecting 'DD'");
+              std::string message("unknown date format '" + string(f) + "', expecting 'DD'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == *s) {
@@ -2313,16 +2328,19 @@ namespace triagens {
             s++;
           }
           else {
-            THROW_PARSE_ERROR("cannot match date '" + str + "' with format '" + format + "'");
+            std::string message("cannot match date '" + str + "' with format '" + format + "'");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
           }
         }
 
         if (12 < month || month < 1) {
-          THROW_PARSE_ERROR("illegal month '" + itoa(month) + "'");
+          std::string message("illegal month '" + itoa(month) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         if (31 < day || day < 1) {
-          THROW_PARSE_ERROR("illegal day '" + itoa(day) + "'");
+          std::string message("illegal day '" + itoa(day) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         struct tm t;
@@ -2399,7 +2417,8 @@ namespace triagens {
               f += 4;
             }
             else {
-              THROW_PARSE_ERROR("unknown date format '" + string(f) + "', expecting 'YYYY'");
+              std::string message("unknown date format '" + string(f) + "', expecting 'YYYY'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'M') {
@@ -2412,7 +2431,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown date format '" + string(f) + "', expecting 'MM'");
+              std::string message("unknown date format '" + string(f) + "', expecting 'MM'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'D') {
@@ -2421,7 +2441,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown date format '" + string(f) + "', expecting 'DD'");
+              std::string message("unknown date format '" + string(f) + "', expecting 'DD'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'H') {
@@ -2430,7 +2451,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown time format '" + string(f) + "', expecting 'HH'");
+              std::string message("unknown time format '" + string(f) + "', expecting 'HH'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == 'S') {
@@ -2478,7 +2500,8 @@ namespace triagens {
               f += 2;
             }
             else {
-              THROW_PARSE_ERROR("unknown time format '" + string(f) + "', expecting 'SS'");
+              std::string message("unknown time format '" + string(f) + "', expecting 'SS'");
+              THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
             }
           }
           else if (*f == *s) {
@@ -2486,16 +2509,19 @@ namespace triagens {
             s++;
           }
           else {
-            THROW_PARSE_ERROR("cannot match date '" + str + "' with format '" + format + "'");
+            std::string message("cannot match date '" + str + "' with format '" + format + "'");
+            THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
           }
         }
 
         if (12 < month || month < 1) {
-          THROW_PARSE_ERROR("illegal month '" + itoa(month) + "'");
+          std::string message("illegal month'" + itoa(month) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         if (31 < day || day < 1) {
-          THROW_PARSE_ERROR("illegal day '" + itoa(day) + "'");
+          std::string message("illegal day '" + itoa(day) + "'");
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, message);
         }
 
         struct tm t;

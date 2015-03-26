@@ -53,3 +53,7 @@ a replication backlog.
 <!-- arangod/Wal/LogfileManager.h -->
 @startDocuBlock WalLogfileIgnoreRecoveryErrors
 
+!SUBSECTION Ignore logfile errors
+<!-- arangod/RestServer/ArangoServer.h -->
+@startDocuBlock databaseIgnoreDatafileErrors
+

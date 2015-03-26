@@ -15,6 +15,7 @@
 #include <Basics/tri-strings.h>
 
 #include "Aql/AstNode.h"
+#include "Aql/Function.h"
 #include "Aql/Parser.h"
 %}
 
@@ -78,6 +79,7 @@ void Aqlerror (YYLTYPE* locp,
 %token T_INSERT "INSERT command"
 %token T_UPDATE "UPDATE command"
 %token T_REPLACE "REPLACE command"
+%token T_UPSERT "UPSERT command"
 
 %token T_NULL "null" 
 %token T_TRUE "true" 
@@ -189,6 +191,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> bind_parameter;
 %type <strval> variable_name;
 %type <node> numeric_value;
+%type <intval> update_or_replace;
 
 
 /* define start token of language */
@@ -199,13 +202,32 @@ void Aqlerror (YYLTYPE* locp,
 query: 
     optional_statement_block_statements return_statement {
     }
-  | optional_statement_block_statements remove_statement {
+  | optional_statement_block_statements remove_statement optional_post_modification_block {
     }
-  | optional_statement_block_statements insert_statement {
+  | optional_statement_block_statements insert_statement optional_post_modification_block {
     }
-  | optional_statement_block_statements update_statement {
+  | optional_statement_block_statements update_statement optional_post_modification_block {
     }
-  | optional_statement_block_statements replace_statement {
+  | optional_statement_block_statements replace_statement optional_post_modification_block {
+    }
+  | optional_statement_block_statements upsert_statement optional_post_modification_block {
+    }
+  ;
+
+optional_post_modification_lets:
+    /* empty */ {
+    }
+  | optional_post_modification_lets let_statement {
+    }
+  ;
+
+optional_post_modification_block:
+    /* empty */ {
+      // still need to close the scope opened by the data-modification statement
+      parser->ast()->scopes()->endNested();
+    }
+  | optional_post_modification_lets return_statement {
+      // the RETURN statement will close the scope opened by the data-modification statement
     }
   ;
 
@@ -215,7 +237,7 @@ optional_statement_block_statements:
   | optional_statement_block_statements statement_block_statement {
     }
   ;
-  
+
 statement_block_statement: 
     for_statement {
     }
@@ -547,15 +569,7 @@ remove_statement:
       }
       auto node = parser->ast()->createNodeRemove($2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_REMOVE expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4, $8, $6, $10)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeRemove($2, $3, $4, $8, $6, $10);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
@@ -566,85 +580,124 @@ insert_statement:
       }
       auto node = parser->ast()->createNodeInsert($2, $3, $4);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
-  | T_INSERT expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4, $8, $6, $10)) {
+  ;
+
+update_parameters:
+    expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $2, $3)) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeInsert($2, $3, $4, $8, $6, $10);
+
+      AstNode* node = parser->ast()->createNodeUpdate(nullptr, $1, $2, $3);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
+    }
+  | expression T_WITH expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $4, $5)) {
+        YYABORT;
+      }
+
+      AstNode* node = parser->ast()->createNodeUpdate($1, $3, $4, $5);
+      parser->ast()->addOperation(node);
+      parser->setWriteNode(node);
     }
   ;
 
 update_statement:
-    T_UPDATE expression in_or_into_collection query_options {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $3, $4)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+    T_UPDATE update_parameters {
     }
-  | T_UPDATE expression T_WITH expression in_or_into_collection query_options {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6)) {
+  ;
+
+replace_parameters:
+    expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $2, $3)) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6);
+
+      AstNode* node = parser->ast()->createNodeReplace(nullptr, $1, $2, $3);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
-  | T_UPDATE expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $3, $4, $8, $6, $10)) {
+  | expression T_WITH expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $4, $5)) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeUpdate(nullptr, $2, $3, $4, $8, $6, $10);
+
+      AstNode* node = parser->ast()->createNodeReplace($1, $3, $4, $5);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
-    }
-  | T_UPDATE expression T_WITH expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $5, $6, $10, $8, $12)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeUpdate($2, $4, $5, $6, $10, $8, $12);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
 replace_statement:
-    T_REPLACE expression in_or_into_collection query_options {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+    T_REPLACE replace_parameters {
     }
-  | T_REPLACE expression T_WITH expression in_or_into_collection query_options {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeReplace($2, $4, $5, $6);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+  ;
+
+update_or_replace:
+    T_UPDATE {
+      $$ = static_cast<int64_t>(NODE_TYPE_UPDATE);
     }
-  | T_REPLACE expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $3, $4, $8, $6, $10)) {
-        YYABORT;
-      }
-      auto node = parser->ast()->createNodeReplace(nullptr, $2, $3, $4, $8, $6, $10);
-      parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+  | T_REPLACE {
+      $$ = static_cast<int64_t>(NODE_TYPE_REPLACE);
     }
-  | T_REPLACE expression T_WITH expression in_or_into_collection query_options T_LET variable_name T_ASSIGN T_STRING T_RETURN variable_name {
-      if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $5, $6, $10, $8, $12)) {
+  ;
+
+upsert_statement:
+    T_UPSERT { 
+      // reserve a variable named "$OLD", we might need it in the update expression
+      // and in a later return thing
+      parser->pushStack(parser->ast()->createNodeVariable("$OLD", true));
+    } expression T_INSERT expression update_or_replace expression in_or_into_collection query_options {
+      if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
         YYABORT;
       }
-      auto node = parser->ast()->createNodeReplace($2, $4, $5, $6, $10, $8, $12);
+
+      AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
+      
+      auto scopes = parser->ast()->scopes();
+      
+      scopes->start(triagens::aql::AQL_SCOPE_SUBQUERY);
+      parser->ast()->startSubQuery();
+      
+      scopes->start(triagens::aql::AQL_SCOPE_FOR);
+      std::string const variableName = parser->ast()->variables()->nextName();
+      auto forNode = parser->ast()->createNodeFor(variableName.c_str(), $8, false);
+      parser->ast()->addOperation(forNode);
+
+      if ($3 == nullptr || $3->type != NODE_TYPE_OBJECT) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "expecting object literal for upsert search document", yylloc.first_line, yylloc.first_column);
+      }
+
+      auto filterNode = parser->ast()->createNodeUpsertFilter(parser->ast()->createNodeReference(variableName.c_str()), $3);
+      parser->ast()->addOperation(filterNode);
+      
+      auto offsetValue = parser->ast()->createNodeValueInt(0);
+      auto limitValue = parser->ast()->createNodeValueInt(1);
+      auto limitNode = parser->ast()->createNodeLimit(offsetValue, limitValue);
+      parser->ast()->addOperation(limitNode);
+      
+      auto refNode = parser->ast()->createNodeReference(variableName.c_str());
+      auto returnNode = parser->ast()->createNodeReturn(refNode);
+      parser->ast()->addOperation(returnNode);
+      scopes->endNested();
+
+      AstNode* subqueryNode = parser->ast()->endSubQuery();
+      scopes->endCurrent();
+      
+      std::string const subqueryName = parser->ast()->variables()->nextName();
+      auto subQuery = parser->ast()->createNodeLet(subqueryName.c_str(), subqueryNode, false);
+      parser->ast()->addOperation(subQuery);
+      
+      auto index = parser->ast()->createNodeValueInt(0);
+      auto firstDoc = parser->ast()->createNodeLet(variableNode, parser->ast()->createNodeIndexedAccess(parser->ast()->createNodeReference(subqueryName.c_str()), index));
+      parser->ast()->addOperation(firstDoc);
+
+      auto node = parser->ast()->createNodeUpsert(static_cast<AstNodeType>($6), parser->ast()->createNodeReference("$OLD"), $5, $7, $8, $9);
       parser->ast()->addOperation(node);
-      parser->ast()->scopes()->endNested();
+      parser->setWriteNode(node);
     }
   ;
 
@@ -653,6 +706,9 @@ expression:
       $$ = $2;
     }
   | T_OPEN {
+      if (parser->isModificationQuery()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
+      }
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query T_CLOSE {
@@ -802,6 +858,9 @@ expression_or_query:
       $$ = $1;
     }
   | {
+      if (parser->isModificationQuery()) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected subquery after data-modification operation", yylloc.first_line, yylloc.first_column);
+      }
       parser->ast()->scopes()->start(triagens::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
     } query {
@@ -951,14 +1010,37 @@ reference:
 single_reference:
     T_STRING {
       // variable or collection
-      AstNode* node;
+      auto ast = parser->ast();
+      AstNode* node = nullptr;
+
+      auto variable = ast->scopes()->getVariable($1);
       
-      if (parser->ast()->scopes()->existsVariable($1)) {
-        node = parser->ast()->createNodeReference($1);
+      if (variable != nullptr) {
+        // variable exists, now use it
+        node = ast->createNodeReference(variable);
       }
       else {
-        node = parser->ast()->createNodeCollection($1, TRI_TRANSACTION_READ);
+        // variable does not exist
+        // now try variable aliases OLD (= $OLD) and NEW (= $NEW)
+        if (strcmp($1, "OLD") == 0) {
+          variable = ast->scopes()->getVariable("$OLD");
+        }
+        else if (strcmp($1, "NEW") == 0) {
+          variable = ast->scopes()->getVariable("$NEW");
+        }
+        
+        if (variable != nullptr) {
+          // variable alias exists, now use it
+          node = ast->createNodeReference(variable);
+        }
       }
+
+      if (node == nullptr) {
+        // variable not found. so it must have been a collection
+        node = ast->createNodeCollection($1, TRI_TRANSACTION_READ);
+      }
+
+      TRI_ASSERT(node != nullptr);
 
       $$ = node;
     }

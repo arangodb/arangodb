@@ -31,7 +31,7 @@
 
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "Utils/transactions.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/headers.h"

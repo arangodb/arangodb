@@ -21,11 +21,11 @@
 }
 
 @font-face {
-    font-family: 'novecento-bold';
-    src: url('public/fonts/novecento-bold.eot');
-    src: url('public/fonts/novecento-bold.eot?#iefix') format('embedded-opentype'),
-         url('public/fonts/novecento-bold.woff') format('woff'),
-         url('public/fonts/novecento-bold.ttf') format('truetype');
+    font-family: 'roboto-black';
+    src: url('public/fonts/roboto-black.eot');
+    src: url('public/fonts/roboto-black.eot?#iefix') format('embedded-opentype'),
+         url('public/fonts/roboto-black.woff') format('woff'),
+         url('public/fonts/roboto-black.ttf') format('truetype');
     font-weight: normal;
     font-style: normal;
 }
@@ -58,7 +58,7 @@ hr {
 h1, h2, h3, h4, h5, h6 {
   color: #112233;
   font-weight: normal;
-  font-family: "novecento-bold";
+  font-family: "roboto-black";
   text-transform: uppercase;
   line-height: 1em;
   margin-top: 50px;
@@ -68,7 +68,7 @@ h1, h2, h3, h4, h5, h6 {
     text-align: center;
   }
   h2 {
-    font-size: 1.3em;
+    font-size: 1.26em;
   }
   h1:after {
     content: "8";
@@ -190,7 +190,7 @@ ul.sections {
     list-style-type: upper-roman;
   }
     .toc li {
-      font-family: 'novecento-bold';
+      font-family: 'roboto-black';
     }
       .toc li a {
         font-family: 'aller-light';

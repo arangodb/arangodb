@@ -1,12 +1,13 @@
 !CHAPTER Data modification queries
 
-As of ArangoDB version 2.2, AQL supports the following
-data-modification operations:
+AQL supports the following data-modification operations:
 
-- INSERT: insert new documents into a collection
-- UPDATE: partially update existing documents in a collection
-- REPLACE: completely replace existing documents in a collection
-- REMOVE: remove existing documents from a collection
+- **INSERT**: insert new documents into a collection
+- **UPDATE**: partially update existing documents in a collection
+- **REPLACE**: completely replace existing documents in a collection
+- **REMOVE**: remove existing documents from a collection
+- **UPSERT**: conditionally insert or update documents in a collection
+
 
 Data-modification operations are normally combined with *FOR* loops to
 iterate over a given list of documents. They can optionally be combined with
@@ -43,27 +44,28 @@ collections is established via the documents' keys:
 
 !SUBSECTION Returning documents
 
-To return documents from a data-modification query, the `INSERT`, `REMOVE`,
-`UPDATE` or `REPLACE` statement must be immediately followed by a `LET` 
-statement that assigns either the pseudo-value `NEW` or `OLD` to a user-defined
-variable. The `LET` statement must be followed by a `RETURN` statement that
-returns the variable introduced by `LET`:
+Data-modification queries can optionally return documents. In order to reference
+the inserted, removed or modified documents in a `RETURN` statement, data-modification 
+statements introduce the `OLD` and/or `NEW` pseudo-values:
 
     FOR i IN 1..100
-      INSERT { value: i } IN test LET inserted = NEW RETURN inserted
+      INSERT { value: i } IN test 
+      RETURN NEW
 
     FOR u IN users
       FILTER u.status == 'deleted'
-      REMOVE u IN users LET removed = OLD RETURN removed
+      REMOVE u IN users 
+      RETURN OLD
 
     FOR u IN users
       FILTER u.status == 'not active'
-      UPDATE u WITH { status: 'inactive' } IN users LET updated = NEW RETURN updated
+      UPDATE u WITH { status: 'inactive' } IN users 
+      RETURN NEW
 
 `NEW` refers to the inserted or modified document revision, and `OLD` refers
 to the document revision before update or removal. `INSERT` statements can 
 only refer to the `NEW` pseudo-value, and `REMOVE` operations only to `OLD`. 
-`UPDATE` and `REPLACE` can refer to either.
+`UPDATE`, `REPLACE` and `UPSERT` can refer to either.
 
 In all cases the full documents will be returned with all their attributes,
 including the potentially auto-generated attributes such as `_id`, `_key`, or `_rev`
@@ -80,7 +82,13 @@ Data-modification queries are restricted to modifying data in a single
 collection per query. That means a data-modification query cannot modify 
 data in multiple collections with a single query. It is still possible (and
 was shown above) to read from one or many collections and modify data in another
-with one query.
+within the same query.
+
+Only a single data-modification operation can be used per AQL query. Data-modification
+queries cannot be used inside subqueries. Data-modification operations can optionally
+be followed by `LET` operations and a single `RETURN` operation to return data. If
+expressions are used within these operations, they cannot contain subqueries or 
+access data in collections using AQL functions.
 
 
 !SUBSECTION Transactional Execution
@@ -90,7 +98,7 @@ If a data-modification operation fails, any changes made by it will be rolled
 back automatically as if they never happened.
 
 In a cluster, AQL data-modification queries are currently not executed transactionally.
-Additionally, *update*, *replace* and *remove* AQL queries currently require the 
-*_key* attribute to be specified for all documents that should be modified or 
-removed, even if a shared key attribute other than *_key* was chosen for the
-collection. This restriction may be overcome in a future release of ArangoDB.
+Additionally, *update*, *replace*, *upsert* and *remove* AQL queries currently 
+require the *_key* attribute to be specified for all documents that should be 
+modified or removed, even if a shared key attribute other than *_key* was chosen 
+for the collection. This restriction may be overcome in a future release of ArangoDB.

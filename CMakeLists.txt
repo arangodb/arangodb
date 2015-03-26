@@ -33,7 +33,6 @@ set(BIN_ARANGOB       arangob)
 set(BIN_ARANGOD       arangod)
 set(BIN_ARANGODUMP    arangodump)
 set(BIN_ARANGOIMP     arangoimp)
-set(BIN_ARANGOIRB     arangoirb)
 set(BIN_ARANGORESTORE arangorestore)
 set(BIN_ARANGOSH      arangosh)
 
@@ -132,7 +131,7 @@ endif ()
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   option(DARWIN "Building for MacOS" ON)
 else ()
-  option(DARWIN "Building for MacOS" OF)
+  option(DARWIN "Building for MacOS" OFF)
 endif ()
 
 
@@ -147,16 +146,6 @@ endif ()
 set(ARANGODB_VERSION "1.x.y-rc1" CACHE path "ArangoDB version")
 
 ################################################################################
-### @brief MRUBY
-################################################################################
-
-option(USE_MRUBY "Do you want to use MRUBY" OFF)
-
-if (USE_MRUBY)
-  add_definitions("-DTRI_ENABLE_MRUBY=1")
-endif ()
-
-################################################################################
 ### @brief VISTA LOCKS
 ################################################################################
 
@@ -164,15 +153,6 @@ option(USE_VISTA_LOCKS "Do you want to use Windows Vista R/W locks" OFF)
 
 if (USE_VISTA_LOCKS)
   add_definitions("-DTRI_WINDOWS_VISTA_LOCKS=1")
-endif ()
-
-################################################################################
-### @brief etcd
-################################################################################
-
-if (DARWIN)
-  install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
-          DESTINATION ${TRI_BINDIR_INSTALL})
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -387,6 +367,16 @@ else()
     set(TRI_SBINDIR "${CMAKE_INSTALL_PREFIX}/sbin")
   endif ()
 
+endif ()
+
+
+################################################################################
+### @brief etcd
+################################################################################
+
+if (DARWIN)
+  install(PROGRAMS ${PROJECT_SOURCE_DIR}/bin/etcd-arango
+          DESTINATION ${TRI_BINDIR_INSTALL})
 endif ()
 
 ## -----------------------------------------------------------------------------
@@ -745,14 +735,6 @@ add_subdirectory(arangosh)
 
 add_subdirectory(arangod)
 
-################################################################################
-### @brief arangoirb
-################################################################################
-
-if (USE_MRUBY)
-  add_subdirectory(arangoirb)
-endif ()
-
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                    DOCUMENTATIONS
 ## -----------------------------------------------------------------------------
@@ -891,14 +873,18 @@ if (MSVC)
     SET(BITS 32)
   endif()
 
+  
+  file(TO_NATIVE_PATH "${TRI_RESOURCEDIR}/Icons/arangodb.ico" RELATIVE_ARANGO_ICON)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.bmp" ARANGO_IMG)
   file(TO_NATIVE_PATH "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons/arangodb.ico" ARANGO_ICON)
 
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_IMG "${ARANGO_IMG}")
   STRING(REGEX REPLACE "\\\\" "\\\\\\\\" ARANGO_ICON "${ARANGO_ICON}")
+  STRING(REGEX REPLACE "\\\\" "\\\\\\\\" RELATIVE_ARANGO_ICON "${RELATIVE_ARANGO_ICON}")
 
   message(STATUS "ARANGO_IMG:  ${ARANGO_IMG}")
   message(STATUS "ARANGO_ICON: ${ARANGO_ICON}")
+  message(STATUS "RELATIVE_ARANGO_ICON: ${RELATIVE_ARANGO_ICON}")
 
   install(
     DIRECTORY "${PROJECT_SOURCE_DIR}/Installation/Windows/Icons"
@@ -906,6 +892,8 @@ if (MSVC)
 
   set(CPACK_NSIS_DEFINES "
     !define BITS ${BITS}
+    !define TRI_FRIENDLY_SVC_NAME 'ArangoDB - the multi-purpose database'
+    !define TRI_AARDVARK_URL 'http://127.0.0.1:8529'
     ")
 
   set(CPACK_PACKAGE_ICON ${ARANGO_ICON})
@@ -913,7 +901,7 @@ if (MSVC)
   set(CPACK_NSIS_MODIFY_PATH ON)
   set(CPACK_NSIS_MUI_ICON ${ARANGO_ICON})
   set(CPACK_NSIS_MUI_UNIICON ${ARANGO_ICON})
-  set(CPACK_NSIS_INSTALLED_ICON_NAME ${ARANGO_ICON})
+  set(CPACK_NSIS_INSTALLED_ICON_NAME ${RELATIVE_ARANGO_ICON})
   set(CPACK_NSIS_DISPLAY_NAME, "ArangoDB")
   set(CPACK_NSIS_HELP_LINK "http://www.arangodb.org")
   set(CPACK_NSIS_URL_INFO_ABOUT  "http://www.arangodb.org")

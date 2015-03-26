@@ -1,8 +1,10 @@
 /*jshint -W051: true */
-/*global require, FS_MAKE_DIRECTORY, FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
-  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_IS_DIRECTORY, FS_IS_FILE, FS_MAKE_ABSOLUTE, FS_FILESIZE,
-  FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE, FS_UNZIP_FILE, FS_ZIP_FILE, FS_MTIME,
-  SYS_READ, SYS_READ_BUFFER, SYS_READ64, SYS_SAVE, PATH_SEPARATOR, HOME */
+/*global require, FS_MAKE_DIRECTORY, FS_MAKE_DIRECTORY_RECURSIVE, 
+  FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
+  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_CHMOD, FS_IS_DIRECTORY, FS_IS_FILE,
+  FS_MAKE_ABSOLUTE, FS_FILESIZE, FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE,
+  FS_UNZIP_FILE, FS_ZIP_FILE, FS_MTIME, SYS_READ, SYS_READ_BUFFER, SYS_READ64, SYS_SAVE,
+  PATH_SEPARATOR, HOME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "js"
@@ -214,6 +216,16 @@
     delete FS_EXISTS;
   }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief chmod
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof FS_CHMOD !== "undefined") {
+    exports.chmod = FS_CHMOD;
+    delete FS_CHMOD;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getTempFile
 ////////////////////////////////////////////////////////////////////////////////
@@ -393,33 +405,10 @@
 /// @brief makeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.makeDirectoryRecursive = function (path) {
-    'use strict';
-
-    var parts, subPart;
-
-    parts = path.split(exports.pathSeparator);
-    subPart = '';
-
-    parts.forEach(function (s, i) {
-      if (i > 0) {
-        subPart += exports.pathSeparator;
-      }
-      subPart += s;
-      if (subPart.length > 0) {
-        try {
-          // directory may already exist
-          exports.makeDirectory(subPart);
-        }
-        catch (err) {
-          if (err.errorNum !==
-              require("internal").errors.ERROR_FILE_EXISTS.code) {
-            throw(err);
-          }
-        }
-      }
-    });
-  };
+  if (typeof FS_MAKE_DIRECTORY_RECURSIVE !== "undefined") {
+    exports.makeDirectoryRecursive = FS_MAKE_DIRECTORY_RECURSIVE;
+    delete FS_MAKE_DIRECTORY_RECURSIVE;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mtime

@@ -34,8 +34,8 @@
 
 #include "Basics/associative.h"
 #include "Basics/string-buffer.h"
+#include "Basics/Exceptions.h"
 #include "ShapedJson/shaped-json.h"
-#include "Utils/Exception.h"
 #include "VocBase/replication-common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"

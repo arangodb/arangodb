@@ -180,6 +180,14 @@ namespace triagens {
 
       bool usesDefaultSharding () const;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the underlying collection
+////////////////////////////////////////////////////////////////////////////////
+
+      void setCollection (TRI_vocbase_col_t* coll) {
+        collection = coll;
+      }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -216,6 +224,8 @@ namespace triagens {
 // -----------------------------------------------------------------------------
     
     private:
+      
+      TRI_vocbase_col_t*           collection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief currently handled shard. this is a temporary variable that will
@@ -223,7 +233,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       std::string                  currentShard;
-
+      
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
@@ -232,7 +242,6 @@ namespace triagens {
 
       std::string const            name;
       TRI_vocbase_t*               vocbase;
-      TRI_vocbase_col_t*           collection;
       TRI_transaction_type_e       accessType;
       bool                         isReadWrite;
       std::vector<Index*> mutable  indexes;

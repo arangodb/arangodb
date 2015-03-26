@@ -45,8 +45,7 @@
 #include "Basics/random.h"
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
-
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
@@ -182,7 +181,7 @@ static int WriteDropCollectionMarker (TRI_vocbase_t* vocbase,
       THROW_ARANGO_EXCEPTION(slotInfo.errorCode);
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -682,7 +681,7 @@ static TRI_vocbase_col_t* CreateCollection (TRI_vocbase_t* vocbase,
     TRI_FreeJson(TRI_CORE_MEM_ZONE, json);
     return collection;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -833,7 +832,7 @@ static int RenameCollection (TRI_vocbase_t* vocbase,
 
     return TRI_ERROR_NO_ERROR;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -931,7 +930,27 @@ static int ScanPath (TRI_vocbase_t* vocbase,
       }
 
       if (res != TRI_ERROR_NO_ERROR) {
-        LOG_DEBUG("ignoring directory '%s' without valid parameter file '%s'", file, TRI_VOC_PARAMETER_FILE);
+        char* tmpfile = TRI_Concatenate2File(file, ".tmp");
+
+        if (TRI_ExistsFile(tmpfile)) {
+          LOG_TRACE("ignoring temporary directory '%s'", tmpfile);
+          TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+          // temp file still exists. this means the collection was not created fully
+          // and needs to be ignored
+          TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+          TRI_FreeCollectionInfoOptions(&info);
+
+          continue; // ignore this directory
+        }
+        
+        TRI_Free(TRI_CORE_MEM_ZONE, tmpfile);
+
+        LOG_ERROR("cannot read collection info file in directory '%s': %s", file, TRI_errno_string(res));
+        TRI_FreeString(TRI_CORE_MEM_ZONE, file);
+        TRI_DestroyVectorString(&files);
+        TRI_FreeCollectionInfoOptions(&info);
+        regfree(&re);
+        return TRI_set_errno(res);
       }
       else if (info._deleted) {
         // we found a collection that is marked as deleted.
@@ -1149,7 +1168,7 @@ static int LoadCollectionVocBase (TRI_vocbase_t* vocbase,
     // disk activity, index creation etc.)
     TRI_WRITE_UNLOCK_STATUS_VOCBASE_COL(collection);
 
-    document = TRI_OpenDocumentCollection(vocbase, collection);
+    document = TRI_OpenDocumentCollection(vocbase, collection, IGNORE_DATAFILE_ERRORS);
 
     // lock again the adjust the status
     TRI_WRITE_LOCK_STATUS_VOCBASE_COL(collection);

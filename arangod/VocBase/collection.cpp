@@ -414,7 +414,8 @@ static TRI_col_file_structure_t ScanCollectionDirectory (char const* path) {
 /// TODO: Use ScanCollectionDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-static bool CheckCollection (TRI_collection_t* collection) {
+static bool CheckCollection (TRI_collection_t* collection,
+                             bool ignoreErrors) {
   TRI_datafile_t* datafile;
   TRI_vector_pointer_t all;
   TRI_vector_pointer_t compactors;
@@ -534,7 +535,7 @@ static bool CheckCollection (TRI_collection_t* collection) {
         }
 
         TRI_ASSERT(filename != nullptr);
-        datafile = TRI_OpenDatafile(filename, true);
+        datafile = TRI_OpenDatafile(filename, ignoreErrors);
 
         if (datafile == nullptr) {
           collection->_lastError = TRI_errno();
@@ -576,7 +577,9 @@ static bool CheckCollection (TRI_collection_t* collection) {
         // file is a journal
         if (TRI_EqualString2("journal", first, firstLen)) {
           if (datafile->_isSealed) {
-            LOG_WARNING("strange, journal '%s' is already sealed; must be a left over; will use it as datafile", filename);
+            if (datafile->_state != TRI_DF_STATE_READ) {
+              LOG_WARNING("strange, journal '%s' is already sealed; must be a left over; will use it as datafile", filename);
+            }
 
             TRI_PushBackVectorPointer(&sealed, datafile);
           }
@@ -1064,10 +1067,14 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
     return nullptr;
   }
 
+  // use a temporary directory first. this saves us from leaving an empty directory
+  // behind, an the server refusing to start
+  char* tmpname = TRI_Concatenate2String(filename, ".tmp");
+
   // create directory
   std::string errorMessage;
   long systemError;
-  int res = TRI_CreateDirectory(filename, systemError, errorMessage);
+  int res = TRI_CreateDirectory(tmpname, systemError, errorMessage);
 
   if (res != TRI_ERROR_NO_ERROR) {
     LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
@@ -1077,10 +1084,70 @@ TRI_collection_t* TRI_CreateCollection (TRI_vocbase_t* vocbase,
               systemError,
               errorMessage.c_str());
 
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
     TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
 
     return nullptr;
   }
+
+  TRI_IF_FAILURE("CreateCollection::tempDirectory") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return nullptr;
+  }
+
+  // create a temporary file
+  char* tmpfile = TRI_Concatenate2File(tmpname, ".tmp");
+  res = TRI_WriteFile(tmpfile, "", 0);
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpfile);
+  
+  TRI_IF_FAILURE("CreateCollection::tempFile") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return nullptr;
+  }
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
+              parameters->_name,
+              path,
+              TRI_errno_string(res),
+              systemError,
+              errorMessage.c_str());
+    TRI_RemoveDirectory(tmpname);
+
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return nullptr;
+  }
+  
+  TRI_IF_FAILURE("CreateCollection::renameDirectory") {
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+    return nullptr;
+  }
+
+  res = TRI_RenameFile(tmpname, filename);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    LOG_ERROR("cannot create collection '%s' in directory '%s': %s - %ld - %s",
+              parameters->_name,
+              path,
+              TRI_errno_string(res),
+              systemError,
+              errorMessage.c_str());
+    TRI_RemoveDirectory(tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+    TRI_FreeString(TRI_CORE_MEM_ZONE, filename);
+
+    return nullptr;
+  }
+    
+  TRI_FreeString(TRI_CORE_MEM_ZONE, tmpname);
+
+  // now we have the collection directory in place with the correct name and a .tmp file in it
+
 
   // create collection structure
   if (collection == nullptr) {
@@ -1542,7 +1609,8 @@ void TRI_IterateIndexCollection (TRI_collection_t* collection,
 
 TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
                                       TRI_collection_t* collection,
-                                      char const* path) {
+                                      char const* path,
+                                      bool ignoreErrors) {
   TRI_ASSERT(collection != nullptr);
 
   if (! TRI_IsDirectory(path)) {
@@ -1558,7 +1626,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   int res = TRI_LoadCollectionInfo(path, &info, true);
 
   if (res != TRI_ERROR_NO_ERROR) {
-    LOG_ERROR("cannot load collection parameter '%s': %s", path, TRI_last_error());
+    LOG_ERROR("cannot load collection parameter file '%s': %s", path, TRI_last_error());
     return nullptr;
   }
 
@@ -1567,7 +1635,7 @@ TRI_collection_t* TRI_OpenCollection (TRI_vocbase_t* vocbase,
   TRI_FreeCollectionInfoOptions(&info);
 
   // check for journals and datafiles
-  bool ok = CheckCollection(collection);
+  bool ok = CheckCollection(collection, ignoreErrors);
 
   if (! ok) {
     LOG_DEBUG("cannot open '%s', check failed", collection->_directory);

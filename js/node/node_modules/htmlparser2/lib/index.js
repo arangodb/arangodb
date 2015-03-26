@@ -36,7 +36,7 @@ module.exports = {
 		return defineProp("RssHandler", this.FeedHandler);
 	},
 	//helper methods
-	parseDOM: function(data, options) {
+	parseDOM: function(data, options){
 		var handler = new DomHandler(options);
 		new Parser(handler, options).end(data);
 		return handler.dom;

@@ -70,8 +70,9 @@ static bool UnusedDisableAdminInterface;
 ApplicationAdminServer::ApplicationAdminServer ()
   : ApplicationFeature("admin"),
     _allowLogViewer(false),
-    _pathOptions(0),
-    _jobPayload(0) {
+    _pathOptions(nullptr),
+    _jobPayload(nullptr) {
+
   _pathOptions = new PathHandler::Options();
 }
 
@@ -80,10 +81,7 @@ ApplicationAdminServer::ApplicationAdminServer ()
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationAdminServer::~ApplicationAdminServer () {
-  if (_jobPayload != 0) {
-    delete _jobPayload;
-  }
-
+  delete _jobPayload;
   delete reinterpret_cast<PathHandler::Options*>(_pathOptions);
 }
 
@@ -112,7 +110,7 @@ void ApplicationAdminServer::addBasicHandlers (HttpHandlerFactory* factory,
   factory->addHandler(prefix + "/version", RestHandlerCreator<RestVersionHandler>::createNoData, 0);
   factory->addHandler(prefix + "/debug-helper", RestHandlerCreator<RestDebugHelperHandler>::createNoData, 0);
 
-  if (_jobPayload == 0) {
+  if (_jobPayload == nullptr) {
     _jobPayload = new pair<Dispatcher*, AsyncJobManager*>(dispatcher, jobManager);
   }
 

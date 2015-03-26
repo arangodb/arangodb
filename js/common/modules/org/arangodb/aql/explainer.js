@@ -65,7 +65,7 @@ function collection (v) {
 
 function attribute (v) {
   "use strict";
-  return colors.COLOR_YELLOW + v + colors.COLOR_RESET;
+  return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";
 }
 
 function header (v) {
@@ -466,6 +466,9 @@ function processQuery (query, explain) {
           return keyword("REPLACE") + " " + variableName(node.inKeyVariable) + " " + keyword("WITH") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);
         }
         return keyword("REPLACE") + " " + variableName(node.inDocVariable) + " " + keyword("IN") + " " + collection(node.collection);
+      case "UpsertNode":
+        modificationFlags = node.modificationFlags;
+        return keyword("UPSERT") + " " + variableName(node.inDocVariable) + " " + keyword("INSERT") + " " + variableName(node.insertVariable) + " " + keyword(node.isReplace ? "REPLACE" : "UPDATE") + variableName(node.updateVariable) + " " + keyword("IN") + " " + collection(node.collection);
       case "RemoveNode":
         modificationFlags = node.modificationFlags;
         return keyword("REMOVE") + " " + variableName(node.inVariable) + " " + keyword("IN") + " " + collection(node.collection);
@@ -592,7 +595,7 @@ function explain (data, options) {
   setColors(options.colors === undefined ? true : options.colors);
 
   var stmt = db._createStatement(data);
-  var result = stmt.explain();
+  var result = stmt.explain(options);
 
   print();
   processQuery(data.query, result);

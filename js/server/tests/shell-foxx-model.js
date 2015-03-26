@@ -59,6 +59,54 @@ function ModelSpec () {
       assertEqual(instance.get("a"), 1);
     },
 
+    testFromDb: function () {
+      require("internal").wal.flush(true, true);
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new FoxxModel(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
+    testFromDbWithSchema: function () {
+      var Model = FoxxModel.extend({
+        schema: {
+          user: joi.string()
+        }
+      });
+      require("internal").wal.flush(true, true);
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new Model(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
+    testSettingFromDb: function () {
+      require("internal").wal.flush(true, true);
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new FoxxModel();
+      instance.set(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
+    testSettingFromDbWithSchema: function () {
+      var Model = FoxxModel.extend({
+        schema: {
+          user: joi.string()
+        }
+      });
+      require("internal").wal.flush(true, true);
+      var doc = require("org/arangodb").db._users.any();
+      assertEqual(typeof doc._PRINT, 'function');
+      instance = new Model();
+      instance.set(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+
     testSettingMultipleAttributes: function () {
       instance = new FoxxModel({
         a: 1,

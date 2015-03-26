@@ -1,6 +1,12 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* increased default value of `--server.request-timeout` from 300 to 1200 seconds for client tools
+  (arangosh, arangoimp, arangodump, arangorestore)
+
+* increased default value of `--server.connect-timeout` from 3 to 5 seconds for client tools
+  (arangosh, arangoimp, arangodump, arangorestore)
+
 * make Foxx queues really database-specific.
 
   Foxx queues were and are stored in a database-specific collection `_queues`. However, a global
@@ -32,6 +38,120 @@ v2.6.0 (XXXX-XX-XX)
   determine the initial size for the collection's primary index
 
 * removed remainders of MRuby integration, removed arangoirb
+
+* simplified `controllers` property in Foxx manifests. You can now specify a filename directly if you only want to use a single file mounted at the base URL of your Foxx app.
+
+* simplified `exports` property in Foxx manifests. You can now specify a filename directly if you only want to export variables from a single file in your Foxx app.
+
+* added support for Node.js-style exports in Foxx exports. Your Foxx exports file can now export arbitrary values using the `module.exports` property instead of adding properties to the `exports` object.
+
+* added `scripts` property to Foxx manifests. You should now specify the `setup` and `teardown` files as properties of the `scripts` object in your manifests.
+
+* updated `joi` package to 6.0.8.
+
+* added `extendible` package.
+
+
+v2.5.2 (XXXX-XX-XX)
+-------------------
+
+* issue #1285: syntax error, unexpected $undefined near '@_to RETURN obj
+
+  this allows AQL bind parameter names to also start with underscores
+
+* moved /_api/query to C++
+
+* issue #1289: Foxx models created from database documents expose an internal method
+
+* added `Foxx.Repository#exists`
+
+
+v2.5.1 (2015-03-19)
+-------------------
+
+* fixed bug that caused undefined behavior when an AQL query was killed inside
+  a calculation block 
+
+* fixed memleaks in AQL query cleanup in case out-of-memory errors are thrown
+
+* by default, Debian and RedHat packages are built with debug symbols
+
+* added option `--database.ignore-logfile-errors`
+
+  This option controls how collection datafiles with a CRC mismatch are treated.
+
+  If set to `false`, CRC mismatch errors in collection datafiles will lead
+  to a collection not being loaded at all. If a collection needs to be loaded
+  during WAL recovery, the WAL recovery will also abort (if not forced with
+  `--wal.ignore-recovery-errors true`). Setting this flag to `false` protects
+  users from unintentionally using a collection with corrupted datafiles, from
+  which only a subset of the original data can be recovered.
+
+  If set to `true`, CRC mismatch errors in collection datafiles will lead to
+  the datafile being partially loaded. All data up to until the mismatch will
+  be loaded. This will enable users to continue with a collection datafiles
+  that are corrupted, but will result in only a partial load of the data.
+  The WAL recovery will still abort when encountering a collection with a 
+  corrupted datafile, at least if `--wal.ignore-recovery-errors` is not set to
+  `true`.
+
+  The default value is *true*, so for collections with corrupted datafiles
+  there might be partial data loads once the WAL recovery has finished. If
+  the WAL recovery will need to load a collection with a corrupted datafile,
+  it will still stop when using the default values.
+
+* INCOMPATIBLE CHANGE:
+
+  make the arangod server refuse to start if during startup it finds a non-readable
+  `parameter.json` file for a database or a collection.
+
+  Stopping the startup process in this case requires manual intervention (fixing
+  the unreadable files), but prevents follow-up errors due to ignored databases or
+  collections from happening.
+
+* datafiles and `parameter.json` files written by arangod are now created with read and write
+  privileges for the arangod process user, and with read and write prileges for the arangod
+  process group. 
+  
+  Previously, these files were created with user read and write permissions only.
+
+* INCOMPATIBLE CHANGE:
+
+  abort WAL recovery if one of the collection's datafiles cannot be opened
+
+* INCOMPATIBLE CHANGE:
+
+  never try to raise the privileges after dropping them, this can lead to a race condition while
+  running the recovery
+
+  If you require to run ArangoDB on a port lower than 1024, you must run ArangoDB as root.
+
+* fixed inefficiencies in `remove` methods of general-graph module
+
+* added option `--database.slow-query-threshold` for controlling the default AQL slow query
+  threshold value on server start
+
+* add system error strings for windows on many places
+
+* rework service startup so we anounce 'RUNNING' only when we're finished starting.
+
+* use the windows eventlog for FATAL and ERROR - log messages
+
+* fix service handling in NSIS windows installer, specify human readable name
+
+* add the ICU_DATA environment variable to the fatal error messages
+
+* fixed issue #1265: arangod crashed with SIGSEGV
+
+* fixed issue #1241: Wildcards in examples
+
+
+v2.5.0 (2015-03-09)
+-------------------
+
+* installer fixes for Windows
+
+* fix for downloading Foxx
 
 * fixed issue #1258: http pipelining not working? 
 
@@ -350,17 +470,69 @@ v2.5.0-beta1 (2015-02-23)
 * Standard errors can now contain custom messages.
 
 
+v2.4.7 (XXXX-XX-XX)
+-------------------
+
+* fixed issue #1282: Geo WITHIN_RECTANGLE for nested lat/lng 
+
+
 v2.4.6 (2015-03-XX)
 -------------------
 
-* fixed inefficiencies to `remove` methods of general-graph module
+* added option `--database.ignore-logfile-errors`
 
-* abort WAL recovery if one of the collection's database cannot be opened
+  This option controls how collection datafiles with a CRC mismatch are treated.
 
-* never try to raise the privileges after dropping them, this can lead to a race condition while
+  If set to `false`, CRC mismatch errors in collection datafiles will lead
+  to a collection not being loaded at all. If a collection needs to be loaded
+  during WAL recovery, the WAL recovery will also abort (if not forced with
+  `--wal.ignore-recovery-errors true`). Setting this flag to `false` protects
+  users from unintentionally using a collection with corrupted datafiles, from
+  which only a subset of the original data can be recovered.
+
+  If set to `true`, CRC mismatch errors in collection datafiles will lead to
+  the datafile being partially loaded. All data up to until the mismatch will
+  be loaded. This will enable users to continue with a collection datafiles
+  that are corrupted, but will result in only a partial load of the data.
+  The WAL recovery will still abort when encountering a collection with a 
+  corrupted datafile, at least if `--wal.ignore-recovery-errors` is not set to
+  `true`.
+
+  The default value is *true*, so for collections with corrupted datafiles
+  there might be partial data loads once the WAL recovery has finished. If
+  the WAL recovery will need to load a collection with a corrupted datafile,
+  it will still stop when using the default values.
+
+* INCOMPATIBLE CHANGE:
+
+  make the arangod server refuse to start if during startup it finds a non-readable
+  `parameter.json` file for a database or a collection.
+
+  Stopping the startup process in this case requires manual intervention (fixing
+  the unreadable files), but prevents follow-up errors due to ignored databases or
+  collections from happening.
+
+* datafiles and `parameter.json` files written by arangod are now created with read and write
+  privileges for the arangod process user, and with read and write prileges for the arangod
+  process group. 
+  
+  Previously, these files were created with user read and write permissions only.
+
+* INCOMPATIBLE CHANGE:
+
+  abort WAL recovery if one of the collection's datafiles cannot be opened
+
+* INCOMPATIBLE CHANGE:
+
+  never try to raise the privileges after dropping them, this can lead to a race condition while
   running the recovery
 
   If you require to run ArangoDB on a port lower than 1024, you must run ArangoDB as root.
+
+* fixed inefficiencies in `remove` methods of general-graph module
+
+* added option `--database.slow-query-threshold` for controlling the default AQL slow query
+  threshold value on server start
 
 
 v2.4.5 (2015-03-16)

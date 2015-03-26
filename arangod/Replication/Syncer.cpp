@@ -33,13 +33,13 @@
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/Exceptions.h"
 #include "Rest/HttpRequest.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/DocumentHelper.h"
-#include "Utils/Exception.h"
 #include "Utils/transactions.h"
 #include "VocBase/collection.h"
 #include "VocBase/document-collection.h"
@@ -291,7 +291,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
 
       return res;
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (triagens::basics::Exception const& ex) {
       return ex.code();
     }
     catch (...) {
@@ -313,7 +313,7 @@ int Syncer::applyCollectionDumpMarker (TRI_transaction_collection_t* trxCollecti
         res = TRI_ERROR_NO_ERROR;
       }
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (triagens::basics::Exception const& ex) {
       res = ex.code();
     }
     catch (...) {
@@ -501,7 +501,7 @@ int Syncer::createIndex (TRI_json_t const* json) {
 
     return res;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return ex.code();
   }
   catch (...) {
@@ -542,7 +542,7 @@ int Syncer::dropIndex (TRI_json_t const* json) {
 
     return TRI_ERROR_NO_ERROR;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     return ex.code();
   }
   catch (...) {

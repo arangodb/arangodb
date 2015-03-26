@@ -28,9 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RemoverThread.h"
+
 #include "Basics/logging.h"
 #include "Basics/ConditionLocker.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "Wal/LogfileManager.h"
 
 using namespace triagens::wal;
@@ -108,7 +109,7 @@ void RemoverThread::run () {
         worked = _logfileManager->removeLogfiles();
       }
     }
-    catch (triagens::arango::Exception const& ex) {
+    catch (triagens::basics::Exception const& ex) {
       int res = ex.code();
       LOG_ERROR("got unexpected error in removerThread::run: %s", TRI_errno_string(res));
     }

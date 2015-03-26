@@ -41,19 +41,19 @@ namespace triagens {
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
-     public:
+    public:
 
-       Completer () {
-       }
+      Completer () {
+      }
 
-       virtual ~Completer () {
-       }
+      virtual ~Completer () {
+      }
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-     public:
+    public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if line is complete

@@ -125,9 +125,13 @@ namespace triagens {
         if (! value.isEmpty()) {
           auto it = _valueCount.find(value);
           if (it == _valueCount.end()) {
+            TRI_IF_FAILURE("AqlItemBlock::setValue") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
             _valueCount.emplace(std::make_pair(value, 1));
           }
           else {
+            TRI_ASSERT_EXPENSIVE(it->second > 0);
             it->second++;
           }
         }

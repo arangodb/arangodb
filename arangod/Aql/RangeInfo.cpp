@@ -154,21 +154,25 @@ RangeInfo::RangeInfo (triagens::basics::Json const& json)
 
   triagens::basics::Json jsonLowList = json.get("lows");
   if (! jsonLowList.isArray()) {
-    THROW_INTERNAL_ERROR("low attribute must be a list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "low attribute must be an array");
   }
+
   triagens::basics::Json jsonHighList = json.get("highs");
   if (! jsonHighList.isArray()) {
-    THROW_INTERNAL_ERROR("high attribute must be a list");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "high attribute must be an array");
   }
+
   // If an exception is thrown from within these loops, then the
   // vectors _low and _high will be destroyed properly, so no 
   // try/catch is needed.
   for (size_t i = 0; i < jsonLowList.size(); i++) {
     _lows.emplace_back(jsonLowList.at(static_cast<int>(i)));
   }
+
   for (size_t i = 0; i < jsonHighList.size(); i++) {
     _highs.emplace_back(jsonHighList.at(static_cast<int>(i)));
   }
+
   _lowConst.assign(json.get("lowConst"));
   _highConst.assign(json.get("highConst"));
 }

@@ -34,7 +34,7 @@
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
 #include "Cluster/ClusterComm.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "Basics/logging.h"
 
 using namespace triagens::aql;
@@ -108,6 +108,10 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
     case ExecutionNode::REPLACE: {
       return new ReplaceBlock(engine,
                               static_cast<ReplaceNode const*>(en));
+    }
+    case ExecutionNode::UPSERT: {
+      return new UpsertBlock(engine,
+                             static_cast<UpsertNode const*>(en));
     }
     case ExecutionNode::NORESULTS: {
       return new NoResultsBlock(engine,
@@ -215,16 +219,13 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
     // do we need to adjust the root node?
     auto const nodeType = en->getType();
 
-    if (nodeType == ExecutionNode::RETURN ||
-        nodeType == ExecutionNode::REMOVE ||
-        nodeType == ExecutionNode::INSERT ||
-        nodeType == ExecutionNode::UPDATE ||
-        nodeType == ExecutionNode::REPLACE) {
+    if (en->getParents().empty()) {
       root = eb;
     }
-    else if (nodeType == ExecutionNode::DISTRIBUTE ||
-             nodeType == ExecutionNode::SCATTER ||
-             nodeType == ExecutionNode::GATHER) {
+    
+    if (nodeType == ExecutionNode::DISTRIBUTE ||
+        nodeType == ExecutionNode::SCATTER ||
+        nodeType == ExecutionNode::GATHER) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error, got cluster node in local query");
     }
 
@@ -242,12 +243,6 @@ struct Instanciator : public WalkerWorker<ExecutionNode> {
       auto it2 = cache.find(*it);
       TRI_ASSERT(it2 != cache.end());
       eb->addDependency(it2->second);
-    }
-
-    if (root == nullptr &&
-        en->getParents().empty()) {
-      // adjust the root node if none was set already
-      root = eb;
     }
 
     cache.emplace(std::make_pair(en, eb));
@@ -377,7 +372,8 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
         else if ((*en)->getType() == ExecutionNode::INSERT ||
                  (*en)->getType() == ExecutionNode::UPDATE ||
                  (*en)->getType() == ExecutionNode::REPLACE ||
-                 (*en)->getType() == ExecutionNode::REMOVE) {
+                 (*en)->getType() == ExecutionNode::REMOVE ||
+                 (*en)->getType() == ExecutionNode::UPSERT) {
           collection = const_cast<Collection*>(static_cast<ModificationNode*>((*en))->collection());
         }
       }
@@ -876,7 +872,7 @@ struct CoordinatorInstanciator : public WalkerWorker<ExecutionNode> {
     }
 
     // assign the current node to the current engine
-    engines[currentEngineId].nodes.push_back(en);
+    engines[currentEngineId].nodes.emplace_back(en);
   }
 };
 
@@ -906,10 +902,9 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 
     if (triagens::arango::ServerState::instance()->isCoordinator()) {
       // instanciate the engine on the coordinator
+
       std::unique_ptr<CoordinatorInstanciator> inst(new CoordinatorInstanciator(query, queryRegistry));
       plan->root()->walk(inst.get());
-
-      // std::cout << "ORIGINAL PLAN:\n" << plan->toJson(query->ast(), TRI_UNKNOWN_MEM_ZONE, true).toString() << "\n\n";
 
 #if 0
       // Just for debugging
@@ -1061,6 +1056,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
       std::unique_ptr<Instanciator> inst(new Instanciator(engine));
       plan->root()->walk(inst.get());
       root = inst.get()->root;
+      TRI_ASSERT(root != nullptr);
     }
 
     TRI_ASSERT(root != nullptr);
@@ -1085,7 +1081,7 @@ ExecutionEngine* ExecutionEngine::instanciateFromPlan (QueryRegistry* queryRegis
 void ExecutionEngine::addBlock (ExecutionBlock* block) {
   TRI_ASSERT(block != nullptr);
 
-  _blocks.push_back(block);
+  _blocks.emplace_back(block);
 }
 
 

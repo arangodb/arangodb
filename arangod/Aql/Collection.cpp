@@ -30,10 +30,10 @@
 #include "Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Basics/StringUtils.h"
+#include "Basics/Exceptions.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
-#include "Utils/Exception.h"
 #include "VocBase/document-collection.h"
 #include "VocBase/transaction.h"
 #include "VocBase/vocbase.h"
@@ -51,10 +51,10 @@ using namespace triagens::aql;
 Collection::Collection (std::string const& name,
                         struct TRI_vocbase_s* vocbase,
                         TRI_transaction_type_e accessType) 
-  : currentShard(),
+  : collection(nullptr),
+    currentShard(),
     name(name),
     vocbase(vocbase),
-    collection(nullptr),
     accessType(accessType),
     isReadWrite(false) {
           
@@ -145,7 +145,17 @@ std::vector<std::string> Collection::shardIds () const {
 
 std::vector<std::string> Collection::shardKeys () const {
   auto clusterInfo = triagens::arango::ClusterInfo::instance();
-  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), name);
+  
+  std::string id;
+  if (triagens::arango::ServerState::instance()->isDBserver() && 
+      documentCollection()->_info._planId > 0) {
+    id = std::to_string(documentCollection()->_info._planId);
+  }
+  else {
+    id = name;
+  }
+
+  auto collectionInfo = clusterInfo->getCollection(std::string(vocbase->_name), id);
   if (collectionInfo.get() == nullptr) {
     THROW_ARANGO_EXCEPTION_FORMAT(TRI_ERROR_INTERNAL, 
                                   "collection not found '%s' -> '%s'",
@@ -319,7 +329,13 @@ void Collection::fillIndexesDBServer () const {
       // assign the found local index
       idx->setInternals(data);
 
-      indexes.push_back(idx);
+      try {
+        indexes.emplace_back(idx);
+      }
+      catch (...) {
+        delete idx;
+        throw;
+      }
     }
   }
 }

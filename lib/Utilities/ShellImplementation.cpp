@@ -132,7 +132,7 @@ char* ShellImplementation::prompt (char const* the_prompt) {
 
     bool ok = _completer->isComplete(_current, lineno, strlen(result));
 
-    // cannot use TRI_Free, because it was allocated by the system call readline
+    // cannot use TRI_Free, because it was allocated by the system call inside readline
     TRI_SystemFree(originalLine);
 
     // stop if line is complete

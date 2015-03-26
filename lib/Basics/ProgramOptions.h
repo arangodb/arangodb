@@ -39,6 +39,7 @@
 // --SECTION--                                              forward declarations
 // -----------------------------------------------------------------------------
 
+struct TRI_json_t;
 struct TRI_program_options_s;
 struct TRI_PO_section_s;
 
@@ -55,8 +56,8 @@ namespace triagens {
 
     class ProgramOptions {
       private:
-        ProgramOptions (ProgramOptions const&);
-        ProgramOptions& operator= (ProgramOptions const&);
+        ProgramOptions (ProgramOptions const&) = delete;
+        ProgramOptions& operator= (ProgramOptions const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -111,6 +112,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string lastError ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get global program options as JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        static struct TRI_json_t const* getJson ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
