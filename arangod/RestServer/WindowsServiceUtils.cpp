@@ -186,11 +186,13 @@ static void DeleteService (int argc, char* argv[], bool force) {
                          sizeof(serviceConfigMemory),
                          &bytesNeeded)) {
     QUERY_SERVICE_CONFIG *cfg = (QUERY_SERVICE_CONFIG*) &serviceConfigMemory;
-    if (strcmp(cfg->lpBinaryPathName, path)) {
+
+    std::string command = std::string("\"") + std::string(path) + std::string("\" --start-service");
+      if (strcmp(cfg->lpBinaryPathName, command.c_str())) {
       if (!force) {
         std::cerr << "NOT removing service of other installation: " <<
           cfg->lpBinaryPathName <<
-          "Our path is: " <<
+          " Our path is: " <<
           path << std::endl;
 
         CloseServiceHandle(schSCManager);

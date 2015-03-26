@@ -8,7 +8,7 @@ def read_socket (socket)
   response = ""
         
   while true
-    rs = IO.select([socket], [ ], [ ], 2)
+    rs = IO.select([socket], [ ], [ ], 5)
 
     if rs === nil 
       break

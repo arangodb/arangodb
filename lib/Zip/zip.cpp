@@ -852,6 +852,8 @@ extern zipFile ZEXPORT zipOpen3 (const void *pathname, int append, zipcharpc* gl
     zip64_internal* zi;
     int err=ZIP_OK;
 
+    memset(&ziinit, 0, sizeof(zip64_internal));
+
     ziinit.z_filefunc.zseek32_file = NULL;
     ziinit.z_filefunc.ztell32_file = NULL;
     if (pzlib_filefunc64_32_def==NULL)
@@ -886,6 +888,8 @@ extern zipFile ZEXPORT zipOpen3 (const void *pathname, int append, zipcharpc* gl
         ZCLOSE64(ziinit.z_filefunc,ziinit.filestream);
         return NULL;
     }
+
+    memset(zi, 0, sizeof(zip64_internal));
 
     /* now we add file in a zipfile */
 #    ifndef NO_ADDFILEINEXISTINGZIP

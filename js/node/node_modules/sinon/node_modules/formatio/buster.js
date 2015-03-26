@@ -1,7 +1,7 @@
 exports["Browser"] = {
     // TODO: Needs fixing
+    environment: "browser",
     libs: [
-        "node_modules/samsam/node_modules/lodash/lodash.js",
         "node_modules/samsam/lib/samsam.js"
     ],
     sources: ["lib/*.js"],

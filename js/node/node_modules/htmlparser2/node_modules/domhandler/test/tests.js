@@ -35,10 +35,12 @@ fs
 		var parser = new Parser(handler, test.options);
 
 		//first, try to run the test via chunks
-		for(var i = 0; i < data.length; i++){
-			parser.write(data.charAt(i));
+		if (test.streaming || test.streaming === undefined){
+			for(var i = 0; i < data.length; i++){
+				parser.write(data.charAt(i));
+			}
+			parser.done();
 		}
-		parser.done();
 
 		//then parse everything
 		parser.parseComplete(data);

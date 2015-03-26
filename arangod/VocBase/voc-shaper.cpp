@@ -41,7 +41,7 @@
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Basics/utf8-helper.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
@@ -218,7 +218,7 @@ static TRI_shape_aid_t FindOrCreateAttributeByName (TRI_shaper_t* shaper,
 
     return aid;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -387,7 +387,7 @@ static TRI_shape_t const* FindShape (TRI_shaper_t* shaper,
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, shape);
     return result;
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {
@@ -794,6 +794,8 @@ int TRI_InsertShapeVocShaper (TRI_shaper_t* s,
   LOG_TRACE("found shape %lu", (unsigned long) l->_sid);
 
   voc_shaper_t* shaper = (voc_shaper_t*) s;
+    
+  MUTEX_LOCKER(shaper->_shapeLock);
 
   void* f;
   f = TRI_InsertElementAssociativeSynced(&shaper->_shapeDictionary, l, false);
@@ -853,6 +855,8 @@ int TRI_InsertAttributeVocShaper (TRI_shaper_t* s,
    
   // remove an existing temporary attribute if present
   voc_shaper_t* shaper = reinterpret_cast<voc_shaper_t*>(s);
+  
+  MUTEX_LOCKER(shaper->_attributeLock);
 
   void* found;
   found = TRI_InsertKeyAssociativeSynced(&shaper->_attributeNames, name, (void*) marker, false);

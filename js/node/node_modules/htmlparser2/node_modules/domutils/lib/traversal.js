@@ -16,7 +16,7 @@ exports.getAttributeValue = function(elem, name){
 };
 
 exports.hasAttrib = function(elem, name){
-	return hasOwnProperty.call(elem.attribs, name);
+	return !!elem.attribs && hasOwnProperty.call(elem.attribs, name);
 };
 
 exports.getName = function(elem){

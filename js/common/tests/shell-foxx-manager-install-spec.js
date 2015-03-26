@@ -89,7 +89,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-manifest"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_INVALID_APPLICATION_MANIFEST, e);
+        validateError(errors.ERROR_MALFORMED_MANIFEST_FILE, e);
       }
     });
 
@@ -98,7 +98,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "incomplete-manifest"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_MANIFEST_FILE_ATTRIBUTE_MISSING, e);
+        validateError(errors.ERROR_INVALID_APPLICATION_MANIFEST, e);
       }
     });
 
@@ -136,7 +136,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-controller-name"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
+        validateError(errors.ERROR_INVALID_APPLICATION_MANIFEST, e);
       }
     });
 

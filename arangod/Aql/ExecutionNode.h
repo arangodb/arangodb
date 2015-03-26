@@ -102,7 +102,8 @@ namespace triagens {
           UPDATE                  = 17,
           RETURN                  = 18,
           NORESULTS               = 19,
-          DISTRIBUTE              = 20
+          DISTRIBUTE              = 20,
+          UPSERT                  = 21
         };
 
 // -----------------------------------------------------------------------------
@@ -180,8 +181,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void addDependency (ExecutionNode* ep) {
-          _dependencies.push_back(ep);
-          ep->_parents.push_back(this);
+          _dependencies.emplace_back(ep);
+          ep->_parents.emplace_back(this);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -251,7 +252,7 @@ namespace triagens {
             if (*it == oldNode) {
               *it = newNode;
               try {
-                newNode->_parents.push_back(this);
+                newNode->_parents.emplace_back(this);
               }
               catch (...) {
                 *it = oldNode;  // roll back
@@ -799,7 +800,7 @@ namespace triagens {
                                       bool withProperties) const {
           auto c = new SingletonNode(plan, _id);
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -1048,8 +1049,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v;
-          v.push_back(_inVariable);
+          std::vector<Variable const*> v{ _inVariable };
           return v;
         }
 
@@ -1058,8 +1058,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          v.push_back(_outVariable);
+          std::vector<Variable const*> v{ _outVariable };
           return v;
         }
 
@@ -1350,6 +1349,7 @@ namespace triagens {
                                       bool withDependencies,
                                       bool withProperties) const override final {
           auto c = new LimitNode(plan, _id, _offset, _limit);
+
           if (_fullCount) {
             c->setFullCount();
           }
@@ -1448,9 +1448,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         ~CalculationNode () {
-          if (_expression != nullptr) {
-            delete _expression;
-          }
+          delete _expression;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1665,8 +1663,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          v.push_back(_outVariable);
+          std::vector<Variable const*> v{ _outVariable };
           return v;
         }
 
@@ -1770,8 +1767,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v;
-          v.push_back(_inVariable);
+          std::vector<Variable const*> v{ _inVariable };
           return v;
         }
 
@@ -1912,7 +1908,7 @@ namespace triagens {
                                       bool withProperties) const {
           auto c = new SortNode(plan, _id, _elements, _stable);
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -1930,7 +1926,7 @@ namespace triagens {
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
-            v.push_back(p.first);
+            v.emplace_back(p.first);
           }
           return v;
         }
@@ -2126,10 +2122,10 @@ namespace triagens {
           v.reserve(n);
 
           for (auto p : _aggregateVariables) {
-            v.push_back(p.first);
+            v.emplace_back(p.first);
           }
           if (_outVariable != nullptr) {
-            v.push_back(_outVariable);
+            v.emplace_back(_outVariable);
           }
           return v;
         }
@@ -2243,8 +2239,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v;
-          v.push_back(_inVariable);
+          std::vector<Variable const*> v{ _inVariable };
           return v;
         }
 
@@ -2286,12 +2281,14 @@ namespace triagens {
                           TRI_vocbase_t* vocbase, 
                           Collection* collection,
                           ModificationOptions const& options,
-                          Variable const* outVariable)
+                          Variable const* outVariableOld,
+                          Variable const* outVariableNew)
           : ExecutionNode(plan, id), 
             _vocbase(vocbase), 
             _collection(collection),
             _options(options),
-            _outVariable(outVariable) {
+            _outVariableOld(outVariableOld),
+            _outVariableNew(outVariableNew) {
 
           TRI_ASSERT(_vocbase != nullptr);
           TRI_ASSERT(_collection != nullptr);
@@ -2354,6 +2351,53 @@ namespace triagens {
           return _options;
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesSetHere
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> getVariablesSetHere () const override final {
+          std::vector<Variable const*> v;
+          if (_outVariableOld != nullptr) {
+            v.emplace_back(_outVariableOld);
+          }
+          if (_outVariableNew != nullptr) {
+            v.emplace_back(_outVariableNew);
+          }
+          return v;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the "$OLD" out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* getOutVariableOld () const {
+          return _outVariableOld;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the "$NEW" out variable
+////////////////////////////////////////////////////////////////////////////////
+        
+        Variable const* getOutVariableNew () const {
+          return _outVariableNew;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the "$OLD" out variable
+////////////////////////////////////////////////////////////////////////////////
+
+        void clearOutVariableOld () {
+          _outVariableOld = nullptr;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clear the "$NEW" out variable
+////////////////////////////////////////////////////////////////////////////////
+        
+        void clearOutVariableNew () {
+          _outVariableNew = nullptr;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
@@ -2379,10 +2423,16 @@ namespace triagens {
         ModificationOptions _options;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output variable
+/// @brief output variable ($OLD)
 ////////////////////////////////////////////////////////////////////////////////
 
-        Variable const* _outVariable;
+        Variable const* _outVariableOld;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output variable ($NEW)
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _outVariableNew;
 
     };
 
@@ -2412,14 +2462,15 @@ namespace triagens {
                     Collection* collection,
                     ModificationOptions const& options,
                     Variable const* inVariable,
-                    Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+                    Variable const* outVariableOld)
+          : ModificationNode(plan, id, vocbase, collection, options, outVariableOld, nullptr),
             _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
         }
         
-        RemoveNode (ExecutionPlan*, triagens::basics::Json const& base);
+        RemoveNode (ExecutionPlan*, 
+                    triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2433,38 +2484,24 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v;
-          v.push_back(_inVariable);
-          return v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          if (_outVariable != nullptr) {
-            v.push_back(_outVariable);
-          }
-          return v;
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          return std::vector<Variable const*>{ _inVariable };
         }
 
 // -----------------------------------------------------------------------------
@@ -2507,15 +2544,16 @@ namespace triagens {
                     Collection* collection,
                     ModificationOptions const& options,
                     Variable const* inVariable,
-                    Variable const* outVariable)
-          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+                    Variable const* outVariableNew)
+          : ModificationNode(plan, id, vocbase, collection, options, nullptr, outVariableNew),
             _inVariable(inVariable) {
 
           TRI_ASSERT(_inVariable != nullptr);
           // _outVariable might be a nullptr
         }
         
-        InsertNode (ExecutionPlan*, triagens::basics::Json const& base);
+        InsertNode (ExecutionPlan*, 
+                    triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2529,38 +2567,24 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v;
-          v.push_back(_inVariable);
-          return v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          if (_outVariable != nullptr) {
-            v.push_back(_outVariable);
-          }
-          return v;
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          return std::vector<Variable const*>{ _inVariable };
         }
 
 // -----------------------------------------------------------------------------
@@ -2604,18 +2628,18 @@ namespace triagens {
                     ModificationOptions const& options,
                     Variable const* inDocVariable,
                     Variable const* inKeyVariable,
-                    Variable const* outVariable,
-                    bool returnNewValues)
-          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+                    Variable const* outVariableOld,
+                    Variable const* outVariableNew) 
+          : ModificationNode(plan, id, vocbase, collection, options, outVariableOld, outVariableNew),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable), 
-            _returnNewValues(returnNewValues) {
+            _inKeyVariable(inKeyVariable) { 
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
         }
         
-        UpdateNode (ExecutionPlan*, triagens::basics::Json const& base);
+        UpdateNode (ExecutionPlan*, 
+                    triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2629,42 +2653,29 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
           // Please do not change the order here without adjusting the 
           // optimizer rule distributeInCluster as well!
-          std::vector<Variable const*> v;
-          v.push_back(_inDocVariable);
+          std::vector<Variable const*> v{ _inDocVariable };
 
           if (_inKeyVariable != nullptr) {
-            v.push_back(_inKeyVariable);
-          }
-          return v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          if (_outVariable != nullptr) {
-            v.push_back(_outVariable);
+            v.emplace_back(_inKeyVariable);
           }
           return v;
         }
@@ -2687,11 +2698,6 @@ namespace triagens {
 
         Variable const* _inKeyVariable;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief if we return the changed fields, before or after state?
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _returnNewValues;
     };
 
 // -----------------------------------------------------------------------------
@@ -2721,18 +2727,18 @@ namespace triagens {
                      ModificationOptions const& options,
                      Variable const* inDocVariable,
                      Variable const* inKeyVariable,
-                     Variable const* outVariable,
-                     bool returnNewValues)
-          : ModificationNode(plan, id, vocbase, collection, options, outVariable),
+                     Variable const* outVariableOld,
+                     Variable const* outVariableNew)
+          : ModificationNode(plan, id, vocbase, collection, options, outVariableOld, outVariableNew),
             _inDocVariable(inDocVariable),
-            _inKeyVariable(inKeyVariable),
-            _returnNewValues(returnNewValues) {
+            _inKeyVariable(inKeyVariable) {
 
           TRI_ASSERT(_inDocVariable != nullptr);
           // _inKeyVariable might be a nullptr
         }
 
-        ReplaceNode (ExecutionPlan*, triagens::basics::Json const& base);
+        ReplaceNode (ExecutionPlan*, 
+                     triagens::basics::Json const& base);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2746,42 +2752,29 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
           // Please do not change the order here without adjusting the 
           // optimizer rule distributeInCluster as well!
-          std::vector<Variable const*> v;
-          v.push_back(_inDocVariable);
+          std::vector<Variable const*> v{ _inDocVariable };
 
           if (_inKeyVariable != nullptr) {
-            v.push_back(_inKeyVariable);
-          }
-          return v;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getVariablesSetHere
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          if (_outVariable != nullptr) {
-            v.push_back(_outVariable);
+            v.emplace_back(_inKeyVariable);
           }
           return v;
         }
@@ -2804,12 +2797,118 @@ namespace triagens {
 
         Variable const* _inKeyVariable;
 
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  class UpsertNode
+// -----------------------------------------------------------------------------
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief if we return the changed fields, before or after state?
+/// @brief class UpsertNode
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _returnNewValues;
+    class UpsertNode : public ModificationNode {
+      
+      friend class ExecutionNode;
+      friend class ExecutionBlock;
+      friend class UpsertBlock;
+      
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor with a vocbase and a collection name
+////////////////////////////////////////////////////////////////////////////////
 
+      public:
+
+        UpsertNode (ExecutionPlan* plan,
+                    size_t id, 
+                    TRI_vocbase_t* vocbase, 
+                    Collection* collection,
+                    ModificationOptions const& options,
+                    Variable const* inDocVariable,
+                    Variable const* insertVariable,
+                    Variable const* updateVariable,
+                    Variable const* outVariableNew,
+                    bool isReplace) 
+          : ModificationNode(plan, id, vocbase, collection, options, nullptr, outVariableNew),
+            _inDocVariable(inDocVariable),
+            _insertVariable(insertVariable),
+            _updateVariable(updateVariable),
+            _isReplace(isReplace) {
+
+          TRI_ASSERT(_inDocVariable != nullptr);
+          TRI_ASSERT(_insertVariable != nullptr);
+          TRI_ASSERT(_updateVariable != nullptr);
+
+          TRI_ASSERT(_outVariableOld == nullptr);
+        }
+        
+        UpsertNode (ExecutionPlan*, 
+                    triagens::basics::Json const& base);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the type of the node
+////////////////////////////////////////////////////////////////////////////////
+
+        NodeType getType () const override final {
+          return UPSERT;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief export to JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief clone ExecutionNode recursively
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief getVariablesUsedHere
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          // Please do not change the order here without adjusting the 
+          // optimizer rule distributeInCluster as well!
+          std::vector<Variable const*> v{ _inDocVariable, _insertVariable, _updateVariable };
+          return v;
+        }
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief input variable for the search document
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _inDocVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief insert case expression
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _insertVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief update case expression
+////////////////////////////////////////////////////////////////////////////////
+
+        Variable const* _updateVariable;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether to perform a REPLACE (or an UPDATE alternatively)
+////////////////////////////////////////////////////////////////////////////////
+
+        bool const _isReplace;
     };
 
 // -----------------------------------------------------------------------------
@@ -2864,7 +2963,7 @@ namespace triagens {
                                       bool withProperties) const {
           auto c = new NoResultsNode(plan, _id);
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -2939,7 +3038,7 @@ namespace triagens {
                                       bool withProperties) const {
           auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3180,12 +3279,24 @@ namespace triagens {
                         TRI_vocbase_t* vocbase,
                         Collection const* collection, 
                         VariableId const varId,
+                        VariableId const alternativeVarId,
                         bool createKeys)
           : ExecutionNode(plan, id),
             _vocbase(vocbase),
             _collection(collection),
             _varId(varId),
+            _alternativeVarId(alternativeVarId),
             _createKeys(createKeys) {
+        }
+        
+        DistributeNode (ExecutionPlan* plan, 
+                        size_t id,
+                        TRI_vocbase_t* vocbase,
+                        Collection const* collection, 
+                        VariableId const varId,
+                        bool createKeys)
+          : DistributeNode(plan, id, vocbase, collection, varId, varId, createKeys) {
+          // just delegates to the other constructor
         }
 
         DistributeNode (ExecutionPlan*, 
@@ -3214,9 +3325,9 @@ namespace triagens {
         virtual ExecutionNode* clone (ExecutionPlan* plan,
                                       bool withDependencies,
                                       bool withProperties) const {
-          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _createKeys);
+          auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId, _createKeys);
           
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3262,6 +3373,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         VariableId const _varId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an optional second variable we must inspect to know where to 
+/// distribute
+////////////////////////////////////////////////////////////////////////////////
+
+        VariableId const _alternativeVarId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the node is responsible for creating document keys
@@ -3328,7 +3446,7 @@ namespace triagens {
                                       bool withProperties) const {
           auto c = new GatherNode(plan, _id, _vocbase, _collection);
 
-          CloneHelper (c, plan, withDependencies, withProperties);
+          CloneHelper(c, plan, withDependencies, withProperties);
 
           return static_cast<ExecutionNode*>(c);
         }
@@ -3346,7 +3464,7 @@ namespace triagens {
         virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
-            v.push_back(p.first);
+            v.emplace_back(p.first);
           }
           return v;
         }

@@ -186,6 +186,10 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
         int res;
         try {
+          TRI_IF_FAILURE("Optimizer::createPlansOom") {
+            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+          }
+
           // all optimizer rule functions must obey the following guidelines:
           // - the original plan passed to the rule function must be deleted if and only
           //   if it has not been added (back) to the optimizer (using addPlan). 
@@ -482,7 +486,13 @@ void Optimizer::setupRules () {
                removeCollectIntoRule,
                removeCollectIntoRule_pass5,
                true);
-
+  
+  // remove unused out variables for data-modification queries
+  registerRule("remove-data-modification-out-variables",
+               removeDataModificationOutVariablesRule,
+               removeDataModificationOutVariablesRule_pass5,
+               true);
+        
   // propagate constant attributes in FILTERs
   registerRule("propagate-constant-attributes",
                propagateConstantAttributesRule,

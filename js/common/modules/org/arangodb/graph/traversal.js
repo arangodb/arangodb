@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, ArangoClusterComm */
+/*global require, exports, ArangoClusterComm, AQL_QUERY_IS_KILLED */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
@@ -43,6 +43,30 @@ var ArangoTraverser;
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was aborted
+/// use the AQL_QUERY_IS_KILLED function on the server side, and a dummy 
+/// function otherwise (ArangoShell etc.)
+////////////////////////////////////////////////////////////////////////////////
+
+var throwIfAborted = function () {
+};
+
+try {
+  if (typeof AQL_QUERY_IS_KILLED === "function") {
+    throwIfAborted = function () { 
+      if (AQL_QUERY_IS_KILLED()) {
+        var err = new ArangoError();
+        err.errorNum = arangodb.errors.ERROR_QUERY_KILLED.code;
+        err.errorMessage = arangodb.errors.ERROR_QUERY_KILLED.message;
+        throw err;
+      }
+    };
+  }
+}
+catch (err) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone any object
@@ -899,6 +923,8 @@ function breadthFirstSearch () {
           throw err;
         }
 
+        throwIfAborted();
+
         if (current.visit === null || current.visit === undefined) {
           current.visit = false;
 
@@ -1008,6 +1034,8 @@ function depthFirstSearch () {
           err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
           throw err;
         }
+        
+        throwIfAborted();
 
         // peek at the top of the stack
         var current = toVisit[toVisit.length - 1];
@@ -1152,6 +1180,8 @@ function dijkstraSearch () {
           err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
           throw err;
         }
+        
+        throwIfAborted();
 
         var currentNode = heap.pop();
         var i, n;
@@ -1289,6 +1319,8 @@ function astarSearch () {
           err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
           throw err;
         }
+
+        throwIfAborted();
 
         var currentNode = heap.pop();
         var i, n;

@@ -31,8 +31,7 @@ var Model,
   _ = require('underscore'),
   joi = require('joi'),
   is = require('org/arangodb/is'),
-  extend = require('org/arangodb/extend').extend,
-  toJSONSchema = require('org/arangodb/foxx/schema').toJSONSchema,
+  extend = require('extendible'),
   EventEmitter = require('events').EventEmitter,
   util = require('util'),
   excludeExtraAttributes,
@@ -132,17 +131,6 @@ Model.fromClient = function (attributes) {
   'use strict';
   return new this(excludeExtraAttributes(attributes, this));
 };
-
-// "Class" Properties
-_.extend(Model, {
-  // TODO: Docs
-
-  toJSONSchema: function (id) {
-    'use strict';
-    require('console').log('Model.toJSONSchema(id) is deprecated, use Foxx.toJSONSchema(id, Model) instead');
-    return toJSONSchema(id, this);
-  }
-});
 
 // Instance Properties
 _.extend(Model.prototype, {

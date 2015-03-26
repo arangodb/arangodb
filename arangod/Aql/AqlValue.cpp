@@ -87,11 +87,13 @@ void AqlValue::destroy () {
           delete *it;
         }
         delete _vector;
+        _vector = nullptr;
       }
       break;
     }
     case RANGE: {
       delete _range;
+      _range = nullptr;
       break;
     }
     case SHAPED: {
@@ -145,10 +147,10 @@ AqlValue AqlValue::clone () const {
 
     case DOCVEC: {
       auto c = new std::vector<AqlItemBlock*>;
-      c->reserve(_vector->size());
       try {
+        c->reserve(_vector->size());
         for (auto it = _vector->begin(); it != _vector->end(); ++it) {
-          c->push_back((*it)->slice(0, (*it)->size()));
+          c->emplace_back((*it)->slice(0, (*it)->size()));
         }
       }
       catch (...) {
@@ -295,13 +297,14 @@ bool AqlValue::isObject () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the length of an AqlValue containing a list
+/// @brief returns the length of an AqlValue containing an array
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t AqlValue::listSize () const {
+size_t AqlValue::arraySize () const {
   switch (_type) {
     case JSON: {
       TRI_json_t const* json = _json->json();
+
       if (TRI_IsArrayJson(json)) {
         return TRI_LengthArrayJson(json);
       }

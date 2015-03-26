@@ -84,7 +84,8 @@ namespace triagens {
       AQL_QUERY_REMOVE,
       AQL_QUERY_INSERT,
       AQL_QUERY_UPDATE,
-      AQL_QUERY_REPLACE
+      AQL_QUERY_REPLACE,
+      AQL_QUERY_UPSERT
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -303,12 +304,20 @@ namespace triagens {
                                    int) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register an error
+/// @brief register an error, with an optional parameter inserted into printf
 /// this also makes the query abort
 ////////////////////////////////////////////////////////////////////////////////
 
         void registerError (int,
                             char const* = nullptr);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register an error with a custom error message
+/// this also makes the query abort
+////////////////////////////////////////////////////////////////////////////////
+        
+        void registerErrorCustom (int,
+                                  char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register a warning

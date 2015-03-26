@@ -43,7 +43,10 @@
 #include "Utils/V8TransactionContext.h"
 #include "Cluster/ClusterComm.h"
 
+struct TRI_doc_mptr_copy_t;
+struct TRI_df_marker_s;
 struct TRI_hash_index_element_multi_s;
+struct TRI_json_t;
 
 namespace triagens {
   namespace aql {
@@ -58,7 +61,7 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief details about the current group
-////////////////////////////////////////////////////////////////////////////////
+///////////////////////////////////////////////////////////////////////////////
 
     struct AggregatorGroup {
       std::vector<AqlValue> groupValues;
@@ -69,7 +72,6 @@ namespace triagens {
       size_t lastRow;
       size_t groupLength;
       bool rowsAreValid;
-      bool virginity;
       bool const countOnly;
 
       explicit AggregatorGroup (bool);
@@ -115,6 +117,12 @@ namespace triagens {
         virtual ~ExecutionBlock ();
       
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the number of rows in a vector of blocks
+////////////////////////////////////////////////////////////////////////////////
+
+        size_t countBlocksRows (std::vector<AqlItemBlock*> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the query was killed
@@ -242,6 +250,11 @@ namespace triagens {
         void inheritRegisters (AqlItemBlock const* src,
                                AqlItemBlock* dst,
                                size_t row);
+        
+        void inheritRegisters (AqlItemBlock const* src,
+                               AqlItemBlock* dst,
+                               size_t,
+                               size_t);
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the following is internal to pull one more block and append it to
@@ -1383,7 +1396,7 @@ namespace triagens {
 /// @brief the actual work horse 
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual AqlItemBlock*  work (std::vector<AqlItemBlock*>&) = 0;
+        virtual AqlItemBlock* work (std::vector<AqlItemBlock*>&) = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a key from the AqlValue passed
@@ -1392,6 +1405,27 @@ namespace triagens {
         int extractKey (AqlValue const&,
                         TRI_document_collection_t const*,
                         std::string&) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructs a master pointer from the marker passed
+////////////////////////////////////////////////////////////////////////////////
+
+        void constructMptr (TRI_doc_mptr_copy_t*,
+                            TRI_df_marker_s const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a shard key value has changed
+////////////////////////////////////////////////////////////////////////////////
+                
+        bool isShardKeyChange (struct TRI_json_t const*,
+                               struct TRI_json_t const*,
+                               bool) const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether a shard key was set when it must not be set
+////////////////////////////////////////////////////////////////////////////////
+                
+        bool isShardKeyError (struct TRI_json_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process the result of a data-modification operation
@@ -1408,16 +1442,34 @@ namespace triagens {
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief output register
+/// @brief output register ($OLD)
 ////////////////////////////////////////////////////////////////////////////////
 
-        RegisterId _outReg;
+        RegisterId _outRegOld;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output register ($NEW)
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _outRegNew;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief collection
 ////////////////////////////////////////////////////////////////////////////////
 
         Collection const* _collection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not we're a DB server in a cluster
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _isDBServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the collection uses the default sharding attributes
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _usesDefaultSharding;
 
     };
 
@@ -1452,7 +1504,7 @@ namespace triagens {
 /// @brief the actual work horse for removing data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -1487,7 +1539,7 @@ namespace triagens {
 /// @brief the actual work horse for inserting data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -1522,7 +1574,7 @@ namespace triagens {
 /// @brief the actual work horse for updating data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -1557,7 +1609,42 @@ namespace triagens {
 /// @brief the actual work horse for replacing data
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* work (std::vector<AqlItemBlock*>&);
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
+
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       UpsertBlock
+// -----------------------------------------------------------------------------
+
+    class UpsertBlock : public ModificationBlock {
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+        UpsertBlock (ExecutionEngine*, 
+                     UpsertNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+        ~UpsertBlock ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 protected methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the actual work horse for updating data
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlItemBlock* work (std::vector<AqlItemBlock*>&) override final;
 
     };
 
@@ -2060,6 +2147,12 @@ namespace triagens {
                                 size_t clientId);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief return the JSON that is used to determine the initial shard
+////////////////////////////////////////////////////////////////////////////////
+  
+        struct TRI_json_t const* getInputJson (AqlItemBlock const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sendToClient: for each row of the incoming AqlItemBlock use the 
 /// attributes <shardKeys> of the register <id> to determine to which shard the
 /// row should be sent. 
@@ -2097,6 +2190,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RegisterId _regId;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a second register to inspect (used only for UPSERT nodes at the
+/// moment to distinguish between search and insert)
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _alternativeRegId;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the collection uses the default sharding

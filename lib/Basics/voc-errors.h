@@ -109,8 +109,8 @@
 ///   Will be raised when an error occurred during WAL log file recovery.
 /// - 1100: @LIT{corrupted datafile}
 ///   Will be raised when a corruption is detected in a datafile.
-/// - 1101: @LIT{illegal parameter file}
-///   Will be raised if a parameter file is corrupted.
+/// - 1101: @LIT{illegal or unreadable parameter file}
+///   Will be raised if a parameter file is corrupted or cannot be read.
 /// - 1102: @LIT{corrupted collection}
 ///   Will be raised when a collection contains one or more corrupted data
 ///   files.
@@ -437,6 +437,9 @@
 /// - 1578: @LIT{disallowed dynamic call to '\%s'}
 ///    "Will be raised when a dynamic function call is made to a function that
 ///   cannot be called dynamically."
+/// - 1579: @LIT{access after data-modification}
+///    "Will be raised when collection data is accessed after a
+///   data-modification query part."
 /// - 1580: @LIT{invalid user function name}
 ///   Will be raised when a user function with an invalid name is registered.
 /// - 1581: @LIT{invalid user function code}
@@ -1112,9 +1115,9 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1101: ERROR_ARANGO_ILLEGAL_PARAMETER_FILE
 ///
-/// illegal parameter file
+/// illegal or unreadable parameter file
 ///
-/// Will be raised if a parameter file is corrupted.
+/// Will be raised if a parameter file is corrupted or cannot be read.
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_ARANGO_ILLEGAL_PARAMETER_FILE                           (1101)
@@ -2412,6 +2415,17 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_QUERY_DISALLOWED_DYNAMIC_CALL                           (1578)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1579: ERROR_QUERY_ACCESS_AFTER_MODIFICATION
+///
+/// access after data-modification
+///
+///  "Will be raised when collection data is accessed after a data-modification
+/// query part."
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION                         (1579)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1580: ERROR_QUERY_FUNCTION_INVALID_NAME

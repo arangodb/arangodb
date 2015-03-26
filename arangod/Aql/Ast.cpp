@@ -32,7 +32,7 @@
 #include "Aql/Collection.h"
 #include "Aql/Executor.h"
 #include "Basics/tri-strings.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/collection.h"
 
 using namespace triagens::aql;
@@ -175,14 +175,15 @@ void Ast::addOperation (AstNode* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeFor (char const* variableName,
-                             AstNode const* expression) {
+                             AstNode const* expression,
+                             bool isUserDefinedVariable) {
   if (variableName == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
   AstNode* node = createNode(NODE_TYPE_FOR);
 
-  AstNode* variable = createNodeVariable(variableName, true);
+  AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -203,6 +204,23 @@ AstNode* Ast::createNodeLet (char const* variableName,
   AstNode* node = createNode(NODE_TYPE_LET);
 
   AstNode* variable = createNodeVariable(variableName, isUserDefinedVariable);
+  node->addMember(variable);
+  node->addMember(expression);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST let node, without creating a variable
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeLet (AstNode const* variable,
+                             AstNode const* expression) {
+  if (variable == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  AstNode* node = createNode(NODE_TYPE_LET);
   node->addMember(variable);
   node->addMember(expression);
 
@@ -242,6 +260,73 @@ AstNode* Ast::createNodeFilter (AstNode const* expression) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST filter node for an UPSERT query
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeUpsertFilter (AstNode const* variable,
+                                      AstNode const* object) {
+  AstNode* node = createNode(NODE_TYPE_FILTER);
+
+  if (object->type != NODE_TYPE_OBJECT) {
+    // type of the object should have been validated before
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "expecting object literal for upsert");
+  }
+
+  AstNode* result = nullptr;
+  std::vector<char const*> attributeParts{ }; 
+
+  std::function<void(AstNode const*)> createCondition = [&] (AstNode const* object) -> void {
+    TRI_ASSERT(object->type == NODE_TYPE_OBJECT);
+
+    auto const n = object->numMembers();
+
+    for (size_t i = 0; i < n; ++i) {
+      auto member = object->getMember(i); 
+   
+      if (member->type != NODE_TYPE_OBJECT_ELEMENT) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_QUERY_PARSE, "expecting object literal with literal attribute names for upsert");
+      }
+
+      attributeParts.emplace_back(member->getStringValue());
+
+      auto value = member->getMember(0);
+
+      if (value->type == NODE_TYPE_OBJECT) {
+        createCondition(value);
+      }
+      else {
+        auto access = variable;
+        for (size_t i = 0; i < attributeParts.size(); ++i) {
+          access = createNodeAttributeAccess(access, attributeParts[i]);
+        }
+
+        auto condition = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_EQ, access, value);
+
+        if (result == nullptr) {
+          result = condition;
+        }
+        else {
+          // AND-combine with previous condition
+          result = createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, result, condition);
+        }
+      }
+
+      attributeParts.pop_back();
+    }
+  };
+
+  createCondition(object);
+
+  if (result == nullptr) {
+    result = createNodeValueBool(true);
+  }
+
+  node->addMember(result);
+
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST return node
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -258,10 +343,7 @@ AstNode* Ast::createNodeReturn (AstNode const* expression) {
 
 AstNode* Ast::createNodeRemove (AstNode const* expression,
                                 AstNode const* collection,
-                                AstNode const* options,
-                                char const* newOld,
-                                char const* varInto,
-                                char const* varReturn) {
+                                AstNode const* options) {
 
   AstNode* node = createNode(NODE_TYPE_REMOVE);
 
@@ -273,10 +355,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
-
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-  }
+  node->addMember(createNodeVariable("$OLD", false)); 
 
   return node;
 }
@@ -287,10 +366,7 @@ AstNode* Ast::createNodeRemove (AstNode const* expression,
 
 AstNode* Ast::createNodeInsert (AstNode const* expression,
                                 AstNode const* collection,
-                                AstNode const* options,
-                                char const* newOld,
-                                char const* varInto,
-                                char const* varReturn) {
+                                AstNode const* options) {
   
   AstNode* node = createNode(NODE_TYPE_INSERT);
   
@@ -302,10 +378,8 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
   node->addMember(options);
   node->addMember(collection);
   node->addMember(expression);
+  node->addMember(createNodeVariable("$NEW", false)); 
   
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-  }
   return node;
 }
 
@@ -316,10 +390,7 @@ AstNode* Ast::createNodeInsert (AstNode const* expression,
 AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
                                 AstNode const* docExpression,
                                 AstNode const* collection,
-                                AstNode const* options,
-                                char const* newOld,
-                                char const* varInto,
-                                char const* varReturn) {
+                                AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_UPDATE);
   
   if (options == nullptr) {
@@ -337,12 +408,10 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
   else {
     node->addMember(&NopNode);    
   }
-
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-    node->addMember(createNodeValueBool(TRI_CaseEqualString(newOld, "NEW")));
-  }
-
+  
+  node->addMember(createNodeVariable("$OLD", false)); 
+  node->addMember(createNodeVariable("$NEW", false)); 
+  
   return node;
 }
 
@@ -353,11 +422,7 @@ AstNode* Ast::createNodeUpdate (AstNode const* keyExpression,
 AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
                                  AstNode const* docExpression,
                                  AstNode const* collection,
-                                 AstNode const* options,
-                                 char const* newOld,
-                                 char const* varInto,
-                                 char const* varReturn) {
-
+                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_REPLACE);
   
   if (options == nullptr) {
@@ -375,11 +440,41 @@ AstNode* Ast::createNodeReplace (AstNode const* keyExpression,
   else {
     node->addMember(&NopNode);    
   }
+  
+  node->addMember(createNodeVariable("$OLD", false)); 
+  node->addMember(createNodeVariable("$NEW", false)); 
 
-  if (newOld != nullptr) {
-    node->addMember(createNodeVariable(varInto, true));
-    node->addMember(createNodeValueBool(TRI_CaseEqualString(newOld, "NEW")));
+  return node;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an AST upsert node
+////////////////////////////////////////////////////////////////////////////////
+
+AstNode* Ast::createNodeUpsert (AstNodeType type,
+                                AstNode const* docVariable,
+                                AstNode const* insertExpression,
+                                AstNode const* updateExpression,
+                                AstNode const* collection,
+                                AstNode const* options) {
+  AstNode* node = createNode(NODE_TYPE_UPSERT);
+  
+  node->setIntValue(static_cast<int64_t>(type));
+
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
   }
+
+  node->addMember(options);
+  node->addMember(collection);
+  node->addMember(docVariable);
+  node->addMember(insertExpression);
+  node->addMember(updateExpression);
+  
+  node->addMember(createNodeReference("$OLD")); 
+  node->addMember(createNodeVariable("$NEW", false)); 
+  
   return node;
 }
 
@@ -538,7 +633,7 @@ AstNode* Ast::createNodeCollection (char const* name,
   }
 
   if (*name == '\0' || ! TRI_IsAllowedNameCollection(true, name)) {
-    _query->registerError(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+    _query->registerErrorCustom(TRI_ERROR_ARANGO_ILLEGAL_NAME, name);
     return nullptr;
   }
 
@@ -639,24 +734,6 @@ AstNode* Ast::createNodeTernaryOperator (AstNode const* condition,
   node->addMember(condition);
   node->addMember(truePart);
   node->addMember(falsePart);
-
-  return node;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create an AST subquery node
-////////////////////////////////////////////////////////////////////////////////
-
-AstNode* Ast::createNodeSubquery (char const* variableName,
-                                  AstNode const* subQuery) {
-  if (variableName == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-  }
-
-  AstNode* node = createNode(NODE_TYPE_SUBQUERY);
-  AstNode* variable = createNodeVariable(variableName, false);
-  node->addMember(variable);
-  node->addMember(subQuery);
 
   return node;
 }
@@ -1063,11 +1140,15 @@ AstNode* Ast::replaceVariables (AstNode* node,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief optimizes the AST
+/// this does not only optimize but also performs a few validations after
+/// bind parameter injection. merging this pass with the regular AST 
+/// optimizations saves one extra pass over the AST
 ////////////////////////////////////////////////////////////////////////////////
 
-void Ast::optimize () {
+void Ast::validateAndOptimize () {
   struct TraversalContext {
-    bool isInFilter  = false;
+    bool isInFilter       = false;
+    bool hasSeenWriteNode = false;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> void {
@@ -1079,6 +1160,14 @@ void Ast::optimize () {
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = false;
+    }
+
+    if (node->type == NODE_TYPE_REMOVE ||
+        node->type == NODE_TYPE_INSERT ||
+        node->type == NODE_TYPE_UPDATE ||
+        node->type == NODE_TYPE_REPLACE ||
+        node->type == NODE_TYPE_UPSERT) {
+      static_cast<TraversalContext*>(data)->hasSeenWriteNode = true;
     }
   };
 
@@ -1129,6 +1218,13 @@ void Ast::optimize () {
 
     // call to built-in function
     if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+
+      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode &&
+          ! func->canRunOnDBServer) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+      }
+
       return this->optimizeFunctionCall(node);
     }
     
@@ -1157,6 +1253,13 @@ void Ast::optimize () {
       return this->optimizeFor(node);
     }
 
+    // collection
+    if (node->type == NODE_TYPE_COLLECTION) {
+      if (static_cast<TraversalContext*>(data)->hasSeenWriteNode) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
+      }
+    }
+  
     return node;
   };
 
@@ -1283,6 +1386,9 @@ AstNode* Ast::clone (AstNode const* node) {
            type == NODE_TYPE_REFERENCE ||
            type == NODE_TYPE_FCALL) {
     copy->setData(node->getData());
+  }
+  else if (type == NODE_TYPE_UPSERT) {
+    copy->setIntValue(node->getIntValue());
   }
   else if (type == NODE_TYPE_VALUE) {
     switch (node->value.type) {

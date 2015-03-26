@@ -77,6 +77,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_INSERT),                   "insert" },
   { static_cast<int>(NODE_TYPE_UPDATE),                   "update" },
   { static_cast<int>(NODE_TYPE_REPLACE),                  "replace" },
+  { static_cast<int>(NODE_TYPE_UPSERT),                   "upsert" },
   { static_cast<int>(NODE_TYPE_COLLECT),                  "collect" },
   { static_cast<int>(NODE_TYPE_SORT),                     "sort" },
   { static_cast<int>(NODE_TYPE_SORT_ELEMENT),             "sort element" },
@@ -124,7 +125,7 @@ std::unordered_map<int, std::string const> const AstNode::TypeNames{
   { static_cast<int>(NODE_TYPE_CALCULATED_OBJECT_ELEMENT),"calculated object element" }
 };
 
-std::unordered_map<int, std::string const> const AstNode::valueTypeNames{
+std::unordered_map<int, std::string const> const AstNode::ValueTypeNames{
   { static_cast<int>(VALUE_TYPE_NULL),                    "null" },
   { static_cast<int>(VALUE_TYPE_BOOL),                    "bool" },
   { static_cast<int>(VALUE_TYPE_INT),                     "int" },
@@ -491,6 +492,7 @@ AstNode::AstNode (Ast* ast,
     case NODE_TYPE_INSERT:
     case NODE_TYPE_UPDATE:
     case NODE_TYPE_REPLACE:
+    case NODE_TYPE_UPSERT:
     case NODE_TYPE_COLLECT:
     case NODE_TYPE_COLLECT_COUNT:
     case NODE_TYPE_COLLECT_EXPRESSION:
@@ -616,11 +618,11 @@ std::string const& AstNode::getTypeString () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 std::string const& AstNode::getValueTypeString () const {
-  auto it = valueTypeNames.find(static_cast<int>(value.type));
-  if (it != valueTypeNames.end()) {
+  auto it = ValueTypeNames.find(static_cast<int>(value.type));
+  if (it != ValueTypeNames.end()) {
     return (*it).second;
   }
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in valueTypeNames");
+  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "missing node type in ValueTypeNames");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -640,8 +642,8 @@ void AstNode::validateType (int type) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AstNode::validateValueType (int type) {
-  auto it = valueTypeNames.find(static_cast<int>(type));
-  if (it == valueTypeNames.end()) {
+  auto it = ValueTypeNames.find(static_cast<int>(type));
+  if (it == ValueTypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "invalid AST-Node valueTypeName");
   }
 }
@@ -830,11 +832,16 @@ TRI_json_t* AstNode::toJson (TRI_memory_zone_t* zone,
 
     try {
       for (size_t i = 0; i < n; ++i) {
-        auto member = getMember(i);
+        AstNode* member = getMember(i);
         if (member != nullptr && member->type != NODE_TYPE_NOP) {
           member->toJson(subNodes, zone, verbose);
         }
       }
+    }
+    catch (basics::Exception const&) {
+      TRI_FreeJson(zone, subNodes);
+      TRI_FreeJson(zone, node);
+      throw;
     }
     catch (...) {
       TRI_FreeJson(zone, subNodes);
@@ -996,6 +1003,7 @@ void AstNode::toJson (TRI_json_t* json,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get the integer value of a node, provided the node is a value node
+/// this will return 0 for all non-value nodes and for all non-int value nodes!!
 ////////////////////////////////////////////////////////////////////////////////
 
 int64_t AstNode::getIntValue () const {
@@ -1013,6 +1021,7 @@ int64_t AstNode::getIntValue () const {
         return 0;
     }
   }
+
   return 0;
 }
 

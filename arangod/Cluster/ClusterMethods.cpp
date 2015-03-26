@@ -139,13 +139,13 @@ bool shardKeysChanged (std::string const& dbname,
                        TRI_json_t const* newJson,
                        bool isPatch) {
 
-  TRI_json_t nullJson;
-  TRI_InitNullJson(&nullJson);
-
   if (! TRI_IsObjectJson(oldJson) || ! TRI_IsObjectJson(newJson)) {
-    // expecting two arrays. everything else is an error
+    // expecting two objects. everything else is an error
     return true;
   }
+  
+  TRI_json_t nullJson;
+  TRI_InitNullJson(&nullJson);
 
   ClusterInfo* ci = ClusterInfo::instance();
   shared_ptr<CollectionInfo> const& c = ci->getCollection(dbname, collname);

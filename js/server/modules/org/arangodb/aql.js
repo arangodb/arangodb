@@ -5289,7 +5289,7 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
   return res;
 }
 
-function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
+function RESOLVE_GRAPH_TO_COLLECTIONS (graph, options, funcname) {
   var collections = {};
   collections.fromCollections = [];
   collections.toCollection = [];
@@ -5329,7 +5329,7 @@ function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
       );
     }
     else {
-      WARN("GRAPH_EDGES", INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+      WARN(funcname, INTERNAL.errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       // TODO: check if we need to return more data here
       return collections;
     }
@@ -5340,13 +5340,13 @@ function RESOLVE_GRAPH_TO_COLLECTIONS(graph, options) {
   return collections;
 }
 
-function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
+function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options, funcname) {
+  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections;
   if (! graph) {
-    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
   }
 
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
@@ -5358,13 +5358,13 @@ function RESOLVE_GRAPH_TO_FROM_VERTICES (graphname, options) {
   );
 }
 
-function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options) {
+function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options, funcname) {
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
-    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
   }
 
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
@@ -5374,34 +5374,18 @@ function RESOLVE_GRAPH_TO_TO_VERTICES (graphname, options) {
   );
 }
 
-function RESOLVE_GRAPH_TO_EDGES (graphname, options) {
-  var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
-  if (! graph) {
-    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
-  }
-
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
-  var removeDuplicates = function(elem, pos, self) {
-    return self.indexOf(elem) === pos;
-  };
-
-  return DOCUMENTS_BY_EXAMPLE(
-    collections.edgeCollections.filter(removeDuplicates), options.edgeExamples
-  );
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
 ////////////////////////////////////////////////////////////////////////////////
 
-function RESOLVE_GRAPH_START_VERTICES (graphName, options) {
+function RESOLVE_GRAPH_START_VERTICES (graphName, options, funcname) {
   // check graph exists and load edgeDefintions
   var graph = DOCUMENT_HANDLE("_graphs/" + graphName), collections ;
   if (! graph) {
-    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
   }
 
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
@@ -5414,15 +5398,15 @@ function RESOLVE_GRAPH_START_VERTICES (graphName, options) {
 /// @brief GET ALL EDGE and VERTEX COLLECTION ACCORDING TO DIRECTION
 ////////////////////////////////////////////////////////////////////////////////
 
-function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options) {
+function RESOLVE_GRAPH_TO_DOCUMENTS (graphname, options, funcname) {
   // check graph exists and load edgeDefintions
 
   var graph = DOCUMENT_HANDLE("_graphs/" + graphname), collections ;
   if (! graph) {
-    THROW("GRAPH_EDGES", INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, "GRAPH_EDGES");
+    THROW(funcname, INTERNAL.errors.ERROR_GRAPH_INVALID_GRAPH, funcname);
   }
 
-  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options);
+  collections = RESOLVE_GRAPH_TO_COLLECTIONS(graph, options, funcname);
   var removeDuplicates = function(elem, pos, self) {
     return self.indexOf(elem) === pos;
   };
@@ -5856,13 +5840,13 @@ function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
     params.visitor =  TRAVERSAL_DIJSKTRA_VISITOR;
   }
   // merge other options
-  for (var att in options) {
+  Object.keys(options).forEach(function (att) {
     if (! params.hasOwnProperty(att)) {
       params[att] = options[att];
     }
-  }
+  });
   var result = [], fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options),
-    toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
+    toVertices = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options, "GRAPH_SHORTEST_PATH");
 
   var calculated = {};
   fromVertices.forEach(function (v) {
@@ -6014,7 +5998,7 @@ function AQL_GRAPH_SHORTEST_PATH (graphName,
   }
 
   if (options.algorithm === "Floyd-Warshall") {
-    var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options);
+    var graph = RESOLVE_GRAPH_TO_DOCUMENTS(graphName, options, "GRAPH_SHORTEST_PATH");
     return CALCULATE_SHORTEST_PATHES_WITH_FLOYD_WARSHALL(graph, options);
   }
 
@@ -6123,7 +6107,7 @@ function AQL_GRAPH_TRAVERSAL (graphName,
   options.fromVertexExample = startVertexExample;
   options.direction =  direction;
 
-  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
+  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options, "GRAPH_TRAVERSAL");
   var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
 
   startVertices.forEach(function (f) {
@@ -6330,7 +6314,7 @@ function AQL_GRAPH_TRAVERSAL_TREE (graphName,
   options.fromVertexExample = startVertexExample;
   options.direction = direction;
 
-  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options);
+  var startVertices = RESOLVE_GRAPH_START_VERTICES(graphName, options, "GRAPH_TRAVERSAL_TREE");
   var factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
 
   startVertices.forEach(function (f) {
@@ -6529,7 +6513,7 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     params.visitor = TRAVERSAL_NEIGHBOR_VISITOR;
   }
   
-  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
+  var fromVertices = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_NEIGHBORS");
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
   }
@@ -6543,11 +6527,11 @@ function AQL_GRAPH_NEIGHBORS (graphName,
     params.filterVertexCollections = options.endVertexCollectionRestriction;
   }
   // merge other options
-  for (var att in options) {
+  Object.keys(options).forEach(function (att) {
     if (! params.hasOwnProperty(att)) {
       params[att] = options[att];
     }
-  }
+  });
   fromVertices.forEach(function (v) {
     var e = TRAVERSAL_FUNC("GRAPH_NEIGHBORS",
       factory,
@@ -6730,7 +6714,7 @@ function AQL_GRAPH_VERTICES (graphName,
   }
 
   options.fromVertexExample = vertexExamples;
-  return RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
+  return RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_VERTICES");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6923,8 +6907,8 @@ function AQL_GRAPH_COMMON_PROPERTIES (graphName,
   options.startVertexCollectionRestriction = options.vertex1CollectionRestriction;
   options.endVertexCollectionRestriction = options.vertex2CollectionRestriction;
 
-  var g = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options);
-  var g2 = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options);
+  var g = RESOLVE_GRAPH_TO_FROM_VERTICES(graphName, options, "GRAPH_COMMON_PROPERTIES");
+  var g2 = RESOLVE_GRAPH_TO_TO_VERTICES(graphName, options, "GRAPH_COMMON_PROPERTIES");
   var res = [];
   var t = {};
   g.forEach(function (n1) {

@@ -31,10 +31,10 @@
 #define ARANGODB_AQL_INDEX_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "Basics/json.h"
 #include "Basics/JsonHelper.h"
 #include "HashIndex/hash-index.h"
-#include "Utils/Exception.h"
 #include "VocBase/index.h"
 
 namespace triagens {

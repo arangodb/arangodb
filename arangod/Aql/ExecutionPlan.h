@@ -164,8 +164,11 @@ namespace triagens {
 /// @brief set the root node
 ////////////////////////////////////////////////////////////////////////////////
         
-        inline void root (ExecutionNode* node) {
-          TRI_ASSERT(_root == nullptr);
+        inline void root (ExecutionNode* node,
+                          bool force = false) {
+          if (! force) {
+            TRI_ASSERT(_root == nullptr);
+          }
           _root = node;
         }
 
@@ -435,6 +438,13 @@ namespace triagens {
 
         ExecutionNode* fromNodeReplace (ExecutionNode*,
                                         AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST UPSERT node
+////////////////////////////////////////////////////////////////////////////////
+
+        ExecutionNode* fromNodeUpsert (ExecutionNode*,
+                                       AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan from an abstract syntax tree node

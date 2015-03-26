@@ -77,7 +77,8 @@ namespace triagens {
                          double connectTimeout,
                          uint32_t sslProtocol,
                          bool keepAlive,
-                         bool async)
+                         bool async,
+                         bool verbose)
           : Thread("arangob"),
             _operation(operation),
             _startCondition(condition),
@@ -100,7 +101,8 @@ namespace triagens {
             _connection(0),
             _offset(0),
             _counter(0),
-            _time(0.0) {
+            _time(0.0),
+            _verbose(verbose) {
 
           _errorHeader = StringUtils::tolower(rest::HttpResponse::getBatchErrorHeader());
         }
@@ -296,6 +298,9 @@ namespace triagens {
           _time += TRI_microtime() - start;
 
           if (result == nullptr || ! result->isComplete()) {
+            if (result != nullptr){
+              _operationsCounter->incIncompleteFailures(numOperations);
+            }
             _operationsCounter->incFailures(numOperations);
             if (result != nullptr) {
               delete result;
@@ -333,6 +338,17 @@ namespace triagens {
 
               if (errorCount > 0) {
                 _operationsCounter->incFailures(errorCount);
+                _warningCount++;
+                if (_warningCount < MaxWarnings) {
+                  LOG_WARNING("Server side warning count: %lu", errorCount);
+                  if (_verbose) {
+                    LOG_WARNING("Server reply: %s", result->getBody().c_str());
+#ifdef TRI_ENABLE_MAINTAINER_MODE
+                    LOG_WARNING("We tried to send this size:\n %llu", (unsigned long long) batchPayload.length());
+                    LOG_WARNING("We tried to send this:\n %s", batchPayload.c_str());
+#endif
+                  }
+                }
               }
             }
           }
@@ -369,6 +385,7 @@ namespace triagens {
           if (result == nullptr || ! result->isComplete()) {
             _operationsCounter->incFailures(1);
             if (result != nullptr) {
+              _operationsCounter->incIncompleteFailures(1);
               delete result;
             }
             _warningCount++;
@@ -563,6 +580,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         static const int MaxWarnings = 5;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief output replies if error count in http relpy > 0
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _verbose;
 
     };
   }

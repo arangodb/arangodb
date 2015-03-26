@@ -40,7 +40,6 @@
 
 #include "ApplicationServer/ApplicationServer.h"
 #include "Basics/FileUtils.h"
-#include "Basics/safe_cast.h"
 #include "Basics/logging.h"
 #include "Basics/process-utils.h"
 

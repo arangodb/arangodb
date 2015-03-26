@@ -1442,7 +1442,7 @@ int TRI_DumpLogReplication (TRI_replication_dump_t* dump,
       }
     }
   }
-  catch (triagens::arango::Exception const& ex) {
+  catch (triagens::basics::Exception const& ex) {
     res = ex.code();
   }
   catch (...) {

@@ -38,6 +38,7 @@
 
 #include "Basics/Dictionary.h"
 #include "Basics/Nonce.h"
+#include "Basics/ProgramOptions.h"
 #include "Basics/RandomGenerator.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
@@ -330,6 +331,30 @@ static void FillDistribution (v8::Isolate* isolate,
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      JS functions
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the program options
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_Options (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("options()");
+  }
+      
+  auto json = triagens::basics::ProgramOptions::getJson();
+
+  if (json != nullptr) {
+    auto result = TRI_ObjectJson(isolate, json);
+
+    result->ToObject()->ForceDelete(TRI_V8_STRING("server.password"));
+    TRI_V8_RETURN(result);
+  }
+
+  TRI_V8_RETURN(v8::Object::New(isolate));
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decodes a base64-encoded string
@@ -1045,6 +1070,61 @@ static void JS_Exists (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if a file of any type or directory exists
+/// @startDocuBlock JS_Exists
+/// `fs.exists(path)`
+///
+/// Returns true if a file (of any type) or a directory exists at a given
+/// path. If the file is a broken symbolic link, returns false.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_ChMod (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("chmod(<path><mode>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+
+  string const modeStr = TRI_ObjectToString(args[1]);
+  
+  if ((modeStr.length() > 5) || (modeStr.length() == 0)) {
+    TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+  }
+
+  long mode = 0;
+  for (uint32_t i = 0; i < modeStr.length(); i++) {
+    if (! isdigit(modeStr[i])) {
+      TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+    }
+    char buf[2];
+    buf[0] = modeStr[i];
+    buf[1] = '\0';
+    uint8_t digit = (uint8_t) atoi(buf);
+    if (digit >= 8) {
+      TRI_V8_THROW_TYPE_ERROR("<mode> must be a string with up to 4 octal digits in it plus a leading zero.");
+    }
+    mode = mode | digit << ((modeStr.length() - i - 1) * 3);
+  }
+  string err;
+  int rc = TRI_ChMod(*name, mode, err);
+
+  if (rc != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(rc, err);
+  }
+
+  TRI_V8_RETURN_TRUE();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief gets the size of a file
 /// @startDocuBlock JS_Size
 /// `fs.size(path)`
@@ -1414,6 +1494,43 @@ static void JS_MakeDirectory (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a directory
+/// @startDocuBlock JS_MakeDirectoryRecursive
+/// `fs.makeDirectoryRecursive(path)`
+///
+/// Creates the directory hierarchy specified by *path*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_MakeDirectoryRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // 2nd argument (permissions) are ignored for now
+
+  // extract arguments
+  if (args.Length() != 1 && args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("makeDirectoryRecursive(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+  long systemError = 0;
+  std::string systemErrorStr;
+  int res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 /// @startDocuBlock JS_Unzip
 /// `fs.unzipFile(filename, outpath, skipPaths, overwrite, password)`
@@ -1568,6 +1685,16 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   v8::Handle<v8::Value> filename = args[0];
+    
+  // save state of __dirname and __filename
+  v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+  auto oldFilename = current->Get(TRI_V8_ASCII_STRING("__filename"));
+  current->ForceSet(TRI_V8_ASCII_STRING("__filename"), filename);
+  
+  auto oldDirname = current->Get(TRI_V8_ASCII_STRING("__dirname"));
+  auto dirname = TRI_Dirname(TRI_ObjectToString(filename).c_str());
+  current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
 
   v8::Handle<v8::Value> result =
     TRI_ExecuteJavaScriptString(isolate,
@@ -1575,6 +1702,20 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                 TRI_V8_PAIR_STRING(content, length),
                                 filename->ToString(),
                                 false);
+ 
+  // restore old values for __dirname and __filename
+  if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
+    current->ForceDelete(TRI_V8_ASCII_STRING("__filename"));
+  }
+  else {
+    current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
+  }
+  if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
+    current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
+  }
+  else {
+    current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+  }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);
@@ -2937,8 +3078,6 @@ static void JS_DebugRemoveFailAt (const v8::FunctionCallbackInfo<v8::Value>& arg
 /// Remove all points for intentional system failures
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef TRI_ENABLE_FAILURE_TESTS
-
 static void JS_DebugClearFailAt (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
@@ -2948,12 +3087,13 @@ static void JS_DebugClearFailAt (const v8::FunctionCallbackInfo<v8::Value>& args
     TRI_V8_THROW_EXCEPTION_USAGE("debugClearFailAt()");
   }
 
+  // if failure testing is not enabled, this is a no-op
+#ifdef TRI_ENABLE_FAILURE_TESTS
   TRI_ClearFailurePointsDebugging();
+#endif
 
   TRI_V8_RETURN_UNDEFINED();
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns whether failure points can be used
@@ -4075,6 +4215,11 @@ void TRI_RunGarbageCollectionV8 (v8::Isolate* isolate,
 /// @brief stores the V8 utils functions inside the global variable
 ////////////////////////////////////////////////////////////////////////////////
 
+extern void TRI_InitV8Env (v8::Isolate* isolate,
+                           v8::Handle<v8::Context> context,
+                           string const& startupPath,
+                           string const& modules);
+
 void TRI_InitV8Utils (v8::Isolate* isolate,
                       v8::Handle<v8::Context> context,
                       string const& startupPath,
@@ -4083,6 +4228,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
 
   // check the isolate
   TRI_v8_global_t* v8g = TRI_GetV8Globals(isolate);
+  TRI_ASSERT(v8g != nullptr);
 
   v8::Handle<v8::FunctionTemplate> ft;
   v8::Handle<v8::ObjectTemplate> rt;
@@ -4123,10 +4269,12 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   rt = ft->InstanceTemplate();
   v8g->SleepAndRequeueTempl.Reset(isolate, rt);
   v8g->SleepAndRequeueFuncTempl.Reset(isolate, ft);
+
   // .............................................................................
   // create the global functions
   // .............................................................................
 
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"), JS_GetTempFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"), JS_GetTempPath);
@@ -4136,6 +4284,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST"), JS_List);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"), JS_MakeDirectory);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"), JS_MakeDirectoryRecursive);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_MoveFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MTIME"), JS_MTime);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);
@@ -4167,6 +4316,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_LOG"), JS_Log);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_LOG_LEVEL"), JS_LogLevel);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_MD5"), JS_Md5);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_OPTIONS"), JS_Options);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_OUTPUT"), JS_Output);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
@@ -4197,8 +4347,8 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_SEGFAULT"), JS_DebugSegfault);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_SET_FAILAT"), JS_DebugSetFailAt);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_REMOVE_FAILAT"), JS_DebugRemoveFailAt);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"), JS_DebugClearFailAt);
 #endif
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_CLEAR_FAILAT"), JS_DebugClearFailAt);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEBUG_CAN_USE_FAILAT"), JS_DebugCanUseFailAt);
 
   // .............................................................................
@@ -4224,6 +4374,8 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("BYTES_RECEIVED_DISTRIBUTION"), DistributionList(isolate, TRI_BytesReceivedDistributionVectorStatistics));
 
   TRI_AddGlobalVariableVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PLATFORM"), TRI_V8_ASCII_STRING(TRI_PLATFORM));
+
+  TRI_InitV8Env(isolate,  context, startupPath, modules);
 }
 
 // -----------------------------------------------------------------------------

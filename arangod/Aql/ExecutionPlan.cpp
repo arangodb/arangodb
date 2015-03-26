@@ -38,7 +38,7 @@
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/JsonHelper.h"
-#include "Utils/Exception.h"
+#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using namespace triagens::basics;
@@ -92,6 +92,7 @@ ExecutionPlan* ExecutionPlan::instanciateFromAst (Ast* ast) {
 
   try {
     plan->_root = plan->fromNode(root);
+
     // insert fullCount flag
     if (plan->_lastLimitNode != nullptr && ast->query()->getBooleanOption("fullCount", false)) {
       static_cast<LimitNode*>(plan->_lastLimitNode)->setFullCount();
@@ -147,13 +148,13 @@ ExecutionPlan* ExecutionPlan::instanciateFromJson (Ast* ast,
 }
 
 ExecutionPlan* ExecutionPlan::clone (Query& onThatQuery) {
-  ExecutionPlan* OtherPlan = new ExecutionPlan(onThatQuery.ast());
+  std::unique_ptr<ExecutionPlan> otherPlan(new ExecutionPlan(onThatQuery.ast()));
 
   for (auto it: _ids) {
-    OtherPlan->registerNode(it.second->clone(OtherPlan, false, true));
+    otherPlan->registerNode(it.second->clone(otherPlan.get(), false, true));
   }
 
-  return OtherPlan;
+  return otherPlan.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +165,7 @@ triagens::basics::Json ExecutionPlan::toJson (Ast* ast,
                                               TRI_memory_zone_t* zone,
                                               bool verbose) const {
   triagens::basics::Json result = _root->toJson(zone, verbose); 
- 
+
   // set up rules 
   auto const&& appliedRules = Optimizer::translateRules(_appliedRules);
   triagens::basics::Json rules(Json::Array, appliedRules.size());
@@ -313,21 +314,13 @@ CalculationNode* ExecutionPlan::createTemporaryCalculation (AstNode const* expre
   TRI_ASSERT(out != nullptr);
 
   // generate a temporary calculation node
-  auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
+  std::unique_ptr<Expression> expr(new Expression(_ast, const_cast<AstNode*>(expression)));
 
-  try {
-    auto en = new CalculationNode(this, nextId(), expr, out);
-
-    registerNode(reinterpret_cast<ExecutionNode*>(en));
-    return en;
-  }
-  
-  catch (...) {
-    // prevent memleak
-    delete expr;
-    throw;
-    // no need to delete "out" as this is automatically freed by the variables management
-  }
+  auto en = new CalculationNode(this, nextId(), expr.get(), out);
+  expr.release();
+ 
+  registerNode(reinterpret_cast<ExecutionNode*>(en));
+  return en;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -498,16 +491,11 @@ ExecutionNode* ExecutionPlan::fromNodeLet (ExecutionNode* previous,
     }
 
     // operand is some misc expression, potentially including references to other variables
-    auto expr = new Expression(_ast, const_cast<AstNode*>(expression));
+    std::unique_ptr<Expression> expr(new Expression(_ast, const_cast<AstNode*>(expression)));
 
-    try {
-      en = registerNode(new CalculationNode(this, nextId(), expr, conditionVariable, v));
-    }
-    catch (...) {
-      // prevent memleak
-      delete expr;
-      throw;
-    }
+    auto calc = new CalculationNode(this, nextId(), expr.get(), conditionVariable, v);
+    expr.release();
+    en = registerNode(calc);
   }
     
   return addDependency(previous, en);
@@ -940,7 +928,7 @@ ExecutionNode* ExecutionPlan::fromNodeReturn (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REMOVE);
-  TRI_ASSERT(node->numMembers() >= 3);
+  TRI_ASSERT(node->numMembers() == 4);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -954,24 +942,20 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
   auto expression = node->getMember(2);
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariable = nullptr;
-
-  if (node->numMembers() > 3) {
-    auto returnVarNode = node->getMember(3);
-    outVariable = static_cast<Variable*>(returnVarNode->getData());
-  }
+  auto returnVarNode = node->getMember(3);
+  Variable const* outVariableOld = static_cast<Variable*>(returnVarNode->getData());
 
   if (expression->type == NODE_TYPE_REFERENCE) {
     // operand is already a variable
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, v, outVariable));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, v, outVariableOld));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
-    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, calc->outVariable(), outVariable));
+    en = registerNode(new RemoveNode(this, nextId(), _ast->query()->vocbase(), collection, options, calc->outVariable(), outVariableOld));
     previous = calc;
   }
 
@@ -985,7 +969,7 @@ ExecutionNode* ExecutionPlan::fromNodeRemove (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_INSERT);
-  TRI_ASSERT(node->numMembers() <= 4);
+  TRI_ASSERT(node->numMembers() == 4);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -993,12 +977,8 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
   auto collection = collections->get(collectionName);
   auto expression = node->getMember(2);
 
-  Variable const* outVariable = nullptr;
-
-  if (node->numMembers() > 3) {
-    auto returnVarNode = node->getMember(3);
-    outVariable = static_cast<Variable*>(returnVarNode->getData());
-  }
+  auto returnVarNode = node->getMember(3);
+  Variable const* outVariableNew = static_cast<Variable*>(returnVarNode->getData());
 
   ExecutionNode* en = nullptr;
 
@@ -1007,14 +987,14 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
     TRI_ASSERT(v != nullptr);
     en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                                     collection, options, v, outVariable));
+                                     collection, options, v, outVariableNew));
   }
   else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression);
     calc->addDependency(previous);
     en = registerNode(new InsertNode(this, nextId(), _ast->query()->vocbase(),
-                      collection, options, calc->outVariable(), outVariable));
+                      collection, options, calc->outVariable(), outVariableNew));
     previous = calc;
   }
 
@@ -1028,7 +1008,7 @@ ExecutionNode* ExecutionPlan::fromNodeInsert (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
                                               AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPDATE);
-  TRI_ASSERT(node->numMembers() >= 4);
+  TRI_ASSERT(node->numMembers() == 6);
   
   auto options = createOptions(node->getMember(0));
   char const* collectionName = node->getMember(1)->getStringValue();
@@ -1039,13 +1019,8 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariable = nullptr;
-  bool returnNewValues = true;
-  auto returnVarNode = node->getOptionalMember(4);
-  if (returnVarNode != nullptr) {
-    outVariable = static_cast<Variable*>(returnVarNode->getData());
-    returnNewValues = node->getMember(5)->getBoolValue ();
-  }
+  Variable const* outVariableOld = static_cast<Variable*>(node->getMember(4)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(5)->getData());
 
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
@@ -1073,7 +1048,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
     TRI_ASSERT(v != nullptr);
     en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
                                      collection, options, v,
-                                     keyVariable, outVariable, returnNewValues));
+                                     keyVariable, outVariableOld, outVariableNew));
   }
   else {
     // document operand is some misc expression
@@ -1081,7 +1056,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
     calc->addDependency(previous);
     en = registerNode(new UpdateNode(this, nextId(), _ast->query()->vocbase(),
                                      collection, options, calc->outVariable(),
-                                     keyVariable, outVariable, returnNewValues));
+                                     keyVariable, outVariableOld, outVariableNew));
     previous = calc;
   }
 
@@ -1095,7 +1070,7 @@ ExecutionNode* ExecutionPlan::fromNodeUpdate (ExecutionNode* previous,
 ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
                                                AstNode const* node) {
   TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_REPLACE);
-  TRI_ASSERT(node->numMembers() >= 4);
+  TRI_ASSERT(node->numMembers() == 6);
 
   auto options        = createOptions(node->getMember(0));
   auto collectionName = node->getMember(1)->getStringValue();
@@ -1107,14 +1082,9 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
   Variable const* keyVariable = nullptr;
   ExecutionNode* en = nullptr;
 
-  Variable const* outVariable = nullptr;
-  bool returnNewValues = true;
-  auto returnVarNode = node->getOptionalMember(4);
-  if (returnVarNode != nullptr) {
-    outVariable = static_cast<Variable*>(returnVarNode->getData());
-    returnNewValues = node->getMember(5)->getBoolValue ();
-  }
-  
+  Variable const* outVariableOld = static_cast<Variable*>(node->getMember(4)->getData());
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(5)->getData());
+
   if (keyExpression->type == NODE_TYPE_NOP) {
     keyExpression = nullptr;
   }
@@ -1141,7 +1111,7 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
     TRI_ASSERT(v != nullptr);
     en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
                                       collection, options, v,
-                                      keyVariable, outVariable, returnNewValues));
+                                      keyVariable, outVariableOld, outVariableNew));
   }
   else {
     // operand is some misc expression
@@ -1149,9 +1119,68 @@ ExecutionNode* ExecutionPlan::fromNodeReplace (ExecutionNode* previous,
     calc->addDependency(previous);
     en = registerNode(new ReplaceNode(this, nextId(), _ast->query()->vocbase(),
                                       collection, options, calc->outVariable(),
-                                      keyVariable, outVariable, returnNewValues));
+                                      keyVariable, outVariableOld, outVariableNew));
     previous = calc;
   }
+
+  return addDependency(previous, en);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an execution plan element from an AST UPSERT node
+////////////////////////////////////////////////////////////////////////////////
+
+ExecutionNode* ExecutionPlan::fromNodeUpsert (ExecutionNode* previous,
+                                              AstNode const* node) {
+  TRI_ASSERT(node != nullptr && node->type == NODE_TYPE_UPSERT);
+  TRI_ASSERT(node->numMembers() == 7);
+ 
+  auto options = createOptions(node->getMember(0));
+  char const* collectionName = node->getMember(1)->getStringValue();
+  auto collections = _ast->query()->collections();
+  auto collection = collections->get(collectionName);
+  auto docExpression = node->getMember(2);
+  auto insertExpression = node->getMember(3);
+  auto updateExpression = node->getMember(4);
+
+  Variable const* outVariableNew = static_cast<Variable*>(node->getMember(6)->getData());
+
+  TRI_ASSERT(docExpression->type == NODE_TYPE_REFERENCE);
+  // doc operand is already a variable
+  auto docVariable = static_cast<Variable*>(docExpression->getData());
+  TRI_ASSERT(docVariable != nullptr);
+
+  Variable const* insertVar;
+  if (insertExpression->type == NODE_TYPE_REFERENCE) {
+    // insert operand is already a variable
+    insertVar = static_cast<Variable*>(insertExpression->getData());
+  }
+  else {
+    auto calc = createTemporaryCalculation(insertExpression);
+    calc->addDependency(previous);
+    previous = calc;
+    insertVar = calc->outVariable();
+  }
+  TRI_ASSERT(insertVar != nullptr);
+
+  Variable const* updateVar;
+  if (updateExpression->type == NODE_TYPE_REFERENCE) {
+    // insert operand is already a variable
+    updateVar = static_cast<Variable*>(updateExpression->getData());
+  }
+  else {
+    auto calc = createTemporaryCalculation(updateExpression);
+    calc->addDependency(previous);
+    previous = calc;
+    updateVar = calc->outVariable();
+  }
+  TRI_ASSERT(updateVar != nullptr);
+
+  bool isReplace = (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE)); 
+  
+  ExecutionNode* en = registerNode(new UpsertNode(this, nextId(), _ast->query()->vocbase(),
+                                     collection, options, docVariable, insertVar, updateVar,
+                                     outVariableNew, isReplace));
 
   return addDependency(previous, en);
 }
@@ -1237,6 +1266,11 @@ ExecutionNode* ExecutionPlan::fromNode (AstNode const* node) {
     
       case NODE_TYPE_REPLACE: {
         en = fromNodeReplace(en, member);
+        break;
+      }
+
+      case NODE_TYPE_UPSERT: {
+        en = fromNodeUpsert(en, member);
         break;
       }
 
