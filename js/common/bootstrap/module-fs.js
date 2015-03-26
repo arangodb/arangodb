@@ -393,10 +393,10 @@
 /// @brief makeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
-if (FS_MAKE_DIRECTORY_RECURSIVE) {
-  exports.makeDirectoryRecursive = FS_MAKE_DIRECTORY_RECURSIVE;
-  delete FS_MAKE_DIRECTORY_RECURSIVE;
-}
+  if (FS_MAKE_DIRECTORY_RECURSIVE !== undefined) {
+    exports.makeDirectoryRecursive = FS_MAKE_DIRECTORY_RECURSIVE;
+    delete FS_MAKE_DIRECTORY_RECURSIVE;
+  }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mtime

@@ -1414,6 +1414,43 @@ static void JS_MakeDirectory (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a directory
+/// @startDocuBlock JS_MakeDirectoryRecursive
+/// `fs.makeDirectoryRecursive(path)`
+///
+/// Creates the directory hierarchy specified by *path*.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_MakeDirectoryRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // 2nd argument (permissions) are ignored for now
+
+  // extract arguments
+  if (args.Length() != 1 && args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("makeDirectoryRecursive(<path>)");
+  }
+
+  TRI_Utf8ValueNFC name(TRI_UNKNOWN_MEM_ZONE, args[0]);
+
+  if (*name == nullptr) {
+    TRI_V8_THROW_TYPE_ERROR("<path> must be a string");
+  }
+  long systemError = 0;
+  std::string systemErrorStr;
+  int res = TRI_CreateRecursiveDirectory(*name, systemError, systemErrorStr);
+
+  if (res != TRI_ERROR_NO_ERROR) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, systemErrorStr);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief unzips a file
 /// @startDocuBlock JS_Unzip
 /// `fs.unzipFile(filename, outpath, skipPaths, overwrite, password)`
@@ -4227,6 +4264,7 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST"), JS_List);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"), JS_MakeDirectory);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"), JS_MakeDirectoryRecursive);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_MoveFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_COPY_RECURSIVE"), JS_CopyRecursive);
 
