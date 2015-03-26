@@ -1,4 +1,4 @@
-/*jshint strict: false */
+/*jshint strict: false, sub: true */
 /*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,27 +228,27 @@ function findTopDir () {
 function makeTestingArgs (appDir) {
   var topDir = findTopDir();
   fs.makeDirectoryRecursive(appDir, true);
-  return [ "--configuration",                  "none",
-           "--server.keyfile",       fs.join(topDir, "UnitTests", "server.pem"),
-           "--database.maximal-journal-size",  "1048576",
-           "--database.force-sync-properties", "false",
-           "--javascript.app-path",            appDir,
-           "--javascript.startup-directory",   fs.join(topDir, "js"),
-           "--ruby.modules-path", fs.join(topDir,"mr", "common", "modules"),
-           "--server.threads",                 "20",
-           "--javascript.v8-contexts",         "5",
-           "--server.disable-authentication",  "true",
-           "--server.allow-use-database",      "true" ];
+  return { "configuration":                  "none",
+           "server.keyfile":                 fs.join(topDir, "UnitTests", "server.pem"),
+           "database.maximal-journal-size":  "1048576",
+           "database.force-sync-properties": "false",
+           "javascript.app-path":            appDir,
+           "javascript.startup-directory":   fs.join(topDir, "js"),
+           "ruby.modules-path":              fs.join(topDir,"mr", "common", "modules"),
+           "server.threads":                 "20",
+           "javascript.v8-contexts":         "5",
+           "server.disable-authentication":  "true",
+           "server.allow-use-database":      "true" };
 }
 
 function makeTestingArgsClient (options) {
   var topDir = findTopDir();
-  return [ "--configuration",                  "none",
-           "--javascript.startup-directory",   fs.join(topDir, "js"),
-           "--no-colors",
-           "--quiet",
-           "--server.username",                options.username,
-           "--server.password",                options.password ];
+  return { "configuration":                  "none",
+           "javascript.startup-directory":   fs.join(topDir, "js"),
+           "no-colors":                      "true",
+           "quiet":                          "true",
+           "server.username":                options.username,
+           "server.password":                options.password };
 }
 
 function makeAuthorisationHeaders (options) {
@@ -284,25 +284,25 @@ function startInstance (protocol, options, addArgs, testname) {
 
   var endpoint;
   var pos;
-  var valgrindopts = [];
+  var valgrindopts = {};
   if (typeof(options.valgrindargs) === 'object') {
     if (_.isArray(options.valgrindargs)) {
       valgrindopts = options.valgrindargs;
     }
     else {
-      valgrindopts = valgrindopts.concat(toArgv(options.valgrindargs, true));
+      valgrindopts = _.extend(valgrindopts, options.valgrindargs);
     }
   }
 
   var dispatcher;
   if (options.cluster) {
     var extraargs = makeTestingArgs(appDir);
-    extraargs = extraargs.concat(optionsExtraArgs);
+    extraargs = _.extend(extraargs, optionsExtraArgs);
     if (addArgs !== undefined) {
-      extraargs = extraargs.concat(addArgs);
+      extraargs = _.extend(extraargs, addArgs);
     }
     dispatcher = {"endpoint":"tcp://127.0.0.1:",
-                  "arangodExtraArgs": extraargs,
+                  "arangodExtraArgs": toArgv(extraargs),
                   "username": "root",
                   "password": ""};
     print("Temporary cluster data and logs are in",tmpDataDir);
@@ -321,7 +321,7 @@ function startInstance (protocol, options, addArgs, testname) {
                          "logPath"                : tmpDataDir,
                          "useSSLonCoordinators"   : protocol === "ssl",
                          "valgrind"               : runInValgrind,
-                         "valgrindopts"           : valgrindopts,
+                         "valgrindopts"           : toArgv(valgrindopts, true),
                          "valgrindXmlFileBase"    : valgrindXmlFileBase,
                          "valgrindTestname"       : testname
                         });
@@ -356,35 +356,38 @@ function startInstance (protocol, options, addArgs, testname) {
     var pf = new PortFinder([8529 + options.portOffset],dispatcher);
     var port = pf.next();
     instanceInfo.port = port;
-    var args = makeTestingArgs(appDir);
-    args.push("--server.endpoint");
     endpoint = protocol+"://127.0.0.1:"+port;
-    args.push(endpoint);
-    args.push("--database.directory");
-    args.push(fs.join(tmpDataDir,"data"));
+
+    var args = makeTestingArgs(appDir);
+    args["server.endpoint"] = endpoint;
+    args["database.directory"] = fs.join(tmpDataDir,"data");
     fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
-    args.push("--log.file");
-    args.push(fs.join(tmpDataDir,"log"));
+    args["log.file"] = fs.join(tmpDataDir,"log");
     if (protocol === "ssl") {
-      args.push("--server.keyfile");
-      args.push(fs.join("UnitTests","server.pem"));
+      args["server.keyfile"] = fs.join("UnitTests","server.pem");
     }
-    args = args.concat(optionsExtraArgs);
+    args = _.extend(args, optionsExtraArgs);
 
     if (addArgs !== undefined) {
-      args = args.concat(addArgs);
+      args = _.extend(args, addArgs);
     }
     if (typeof(options.valgrind) === 'string') {
       var run = fs.join("bin","arangod");
-      valgrindopts = valgrindopts.concat(
-        ["--xml-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.xml',
-         "--log-file="+options.valgrindXmlFileBase + '_' + testname + '.%p.valgrind.log']);
-      var newargs=valgrindopts.concat([run]).concat(args);      
+      var testfn = options.valgrindXmlFileBase;
+      if (testfn.length > 0 ) {
+        testfn += '_' ;
+      }
+      testfn += testname;
+        
+      valgrindopts["xml-file"] = testfn + '.%p.xml';
+      valgrindopts["log-file"] = testfn + '.%p.valgrind.log';
+      // Sequence: Valgrind arguments; binary to run; options to binary:
+      var newargs=toArgv(valgrindopts, true).concat([run]).concat(toArgv(args));
       var cmdline = options.valgrind;
       instanceInfo.pid = executeExternal(cmdline, newargs);
     }
     else {
-      instanceInfo.pid = executeExternal(fs.join("bin","arangod"), args);
+      instanceInfo.pid = executeExternal(fs.join("bin","arangod"), toArgv(args));
     }
   }
 
@@ -831,16 +834,14 @@ function executeAndWait (cmd, args) {
 function runInArangosh (options, instanceInfo, file, addArgs) {
   var args = makeTestingArgsClient(options);
   var topDir = findTopDir();
-  args.push("--server.endpoint");
-  args.push(instanceInfo.endpoint);
-  args.push("--javascript.unit-tests");
-  args.push(fs.join(topDir,file));
+  args["server.endpoint"] = instanceInfo.endpoint;
+  args["javascript.unit-tests"] = fs.join(topDir, file);
   if (addArgs !== undefined) {
-    args = args.concat(addArgs);
+    args = _.extend(args, addArgs);
   }
   var arangosh = fs.join("bin","arangosh");
   var result;
-  var rc = executeAndWait(arangosh, args);
+  var rc = executeAndWait(arangosh, toArgv(args));
   try {
     result = JSON.parse(fs.read("testresult.json"));
   }
@@ -859,11 +860,10 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
 
 function runArangoshCmd (options, instanceInfo, cmds) {
   var args = makeTestingArgsClient(options);
-  args.push("--server.endpoint");
-  args.push(instanceInfo.endpoint);
-  args = args.concat(cmds);
+  args["server.endpoint"] = instanceInfo.endpoint;
+  var argv = toArgv(args).concat(cmds);
   var arangosh = fs.join("bin","arangosh");
-  return executeAndWait(arangosh, args);
+  return executeAndWait(arangosh, argv);
 }
 
 function performTests(options, testList, testname, remote) {
@@ -1325,46 +1325,45 @@ testFuncs.ssl_server = function (options) {
 
 function runArangoImp (options, instanceInfo, what) {
   var topDir = findTopDir();
-  var args = ["--server.username",             options.username,
-              "--server.password",             options.password,
-              "--server.endpoint",             instanceInfo.endpoint,
-              "--file",                        fs.join(topDir,what.data),
-              "--collection",                  what.coll,
-              "--type",                        what.type];
+  var args = {
+    "server.username": options.username,
+    "server.password": options.password,
+    "server.endpoint": instanceInfo.endpoint,
+    "file":            fs.join(topDir,what.data),
+    "collection":      what.coll,
+    "type":            what.type
+  };
   if (what.create !== undefined) {
-    args.push("--create-collection");
-    args.push(what.create);
+    args["create-collection"] = what.create;
   }
   if (what.backslash !== undefined) {
-    args.push("--backslash-escape");
-    args.push(what.backslash);
+    args["backslash-escape"] = what.backslash;
   }
   if (what.separator !== undefined) {
-    args.push("--separator");
-    args.push(what.separator);
+    args["separator"] = what.separator;
   }
   var arangoimp = fs.join("bin","arangoimp");
-  return executeAndWait(arangoimp, args);
+  return executeAndWait(arangoimp, toArgv(args));
 }
 
 function runArangoDumpRestore (options, instanceInfo, which, database) {
-  var args = ["--configuration",               "none",
-              "--server.username",             options.username,
-              "--server.password",             options.password,
-              "--server.endpoint",             instanceInfo.endpoint,
-              "--server.database",             database];
+  var args = {
+    "configuration":   "none",
+    "server.username": options.username,
+    "server.password": options.password,
+    "server.endpoint": instanceInfo.endpoint,
+    "server.database": database
+  };
   var exe;
   if (which === "dump") {
-    args.push("--output-directory");
-    args.push(fs.join(instanceInfo.tmpDataDir,"dump"));
+    args["output-directory"] = fs.join(instanceInfo.tmpDataDir,"dump");
     exe = fs.join("bin","arangodump");
   }
   else {
-    args.push("--input-directory");
-    args.push(fs.join(instanceInfo.tmpDataDir,"dump"));
+    args["input-directory"] = fs.join(instanceInfo.tmpDataDir,"dump");
     exe = fs.join("bin","arangorestore");
   }
-  return executeAndWait(exe, args);
+  return executeAndWait(exe, toArgv(args));
 }
 
 function runArangoBenchmark (options, instanceInfo, cmds) {
@@ -1485,20 +1484,18 @@ testFuncs.upgrade = function (options) {
   var pf = new PortFinder([8529],dispatcher);
   var port = pf.next();
   var args = makeTestingArgs(appDir);
-  args.push("--server.endpoint");
   var endpoint = "tcp://127.0.0.1:"+port;
-  args.push(endpoint);
-  args.push("--database.directory");
-  args.push(fs.join(tmpDataDir,"data"));
+  args["server.endpoint"]    = endpoint;
+  args["database.directory"] = fs.join(tmpDataDir,"data");
   fs.makeDirectoryRecursive(fs.join(tmpDataDir,"data"));
-  args.push("--upgrade");
-  result.first = executeAndWait(fs.join("bin","arangod"), args);
+  var argv = toArgv(args).concat(["--upgrade"]);
+  result.first = executeAndWait(fs.join("bin","arangod"), argv);
 
   if (result.first !== 0 && !options.force) {
     print("not removing " + tmpDataDir);
     return result;
   }
-  result.second = executeAndWait(fs.join("bin","arangod"), args);
+  result.second = executeAndWait(fs.join("bin","arangod"), argv);
 
   cleanupDirectories.push(tmpDataDir);
 
@@ -1566,7 +1563,7 @@ testFuncs.dump = function (options) {
         print(Date() + ": Dump and Restore - dump 2");
         results.test = runInArangosh(options, instanceInfo,
                                      makePathUnix("js/server/tests/dump"+cluster+".js"),
-                                     [ "--server.database", "UnitTestsDumpDst" ]);
+                                     { "server.database": "UnitTestsDumpDst"});
         if (checkInstanceAlive(instanceInfo, options)) {
           print(Date() + ": Dump and Restore - teardown");
           results.tearDown = runInArangosh(options, instanceInfo,
@@ -1656,7 +1653,7 @@ testFuncs.arangob = function (options) {
 testFuncs.authentication = function (options) {
   print("Authentication tests...");
   var instanceInfo = startInstance("tcp", options,
-                                   ["--server.disable-authentication", "false"],
+                                   {"server.disable-authentication": "false"},
                                    "authentication");
   if (instanceInfo === false) {
     return {status: false, message: "failed to start server!"};
@@ -1686,12 +1683,12 @@ var urlsTodo = [
 ];
 
 var authTestServerParams = [
-  ["--server.disable-authentication", "false",
-   "--server.authenticate-system-only", "false"],
-  ["--server.disable-authentication", "false",
-   "--server.authenticate-system-only", "true"],
-  ["--server.disable-authentication", "true",
-   "--server.authenticate-system-only", "true"]
+  {"server.disable-authentication":   "false",
+   "server.authenticate-system-only": "false"},
+  {"server.disable-authentication":   "false",
+   "server.authenticate-system-only": "true"},
+  {"server.disable-authentication":   "true",
+   "server.authenticate-system-only": "true"}
 ];
 var authTestNames = ["Full",
                      "SystemAuth",
@@ -1721,7 +1718,7 @@ testFuncs.authentication_parameters = function (options) {
     var all_ok = true;
     var instanceInfo = startInstance("tcp", options,
                                      authTestServerParams[test],
-                                     "authentication_parameters_" + test);
+                                     "authentication_parameters_" + authTestNames[test]);
     if (instanceInfo === false) {
       return {status: false, message: authTestNames[test] + ": failed to start server!"};
     }
