@@ -461,7 +461,7 @@ namespace triagens {
             catch (...) {
               RequestStatisticsAgentSetExecuteError(handler);
 
-              basics::Exception ex(TRI_ERROR_SYS_ERROR, ex.what(), __FILE__, __LINE__);
+              basics::Exception ex(TRI_ERROR_SYS_ERROR, __FILE__, __LINE__);
               handler->handleError(ex);
             }
             handler->finalizeExecute();

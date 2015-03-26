@@ -589,7 +589,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) co
     case OPTION_TYPE_DOUBLE: {
       auto v = static_cast<double*>(value);
       if (v != nullptr) {
-        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *v);
       }
       break;
     }
@@ -597,7 +597,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) co
     case OPTION_TYPE_INT32: {
       auto v = static_cast<int32_t*>(value);
       if (v != nullptr) {
-        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*v));
       }
       break;
     }
@@ -605,7 +605,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) co
     case OPTION_TYPE_INT64: {
       auto v = static_cast<int64_t*>(value);
       if (v != nullptr) {
-        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*v));
       }
       break;
     }
@@ -613,7 +613,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) co
     case OPTION_TYPE_UINT32: {
       auto v = static_cast<uint32_t*>(value);
       if (v != nullptr) {
-        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*v));
       }
       break;
     }
@@ -621,7 +621,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) co
     case OPTION_TYPE_UINT64: {
       auto v = static_cast<uint64_t*>(value);
       if (v != nullptr) {
-        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, *(static_cast<decltype(v)>(v)));
+        json = TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, static_cast<double>(*v));
       }
       break;
     }
