@@ -131,7 +131,7 @@ endif ()
 if (BUILD_PACKAGE STREQUAL "dmg-cli")
   option(DARWIN "Building for MacOS" ON)
 else ()
-  option(DARWIN "Building for MacOS" OF)
+  option(DARWIN "Building for MacOS" OFF)
 endif ()
 
 
