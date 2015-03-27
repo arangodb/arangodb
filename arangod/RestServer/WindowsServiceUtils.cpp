@@ -648,7 +648,7 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
 
   IsRunning = true;
   ArangoInstance = new WindowsArangoServer(ARGC, ARGV);
-  ArangoInstance->setMode(ServerMode::MODE_SERVICE);
+  ArangoInstance->setMode(rest::AnyServer::ServerMode::MODE_SERVICE);
   ArangoInstance->start();
   IsRunning = false;
 
