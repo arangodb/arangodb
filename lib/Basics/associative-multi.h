@@ -34,9 +34,9 @@
 #define ARANGODB_BASICS_C_ASSOCIATIVE__MULTI_H 1
 
 #include "Basics/Common.h"
-
-#include "Basics/locks.h"
 #include "Basics/vector.h"
+
+#include <functional>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        MULTI ASSOCIATIVE POINTERS
@@ -190,6 +190,16 @@ double TRI_SelectivityEstimateMultiPointer (TRI_multi_pointer_t const*);
 TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t*,
                                                   TRI_multi_pointer_t*,
                                                   void const* key);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lookups an element given a key and the last element
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LookupByKeyMultiPointer (TRI_multi_pointer_t*,
+                                  void const* key,
+                                  std::function<void(void*)>,
+                                  void*&,
+                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
