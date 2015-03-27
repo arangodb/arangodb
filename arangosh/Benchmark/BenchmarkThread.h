@@ -201,7 +201,7 @@ namespace triagens {
               }
               catch (triagens::basics::Exception const& ex) {
                 LOG_FATAL_AND_EXIT("Caught exception during test execution: %d %s",
-                                   ex.code(), ex.message());
+                                   ex.code(), ex.what());
               }
               catch (std::bad_alloc const&) {
                 LOG_FATAL_AND_EXIT("Caught OOM exception during test execution!");
