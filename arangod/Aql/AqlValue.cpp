@@ -58,7 +58,7 @@ bool AqlValue::isTrue () const {
     }
   }
   else if (_type == RANGE || _type == DOCVEC) {
-    // a range or a docvec is equivalent to a list
+    // a range or a docvec is equivalent to an array
     return true;
   }
   else if (_type == EMPTY) {
@@ -244,7 +244,7 @@ bool AqlValue::isBoolean () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains a list value
+/// @brief whether or not the AqlValue contains an array value
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AqlValue::isArray () const {
@@ -272,7 +272,7 @@ bool AqlValue::isArray () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the AqlValue contains an array value
+/// @brief whether or not the AqlValue contains an object value
 ////////////////////////////////////////////////////////////////////////////////
 
 bool AqlValue::isObject () const {
@@ -297,10 +297,84 @@ bool AqlValue::isObject () const {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the length of an AqlValue containing a list
+/// @brief whether or not the AqlValue contains a null value
 ////////////////////////////////////////////////////////////////////////////////
 
-size_t AqlValue::listSize () const {
+bool AqlValue::isNull (bool emptyIsNull) const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      return json == nullptr || json->_type == TRI_JSON_NULL;
+    }
+
+    case SHAPED: {
+      return false;
+    }
+
+    case DOCVEC: 
+    case RANGE: {
+      return false;
+    }
+
+    case EMPTY: {
+      return emptyIsNull;
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the array member at position i
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json AqlValue::at (triagens::arango::AqlTransaction* trx, 
+                                     size_t i) const {
+  switch (_type) {
+    case JSON: {
+      TRI_json_t const* json = _json->json();
+      if (TRI_IsArrayJson(json)) {
+        if (i < TRI_LengthArrayJson(json)) {
+          return triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, static_cast<TRI_json_t*>(TRI_AtVector(&json->_value._objects, i)), triagens::basics::Json::NOFREE);
+        }
+      }
+      break; // fall-through to exception
+    }
+
+    case DOCVEC: {
+      TRI_ASSERT(_vector != nullptr);
+      // calculate the result list length
+      size_t offset = 0;
+      for (auto it = _vector->begin(); it != _vector->end(); ++it) {
+        auto current = (*it);
+        size_t const n = current->size();
+        if (offset + i < n) {
+          auto vecCollection = current->getDocumentCollection(0);
+          return current->getValue(i - offset, 0).toJson(trx, vecCollection);
+        }
+        offset += (*it)->size();
+      }
+      break; // fall-through to exception
+    }
+
+    case RANGE: {
+      TRI_ASSERT(_range != nullptr);
+      return triagens::basics::Json(static_cast<double>(_range->at(i)));
+    }
+       
+    case SHAPED: 
+    case EMPTY: {
+    }
+  }
+
+  THROW_ARANGO_EXCEPTION(TRI_ERROR_INTERNAL);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the length of an AqlValue containing an array
+////////////////////////////////////////////////////////////////////////////////
+
+size_t AqlValue::arraySize () const {
   switch (_type) {
     case JSON: {
       TRI_json_t const* json = _json->json();
@@ -486,13 +560,13 @@ v8::Handle<v8::Value> AqlValue::toV8 (v8::Isolate* isolate,
     case DOCVEC: {
       TRI_ASSERT(_vector != nullptr);
 
-      // calculate the result list length
+      // calculate the result array length
       size_t totalSize = 0;
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         totalSize += (*it)->size();
       }
 
-      // allocate the result list
+      // allocate the result array
       v8::Handle<v8::Array> result = v8::Array::New(isolate, static_cast<int>(totalSize));
       uint32_t j = 0; // output row count
 
@@ -582,13 +656,13 @@ Json AqlValue::toJson (triagens::arango::AqlTransaction* trx,
     case DOCVEC: {
       TRI_ASSERT(_vector != nullptr);
 
-      // calculate the result list length
+      // calculate the result array length
       size_t totalSize = 0;
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         totalSize += (*it)->size();
       }
 
-      // allocate the result list
+      // allocate the result array
       Json json(Json::Array, static_cast<size_t>(totalSize));
 
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
@@ -754,7 +828,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
         }
         
         if (position >= 0 && position < static_cast<int64_t>(length)) {
-          // only look up the value if it is within list bounds
+          // only look up the value if it is within array bounds
           TRI_json_t const* found = TRI_LookupArrayJson(json, static_cast<size_t>(position));
 
           if (found != nullptr) {
@@ -783,7 +857,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
       }
 
       if (position >= 0 && position < static_cast<int64_t>(n)) {
-        // only look up the value if it is within list bounds
+        // only look up the value if it is within array bounds
         return Json(static_cast<double>(_range->at(static_cast<size_t>(position))));
       }
       break; // fall-through to returning null 
@@ -793,7 +867,7 @@ Json AqlValue::extractArrayMember (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(_vector != nullptr);
       size_t const p = static_cast<size_t>(position);
 
-      // calculate the result list length
+      // calculate the result array length
       size_t totalSize = 0;
       for (auto it = _vector->begin(); it != _vector->end(); ++it) {
         if (p < totalSize + (*it)->size()) {

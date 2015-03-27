@@ -532,7 +532,7 @@ namespace triagens {
 /// @brief constructor for a string
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit Json (std::string const x, autofree_e autofree = AUTOFREE) 
+        explicit Json (std::string const& x, autofree_e autofree = AUTOFREE) 
           : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x.c_str(), x.size());
 

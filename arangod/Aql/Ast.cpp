@@ -1067,6 +1067,7 @@ AstNode* Ast::replaceVariables (AstNode* node,
 
 void Ast::optimize () {
   struct TraversalContext {
+    int64_t stopOptimizationRequests = 0;
     bool isInFilter  = false;
   };
 
@@ -1074,11 +1075,29 @@ void Ast::optimize () {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = true;
     }
+    else if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+
+      if (func->externalName == "NOOPT") {
+        // NOOPT will turn all function optimizations off
+        ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+      }
+    }
   };
 
   auto postVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = false;
+    }
+    else if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+
+      if (func->externalName == "NOOPT") {
+        // NOOPT will turn all function optimizations off
+        --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+      }
     }
   };
 
@@ -1129,7 +1148,12 @@ void Ast::optimize () {
 
     // call to built-in function
     if (node->type == NODE_TYPE_FCALL) {
-      return this->optimizeFunctionCall(node);
+      if (static_cast<TraversalContext*>(data)->stopOptimizationRequests == 0) {
+        // optimization allowed
+        return this->optimizeFunctionCall(node);
+      }
+      // optimization not allowed
+      return node;
     }
     
     // reference to a variable, may be able to insert the variable value directly
