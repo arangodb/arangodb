@@ -29,7 +29,7 @@ build-book:
 	@test -d books/$(NAME) || mkdir books/$(NAME)
 	python codeBlockReader.py
 	python bot.py
-	cd $(NAME) && gitbook build -o ../books/$(NAME)
+	cd $(NAME) && gitbook build ./ ./../books/$(NAME)
 	cp Users/arangodbLogo.png books/Users/
 	cp Users/cookbookLogo.png books/Users/
 	cp Users/googlegroupsIcon.png books/Users/
