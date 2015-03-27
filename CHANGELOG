@@ -1,6 +1,15 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1051: add info whether server is running in service or user mode?
+
+  This will add a "mode" attribute to the result of the result of HTTP GET `/_api/version?details=true`
+  
+  "mode" can have the following values:
+
+  - `standalone`: server was started manually (e.g. on command-line)
+  - `service`: service is running as Windows service, in daemon mode or under the supervisor
+
 * increased default value of `--server.request-timeout` from 300 to 1200 seconds for client tools
   (arangosh, arangoimp, arangodump, arangorestore)
 

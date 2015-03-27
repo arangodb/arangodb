@@ -92,7 +92,7 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
 
   // connect to server and get version number
   map<string, string> headerFields;
-  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version", 0, 0, headerFields);
+  SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_GET, "/_api/version?details=true", nullptr, 0, headerFields);
 
   if (! result || ! result->isComplete()) {
     // save error message
@@ -105,22 +105,29 @@ V8ClientConnection::V8ClientConnection (Endpoint* endpoint,
     if (result->getHttpReturnCode() == HttpResponse::OK) {
       // default value
       _version = "arango";
+      _mode = "unknown mode";
 
       // convert response body to json
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                        result->getBody().c_str());
+      std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().c_str()));
 
       if (json != nullptr) {
         // look up "server" value
-        const string server = JsonHelper::getStringValue(json, "server", "");
+        const string server = JsonHelper::getStringValue(json.get(), "server", "");
 
         // "server" value is a string and content is "arango"
         if (server == "arango") {
           // look up "version" value
-          _version = JsonHelper::getStringValue(json, "version", "");
-        }
+          _version = JsonHelper::getStringValue(json.get(), "version", "");
+          auto const* details = TRI_LookupObjectJson(json.get(), "details");
 
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+          if (TRI_IsObjectJson(details)) {
+            auto const* mode = TRI_LookupObjectJson(details, "mode");
+
+            if (TRI_IsStringJson(mode)) {
+              _mode = std::string(mode->_value._string.data, mode->_value._string.length - 1); 
+            }
+          }
+        }
       }
     }
     else {
@@ -222,6 +229,14 @@ void V8ClientConnection::setDatabaseName (const string& databaseName) {
 
 const string& V8ClientConnection::getVersion () {
   return _version;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the server mode
+////////////////////////////////////////////////////////////////////////////////
+
+const string& V8ClientConnection::getMode () {
+  return _mode;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
