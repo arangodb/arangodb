@@ -38,6 +38,7 @@
 #define ARANGODB_BASICS_STRING_BUFFER_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 
 #include "Basics/string-buffer.h"
 #include "Zip/zip.h"
@@ -511,7 +512,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         StringBuffer& appendText (std::string const& str) {
-          TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
+          int res = TRI_AppendString2StringBuffer(&_buffer, str.c_str(), str.length());
+          if (res != TRI_ERROR_NO_ERROR) {
+            THROW_ARANGO_EXCEPTION(res);
+          }
           return *this;
         }
 

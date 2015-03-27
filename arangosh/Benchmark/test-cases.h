@@ -478,13 +478,13 @@ struct RandomShapesTest : public BenchmarkOperation {
     const size_t mod = globalCounter % 3;
 
     if (mod == 0) {
-      return std::string("/_api/document?collection=" + Collection);
+      return std::string("/_api/document?collection=") + Collection;
     }
     else {
       size_t keyId = (size_t) (globalCounter / 3);
       const std::string key = "testkey" + StringUtils::itoa(keyId);
 
-      return std::string("/_api/document/" + Collection + "/" + key);
+      return std::string("/_api/document/") + Collection + std::string("/") + key;
     }
   }
 
