@@ -99,7 +99,7 @@ int main (int argc, char* argv[]) {
 
   signal(SIGSEGV, abortHandler);
 
-#if _WIN32
+#ifdef _WIN32
   bool const startAsService = TRI_ParseMoreArgs(argc, argv);
 #else
   bool const startAsService = false;
