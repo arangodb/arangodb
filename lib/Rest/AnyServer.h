@@ -120,9 +120,9 @@ namespace triagens {
           if (_mode == ServerMode::MODE_STANDALONE) {
             return "standalone";
           }
-          TRI_ASSERT(_mode == ServerMode::MODE_SERVICE) {
-            return "service";
-          }
+
+          TRI_ASSERT(_mode == ServerMode::MODE_SERVICE);
+          return "service";
         }
 
 // -----------------------------------------------------------------------------
