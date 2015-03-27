@@ -196,7 +196,22 @@ namespace triagens {
               executeSingleRequest();
             }
             else {
-              executeBatchRequest(numOps);
+              try {
+                executeBatchRequest(numOps);
+              }
+              catch (triagens::basics::Exception const& ex) {
+                LOG_FATAL_AND_EXIT("Caught exception during test execution: %d %s",
+                                   ex.code(), ex.message());
+              }
+              catch (std::bad_alloc const&) {
+                LOG_FATAL_AND_EXIT("Caught OOM exception during test execution!");
+              }
+              catch (std::exception const& ex) {
+                LOG_FATAL_AND_EXIT("Caught STD exception during test execution: %s", ex.what());
+              }
+              catch (...) {
+                LOG_FATAL_AND_EXIT("Caught unknown exception during test execution!");
+              }
             }
             _operationsCounter->done(_batchSize > 0 ? _batchSize : 1);
           }
@@ -264,10 +279,17 @@ namespace triagens {
             bool mustFree = false;
             const char* payload = _operation->payload(&payloadLength, _threadNumber, threadCounter, globalCounter, &mustFree);
             const rest::HttpRequest::HttpRequestType type = _operation->type(_threadNumber, threadCounter, globalCounter);
+            if (url.empty()) {
+              LOG_WARNING("URL is empty!");
+            }
 
             // headline, e.g. POST /... HTTP/1.1
             rest::HttpRequest::appendMethod(type, &batchPayload);
+            size_t oldLength = batchPayload.length();
             batchPayload.appendText(url);
+            if (batchPayload.length() == oldLength) {
+              LOG_WARNING("URL nonempty empty, but nothing appended!");
+            }              
             batchPayload.appendText(" HTTP/1.1\r\n", 11);
             batchPayload.appendText("\r\n", 2);
 
