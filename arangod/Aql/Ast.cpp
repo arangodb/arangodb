@@ -1149,11 +1149,21 @@ void Ast::validateAndOptimize () {
   struct TraversalContext {
     bool isInFilter       = false;
     bool hasSeenWriteNode = false;
+    int64_t stopOptimizationRequests = 0;
   };
 
   auto preVisitor = [&](AstNode const* node, void* data) -> void {
     if (node->type == NODE_TYPE_FILTER) {
       static_cast<TraversalContext*>(data)->isInFilter = true;
+    }
+    else if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+
+      if (func->externalName == "NOOPT") {
+        // NOOPT will turn all function optimizations off
+        ++(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+      }
     }
   };
 
@@ -1168,6 +1178,15 @@ void Ast::validateAndOptimize () {
         node->type == NODE_TYPE_REPLACE ||
         node->type == NODE_TYPE_UPSERT) {
       static_cast<TraversalContext*>(data)->hasSeenWriteNode = true;
+    }
+    else if (node->type == NODE_TYPE_FCALL) {
+      auto func = static_cast<Function*>(node->getData());
+      TRI_ASSERT(func != nullptr);
+
+      if (func->externalName == "NOOPT") {
+        // NOOPT will turn all function optimizations off
+        --(static_cast<TraversalContext*>(data)->stopOptimizationRequests);
+      }
     }
   };
 
@@ -1225,7 +1244,12 @@ void Ast::validateAndOptimize () {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_ACCESS_AFTER_MODIFICATION);
       }
 
-      return this->optimizeFunctionCall(node);
+      if (static_cast<TraversalContext*>(data)->stopOptimizationRequests == 0) {
+        // optimization allowed
+        return this->optimizeFunctionCall(node);
+      }
+      // optimization not allowed
+      return node;
     }
     
     // reference to a variable, may be able to insert the variable value directly

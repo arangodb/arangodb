@@ -716,21 +716,6 @@ char* TRI_StringUInt64 (uint64_t attr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from double (currently not used)
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringDouble (double value) {
-  TRI_string_buffer_t buffer;
-
-  TRI_InitStringBuffer(&buffer, TRI_CORE_MEM_ZONE);
-  TRI_AppendDoubleStringBuffer(&buffer, value);
-
-  return buffer._buffer;
-}
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to hex string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to

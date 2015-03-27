@@ -57,6 +57,8 @@ namespace triagens {
       static AqlValue IsArray (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue IsObject (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue Length (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Concat (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Passthru (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 
   }

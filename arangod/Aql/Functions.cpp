@@ -29,11 +29,61 @@
 
 #include "Aql/Functions.h"
 #include "Basics/fpconv.h"
-#include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the JSON value to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+static void AppendAsString (triagens::basics::StringBuffer& buffer,
+                            TRI_json_t const* json) {
+  TRI_json_type_e const type = (json == nullptr ? TRI_JSON_UNUSED : json->_type);
+
+  switch (type) {
+    case TRI_JSON_UNUSED: 
+    case TRI_JSON_NULL: {
+      buffer.appendText("null", strlen("null"));
+      break;
+    }
+    case TRI_JSON_BOOLEAN: {
+      if (json->_value._boolean) {
+        buffer.appendText("true", strlen("true"));
+      }
+      else {
+        buffer.appendText("false", strlen("false"));
+      }
+      break;
+    }
+    case TRI_JSON_NUMBER: {
+      buffer.appendDecimal(json->_value._number);
+      break;
+    }
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE: {
+      buffer.appendText(json->_value._string.data, json->_value._string.length - 1);
+      break;
+    }
+    case TRI_JSON_ARRAY: {
+      size_t const n = TRI_LengthArrayJson(json);
+      for (size_t i = 0; i < n; ++i) {
+        if (i > 0) {
+          buffer.appendChar(',');
+        }
+        AppendAsString(buffer, static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, i)));
+      }
+      break;
+    }
+    case TRI_JSON_OBJECT: {
+      buffer.appendText("[object Object]", strlen("[object Object]"));
+      break;
+    }
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief function IS_NULL
@@ -162,6 +212,65 @@ AqlValue Functions::Length (triagens::arango::AqlTransaction* trx,
   }
 
   return AqlValue(new Json(static_cast<double>(length)));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function CONCAT
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Concat (triagens::arango::AqlTransaction* trx,
+                            TRI_document_collection_t const* collection,
+                            AqlValue const parameters) {
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE, 24);
+
+  size_t const n = parameters.arraySize();
+
+  for (size_t i = 0; i < n; ++i) {
+    Json member = parameters.at(trx, i);
+
+    if (member.isEmpty() || member.isNull()) {
+      continue;
+    }
+      
+    TRI_json_t const* json = member.json();
+    
+    if (member.isArray()) {
+      // append each member individually
+      size_t const subLength = TRI_LengthArrayJson(json);
+
+      for (size_t j = 0; j < subLength; ++j) {
+        auto sub = static_cast<TRI_json_t const*>(TRI_AtVector(&json->_value._objects, j));
+
+        if (sub == nullptr || sub->_type == TRI_JSON_NULL) {
+          continue;
+        }
+
+        AppendAsString(buffer, sub);
+      }
+    }
+    else {
+      // convert member to a string and append
+      AppendAsString(buffer, json);
+    }
+  }
+  
+  // steal the StringBuffer's char* pointer so we can avoid copying data around
+  // multiple times
+  size_t length = buffer.length();
+  TRI_json_t* j = TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length);
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function PASSTHRU
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Passthru (triagens::arango::AqlTransaction* trx,
+                              TRI_document_collection_t const* collection,
+                              AqlValue const parameters) {
+
+  Json j(parameters.extractArrayMember(trx, collection, 0, true));
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
 }
 
 // -----------------------------------------------------------------------------

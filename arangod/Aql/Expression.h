@@ -282,7 +282,8 @@ namespace triagens {
                                           TRI_document_collection_t const**,
                                           triagens::arango::AqlTransaction*,
                                           std::vector<TRI_document_collection_t const*>&,
-                                          std::vector<AqlValue>&, size_t,
+                                          std::vector<AqlValue> const&, 
+                                          size_t,
                                           std::vector<Variable*> const&,
                                           std::vector<RegisterId> const&);
 
