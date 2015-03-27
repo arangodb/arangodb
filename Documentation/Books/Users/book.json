@@ -1,4 +1,7 @@
 {
+  "gitbook": ">=2.0.0",
+  "title": "ArangoDB Documentation",
+  "language": "en",
   "theme": "./localtheme",
   "plugins":["-mathjax"],
   "pdf": {
