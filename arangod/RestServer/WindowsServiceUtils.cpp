@@ -28,15 +28,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/Common.h"
-
 #include "Basics/messages.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "Rest/InitialiseRest.h"
 #include "Basics/files.h"
 #include "RestServer/ArangoServer.h"
-#include <signal.h>
 
+#include <signal.h>
 
 using namespace triagens;
 using namespace triagens::rest;
@@ -80,7 +79,6 @@ static SERVICE_STATUS_HANDLE ServiceStatus;
 
 void TRI_GlobalEntryFunction ();
 void TRI_GlobalExitFunction (int, void*);
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief installs arangod as service with command-line
@@ -135,7 +133,7 @@ static void InstallServiceCommand (std::string command) {
 static void InstallService (int argc, char* argv[]) {
   CHAR path[MAX_PATH];
 
-  if(! GetModuleFileNameA(NULL, path, MAX_PATH)) {
+  if (! GetModuleFileNameA(NULL, path, MAX_PATH)) {
     std::cerr << "FATAL: GetModuleFileNameA failed" << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -160,7 +158,7 @@ static void InstallService (int argc, char* argv[]) {
 static void DeleteService (int argc, char* argv[], bool force) {
   CHAR path[MAX_PATH] = "";
 
-  if(! GetModuleFileNameA(NULL, path, MAX_PATH)) {
+  if (! GetModuleFileNameA(NULL, path, MAX_PATH)) {
     std::cerr << "FATAL: GetModuleFileNameA failed" << std::endl;
     exit(EXIT_FAILURE);
   }
@@ -189,7 +187,7 @@ static void DeleteService (int argc, char* argv[], bool force) {
 
     std::string command = std::string("\"") + std::string(path) + std::string("\" --start-service");
       if (strcmp(cfg->lpBinaryPathName, command.c_str())) {
-      if (!force) {
+      if (! force) {
         std::cerr << "NOT removing service of other installation: " <<
           cfg->lpBinaryPathName <<
           " Our path is: " <<
@@ -272,7 +270,7 @@ static void StartArangoService (bool WaitForRunning) {
     exit(EXIT_SUCCESS);
   }
 
-  if (!StartService(arangoService, 0, NULL) ) {
+  if (! StartService(arangoService, 0, NULL) ) {
     TRI_SYSTEM_ERROR();
     std::cout << "StartService failed " << windowsErrorBuf << std::endl;
     CloseServiceHandle(arangoService);
@@ -289,11 +287,11 @@ static void StartArangoService (bool WaitForRunning) {
 
     // Check the status again.
 
-    if (!QueryServiceStatusEx(arangoService,
-                              SC_STATUS_PROCESS_INFO, // info level
-                              (LPBYTE) &ssp,             // address of structure
-                              sizeof(SERVICE_STATUS_PROCESS), // size of structure
-                              &bytesNeeded ) ) {
+    if (! QueryServiceStatusEx(arangoService,
+                               SC_STATUS_PROCESS_INFO, // info level
+                               (LPBYTE) &ssp,             // address of structure
+                               sizeof(SERVICE_STATUS_PROCESS), // size of structure
+                               &bytesNeeded ) ) {
       TRI_SYSTEM_ERROR();
       std::cerr << "INFO: QueryServiceStatusEx failed with " << windowsErrorBuf << std::endl;
       break;
@@ -354,7 +352,7 @@ static void StopArangoService (bool WaitForShutdown) {
   }
 
   // Send a stop code to the service.
-  if ( !ControlService(arangoService,
+  if (! ControlService(arangoService,
                        SERVICE_CONTROL_STOP,
                        (LPSERVICE_STATUS) &ssp ) ) {
     TRI_SYSTEM_ERROR();
@@ -380,6 +378,7 @@ static void StopArangoService (bool WaitForShutdown) {
       exit(EXIT_FAILURE);
     }
   }
+
   CloseServiceHandle(arangoService);
   CloseServiceHandle(schSCManager);
   exit(EXIT_SUCCESS);
@@ -570,8 +569,6 @@ void TRI_GlobalEntryFunction () {
   TRI_Application_Exit_SetExit(TRI_GlobalExitFunction);
 }
 
-
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global exit function
 ///
@@ -579,7 +576,6 @@ void TRI_GlobalEntryFunction () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_GlobalExitFunction (int exitCode, void* data) {
-
   // ...........................................................................
   // TODO: need a terminate function for windows to be called and cleanup
   // any windows specific stuff.
@@ -609,7 +605,7 @@ protected:
   /// @brief wrap ArangoDB server so we can properly emmit a status once we're
   ///        really up and running.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void startupProgress () {
+  virtual void startupProgress () override final {
     SetServiceStatus(SERVICE_START_PENDING, NO_ERROR, _progress++, 20000);
   }
 
@@ -617,7 +613,7 @@ protected:
   /// @brief wrap ArangoDB server so we can properly emmit a status once we're
   ///        really up and running.
   //////////////////////////////////////////////////////////////////////////////
-  virtual void startupFinished () {
+  virtual void startupFinished () override final {
     // startup finished - signalize we're running.
     SetServiceStatus(SERVICE_RUNNING, NO_ERROR, 0, 0);
   }
@@ -626,16 +622,18 @@ protected:
   /// @brief wrap ArangoDB server so we can properly emmit a status on shutdown
   ///        starting
   //////////////////////////////////////////////////////////////////////////////
-  virtual void shutDownBegins () {
+  virtual void shutDownBegins () override final {
     // startup finished - signalize we're running.
     SetServiceStatus(SERVICE_STOP_PENDING, NO_ERROR, 0, 0);
   }
 
 public:
-  WindowsArangoServer (int argc, char ** argv) :
-    ArangoServer(argc, argv) {
-    _progress = 2;
+  WindowsArangoServer (int argc, char ** argv) 
+    : ArangoServer(argc, argv) {
+
+      _progress = 2;
   }
+
 };
 
 static int ARGC;
@@ -650,6 +648,7 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
 
   IsRunning = true;
   ArangoInstance = new WindowsArangoServer(ARGC, ARGV);
+  ArangoInstance->setMode(ServerMode::MODE_SERVICE);
   ArangoInstance->start();
   IsRunning = false;
 
@@ -661,8 +660,7 @@ static void WINAPI ServiceMain (DWORD dwArgc, LPSTR *lpszArgv) {
 /// @brief parse windows specific commandline options
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_ParseMoreArgs (int argc, char* argv[])
-{
+bool TRI_ParseMoreArgs (int argc, char* argv[]) {
   SetUnhandledExceptionFilter(unhandledExceptionHandler);
 
   if (1 < argc) {
@@ -702,8 +700,7 @@ bool TRI_ParseMoreArgs (int argc, char* argv[])
 /// @brief start the windows service
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_StartService (int argc, char* argv[])
-{
+void TRI_StartService (int argc, char* argv[]) {
   // create and start an ArangoDB server
 
   SERVICE_TABLE_ENTRY ste[] = {

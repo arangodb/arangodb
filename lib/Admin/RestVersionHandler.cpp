@@ -32,6 +32,7 @@
 #include "Basics/json.h"
 #include "Basics/tri-strings.h"
 #include "Basics/conversions.h"
+#include "Rest/AnyServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/Version.h"
 
@@ -39,6 +40,12 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace std;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ArangoDB server
+////////////////////////////////////////////////////////////////////////////////
+
+extern AnyServer* ArangoInstance;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief name of the queue
@@ -140,15 +147,15 @@ HttpHandler::status_t RestVersionHandler::execute () {
 
   RequestStatisticsAgentSetIgnore(this);
 
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &result, 3);
+  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, 3);
 
   TRI_json_t server;
-  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, "arango"), strlen("arango"));
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "server", &server);
+  TRI_InitStringJson(&server, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, "arango"), strlen("arango"));
+  TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "server", &server);
 
   TRI_json_t version;
-  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_CORE_MEM_ZONE, TRI_VERSION), strlen(TRI_VERSION));
-  TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "version", &version);
+  TRI_InitStringJson(&version, TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, TRI_VERSION), strlen(TRI_VERSION));
+  TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "version", &version);
 
   bool found;
   char const* detailsStr = _request->value("details", found);
@@ -156,14 +163,20 @@ HttpHandler::status_t RestVersionHandler::execute () {
   if (found && StringUtils::boolean(detailsStr)) {
     TRI_json_t details;
 
-    TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &details);
+    TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &details);
 
-    Version::getJson(TRI_CORE_MEM_ZONE, &details);
-    TRI_Insert2ObjectJson(TRI_CORE_MEM_ZONE, &result, "details", &details);
+    Version::getJson(TRI_UNKNOWN_MEM_ZONE, &details);
+    
+    if (ArangoInstance != nullptr) {
+      std::string mode = ArangoInstance->modeString();
+      TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &details, "mode", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, mode.c_str(), mode.size()));
+    }
+
+    TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "details", &details);
   }
 
   generateResult(&result);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &result);
+  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &result);
 
   return status_t(HANDLER_DONE);
 }

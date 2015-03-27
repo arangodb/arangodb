@@ -37,7 +37,6 @@
 #include "RestServer/ArangoServer.h"
 #include <signal.h>
 
-
 using namespace triagens;
 using namespace triagens::rest;
 using namespace triagens::arango;
@@ -50,8 +49,7 @@ using namespace triagens::arango;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoServer* ArangoInstance = nullptr;
-
+AnyServer* ArangoInstance = nullptr;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -77,16 +75,16 @@ void TRI_StartService(int argc, char* argv[])         { }
 /// @brief handle fatal SIGNALs; print backtrace,
 ///        and rethrow signal for coredumps.
 ////////////////////////////////////////////////////////////////////////////////
+
 void abortHandler(int signum) {
-       TRI_PrintBacktrace();
+  TRI_PrintBacktrace();
 #ifdef _WIN32
-       exit(255 + signum);
+  exit(255 + signum);
 #else
-       signal(signum, SIG_DFL);
-       kill(getpid(), signum);
+  signal(signum, SIG_DFL);
+  kill(getpid(), signum);
 #endif
 }
-
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -101,7 +99,11 @@ int main (int argc, char* argv[]) {
 
   signal(SIGSEGV, abortHandler);
 
-  bool startAsService = TRI_ParseMoreArgs(argc, argv);
+#if _WIN32
+  bool const startAsService = TRI_ParseMoreArgs(argc, argv);
+#else
+  bool const startAsService = false;
+#endif
 
   // initialise sub-systems
   TRI_GlobalEntryFunction();

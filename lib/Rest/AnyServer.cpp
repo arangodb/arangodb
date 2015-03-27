@@ -136,7 +136,7 @@ static void CheckPidFile (string const& pidFile) {
 
 #ifdef TRI_HAVE_FORK
 
-static int forkProcess (string const& workingDirectory, string& current) {
+static int ForkProcess (string const& workingDirectory, string& current) {
 
   // fork off the parent process
   TRI_pid_t pid = fork();
@@ -213,7 +213,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
 // TODO: use windows API CreateProcess & CreateThread to minic fork()
 // ..............................................................................
 
-static int forkProcess (string const& workingDirectory, string& current) {
+static int ForkProcess (string const& workingDirectory, string& current) {
 
   // fork off the parent process
   TRI_pid_t pid = -1; // fork();
@@ -236,7 +236,7 @@ static int forkProcess (string const& workingDirectory, string& current) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AnyServer::AnyServer ()
-  : _daemonMode(false),
+  : _mode(ServerMode::MODE_STANDALONE),
     _supervisorMode(false),
     _pidFile(""),
     _workingDirectory(""),
@@ -248,9 +248,7 @@ AnyServer::AnyServer ()
 ////////////////////////////////////////////////////////////////////////////////
 
 AnyServer::~AnyServer () {
-  if (_applicationServer != nullptr) {
-    delete _applicationServer;
-  }
+  delete _applicationServer;
 }
 
 // -----------------------------------------------------------------------------
@@ -262,7 +260,6 @@ AnyServer::~AnyServer () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int AnyServer::start () {
-
   startupProgress();
 
   if (_applicationServer == nullptr) {
@@ -343,7 +340,7 @@ int AnyServer::startupSupervisor () {
   _applicationServer->setupLogging(false, true, false);
 
   string current;
-  int result = forkProcess(_workingDirectory, current);
+  int result = ForkProcess(_workingDirectory, current);
 
   // main process
   if (result != 0) {
@@ -352,6 +349,8 @@ int AnyServer::startupSupervisor () {
 
   // child process
   else {
+    setMode(ServerMode::MODE_SERVICE);
+
     time_t startTime = time(0);
     time_t t;
     bool done = false;
@@ -481,7 +480,7 @@ int AnyServer::startupDaemon () {
   _applicationServer->setupLogging(false, true, false);
 
   string current;
-  int result = forkProcess(_workingDirectory, current);
+  int result = ForkProcess(_workingDirectory, current);
 
   // main process
   if (result != 0) {
@@ -494,6 +493,7 @@ int AnyServer::startupDaemon () {
 
   // child process
   else {
+    setMode(ServerMode::MODE_SERVICE);
     _applicationServer->setupLogging(true, false, true);
     LOG_DEBUG("daemon mode: within child");
 

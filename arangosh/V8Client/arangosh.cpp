@@ -675,7 +675,7 @@ static void ClientConnection_ConstructorCallback (const v8::FunctionCallbackInfo
   if (connection->isConnected() && connection->getLastHttpReturnCode() == HttpResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-      << "', version " << connection->getVersion() << ", database '" << BaseClient.databaseName()
+      << "', version " << connection->getVersion() << " [" << connection->getMode() << "], database '" << BaseClient.databaseName()
       << "', username: '" << BaseClient.username() << "'";
     BaseClient.printLine(s.str());
   }
@@ -769,7 +769,7 @@ static void ClientConnection_reconnect (const v8::FunctionCallbackInfo<v8::Value
   if (newConnection->isConnected() && newConnection->getLastHttpReturnCode() == HttpResponse::OK) {
     ostringstream s;
     s << "Connected to ArangoDB '" << BaseClient.endpointServer()->getSpecification()
-      << "' version: " << newConnection->getVersion() << ", database: '" << BaseClient.databaseName()
+      << "' version: " << newConnection->getVersion() << " [" << newConnection->getMode() << "], database: '" << BaseClient.databaseName()
       << "', username: '" << BaseClient.username() << "'";
 
     BaseClient.printLine(s.str());
@@ -1369,6 +1369,29 @@ static void ClientConnection_getVersion (const v8::FunctionCallbackInfo<v8::Valu
   }
 
   TRI_V8_RETURN_STD_STRING(connection->getVersion());
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ClientConnection method "getMode"
+////////////////////////////////////////////////////////////////////////////////
+
+static void ClientConnection_getMode (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+
+  // get the connection
+  V8ClientConnection* connection = TRI_UnwrapClass<V8ClientConnection>(args.Holder(), WRAP_TYPE_CONNECTION);
+
+  if (connection == nullptr) {
+    TRI_V8_THROW_EXCEPTION_INTERNAL("connection class corrupted");
+  }
+
+  if (args.Length() != 0) {
+    TRI_V8_THROW_EXCEPTION_USAGE("getMode()");
+  }
+
+  TRI_V8_RETURN_STD_STRING(connection->getMode());
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2070,7 +2093,8 @@ static bool printHelo(bool useServer, bool promptError) {
       if (ClientConnection->isConnected() && ClientConnection->getLastHttpReturnCode() == HttpResponse::OK) {
         ostringstream is;
         is << "Connected to ArangoDB '" << BaseClient.endpointString()
-           << "' version: " << ClientConnection->getVersion() << ", database: '" << BaseClient.databaseName()
+           << "' version: " << ClientConnection->getVersion() 
+           << " [" << ClientConnection->getMode() << "], database: '" << BaseClient.databaseName()
            << "', username: '" << BaseClient.username() << "'";
 
         BaseClient.printLine(is.str(), true);
@@ -2147,6 +2171,7 @@ void InitCallbacks (v8::Isolate *isolate,
     connection_proto->Set(isolate, "reconnect",          v8::FunctionTemplate::New(isolate, ClientConnection_reconnect));
     connection_proto->Set(isolate, "toString",           v8::FunctionTemplate::New(isolate, ClientConnection_toString));
     connection_proto->Set(isolate, "getVersion",         v8::FunctionTemplate::New(isolate, ClientConnection_getVersion));
+    connection_proto->Set(isolate, "getMode",            v8::FunctionTemplate::New(isolate, ClientConnection_getMode));
     connection_proto->Set(isolate, "getDatabaseName",    v8::FunctionTemplate::New(isolate, ClientConnection_getDatabaseName));
     connection_proto->Set(isolate, "setDatabaseName",    v8::FunctionTemplate::New(isolate, ClientConnection_setDatabaseName));
     connection_proto->SetCallAsFunctionHandler(ClientConnection_ConstructorCallback);
