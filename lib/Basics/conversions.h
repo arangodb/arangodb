@@ -243,14 +243,6 @@ char* TRI_StringInt64 (int64_t);
 char* TRI_StringUInt64 (uint64_t);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief convert to string from double (currently not used)
-////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-char* TRI_StringDouble (double);
-#endif
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief convert to a hex string from uint32, using the specified buffer.
 /// A NUL-byte will be appended at the end.
 /// It is the caller's responsibility to ensure the buffer is big enough to

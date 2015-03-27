@@ -323,7 +323,7 @@ namespace triagens {
 /// @brief returns pointer to the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        const char * c_str () const {
+        char const* c_str () const {
           return TRI_BeginStringBuffer(&_buffer);
         }
 
@@ -331,7 +331,7 @@ namespace triagens {
 /// @brief returns pointer to the beginning of the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        const char * begin () const {
+        char const* begin () const {
           return TRI_BeginStringBuffer(&_buffer);
         }
 
@@ -339,7 +339,7 @@ namespace triagens {
 /// @brief returns pointer to the end of the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        const char * end () const {
+        char const* end () const {
           return TRI_EndStringBuffer(&_buffer);
         }
 
@@ -347,7 +347,7 @@ namespace triagens {
 /// @brief returns pointer to the end of the character buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        char * end () {
+        char* end () {
           return const_cast<char*>(TRI_EndStringBuffer(&_buffer));
         }
 
@@ -373,6 +373,14 @@ namespace triagens {
 
         bool empty () const {
           return TRI_EmptyStringBuffer(&_buffer);
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steals the pointer from the string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        char* steal () {
+          return TRI_StealStringBuffer(&_buffer);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -453,7 +461,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void set (TRI_string_buffer_t const* other) {
-          if (_buffer._buffer != 0) {
+          if (_buffer._buffer != nullptr) {
             TRI_Free(_buffer._memoryZone, _buffer._buffer);
           }
 

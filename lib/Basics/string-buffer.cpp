@@ -963,7 +963,7 @@ int TRI_AppendJsonEncodedStringStringBuffer (TRI_string_buffer_t * self,
 /// @brief appends integer with two digits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInteger2StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
+int TRI_AppendInteger2StringBuffer (TRI_string_buffer_t* self, uint32_t attr) {
   int res = Reserve(self, 2);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -980,7 +980,7 @@ int TRI_AppendInteger2StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 /// @brief appends integer with three digits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInteger3StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
+int TRI_AppendInteger3StringBuffer (TRI_string_buffer_t* self, uint32_t attr) {
   int res = Reserve(self, 3);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -998,7 +998,7 @@ int TRI_AppendInteger3StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 /// @brief appends integer with four digits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInteger4StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
+int TRI_AppendInteger4StringBuffer (TRI_string_buffer_t* self, uint32_t attr) {
   int res = Reserve(self, 4);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1017,7 +1017,7 @@ int TRI_AppendInteger4StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 /// @brief appends integer with 8 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
+int TRI_AppendInt8StringBuffer (TRI_string_buffer_t* self, int8_t attr) {
   int res = Reserve(self, 4);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1034,7 +1034,7 @@ int TRI_AppendInt8StringBuffer (TRI_string_buffer_t * self, int8_t attr) {
 /// @brief appends unsigned integer with 8 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
+int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t* self, uint8_t attr) {
   int res = Reserve(self, 3);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1051,7 +1051,7 @@ int TRI_AppendUInt8StringBuffer (TRI_string_buffer_t * self, uint8_t attr) {
 /// @brief appends integer with 16 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
+int TRI_AppendInt16StringBuffer (TRI_string_buffer_t* self, int16_t attr) {
   int res = Reserve(self, 6);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1068,7 +1068,7 @@ int TRI_AppendInt16StringBuffer (TRI_string_buffer_t * self, int16_t attr) {
 /// @brief appends unsigned integer with 32 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
+int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t* self, uint16_t attr) {
   int res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1085,7 +1085,7 @@ int TRI_AppendUInt16StringBuffer (TRI_string_buffer_t * self, uint16_t attr) {
 /// @brief appends integer with 32 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
+int TRI_AppendInt32StringBuffer (TRI_string_buffer_t* self, int32_t attr) {
   int res = Reserve(self, 11);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1102,7 +1102,7 @@ int TRI_AppendInt32StringBuffer (TRI_string_buffer_t * self, int32_t attr) {
 /// @brief appends unsigned integer with 32 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
+int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t* self, uint32_t attr) {
   int res = Reserve(self, 10);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1119,7 +1119,7 @@ int TRI_AppendUInt32StringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
 /// @brief appends integer with 64 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
+int TRI_AppendInt64StringBuffer (TRI_string_buffer_t* self, int64_t attr) {
   int res = Reserve(self, 20);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1136,7 +1136,7 @@ int TRI_AppendInt64StringBuffer (TRI_string_buffer_t * self, int64_t attr) {
 /// @brief appends unsigned integer with 64 bits
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
+int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t* self, uint64_t attr) {
   int res = Reserve(self, 21);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1153,7 +1153,7 @@ int TRI_AppendUInt64StringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
 /// @brief appends size_t
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr) {
+int TRI_AppendSizeStringBuffer (TRI_string_buffer_t* self, size_t attr) {
 #if TRI_SIZEOF_SIZE_T == 8
   return TRI_AppendUInt64StringBuffer(self, (uint64_t) attr);
 #else
@@ -1173,7 +1173,7 @@ int TRI_AppendSizeStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 /// @brief appends unsigned integer with 32 bits in octal
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
+int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t* self, uint32_t attr) {
   int res = Reserve(self, 11);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1190,7 +1190,7 @@ int TRI_AppendUInt32OctalStringBuffer (TRI_string_buffer_t * self, uint32_t attr
 /// @brief appends unsigned integer with 64 bits in octal
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
+int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t* self, uint64_t attr) {
   int res = Reserve(self, 22);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1207,7 +1207,7 @@ int TRI_AppendUInt64OctalStringBuffer (TRI_string_buffer_t * self, uint64_t attr
 /// @brief appends size_t in octal
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr) {
+int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t* self, size_t attr) {
 #if TRI_SIZEOF_SIZE_T == 8
   return TRI_AppendUInt64OctalStringBuffer(self, (uint64_t) attr);
 #else
@@ -1227,7 +1227,7 @@ int TRI_AppendSizeOctalStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 /// @brief appends unsigned integer with 32 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) {
+int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t* self, uint32_t attr) {
   int res = Reserve(self, 5);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1244,7 +1244,7 @@ int TRI_AppendUInt32HexStringBuffer (TRI_string_buffer_t * self, uint32_t attr) 
 /// @brief appends unsigned integer with 64 bits in hex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) {
+int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t* self, uint64_t attr) {
   int res = Reserve(self, 9);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1261,7 +1261,7 @@ int TRI_AppendUInt64HexStringBuffer (TRI_string_buffer_t * self, uint64_t attr) 
 /// @brief appends size_t in hex
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr) {
+int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t* self, size_t attr) {
 #if TRI_SIZEOF_SIZE_T == 8
   return TRI_AppendUInt64HexStringBuffer(self, (uint64_t) attr);
 #else
@@ -1281,7 +1281,7 @@ int TRI_AppendSizeHexStringBuffer (TRI_string_buffer_t * self, size_t attr) {
 /// @brief appends floating point number
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
+int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t* self, double attr) {
   if (std::isnan(attr)) {
     return TRI_AppendStringStringBuffer(self, "NaN");
   }
@@ -1317,7 +1317,7 @@ int TRI_AppendDoubleStringBuffer (TRI_string_buffer_t * self, double attr) {
 /// @brief appends time in standard format
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AppendTimeStringBuffer (TRI_string_buffer_t * self, int32_t attr) {
+int TRI_AppendTimeStringBuffer (TRI_string_buffer_t* self, int32_t attr) {
   int hour;
   int minute;
   int second;
