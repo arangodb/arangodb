@@ -564,6 +564,72 @@ TRI_vector_pointer_t TRI_LookupByKeyMultiPointer (TRI_memory_zone_t* zone,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief lookups an element given a key and the last element
+////////////////////////////////////////////////////////////////////////////////
+
+void TRI_LookupByKeyMultiPointer (TRI_multi_pointer_t* array,
+                                  void const* key,
+                                  std::function<void(void*)> callback,
+                                  void*& next,
+                                  size_t batchSize) {
+  size_t total = 0;
+  TRI_ASSERT(batchSize > 0);
+
+  if (next == nullptr) {
+    // compute the hash
+    uint64_t hash = array->hashKey(array, key);
+    uint64_t i = hash % array->_nrAlloc;
+
+#ifdef TRI_INTERNAL_STATS
+    // update statistics
+    array->_nrFinds++;
+#endif
+  
+    // search the table
+    while (array->_table[i].ptr != nullptr &&
+           (! array->isEqualKeyElement(array, key, array->_table[i].ptr) ||
+            array->_table[i].prev != TRI_MULTI_POINTER_INVALID_INDEX)) {
+      i = TRI_IncModU64(i, array->_nrAlloc);
+#ifdef TRI_INTERNAL_STATS
+      array->_nrProbesF++;
+#endif
+    }
+
+    // insert and set next
+    if (array->_table[i].ptr != nullptr) {
+      callback(array->_table[i].ptr);
+      ++total;
+      
+      auto nextIndex = array->_table[i].next;
+      if (nextIndex == TRI_MULTI_POINTER_INVALID_INDEX) {
+        next = nullptr;
+      }
+      else {
+        next = &(array->_table[nextIndex]);
+      }
+    }
+  }
+  
+  if (next != nullptr) {
+    // we already had a state
+    while (total < batchSize) {
+      auto current = static_cast<TRI_multi_pointer_entry_t*>(next);
+      callback(current->ptr);
+      ++total;
+
+      auto nextIndex = current->next;
+      if (nextIndex == TRI_MULTI_POINTER_INVALID_INDEX) {
+        next = nullptr;
+        break;
+      }
+      else {
+        next = &(array->_table[nextIndex]);
+      }
+    }
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief lookups an element given an element
 ////////////////////////////////////////////////////////////////////////////////
 

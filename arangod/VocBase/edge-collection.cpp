@@ -215,6 +215,44 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
   return result;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges using the index, restarting at the edge pointed at
+/// by next
+////////////////////////////////////////////////////////////////////////////////
+      
+void TRI_LookupEdgeIndex (TRI_index_t* idx,
+                          TRI_edge_index_iterator_t const* edgeIndexIterator,
+                          std::vector<TRI_doc_mptr_copy_t>& result,
+                          void*& next,
+                          size_t batchSize) {
+
+  std::function<void(void*)> callback = [&result] (void* data) -> void {
+    TRI_doc_mptr_t* doc = static_cast<TRI_doc_mptr_t*>(data);
+
+    result.emplace_back(*(doc));
+  };
+
+  TRI_edge_index_t* edgesIndex = (TRI_edge_index_t*) idx;
+  
+  if (edgeIndexIterator->_direction == TRI_EDGE_OUT) {
+    TRI_LookupByKeyMultiPointer(&edgesIndex->_edges_from,
+                                &edgeIndexIterator->_edge,
+                                callback,
+                                next,
+                                batchSize);
+  }
+  else if (edgeIndexIterator->_direction == TRI_EDGE_IN) {
+    TRI_LookupByKeyMultiPointer(&edgesIndex->_edges_to,
+                                &edgeIndexIterator->_edge,
+                                callback,
+                                next,
+                                batchSize);
+  }
+  else {
+    TRI_ASSERT(false);
+  }
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
