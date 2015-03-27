@@ -949,6 +949,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
     _posInDocs(0),
     _anyBoundVariable(false),
     _skiplistIterator(nullptr),
+    _edgeIndexIterator(nullptr),
     _hashIndexSearchValue({ 0, nullptr }),
     _hashNextElement(nullptr),
     _condition(new IndexOrCondition()),
@@ -1004,6 +1005,8 @@ IndexRangeBlock::~IndexRangeBlock () {
   if (_skiplistIterator != nullptr) {
     TRI_FreeSkiplistIterator(_skiplistIterator);
   }
+ 
+  delete _edgeIndexIterator; 
 }
 
 int IndexRangeBlock::initialize () {
@@ -1301,9 +1304,18 @@ bool IndexRangeBlock::initRanges () {
     removeOverlapsIndexOr(*_condition);
   }
    
-  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX ||
-      en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+  if (en->_index->type == TRI_IDX_TYPE_PRIMARY_INDEX) {
     return true; //no initialization here!
+  }
+  
+  if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+    if (_condition->empty()) {
+      return false;
+    }
+
+    _posInRanges = 0;
+    getEdgeIndexIterator(_condition->at(_posInRanges));
+    return (_edgeIndexIterator != nullptr);
   }
       
   if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
@@ -1516,11 +1528,11 @@ void IndexRangeBlock::freeCondition () {
 bool IndexRangeBlock::readIndex (size_t atMost) {
   ENTER_BLOCK;
   // this is called every time we want more in _documents. 
-  // For non-skiplist indexes (currently hash, primary, edge), this 
-  // only reads the index once, and never again (although there might be
-  // multiple calls to this function). For skiplists indexes, initRanges creates
-  // a skiplistIterator and readIndex just reads from the iterator until it is
-  // done. Then initRanges is read again and so on. This is to avoid reading the
+  // For the primary key index, this only reads the index once, and never 
+  // again (although there might be multiple calls to this function). 
+  // For the edge, hash or skiplists indexes, initRanges creates an iterator
+  // and read*Index just reads from the iterator until it is done. 
+  // Then initRanges is read again and so on. This is to avoid reading the
   // entire index when we only want a small number of documents. 
   
   if (_documents.empty()) {
@@ -1540,16 +1552,14 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
       readPrimaryIndex(*_condition);
     }
   }
+  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
+    readEdgeIndex(atMost);
+  }
   else if (en->_index->type == TRI_IDX_TYPE_HASH_INDEX) {
     readHashIndex(atMost);
   }
   else if (en->_index->type == TRI_IDX_TYPE_SKIPLIST_INDEX) {
     readSkiplistIndex(atMost);
-  }
-  else if (en->_index->type == TRI_IDX_TYPE_EDGE_INDEX) {
-    if (_flag) {
-      readEdgeIndex(*_condition); 
-    }
   }
   else {
     TRI_ASSERT(false);
@@ -1824,61 +1834,112 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief read documents using the edges index
+/// @brief build search values for edge index lookup
 ////////////////////////////////////////////////////////////////////////////////
 
-void IndexRangeBlock::readEdgeIndex (IndexOrCondition const& ranges) {
+void IndexRangeBlock::getEdgeIndexIterator (IndexAndCondition const& ranges) {
   ENTER_BLOCK;
-  TRI_document_collection_t* document = _collection->documentCollection();
-     
-  std::string key;
-  TRI_edge_direction_e direction = TRI_EDGE_IN; // must set a default to satisfy compiler
-  for (size_t i = 0; i < ranges.size(); i++) { 
-    for (auto x : ranges[i]) {
-      if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
-        // we can use lower bound because only equality is supported
-        TRI_ASSERT(x.is1ValueRangeInfo());
-        auto const json = x._lowConst.bound().json();
-        if (TRI_IsStringJson(json)) {
-          // no error will be thrown if _from is not a string
-          key = std::string(json->_value._string.data, json->_value._string.length - 1);
-          direction = TRI_EDGE_OUT;
-        }
-        break;
-      }
-      else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_TO)) {
-        // we can use lower bound because only equality is supported
-        TRI_ASSERT(x.is1ValueRangeInfo());
-        auto const json = x._lowConst.bound().json();
-        if (TRI_IsStringJson(json)) {
-          // no error will be thrown if _to is not a string
-          key = std::string(json->_value._string.data, json->_value._string.length - 1);
-          direction = TRI_EDGE_IN;
-        }
-        break;
-      }
+  
+  _edgeNextElement = nullptr;
+
+  if (_edgeIndexIterator != nullptr) {
+    delete _edgeIndexIterator;
+    _edgeIndexIterator = nullptr;
+  }
+ 
+  auto buildIterator = [this] (TRI_edge_direction_e direction, TRI_json_t const* key) -> void {
+    TRI_ASSERT(_edgeIndexIterator == nullptr);
+
+    TRI_voc_cid_t documentCid;
+    std::string documentKey;
+
+    int errorCode = resolve(key->_value._string.data, documentCid, documentKey);
+
+    if (errorCode == TRI_ERROR_NO_ERROR) {
+      _edgeIndexIterator = new TRI_edge_index_iterator_t(direction, documentCid, (TRI_voc_key_t) documentKey.c_str());
     }
+  };
 
-    if (! key.empty()) {
-      TRI_voc_cid_t documentCid;
-      std::string documentKey;
+  for (auto x : ranges) {
+    if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
+      // we can use lower bound because only equality is supported
+      TRI_ASSERT(x.is1ValueRangeInfo());
+      auto const json = x._lowConst.bound().json();
+      if (TRI_IsStringJson(json)) {
+        // no error will be thrown if _from is not a string
+        buildIterator(TRI_EDGE_OUT, json);
+      }
+      break;
+    }
+    else if (x._attr == std::string(TRI_VOC_ATTRIBUTE_TO)) {
+      // we can use lower bound because only equality is supported
+      TRI_ASSERT(x.is1ValueRangeInfo());
+      auto const json = x._lowConst.bound().json();
+      if (TRI_IsStringJson(json)) {
+        // no error will be thrown if _to is not a string
+        buildIterator(TRI_EDGE_IN, json);
+      }
+      break;
+    }
+  }
+  
+  LEAVE_BLOCK;
+}
 
-      int errorCode = resolve(key.c_str(), documentCid, documentKey);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief actually read from the edge index
+////////////////////////////////////////////////////////////////////////////////
 
-      if (errorCode == TRI_ERROR_NO_ERROR) {
-        // silently ignore all errors due to wrong _from / _to specifications
-        auto&& result = TRI_LookupEdgesDocumentCollection(document, direction,
-            documentCid, (TRI_voc_key_t) documentKey.c_str());
-        for (auto it : result) {
-          _documents.emplace_back(it);
-        }
+void IndexRangeBlock::readEdgeIndex (size_t atMost) {
+  ENTER_BLOCK;
+
+  if (_edgeIndexIterator == nullptr) {
+    return;
+  }
+
+  auto en = static_cast<IndexRangeNode const*>(getPlanNode());
+  TRI_index_t* idx = en->_index->getInternals();
+  TRI_ASSERT(idx != nullptr);
+ 
+  try { 
+    size_t nrSent = 0;
+    while (nrSent < atMost && _edgeIndexIterator != nullptr) { 
+      size_t const n = _documents.size();
+
+      TRI_IF_FAILURE("IndexRangeBlock::readEdgeIndex") {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+      }
+
+      TRI_LookupEdgeIndex(idx, _edgeIndexIterator, _documents, _edgeNextElement, atMost);
     
-        _engine->_stats.scannedIndex += static_cast<int64_t>(result.size());
+      size_t const numRead = _documents.size() - n;
+
+      _engine->_stats.scannedIndex += static_cast<int64_t>(numRead);
+      nrSent += numRead;
+
+      if (_edgeNextElement == nullptr) {
+        delete _edgeIndexIterator;
+        _edgeIndexIterator = nullptr;
+
+        if (++_posInRanges < _condition->size()) {
+          getEdgeIndexIterator(_condition->at(_posInRanges));
+        }
       }
     }
   }
+  catch (...) {
+    if (_edgeIndexIterator != nullptr) {
+      delete _edgeIndexIterator;
+      _edgeIndexIterator = nullptr;
+    }
+    throw;
+  }
   LEAVE_BLOCK;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destroy the search values for the hash index lookup
+////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeBlock::destroyHashIndexSearchValues () {
   if (_hashIndexSearchValue._values != nullptr) {
@@ -1892,6 +1953,10 @@ void IndexRangeBlock::destroyHashIndexSearchValues () {
     _hashIndexSearchValue._values = nullptr;
   }
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set up search values for the hash index lookup
+////////////////////////////////////////////////////////////////////////////////
 
 bool IndexRangeBlock::setupHashIndexSearchValue (IndexAndCondition const& range) { 
   auto en = static_cast<IndexRangeNode const*>(getPlanNode());
@@ -1965,6 +2030,10 @@ void IndexRangeBlock::getHashIndexIterator (IndexAndCondition const& ranges) {
   LEAVE_BLOCK;
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief actually read from the hash index
+////////////////////////////////////////////////////////////////////////////////
+ 
 void IndexRangeBlock::readHashIndex (size_t atMost) {
   ENTER_BLOCK;
 
@@ -2122,6 +2191,10 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   }
   LEAVE_BLOCK;
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief actually read from the skiplist index
+////////////////////////////////////////////////////////////////////////////////
 
 void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   ENTER_BLOCK;
