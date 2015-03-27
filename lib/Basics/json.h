@@ -367,6 +367,25 @@ int64_t TRI_ToInt64Json (TRI_json_t const*);
 
 double TRI_ToDoubleJson (TRI_json_t const*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief default deleter for TRI_json_t
+/// this can be used to put a TRI_json_t with TRI_UNKNOWN_MEM_ZONE into an
+/// std::unique_ptr
+////////////////////////////////////////////////////////////////////////////////
+
+namespace std {
+  template<>
+  class default_delete<TRI_json_t> {
+    public:
+
+      void operator() (TRI_json_t* json) {
+        if (json != nullptr) {
+          TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+        }
+      }
+  };
+}
+
 #endif
 
 // -----------------------------------------------------------------------------

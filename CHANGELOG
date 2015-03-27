@@ -1,7 +1,15 @@
 v2.5.2 (XXXX-XX-XX)
 -------------------
 
+* issue #1285: syntax error, unexpected $undefined near '@_to RETURN obj
+
+  this allows AQL bind parameter names to also start with underscores
+
 * moved /_api/query to C++
+
+* issue #1289: Foxx models created from database documents expose an internal method
+
+* added `Foxx.Repository#exists`
 
 
 v2.5.1 (2015-03-19)

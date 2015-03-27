@@ -1568,6 +1568,16 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   v8::Handle<v8::Value> filename = args[0];
+    
+  // save state of __dirname and __filename
+  v8::Handle<v8::Object> current = isolate->GetCurrentContext()->Global();
+  auto oldFilename = current->Get(TRI_V8_ASCII_STRING("__filename"));
+  current->ForceSet(TRI_V8_ASCII_STRING("__filename"), filename);
+  
+  auto oldDirname = current->Get(TRI_V8_ASCII_STRING("__dirname"));
+  auto dirname = TRI_Dirname(TRI_ObjectToString(filename).c_str());
+  current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), TRI_V8_STRING(dirname));
+  TRI_FreeString(TRI_CORE_MEM_ZONE, dirname);
 
   v8::Handle<v8::Value> result =
     TRI_ExecuteJavaScriptString(isolate,
@@ -1575,6 +1585,20 @@ static void JS_Load (const v8::FunctionCallbackInfo<v8::Value>& args) {
                                 TRI_V8_PAIR_STRING(content, length),
                                 filename->ToString(),
                                 false);
+ 
+  // restore old values for __dirname and __filename
+  if (oldFilename.IsEmpty() || oldFilename->IsUndefined()) {
+    current->ForceDelete(TRI_V8_ASCII_STRING("__filename"));
+  }
+  else {
+    current->ForceSet(TRI_V8_ASCII_STRING("__filename"), oldFilename);
+  }
+  if (oldDirname.IsEmpty() || oldDirname->IsUndefined()) {
+    current->ForceDelete(TRI_V8_ASCII_STRING("__dirname"));
+  }
+  else {
+    current->ForceSet(TRI_V8_ASCII_STRING("__dirname"), oldDirname);
+  }
 
   TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, content);
   TRI_V8_RETURN(result);

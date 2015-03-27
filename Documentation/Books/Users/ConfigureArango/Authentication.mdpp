@@ -29,6 +29,9 @@ collection is
 <!-- arangod/RestServer/ArangoServer.h -->
 @startDocuBlock server_authentication
 
+<!-- arangod/RestServer/ArangoServer.h -->
+@startDocuBlock serverAuthenticateSystemOnly
+
 !SECTION Introduction to User Management
 
 ArangoDB provides basic functionality to add, modify and remove database users
