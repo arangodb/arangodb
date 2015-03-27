@@ -236,8 +236,8 @@ static int ForkProcess (string const& workingDirectory, string& current) {
 ////////////////////////////////////////////////////////////////////////////////
 
 AnyServer::AnyServer ()
-  : _daemonMode(false),
-    _mode(ServerMode::MODE_STANDALONE),
+  : _mode(ServerMode::MODE_STANDALONE),
+    _daemonMode(false),
     _supervisorMode(false),
     _pidFile(""),
     _workingDirectory(""),
