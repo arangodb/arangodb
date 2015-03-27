@@ -47,7 +47,7 @@ using namespace triagens::arango;
 /// @brief ArangoDB server
 ////////////////////////////////////////////////////////////////////////////////
 
-extern ArangoServer* ArangoInstance;
+extern AnyServer* ArangoInstance;
 
 // -----------------------------------------------------------------------------
 // --SECTION--               Windows Service control functions - de/installation
