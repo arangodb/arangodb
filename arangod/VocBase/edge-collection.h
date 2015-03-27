@@ -31,8 +31,11 @@
 #define ARANGODB_VOC_BASE_EDGE__COLLECTION_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/document-collection.h"
+
+struct TRI_index_s;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   EDGE COLLECTION
@@ -63,6 +66,34 @@ typedef struct TRI_edge_header_s {
 }
 TRI_edge_header_t;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge index iterator
+////////////////////////////////////////////////////////////////////////////////
+
+struct TRI_edge_index_iterator_t {
+  TRI_edge_index_iterator_t (TRI_edge_direction_e direction,
+                             TRI_voc_cid_t cid,
+                             TRI_voc_key_t key) 
+    : _direction(direction),
+      _edge({ cid, nullptr }) {
+
+    TRI_ASSERT(key != nullptr);
+    _edge._key = TRI_DuplicateStringZ(TRI_UNKNOWN_MEM_ZONE, key);
+    if (_edge._key == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+  }
+
+  ~TRI_edge_index_iterator_t () {
+    if (_edge._key != nullptr) {
+      TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, _edge._key);
+    }
+  }
+
+  TRI_edge_direction_e const _direction;
+  TRI_edge_header_t          _edge;
+};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       EDGES INDEX
 // -----------------------------------------------------------------------------
@@ -80,6 +111,17 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
                                                   TRI_voc_key_t);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief looks up edges using the index, restarting at the edge pointed at
+/// by next
+////////////////////////////////////////////////////////////////////////////////
+      
+void TRI_LookupEdgeIndex (struct TRI_index_s*,
+                          TRI_edge_index_iterator_t const*,
+                          std::vector<TRI_doc_mptr_copy_t>&,
+                          void*&,
+                          size_t);
 
 #endif
 
