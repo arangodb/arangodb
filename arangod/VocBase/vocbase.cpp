@@ -1471,6 +1471,10 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
   TRI_DestroySpin(&vocbase->_usage._lock);
+  
+  if (vocbase->_cursorRepository != nullptr) {
+    delete static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
+  }
 
   if (vocbase->_queries != nullptr) {
     delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);

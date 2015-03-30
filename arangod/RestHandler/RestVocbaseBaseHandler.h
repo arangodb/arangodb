@@ -33,14 +33,12 @@
 #include "Basics/Common.h"
 
 #include "Admin/RestBaseHandler.h"
-
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/json-utilities.h"
-
 #include "Rest/HttpResponse.h"
-#include "Utils/transactions.h"
 #include "RestServer/VocbaseContext.h"
+#include "Utils/transactions.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                              forward declarations
@@ -64,9 +62,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class RestVocbaseBaseHandler : public admin::RestBaseHandler {
+
       private:
-        RestVocbaseBaseHandler (RestVocbaseBaseHandler const&);
-        RestVocbaseBaseHandler& operator= (RestVocbaseBaseHandler const&);
+        RestVocbaseBaseHandler (RestVocbaseBaseHandler const&) = delete;
+        RestVocbaseBaseHandler& operator= (RestVocbaseBaseHandler const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
@@ -93,16 +92,22 @@ namespace triagens {
         static const std::string DOCUMENT_PATH;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief document import path
-////////////////////////////////////////////////////////////////////////////////
-
-        static const std::string DOCUMENT_IMPORT_PATH;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief edge path
 ////////////////////////////////////////////////////////////////////////////////
 
         static const std::string EDGE_PATH;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document export path
+////////////////////////////////////////////////////////////////////////////////
+
+        static const std::string EXPORT_PATH;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief document import path
+////////////////////////////////////////////////////////////////////////////////
+
+        static const std::string IMPORT_PATH;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief replication path

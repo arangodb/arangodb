@@ -480,7 +480,6 @@ void Query::registerErrorCustom (int code,
   errorMessage.append(": ");
   errorMessage.append(details);
 
-std::cout << "REGISTER ERROR CUSTOM: " << errorMessage << "\n";
   THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
 }
 

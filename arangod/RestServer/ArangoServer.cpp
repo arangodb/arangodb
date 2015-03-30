@@ -37,6 +37,7 @@
 #include "Admin/RestHandlerCreator.h"
 #include "Admin/RestShutdownHandler.h"
 #include "Aql/Query.h"
+#include "Aql/RestAqlHandler.h"
 #include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
@@ -49,7 +50,10 @@
 #include "Basics/messages.h"
 #include "Basics/ThreadPool.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ApplicationCluster.h"
+#include "Cluster/ClusterComm.h"
 #include "Cluster/HeartbeatThread.h"
+#include "Cluster/RestShardHandler.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Dispatcher/Dispatcher.h"
 #include "HttpServer/ApplicationEndpointServer.h"
@@ -61,6 +65,7 @@
 #include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
+#include "RestHandler/RestExportHandler.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestPleaseUpgradeHandler.h"
 #include "RestHandler/RestQueryHandler.h"
@@ -77,10 +82,6 @@
 #include "VocBase/auth.h"
 #include "VocBase/server.h"
 #include "Wal/LogfileManager.h"
-#include "Cluster/ApplicationCluster.h"
-#include "Cluster/RestShardHandler.h"
-#include "Cluster/ClusterComm.h"
-#include "Aql/RestAqlHandler.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -130,9 +131,13 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/edge" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::EDGE_PATH,
                             RestHandlerCreator<RestEdgeHandler>::createNoData);
+  
+  // add "/export" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::EXPORT_PATH,
+                            RestHandlerCreator<RestExportHandler>::createNoData);
 
   // add "/import" handler
-  factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_IMPORT_PATH,
+  factory->addPrefixHandler(RestVocbaseBaseHandler::IMPORT_PATH,
                             RestHandlerCreator<RestImportHandler>::createNoData);
 
   // add "/replication" handler

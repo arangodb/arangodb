@@ -30,6 +30,7 @@
 #include "Utils/CursorRepository.h"
 #include "Basics/json.h"
 #include "Basics/MutexLocker.h"
+#include "Utils/CollectionExport.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
 
@@ -81,15 +82,15 @@ CursorRepository::~CursorRepository () {
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-Cursor* CursorRepository::createFromJson (TRI_json_t* json,
-                                          size_t batchSize,
-                                          TRI_json_t* extra,
-                                          double ttl,
-                                          bool count) {
+JsonCursor* CursorRepository::createFromJson (TRI_json_t* json,
+                                              size_t batchSize,
+                                              TRI_json_t* extra,
+                                              double ttl,
+                                              bool count) {
   TRI_ASSERT(json != nullptr);
 
   CursorId const id = TRI_NewTickServer();
-  triagens::arango::Cursor* cursor = nullptr;
+  triagens::arango::JsonCursor* cursor = nullptr;
 
   try {
     cursor = new triagens::arango::JsonCursor(_vocbase, id, json, batchSize, extra, ttl, count);
@@ -101,6 +102,32 @@ Cursor* CursorRepository::createFromJson (TRI_json_t* json,
     }
     throw;
   }
+
+  cursor->use();
+
+  try {
+    MUTEX_LOCKER(_lock);
+    _cursors.emplace(std::make_pair(id, cursor));
+    return cursor;
+  }
+  catch (...) {
+    delete cursor;
+    throw;
+  }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cursor and stores it in the registry
+////////////////////////////////////////////////////////////////////////////////
+
+ExportCursor* CursorRepository::createFromExport (triagens::arango::CollectionExport* ex,
+                                                  size_t batchSize,
+                                                  double ttl,
+                                                  bool count) {
+  TRI_ASSERT(ex != nullptr);
+
+  CursorId const id = TRI_NewTickServer();
+  triagens::arango::ExportCursor* cursor = new triagens::arango::ExportCursor(_vocbase, id, ex, batchSize, ttl, count);
 
   cursor->use();
 
@@ -227,7 +254,6 @@ bool CursorRepository::garbageCollect (bool force) {
 
   {
     MUTEX_LOCKER(_lock);
-  std::cout << "CLEANUP COUNT: " << _cursors.size() << "\n";
 
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
       auto cursor = (*it).second;

@@ -94,7 +94,7 @@ HttpHandler::status_t RestImportHandler::execute () {
     }
 
     default:
-      generateNotImplemented("ILLEGAL " + DOCUMENT_IMPORT_PATH);
+      generateNotImplemented("ILLEGAL " + IMPORT_PATH);
       break;
   }
 
@@ -593,7 +593,7 @@ bool RestImportHandler::createFromJson (string const& type) {
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+                  "superfluous suffix, expecting " + IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
 
@@ -608,7 +608,7 @@ bool RestImportHandler::createFromJson (string const& type) {
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+                  "'collection' is missing, expecting " + IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
 
@@ -1061,7 +1061,7 @@ bool RestImportHandler::createFromKeyValueList () {
   if (suffix.size() != 0) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_HTTP_SUPERFLUOUS_SUFFICES,
-                  "superfluous suffix, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+                  "superfluous suffix, expecting " + IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
 
@@ -1076,7 +1076,7 @@ bool RestImportHandler::createFromKeyValueList () {
   if (! found || collection.empty()) {
     generateError(HttpResponse::BAD,
                   TRI_ERROR_ARANGO_COLLECTION_PARAMETER_MISSING,
-                  "'collection' is missing, expecting " + DOCUMENT_IMPORT_PATH + "?collection=<identifier>");
+                  "'collection' is missing, expecting " + IMPORT_PATH + "?collection=<identifier>");
     return false;
   }
 

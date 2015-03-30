@@ -31,6 +31,7 @@
 #define ARANGODB_ARANGO_CURSOR_H 1
 
 #include "Basics/Common.h"
+#include "Basics/StringBuffer.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_json_t;
@@ -38,6 +39,8 @@ struct TRI_vocbase_s;
 
 namespace triagens {
   namespace arango {
+
+    class CollectionExport;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                      class Cursor
@@ -120,29 +123,23 @@ namespace triagens {
         
         virtual size_t count () const = 0;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
-// -----------------------------------------------------------------------------
-
-      private:
-
-        void freeJson ();
+        virtual void dump (triagens::basics::StringBuffer&) = 0;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
+// --SECTION--                                               protected variables
 // -----------------------------------------------------------------------------
 
       protected:
 
-       CursorId const        _id;
-       size_t const          _batchSize;
-       size_t                _position;
-       struct TRI_json_t*    _extra;
-       double                _ttl;
-       double                _expires;
-       bool const            _hasCount;
-       bool                  _isDeleted;
-       bool                  _isUsed;
+        CursorId const        _id;
+        size_t const          _batchSize;
+        size_t                _position;
+        struct TRI_json_t*    _extra;
+        double                _ttl;
+        double                _expires;
+        bool const            _hasCount;
+        bool                  _isDeleted;
+        bool                  _isUsed;
     };
 
 // -----------------------------------------------------------------------------
@@ -174,6 +171,8 @@ namespace triagens {
         
         size_t count () const override final;
 
+        void dump (triagens::basics::StringBuffer&) override final;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -188,10 +187,51 @@ namespace triagens {
 
       private:
 
-       struct TRI_vocbase_s* _vocbase;
-       struct TRI_json_t*    _json;
-       size_t const           _size;
+        struct TRI_vocbase_s* _vocbase;
+        struct TRI_json_t*    _json;
+        size_t const          _size;
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                class ExportCursor
+// -----------------------------------------------------------------------------
+    
+    class ExportCursor : public Cursor {
+      public:
+
+        ExportCursor (struct TRI_vocbase_s*,
+                      CursorId,
+                      triagens::arango::CollectionExport*,
+                      size_t,
+                      double,
+                      bool);
+
+        ~ExportCursor ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+      public:
+
+        bool hasNext () override final;
+
+        struct TRI_json_t* next () override final;
+        
+        size_t count () const override final;
+
+        void dump (triagens::basics::StringBuffer&) override final;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+        struct TRI_vocbase_s*               _vocbase;
+        triagens::arango::CollectionExport* _ex;
+    };
+
   }
 }
 
