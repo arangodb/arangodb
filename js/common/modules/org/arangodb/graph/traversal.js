@@ -98,6 +98,20 @@ function clone (obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test if object is empty
+////////////////////////////////////////////////////////////////////////////////
+
+function isEmpty(obj) {
+  for(var key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief traversal abortion exception
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1260,6 +1274,136 @@ function dijkstraSearch () {
   };
 }
 
+function dijkstraSearchMulti () {
+  return {
+    nodes: { },
+
+    requiresEndVertex: function () {
+      return true;
+    },
+
+    makeNode: function (vertex) {
+      var id = vertex._id;
+      if (! this.nodes.hasOwnProperty(id)) {
+        this.nodes[id] = { vertex: vertex, dist: Infinity };
+      }
+
+      return this.nodes[id];
+    },
+
+    vertexList: function (vertex) {
+      var result = [ ];
+      while (vertex) {
+        result.push(vertex);
+        vertex = vertex.parent;
+      }
+      return result;
+    },
+
+    buildPath: function (vertex) {
+      var path = { vertices: [ vertex.vertex ], edges: [ ] };
+      var v = vertex;
+
+      while (v.parent) {
+        path.vertices.unshift(v.parent.vertex);
+        path.edges.unshift(v.parentEdge);
+        v = v.parent;
+      }
+      return path;
+    },
+
+    run: function (config, result, startVertex, endVertex) {
+      var maxIterations = config.maxIterations, visitCounter = 0;
+
+      var heap = new BinaryHeap(function (node) {
+        return node.dist;
+      });
+
+      var startNode = this.makeNode(startVertex);
+      startNode.dist = 0;
+      heap.push(startNode);
+
+      while (heap.size() > 0) {
+        if (visitCounter++ > maxIterations) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
+          err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
+          throw err;
+        }
+
+        var currentNode = heap.pop();
+        var i, n;
+
+        if (endVertex.hasOwnProperty(currentNode.vertex._id)) {
+          delete endVertex[currentNode.vertex._id];
+          config.visitor(config, result, currentNode, this.buildPath(currentNode));
+          if (isEmpty(endVertex)) {
+            return;
+          }
+        }
+
+        if (currentNode.visited) {
+          continue;
+        }
+
+        if (currentNode.dist === Infinity) {
+          break;
+        }
+
+        currentNode.visited = true;
+
+        var path = this.buildPath(currentNode);
+        var filterResult = parseFilterResult(config.filter(config, currentNode.vertex, path));
+
+        if (! filterResult.visit) {
+          currentNode.hide = true;
+        }
+
+        if (! filterResult.expand) {
+          continue;
+        }
+
+        var dist = currentNode.dist;
+        var connected = config.expander(config, currentNode.vertex, path);
+        n = connected.length;
+
+        for (i = 0; i < n; ++i) {
+          var neighbor = this.makeNode(connected[i].vertex);
+
+          if (neighbor.visited) {
+            continue;
+          }
+
+          var edge = connected[i].edge;
+          var weight = 1;
+          if (config.distance) {
+            weight = config.distance(config, currentNode.vertex, neighbor.vertex, edge);
+          }
+          else if (config.weight) {
+            if (typeof edge[config.weight] === "number") {
+              weight = edge[config.weight];
+            }
+            else if (config.defaultWeight) {
+              weight = config.defaultWeight;
+            }
+            else {
+              weight = Infinity;
+            }
+          }
+
+          var alt = dist + weight;
+          if (alt < neighbor.dist) {
+            neighbor.dist = alt;
+            neighbor.parent = currentNode;
+            neighbor.parentEdge = edge;
+            heap.push(neighbor);
+          }
+        }
+      }
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief implementation details for a* shortest path strategy
 ////////////////////////////////////////////////////////////////////////////////
@@ -1477,7 +1621,8 @@ ArangoTraverser = function (config) {
     depthfirst: ArangoTraverser.DEPTH_FIRST,
     breadthfirst: ArangoTraverser.BREADTH_FIRST,
     astar: ArangoTraverser.ASTAR_SEARCH,
-    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH
+    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH,
+    dijkstramulti: ArangoTraverser.DIJKSTRA_SEARCH_MULTI
   }, "strategy");
 
   config.order = validate(config.order, {
@@ -1588,6 +1733,9 @@ ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) {
   else if (this.config.strategy === ArangoTraverser.DIJKSTRA_SEARCH) {
     strategy = dijkstraSearch();
   }
+  else if (this.config.strategy === ArangoTraverser.DIJKSTRA_SEARCH_MULTI) {
+    strategy = dijkstraSearchMulti();
+  }
   else if (this.config.strategy === ArangoTraverser.BREADTH_FIRST) {
     strategy = breadthFirstSearch();
   }
@@ -1673,6 +1821,12 @@ ArangoTraverser.ASTAR_SEARCH         = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTraverser.DIJKSTRA_SEARCH      = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dijkstra search with multiple end vertices
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.DIJKSTRA_SEARCH_MULTI = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pre-order traversal, visitor called before expander

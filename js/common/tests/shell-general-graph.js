@@ -2790,10 +2790,9 @@ function MeasurementsSuite() {
 
   var ec1 = "unitTestEdgeCollection1";
   var ec2 = "unitTestEdgeCollection2";
+  var ec3 = "unitTestEdgeCollection3";
   var vc1 = "unitTestVertexCollection1";
   var vc2 = "unitTestVertexCollection2";
-  var vc3 = "unitTestVertexCollection3";
-  var vc4 = "unitTestVertexCollection4";
 
 
   var fillCollections = function() {
@@ -2808,17 +2807,18 @@ function MeasurementsSuite() {
     ids.vId14 = vertex._id;
     vertex = g[vc1].save({first_name: "Tum"});
     ids.vId15 = vertex._id;
-    vertex = g[vc3].save({first_name: "Tam"});
+    vertex = g[vc2].save({first_name: "Tam"});
     ids.vId31 = vertex._id;
-    vertex = g[vc3].save({first_name: "Tem"});
+    vertex = g[vc2].save({first_name: "Tem"});
     ids.vId32 = vertex._id;
-    vertex = g[vc3].save({first_name: "Tim", age : 24});
+    vertex = g[vc2].save({first_name: "Tim", age : 24});
     ids.vId33 = vertex._id;
-    vertex = g[vc3].save({first_name: "Tom"});
+    vertex = g[vc2].save({first_name: "Tom"});
     ids.vId34 = vertex._id;
-    vertex = g[vc3].save({first_name: "Tum"});
+    vertex = g[vc2].save({first_name: "Tum"});
     ids.vId35 = vertex._id;
 
+    /*
     var edge = g[ec1].save(ids.vId11, ids.vId12, {});
     ids.eId11 = edge._id;
     edge = g[ec1].save(ids.vId11, ids.vId13, {});
@@ -2845,8 +2845,25 @@ function MeasurementsSuite() {
     ids.eId24 = edge._id;
     edge = g[ec2].save(ids.vId11, ids.vId35, {});
     ids.eId25 = edge._id;
+    */
+
+    ids.eId11 = g[ec1].save(ids.vId11, ids.vId12, {});
+    ids.eId12 = g[ec1].save(ids.vId12, ids.vId13, {});
+    ids.eId13 = g[ec1].save(ids.vId13, ids.vId14, {});
+    ids.eId14 = g[ec1].save(ids.vId14, ids.vId15, {});
+
+    ids.eId21 = g[ec2].save(ids.vId11, ids.vId32, {});
+    ids.eId22 = g[ec2].save(ids.vId11, ids.vId31, {});
+    ids.eId23 = g[ec2].save(ids.vId14, ids.vId33, {});
+
+    ids.eId31 = g[ec3].save(ids.vId31, ids.vId33, {});
+    ids.eId32 = g[ec3].save(ids.vId31, ids.vId34, {});
+    ids.eId33 = g[ec3].save(ids.vId33, ids.vId34, {});
+
     return ids;
   };
+
+  var allIds;
 
   return {
 
@@ -2855,12 +2872,11 @@ function MeasurementsSuite() {
         unitTestGraphName,
         graph._edgeDefinitions(
           graph._relation(ec1, vc1, vc1),
-          graph._relation(ec2,
-            [vc1, vc2], [vc3, vc4]
-          )
+          graph._relation(ec2, vc1, vc2),
+          graph._relation(ec3, vc2, vc2)
         )
       );
-      fillCollections();
+      allIds = fillCollections();
     },
 
     tearDown : function() {
@@ -2942,12 +2958,14 @@ function MeasurementsSuite() {
 /// @brief executes the test suites
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
 jsunity.run(GeneralGraphCommonNeighborsSuite);
 jsunity.run(GeneralGraphAQLQueriesSuite);
 jsunity.run(EdgesAndVerticesSuite);
 jsunity.run(GeneralGraphCreationSuite);
 jsunity.run(ChainedFluentAQLResultsSuite);
 jsunity.run(OrphanCollectionSuite);
+*/
 jsunity.run(MeasurementsSuite);
 
 return jsunity.done();

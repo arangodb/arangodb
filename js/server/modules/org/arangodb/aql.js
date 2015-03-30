@@ -33,7 +33,6 @@ var TRAVERSAL = require("org/arangodb/graph/traversal");
 var ArangoError = require("org/arangodb").ArangoError;
 var ShapedJson = INTERNAL.ShapedJson;
 var isCoordinator = require("org/arangodb/cluster").isCoordinator();
-var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -5110,17 +5109,10 @@ function TO_ID (vertex, collection) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief traverse a graph
+/// @brief Create basic traversal config
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSAL_FUNC (func,
-                         datasource,
-                         startVertex,
-                         endVertex,
-                         direction,
-                         params) {
-  "use strict";
-
+function TRAVERSAL_CONFIG (func, datasource, startVertex, endVertex, direction, params) {
   if (params === undefined) {
     params = { };
   }
@@ -5151,7 +5143,6 @@ function TRAVERSAL_FUNC (func,
   var config = {
     distance: params.distance,
     connect: params.connect,
-    datasource: datasource,
     trackPaths: params.paths || false,
     visitor: params.visitor,
     visitorReturnsResults: params.visitorReturnsResults || false,
@@ -5159,17 +5150,18 @@ function TRAVERSAL_FUNC (func,
     minDepth: params.minDepth,
     maxIterations: params.maxIterations,
     uniqueness: params.uniqueness,
-    expander: direction,
-    direction: direction,
     strategy: params.strategy,
     order: params.order,
     itemOrder: params.itemOrder,
-    startVertex : startVertex,
-    endVertex : endVertex,
     weight : params.weight,
     defaultWeight : params.defaultWeight,
     prefill : params.prefill,
-    data: params.data  
+    data: params.data,
+    datasource: datasource,
+    expander: direction,
+    direction: direction,
+    startVertex: startVertex,
+    endVertex: endVertex
   };
 
   if (typeof params.filter === "function") {
@@ -5221,19 +5213,43 @@ function TRAVERSAL_FUNC (func,
   // end vertex
   var e;
   if (endVertex !== undefined) {
-    try {
-      e = INTERNAL.db._document(endVertex);
-    }
-    catch (err2) {
+    if (typeof endVertex === "string") {
+      try {
+        e = INTERNAL.db._document(endVertex);
+      }
+      catch (err2) {
+      }
+    } else {
+      e = endVertex;
     }
   }
 
+  return {
+    config: config,
+    endVertex: e,
+    vertex: v
+  };
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief traverse a graph
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_FUNC (func,
+                         datasource,
+                         startVertex,
+                         endVertex,
+                         direction,
+                         params) {
+  "use strict";
+
+  var info = TRAVERSAL_CONFIG(func, datasource, startVertex, endVertex, direction, params);
   var result = [ ];
-  if (v !== null) {
-    var traverser = new TRAVERSAL.Traverser(config);
-    traverser.traverse(result, v, e);
+  if (info.vertex !== null) {
+    var traverser = new TRAVERSAL.Traverser(info.config);
+    traverser.traverse(result, info.vertex, info.endVertex);
   }
-
   return result;
 }
 
@@ -5476,55 +5492,49 @@ function TRAVERSAL_DISTANCE_VISITOR (config, result, vertex, path) {
 /// @brief visitor callback function for traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function TRAVERSAL_DIJSKTRA_VISITOR (config, result, vertex, path) {
+function TRAVERSAL_DIJSKTRA_VISITOR (config, result, node, path) {
   "use strict";
-  if (config.endVertex && config.endVertex === vertex._id) {
-    path.vertices.forEach(function (from) {
-      path.vertices.forEach(function (to) {
-        if (config.prefill.indexOf(JSON.stringify({ from : TO_ID(from), to :  TO_ID(to)})) !== -1) {
-          return;
-        }
-        var positionFrom = path.vertices.indexOf(from);
-        var positionTo = path.vertices.indexOf(to);
-        if (positionFrom > positionTo && config.direction !== 'any') {
-          return;
-        }
-        var startVertex = from._id;
-        var vertex = to;
-
-        var distance = 0;
-        var pathNew  = { vertices : [ from ], edges : [ ] };
-        while (positionFrom !== positionTo) {
-          var edgePosition;
-          if (positionFrom > positionTo) {
-            edgePosition = positionFrom-1;
-          } else {
-            edgePosition = positionFrom;
-          }
-          if (positionFrom > positionTo) {
-            positionFrom = positionFrom -1;
-          } else {
-            positionFrom ++;
-          }
-          pathNew.vertices.push(path.vertices[positionFrom]);
-          pathNew.edges.push(path.edges[edgePosition]);
-          if (config.weight) {
-            if (path.edges[edgePosition][config.weight]  &&
-              typeof path.edges[edgePosition][config.weight] === "number") {
-              distance = distance + path.edges[edgePosition][config.weight];
-            } else if (config.defaultWeight) {
-              distance = distance + config.defaultWeight;
-            }
-          } else {
-            distance++;
-          }
-        }
-        result.push(
-          CLONE({ vertex: vertex, distance: distance , path: pathNew , startVertex : startVertex})
-        );
-      });
-    });
+  var vertex = node.vertex;
+  var res;
+  if (config.hasOwnProperty("includeData")
+    && config.includeData === true) {
+    res = {
+      vertex: vertex,
+      distance: node.dist,
+      startVertex : path.vertices[0]
+    };
+  } else {
+    res = {
+      vertex: vertex._id,
+      distance: node.dist,
+      startVertex : path.vertices[0]._id
+    };
   }
+  if (config.hasOwnProperty("includePath")) {
+    var incl = config.includePath;
+    res.path = {};
+    if (incl.vertices === true) {
+      if (config.hasOwnProperty("includeData")
+        && config.includeData === true) {
+        res.path.edges = path.edges;
+      } else {
+        res.path.verices = path.vertices.map(function(o) {
+          return o._id;
+        });
+      }
+    }
+    if (incl.edges === true) {
+      if (config.hasOwnProperty("includeData")
+        && config.includeData === true) {
+        res.path.edges = path.edges;
+      } else {
+        res.path.edges = path.edges.map(function(o) {
+          return o._id;
+        });
+      }
+    }
+  }
+  result.push(CLONE(res));
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -5543,10 +5553,11 @@ function SHORTEST_PATH_PARAMS (params) {
   params.itemorder = "forward";
 
   // add user-defined visitor, if specified
-  if (typeof params.visitor === "string") {
-    params.visitor = GET_VISITOR(params.visitor, params);
-  }
-  else {
+  if (params.hasOwnProperty("visitor")) {
+    if (typeof params.visitor === "string") {
+      params.visitor = GET_VISITOR(params.visitor, params);
+    }
+  } else {
     params.visitor = TRAVERSAL_VISITOR;
   }
 
@@ -5768,13 +5779,13 @@ function TRAVERSAL_PARAMS (params) {
   }
 
   // add user-defined visitor, if specified
-  if (typeof params.visitor === "string") {
-    params.visitor = GET_VISITOR(params.visitor, params);
-  }
-  else {
+  if (params.hasOwnProperty("visitor")) {
+    if (typeof params.visitor === "string") {
+      params.visitor = GET_VISITOR(params.visitor, params);
+    }
+  } else {
     params.visitor = TRAVERSAL_VISITOR;
   }
-
   return params;
 }
 
@@ -5813,12 +5824,14 @@ function MERGE_EXAMPLES_WITH_EDGES (examples, edges) {
   return result;
 }
 
+
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief calculate shortest paths by dijkstra
+/// @brief Creates parameters for a dijkstra based shortest path traversal
 ////////////////////////////////////////////////////////////////////////////////
 
-function CALCULATE_SHORTEST_PATHES_WITH_DIJKSTRA (graphName, options) {
-  var params = TRAVERSAL_PARAMS(), factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
+function CREATE_DIJKSTRA_PARAMS(graphName, options) {
+  var params = TRAVERSAL_PARAMS(options),
+      factory = TRAVERSAL.generalGraphDatasourceFactory(graphName);
   params.paths = true;
   if (options.edgeExamples) {
     params.followEdges = options.edgeExamples;
@@ -6234,18 +6247,10 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
   if (! options) {
     options = {};
   }
-  options.noPaths = true;
-  var res = AQL_GRAPH_SHORTEST_PATH(
+  options.includeData = true;
+  return AQL_GRAPH_SHORTEST_PATH(
     graphName, startVertexExample, endVertexExample, options
-  ), result = [];
-  res.forEach(function (r) {
-    result.push({
-      startVertex : r.startVertex,
-      distance : r.distance,
-      vertex : r.vertex
-    });
-  });
-  return result;
+  );
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -6973,6 +6978,41 @@ function AQL_GRAPH_COMMON_PROPERTIES (graphName,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Prepares and executes a dijkstra search with predefined result object
+///        The result object will be handed over in each traversal step
+////////////////////////////////////////////////////////////////////////////////
+
+function RUN_DIJKSTRA_WITH_RESULT_HANDLE (func, graphName, options, result) {
+  result = result || [];
+  var dijkstraParams = CREATE_DIJKSTRA_PARAMS(graphName, options);
+  dijkstraParams.fromVertices.forEach(function (v) {
+    var info = TRAVERSAL_CONFIG(
+      func,
+      dijkstraParams.factory,
+      TO_ID(v),
+      JSON.parse(JSON.stringify(dijkstraParams.toVertices)),
+      options.direction,
+      dijkstraParams.params
+    );
+    if (info.vertex !== null) {
+      var traverser = new TRAVERSAL.Traverser(info.config);
+      traverser.traverse(result, info.vertex, info.endVertex);
+    }
+  });
+  return result;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for absolute eccentricity traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
+  "use strict";
+  result[path.vertices[0]._id] = Math.max(node.dist, result[path.vertices[0]._id] || 0);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_ahuacatl_general_graph_absolute_eccentricity
 ///
 /// `GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options)`
@@ -7055,22 +7095,36 @@ function AQL_GRAPH_COMMON_PROPERTIES (graphName,
 function AQL_GRAPH_ABSOLUTE_ECCENTRICITY (graphName, vertexExample, options) {
   "use strict";
   if (! options) {
-    options = {  };
+    options = {};
   }
   if (! options.direction) {
     options.direction =  'any';
   }
+  if (! options.algorithm) {
+    options.algorithm = "dijkstra";
+  }
+  options.fromVertexExample = vertexExample;
+  options.toVertexExample = {};
 
-  var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample, {}, options), 
-      result = {};
-  distanceMap.forEach(function(d) {
-    if (!result[d.startVertex]) {
-      result[d.startVertex] = d.distance;
-    } else {
-      result[d.startVertex] = Math.max(result[d.startVertex], d.distance);
-    }
-  });
-  return result;
+  options.visitor = TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR;
+  return RUN_DIJKSTRA_WITH_RESULT_HANDLE(
+    "ABSOLUTE_ECCENTRICITY",
+    graphName,
+    options,
+    {}
+  );
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for absolute eccentricity traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
+  "use strict";
+  var save = Math.max(node.dist, result.vertices[path.vertices[0]._id] || 0);
+  result.vertices[path.vertices[0]._id] = save;
+  result.max = Math.max(save, result.max);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7132,21 +7186,41 @@ function AQL_GRAPH_ECCENTRICITY (graphName, options) {
   if (! options) {
     options = {  };
   }
-  if (! options.algorithm) {
-    options.algorithm = "Floyd-Warshall";
+  if (! options.direction) {
+    options.direction =  'any';
   }
-
-  var result = AQL_GRAPH_ABSOLUTE_ECCENTRICITY(graphName, {}, options), max = 0;
-  Object.keys(result).forEach(function (r) {
-    result[r] = result[r] === 0 ? 0 : 1 / result[r];
-    if (result[r] > max) {
-      max = result[r];
+  if (! options.algorithm) {
+    // options.algorithm = "Floyd-Warshall";
+    options.algorithm = "dijkstra";
+  }
+  options.fromVertexExample = {};
+  options.toVertexExample = {};
+  options.visitor = TRAVERSAL_ECCENTRICITY_VISITOR;
+  var result = RUN_DIJKSTRA_WITH_RESULT_HANDLE(
+    "ECCENTRICITY",
+    graphName,
+    options,
+    {
+      vertices: {},
+      max: 0
     }
+  );
+  var list = result.vertices;
+  Object.keys(list).forEach(function (r) {
+    list[r] /= result.max;
   });
-  Object.keys(result).forEach(function (r) {
-    result[r] = result[r] / max;
-  });
-  return result;
+  return list;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for absolute closeness traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
+  "use strict";
+  result[path.vertices[0]._id] = result[path.vertices[0]._id] || 0;
+  result[path.vertices[0]._id] += node.dist;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7229,28 +7303,86 @@ function AQL_GRAPH_ECCENTRICITY (graphName, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
+/*
+function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
+ "use strict";
+ if (! options) {
+   options = { };
+ }
+ if (! options.direction) {
+   options.direction = 'any';
+ }
+ var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
+ distanceMap.forEach(function(d) {
+   if (options.direction !== 'any' && options.calcNormalized) {
+     d.distance = d.distance === 0 ? 0 : 1 / d.distance;
+   }
+   if (!result[d.startVertex]) {
+     result[d.startVertex] = d.distance;
+   } else {
+     result[d.startVertex] = d.distance + result[d.startVertex];
+   }
+ });
+ return result;
+}
+
+function AQL_GRAPH_CLOSENESS (graphName, options) {
+ "use strict";
+ if (! options) {
+   options = { };
+ }
+ options.calcNormalized = true;
+ if (! options.algorithm) {
+   options.algorithm = "Floyd-Warshall";
+ }
+ var result = AQL_GRAPH_ABSOLUTE_CLOSENESS(graphName, {}, options), max = 0;
+ Object.keys(result).forEach(function (r) {
+   if (options.direction === 'any') {
+     result[r] = result[r] === 0 ? 0 : 1 / result[r];
+   }
+   if (result[r] > max) {
+     max = result[r];
+   }
+ });
+ Object.keys(result).forEach(function (r) {
+   result[r] = result[r] / max;
+ });
+ return result;
+}
+*/
+
 function AQL_GRAPH_ABSOLUTE_CLOSENESS (graphName, vertexExample, options) {
   "use strict";
-
   if (! options) {
-    options = {  };
+    options = {};
   }
   if (! options.direction) {
     options.direction =  'any';
   }
+  if (! options.algorithm) {
+    options.algorithm = "dijkstra";
+  }
+  options.fromVertexExample = vertexExample;
+  options.toVertexExample = {};
 
-  var distanceMap = AQL_GRAPH_DISTANCE_TO(graphName, vertexExample , {}, options), result = {};
-  distanceMap.forEach(function(d) {
-    if (options.direction !==  'any' && options.calcNormalized) {
-      d.distance = d.distance === 0 ?  0 : 1 / d.distance;
-    }
-    if (!result[d.startVertex]) {
-      result[d.startVertex] = d.distance;
-    } else {
-      result[d.startVertex] = d.distance + result[d.startVertex];
-    }
-  });
-  return result;
+  options.visitor = TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR;
+  return RUN_DIJKSTRA_WITH_RESULT_HANDLE(
+    "ABSOLUTE_CLOSENESS",
+    graphName,
+    options,
+    {}
+  );
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief visitor callback function for absolute closeness traversal
+////////////////////////////////////////////////////////////////////////////////
+
+function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
+  "use strict";
+  result.vertices[path.vertices[0]._id] = result.vertices[path.vertices[0]._id] || 0;
+  result.vertices[path.vertices[0]._id] += node.dist;
+  result.max = Math.max(result.max, result.vertices[path.vertices[0]._id]);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -7326,26 +7458,30 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
   if (! options) {
     options = {  };
   }
-  options.calcNormalized = true;
-
-  if (! options.algorithm) {
-    options.algorithm = "Floyd-Warshall";
+  if (! options.direction) {
+    options.direction =  'any';
   }
+  if (! options.algorithm) {
+    options.algorithm = "dijkstra";
+  }
+  options.fromVertexExample = {};
+  options.toVertexExample = {};
+  options.visitor = TRAVERSAL_CLOSENESS_VISITOR;
 
-  var result = AQL_GRAPH_ABSOLUTE_CLOSENESS(graphName, {}, options), max = 0;
-  Object.keys(result).forEach(function (r) {
-    if (options.direction ===  'any') {
-      result[r] = result[r]  === 0 ? 0 : 1 / result[r];
+  var result = RUN_DIJKSTRA_WITH_RESULT_HANDLE(
+    "CLOSENESS",
+    graphName,
+    options,
+    {
+      vertices: {},
+      max: 0
     }
-    if (result[r] > max) {
-      max = result[r];
-    }
+  );
+  var list = result.vertices;
+  Object.keys(list).forEach(function (r) {
+    list[r] /= result.max;
   });
-  Object.keys(result).forEach(function (r) {
-    result[r] = result[r] / max;
-  });
-
-  return result;
+  return list;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
