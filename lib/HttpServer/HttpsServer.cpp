@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief base class for all servers
+/// @brief https server
 ///
 /// @file
 ///
@@ -22,131 +22,98 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
+/// @author Dr. Frank Celler
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_ENDPOINT_SERVER_H
-#define ARANGODB_GENERAL_SERVER_ENDPOINT_SERVER_H 1
+#include "HttpsServer.h"
 
-#include "Basics/Common.h"
+#include "HttpServer/HttpsCommTask.h"
 
-#include "lib/Rest/Endpoint.h"
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class EndpointServer
+// --SECTION--                                                 class HttpsServer
 // -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-
-    class EndpointList;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint server
-////////////////////////////////////////////////////////////////////////////////
-
-    class EndpointServer {
-      private:
-        EndpointServer (EndpointServer const&);
-        EndpointServer const& operator= (EndpointServer const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new endpoint server
+/// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        EndpointServer () :
-          _endpointList(0) {
-        }
+HttpsServer::HttpsServer (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          HttpHandlerFactory* handlerFactory,
+                          AsyncJobManager* jobManager,
+                          double keepAliveTimeout,
+                          SSL_CTX* ctx)
+  : HttpServer(scheduler, dispatcher, handlerFactory, jobManager, keepAliveTimeout),
+    _ctx(ctx),
+    _verificationMode(SSL_VERIFY_NONE),
+    _verificationCallback(0) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an endpoint server
+/// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~EndpointServer () {
-        }
+HttpsServer::~HttpsServer () {
+  // don't free context here but in dtor of ApplicationEndpointServer
+  // SSL_CTX_free(ctx);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the encryption to be used
+/// @brief sets the verification mode
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Endpoint::EncryptionType getEncryption () const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the endpoint list
-////////////////////////////////////////////////////////////////////////////////
-
-        void setEndpointList (const EndpointList* list) {
-          _endpointList = list;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add another endpoint at runtime
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool addEndpoint (Endpoint*) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove an endpoint at runtime
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool removeEndpoint (Endpoint*) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts listening
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void startListening () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down handlers
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void shutdownHandlers () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops listining
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void stopListening () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes all listen and comm tasks
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void stop () = 0;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defined ports and addresses
-////////////////////////////////////////////////////////////////////////////////
-
-        const EndpointList* _endpointList;
-
-    };
-  }
+void HttpsServer::setVerificationMode (int mode) {
+  _verificationMode = mode;
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpsServer::setVerificationCallback (int (*func)(int, X509_STORE_CTX *)) {
+  _verificationCallback = func;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                HttpServer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+const char* HttpsServer::protocol () const {
+  return "https";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Endpoint::EncryptionType HttpsServer::encryptionType () const {
+  return Endpoint::ENCRYPTION_SSL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+HttpCommTask* HttpsServer::createCommTask (TRI_socket_t s, const ConnectionInfo& info) {
+  return new HttpsCommTask(
+    this, s, info, _keepAliveTimeout, _ctx, _verificationMode, _verificationCallback);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

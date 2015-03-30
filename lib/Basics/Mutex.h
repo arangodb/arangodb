@@ -47,8 +47,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class Mutex {
-        Mutex (Mutex const&);
-        Mutex& operator= (Mutex const&);
+      private:
+        Mutex (Mutex const&) = delete;
+        Mutex& operator= (Mutex const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors

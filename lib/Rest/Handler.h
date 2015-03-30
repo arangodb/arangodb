@@ -43,8 +43,8 @@
 
 namespace triagens {
   namespace rest {
-    class AsyncJobServer;
     class Dispatcher;
+    class HttpServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     class Handler
@@ -193,7 +193,7 @@ namespace triagens {
 /// @brief creates a job
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Job* createJob (AsyncJobServer*, bool) = 0;
+        virtual Job* createJob (HttpServer*, bool) = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables

@@ -31,12 +31,14 @@
 
 #include <openssl/err.h>
 
-#include "Basics/delete_object.h"
-#include "Basics/ssl-helper.h"
 #include "Basics/FileUtils.h"
 #include "Basics/RandomGenerator.h"
+#include "Basics/ReadLocker.h"
+#include "Basics/WriteLocker.h"
+#include "Basics/delete_object.h"
 #include "Basics/json.h"
 #include "Basics/logging.h"
+#include "Basics/ssl-helper.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
@@ -104,7 +106,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _backlogSize(10),
     _httpsKeyfile(),
     _cafile(),
-    _sslProtocol(HttpsServer::TLS_V1),
+    _sslProtocol(TLS_V1),
     _sslCache(false),
     _sslOptions((long) (SSL_OP_TLS_ROLLBACK_BUG | SSL_OP_CIPHER_SERVER_PREFERENCE)),
     _sslCipherList(""),
@@ -152,14 +154,14 @@ bool ApplicationEndpointServer::buildServers () {
   TRI_ASSERT(_handlerFactory != nullptr);
   TRI_ASSERT(_applicationScheduler->scheduler() != nullptr);
 
-  EndpointServer* server;
+  HttpServer* server;
 
   // unencrypted endpoints
   server = new HttpServer(_applicationScheduler->scheduler(),
                           _applicationDispatcher->dispatcher(),
+                          _handlerFactory,
                           _jobManager,
-                          _keepAliveTimeout,
-                          _handlerFactory);
+                          _keepAliveTimeout);
 
   server->setEndpointList(&_endpointList);
   _servers.push_back(server);
@@ -175,9 +177,9 @@ bool ApplicationEndpointServer::buildServers () {
     // https
     server = new HttpsServer(_applicationScheduler->scheduler(),
                              _applicationDispatcher->dispatcher(),
+                             _handlerFactory,
                              _jobManager,
                              _keepAliveTimeout,
-                             _handlerFactory,
                              _sslContext);
 
     server->setEndpointList(&_endpointList);
@@ -308,7 +310,7 @@ bool ApplicationEndpointServer::addEndpoint (std::string const& newEndpoint,
 
   // find the correct server (HTTP or HTTPS)
   for (size_t i = 0; i < _servers.size(); ++i) {
-    if (_servers[i]->getEncryption() == encryption) {
+    if (_servers[i]->encryptionType() == encryption) {
       // found the correct server
       WRITE_LOCKER(_endpointsLock);
 
@@ -371,7 +373,7 @@ bool ApplicationEndpointServer::removeEndpoint (std::string const& oldEndpoint) 
 
   // find the correct server (HTTP or HTTPS)
   for (size_t i = 0; i < _servers.size(); ++i) {
-    if (_servers[i]->getEncryption() == encryption) {
+    if (_servers[i]->encryptionType() == encryption) {
       // found the correct server
       WRITE_LOCKER(_endpointsLock);
 
@@ -584,9 +586,7 @@ bool ApplicationEndpointServer::open () {
     return true;
   }
 
-  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    EndpointServer* server = *i;
-
+  for (auto server : _servers) {
     server->startListening();
   }
 
@@ -603,16 +603,12 @@ void ApplicationEndpointServer::close () {
   }
 
   // close all open connections
-  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    EndpointServer* server = *i;
-
+  for (auto server : _servers) {
     server->shutdownHandlers();
   }
 
   // close all listen sockets
-  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    EndpointServer* server = *i;
-
+  for (auto server : _servers) {
     server->stopListening();
   }
 }
@@ -626,9 +622,7 @@ void ApplicationEndpointServer::stop () {
     return;
   }
 
-  for (vector<EndpointServer*>::iterator i = _servers.begin();  i != _servers.end();  ++i) {
-    EndpointServer* server = *i;
-
+  for (auto server : _servers) {
     server->stop();
   }
 }
@@ -648,20 +642,19 @@ bool ApplicationEndpointServer::createSslContext () {
   }
 
   // validate protocol
-  if (_sslProtocol <= HttpsServer::SSL_UNKNOWN || _sslProtocol >= HttpsServer::SSL_LAST) {
+  if (_sslProtocol <= SSL_UNKNOWN || _sslProtocol >= SSL_LAST) {
     LOG_ERROR("invalid SSL protocol version specified. Please use a valid value for --server.ssl-protocol.");
     return false;
   }
 
-  LOG_DEBUG("using SSL protocol version '%s'",
-            HttpsServer::protocolName((HttpsServer::protocol_e) _sslProtocol).c_str());
+  LOG_DEBUG("using SSL protocol version '%s'", protocolName((protocol_e) _sslProtocol).c_str());
 
   if (! FileUtils::exists(_httpsKeyfile)) {
     LOG_FATAL_AND_EXIT("unable to find SSL keyfile '%s'", _httpsKeyfile.c_str());
   }
 
   // create context
-  _sslContext = HttpsServer::sslContext(HttpsServer::protocol_e(_sslProtocol), _httpsKeyfile);
+  _sslContext = sslContext(protocol_e(_sslProtocol), _httpsKeyfile);
 
   if (_sslContext == nullptr) {
     LOG_ERROR("failed to create SSL context, cannot create HTTPS server");

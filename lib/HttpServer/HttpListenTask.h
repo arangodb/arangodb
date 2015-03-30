@@ -28,31 +28,27 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_LISTEN_TASK_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_LISTEN_TASK_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_LISTEN_TASK_H
+#define ARANGODB_HTTP_SERVER_HTTP_LISTEN_TASK_H 1
 
-#include "Basics/Common.h"
-
-#include "Basics/socket-utils.h"
 #include "Scheduler/ListenTask.h"
-#include "Rest/Endpoint.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralListenTask
+// --SECTION--                                              class HttpListenTask
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
+    class HttpServer;
+    class Endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief task used to establish connections
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S>
-    class GeneralListenTask : public ListenTask {
-      private:
-        GeneralListenTask (GeneralListenTask const&);
-        GeneralListenTask& operator= (GeneralListenTask const&);
+    class HttpListenTask : public ListenTask {
+      HttpListenTask (HttpListenTask const&) = delete;
+      HttpListenTask& operator= (HttpListenTask const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -64,11 +60,7 @@ namespace triagens {
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralListenTask (S* server, Endpoint* endpoint)
-          : Task("GeneralListenTask"),
-            ListenTask(endpoint),
-            server(server) {
-        }
+        HttpListenTask (HttpServer* server, Endpoint* endpoint);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ListenTask methods
@@ -80,11 +72,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleConnected (TRI_socket_t s, ConnectionInfo const& info) {
-          ConnectionInfo newInfo = info;
-          server->handleConnected(s, newInfo);
-          return true;
-        }
+        bool handleConnected (TRI_socket_t s, ConnectionInfo const& info);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -96,7 +84,7 @@ namespace triagens {
 /// @brief underlying general server
 ////////////////////////////////////////////////////////////////////////////////
 
-        S* server;
+        HttpServer* server;
     };
   }
 }

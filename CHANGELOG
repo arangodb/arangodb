@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* added support for HTTP push aka chunked encoding
+
 * issue #1051: add info whether server is running in service or user mode?
 
   This will add a "mode" attribute to the result of the result of HTTP GET `/_api/version?details=true`

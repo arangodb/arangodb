@@ -157,8 +157,15 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/Job.cpp \
 	lib/Dispatcher/RequeueTask.cpp \
 	lib/HttpServer/ApplicationEndpointServer.cpp \
+	lib/HttpServer/AsyncJobManager.cpp \
+	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
+	lib/HttpServer/HttpListenTask.cpp \
+	lib/HttpServer/HttpServer.cpp \
+	lib/HttpServer/HttpServerJob.cpp \
+	lib/HttpServer/HttpsCommTask.cpp \
+	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
