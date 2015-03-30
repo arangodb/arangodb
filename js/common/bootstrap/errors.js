@@ -189,6 +189,7 @@
     "ERROR_QUERY_NOT_FOUND"        : { "code" : 1591, "message" : "query ID not found" },
     "ERROR_QUERY_IN_USE"           : { "code" : 1592, "message" : "query with this ID is in use" },
     "ERROR_CURSOR_NOT_FOUND"       : { "code" : 1600, "message" : "cursor not found" },
+    "ERROR_CURSOR_BUSY"            : { "code" : 1601, "message" : "cursor is busy" },
     "ERROR_TRANSACTION_INTERNAL"   : { "code" : 1650, "message" : "internal transaction error" },
     "ERROR_TRANSACTION_NESTED"     : { "code" : 1651, "message" : "nested transactions detected" },
     "ERROR_TRANSACTION_UNREGISTERED_COLLECTION" : { "code" : 1652, "message" : "unregistered collection used in transaction" },

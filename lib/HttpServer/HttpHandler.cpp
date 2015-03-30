@@ -48,8 +48,8 @@ using namespace triagens::rest;
 
 HttpHandler::HttpHandler (HttpRequest* request)
   : _request(request),
-    _response(0),
-    _server(0) {
+    _response(nullptr),
+    _server(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,13 +57,8 @@ HttpHandler::HttpHandler (HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::~HttpHandler () {
-  if (_request != 0) {
-    delete _request;
-  }
-
-  if (_response != 0) {
-    delete _response;
-  }
+  delete _request;
+  delete _response;
 }
 
 // -----------------------------------------------------------------------------
@@ -84,7 +79,7 @@ HttpResponse* HttpHandler::getResponse () const {
 
 HttpResponse* HttpHandler::stealResponse () {
   HttpResponse* tmp = _response;
-  _response = 0;
+  _response = nullptr;
   return tmp;
 }
 
@@ -94,7 +89,7 @@ HttpResponse* HttpHandler::stealResponse () {
 
 HttpRequest* HttpHandler::stealRequest () {
   HttpRequest* tmp = _request;
-  _request = 0;
+  _request = nullptr;
   return tmp;
 }
 
@@ -111,19 +106,19 @@ Job* HttpHandler::createJob (AsyncJobServer* server,
   HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
 
   // check if we are an HTTP server at all
-  if (httpServer != 0) {
+  if (httpServer != nullptr) {
     return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this, isDetached);
   }
 
   // check if we are an HTTPs server at all
   HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
 
-  if (httpsServer != 0) {
+  if (httpsServer != nullptr) {
     return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this, isDetached);
   }
 
   LOG_WARNING("cannot convert AsyncJobServer into a HttpServer");
-  return 0;
+  return nullptr;
 }
 
 // -----------------------------------------------------------------------------

@@ -33,6 +33,7 @@
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/json.h"
+#include "Basics/StringBuffer.h"
 
 namespace triagens {
   namespace basics {
@@ -971,8 +972,20 @@ namespace triagens {
           if (_json != nullptr) {
             return JsonHelper::toString(_json);
           }
-          else {
-            return std::string("");
+          return std::string("");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief appends JSON to a string buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        void dump (triagens::basics::StringBuffer& buffer) const {
+          if (_json != nullptr) {
+            int res = TRI_StringifyJson(buffer.stringBuffer(), _json);
+ 
+            if (res != TRI_ERROR_NO_ERROR) {
+              throw JsonException("Json: out of memory");
+            }
           }
         }
 

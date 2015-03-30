@@ -200,7 +200,7 @@ namespace triagens {
             abandon = _abandon;
           }
 
-          if (! abandon && _server != 0) {
+          if (! abandon && _server != nullptr) {
             _server->jobDone(this);
           }
 
