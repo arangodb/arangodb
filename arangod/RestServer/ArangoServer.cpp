@@ -58,6 +58,7 @@
 #include "Rest/OperationMode.h"
 #include "Rest/Version.h"
 #include "RestHandler/RestBatchHandler.h"
+#include "RestHandler/RestCursorHandler.h"
 #include "RestHandler/RestDocumentHandler.h"
 #include "RestHandler/RestEdgeHandler.h"
 #include "RestHandler/RestImportHandler.h"
@@ -116,6 +117,11 @@ void ArangoServer::defineHandlers (HttpHandlerFactory* factory) {
   // add "/batch" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                             RestHandlerCreator<RestBatchHandler>::createNoData);
+  
+  // add "/cursor" handler
+  factory->addPrefixHandler(RestVocbaseBaseHandler::CURSOR_PATH,
+                            RestHandlerCreator<RestCursorHandler>::createData<std::pair<ApplicationV8*, aql::QueryRegistry*>*>,
+                            _pairForAql);
 
   // add "/document" handler
   factory->addPrefixHandler(RestVocbaseBaseHandler::DOCUMENT_PATH,

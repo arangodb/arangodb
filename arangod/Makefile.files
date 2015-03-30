@@ -75,6 +75,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Replication/InitialSyncer.cpp \
 	arangod/Replication/Syncer.cpp \
 	arangod/RestHandler/RestBatchHandler.cpp \
+	arangod/RestHandler/RestCursorHandler.cpp \
 	arangod/RestHandler/RestDocumentHandler.cpp \
 	arangod/RestHandler/RestEdgeHandler.cpp \
 	arangod/RestHandler/RestImportHandler.cpp \
@@ -88,6 +89,8 @@ arangod_libarangod_a_SOURCES = \
 	arangod/RestServer/VocbaseContext.cpp \
 	arangod/RestServer/arangod.cpp \
 	arangod/SkipLists/skiplistIndex.cpp \
+	arangod/Utils/Cursor.cpp \
+	arangod/Utils/CursorRepository.cpp \
 	arangod/Utils/DocumentHelper.cpp \
 	arangod/Utils/StandaloneTransactionContext.cpp \
 	arangod/Utils/Transaction.cpp \
@@ -119,7 +122,6 @@ arangod_libarangod_a_SOURCES = \
 	arangod/VocBase/datafile.cpp \
 	arangod/VocBase/document-collection.cpp \
 	arangod/VocBase/edge-collection.cpp \
-	arangod/VocBase/general-cursor.cpp \
 	arangod/VocBase/headers.cpp \
 	arangod/VocBase/index.cpp \
 	arangod/VocBase/key-generator.cpp \

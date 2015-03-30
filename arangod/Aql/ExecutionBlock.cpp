@@ -1173,7 +1173,8 @@ bool IndexRangeBlock::initRanges () {
         
         // must invalidate the expression now as we might be called from
         // different threads
-        if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
+        if (triagens::arango::ServerState::instance()->isRunningInCluster() ||
+            engine->getQuery()->willExitContext()) {
           for (auto e : _allVariableBoundExpressions) {
             e->invalidate();
           }
@@ -2736,7 +2737,8 @@ void CalculationBlock::doEvaluation (AqlItemBlock* result) {
       [&]() -> void { 
         // must invalidate the expression now as we might be called from
         // different threads
-        if (triagens::arango::ServerState::instance()->isRunningInCluster()) {
+        if (triagens::arango::ServerState::instance()->isRunningInCluster() ||
+            _engine->getQuery()->willExitContext()) {
           _expression->invalidate();
         }
         _engine->getQuery()->exitContext(); 

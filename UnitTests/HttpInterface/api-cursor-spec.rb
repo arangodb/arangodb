@@ -25,7 +25,7 @@ describe ArangoDB do
         doc.headers['content-type'].should eq("application/json; charset=utf-8")
         doc.parsed_response['error'].should eq(true)
         doc.parsed_response['code'].should eq(400)
-        doc.parsed_response['errorNum'].should eq(1502)
+        doc.parsed_response['errorNum'].should eq(600)
       end
 
       it "returns an error if collection is unknown" do
@@ -415,6 +415,34 @@ describe ArangoDB do
         doc.parsed_response['hasMore'].should eq(true)
         doc.parsed_response['count'].should eq(5)
         doc.parsed_response['result'].length.should eq(1)
+      end
+
+      it "creates a query that executes a v8 expression during query optimization" do
+        cmd = api
+        body = "{ \"query\" : \"RETURN CONCAT('foo', 'bar', 'baz')\" }"
+        doc = ArangoDB.log_post("#{prefix}-create-v8", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(1)
+      end
+
+      it "creates a query that executes a v8 expression during query execution" do
+        cmd = api
+        body = "{ \"query\" : \"FOR u IN #{@cn} RETURN PASSTHRU(KEEP(u, '_key'))\" }"
+        doc = ArangoDB.log_post("#{prefix}-create-v8", cmd, :body => body)
+        
+        doc.code.should eq(201)
+        doc.headers['content-type'].should eq("application/json; charset=utf-8")
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['code'].should eq(201)
+        doc.parsed_response['id'].should be_nil
+        doc.parsed_response['hasMore'].should eq(false)
+        doc.parsed_response['result'].length.should eq(10)
       end
     end
 

@@ -32,10 +32,10 @@
 #include "Basics/files.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Utils/CursorRepository.h"
 #include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/general-cursor.h"
 #include "Wal/LogfileManager.h"
 
 // -----------------------------------------------------------------------------
@@ -52,7 +52,7 @@ static int const CLEANUP_INTERVAL = (1 * 1000 * 1000);
 /// @brief how many cleanup iterations until shadows are cleaned
 ////////////////////////////////////////////////////////////////////////////////
 
-static int const CLEANUP_SHADOW_ITERATIONS = 3;
+static int const CLEANUP_CURSOR_ITERATIONS = 3;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief how many cleanup iterations until indexes are cleaned
@@ -229,10 +229,13 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
 /// @brief clean up cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-static void CleanupCursors (TRI_vocbase_t* const vocbase,
+static void CleanupCursors (TRI_vocbase_t* vocbase,
                             bool force) {
   // clean unused cursors
-  TRI_CleanupGeneralCursor(vocbase->_cursors, force);
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
+  TRI_ASSERT(cursors != nullptr);
+
+  cursors->garbageCollect(force);
 }
 
 // -----------------------------------------------------------------------------
@@ -306,8 +309,8 @@ void TRI_CleanupVocBase (void* data) {
     }
 
     if (vocbase->_state >= 1) {
-      // server is still running, clean up unused shadows
-      if (iterations % CLEANUP_SHADOW_ITERATIONS == 0) {
+      // server is still running, clean up unused cursors
+      if (iterations % CLEANUP_CURSOR_ITERATIONS == 0) {
         CleanupCursors(vocbase, false);
       
         // clean up expired compactor locks

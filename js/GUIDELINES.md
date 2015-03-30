@@ -67,7 +67,6 @@ The module "org/arangodb" exports the following prototypes
 
 - ArangoCollection
 - ArangoConnection (client-only)
-- ArangoCursor (server-only)
 - ArangoDatabase
 - ArangoError
 - ArangoQueryCursor (client-only)

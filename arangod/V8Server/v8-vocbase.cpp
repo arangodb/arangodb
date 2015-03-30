@@ -32,8 +32,6 @@
 #include "v8-replication.h"
 #include "v8-vocindex.h"
 #include "v8-collection.h"
-
-#include "VocBase/general-cursor.h"
 #include "v8-voccursor.h"
 
 #include "Aql/Query.h"
@@ -1128,20 +1126,12 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_EXCEPTION_USAGE("AQL_EXECUTEJSON(<queryjson>, <options>)");
   }
   
-  // return number of total records in cursor?
-  bool doCount = false;
-
-  // maximum number of results to return at once
-  size_t batchSize = SIZE_MAX;
-  
-  // ttl for cursor  
-  double ttl = 0.0;
-  
   if (! args[0]->IsObject()) {
     TRI_V8_THROW_TYPE_ERROR("expecting object for <queryjson>");
   }
+
   TRI_json_t* queryjson = TRI_ObjectToJson(isolate, args[0]);
-  TRI_json_t* options = nullptr;
+  std::unique_ptr<TRI_json_t> options;
 
   if (args.Length() > 1) {
     // we have options! yikes!
@@ -1149,33 +1139,20 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(args[1]);
-      
-    v8::Handle<v8::String> optionName = TRI_V8_ASCII_STRING("batchSize");
-    if (argValue->Has(optionName)) {
-      batchSize = static_cast<decltype(batchSize)>(TRI_ObjectToInt64(argValue->Get(optionName)));
-      if (batchSize == 0) {
-        TRI_V8_THROW_TYPE_ERROR("expecting non-zero value for <batchSize>");
-        // well, this makes no sense
-      }
-    }
-      
-    optionName = TRI_V8_ASCII_STRING("count");
-    if (argValue->Has(optionName)) {
-      doCount = TRI_ObjectToBoolean(argValue->Get(optionName));
-    }
-      
-    optionName = TRI_V8_ASCII_STRING("ttl");
-    if (argValue->Has(optionName)) {
-      ttl = TRI_ObjectToDouble(argValue->Get(optionName));
-      ttl = (ttl <= 0.0 ? 30.0 : ttl);
-    }
-      
-    options = TRI_ObjectToJson(isolate, args[1]);
+    options.reset(TRI_ObjectToJson(isolate, args[1]));
   }
 
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, Json(TRI_UNKNOWN_MEM_ZONE, queryjson), options, triagens::aql::PART_MAIN);
+  triagens::aql::Query query(
+    v8g->_applicationV8, 
+    true, 
+    vocbase, 
+    Json(TRI_UNKNOWN_MEM_ZONE, queryjson), 
+    options.get(), 
+    triagens::aql::PART_MAIN
+  );
+
+  options.release();
 
   auto queryResult = query.execute(static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
@@ -1183,69 +1160,25 @@ static void JS_ExecuteAqlJson (const v8::FunctionCallbackInfo<v8::Value>& args) 
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
   
-  if (TRI_LengthArrayJson(queryResult.json) <= batchSize) {
-    // return the array value as it is. this is a performance optimisation
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
-    if (queryResult.json != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
-    }
-    if (queryResult.stats != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
-    }
-    if (queryResult.profile != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
-    }
-    if (queryResult.warnings == nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
-    }
-    else {
-      result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
-    }
-    TRI_V8_RETURN(result);
-  }
-  
-  TRI_json_t* extra = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-  if (extra == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  if (queryResult.warnings != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
-    queryResult.warnings = nullptr;
+  // return the array value as it is. this is a performance optimisation
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  if (queryResult.json != nullptr) {
+    result->Set(TRI_V8_ASCII_STRING("json"),     TRI_ObjectJson(isolate, queryResult.json));
   }
   if (queryResult.stats != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
-    queryResult.stats = nullptr;
+    result->Set(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
   }
   if (queryResult.profile != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
-    queryResult.profile = nullptr;
+    result->Set(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
   }
-
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(queryResult.json);
-  
-  if (cursorResult == nullptr){
-    if (extra != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
-    }
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  if (queryResult.warnings == nullptr) {
+    result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
+  }
+  else {
+    result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
   }
   
-  queryResult.json = nullptr;
-  
-  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
-      static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
-
-  if (cursor == nullptr) {
-    if (extra != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
-    }
-    TRI_FreeCursorResult(cursorResult);
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-  TRI_ASSERT(cursor != nullptr);
-  
-  TRI_WrapGeneralCursor(args, cursor);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1274,26 +1207,17 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string const&& queryString = TRI_ObjectToString(args[0]);
 
   // bind parameters
-  TRI_json_t* parameters = nullptr;
-  
-  // return number of total records in cursor?
-  bool doCount = false;
-
-  // maximum number of results to return at once
-  size_t batchSize = SIZE_MAX;
-  
-  // ttl for cursor  
-  double ttl = 0.0;
+  std::unique_ptr<TRI_json_t> parameters;
   
   // options
-  TRI_json_t* options = nullptr;
+  std::unique_ptr<TRI_json_t> options;
 
   if (args.Length() > 1) {
     if (! args[1]->IsUndefined() && ! args[1]->IsNull() && ! args[1]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <bindvalues>");
     }
     if (args[1]->IsObject()) {
-      parameters = TRI_ObjectToJson(isolate, args[1]);
+      parameters.reset(TRI_ObjectToJson(isolate, args[1]));
     }
   }
     
@@ -1303,33 +1227,24 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
       TRI_V8_THROW_TYPE_ERROR("expecting object for <options>");
     }
 
-    v8::Handle<v8::Object> argValue = v8::Handle<v8::Object>::Cast(args[2]);
-      
-    v8::Handle<v8::String> optionName = TRI_V8_ASCII_STRING("batchSize");
-    if (argValue->Has(optionName)) {
-      batchSize = static_cast<decltype(batchSize)>(TRI_ObjectToInt64(argValue->Get(optionName)));
-      if (batchSize == 0) {
-        TRI_V8_THROW_TYPE_ERROR("expecting non-zero value for <batchSize>");
-        // well, this makes no sense
-      }
-    }
-      
-    optionName = TRI_V8_ASCII_STRING("count");
-    if (argValue->Has(optionName)) {
-      doCount = TRI_ObjectToBoolean(argValue->Get(optionName));
-    }
-    optionName = TRI_V8_ASCII_STRING("ttl");
-    if (argValue->Has(optionName)) {
-      ttl = TRI_ObjectToDouble(argValue->Get(optionName));
-      ttl = (ttl <= 0.0 ? 30.0 : ttl);
-    }
-      
-    options = TRI_ObjectToJson(isolate, args[2]);
+    options.reset(TRI_ObjectToJson(isolate, args[2]));
   }
       
   // bind parameters will be freed by the query later
   TRI_GET_GLOBALS();
-  triagens::aql::Query query(v8g->_applicationV8, true, vocbase, queryString.c_str(), queryString.size(), parameters, options, triagens::aql::PART_MAIN);
+  triagens::aql::Query query(
+    v8g->_applicationV8, 
+    true, 
+    vocbase, 
+    queryString.c_str(), 
+    queryString.size(), 
+    parameters.get(), 
+    options.get(), 
+    triagens::aql::PART_MAIN
+  );
+
+  options.release();
+  parameters.release();
 
   auto queryResult = query.executeV8(isolate, static_cast<triagens::aql::QueryRegistry*>(v8g->_queryRegistry));
   
@@ -1343,68 +1258,25 @@ static void JS_ExecuteAql (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_FULL(queryResult.code, queryResult.details);
   }
   
-  if (queryResult.result->Length() <= batchSize) {
-    // return the array value as it is. this is a performance optimisation
-    v8::Handle<v8::Object> result = v8::Object::New(isolate);
+  // return the array value as it is. this is a performance optimisation
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
-    result->Set(TRI_V8_ASCII_STRING("json"), queryResult.result);
+  result->Set(TRI_V8_ASCII_STRING("json"), queryResult.result);
 
-    if (queryResult.stats != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
-    }
-    if (queryResult.profile != nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
-    }
-    if (queryResult.warnings == nullptr) {
-      result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
-    }
-    else {
-      result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
-    }
-    TRI_V8_RETURN(result);
-  }
-  
-  TRI_json_t* extra = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE);
-  if (extra == nullptr) {
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  if (queryResult.warnings != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "warnings", queryResult.warnings);
-    queryResult.warnings = nullptr;
-  }
   if (queryResult.stats != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "stats", queryResult.stats);
-    queryResult.stats = nullptr;
+    result->Set(TRI_V8_ASCII_STRING("stats"),    TRI_ObjectJson(isolate, queryResult.stats));
   }
   if (queryResult.profile != nullptr) {
-    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, extra, "profile", queryResult.profile);
-    queryResult.profile = nullptr;
+    result->Set(TRI_V8_ASCII_STRING("profile"),  TRI_ObjectJson(isolate, queryResult.profile));
   }
-
-  TRI_general_cursor_result_t* cursorResult = TRI_CreateResultGeneralCursor(isolate, queryResult.result);
-  
-  if (cursorResult == nullptr) {
-    if (extra != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
-    }
-    TRI_V8_THROW_EXCEPTION_MEMORY();
+  if (queryResult.warnings == nullptr) {
+    result->Set(TRI_V8_ASCII_STRING("warnings"), v8::Array::New(isolate));
+  }
+  else {
+    result->Set(TRI_V8_ASCII_STRING("warnings"), TRI_ObjectJson(isolate, queryResult.warnings));
   }
   
-  TRI_general_cursor_t* cursor = TRI_CreateGeneralCursor(vocbase, cursorResult, doCount,
-      static_cast<TRI_general_cursor_length_t>(batchSize), ttl, extra);
-
-  if (cursor == nullptr) {
-    if (extra != nullptr) {
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, extra);
-    }
-    TRI_FreeCursorResult(cursorResult);
-    TRI_V8_THROW_EXCEPTION_MEMORY();
-  }
-
-  TRI_ASSERT(cursor != nullptr);
-  
-  TRI_WrapGeneralCursor(args, cursor);
+  TRI_V8_RETURN(result);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
