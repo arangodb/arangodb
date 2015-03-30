@@ -1,6 +1,24 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* Improved GRAPH_SHORTEST_PATH computation
+
+  This involved a change in the default behaviour.
+  The default setting will now only print the distance and the ids of nodes.
+  We have added an optional boolean parameter `includeData` if this is set to `true`
+  all documents and edges in the result will be fully expanded.
+  We have also added an optional parameter `includePath` of type object.
+  It has two optional subattributes `vertices` and `edges` both of type boolean.
+  Both can be set individually and the result will include all vertices on the path if
+  `includePath.vertices == true` and all edge if `includePath.edges == true` respectivly.
+  So if you want to get the exactly old result back you have to set
+  ```
+  GRAPH_SHORTEST_PATH(<graph>, <source>, <target>, {includeData: true, includePath: {edges: true, vertices: true}})
+  ```
+
+  The default behaviour is now independent of the size of documents as the extraction part could be optimized.
+  Also the internal algorithm to find all pathes from one source to several targets has been massively improved.
+
 * issue #1051: add info whether server is running in service or user mode?
 
   This will add a "mode" attribute to the result of the result of HTTP GET `/_api/version?details=true`
