@@ -105,6 +105,7 @@ add_executable(
     RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
+    RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
     RestHandler/RestQueryHandler.cpp
@@ -116,6 +117,7 @@ add_executable(
     RestServer/VocbaseContext.cpp
     RestServer/arangod.cpp
     SkipLists/skiplistIndex.cpp
+    Utils/CollectionExport.cpp
     Utils/Cursor.cpp
     Utils/CursorRepository.cpp
     Utils/DocumentHelper.cpp

@@ -237,67 +237,6 @@ triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief append the contents of the cursor into the response body
-////////////////////////////////////////////////////////////////////////////////
-
-void RestCursorHandler::dumpCursor (Cursor* cursor) {
-  _response->body().appendText("{\"result\":[");
-
-  size_t const n = cursor->batchSize();
-
-  for (size_t i = 0; i < n; ++i) {
-    if (! cursor->hasNext()) {
-      break;
-    }
-
-    if (i > 0) {
-      _response->body().appendChar(',');
-    }
-    
-    auto row = cursor->next();
-    if (row == nullptr) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
-    }
-
-    int res = TRI_StringifyJson(_response->body().stringBuffer(), row);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      THROW_ARANGO_EXCEPTION(res);
-    }
-  }
-
-  bool hasCount = cursor->hasCount();
-  size_t count = cursor->count();
-  bool hasNext = cursor->hasNext();
-  TRI_json_t* extra = cursor->extra();
-    
-  _response->body().appendText("],\"hasMore\":");
-  _response->body().appendText(hasNext ? "true" : "false");
-
-  if (hasNext) {
-    // only return cursor id if there are more documents
-    _response->body().appendText(",\"id\":\"");
-    _response->body().appendInteger(cursor->id());
-    _response->body().appendText("\"");
-  }
-
-  if (hasCount) {
-    _response->body().appendText(",\"count\":");
-    _response->body().appendInteger(static_cast<uint64_t>(count));
-  }
-
-  if (TRI_IsObjectJson(extra)) {
-    _response->body().appendText(",\"extra\":");
-    TRI_StringifyJson(_response->body().stringBuffer(), extra);
-  }
-        
-  _response->body().appendText(",\"error\":false,\"code\":");
-  _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
-        
-  _response->body().appendChar('}');
-}
-
-////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_cursor
 /// @brief create a cursor and return the first results
 ///
@@ -735,13 +674,18 @@ void RestCursorHandler::createCursor () {
       double ttl = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "ttl", 30);
       bool count = triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false);
       
-      // steal the query JSON, cursor will take owner the ownership
+      // steal the query JSON, cursor will take over the ownership
       auto j = queryResult.json;
+      triagens::arango::JsonCursor* cursor = cursors->createFromJson(j, batchSize, extra.steal(), ttl, count); 
       queryResult.json = nullptr;
-      triagens::arango::Cursor* cursor = cursors->createFromJson(j, batchSize, extra.steal(), ttl, count); 
 
       try {
-        dumpCursor(cursor);
+        _response->body().appendChar('{');
+        cursor->dump(_response->body());
+        _response->body().appendText(",\"error\":false,\"code\":");
+        _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+        _response->body().appendChar('}');
+
         cursors->release(cursor);
       }
       catch (...) {
@@ -889,7 +833,12 @@ void RestCursorHandler::modifyCursor () {
     _response = createResponse(HttpResponse::OK);
     _response->setContentType("application/json; charset=utf-8");
 
-    dumpCursor(cursor);
+    _response->body().appendChar('{');
+    cursor->dump(_response->body());
+    _response->body().appendText(",\"error\":false,\"code\":");
+    _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+    _response->body().appendChar('}');
+
     cursors->release(cursor);
   }
   catch (triagens::basics::Exception const& ex) {

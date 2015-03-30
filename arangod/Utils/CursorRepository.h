@@ -41,6 +41,8 @@ struct TRI_vocbase_s;
 namespace triagens {
   namespace arango {
 
+    class CollectionExport;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                            class CursorRepository
 // -----------------------------------------------------------------------------
@@ -78,11 +80,20 @@ namespace triagens {
 /// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-        Cursor* createFromJson (struct TRI_json_t*,
-                                size_t,
-                                struct TRI_json_t*,
-                                double, 
-                                bool);
+        JsonCursor* createFromJson (struct TRI_json_t*,
+                                    size_t,
+                                    struct TRI_json_t*,
+                                    double, 
+                                    bool);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a cursor and stores it in the registry
+////////////////////////////////////////////////////////////////////////////////
+
+        ExportCursor* createFromExport (triagens::arango::CollectionExport*,
+                                        size_t,
+                                        double, 
+                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a cursor by id
