@@ -62,11 +62,11 @@ namespace {
         : HttpHandler(request) {
       };
 
-      bool isDirect () {
+      bool isDirect () const override {
         return true;
       };
 
-      status_t execute () {
+      status_t execute () override {
         _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
 
         return status_t(HANDLER_DONE);

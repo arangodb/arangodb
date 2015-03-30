@@ -53,7 +53,7 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestPleaseUpgradeHandler::isDirect () {
+bool RestPleaseUpgradeHandler::isDirect () const {
   return true;
 }
 

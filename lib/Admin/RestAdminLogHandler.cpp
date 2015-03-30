@@ -85,7 +85,7 @@ RestAdminLogHandler::RestAdminLogHandler (rest::HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestAdminLogHandler::isDirect () {
+bool RestAdminLogHandler::isDirect () const {
   return true;
 }
 

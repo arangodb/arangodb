@@ -31,11 +31,9 @@
 #define ARANGODB_CLUSTER_SERVER_JOB_H 1
 
 #include "Basics/Common.h"
-
-#include "Dispatcher/Job.h"
-
 #include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
+#include "Dispatcher/Job.h"
 #include "Rest/Handler.h"
 
 struct TRI_server_s;
@@ -55,8 +53,8 @@ namespace triagens {
 
     class ServerJob : public triagens::rest::Job {
       private:
-        ServerJob (ServerJob const&);
-        ServerJob& operator= (ServerJob const&);
+        ServerJob (ServerJob const&) = delete;
+        ServerJob& operator= (ServerJob const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -100,7 +98,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        JobType type () {
+        JobType type () const {
           return Job::READ_JOB;
         }
 
@@ -116,22 +114,13 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () {
-          static std::string const standard = "STANDARD";
-          return standard;
-        }
+        Job::status_t work () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Job::status_t work ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool cancel (bool running);
+        bool cancel (bool running) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}

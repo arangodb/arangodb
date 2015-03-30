@@ -28,36 +28,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestAqlHandler.h"
-
-#include "Basics/ConditionLocker.h"
-#include "Basics/StringUtils.h"
-#include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpHandlerFactory.h"
-#include "GeneralServer/GeneralServerJob.h"
-#include "GeneralServer/GeneralServer.h"
-
-#include "VocBase/server.h"
-
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
+#include "Basics/ConditionLocker.h"
+#include "Basics/StringUtils.h"
+#include "GeneralServer/GeneralServerJob.h"
+#include "GeneralServer/GeneralServer.h"
+#include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpHandlerFactory.h"
+#include "Rest/HttpRequest.h"
+#include "Rest/HttpResponse.h"
+#include "VocBase/server.h"
 
 using namespace triagens::basics;
 using namespace triagens::arango;
 using namespace triagens::rest;
 using namespace triagens::aql;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-const std::string RestAqlHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -89,16 +75,8 @@ RestAqlHandler::RestAqlHandler (triagens::rest::HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestAqlHandler::isDirect () {
+bool RestAqlHandler::isDirect () const {
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-std::string const& RestAqlHandler::queue () const {
-  return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
