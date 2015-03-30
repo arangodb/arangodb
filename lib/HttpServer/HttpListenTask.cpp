@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief async server for jobs
+/// @brief tasks used to establish connections
 ///
 /// @file
 ///
@@ -23,50 +23,47 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Martin Schoenert
+/// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ASYNC_JOB_SERVER_H
-#define ARANGODB_REST_ASYNC_JOB_SERVER_H 1
+#include "HttpListenTask.h"
 
-#include "Basics/Common.h"
+#include "HttpServer/HttpServer.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-    class Job;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class AsyncJobServer
+// --SECTION--                                              class HttpListenTask
+// -----------------------------------------------------------------------------
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief async server for jobs
+/// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-    class AsyncJobServer {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief notify the server
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void jobDone (Job*) = 0;
-    };
-  }
+HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
+  : Task("HttpListenTask"),
+    ListenTask(endpoint),
+    server(server) {
 }
 
-#endif
+// -----------------------------------------------------------------------------
+// --SECTION--                                                ListenTask methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpListenTask::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
+  server->handleConnected(s, info);
+  return true;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

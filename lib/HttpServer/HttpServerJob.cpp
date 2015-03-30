@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief general server job
 ///
 /// @file
 ///
@@ -23,167 +23,179 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Achim Brandt
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
+#include "HttpServerJob.h"
 
-#include "Rest/Handler.h"
+#include "Basics/logging.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpServer.h"
 
-#include "Rest/HttpResponse.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-    class HttpHandlerFactory;
-    class HttpRequest;
+using namespace triagens::rest;
+using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpHandler
+// --SECTION--                                               class HttpServerJob
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
-////////////////////////////////////////////////////////////////////////////////
-
-    class HttpHandler : public Handler {
-      HttpHandler (HttpHandler const&) = delete;
-      HttpHandler& operator= (HttpHandler const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
-///
-/// Note that the handler owns the request and the response. It is its
-/// responsibility to destroy them both. See also the two steal methods.
+/// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        HttpHandler (HttpRequest*);
+HttpServerJob::HttpServerJob (HttpServer* server,
+                              HttpHandler* handler,
+                              bool isDetached)
+  : Job("HttpServerJob"),
+    _server(server),
+    _handler(handler),
+    _shutdown(false),
+    _abandon(false),
+    _isDetached(isDetached) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
+/// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpHandler ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a response
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void addResponse (HttpHandler*);
+HttpServerJob::~HttpServerJob () {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register the server object
+/// @brief returns the underlying handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setServer (HttpHandlerFactory* server);
+HttpHandler* HttpServerJob::getHandler () const {
+  return _handler;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the request
+/// @brief whether or not the job is detached
 ////////////////////////////////////////////////////////////////////////////////
 
-        const HttpRequest* getRequest () const;
+bool HttpServerJob::isDetached () const {
+  return _isDetached;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the pointer to the request
+/// @brief abandon job
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest* stealRequest ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* getResponse () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* stealResponse ();
+void HttpServerJob::abandon () {
+  _abandon.store(true);
+}
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                                       Job methods
 // -----------------------------------------------------------------------------
-
-      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Job* createJob (HttpServer*, bool isDetached) override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure the handler has only one response, otherwise we'd have a leak
-////////////////////////////////////////////////////////////////////////////////
-
-        void removePreviousResponse ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new HTTP response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* createResponse (HttpResponse::HttpResponseCode);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the request
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest* _request;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* _response;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the server
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpHandlerFactory* _server;
-
-    };
-  }
+Job::JobType HttpServerJob::type () const {
+  return _handler->type();
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpServerJob::queue () const {
+  return _handler->queue();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::setDispatcherThread (DispatcherThread* thread) {
+  _handler->setDispatcherThread(thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Job::status_t HttpServerJob::work () {
+  LOG_TRACE("beginning job %p", (void*) this);
+
+  this->RequestStatisticsAgent::transfer(_handler);
+
+  if (_shutdown.load()) {
+    return status_t(Job::JOB_DONE);
+  }
+
+  RequestStatisticsAgentSetRequestStart(_handler);
+  _handler->prepareExecute();
+  Handler::status_t status;
+
+  try {
+    status = _handler->execute();
+  }
+  catch (...) {
+    _handler->finalizeExecute();
+    throw;
+  }
+
+  _handler->finalizeExecute();
+  RequestStatisticsAgentSetRequestEnd(_handler);
+
+  LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
+
+  return status.jobStatus();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::cancel (bool running) {
+  return _handler->cancel(running);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::cleanup () {
+  bool abandon = _abandon.load();
+
+  if (! abandon && _server != 0) {
+    _server->jobDone(this);
+  }
+
+  delete this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::beginShutdown () {
+  LOG_TRACE("shutdown job %p", (void*) this);
+
+  _shutdown.store(true);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::handleError (basics::Exception const& ex) {
+  _handler->handleError(ex);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

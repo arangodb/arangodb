@@ -40,10 +40,6 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
-    class TriagensError;
-  }
-
   namespace rest {
     class DispatcherThread;
 

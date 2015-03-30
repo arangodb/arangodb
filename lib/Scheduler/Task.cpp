@@ -37,6 +37,14 @@ using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+namespace {
+  std::atomic_uint_fast64_t NEXT_TASK_ID(1);
+}
+
+// -----------------------------------------------------------------------------
 // constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -44,6 +52,7 @@ Task::Task (string const& id,
             string const& name)
   : _scheduler(0),
     _loop(0),
+    _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_relaxed)),
     _id(id),
     _name(name),
     _active(1) {
@@ -52,6 +61,7 @@ Task::Task (string const& id,
 Task::Task (string const& name)
   : _scheduler(0),
     _loop(0),
+    _taskId(NEXT_TASK_ID.fetch_add(1, memory_order_relaxed)),
     _id(),
     _name(name),
     _active(1) {

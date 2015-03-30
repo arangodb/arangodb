@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief https communication
 ///
 /// @file
 ///
@@ -23,37 +23,45 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Achim Brandt
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H
+#define ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H 1
 
-#include "Rest/Handler.h"
+#include "HttpServer/HttpCommTask.h"
 
-#include "Rest/HttpResponse.h"
+#include <openssl/ssl.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                               class HttpsCommTask
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
-    class HttpHandlerFactory;
-    class HttpRequest;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpHandler
-// -----------------------------------------------------------------------------
+    class HttpsServer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief https communication
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpHandler : public Handler {
-      HttpHandler (HttpHandler const&) = delete;
-      HttpHandler& operator= (HttpHandler const&) = delete;
+    class HttpsCommTask : public HttpCommTask {
+      HttpsCommTask (HttpsCommTask const&) = delete;
+      HttpsCommTask const& operator= (HttpsCommTask const&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read block size
+////////////////////////////////////////////////////////////////////////////////
+
+        static const size_t READ_BLOCK_SIZE = 10000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -62,123 +70,141 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
-///
-/// Note that the handler owns the request and the response. It is its
-/// responsibility to destroy them both. See also the two steal methods.
+/// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        HttpHandler (HttpRequest*);
+        HttpsCommTask (HttpsServer*,
+                       TRI_socket_t,
+                       const ConnectionInfo&,
+                       double keepAliveTimeout,
+                       SSL_CTX* ctx,
+                       int verificationMode,
+                       int (*verificationCallback)(int, X509_STORE_CTX*));
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
+/// @brief destructs a task
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpHandler ();
+      protected:
+        ~HttpsCommTask ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
+// --SECTION--                                                      Task methods
 // -----------------------------------------------------------------------------
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a response
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void addResponse (HttpHandler*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the server object
-////////////////////////////////////////////////////////////////////////////////
-
-        void setServer (HttpHandlerFactory* server);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the request
-////////////////////////////////////////////////////////////////////////////////
-
-        const HttpRequest* getRequest () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the pointer to the request
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest* stealRequest ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* getResponse () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* stealResponse ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
+      protected:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Job* createJob (HttpServer*, bool isDetached) override;
+        bool setup (Scheduler*, EventLoop);
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool handleEvent (EventToken, EventType);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                    Socket methods
 // -----------------------------------------------------------------------------
 
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure the handler has only one response, otherwise we'd have a leak
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removePreviousResponse ();
+        bool fillReadBuffer (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new HTTP response
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* createResponse (HttpResponse::HttpResponseCode);
+        bool handleWrite (bool& closed);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-      protected:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the request
+/// @brief accepts SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest* _request;
+        bool trySSLAccept ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the response
+/// @brief reads from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* _response;
+        bool trySSLRead (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the server
+/// @brief writes from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandlerFactory* _server;
+        bool trySSLWrite (bool& closed);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the SSL connection
+////////////////////////////////////////////////////////////////////////////////
+
+        void shutdownSsl (bool initShutdown);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief accepted done
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _accepted;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read blocked on write
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _readBlockedOnWrite;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write blocked on read
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _writeBlockedOnRead;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief temporary buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        char * _tmpReadBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL* _ssl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief context
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL_CTX* _ctx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+        int _verificationMode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+        int (*_verificationCallback)(int, X509_STORE_CTX*);
     };
   }
 }

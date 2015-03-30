@@ -65,10 +65,13 @@ bool AsyncTask::setup (Scheduler* scheduler,
                        EventLoop loop) {
   this->_scheduler = scheduler;
   this->_loop = loop;
+
   watcher = scheduler->installAsyncEvent(loop, this);
+
   if (watcher == -1) {
     return false;
   }
+
   return true;
 }
 
@@ -80,6 +83,7 @@ void AsyncTask::cleanup () {
     watcher = 0;
     return;
   }
+
   _scheduler->uninstallEvent(watcher);
   watcher = 0;
 }

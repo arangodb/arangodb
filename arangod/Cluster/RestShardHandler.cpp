@@ -33,12 +33,10 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterComm.h"
 #include "Dispatcher/Dispatcher.h"
-#include "GeneralServer/GeneralServerJob.h"
-#include "GeneralServer/GeneralServer.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
+#include "HttpServer/HttpServer.h"
+#include "HttpServer/HttpHandlerFactory.h"
 
 using namespace std;
 using namespace triagens::arango;

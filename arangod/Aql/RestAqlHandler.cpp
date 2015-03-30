@@ -32,8 +32,6 @@
 #include "Aql/ExecutionBlock.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/StringUtils.h"
-#include "GeneralServer/GeneralServerJob.h"
-#include "GeneralServer/GeneralServer.h"
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
 #include "Rest/HttpRequest.h"

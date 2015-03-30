@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
+/// @brief http server job
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,39 +24,33 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_SERVER_JOB_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_SERVER_JOB_H
+#define ARANGODB_HTTP_SERVER_HTTP_SERVER_JOB_H 1
 
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
-#include "Basics/logging.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/StringUtils.h"
 #include "Dispatcher/Job.h"
-#include "Rest/Handler.h"
-#include "Scheduler/AsyncTask.h"
+
+#include "Basics/Exceptions.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class GeneralServerJob
+// --SECTION--                                               class HttpServerJob
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
+    class HttpServer;
+    class HttpHandler;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief general server job
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename H>
-    class GeneralServerJob : public Job {
-      private:
-        GeneralServerJob (GeneralServerJob const&);
-        GeneralServerJob& operator= (GeneralServerJob const&);
+    class HttpServerJob : public Job {
+      HttpServerJob (HttpServerJob const&) = delete;
+      HttpServerJob& operator= (HttpServerJob const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -68,23 +62,15 @@ namespace triagens {
 /// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralServerJob (S* server,
-                          H* handler,
-                          bool isDetached)
-          : Job("HttpServerJob"),
-            _server(server),
-            _handler(handler),
-            _shutdown(0),
-            _abandon(false),
-            _isDetached(isDetached) {
-        }
+        HttpServerJob (HttpServer* server,
+                          HttpHandler* handler,
+                          bool isDetached);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~GeneralServerJob () {
-        }
+        ~HttpServerJob ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -93,29 +79,22 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abandon job
-////////////////////////////////////////////////////////////////////////////////
-
-        void abandon () {
-          MUTEX_LOCKER(_abandonLock);
-          _abandon = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the underlying handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        H* getHandler () const {
-          return _handler;
-        }
+        HttpHandler* getHandler () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the job is detached
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDetached () const {
-          return _isDetached;
-        }
+        bool isDetached () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abandon job
+////////////////////////////////////////////////////////////////////////////////
+
+        void abandon ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Job methods
@@ -127,102 +106,49 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        JobType type () const {
-          return _handler->type();
-        }
+        JobType type () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () const {
-          return _handler->queue();
-        }
+        std::string const& queue () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setDispatcherThread (DispatcherThread* thread) {
-          _handler->setDispatcherThread(thread);
-        }
+        void setDispatcherThread (DispatcherThread* thread) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_t work () {
-          LOG_TRACE("beginning job %p", (void*) this);
-
-          this->RequestStatisticsAgent::transfer(_handler);
-
-          if (_shutdown != 0) {
-            return status_t(Job::JOB_DONE);
-          }
-
-          RequestStatisticsAgentSetRequestStart(_handler);
-          _handler->prepareExecute();
-          Handler::status_t status;
-          try {
-            status = _handler->execute();
-          }
-          catch (...) {
-            _handler->finalizeExecute();
-            throw;
-          }
-          _handler->finalizeExecute();
-          RequestStatisticsAgentSetRequestEnd(_handler);
-
-          LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
-
-          return status.jobStatus();
-        }
+        status_t work () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool cancel (bool running) override {
-          return _handler->cancel(running);
-        }
+        bool cancel (bool running) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void cleanup () {
-          bool abandon;
-
-          {
-            MUTEX_LOCKER(_abandonLock);
-            abandon = _abandon;
-          }
-
-          if (! abandon && _server != nullptr) {
-            _server->jobDone(this);
-          }
-
-          delete this;
-        }
+        void cleanup () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool beginShutdown () {
-          LOG_TRACE("shutdown job %p", (void*) this);
-
-          _shutdown = 1;
-          return true;
-        }
+        bool beginShutdown () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleError (basics::Exception const& ex) {
-          _handler->handleError(ex);
-        }
+        void handleError (basics::Exception const&) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -234,31 +160,25 @@ namespace triagens {
 /// @brief general server
 ////////////////////////////////////////////////////////////////////////////////
 
-        S* _server;
+        HttpServer* _server;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        H* _handler;
+        HttpHandler* _handler;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown in progress
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _shutdown;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief server is dead lock
-////////////////////////////////////////////////////////////////////////////////
-
-        basics::Mutex _abandonLock;
+        std::atomic_bool _shutdown;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server is dead
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _abandon;
+        std::atomic_bool _abandon;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job is detached (executed without a comm-task)

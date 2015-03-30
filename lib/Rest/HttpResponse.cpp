@@ -260,6 +260,7 @@ HttpResponse::HttpResponse (HttpResponseCode code,
   : _code(code),
     _apiCompatibility(apiCompatibility),
     _isHeadResponse(false),
+    _isChunked(false),
     _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _bodySize(0),
@@ -325,6 +326,14 @@ size_t HttpResponse::contentLength () {
 
 void HttpResponse::setContentType (string const& contentType) {
   setHeader("content-type", 12, contentType);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if chunked encoding is set
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpResponse::isChunked () const {
+  return _isChunked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -429,6 +438,7 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, string co
 
     if (v != 0) {
       _headers.insert(key, keyLength, v);
+      checkHeader(key, v);
 
       _freeables.push_back(v);
     }
@@ -445,6 +455,7 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, const cha
   }
   else {
     _headers.insert(key, keyLength, value);
+    checkHeader(key, value);
   }
 }
 
@@ -465,6 +476,7 @@ void HttpResponse::setHeader (string const& key, string const& value) {
     char const* v = StringUtils::duplicate(value);
 
     _headers.insert(k, lk.size(), v);
+    checkHeader(k, v);
 
     _freeables.push_back(k);
     _freeables.push_back(v);
@@ -823,6 +835,7 @@ void HttpResponse::headResponse (size_t size) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deflates the response body
+///
 /// the body must already be set. deflate is then run on the existing body
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -835,6 +848,25 @@ int HttpResponse::deflate (size_t bufferSize) {
 
   setHeader("content-encoding", strlen("content-encoding"), "deflate");
   return TRI_ERROR_NO_ERROR;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for special headers
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::checkHeader (const char* key, const char* value) {
+  if (key[0] == 't' && strcmp(key, "transfer-encoding") == 0) {
+    if (TRI_CaseEqualString(value, "chunked")) {
+      _isChunked = true;
+    }
+    else {
+      _isChunked = false;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

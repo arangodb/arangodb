@@ -72,10 +72,6 @@ namespace {
         return status_t(HANDLER_DONE);
       };
 
-      void handleError (const TriagensError& error) {
-        _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
-      };
-
       void handleError (const Exception& error) {
         _response = createResponse(HttpResponse::SERVICE_UNAVAILABLE);
       };
