@@ -523,11 +523,6 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       parser->parse(false);
       // put in bind parameters
       parser->ast()->injectBindParameters(_bindParameters);
-
-      // optimize the ast
-      enterState(AST_OPTIMIZATION);
-      parser->ast()->validateAndOptimize();
-      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
     // create the transaction object, but do not start it yet
@@ -544,8 +539,15 @@ QueryResult Query::prepare (QueryRegistry* registry) {
         return transactionError(res);
       }
 
+      // optimize the ast
+      enterState(AST_OPTIMIZATION);
+
+      parser->ast()->validateAndOptimize();
+      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
+
       enterState(PLAN_INSTANCIATION);
       plan.reset(ExecutionPlan::instanciateFromAst(parser->ast()));
+
       if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
@@ -971,6 +973,8 @@ void Query::enterContext () {
       }
     
       // register transaction and resolver in context
+      TRI_ASSERT(_trx != nullptr);
+
       ISOLATE;
       TRI_GET_GLOBALS();
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
@@ -1003,6 +1007,19 @@ void Query::exitContext () {
     }
     TRI_ASSERT(_context == nullptr);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a V8 context will actually be exited
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::willExitContext () const {
+  if (! _contextOwnedByExterior) {
+    if (_context != nullptr) {
+      return true;
+    }
+  }
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
