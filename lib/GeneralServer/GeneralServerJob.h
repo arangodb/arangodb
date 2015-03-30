@@ -32,14 +32,12 @@
 #define ARANGODB_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
 
 #include "Basics/Common.h"
-
-#include "Dispatcher/Job.h"
-
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
+#include "Basics/logging.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
-#include "Basics/logging.h"
+#include "Basics/StringUtils.h"
+#include "Dispatcher/Job.h"
 #include "Rest/Handler.h"
 #include "Scheduler/AsyncTask.h"
 
@@ -129,7 +127,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        JobType type () {
+        JobType type () const {
           return _handler->type();
         }
 
@@ -137,7 +135,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::string const& queue () {
+        std::string const& queue () const {
           return _handler->queue();
         }
 
@@ -184,7 +182,7 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool cancel (bool running) {
+        bool cancel (bool running) override {
           return _handler->cancel(running);
         }
 
@@ -200,7 +198,7 @@ namespace triagens {
             abandon = _abandon;
           }
 
-          if (! abandon && _server != 0) {
+          if (! abandon && _server != nullptr) {
             _server->jobDone(this);
           }
 

@@ -84,7 +84,7 @@ V8QueueJob::~V8QueueJob () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::JobType V8QueueJob::type () {
+Job::JobType V8QueueJob::type () const {
   return READ_JOB;
 }
 
@@ -92,7 +92,7 @@ Job::JobType V8QueueJob::type () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-string const& V8QueueJob::queue () {
+string const& V8QueueJob::queue () const {
   return _queue;
 }
 

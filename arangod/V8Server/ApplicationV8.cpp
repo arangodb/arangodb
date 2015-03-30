@@ -28,8 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationV8.h"
-#include <libplatform/libplatform.h>
-
 #include "Actions/actions.h"
 #include "Aql/QueryRegistry.h"
 #include "ApplicationServer/ApplicationServer.h"
@@ -43,6 +41,8 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ServerState.h"
+#include "Cluster/v8-cluster.h"
 #include "Dispatcher/ApplicationDispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Scheduler/ApplicationScheduler.h"
@@ -57,9 +57,8 @@
 #include "V8Server/v8-user-structures.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
-#include "Cluster/ServerState.h"
-#include "Cluster/v8-cluster.h"
 
+#include <libplatform/libplatform.h>
 #include "3rdParty/valgrind/valgrind.h"
 
 using namespace triagens;
@@ -69,12 +68,18 @@ using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        class GlobalContextMethods
+// --SECTION--                                                  static variables
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief initialise code for pre-defined actions
+/// @brief default context name
 ////////////////////////////////////////////////////////////////////////////////
+
+static std::string const DEFAULT_NAME{ "STANDARD" };
+ 
+// -----------------------------------------------------------------------------
+// --SECTION--                                        class GlobalContextMethods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reload the routing cache
@@ -301,7 +306,7 @@ ApplicationV8::ApplicationV8 (TRI_server_t* server,
 
   TRI_ASSERT(_server != nullptr);
 
-  _nrInstances["STANDARD"] = 0;
+  _nrInstances[DEFAULT_NAME] = 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -320,7 +325,7 @@ ApplicationV8::~ApplicationV8 () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::setConcurrency (size_t n) {
-  _nrInstances["STANDARD"] = n;
+  _nrInstances[DEFAULT_NAME] = n;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -394,7 +399,7 @@ ApplicationV8::V8Context* ApplicationV8::enterContext (std::string const& name,
 
 void ApplicationV8::exitContext (V8Context* context) {
   const string& name = context->_name;
-  bool isStandard = (name == "STANDARD");
+  bool isStandard = (name == DEFAULT_NAME);
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   TRI_ASSERT(gc != nullptr);
@@ -545,12 +550,11 @@ void ApplicationV8::exitContext (V8Context* context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::addGlobalContextMethod (string const& method) {
-  static const string name = "STANDARD";
   bool result = true;
-  size_t nrInstances = _nrInstances[name];
+  size_t nrInstances = _nrInstances[DEFAULT_NAME];
 
   for (size_t i = 0; i < nrInstances; ++i) {
-    if (! _contexts[name][i]->addGlobalContextMethod(method)) {
+    if (! _contexts[DEFAULT_NAME][i]->addGlobalContextMethod(method)) {
       result = false;
     }
   }
@@ -563,7 +567,6 @@ bool ApplicationV8::addGlobalContextMethod (string const& method) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::collectGarbage () {
-  static const string name = "STANDARD";
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
   TRI_ASSERT(gc != nullptr);
 
@@ -587,7 +590,7 @@ void ApplicationV8::collectGarbage () {
       bool gotSignal = false;
       CONDITION_LOCKER(guard, _contextCondition);
 
-      if (_dirtyContexts[name].empty()) {
+      if (_dirtyContexts[DEFAULT_NAME].empty()) {
         uint64_t waitTime = useReducedWait ? reducedWaitTime : regularWaitTime;
 
         // we'll wait for a signal or a timeout
@@ -598,12 +601,12 @@ void ApplicationV8::collectGarbage () {
         useReducedWait = ! gotSignal;
       }
 
-      if (! _dirtyContexts[name].empty()) {
-        context = _dirtyContexts[name].back();
-        _dirtyContexts[name].pop_back();
+      if (! _dirtyContexts[DEFAULT_NAME].empty()) {
+        context = _dirtyContexts[DEFAULT_NAME].back();
+        _dirtyContexts[DEFAULT_NAME].pop_back();
         useReducedWait = false;
       }
-      else if (! gotSignal && ! _freeContexts[name].empty()) {
+      else if (! gotSignal && ! _freeContexts[DEFAULT_NAME].empty()) {
         // we timed out waiting for a signal, so we have idle time that we can
         // spend on running the GC pro-actively
         // We'll pick one of the free contexts and clean it up
@@ -654,7 +657,7 @@ void ApplicationV8::collectGarbage () {
       {
         CONDITION_LOCKER(guard, _contextCondition);
 
-        _freeContexts[name].push_back(context);
+        _freeContexts[DEFAULT_NAME].push_back(context);
         guard.broadcast();
       }
     }
@@ -677,11 +680,10 @@ void ApplicationV8::disableActions () {
 
 void ApplicationV8::upgradeDatabase (bool skip,
                                      bool perform) {
-  static const string name = "STANDARD";
   LOG_TRACE("starting database init/upgrade");
 
   // enter context and isolate
-  V8Context* context = _contexts[name][0];
+  V8Context* context = _contexts[DEFAULT_NAME][0];
 
   TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(context->isolate);
@@ -787,11 +789,10 @@ void ApplicationV8::upgradeDatabase (bool skip,
 
 void ApplicationV8::versionCheck () {
   int result = 1;
-  static const string name = "STANDARD";
   LOG_TRACE("starting version check");
 
   // enter context and isolate
-  V8Context* context = _contexts[name][0];
+  V8Context* context = _contexts[DEFAULT_NAME][0];
 
   TRI_ASSERT(context->_locker == nullptr);
   context->_locker = new v8::Locker(context->isolate);
@@ -872,11 +873,10 @@ void ApplicationV8::versionCheck () {
 ////////////////////////////////////////////////////////////////////////////////
 
 void ApplicationV8::prepareServer () {
-  static const string name = "STANDARD";
-  size_t nrInstances = _nrInstances[name];
+  size_t nrInstances = _nrInstances[DEFAULT_NAME];
 
   for (size_t i = 0;  i < nrInstances;  ++i) {
-    prepareV8Server("STANDARD", i, _startupFile);
+    prepareV8Server(DEFAULT_NAME, i, _startupFile);
   }
 }
 
@@ -1042,8 +1042,7 @@ bool ApplicationV8::prepare () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ApplicationV8::prepare2 () {
-  static const string name = "STANDARD";
-  size_t nrInstances = _nrInstances[name];
+  size_t nrInstances = _nrInstances[DEFAULT_NAME];
   v8::V8::InitializeICU();
 
   TRI_ASSERT(_platform == nullptr);
@@ -1054,11 +1053,11 @@ bool ApplicationV8::prepare2 () {
   // setup instances
   {
     CONDITION_LOCKER(guard, _contextCondition);
-    _contexts[name] = new V8Context*[nrInstances];
+    _contexts[DEFAULT_NAME] = new V8Context*[nrInstances];
   }
 
   for (size_t i = 0;  i < nrInstances;  ++i) {
-    bool ok = prepareV8Instance(name, i, _useActions);
+    bool ok = prepareV8Instance(DEFAULT_NAME, i, _useActions);
 
     if (! ok) {
       return false;
@@ -1194,12 +1193,11 @@ void ApplicationV8::stop () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
-  static const string name = "STANDARD";
-  int const n = (int) _freeContexts[name].size();
+  int const n = (int) _freeContexts[DEFAULT_NAME].size();
 
   if (n == 0) {
     // this is easy...
-    return 0;
+    return nullptr;
   }
 
   V8GcThread* gc = dynamic_cast<V8GcThread*>(_gcThread);
@@ -1212,13 +1210,13 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
   for (int i = 0; i < n; ++i) {
     // check if there's actually anything to clean up in the context
-    if (_freeContexts[name][i]->_numExecutions == 0 && ! _freeContexts[name][i]->_hasDeadObjects) {
+    if (_freeContexts[DEFAULT_NAME][i]->_numExecutions == 0 && ! _freeContexts[DEFAULT_NAME][i]->_hasDeadObjects) {
       continue;
     }
 
     // compare last GC stamp
     if (pickedContextNr == -1 ||
-        _freeContexts[name][i]->_lastGcStamp <= _freeContexts[name][pickedContextNr]->_lastGcStamp) {
+        _freeContexts[DEFAULT_NAME][i]->_lastGcStamp <= _freeContexts[DEFAULT_NAME][pickedContextNr]->_lastGcStamp) {
       pickedContextNr = i;
     }
   }
@@ -1226,27 +1224,27 @@ ApplicationV8::V8Context* ApplicationV8::pickFreeContextForGc () {
 
   if (pickedContextNr == -1) {
     // no context found
-    return 0;
+    return nullptr;
   }
 
   // this is the context to clean up
-  context = _freeContexts[name][pickedContextNr];
-  TRI_ASSERT(context != 0);
+  context = _freeContexts[DEFAULT_NAME][pickedContextNr];
+  TRI_ASSERT(context != nullptr);
 
   // now compare its last GC timestamp with the last global GC stamp
   if (context->_lastGcStamp + _gcFrequency >= gc->getLastGcStamp()) {
     // no need yet to clean up the context
-    return 0;
+    return nullptr;
   }
 
   // we'll pop the context from the vector. the context might be at any position in the vector
   // so we need to move the other elements around
   if (n > 1) {
     for (int i = pickedContextNr; i < n - 1; ++i) {
-      _freeContexts[name][i] = _freeContexts[name][i + 1];
+      _freeContexts[DEFAULT_NAME][i] = _freeContexts[DEFAULT_NAME][i + 1];
     }
   }
-  _freeContexts[name].pop_back();
+  _freeContexts[DEFAULT_NAME].pop_back();
 
   return context;
 }
