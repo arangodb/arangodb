@@ -193,7 +193,7 @@ bool HttpServerJob::beginShutdown () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpServerJob::handleError (basics::Exception const& ex) {
+void HttpServerJob::handleError (triagens::basics::Exception const& ex) {
   _handler->handleError(ex);
 }
 
