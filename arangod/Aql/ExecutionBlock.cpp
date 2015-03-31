@@ -1032,7 +1032,7 @@ IndexRangeBlock::IndexRangeBlock (ExecutionEngine* engine,
       isConstant &= r.isConstant();
     }
     _anyBoundVariable |= ! isConstant;
-    _allBoundsConstant.emplace_back(isConstant);
+    _allBoundsConstant.push_back(isConstant);
   }
 }
 
