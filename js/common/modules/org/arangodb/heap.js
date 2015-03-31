@@ -95,7 +95,7 @@ BinaryHeap.prototype = {
 /// @brief return number of elements in heap
 ////////////////////////////////////////////////////////////////////////////////
 
-  size: function() {
+  size: function () {
     return this.values.length;
   },
 

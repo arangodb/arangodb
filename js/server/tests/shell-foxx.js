@@ -1,5 +1,6 @@
-/*jshint unused:false */
+/*jshint unused: false */
 /*global require, assertEqual, assertTrue, assertFalse, assertUndefined */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries
@@ -30,49 +31,40 @@
 ////////////////////////////////////////////////////////////////////////////////
 // Stubbing and Mocking
 
-var stub,
-  allow,
-  FunctionStub,
-  mockConstructor,
-  joi = require("joi"),
+var joi = require("joi"),
   transformRoute = require("org/arangodb/foxx/routing").__test_transformControllerToRoute,
   _ = require("underscore");
 
-// Sorry for Yak Shaving. But I can't take it anymore.
-
-// x = stub();
-
-stub = function () {
-  'use strict';
+function stub() {
   return function() {};
-};
+}
 
 // allow(x)
 //   .toReceive("functionName")
 //   .andReturn({ x: 1 })
 
-FunctionStub = function(obj) {
-  'use strict';
+function allow(obj) {
+  return (new FunctionStub(obj));
+}
+
+function FunctionStub(obj) {
   this.obj = obj;
-};
+}
 
 _.extend(FunctionStub.prototype, {
   toReceive: function (functionName) {
-    'use strict';
     this.functionName = functionName;
     this.buildFunctionStub();
     return this;
   },
 
   andReturn: function (returnValue) {
-    'use strict';
     this.returnValue = returnValue;
     this.buildFunctionStub();
     return this;
   },
 
   buildFunctionStub: function () {
-    'use strict';
     var returnValue = this.returnValue;
 
     this.obj[this.functionName] = function () {
@@ -80,11 +72,6 @@ _.extend(FunctionStub.prototype, {
     };
   }
 });
-
-allow = function(obj) {
-  'use strict';
-  return (new FunctionStub(obj));
-};
 
 /* Create a Mock Constructor
  *
@@ -98,23 +85,22 @@ allow = function(obj) {
  *
  * MyProto.assertIsSatisfied();
  */
-mockConstructor = function () {
-  'use strict';
+function mockConstructor() {
   var expectedArguments = arguments,
-    satisfied = false,
-    MockConstructor = function () {
+    satisfied = false;
+  function MockConstructor() {
     if (this.constructor === MockConstructor) {
       // Was called as a constructor
       satisfied = _.isEqual(arguments, expectedArguments);
     }
-  };
+  }
 
   MockConstructor.assertIsSatisfied = function () {
     assertTrue(satisfied);
   };
 
   return MockConstructor;
-};
+}
 
 
 var jsunity = require("jsunity"),
@@ -129,9 +115,9 @@ fakeContext = {
   manifest: {
     rootElement: false
   },
-  clearComments: function () {},
-  comment: function () {},
-  collectionName: function () {}
+  clearComments: stub(),
+  comment: stub(),
+  collectionName: stub()
 };
 
 fakeContextWithRootElement = {
@@ -141,13 +127,12 @@ fakeContextWithRootElement = {
   manifest: {
     rootElement: true
   },
-  clearComments: function () {},
-  comment: function () {},
-  collectionName: function () {}
+  clearComments: stub(),
+  comment: stub(),
+  collectionName: stub()
 };
 
 function CreateFoxxControllerSpec () {
-  'use strict';
   return {
     testCreationWithoutParameters: function () {
       var app = new FoxxController(fakeContext),
@@ -177,7 +162,6 @@ function CreateFoxxControllerSpec () {
 }
 
 function SetRoutesFoxxControllerSpec () {
-  'use strict';
   var app;
 
   return {
@@ -186,7 +170,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSettingRoutes: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.get('/simple/route', myFunc);
@@ -196,7 +180,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToHead: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.head('/simple/route', myFunc);
@@ -205,7 +189,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToGet: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.get('/simple/route', myFunc);
@@ -214,7 +198,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToPost: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.post('/simple/route', myFunc);
@@ -223,7 +207,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToPut: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.put('/simple/route', myFunc);
@@ -232,7 +216,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToPatch: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.patch('/simple/route', myFunc);
@@ -241,7 +225,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToDelete: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app['delete']('/simple/route', myFunc);
@@ -250,7 +234,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testSetMethodToDeleteViaAlias: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.del('/simple/route', myFunc);
@@ -259,7 +243,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testRefuseRoutesWithRoutesThatAreNumbers: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes,
         error;
 
@@ -273,7 +257,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testRefuseRoutesWithRoutesThatAreRegularExpressions: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes,
         error;
 
@@ -287,7 +271,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testRefuseRoutesWithRoutesThatAreArrays: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes,
         error;
 
@@ -301,7 +285,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testAddALoginRoute: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.activateAuthentication({
@@ -316,7 +300,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testRefuseLoginWhenAuthIsNotSetUp: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         error;
 
       try {
@@ -329,7 +313,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testAddALogoutRoute: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.activateAuthentication({
@@ -344,7 +328,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testRefuseLogoutWhenAuthIsNotSetUp: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         error;
 
       try {
@@ -357,7 +341,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testAddADestroySessionRoute: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         routes = app.routingInfo.routes;
 
       app.activateSessions({
@@ -374,7 +358,7 @@ function SetRoutesFoxxControllerSpec () {
     },
 
     testRefuseDestroySessionWhenSessionsAreNotSetUp: function () {
-      var myFunc = function () {},
+      var myFunc = stub(),
         error;
 
       try {
@@ -391,7 +375,6 @@ function SetRoutesFoxxControllerSpec () {
 }
 
 function ControllerInjectionSpec () {
-  'use strict';
   return {
     testInjectFactoryFunction: function () {
       var app = new FoxxController(fakeContext),
@@ -401,7 +384,7 @@ function ControllerInjectionSpec () {
 
       app.addInjector({thing: function() {timesCalled++;}});
 
-      app.get('/foxx', function () {});
+      app.get('/foxx', stub());
 
       var callback = transformRoute(app.routingInfo.routes[0].action);
       callback(req, res);
@@ -417,7 +400,7 @@ function ControllerInjectionSpec () {
 
       app.addInjector('thing', function() {timesCalled++;});
 
-      app.get('/foxx', function () {});
+      app.get('/foxx', stub());
 
       var callback = transformRoute(app.routingInfo.routes[0].action);
       callback(req, res);
@@ -435,7 +418,7 @@ function ControllerInjectionSpec () {
       app.addInjector({thing: function() {wrongFuncCalled = true;}});
       app.addInjector({thing: function() {timesCalled++;}});
 
-      app.get('/foxx', function () {});
+      app.get('/foxx', stub());
 
       var callback = transformRoute(app.routingInfo.routes[0].action);
       callback(req, res);
@@ -525,7 +508,6 @@ function ControllerInjectionSpec () {
 }
 
 function DocumentationAndConstraintsSpec () {
-  'use strict';
   var app, routes, models, Model;
 
   return {
@@ -1071,7 +1053,7 @@ function DocumentationAndConstraintsSpec () {
     },
 
     testDocumentationForErrorResponse: function () {
-      var CustomErrorClass = function () {};
+      var CustomErrorClass = stub();
 
       app.get('/foxx', function () {
         //nothing
@@ -1084,7 +1066,7 @@ function DocumentationAndConstraintsSpec () {
     },
 
     testCatchesDefinedError: function () {
-      var CustomErrorClass = function () {},
+      var CustomErrorClass = stub(),
         req = {},
         res,
         code = 400,
@@ -1123,10 +1105,10 @@ function DocumentationAndConstraintsSpec () {
         res,
         code = 400,
         reason = "This error was really... something!",
-        CustomErrorClass = function () {};
+        CustomErrorClass = stub();
 
       res = {
-        status: function () {},
+        status: stub(),
         json: function (givenBody) {
           jsonWasCalled = givenBody.success;
         }
@@ -1147,7 +1129,7 @@ function DocumentationAndConstraintsSpec () {
     },
 
     testControllerWideErrorResponse: function () {
-      var CustomErrorClass = function () {};
+      var CustomErrorClass = stub();
 
       app.allRoutes.errorResponse(CustomErrorClass, 400, "I don't understand a word you're saying");
 
@@ -1164,7 +1146,7 @@ function DocumentationAndConstraintsSpec () {
 }
 
 function AddMiddlewareFoxxControllerSpec () {
-  'use strict';
+  // TODO Make these tests less insane. String(fn) is ridiculous.
   var app;
 
   return {
@@ -1235,14 +1217,13 @@ function AddMiddlewareFoxxControllerSpec () {
 }
 
 function CommentDrivenDocumentationSpec () {
-  'use strict';
   var app, routingInfo, noop;
 
   return {
     setUp: function () {
       app = new FoxxController(fakeContext);
       routingInfo = app.routingInfo;
-      noop = function () {};
+      noop = stub();
     },
 
     testSettingTheSummary: function () {
@@ -1308,7 +1289,6 @@ function CommentDrivenDocumentationSpec () {
 }
 
 function SetupAuthorization () {
-  'use strict';
   var app;
 
   return {
@@ -1407,7 +1387,6 @@ function SetupAuthorization () {
 }
 
 function SetupSessions () {
-  'use strict';
   var app;
 
   return {
@@ -1678,7 +1657,6 @@ function SetupSessions () {
 }
 
 function FoxxControllerWithRootElement () {
-  'use strict';
   var app, routes;
 
   return {
@@ -1754,7 +1732,6 @@ function FoxxControllerWithRootElement () {
 }
 
 function ExtendFoxxControllerSpec () {
-  "use strict";
   var app, routes;
 
   return {
@@ -1882,7 +1859,7 @@ function ExtendFoxxControllerSpec () {
     },
 
     testDocumentationErrorResponseInExtension: function () {
-      var CustomErrorClass = function () {};
+      var CustomErrorClass = stub();
 
       app.extend({
         "extension": function() {
@@ -1901,7 +1878,7 @@ function ExtendFoxxControllerSpec () {
     },
 
     testFunctionalityErrorResponseInExtension: function () {
-      var CustomErrorClass = function () {},
+      var CustomErrorClass = stub(),
         req = {},
         res,
         code = 400,
@@ -1996,6 +1973,7 @@ function ExtendFoxxControllerSpec () {
 jsunity.run(CreateFoxxControllerSpec);
 jsunity.run(SetRoutesFoxxControllerSpec);
 jsunity.run(ControllerInjectionSpec);
+jsunity.run(ExtendFoxxControllerSpec);
 //jsunity.run(LegacyDocumentationAndConstraintsSpec);
 jsunity.run(DocumentationAndConstraintsSpec);
 jsunity.run(AddMiddlewareFoxxControllerSpec);

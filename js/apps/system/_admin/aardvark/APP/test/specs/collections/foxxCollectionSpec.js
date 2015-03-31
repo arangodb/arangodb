@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, describe, beforeEach, it, expect, exports, Backbone, window, $, arangoLog */
 /*global runs, waitsFor, spyOn, jasmine */
 (function () {

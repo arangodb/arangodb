@@ -1,5 +1,6 @@
-/*jshint globalstrict: true */
 /*global require, assertEqual */
+'use strict';
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for routing
 ///
@@ -27,7 +28,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-"use strict";
 var actions = require("org/arangodb/actions");
 var jsunity = require("jsunity");
 

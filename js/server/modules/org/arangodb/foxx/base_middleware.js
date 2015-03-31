@@ -1,4 +1,5 @@
 /*global require, exports, Buffer */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx BaseMiddleware
@@ -27,8 +28,6 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var BaseMiddleware;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_BaseMiddleware_initializer
 /// @brief The Base Middleware
@@ -37,9 +36,8 @@ var BaseMiddleware;
 /// objects to give you a nicer API.
 ////////////////////////////////////////////////////////////////////////////////
 
-BaseMiddleware = function () {
-  'use strict';
-  var middleware = function (request, response, options, next) {
+function BaseMiddleware() {
+  function middleware(request, response, options, next) {
     var responseFunctions,
       requestFunctions,
       trace,
@@ -458,13 +456,13 @@ BaseMiddleware = function () {
                     response.contentType);
       }
     }
-  };
+  }
 
   return {
     stringRepresentation: String(middleware),
     functionRepresentation: middleware
   };
-};
+}
 
 exports.BaseMiddleware = BaseMiddleware;
 

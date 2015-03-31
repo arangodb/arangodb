@@ -46,7 +46,7 @@ var ArangoError = arangodb.ArangoError;
 /// @brief return the _aqlfunctions collection
 ////////////////////////////////////////////////////////////////////////////////
 
-var getStorage = function () {
+function getStorage() {
   "use strict";
 
   var functions = db._collection("_aqlfunctions");
@@ -60,13 +60,13 @@ var getStorage = function () {
   }
 
   return functions;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief apply a prefix filter on the functions
 ////////////////////////////////////////////////////////////////////////////////
 
-var getFiltered = function (group) {
+function getFiltered(group) {
   "use strict";
 
   var result = [ ];
@@ -89,13 +89,13 @@ var getFiltered = function (group) {
   }
 
   return result;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a function name
 ////////////////////////////////////////////////////////////////////////////////
 
-var validateName = function (name) {
+function validateName(name) {
   "use strict";
 
   if (typeof name !== 'string' ||
@@ -107,13 +107,13 @@ var validateName = function (name) {
 
     throw err;
   }
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate user function code
 ////////////////////////////////////////////////////////////////////////////////
 
-var stringifyFunction = function (code, name) {
+function stringifyFunction(code, name) {
   "use strict";
 
   if (typeof code === 'function') {
@@ -145,7 +145,7 @@ var stringifyFunction = function (code, name) {
   err.errorMessage = arangodb.errors.ERROR_QUERY_FUNCTION_INVALID_CODE.message;
 
   throw err;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -171,7 +171,7 @@ var stringifyFunction = function (code, name) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var unregisterFunction = function (name) {
+function unregisterFunction(name) {
   "use strict";
 
   var func = null;
@@ -196,7 +196,7 @@ var unregisterFunction = function (name) {
   internal.reloadAqlFunctions();
 
   return true;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_unregister_group
@@ -219,7 +219,7 @@ var unregisterFunction = function (name) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var unregisterFunctionsGroup = function (group) {
+function unregisterFunctionsGroup(group) {
   "use strict";
 
   if (group.length === 0) {
@@ -242,7 +242,7 @@ var unregisterFunctionsGroup = function (group) {
   }
 
   return deleted;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_register
@@ -280,13 +280,13 @@ var unregisterFunctionsGroup = function (group) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var registerFunction = function (name, code, isDeterministic) {
+function registerFunction(name, code, isDeterministic) {
   // validate input
   validateName(name);
 
   code = stringifyFunction(code, name);
 
-  var testCode = "(function() { var callback = " + code + "; return callback; })()";
+  var testCode = "(function () { var callback = " + code + "; return callback; })()";
   var err;
 
   try {
@@ -348,7 +348,7 @@ var registerFunction = function (name, code, isDeterministic) {
   internal.reloadAqlFunctions();
 
   return result;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_aqlfunctions_toArray
@@ -386,7 +386,7 @@ var registerFunction = function (name, code, isDeterministic) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var toArrayFunctions = function (group) {
+function toArrayFunctions(group) {
   "use strict";
 
   var result = [ ];
@@ -396,7 +396,7 @@ var toArrayFunctions = function (group) {
   });
 
   return result;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    module exports

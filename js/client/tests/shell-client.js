@@ -1,3 +1,4 @@
+/*jshint globalstrict: false */
 /*global require, assertEqual, assertNotEqual,
   print, print_plain, COMPARE_STRING, NORMALIZE_STRING,
   help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */

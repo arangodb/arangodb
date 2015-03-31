@@ -1,5 +1,4 @@
-/*jshint browser: true, evil: true */
-/*jshint unused: false */
+/*jshint browser: true, evil: true, unused: false */
 /*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 /*global templateEngine*/
 

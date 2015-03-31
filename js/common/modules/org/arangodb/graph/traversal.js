@@ -38,8 +38,6 @@ var ShapedJson = require("internal").ShapedJson; // this may be undefined/null o
 
 var db = arangodb.db;
 
-var ArangoTraverser;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
@@ -89,7 +87,7 @@ function clone (obj) {
       return obj;
     }
     copy = { };
-    Object.keys(obj).forEach(function(k) {
+    Object.keys(obj).forEach(function (k) {
       copy[k] = clone(obj[k]);
     });
   }
@@ -350,7 +348,7 @@ function outboundExpander (config, vertex, path) {
 
   if (config.buildVertices) {
     if (!config.expandFilter) {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         try {
           var v = datasource.getInVertex(edge);
           connections.push({ edge: edge, vertex: v });
@@ -360,7 +358,7 @@ function outboundExpander (config, vertex, path) {
         }
       };
     } else {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         try {
           var v = datasource.getInVertex(edge);
           if (config.expandFilter(config, v, edge, path)) {
@@ -374,13 +372,13 @@ function outboundExpander (config, vertex, path) {
     }
   } else {
     if (!config.expandFilter) {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         var id = datasource.getEdgeTo(edge);
         var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         connections.push({ edge: edge, vertex: v });
       };
     } else {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         var id = datasource.getEdgeTo(edge);
         var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         if (config.expandFilter(config, v, edge, path)) {
@@ -410,7 +408,7 @@ function inboundExpander (config, vertex, path) {
 
   if (config.buildVertices) {
     if (!config.expandFilter) {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         try {
           var v = datasource.getOutVertex(edge);
           connections.push({ edge: edge, vertex: v });
@@ -420,7 +418,7 @@ function inboundExpander (config, vertex, path) {
         }
       };
     } else {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         try {
           var v = datasource.getOutVertex(edge);
           if (config.expandFilter(config, v, edge, path)) {
@@ -434,13 +432,13 @@ function inboundExpander (config, vertex, path) {
     }
   } else {
     if (!config.expandFilter) {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         var id = datasource.getEdgeFrom(edge);
         var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         connections.push({ edge: edge, vertex: v });
       };
     } else {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         var id = datasource.getEdgeFrom(edge);
         var v = { _id: id, _key: id.substr(id.indexOf("/") + 1)};
         if (config.expandFilter(config, v, edge, path)) {
@@ -470,7 +468,7 @@ function anyExpander (config, vertex, path) {
   var edgeIterator;
   if (config.buildVertices) {
     if (!config.expandFilter) {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         try {
           var v = datasource.getPeerVertex(edge, vertex);
           connections.push({ edge: edge, vertex: v });
@@ -480,7 +478,7 @@ function anyExpander (config, vertex, path) {
         }
       };
     } else {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         try {
           var v = datasource.getPeerVertex(edge, vertex);
           if (config.expandFilter(config, v, edge, path)) {
@@ -494,7 +492,7 @@ function anyExpander (config, vertex, path) {
     }
   } else {
     if (!config.expandFilter) {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         var id = datasource.getEdgeFrom(edge);
         if (id === vertex._id) {
           id = datasource.getEdgeTo(edge);
@@ -503,7 +501,7 @@ function anyExpander (config, vertex, path) {
         connections.push({ edge: edge, vertex: v });
       };
     } else {
-      edgeIterator = function(edge) {
+      edgeIterator = function (edge) {
         var id = datasource.getEdgeFrom(edge);
         if (id === vertex._id) {
           id = datasource.getEdgeTo(edge);
@@ -696,7 +694,7 @@ function includeMatchingAttributesFilter (config, vertex, path) {
 
   var include = false;
 
-  config.matchingAttributes.forEach(function(example) {
+  config.matchingAttributes.forEach(function (example) {
     var count = 0;
     var keys = Object.keys(example);
 
@@ -1391,7 +1389,7 @@ function astarSearch () {
 /// @brief traversal constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoTraverser = function (config) {
+function ArangoTraverser(config) {
   var defaults = {
     order: ArangoTraverser.PRE_ORDER,
     itemOrder: ArangoTraverser.FORWARD,
@@ -1568,7 +1566,7 @@ ArangoTraverser = function (config) {
   }
 
   this.config = config;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

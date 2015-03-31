@@ -1,4 +1,4 @@
-/*jshint strict: true, unused : false */
+/*jshint globalstrict: false, unused : false */
 /*global require, fail, assertTrue, assertFalse, assertEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the server-side database interface

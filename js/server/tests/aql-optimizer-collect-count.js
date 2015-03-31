@@ -1,4 +1,4 @@
-/*jshint strict: false, maxlen: 500 */
+/*jshint globalstrict: false, strict: false, maxlen: 500 */
 /*global require, assertTrue, assertEqual, assertNotEqual, AQL_EXECUTE, AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1167,8 +1167,7 @@ window.StatisticsDescription = Backbone.Model.extend({
 
 });
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, window, $, _ */
 (function () {
 
@@ -1254,16 +1253,14 @@ window.StatisticsDescription = Backbone.Model.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, window */
 window.StatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
   url: "/_admin/statistics"
 });
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
 (function() {
   "use strict";
@@ -1579,8 +1576,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
   }
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global Backbone, templateEngine, $, arangoHelper, window*/
 
 (function() {
@@ -1725,8 +1721,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
   });
 }());
 
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, console, Dygraph, _,templateEngine */
 
@@ -3194,8 +3189,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
   };
 }());
 
-/*jshint browser: true */
-/*jshint strict: false, unused: false */
+/*jshint browser: true, strict: false, unused: false */
 /*global require, exports, Backbone, window */
 window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   model: window.StatisticsDescription,

@@ -42,13 +42,13 @@ var colName = "perf_" + ruleName.replace(/-/g, "_");
 
 var theCollection;
 
-var dbdApi = function (query, plan, bindVars) {
+function dbdApi(query, plan, bindVars) {
   db._query(query, bindVars).toArray();
   return {};
-};
+}
 
 
-var setUp = function (options) {
+function setUp(options) {
   var loopto = options.dbcols;
   var contentmultiply = options.contentmultiply;
 
@@ -65,17 +65,17 @@ var setUp = function (options) {
     });
   }
   theCollection.ensureSkiplist("indexedKey");
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tear down
 ////////////////////////////////////////////////////////////////////////////////
 
-var tearDown = function () {
+function tearDown() {
   internal.db._drop(colName);
   require("internal").wait(0);
   theCollection = null;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Execute the query
@@ -88,71 +88,71 @@ var testMethods = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table
 ////////////////////////////////////////////////////////////////////////////////
-var testFullRead = function (testParams, testMethodStr, testMethod) {
+function testFullRead(testParams, testMethodStr, testMethod) {
   var query = "FOR i IN " + colName + " RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump 10% of a table without using an index
 ////////////////////////////////////////////////////////////////////////////////
-var testNonIndexedPartialRead = function (testParams, testMethodStr, testMethod, runOptions) {
+function testNonIndexedPartialRead(testParams, testMethodStr, testMethod, runOptions) {
   var tenPercent = (runOptions.dbcols / 10) * 9;
   var query = "FOR i IN " + colName + " FILTER i.Key > " + tenPercent + " RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump 10% of a table without using an index
 ////////////////////////////////////////////////////////////////////////////////
-var testNonIndexedPartialReadCalcJS = function (testParams, testMethodStr, testMethod, runOptions) {
+function testNonIndexedPartialReadCalcJS(testParams, testMethodStr, testMethod, runOptions) {
   var tenPercent = (runOptions.dbcols / 10) * 9;
   var query = "FOR i IN " + colName + " FILTER i.Key + 1 > " + tenPercent + " RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table sorted by an unindexed key.
 ////////////////////////////////////////////////////////////////////////////////
-var testNonIndexedFullSort = function (testParams, testMethodStr, testMethod) {
+function testNonIndexedFullSort(testParams, testMethodStr, testMethod) {
   var query = "FOR i IN " + colName + " SORT  i.Key RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table sorted by an indexed key.
 ////////////////////////////////////////////////////////////////////////////////
-var testIndexedFullSort = function (testParams, testMethodStr, testMethod) {
+function testIndexedFullSort(testParams, testMethodStr, testMethod) {
   var query = "FOR i IN " + colName + " SORT  i.indexedKey RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table sorted by an indexed key.
 ////////////////////////////////////////////////////////////////////////////////
-var testIndexedFullSortReverse = function (testParams, testMethodStr, testMethod) {
+function testIndexedFullSortReverse(testParams, testMethodStr, testMethod) {
   var query = "FOR i IN " + colName + " SORT  i.indexedKey DESC RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table sorted by an indexed key - use filter
 /// so the old also has 
 ////////////////////////////////////////////////////////////////////////////////
-var testIndexedFullSortFilter = function (testParams, testMethodStr, testMethod) {
+function testIndexedFullSortFilter(testParams, testMethodStr, testMethod) {
   var query = "FOR i IN " + colName + " FILTER i.indexedKey > 0 SORT  i.indexedKey RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Testcase: dump a full table sorted by an indexed key - use filter
 /// so the old also has 
 ////////////////////////////////////////////////////////////////////////////////
-var testIndexedFullSortReverseFilter = function (testParams, testMethodStr, testMethod) {
+function testIndexedFullSortReverseFilter(testParams, testMethodStr, testMethod) {
   var query = "FOR i IN " + colName + " FILTER i.indexedKey > 0 SORT  i.indexedKey DESC RETURN i"; 
   return testMethod.executeQuery(query, {}, {});
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Simple join testsuite

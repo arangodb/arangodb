@@ -1,4 +1,5 @@
 /*global require, exports */
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB Application Launcher Utilities
@@ -43,22 +44,20 @@ var mountAppRegEx = /\/APP(\/|$)/i;
 var mountNumberRegEx = /^\/[\d\-%]/;
 var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
-var getStorage = function() {
-  "use strict";
+function getStorage() {
   var c = db._collection("_apps");
   if (c === null) {
     c = db._create("_apps", {isSystem: true});
     c.ensureUniqueConstraint("mount");
   }
   return c;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief comparator for mount points
 ////////////////////////////////////////////////////////////////////////////////
 
-var compareMounts = function(l, r) {
-  "use strict";
+function compareMounts(l, r) {
   var left = l.mount.toLowerCase();
   var right = r.mount.toLowerCase();
 
@@ -66,14 +65,13 @@ var compareMounts = function(l, r) {
     return -1;
   }
   return 1;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a github repository URL
 ////////////////////////////////////////////////////////////////////////////////
 
-function buildGithubUrl (repository, version) {
-  'use strict';
+function buildGithubUrl(repository, version) {
 
   if (version === undefined) {
     version = "master";
@@ -86,8 +84,7 @@ function buildGithubUrl (repository, version) {
 /// @brief extracts the name and version from a manifest file
 ////////////////////////////////////////////////////////////////////////////////
 
-function extractNameAndVersionManifest (source, filename) {
-  'use strict';
+function extractNameAndVersionManifest(source, filename) {
 
   var manifest = JSON.parse(fs.read(filename));
 
@@ -100,8 +97,7 @@ function extractNameAndVersionManifest (source, filename) {
 /// @brief processes files in a directory
 ////////////////////////////////////////////////////////////////////////////////
 
-function processDirectory (source) {
-  'use strict';
+function processDirectory(source) {
 
   var location = source.location;
 
@@ -149,8 +145,7 @@ function processDirectory (source) {
 /// @brief extracts the name and version from a zip
 ////////////////////////////////////////////////////////////////////////////////
 
-function repackZipFile (source) {
-  'use strict';
+function repackZipFile(source) {
 
   var i;
 
@@ -164,7 +159,7 @@ function repackZipFile (source) {
   // locate the manifest file
   // .............................................................................
 
-  var tree = fs.listTree(path).sort(function(a,b) {
+  var tree = fs.listTree(path).sort(function (a,b) {
     return a.length - b.length;
   });
   var found;
@@ -237,8 +232,7 @@ function repackZipFile (source) {
 /// @brief processes files from a github repository
 ////////////////////////////////////////////////////////////////////////////////
 
-function processGithubRepository (source) {
-  'use strict';
+function processGithubRepository(source) {
 
   var url = buildGithubUrl(source.location, source.version);
   var tempFile = fs.getTempFile("downloads", false);
@@ -277,8 +271,7 @@ function processGithubRepository (source) {
 /// @brief returns all running Foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-function listJson (showPrefix, onlyDevelopment) {
-  'use strict';
+function listJson(showPrefix, onlyDevelopment) {
 
   var mounts = getStorage();
   var cursor;
@@ -321,7 +314,6 @@ function listJson (showPrefix, onlyDevelopment) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function list(onlyDevelopment) {
-  "use strict";
   var apps = listJson(undefined, onlyDevelopment);
 
   arangodb.printTable(
@@ -348,7 +340,6 @@ function list(onlyDevelopment) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function listDevelopmentJson (showPrefix) {
-  'use strict';
   return listJson(showPrefix, true);
 }
 
@@ -357,7 +348,6 @@ function listDevelopmentJson (showPrefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function listDevelopment() {
-  'use strict';
   return list(true);
 }
 
@@ -366,7 +356,6 @@ function listDevelopment() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateMount(mount, internal) {
-  'use strict';
   if (mount[0] !== "/") {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
@@ -410,7 +399,6 @@ function validateMount(mount, internal) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateAppName (name) {
-  'use strict';
 
   if (typeof name === 'string' && name.length > 0) {
     return;
@@ -427,7 +415,6 @@ function validateAppName (name) {
 /// @brief get the app mounted at this mount point
 ////////////////////////////////////////////////////////////////////////////////
 function mountedApp (mount) {
-  "use strict";
   return getStorage().firstExample({mount: mount});
 }
 
@@ -435,7 +422,6 @@ function mountedApp (mount) {
 /// @brief Update the app mounted at this mountpoint with the new app
 ////////////////////////////////////////////////////////////////////////////////
 function updateApp (mount, update) {
-  "use strict";
   return getStorage().updateByExample({mount: mount}, update);
 }
 
@@ -453,8 +439,7 @@ var typeToRegex = {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a zip archive of a foxx app. Returns the absolute path
 ////////////////////////////////////////////////////////////////////////////////
-var zipDirectory = function(directory) {
-  "use strict";
+function zipDirectory(directory) {
   if (!fs.isDirectory(directory)) {
     throw directory + " is not a directory.";
   }
@@ -477,7 +462,7 @@ var zipDirectory = function(directory) {
   }
   fs.zipFile(tempFile, directory, files);
   return tempFile;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Exports

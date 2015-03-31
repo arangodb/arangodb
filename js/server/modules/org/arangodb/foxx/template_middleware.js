@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Template Middleware
@@ -27,8 +28,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var TemplateMiddleware,
-  db = require("org/arangodb").db,
+var db = require("org/arangodb").db,
   _ = require("underscore");
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -52,9 +52,8 @@ var TemplateMiddleware,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-TemplateMiddleware = function (templateCollection, helper) {
-  "use strict";
-  var middleware = function (request, response) {
+function TemplateMiddleware(templateCollection, helper) {
+  function middleware(request, response) {
     var responseFunctions,
       _ = require("underscore");
 
@@ -98,7 +97,7 @@ TemplateMiddleware = function (templateCollection, helper) {
     };
 
     _.extend(response, responseFunctions);
-  };
+  }
 
   if (_.isString(templateCollection)) {
     templateCollection = db._collection(templateCollection) ||
@@ -106,7 +105,7 @@ TemplateMiddleware = function (templateCollection, helper) {
   }
 
   return middleware;
-};
+}
 
 exports.TemplateMiddleware = TemplateMiddleware;
 

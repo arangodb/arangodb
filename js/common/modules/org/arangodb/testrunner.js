@@ -1,18 +1,15 @@
 /*global require, exports, print */
+'use strict';
 
 var runTest = require('jsunity').runTest,
   _ = require('underscore'),
-  internal = require('internal'),
-  runJSUnityTests,
-  runJasmineTests,
-  runCommandLineTests;
+  internal = require('internal');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs all jsunity tests
 ////////////////////////////////////////////////////////////////////////////////
 
-runJSUnityTests = function (tests) {
-  'use strict';
+function runJSUnityTests(tests) {
   var result = true;
   var allResults = [];
   var res;
@@ -46,14 +43,13 @@ runJSUnityTests = function (tests) {
   });
   require("fs").write("testresult.json", JSON.stringify(allResults));
   return result;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs all jsunity tests
 ////////////////////////////////////////////////////////////////////////////////
 
-runJasmineTests = function (testFiles, options) {
-  'use strict';
+function runJasmineTests(testFiles, options) {
   var result = true;
 
   if (testFiles.length > 0) {
@@ -62,28 +58,28 @@ runJasmineTests = function (testFiles, options) {
   }
 
   return result;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief runs tests from command-line
 ////////////////////////////////////////////////////////////////////////////////
 
-runCommandLineTests = function (opts) {
-  'use strict';
+function runCommandLineTests(opts) {
   var result = true,
     options = opts || {},
     jasmineReportFormat = options.jasmineReportFormat || 'progress',
     unitTests = internal.unitTests(),
     isSpecRegEx = /.+spec\.js/,
-    isSpec = function (unitTest) {
-      return isSpecRegEx.test(unitTest);
-    },
     jasmine = _.filter(unitTests, isSpec),
     jsUnity = _.reject(unitTests, isSpec);
+
+  function isSpec(unitTest) {
+    return isSpecRegEx.test(unitTest);
+  }
 
   result = runJSUnityTests(jsUnity) && runJasmineTests(jasmine, { format: jasmineReportFormat });
 
   internal.setUnitTestsResult(result);
-};
+}
 
 exports.runCommandLineTests = runCommandLineTests;

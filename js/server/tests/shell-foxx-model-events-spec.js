@@ -1,3 +1,4 @@
+/*jshint globalstrict: false */
 /*global require, describe, expect, it, beforeEach, createSpyObj */
 
 var FoxxRepository = require("org/arangodb/foxx/repository").Repository,

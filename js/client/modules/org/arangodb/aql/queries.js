@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
@@ -39,7 +40,6 @@ var arangosh = require("org/arangodb/arangosh");
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.clearSlow = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -54,7 +54,6 @@ exports.clearSlow = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.slow = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -69,7 +68,6 @@ exports.slow = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.current = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -84,7 +82,6 @@ exports.current = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.properties = function (config) {
-  'use strict';
 
   var db = internal.db;
 
@@ -107,7 +104,6 @@ exports.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.kill = function (id) {
-  'use strict';
   
   if (typeof id === 'object' && 
       id.hasOwnProperty('id')) {

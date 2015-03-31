@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
@@ -46,7 +47,6 @@ var applier = { };
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.state = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -61,7 +61,6 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.start = function (initialTick) {
-  'use strict';
 
   var db = internal.db;
   var append = "";
@@ -81,7 +80,6 @@ applier.start = function (initialTick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.stop = applier.shutdown = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -96,7 +94,6 @@ applier.stop = applier.shutdown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.state = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -111,7 +108,6 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.forget = function () {
-  'use strict';
 
   var db = internal.db;
 
@@ -126,7 +122,6 @@ applier.forget = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.properties = function (config) {
-  'use strict';
 
   var db = internal.db;
 
@@ -153,7 +148,6 @@ applier.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {
-  'use strict';
 
   var db = internal.db;
 
@@ -170,7 +164,6 @@ var sync = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var serverId = function () {
-  'use strict';
 
   var db = internal.db;
 

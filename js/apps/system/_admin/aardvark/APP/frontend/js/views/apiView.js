@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global window, document, Backbone, SwaggerUi, hljs, templateEngine, $ */
 (function() {
   "use strict";

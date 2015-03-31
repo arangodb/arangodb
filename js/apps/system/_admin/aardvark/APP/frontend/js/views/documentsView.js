@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global require, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 
 (function() {

@@ -39,11 +39,11 @@ var internal = require("internal");
 function addIndexOptions (body, parameters) {
   body.fields = [ ];
 
-  var setOption = function(k) {
+  function setOption(k) {
     if (! body.hasOwnProperty(k)) {
       body[k] = parameters[i][k];
     }
-  };
+  }
 
   var i;
   for (i = 0; i < parameters.length; ++i) {
@@ -180,7 +180,7 @@ ArangoCollection.prototype.truncate = function () {
 /// *Examples*
 ///
 /// @code
-/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// arango> db.example.getIndexes().map(function (x) { return x.id; });
 /// ["example/0"]
 /// arango> db.example.index("93013/0");
 /// { "id" : "example/0", "type" : "primary", "fields" : ["_id"] }

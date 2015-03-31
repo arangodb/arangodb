@@ -1,4 +1,4 @@
-/*jshint strict: true, sub: true */
+/*jshint globalstrict: false, sub: true */
 /*global require, fail, assertEqual, assertTrue, assertFalse, assertNotEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -3129,7 +3129,7 @@ klass:              do {
         return parameters;
     }
 
-    function do_function(func, name) {
+    function do_function (func, name) {
         var old_funct = funct,
             old_option = option,
             old_scope = scope;
@@ -3193,7 +3193,7 @@ klass:              do {
                     next_token.stop('missing_property');
                 }
                 get.string = '';
-                do_function(get);
+                do_function (get);
                 if (funct.loopage) {
                     get.warn('function_loop');
                 }
@@ -3211,7 +3211,7 @@ klass:              do {
                 if (i !== j) {
                     token.stop('expected_a_b', i, j || next_token.string);
                 }
-                do_function(set);
+                do_function (set);
                 if (set.block.length === 0) {
                     token.warn('missing_a', 'throw');
                 }
@@ -3357,7 +3357,7 @@ klass:              do {
         name.statement = true;
         no_space();
         this.arity = 'statement';
-        do_function(this, id);
+        do_function (this, id);
         if (next_token.id === '(' && next_token.line === token.line) {
             next_token.stop('function_statement');
         }
@@ -3373,7 +3373,7 @@ klass:              do {
             id = '';
             one_space();
         }
-        do_function(that, id);
+        do_function (that, id);
         if (name) {
             name.function = that.function;
         }

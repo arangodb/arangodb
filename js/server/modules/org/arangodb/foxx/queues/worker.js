@@ -1,5 +1,6 @@
 /*jshint evil: true */
 /*global exports, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues workers
@@ -32,11 +33,9 @@ var db = require('org/arangodb').db,
   flatten = require('internal').flatten,
   exponentialBackOff = require('internal').exponentialBackOff,
   console = require('console'),
-  queues = require('org/arangodb/foxx').queues,
-  getBackOffDelay;
+  queues = require('org/arangodb/foxx').queues;
 
-getBackOffDelay = function (job, cfg) {
-  'use strict';
+function getBackOffDelay(job, cfg) {
   var n = job.failures.length - 1;
   if (typeof job.backOff === 'string') {
     try {
@@ -64,10 +63,9 @@ getBackOffDelay = function (job, cfg) {
     return exponentialBackOff(n, cfg.backOff);
   }
   return exponentialBackOff(n, 1000);
-};
+}
 
 exports.work = function (job) {
-  'use strict';
   var cfg = queues._jobTypes[job.type],
     success = true,
     callback = null,

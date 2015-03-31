@@ -51,12 +51,12 @@ var arangodb = require("org/arangodb"),
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var stringToArray = function (x) {
+function stringToArray(x) {
   if (typeof x === "string") {
     return [x];
   }
   return _.clone(x);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks if a parameter is not defined, an empty string or an empty
@@ -64,7 +64,7 @@ var stringToArray = function (x) {
 ////////////////////////////////////////////////////////////////////////////////
 
 
-var isValidCollectionsParameter = function (x) {
+function isValidCollectionsParameter(x) {
   if (!x) {
     return false;
   }
@@ -75,13 +75,13 @@ var isValidCollectionsParameter = function (x) {
     return false;
   }
   return true;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionByName = function (name, type, noCreate) {
+function findOrCreateCollectionByName(name, type, noCreate) {
   var col = db._collection(name),
     res = false;
   if (col === null && !noCreate) {
@@ -98,14 +98,14 @@ var findOrCreateCollectionByName = function (name, type, noCreate) {
     throw err;
   }
   return res;
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief find or create a collection by name
 ////////////////////////////////////////////////////////////////////////////////
 
-var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCreate) {
+function findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, noCreate) {
   var vertexCollections = {},
   edgeCollections = {};
   edgeDefinitions.forEach(function (e) {
@@ -131,13 +131,13 @@ var findOrCreateCollectionsByEdgeDefinitions = function (edgeDefinitions, noCrea
     vertexCollections,
     edgeCollections
   ];
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to get graphs collection
 ////////////////////////////////////////////////////////////////////////////////
 
-var getGraphCollection = function() {
+function getGraphCollection() {
   var gCol = db._graphs;
   if (gCol === null || gCol === undefined) {
     var err = new ArangoError();
@@ -146,14 +146,14 @@ var getGraphCollection = function() {
     throw err;
   }
   return gCol;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to print edge definitions in _PRINT
 ////////////////////////////////////////////////////////////////////////////////
 
-var printEdgeDefinitions = function(defs) {
-  return _.map(defs, function(d) {
+function printEdgeDefinitions(defs) {
+  return _.map(defs, function (d) {
     var out = d.collection;
     out += ": [";
     out += d.from.join(", ");
@@ -162,21 +162,21 @@ var printEdgeDefinitions = function(defs) {
     out += "]";
     return out;
   });
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal function to wrap arango collections for overwrite
 ////////////////////////////////////////////////////////////////////////////////
 
-var wrapCollection = function(col) {
+function wrapCollection(col) {
   var wrapper = {};
-  _.each(_.functions(col), function(func) {
-    wrapper[func] = function() {
+  _.each(_.functions(col), function (func) {
+    wrapper[func] = function () {
       return col[func].apply(col, arguments);
     };
   });
   return wrapper;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_example_description
@@ -195,7 +195,7 @@ var wrapCollection = function(col) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var transformExample = function(example) {
+function transformExample(example) {
   if (example === undefined) {
     return {};
   }
@@ -204,7 +204,7 @@ var transformExample = function(example) {
   }
   if (typeof example === "object") {
     if (Array.isArray(example)) {
-      return _.map(example, function(e) {
+      return _.map(example, function (e) {
         if (typeof e === "string") {
           return {_id: e};
         }
@@ -217,14 +217,14 @@ var transformExample = function(example) {
   err.errorNum = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.code;
   err.errorMessage = arangodb.errors.ERROR_GRAPH_INVALID_EXAMPLE_ARRAY_OBJECT_STRING.message;
   throw err;
-};
+}
 
-var checkAllowsRestriction = function(list, rest, msg) {
+function checkAllowsRestriction(list, rest, msg) {
   var unknown = [];
-  var colList = _.map(list, function(item) {
+  var colList = _.map(list, function (item) {
     return item.name();
   });
-  _.each(rest, function(r) {
+  _.each(rest, function (r) {
     if (!_.contains(colList, r)) {
       unknown.push(r);
     }
@@ -238,7 +238,7 @@ var checkAllowsRestriction = function(list, rest, msg) {
     throw err;
   }
   return true;
-};
+}
 
 
 // -----------------------------------------------------------------------------
@@ -249,42 +249,42 @@ var checkAllowsRestriction = function(list, rest, msg) {
 // --SECTION--                             Fluent AQL Interface
 // -----------------------------------------------------------------------------
 
-var AQLStatement = function(query, type) {
+function AQLStatement(query, type) {
   this.query = query;
   if (type) {
     this.type = type;
   }
-};
+}
 
-AQLStatement.prototype.printQuery = function() {
+AQLStatement.prototype.printQuery = function () {
   return this.query;
 };
 
-AQLStatement.prototype.isPathQuery = function() {
+AQLStatement.prototype.isPathQuery = function () {
   return this.type === "path";
 };
 
-AQLStatement.prototype.isPathVerticesQuery = function() {
+AQLStatement.prototype.isPathVerticesQuery = function () {
   return this.type === "pathVertices";
 };
 
-AQLStatement.prototype.isPathEdgesQuery = function() {
+AQLStatement.prototype.isPathEdgesQuery = function () {
   return this.type === "pathEdges";
 };
 
-AQLStatement.prototype.isEdgeQuery = function() {
+AQLStatement.prototype.isEdgeQuery = function () {
   return this.type === "edge";
 };
 
-AQLStatement.prototype.isVertexQuery = function() {
+AQLStatement.prototype.isVertexQuery = function () {
   return this.type === "vertex";
 };
 
-AQLStatement.prototype.isNeighborQuery = function() {
+AQLStatement.prototype.isNeighborQuery = function () {
   return this.type === "neighbor";
 };
 
-AQLStatement.prototype.allowsRestrict = function() {
+AQLStatement.prototype.allowsRestrict = function () {
   return this.isEdgeQuery()
     || this.isVertexQuery()
     || this.isNeighborQuery();
@@ -300,7 +300,7 @@ AQLStatement.prototype.allowsRestrict = function() {
 /// Only for internal use.
 ////////////////////////////////////////////////////////////////////////////////
 
-var AQLGenerator = function(graph) {
+function AQLGenerator(graph) {
   this.stack = [];
   this.callStack = [];
   this.bindVars = {
@@ -313,9 +313,9 @@ var AQLGenerator = function(graph) {
   this._pathVertices = [];
   this._pathEdges = [];
   this._getPath = false;
-};
+}
 
-AQLGenerator.prototype._addToPrint = function(name) {
+AQLGenerator.prototype._addToPrint = function (name) {
   var args = Array.prototype.slice.call(arguments);
   args.shift(); // The Name
   var stackEntry = {};
@@ -332,10 +332,10 @@ AQLGenerator.prototype._addToPrint = function(name) {
 /// @brief Print the call stack of this query
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._PRINT = function(context) {
+AQLGenerator.prototype._PRINT = function (context) {
   context.output = "[ GraphAQL ";
   context.output += this.graph.__name;
-  _.each(this.callStack, function(call) {
+  _.each(this.callStack, function (call) {
     if(context.prettyPrint) {
       context.output += "\n";
     }
@@ -360,7 +360,7 @@ AQLGenerator.prototype._PRINT = function(context) {
 /// Only for internal use.
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._clearCursor = function() {
+AQLGenerator.prototype._clearCursor = function () {
   if (this.cursor) {
     this.cursor.dispose();
     this.cursor = null;
@@ -373,7 +373,7 @@ AQLGenerator.prototype._clearCursor = function() {
 /// Only for internal use.
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._createCursor = function() {
+AQLGenerator.prototype._createCursor = function () {
   if (!this.cursor) {
     this.cursor = this.execute();
   }
@@ -389,7 +389,7 @@ AQLGenerator.prototype._createCursor = function() {
 /// Only for internal use, user gets different functions for directions
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._edges = function(edgeExample, options) {
+AQLGenerator.prototype._edges = function (edgeExample, options) {
   this._clearCursor();
   this.options = options || {};
   var ex = transformExample(edgeExample);
@@ -468,7 +468,7 @@ AQLGenerator.prototype._edges = function(edgeExample, options) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.edges = function(example) {
+AQLGenerator.prototype.edges = function (example) {
   this._addToPrint("edges", example);
   return this._edges(example, {direction: "any"});
 };
@@ -520,7 +520,7 @@ AQLGenerator.prototype.edges = function(example) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.outEdges = function(example) {
+AQLGenerator.prototype.outEdges = function (example) {
   this._addToPrint("outEdges", example);
   return this._edges(example, {direction: "outbound"});
 };
@@ -573,7 +573,7 @@ AQLGenerator.prototype.outEdges = function(example) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.inEdges = function(example) {
+AQLGenerator.prototype.inEdges = function (example) {
   this._addToPrint("inEdges", example);
   return this._edges(example, {direction: "inbound"});
 };
@@ -588,7 +588,7 @@ AQLGenerator.prototype.inEdges = function(example) {
 /// Only for internal use, user gets different functions for directions
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
+AQLGenerator.prototype._vertices = function (example, options, mergeWith) {
   this._clearCursor();
   this.options = options || {};
   var ex = transformExample(example);
@@ -674,7 +674,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.vertices = function(example) {
+AQLGenerator.prototype.vertices = function (example) {
   this._addToPrint("vertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
@@ -732,7 +732,7 @@ AQLGenerator.prototype.vertices = function(example) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.fromVertices = function(example) {
+AQLGenerator.prototype.fromVertices = function (example) {
   this._addToPrint("fromVertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
@@ -789,7 +789,7 @@ AQLGenerator.prototype.fromVertices = function(example) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.toVertices = function(example) {
+AQLGenerator.prototype.toVertices = function (example) {
   this._addToPrint("toVertices", example);
   if (!this.getLastVar()) {
     return this._vertices(example);
@@ -808,7 +808,7 @@ AQLGenerator.prototype.toVertices = function(example) {
 /// queries in the next step to only values from this set.
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.getLastVar = function() {
+AQLGenerator.prototype.getLastVar = function () {
   if (this.lastVar === "") {
     return false;
   }
@@ -849,21 +849,21 @@ AQLGenerator.prototype.getLastVar = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.path = function() {
+AQLGenerator.prototype.path = function () {
   this._clearCursor();
   var statement = new AQLStatement("", "path");
   this.stack.push(statement);
   return this;
 };
 
-AQLGenerator.prototype.pathVertices = function() {
+AQLGenerator.prototype.pathVertices = function () {
   this._clearCursor();
   var statement = new AQLStatement("", "pathVertices");
   this.stack.push(statement);
   return this;
 };
 
-AQLGenerator.prototype.pathEdges = function() {
+AQLGenerator.prototype.pathEdges = function () {
   this._clearCursor();
   var statement = new AQLStatement("", "pathEdges");
   this.stack.push(statement);
@@ -928,7 +928,7 @@ AQLGenerator.prototype.pathEdges = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.neighbors = function(vertexExample, options) {
+AQLGenerator.prototype.neighbors = function (vertexExample, options) {
   this._addToPrint("neighbors", vertexExample, options);
   var ex = transformExample(vertexExample);
   var resultName = "neighbors_" + this.stack.length;
@@ -963,7 +963,7 @@ AQLGenerator.prototype.neighbors = function(vertexExample, options) {
 /// Required to allow a chaining of `restrict` after `filter` for instance.
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
+AQLGenerator.prototype._getLastRestrictableStatementInfo = function () {
   var i = this.stack.length - 1;
   while (!this.stack[i].allowsRestrict()) {
     i--;
@@ -1027,7 +1027,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.restrict = function(restrictions) {
+AQLGenerator.prototype.restrict = function (restrictions) {
   var rest = stringToArray(restrictions);
   if (rest.length === 0) {
     return this;
@@ -1113,7 +1113,7 @@ AQLGenerator.prototype.restrict = function(restrictions) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.filter = function(example) {
+AQLGenerator.prototype.filter = function (example) {
   this._addToPrint("filter", example);
   this._clearCursor();
   var ex = [];
@@ -1133,13 +1133,13 @@ AQLGenerator.prototype.filter = function(example) {
   return this;
 };
 
-AQLGenerator.prototype.printQuery = function() {
-  return this.stack.map(function(stmt) {
+AQLGenerator.prototype.printQuery = function () {
+  return this.stack.map(function (stmt) {
     return stmt.printQuery();
   }).join(" ");
 };
 
-AQLGenerator.prototype.execute = function() {
+AQLGenerator.prototype.execute = function () {
   this._clearCursor();
   var query = this.printQuery();
   var bindVars = this.bindVars;
@@ -1182,7 +1182,7 @@ AQLGenerator.prototype.execute = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.toArray = function() {
+AQLGenerator.prototype.toArray = function () {
   this._createCursor();
 
   return this.cursor.toArray();
@@ -1214,7 +1214,7 @@ AQLGenerator.prototype.toArray = function() {
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.count = function() {
+AQLGenerator.prototype.count = function () {
   this._createCursor();
   return this.cursor.count();
 };
@@ -1258,7 +1258,7 @@ AQLGenerator.prototype.count = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.hasNext = function() {
+AQLGenerator.prototype.hasNext = function () {
   this._createCursor();
   return this.cursor.hasNext();
 };
@@ -1304,7 +1304,7 @@ AQLGenerator.prototype.hasNext = function() {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-AQLGenerator.prototype.next = function() {
+AQLGenerator.prototype.next = function () {
   this._createCursor();
   return this.cursor.next();
 };
@@ -1360,7 +1360,7 @@ AQLGenerator.prototype.next = function() {
 ////////////////////////////////////////////////////////////////////////////////
 /// Deprecated block
 ////////////////////////////////////////////////////////////////////////////////
-var _undirectedRelation = function (relationName, vertexCollections) {
+function _undirectedRelation(relationName, vertexCollections) {
   var err;
   if (arguments.length < 2) {
     err = new ArangoError();
@@ -1388,7 +1388,8 @@ var _undirectedRelation = function (relationName, vertexCollections) {
     from: stringToArray(vertexCollections),
     to: stringToArray(vertexCollections)
   };
-};
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// Deprecated block
 ////////////////////////////////////////////////////////////////////////////////
@@ -1470,8 +1471,7 @@ var _undirectedRelation = function (relationName, vertexCollections) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-var _relation = function (
-  relationName, fromVertexCollections, toVertexCollections) {
+function _relation(relationName, fromVertexCollections, toVertexCollections) {
   var err;
   if (arguments.length < 3) {
     err = new ArangoError();
@@ -1508,7 +1508,7 @@ var _relation = function (
     from: stringToArray(fromVertexCollections),
     to: stringToArray(toVertexCollections)
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_list
@@ -1527,18 +1527,14 @@ var _relation = function (
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var _list = function() {
+function _list() {
   var gdb = getGraphCollection();
   return _.pluck(gdb.toArray(), "_key");
-};
+}
 
-
-var _listObjects = function() {
+function _listObjects() {
   return getGraphCollection().toArray();
-};
-
-
-
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_edge_definitions
@@ -1566,18 +1562,14 @@ var _listObjects = function() {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-
-var _edgeDefinitions = function () {
-
+function _edgeDefinitions() {
   var res = [], args = arguments;
   Object.keys(args).forEach(function (x) {
    res.push(args[x]);
   });
 
   return res;
-
-};
-
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_extend_edge_definitions
@@ -1609,7 +1601,7 @@ var _edgeDefinitions = function () {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-var _extendEdgeDefinitions = function (edgeDefinition) {
+function _extendEdgeDefinitions(edgeDefinition) {
   var args = arguments, i = 0;
 
   Object.keys(args).forEach(
@@ -1621,15 +1613,17 @@ var _extendEdgeDefinitions = function (edgeDefinition) {
       edgeDefinition.push(args[x]);
     }
   );
-};
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// internal helper to sort a graph's edge definitions
 ////////////////////////////////////////////////////////////////////////////////
-var sortEdgeDefinition = function(edgeDefinition) {
+
+function sortEdgeDefinition(edgeDefinition) {
   edgeDefinition.from = edgeDefinition.from.sort();
   edgeDefinition.to = edgeDefinition.to.sort();
   return edgeDefinition;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a new graph
@@ -1720,8 +1714,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-var _create = function (graphName, edgeDefinitions, orphanCollections, options) {
-
+function _create(graphName, edgeDefinitions, orphanCollections, options) {
   if (! Array.isArray(orphanCollections) ) {
     orphanCollections = [];
   }
@@ -1747,7 +1740,7 @@ var _create = function (graphName, edgeDefinitions, orphanCollections, options) 
   var tmpCollections = [];
   var tmpEdgeDefinitions = {};
   edgeDefinitions.forEach(
-    function(edgeDefinition) {
+    function (edgeDefinition) {
       var col = edgeDefinition.collection;
       if (tmpCollections.indexOf(col) !== -1) {
         err = new ArangoError();
@@ -1760,10 +1753,10 @@ var _create = function (graphName, edgeDefinitions, orphanCollections, options) 
     }
   );
   gdb.toArray().forEach(
-    function(singleGraph) {
+    function (singleGraph) {
       var sGEDs = singleGraph.edgeDefinitions;
       sGEDs.forEach(
-        function(sGED) {
+        function (sGED) {
           var col = sGED.collection;
           if (tmpCollections.indexOf(col) !== -1) {
             if (JSON.stringify(sGED) !== JSON.stringify(tmpEdgeDefinitions[col])) {
@@ -1797,13 +1790,13 @@ var _create = function (graphName, edgeDefinitions, orphanCollections, options) 
 
   collections = findOrCreateCollectionsByEdgeDefinitions(edgeDefinitions, false);
   orphanCollections.forEach(
-    function(oC) {
+    function (oC) {
       findOrCreateCollectionByName(oC, ArangoCollection.TYPE_DOCUMENT);
     }
   );
 
   edgeDefinitions.forEach(
-    function(eD, index) {
+    function (eD, index) {
       var tmp = sortEdgeDefinition(eD);
       edgeDefinitions[index] = tmp;
     }
@@ -1819,27 +1812,28 @@ var _create = function (graphName, edgeDefinitions, orphanCollections, options) 
   result = new Graph(graphName, edgeDefinitions, collections[0], collections[1],
     orphanCollections, data._rev , data._id);
   return result;
+}
 
-};
-
-var createHiddenProperty = function(obj, name, value) {
+function createHiddenProperty(obj, name, value) {
   Object.defineProperty(obj, name, {
     enumerable: false,
     writable: true
   });
   obj[name] = value;
-};
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief helper for updating binded collections
 ////////////////////////////////////////////////////////////////////////////////
-var removeEdge = function (graphs, edgeCollection, edgeId, self) {
+
+function removeEdge(graphs, edgeCollection, edgeId, self) {
   self.__idsToRemove[edgeId] = 1;
   graphs.forEach(
-    function(graph) {
+    function (graph) {
       var edgeDefinitions = graph.edgeDefinitions;
       if (graph.edgeDefinitions) {
         edgeDefinitions.forEach(
-          function(edgeDefinition) {
+          function (edgeDefinition) {
             var from = edgeDefinition.from;
             var to = edgeDefinition.to;
             var collection = edgeDefinition.collection;
@@ -1847,7 +1841,7 @@ var removeEdge = function (graphs, edgeCollection, edgeId, self) {
             if (from.indexOf(edgeCollection) !== -1 || to.indexOf(edgeCollection) !== -1) {
               //search all edges of the graph
               var edges = db._collection(collection).edges(edgeId);
-              edges.forEach(function(edge) {
+              edges.forEach(function (edge) {
                 // if from is
                 if(! self.__idsToRemove.hasOwnProperty(edge._id)) {
                   self.__collectionsToLock[collection] = 1;
@@ -1860,15 +1854,15 @@ var removeEdge = function (graphs, edgeCollection, edgeId, self) {
       }
     }
   );
-};
+}
 
-var bindEdgeCollections = function(self, edgeCollections) {
-  _.each(edgeCollections, function(key) {
+function bindEdgeCollections(self, edgeCollections) {
+  _.each(edgeCollections, function (key) {
     var obj = db._collection(key);
     var wrap = wrapCollection(obj);
     // save
     var old_save = wrap.save;
-    wrap.save = function(from, to, data) {
+    wrap.save = function (from, to, data) {
       if (typeof from !== 'string' || 
           from.indexOf('/') === -1 ||
           typeof to !== 'string' ||
@@ -1882,7 +1876,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
 
       //check, if edge is allowed
       self.__edgeDefinitions.forEach(
-        function(edgeDefinition) {
+        function (edgeDefinition) {
           if (edgeDefinition.collection === key) {
             var fromCollection = from.split("/")[0];
             var toCollection = to.split("/")[0];
@@ -1901,7 +1895,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
     };
 
     // remove
-    wrap.remove = function(edgeId, options) {
+    wrap.remove = function (edgeId, options) {
       //if _key make _id (only on 1st call)
       if (edgeId.indexOf("/") === -1) {
         edgeId = key + "/" + edgeId;
@@ -1920,7 +1914,7 @@ var bindEdgeCollections = function(self, edgeCollections) {
           action: function (params) {
             var db = require("internal").db;
             params.ids.forEach(
-              function(edgeId) {
+              function (edgeId) {
                 if (params.options) {
                   db._remove(edgeId, params.options);
                 } else {
@@ -1947,13 +1941,13 @@ var bindEdgeCollections = function(self, edgeCollections) {
 
     self[key] = wrap;
   });
-};
+}
 
-var bindVertexCollections = function(self, vertexCollections) {
-  _.each(vertexCollections, function(key) {
+function bindVertexCollections(self, vertexCollections) {
+  _.each(vertexCollections, function (key) {
     var obj = db._collection(key);
     var wrap = wrapCollection(obj);
-    wrap.remove = function(vertexId, options) {
+    wrap.remove = function (vertexId, options) {
       //delete all edges using the vertex in all graphs
       var graphs = getGraphCollection().toArray();
       var vertexCollectionName = key;
@@ -1962,11 +1956,11 @@ var bindVertexCollections = function(self, vertexCollections) {
       }
       self.__collectionsToLock[vertexCollectionName] = 1;
       graphs.forEach(
-        function(graph) {
+        function (graph) {
           var edgeDefinitions = graph.edgeDefinitions;
           if (graph.edgeDefinitions) {
             edgeDefinitions.forEach(
-              function(edgeDefinition) {
+              function (edgeDefinition) {
                 var from = edgeDefinition.from;
                 var to = edgeDefinition.to;
                 var collection = edgeDefinition.collection;
@@ -1976,7 +1970,7 @@ var bindVertexCollections = function(self, vertexCollections) {
                   var edges = db._collection(collection).edges(vertexId);
                   if (edges.length > 0) {
                     self.__collectionsToLock[collection] = 1;
-                    edges.forEach(function(edge) {
+                    edges.forEach(function (edge) {
                       removeEdge(graphs, collection, edge._id, self);
                     });
                   }
@@ -1996,7 +1990,7 @@ var bindVertexCollections = function(self, vertexCollections) {
           action: function (params) {
             var db = require("internal").db;
             params.ids.forEach(
-              function(edgeId) {
+              function (edgeId) {
                 if (params.options) {
                   db._remove(edgeId, params.options);
                 } else {
@@ -2028,26 +2022,26 @@ var bindVertexCollections = function(self, vertexCollections) {
     };
     self[key] = wrap;
   });
+}
 
-};
-var updateBindCollections = function(graph) {
+function updateBindCollections(graph) {
   //remove all binded collections
   Object.keys(graph).forEach(
-    function(key) {
+    function (key) {
       if(key.substring(0,1) !== "_") {
         delete graph[key];
       }
     }
   );
   graph.__edgeDefinitions.forEach(
-    function(edgeDef) {
+    function (edgeDef) {
       bindEdgeCollections(graph, [edgeDef.collection]);
       bindVertexCollections(graph, edgeDef.from);
       bindVertexCollections(graph, edgeDef.to);
     }
   );
   bindVertexCollections(graph, graph.__orphanCollections);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_vertex_collection_save
@@ -2287,10 +2281,10 @@ var updateBindCollections = function(graph) {
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollections,
-                     orphanCollections, revision, id) {
+function Graph(graphName, edgeDefinitions, vertexCollections, edgeCollections, 
+  orphanCollections, revision, id) {
   edgeDefinitions.forEach(
-    function(eD, index) {
+    function (eD, index) {
       var tmp = sortEdgeDefinition(eD);
       edgeDefinitions[index] = tmp;
     }
@@ -2320,7 +2314,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
   createHiddenProperty(this, "__rev", revision);
   createHiddenProperty(this, "__orphanCollections", orphanCollections);
   updateBindCollections(self);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_graph
@@ -2350,8 +2344,7 @@ var Graph = function(graphName, edgeDefinitions, vertexCollections, edgeCollecti
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-var _graph = function(graphName) {
-
+function _graph(graphName) {
   var gdb = getGraphCollection(),
     g, collections, orphanCollections;
 
@@ -2376,32 +2369,32 @@ var _graph = function(graphName) {
 
   return new Graph(graphName, g.edgeDefinitions, collections[0], collections[1], orphanCollections,
     g._rev , g._id);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if a graph exists.
 ////////////////////////////////////////////////////////////////////////////////
 
-var _exists = function(graphId) {
+function _exists(graphId) {
   var gCol = getGraphCollection();
   return gCol.exists(graphId);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Helper for dropping collections of a graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-var checkIfMayBeDropped = function(colName, graphName, graphs) {
+function checkIfMayBeDropped(colName, graphName, graphs) {
   var result = true;
   graphs.forEach(
-    function(graph) {
+    function (graph) {
       if (graph._key === graphName) {
         return;
       }
       var edgeDefinitions = graph.edgeDefinitions;
       if (edgeDefinitions) {
         edgeDefinitions.forEach(
-          function(edgeDefinition) {
+          function (edgeDefinition) {
             var from = edgeDefinition.from;
             var to = edgeDefinition.to;
             var collection = edgeDefinition.collection;
@@ -2425,7 +2418,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
   );
 
   return result;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_drop
@@ -2477,8 +2470,7 @@ var checkIfMayBeDropped = function(colName, graphName, graphs) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-var _drop = function(graphId, dropCollections) {
-
+function _drop(graphId, dropCollections) {
   var gdb = getGraphCollection(),
     graphs;
 
@@ -2493,7 +2485,7 @@ var _drop = function(graphId, dropCollections) {
     var graph = gdb.document(graphId);
     var edgeDefinitions = graph.edgeDefinitions;
     edgeDefinitions.forEach(
-      function(edgeDefinition) {
+      function (edgeDefinition) {
         var from = edgeDefinition.from;
         var to = edgeDefinition.to;
         var collection = edgeDefinition.collection;
@@ -2502,14 +2494,14 @@ var _drop = function(graphId, dropCollections) {
           db._drop(collection);
         }
         from.forEach(
-          function(col) {
+          function (col) {
             if (checkIfMayBeDropped(col, graph._key, graphs)) {
               db._drop(col);
             }
           }
         );
         to.forEach(
-          function(col) {
+          function (col) {
             if (checkIfMayBeDropped(col, graph._key, graphs)) {
               db._drop(col);
             }
@@ -2523,7 +2515,7 @@ var _drop = function(graphId, dropCollections) {
       graph.orphanCollections = [];
     }
     graph.orphanCollections.forEach(
-      function(oC) {
+      function (oC) {
         if (checkIfMayBeDropped(oC, graph._key, graphs)) {
           try {
             db._drop(oC);
@@ -2535,14 +2527,14 @@ var _drop = function(graphId, dropCollections) {
 
   gdb.remove(graphId);
   return true;
-};
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return all edge collections of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edgeCollections = function() {
+Graph.prototype._edgeCollections = function () {
   return _.values(this.__edgeCollections);
 };
 
@@ -2550,9 +2542,9 @@ Graph.prototype._edgeCollections = function() {
 /// @brief return all vertex collections of the graph.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._vertexCollections = function() {
+Graph.prototype._vertexCollections = function () {
   var orphans = [];
-  _.each(this.__orphanCollections, function(o) {
+  _.each(this.__orphanCollections, function (o) {
     orphans.push(db[o]);
   });
   return _.union(_.values(this.__vertexCollections), orphans);
@@ -2563,7 +2555,7 @@ Graph.prototype._vertexCollections = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 // might be needed from AQL itself
-Graph.prototype._EDGES = function(vertexId) {
+Graph.prototype._EDGES = function (vertexId) {
   var err;
   if (vertexId.indexOf("/") === -1) {
     err = new ArangoError();
@@ -2590,7 +2582,7 @@ Graph.prototype._EDGES = function(vertexId) {
 /// @brief INEDGES(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._INEDGES = function(vertexId) {
+Graph.prototype._INEDGES = function (vertexId) {
   var err;
   if (vertexId.indexOf("/") === -1) {
     err = new ArangoError();
@@ -2617,7 +2609,7 @@ Graph.prototype._INEDGES = function(vertexId) {
 /// @brief outEdges(vertexId).
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._OUTEDGES = function(vertexId) {
+Graph.prototype._OUTEDGES = function (vertexId) {
   var err;
   if (vertexId.indexOf("/") === -1) {
     err = new ArangoError();
@@ -2679,7 +2671,7 @@ Graph.prototype._OUTEDGES = function(vertexId) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._edges = function(edgeExample) {
+Graph.prototype._edges = function (edgeExample) {
   var AQLStmt = new AQLGenerator(this);
   // If no direction is specified all edges are duplicated.
   // => For initial requests a direction has to be set
@@ -2727,7 +2719,7 @@ Graph.prototype._edges = function(edgeExample) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._vertices = function(example) {
+Graph.prototype._vertices = function (example) {
   var AQLStmt = new AQLGenerator(this);
   return AQLStmt.vertices(example);
 };
@@ -2757,7 +2749,7 @@ Graph.prototype._vertices = function(example) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._fromVertex = function(edgeId) {
+Graph.prototype._fromVertex = function (edgeId) {
   if (typeof edgeId !== 'string' ||
       edgeId.indexOf('/') === -1) {
     var err = new ArangoError();
@@ -2799,7 +2791,7 @@ Graph.prototype._fromVertex = function(edgeId) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._toVertex = function(edgeId) {
+Graph.prototype._toVertex = function (edgeId) {
   if (typeof edgeId !== 'string' ||
       edgeId.indexOf('/') === -1) {
     var err = new ArangoError();
@@ -2821,7 +2813,7 @@ Graph.prototype._toVertex = function(edgeId) {
 /// @brief get edge collection by name.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getEdgeCollectionByName = function(name) {
+Graph.prototype._getEdgeCollectionByName = function (name) {
   if (this.__edgeCollections[name]) {
     return this.__edgeCollections[name];
   }
@@ -2835,7 +2827,7 @@ Graph.prototype._getEdgeCollectionByName = function(name) {
 /// @brief get vertex collection by name.
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getVertexCollectionByName = function(name) {
+Graph.prototype._getVertexCollectionByName = function (name) {
   if (this.__vertexCollections[name]) {
     return this.__vertexCollections[name];
   }
@@ -2895,7 +2887,7 @@ Graph.prototype._getVertexCollectionByName = function(name) {
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._neighbors = function(vertexExample, options) {
+Graph.prototype._neighbors = function (vertexExample, options) {
   var AQLStmt = new AQLGenerator(this);
   // If no direction is specified all edges are duplicated.
   // => For initial requests a direction has to be set
@@ -2950,7 +2942,7 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
+Graph.prototype._commonNeighbors = function (vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
 
   var ex1 = transformExample(vertex1Example);
   var ex2 = transformExample(vertex2Example);
@@ -3006,7 +2998,7 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
+Graph.prototype._countCommonNeighbors = function (vertex1Example, vertex2Example, optionsVertex1, optionsVertex2) {
   var ex1 = transformExample(vertex1Example);
   var ex2 = transformExample(vertex2Example);
   var query = "FOR e"
@@ -3036,7 +3028,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
     tmp2[r[1]] = r[2];
     tmp[r[0]].push(tmp2);
   });
-  Object.keys(tmp).forEach(function(w) {
+  Object.keys(tmp).forEach(function (w) {
     tmp2 = {};
     tmp2[w] = tmp[w];
     returnHash.push(tmp2);
@@ -3096,7 +3088,7 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, options) {
+Graph.prototype._commonProperties = function (vertex1Example, vertex2Example, options) {
 
   var ex1 = transformExample(vertex1Example);
   var ex2 = transformExample(vertex2Example);
@@ -3151,7 +3143,7 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example, options) {
+Graph.prototype._countCommonProperties = function (vertex1Example, vertex2Example, options) {
   var ex1 = transformExample(vertex1Example);
   var ex2 = transformExample(vertex2Example);
   var query = "FOR e"
@@ -3224,7 +3216,7 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._paths = function(options) {
+Graph.prototype._paths = function (options) {
   var query = "RETURN"
     + " GRAPH_PATHS(@graphName"
     + ',@options'
@@ -3323,7 +3315,7 @@ Graph.prototype._paths = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, options) {
+Graph.prototype._shortestPath = function (startVertexExample, endVertexExample, options) {
   var ex1 = transformExample(startVertexExample);
   var ex2 = transformExample(endVertexExample);
   var query = "RETURN"
@@ -3378,7 +3370,7 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, options) {
+Graph.prototype._distanceTo = function (startVertexExample, endVertexExample, options) {
   var ex1 = transformExample(startVertexExample);
   var ex2 = transformExample(endVertexExample);
   var query = "RETURN"
@@ -3470,7 +3462,7 @@ Graph.prototype._distanceTo = function(startVertexExample, endVertexExample, opt
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
+Graph.prototype._absoluteEccentricity = function (vertexExample, options) {
   var ex1 = transformExample(vertexExample);
   var query = "RETURN"
     + " GRAPH_ABSOLUTE_ECCENTRICITY(@graphName"
@@ -3522,7 +3514,7 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._eccentricity = function(options) {
+Graph.prototype._eccentricity = function (options) {
   var query = "RETURN"
     + " GRAPH_ECCENTRICITY(@graphName"
     + ',@options'
@@ -3609,7 +3601,7 @@ Graph.prototype._eccentricity = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._absoluteCloseness = function(vertexExample, options) {
+Graph.prototype._absoluteCloseness = function (vertexExample, options) {
   var ex1 = transformExample(vertexExample);
   var query = "RETURN"
     + " GRAPH_ABSOLUTE_CLOSENESS(@graphName"
@@ -3670,7 +3662,7 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._closeness = function(options) {
+Graph.prototype._closeness = function (options) {
   var query = "RETURN"
     + " GRAPH_CLOSENESS(@graphName"
     + ',@options'
@@ -3740,7 +3732,7 @@ Graph.prototype._closeness = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._absoluteBetweenness = function(options) {
+Graph.prototype._absoluteBetweenness = function (options) {
 
   var query = "RETURN"
     + " GRAPH_ABSOLUTE_BETWEENNESS(@graphName"
@@ -3796,7 +3788,7 @@ Graph.prototype._absoluteBetweenness = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._betweenness = function(options) {
+Graph.prototype._betweenness = function (options) {
 
   var query = "RETURN"
     + " GRAPH_BETWEENNESS(@graphName"
@@ -3870,7 +3862,7 @@ Graph.prototype._betweenness = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._radius = function(options) {
+Graph.prototype._radius = function (options) {
 
   var query = "RETURN"
     + " GRAPH_RADIUS(@graphName"
@@ -3943,7 +3935,7 @@ Graph.prototype._radius = function(options) {
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._diameter = function(options) {
+Graph.prototype._diameter = function (options) {
 
   var query = "RETURN"
     + " GRAPH_DIAMETER(@graphName"
@@ -3991,7 +3983,7 @@ Graph.prototype._diameter = function(options) {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
+Graph.prototype._extendEdgeDefinitions = function (edgeDefinition) {
   edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
   var err;
@@ -4006,10 +3998,10 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   }
   //in different graph
   db._graphs.toArray().forEach(
-    function(singleGraph) {
+    function (singleGraph) {
       var sGEDs = singleGraph.edgeDefinitions;
       sGEDs.forEach(
-        function(sGED) {
+        function (sGED) {
           var col = sGED.collection;
           if (col === eC) {
             if (JSON.stringify(sGED) !== JSON.stringify(edgeDefinition)) {
@@ -4031,7 +4023,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
   db._graphs.update(this.__name, {edgeDefinitions: this.__edgeDefinitions});
   this.__edgeCollections[edgeDefinition.collection] = db[edgeDefinition.collection];
   edgeDefinition.from.forEach(
-    function(vc) {
+    function (vc) {
       self[vc] = db[vc];
       //remove from __orphanCollections
       var orphanIndex = self.__orphanCollections.indexOf(vc);
@@ -4045,7 +4037,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
     }
   );
   edgeDefinition.to.forEach(
-    function(vc) {
+    function (vc) {
       self[vc] = db[vc];
       //remove from __orphanCollections
       var orphanIndex = self.__orphanCollections.indexOf(vc);
@@ -4065,8 +4057,7 @@ Graph.prototype._extendEdgeDefinitions = function(edgeDefinition) {
 /// @brief internal function for editing edge definitions
 ////////////////////////////////////////////////////////////////////////////////
 
-var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollections, possibleOrphans, self) {
-
+function changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self) {
   var graphCollections = [];
   var graphObj = _graph(graph._key);
   var eDs = graph.edgeDefinitions;
@@ -4074,7 +4065,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 
   //replace edgeDefintion
   eDs.forEach(
-    function(eD, id) {
+    function (eD, id) {
       if(eD.collection === edgeDefinition.collection) {
         gotAHit = true;
         eDs[id].from = edgeDefinition.from;
@@ -4098,7 +4089,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
   //remove used collection from orphanage
   if (graph._key === self.__name) {
     newCollections.forEach(
-      function(nc) {
+      function (nc) {
         if (self.__vertexCollections[nc] === undefined) {
           self.__vertexCollections[nc] = db[nc];
         }
@@ -4108,7 +4099,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
       }
     );
     possibleOrphans.forEach(
-      function(po) {
+      function (po) {
         if (graphCollections.indexOf(po) === -1) {
           delete self.__vertexCollections[po];
           self._addVertexCollection(po);
@@ -4117,14 +4108,14 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
     );
   } else {
     newCollections.forEach(
-      function(nc) {
+      function (nc) {
         try {
           graphObj._removeVertexCollection(nc, false);
         } catch (ignore) { }
       }
     );
     possibleOrphans.forEach(
-      function(po) {
+      function (po) {
         if (graphCollections.indexOf(po) === -1) {
           delete graphObj.__vertexCollections[po];
           graphObj._addVertexCollection(po);
@@ -4133,9 +4124,8 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
     );
 
   }
-
   //move unused collections to orphanage
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph__editEdgeDefinition
@@ -4171,7 +4161,7 @@ var changeEdgeDefinitionsForGraph = function(graph, edgeDefinition, newCollectio
 /// @endDocuBlock
 ///
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
+Graph.prototype._editEdgeDefinitions = function (edgeDefinition) {
   edgeDefinition = sortEdgeDefinition(edgeDefinition);
   var self = this;
 
@@ -4189,7 +4179,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
   var possibleOrphans = [];
   var currentEdgeDefinition;
   this.__edgeDefinitions.forEach(
-    function(ed) {
+    function (ed) {
       if (edgeDefinition.collection === ed.collection) {
         currentEdgeDefinition = ed;
       }
@@ -4199,7 +4189,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
   var currentCollections = _.union(currentEdgeDefinition.from, currentEdgeDefinition.to);
   var newCollections = _.union(edgeDefinition.from, edgeDefinition.to);
   currentCollections.forEach(
-    function(colName) {
+    function (colName) {
       if (newCollections.indexOf(colName) === -1) {
         possibleOrphans.push(colName);
       }
@@ -4208,7 +4198,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
   //change definition for ALL graphs
   var graphs = getGraphCollection().toArray();
   graphs.forEach(
-    function(graph) {
+    function (graph) {
       changeEdgeDefinitionsForGraph(graph, edgeDefinition, newCollections, possibleOrphans, self);
     }
   );
@@ -4264,7 +4254,7 @@ Graph.prototype._editEdgeDefinitions = function(edgeDefinition) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection) {
+Graph.prototype._deleteEdgeDefinition = function (edgeCollection, dropCollection) {
 
   //check, if in graphs edge definition
   if (this.__edgeCollections[edgeCollection] === undefined) {
@@ -4281,7 +4271,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
     index;
 
   edgeDefinitions.forEach(
-    function(edgeDefinition, idx) {
+    function (edgeDefinition, idx) {
       if (edgeDefinition.collection === edgeCollection) {
         index = idx;
         possibleOrphans = edgeDefinition.from;
@@ -4294,7 +4284,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
   );
   this.__edgeDefinitions.splice(index, 1);
   possibleOrphans.forEach(
-    function(po) {
+    function (po) {
       if (usedVertexCollections.indexOf(po) === -1) {
         self.__orphanCollections.push(po);
       }
@@ -4348,7 +4338,7 @@ Graph.prototype._deleteEdgeDefinition = function(edgeCollection, dropCollection)
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._addVertexCollection = function(vertexCollectionName, createCollection) {
+Graph.prototype._addVertexCollection = function (vertexCollectionName, createCollection) {
   //check edgeCollection
   var ec = db._collection(vertexCollectionName);
   var err;
@@ -4409,7 +4399,7 @@ Graph.prototype._addVertexCollection = function(vertexCollectionName, createColl
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._orphanCollections = function() {
+Graph.prototype._orphanCollections = function () {
   return this.__orphanCollections;
 };
 
@@ -4451,7 +4441,7 @@ Graph.prototype._orphanCollections = function() {
 ///
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCollection) {
+Graph.prototype._removeVertexCollection = function (vertexCollectionName, dropCollection) {
   var err;
   if (db._collection(vertexCollectionName) === null) {
     err = new ArangoError();
@@ -4520,7 +4510,7 @@ Graph.prototype._removeVertexCollection = function(vertexCollectionName, dropCol
 //
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, options) {
+Graph.prototype._getConnectingEdges = function (vertexExample1, vertexExample2, options) {
 
   if (!options) {
     options = {};
@@ -4571,7 +4561,7 @@ Graph.prototype._getConnectingEdges = function(vertexExample1, vertexExample2, o
 /// @brief print basic information for the graph
 ////////////////////////////////////////////////////////////////////////////////
 
-Graph.prototype._PRINT = function(context) {
+Graph.prototype._PRINT = function (context) {
   var name = this.__name;
   var edgeDefs = printEdgeDefinitions(this.__edgeDefinitions);
   context.output += "[ Graph ";

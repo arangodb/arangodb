@@ -18,7 +18,7 @@ function setColors (useSystemColors) {
   [ "COLOR_RESET", 
     "COLOR_CYAN", "COLOR_BLUE", "COLOR_GREEN", "COLOR_MAGENTA", "COLOR_YELLOW", "COLOR_RED", "COLOR_WHITE",
     "COLOR_BOLD_CYAN", "COLOR_BOLD_BLUE", "COLOR_BOLD_GREEN", "COLOR_BOLD_MAGENTA", "COLOR_BOLD_YELLOW", 
-    "COLOR_BOLD_RED", "COLOR_BOLD_WHITE" ].forEach(function(c) {
+    "COLOR_BOLD_RED", "COLOR_BOLD_WHITE" ].forEach(function (c) {
     colors[c] = useSystemColors ? systemColors[c] : "";
   });
 }
@@ -108,13 +108,13 @@ function printModificationFlags (flags) {
   }
   print(section("Write query options:"));
   var keys = Object.keys(flags), maxLen = "Option".length;
-  keys.forEach(function(k) {
+  keys.forEach(function (k) {
     if (k.length > maxLen) {
       maxLen = k.length;
     }
   });
   print(" " + header("Option") + pad(1 + maxLen - "Option".length) + "   " + header("Value"));
-  keys.forEach(function(k) {
+  keys.forEach(function (k) {
     print(" " + keyword(k) + pad(1 + maxLen - k.length) + "   " + value(JSON.stringify(flags[k]))); 
   });
   print();
@@ -168,7 +168,7 @@ function printIndexes (indexes) {
     var maxTypeLen = String("Type").length;
     var maxSelectivityLen = String("Selectivity Est.").length;
     var maxFieldsLen = String("Fields").length;
-    indexes.forEach(function(index) {
+    indexes.forEach(function (index) {
       var l = String(index.node).length;
       if (l > maxIdLen) {
         maxIdLen = l;
@@ -232,8 +232,8 @@ function processQuery (query, explain) {
     maxEstimateLen = String("Est.").length,
     plan = explain.plan;
 
-  var recursiveWalk = function (n, level) {
-    n.forEach(function(node) {
+  function recursiveWalk(n, level) {
+    n.forEach(function (node) {
       nodes[node.id] = node;
       if (level === 0 && node.dependencies.length === 0) {
         rootNode = node.id;
@@ -241,7 +241,7 @@ function processQuery (query, explain) {
       if (node.type === "SubqueryNode") {
         recursiveWalk(node.subquery.nodes, level + 1);
       }
-      node.dependencies.forEach(function(d) {
+      node.dependencies.forEach(function (d) {
         if (! parents.hasOwnProperty(d)) {
           parents[d] = [ ];
         }
@@ -258,7 +258,7 @@ function processQuery (query, explain) {
         maxEstimateLen = String(node.estimatedNrItems).length;
       }
     });
-  };
+  }
   recursiveWalk(plan.nodes, 0);
 
   var references = { }, 
@@ -268,7 +268,7 @@ function processQuery (query, explain) {
     modificationFlags,
     isConst = true;
 
-  var variableName = function (node) {
+  function variableName(node) {
     if (/^[0-9_]/.test(node.name)) {
       return variable("#" + node.name);
     }
@@ -277,9 +277,9 @@ function processQuery (query, explain) {
       usedVariables[node.name] = collectionVariables[node.id];
     }
     return variable(node.name); 
-  };
+  }
 
-  var buildExpression = function (node) {
+  function buildExpression(node) {
     isConst = isConst && ([ "value", "object", "object element", "array" ].indexOf(node.type) !== -1);
 
     switch (node.type) {
@@ -358,16 +358,16 @@ function processQuery (query, explain) {
       default: 
         return "unhandled node type (" + node.type + ")";
     }
-  };
+  }
 
-  var buildBound = function (attr, operators, bound) {
+  function buildBound(attr, operators, bound) {
     var boundValue = bound.isConstant ? value(JSON.stringify(bound.bound)) : buildExpression(bound.bound);
     return attribute(attr) + " " + operators[bound.include ? 1 : 0] + " " + boundValue;
-  };
+  }
 
-  var buildRanges = function (ranges) {
+  function buildRanges(ranges) {
     var results = [ ];
-    ranges.forEach(function(range) {
+    ranges.forEach(function (range) {
       var attr = range.attr;
 
       if (range.lowConst.hasOwnProperty("bound") && range.highConst.hasOwnProperty("bound") &&
@@ -380,7 +380,7 @@ function processQuery (query, explain) {
           results.push(buildBound(attr, [ "==", "==" ], range.lowConst));
         }
         else if (range.hasOwnProperty("lows")) {
-          range.lows.forEach(function(bound) {
+          range.lows.forEach(function (bound) {
             results.push(buildBound(attr, [ "==", "==" ], bound));
           });
         }
@@ -393,12 +393,12 @@ function processQuery (query, explain) {
           results.push(buildBound(attr, [ "<", "<=" ], range.highConst));
         }
         if (range.hasOwnProperty("lows")) {
-          range.lows.forEach(function(bound) {
+          range.lows.forEach(function (bound) {
             results.push(buildBound(attr, [ ">", ">=" ], bound));
           });
         }
         if (range.hasOwnProperty("highs")) {
-          range.highs.forEach(function(bound) {
+          range.highs.forEach(function (bound) {
             results.push(buildBound(attr, [ "<", "<=" ], bound));
           });
         }
@@ -408,10 +408,10 @@ function processQuery (query, explain) {
       return "(" + results.join(" && ") + ")"; 
     }
     return results[0]; 
-  };
+  }
 
 
-  var label = function (node) { 
+  function label(node) { 
     switch (node.type) {
       case "SingletonNode":
         return keyword("ROOT");
@@ -435,14 +435,14 @@ function processQuery (query, explain) {
       case "FilterNode":
         return keyword("FILTER") + " " + variableName(node.inVariable);
       case "AggregateNode":
-        return keyword("COLLECT") + " " + node.aggregates.map(function(node) {
+        return keyword("COLLECT") + " " + node.aggregates.map(function (node) {
           return variableName(node.outVariable) + " = " + variableName(node.inVariable);
         }).join(", ") + 
                  (node.count ? " " + keyword("WITH COUNT") : "") + 
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
-                 (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "");
+                 (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function (variable) { return variableName(variable); }).join(", ") : "");
       case "SortNode":
-        return keyword("SORT") + " " + node.elements.map(function(node) {
+        return keyword("SORT") + " " + node.elements.map(function (node) {
           return variableName(node.inVariable) + " " + keyword(node.ascending ? "ASC" : "DESC"); 
         }).join(", ");
       case "LimitNode":
@@ -483,22 +483,22 @@ function processQuery (query, explain) {
     }
 
     return "unhandled node type (" + node.type + ")";
-  };
+  }
  
   var level = 0, subqueries = [ ];
-  var indent = function (level, isRoot) {
+  function indent(level, isRoot) {
     return pad(1 + level + level) + (isRoot ? "* " : "- ");
-  };
+  }
 
-  var preHandle = function (node) {
+  function preHandle(node) {
     usedVariables = { };
     isConst = true;
     if (node.type === "SubqueryNode") {
       subqueries.push(level);
     }
-  };
+  }
 
-  var postHandle = function (node) {
+  function postHandle(node) {
     if ([ "EnumerateCollectionNode",
           "EnumerateListNode",
           "IndexRangeNode",
@@ -511,16 +511,16 @@ function processQuery (query, explain) {
     else if (node.type === "SingletonNode") {
       level++;
     }
-  };
+  }
 
-  var constNess = function () {
+  function constNess() {
     if (isConst) {
       return "   " + annotation("/* const assignment */");
     }
     return "";
-  };
+  }
 
-  var variablesUsed = function () {
+  function variablesUsed() {
     var used = [ ];
     for (var a in usedVariables) { 
       if (usedVariables.hasOwnProperty(a)) {
@@ -531,9 +531,9 @@ function processQuery (query, explain) {
       return "   " + annotation("/* collections used:") + " " + used.join(", ") + " " + annotation("*/");
     }
     return "";
-  };
+  }
     
-  var printNode = function (node) {
+  function printNode(node) {
     preHandle(node);
     var line = " " +  
       pad(1 + maxIdLen - String(node.id).length) + variable(node.id) + "   " +
@@ -546,7 +546,7 @@ function processQuery (query, explain) {
     } 
     print(line);
     postHandle(node);
-  };
+  }
   
   printQuery(query);
   

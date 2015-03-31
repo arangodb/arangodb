@@ -1,4 +1,4 @@
-/*jshint strict: true */
+/*jshint globalstrict: false */
 /*global require, assertFalse, assertTrue, assertEqual, ArangoAgency, ArangoServerState, ArangoClusterInfo */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cluster helper functions

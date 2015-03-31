@@ -1,4 +1,4 @@
-/*jshint strict: true, sub: true */
+/*jshint globalstrict: false, sub: true */
 /*global require, assertTrue, assertFalse, assertEqual, assertNotEqual */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filesystem functions

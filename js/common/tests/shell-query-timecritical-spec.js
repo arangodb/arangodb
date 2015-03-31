@@ -1,3 +1,4 @@
+/*jshint globalstrict: false */
 /*global describe, require, beforeEach, it, expect, afterEach, arango */
 
 (function() {

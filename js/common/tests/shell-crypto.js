@@ -1,4 +1,4 @@
-/*jshint strict: true, maxlen: 500 */
+/*jshint globalstrict: false, maxlen: 500 */
 /*global require, assertTrue, assertEqual, fail */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the crypto interface

@@ -1,4 +1,4 @@
-/*jshint strict: true, maxlen : 200 */
+/*jshint globalstrict: false, maxlen : 200 */
 /*global require, fail, assertTrue, assertEqual, TRANSACTION */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for transactions

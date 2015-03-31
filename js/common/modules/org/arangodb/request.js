@@ -1,4 +1,4 @@
-/*jshint globalstrict: true, sub: true */
+/*jshint sub: true */
 /*global module, require, exports: true */
 'use strict';
 
@@ -62,7 +62,7 @@ function querystringify(query, useQuerystring) {
     return query.charAt(0) === '?' ? query.slice(1) : query;
   }
   return (useQuerystring ? querystring : qs).stringify(query)
-  .replace(/[!'()*]/g, function(c) {
+  .replace(/[!'()*]/g, function (c) {
     // Stricter RFC 3986 compliance
     return '%' + c.charCodeAt(0).toString(16);
   });

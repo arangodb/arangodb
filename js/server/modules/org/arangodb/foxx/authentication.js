@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Authentication
@@ -34,31 +35,13 @@ var db = require("org/arangodb").db,
   _ = require("underscore"),
   errors = require("internal").errors,
   defaultsFor = {},
-  checkAuthenticationOptions,
-  createStandardLoginHandler,
-  createStandardLogoutHandler,
-  createStandardRegistrationHandler,
-  createStandardChangePasswordHandler,
-  createAuthenticationMiddleware,
-  createSessionUpdateMiddleware,
-  createAuthObject,
-  generateToken,
-  cloneDocument,
-  checkPassword,
-  encodePassword,
-  Users,
-  Sessions,
-  CookieAuthentication,
-  Authentication,
-  UserAlreadyExistsError,
   UnauthorizedError = require("./sessions").UnauthorizedError;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  helper functions
 // -----------------------------------------------------------------------------
 
-createAuthenticationMiddleware = function (auth, applicationContext) {
-  "use strict";
+function createAuthenticationMiddleware(auth, applicationContext) {
   return function (req) {
     var users = new Users(applicationContext),
       authResult = auth.authenticate(req);
@@ -71,10 +54,9 @@ createAuthenticationMiddleware = function (auth, applicationContext) {
       req.user = null;
     }
   };
-};
+}
 
-createSessionUpdateMiddleware = function () {
-  "use strict";
+function createSessionUpdateMiddleware() {
   return function (req) {
     var session = req.currentSession;
 
@@ -82,10 +64,9 @@ createSessionUpdateMiddleware = function () {
       session.update();
     }
   };
-};
+}
 
-createAuthObject = function (applicationContext, opts) {
-  "use strict";
+function createAuthObject(applicationContext, opts) {
   var sessions,
     cookieAuth,
     auth,
@@ -98,10 +79,9 @@ createAuthObject = function (applicationContext, opts) {
   auth = new Authentication(applicationContext, sessions, cookieAuth);
 
   return auth;
-};
+}
 
-checkAuthenticationOptions = function (options) {
-  "use strict";
+function checkAuthenticationOptions(options) {
   if (options.type !== "cookie") {
     throw new Error("Currently only the following auth types are supported: cookie");
   }
@@ -114,14 +94,13 @@ checkAuthenticationOptions = function (options) {
   if (is.falsy(options.sessionLifetime)) {
     throw new Error("Please provide the sessionLifetime");
   }
-};
+}
 
 defaultsFor.login = {
   usernameField: "username",
   passwordField: "password",
 
   onSuccess: function (req, res) {
-    "use strict";
     res.json({
       user: req.user.identifier,
       key: req.currentSession._key
@@ -129,7 +108,6 @@ defaultsFor.login = {
   },
 
   onError: function (req, res) {
-    "use strict";
     res.status(401);
     res.json({
       error: "Username or Password was wrong"
@@ -137,8 +115,7 @@ defaultsFor.login = {
   }
 };
 
-createStandardLoginHandler = function (auth, users, opts) {
-  "use strict";
+function createStandardLoginHandler(auth, users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.login);
 
   return function (req, res) {
@@ -153,18 +130,16 @@ createStandardLoginHandler = function (auth, users, opts) {
       options.onError(req, res);
     }
   };
-};
+}
 
 defaultsFor.logout = {
   onSuccess: function (req, res) {
-    "use strict";
     res.json({
       notice: "Logged out!"
     });
   },
 
   onError: function (req, res) {
-    "use strict";
     res.status(401);
     res.json({
       error: "No session was found"
@@ -172,8 +147,7 @@ defaultsFor.logout = {
   }
 };
 
-createStandardLogoutHandler = function (auth, opts) {
-  "use strict";
+function createStandardLogoutHandler(auth, opts) {
   var options = _.defaults(opts || {}, defaultsFor.logout);
 
   return function (req, res) {
@@ -186,7 +160,7 @@ createStandardLogoutHandler = function (auth, opts) {
       options.onError(req, res);
     }
   };
-};
+}
 
 defaultsFor.registration = {
   usernameField: "username",
@@ -195,14 +169,12 @@ defaultsFor.registration = {
   defaultAttributes: {},
 
   onSuccess: function (req, res) {
-    "use strict";
     res.json({
       user: req.user
     });
   },
 
   onError: function (req, res) {
-    "use strict";
     res.status(401);
     res.json({
       error: "Registration failed"
@@ -210,8 +182,7 @@ defaultsFor.registration = {
   }
 };
 
-createStandardRegistrationHandler = function (auth, users, opts) {
-  "use strict";
+function createStandardRegistrationHandler(auth, users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.registration);
 
   return function (req, res) {
@@ -234,20 +205,18 @@ createStandardRegistrationHandler = function (auth, users, opts) {
     req.currentSession = auth.beginSession(req, res, username, {});
     options.onSuccess(req, res);
   };
-};
+}
 
 defaultsFor.changePassword = {
   passwordField: "password",
 
   onSuccess: function (req, res) {
-    "use strict";
     res.json({
       notice: "Changed password!"
     });
   },
 
   onError: function (req, res) {
-    "use strict";
     res.status(401);
     res.json({
       error: "No session was found"
@@ -255,8 +224,7 @@ defaultsFor.changePassword = {
   }
 };
 
-createStandardChangePasswordHandler = function (users, opts) {
-  "use strict";
+function createStandardChangePasswordHandler(users, opts) {
   var options = _.defaults(opts || {}, defaultsFor.changePassword);
 
   return function (req, res) {
@@ -274,24 +242,21 @@ createStandardChangePasswordHandler = function (users, opts) {
       options.onError(req, res);
     }
   };
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-generateToken = function () {
-  "use strict";
-
+function generateToken() {
   return internal.genRandomAlphaNumbers(32);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deep-copies a document
 ////////////////////////////////////////////////////////////////////////////////
 
-cloneDocument = function (obj) {
-  "use strict";
+function cloneDocument(obj) {
   var copy, a;
 
   if (obj === null || typeof obj !== "object") {
@@ -313,26 +278,24 @@ cloneDocument = function (obj) {
   }
 
   return copy;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks whether the plain text password matches the encoded one
 ////////////////////////////////////////////////////////////////////////////////
 
-checkPassword = function (plain, encoded) {
-  "use strict";
+function checkPassword(plain, encoded) {
   var salted = encoded.substr(3, 8) + plain,
     hex = crypto.sha256(salted);
 
   return (encoded.substr(12) === hex);
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief encodes a password
 ////////////////////////////////////////////////////////////////////////////////
 
-encodePassword = function (password) {
-  "use strict";
+function encodePassword(password) {
   var salt,
     encoded,
     random;
@@ -350,7 +313,7 @@ encodePassword = function (password) {
   encoded = "$1$" + salt + "$" + crypto.sha256(salt + password);
 
   return encoded;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        FOXX-USERS
@@ -364,8 +327,7 @@ encodePassword = function (password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Users = function (applicationContext, options) {
-  "use strict";
+function Users(applicationContext, options) {
 
   this._options = options || {};
   this._collection = null;
@@ -375,7 +337,7 @@ Users = function (applicationContext, options) {
   } else {
     this._collectionName = applicationContext.collectionName("users");
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -386,7 +348,6 @@ Users = function (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.storage = function () {
-  "use strict";
 
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
@@ -404,7 +365,6 @@ Users.prototype.storage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype._validateIdentifier = function (identifier, allowObject) {
-  "use strict";
 
   if (allowObject) {
     if (typeof identifier === "object" && identifier.hasOwnProperty("identifier")) {
@@ -432,7 +392,6 @@ Users.prototype._validateIdentifier = function (identifier, allowObject) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setup = function (options) {
-  "use strict";
   var journalSize,
     createOptions;
 
@@ -456,7 +415,6 @@ Users.prototype.setup = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.teardown = function () {
-  "use strict";
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -469,7 +427,6 @@ Users.prototype.teardown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.flush = function () {
-  "use strict";
 
   this.storage().truncate();
 };
@@ -479,7 +436,6 @@ Users.prototype.flush = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.add = function (identifier, password, active, data) {
-  "use strict";
   var c = this.storage(),
     user;
 
@@ -533,7 +489,6 @@ Users.prototype.add = function (identifier, password, active, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.updateData = function (identifier, data) {
-  "use strict";
   var c = this.storage();
 
   identifier = this._validateIdentifier(identifier, true);
@@ -566,7 +521,6 @@ Users.prototype.updateData = function (identifier, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setActive = function (identifier, active) {
-  "use strict";
   var c = this.storage(),
     user,
     doc;
@@ -592,7 +546,6 @@ Users.prototype.setActive = function (identifier, active) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.setPassword = function (identifier, password) {
-  "use strict";
   var c = this.storage(),
     user,
     doc;
@@ -621,7 +574,6 @@ Users.prototype.setPassword = function (identifier, password) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.remove = function (identifier) {
-  "use strict";
   var c = this.storage(),
     user;
 
@@ -646,7 +598,6 @@ Users.prototype.remove = function (identifier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.get = function (identifier) {
-  "use strict";
   var c = this.storage(),
     user;
 
@@ -668,7 +619,6 @@ Users.prototype.get = function (identifier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.exists = function (identifier) {
-  "use strict";
   var c = this.storage(),
     user;
 
@@ -682,7 +632,6 @@ Users.prototype.exists = function (identifier) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Users.prototype.isValid = function (identifier, password) {
-  "use strict";
   var c = this.storage(),
     user;
 
@@ -719,8 +668,7 @@ Users.prototype.isValid = function (identifier, password) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Sessions = function (applicationContext, options) {
-  "use strict";
+function Sessions(applicationContext, options) {
 
   this._applicationContext = applicationContext;
   this._options = options || {};
@@ -735,7 +683,7 @@ Sessions = function (applicationContext, options) {
   } else {
     this._collectionName = applicationContext.collectionName("sessions");
   }
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -746,7 +694,6 @@ Sessions = function (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype._toObject = function (session) {
-  "use strict";
   var that = this;
 
   return {
@@ -795,7 +742,6 @@ Sessions.prototype._toObject = function (session) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.setup = function (options) {
-  "use strict";
   var journalSize,
     createOptions;
 
@@ -819,7 +765,6 @@ Sessions.prototype.setup = function (options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.teardown = function () {
-  "use strict";
   var c = db._collection(this._collectionName);
 
   if (c) {
@@ -832,7 +777,6 @@ Sessions.prototype.teardown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.storage = function () {
-  "use strict";
 
   if (this._collection === null) {
     this._collection = db._collection(this._collectionName);
@@ -850,7 +794,6 @@ Sessions.prototype.storage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.generate = function (identifier, data) {
-  "use strict";
   var storage, token, session;
 
   if (typeof identifier !== "string" || identifier.length === 0) {
@@ -900,7 +843,6 @@ Sessions.prototype.generate = function (identifier, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.update = function (token, data) {
-  "use strict";
 
   this.storage().update(token, {
     expires: internal.time() + this._options.sessionLifetime,
@@ -913,7 +855,6 @@ Sessions.prototype.update = function (token, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.terminate = function (token) {
-  "use strict";
 
   try {
     this.storage().remove(token);
@@ -927,7 +868,6 @@ Sessions.prototype.terminate = function (token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.get = function (token) {
-  "use strict";
   var storage = this.storage(),
     session,
     sessionLifetime;
@@ -971,8 +911,7 @@ Sessions.prototype.get = function (token) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-CookieAuthentication = function (applicationContext, options) {
-  "use strict";
+function CookieAuthentication(applicationContext, options) {
 
   options = options || {};
 
@@ -989,7 +928,7 @@ CookieAuthentication = function (applicationContext, options) {
 
   this._collectionName = applicationContext.collectionName("sessions");
   this._collection = null;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1000,7 +939,6 @@ CookieAuthentication = function (applicationContext, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.getTokenFromRequest = function (req) {
-  "use strict";
 
   if (!req.hasOwnProperty("cookies")) {
     return null;
@@ -1018,7 +956,6 @@ CookieAuthentication.prototype.getTokenFromRequest = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.setCookie = function (res, value) {
-  "use strict";
   var name = this._options.name,
     cookie,
     i,
@@ -1059,7 +996,6 @@ CookieAuthentication.prototype.setCookie = function (res, value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.getAuthenticationData = function (req) {
-  "use strict";
 
   var token = this.getTokenFromRequest(req);
 
@@ -1077,7 +1013,6 @@ CookieAuthentication.prototype.getAuthenticationData = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.beginSession = function (req, res, token) {
-  "use strict";
   this.setCookie(res, token);
 };
 
@@ -1086,7 +1021,6 @@ CookieAuthentication.prototype.beginSession = function (req, res, token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.endSession = function (req, res) {
-  "use strict";
   this.setCookie(res, "");
 };
 
@@ -1095,7 +1029,6 @@ CookieAuthentication.prototype.endSession = function (req, res) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.updateSession = function (req, res, session) {
-  "use strict";
   // update the cookie (expire date)
   this.setCookie(res, session._key);
 };
@@ -1105,7 +1038,6 @@ CookieAuthentication.prototype.updateSession = function (req, res, session) {
 ////////////////////////////////////////////////////////////////////////////////
 
 CookieAuthentication.prototype.isResponsible = function () {
-  "use strict";
   return true;
 };
 
@@ -1121,8 +1053,7 @@ CookieAuthentication.prototype.isResponsible = function () {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-Authentication = function (applicationContext, sessions, authenticators) {
-  "use strict";
+function Authentication(applicationContext, sessions, authenticators) {
 
   this._applicationContext = applicationContext;
   this._sessions = sessions;
@@ -1132,7 +1063,7 @@ Authentication = function (applicationContext, sessions, authenticators) {
   }
 
   this._authenticators = authenticators;
-};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -1143,7 +1074,6 @@ Authentication = function (applicationContext, sessions, authenticators) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.authenticate = function (req) {
-  "use strict";
   var i,
     n = this._authenticators.length,
     authenticator,
@@ -1174,7 +1104,6 @@ Authentication.prototype.authenticate = function (req) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.beginSession = function (req, res, identifier, data) {
-  "use strict";
   var session = this._sessions.generate(identifier, data),
     i,
     n = this._authenticators.length,
@@ -1197,7 +1126,6 @@ Authentication.prototype.beginSession = function (req, res, identifier, data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.endSession = function (req, res, token) {
-  "use strict";
   var i,
     n = this._authenticators.length,
     authenticator;
@@ -1219,7 +1147,6 @@ Authentication.prototype.endSession = function (req, res, token) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Authentication.prototype.updateSession = function (req, res, session) {
-  "use strict";
   var i,
     n = this._authenticators.length,
     authenticator;
@@ -1246,19 +1173,17 @@ Authentication.prototype.updateSession = function (req, res, session) {
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-UserAlreadyExistsError = function (message) {
-  "use strict";
+function UserAlreadyExistsError(message) {
   this.message = message || "User already exists";
   this.statusCode = 400;
-};
+}
 
 UserAlreadyExistsError.prototype = new Error();
 
-UnauthorizedError = function (message) {
-  "use strict";
+function UnauthorizedError(message) {
   this.message = message || "Unauthorized";
   this.statusCode = 401;
-};
+}
 
 UnauthorizedError.prototype = new Error();
 

@@ -65,7 +65,7 @@ var logger = {
 /// @brief CURRENT_VERSION
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.CURRENT_VERSION = (function() {
+exports.CURRENT_VERSION = (function () {
   var v = db._version().replace(/-[a-zA-Z0-9_\-]*$/g, '').split('.');
 
   var major = parseFloat(v[0], 10) || 0;

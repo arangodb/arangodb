@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Sessions
@@ -39,7 +40,6 @@ var Foxx = require('org/arangodb/foxx'),
 ////////////////////////////////////////////////////////////////////////////////
 
 function decorateController(auth, controller) {
-  'use strict';
   var cfg = auth.configuration;
 
   controller.before('/*', function (req) {
@@ -98,7 +98,6 @@ function decorateController(auth, controller) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createDestroySessionHandler(auth, opts) {
-  'use strict';
   if (!opts) {
     opts = {};
   }
@@ -153,7 +152,6 @@ var sessionTypes = ['cookie', 'header'];
 ////////////////////////////////////////////////////////////////////////////////
 
 function Sessions(opts) {
-  'use strict';
   if (!opts) {
     opts = {};
   }
@@ -237,7 +235,6 @@ function Sessions(opts) {
 ////////////////////////////////////////////////////////////////////////////////
 
 Sessions.prototype.getSessionStorage = function () {
-  'use strict';
   return Foxx.requireApp(this.configuration.sessionStorageApp).sessionStorage;
 };
 
@@ -252,7 +249,6 @@ Sessions.prototype.getSessionStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function UnauthorizedError(message) {
-  'use strict';
   this.message = message;
   this.statusCode = 401;
 }

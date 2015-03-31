@@ -104,7 +104,7 @@ GraphAPI = {
       data);
   },
 
-  postVertex: function(graphKey, data) {
+  postVertex: function (graphKey, data) {
     return GraphAPI.send("POST",
       graphKey,
       "/vertex",
@@ -143,7 +143,7 @@ GraphAPI = {
       data);
   },
 
-  postEdge: function(graphKey, data) {
+  postEdge: function (graphKey, data) {
     return GraphAPI.send("POST",
       graphKey,
       "/edge",

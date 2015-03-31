@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The Foxx Framework
@@ -43,7 +44,6 @@ exports.queues = queues;
 exports.createQuery = createQuery;
 exports.toJSONSchema = toJSONSchema;
 exports.requireApp = function (path) {
-  'use strict';
   return manager.requireApp(arangodb.normalizeURL('/' + path));
 };
 

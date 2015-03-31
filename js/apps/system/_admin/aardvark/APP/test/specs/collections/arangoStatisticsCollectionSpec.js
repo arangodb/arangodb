@@ -1,7 +1,6 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global describe, beforeEach, window, afterEach, it, spyOn, expect,
- require, jasmine,  exports,  */
+ require, jasmine,  exports, */
 (function () {
 
     "use strict";

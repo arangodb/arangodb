@@ -3808,7 +3808,7 @@ klass:              do {
 
 
 
-    function do_function(func, name) {
+    function do_function (func, name) {
         var old_funct      = funct,
             old_option     = option,
             old_scope      = scope;
@@ -3886,7 +3886,7 @@ klass:              do {
                     stop('missing_property');
                 }
                 get.string = '';
-                do_function(get);
+                do_function (get);
                 if (funct['(loopage)']) {
                     warn('function_loop', get);
                 }
@@ -3905,7 +3905,7 @@ klass:              do {
                 if (i !== j) {
                     stop('expected_a_b', token, i, j || next_token.string);
                 }
-                do_function(set);
+                do_function (set);
                 if (set.block.length === 0) {
                     warn('missing_a', token, 'throw');
                 }
@@ -4039,7 +4039,7 @@ klass:              do {
         add_label(name, 'unction');
         no_space();
         this.arity = 'statement';
-        do_function(this, id);
+        do_function (this, id);
         if (next_token.id === '(' && next_token.line === token.line) {
             stop('function_statement');
         }
@@ -4056,7 +4056,7 @@ klass:              do {
         } else {
             id = '';
         }
-        do_function(this, id);
+        do_function (this, id);
         if (funct['(loopage)']) {
             warn('function_loop');
         }

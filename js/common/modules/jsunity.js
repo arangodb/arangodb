@@ -181,7 +181,7 @@ function RunTest (path) {
 
   content = fs.read(path);
 
-  content = "(function(){require('jsunity').jsUnity.attachAssertions();" + content + "\n})";
+  content = "(function (){require('jsunity').jsUnity.attachAssertions();" + content + "\n})";
   f = internal.executeScript(content, undefined, path);
   
   if (f === undefined) {

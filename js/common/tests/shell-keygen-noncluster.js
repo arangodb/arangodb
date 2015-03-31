@@ -1,4 +1,4 @@
-/*jshint strict: true, maxlen: 5000 */
+/*jshint globalstrict: false, maxlen: 5000 */
 /*global require, assertEqual, fail */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the non-traditional key generators

@@ -4,6 +4,7 @@
   "eqeqeq": true,
   "forin": true,
   "freeze": true,
+  "globalstrict": true,
   "immed": true,
   "laxbreak": true,
   "newcap": true,

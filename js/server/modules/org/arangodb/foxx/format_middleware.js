@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Format Middleware
@@ -27,45 +28,46 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var FormatMiddleware;
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief FormatMiddleware
 ////////////////////////////////////////////////////////////////////////////////
 
-FormatMiddleware = function (allowedFormats, defaultFormat) {
-  "use strict";
-  var stringRepresentation, middleware = function (request, response, options, next) {
-    var parsed, determinePathAndFormat;
+function FormatMiddleware(allowedFormats, defaultFormat) {
+  var stringRepresentation;
 
-    determinePathAndFormat = function (path, headers) {
+  function middleware(request, response, options, next) {
+    var parsed;
+
+    function determinePathAndFormat(path, headers) {
       var mimeTypes = require("org/arangodb/mimetypes").mimeTypes,
         extensions = require("org/arangodb/mimetypes").extensions,
-        urlFormatToMime = function (urlFormat) {
-          var mimeType;
-
-          if (mimeTypes[urlFormat]) {
-            mimeType = mimeTypes[urlFormat][0];
-          } else {
-            mimeType = undefined;
-          }
-
-          return mimeType;
-        },
-        mimeToUrlFormat = function (mimeType) {
-          var urlFormat;
-
-          if (extensions[mimeType]) {
-            urlFormat = extensions[mimeType][0];
-          } else {
-            urlFormat = undefined;
-          }
-
-          return urlFormat;
-        },
         parsed = {
           contentType: headers.accept
         };
+
+      function urlFormatToMime(urlFormat) {
+        var mimeType;
+
+        if (mimeTypes[urlFormat]) {
+          mimeType = mimeTypes[urlFormat][0];
+        } else {
+          mimeType = undefined;
+        }
+
+        return mimeType;
+      }
+
+      function mimeToUrlFormat(mimeType) {
+        var urlFormat;
+
+        if (extensions[mimeType]) {
+          urlFormat = extensions[mimeType][0];
+        } else {
+          urlFormat = undefined;
+        }
+
+        return urlFormat;
+      }
 
       path = path.split('.');
 
@@ -94,7 +96,7 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
       }
 
       return parsed;
-    };
+    }
 
     try {
       parsed = determinePathAndFormat(request.path, request.headers);
@@ -106,14 +108,14 @@ FormatMiddleware = function (allowedFormats, defaultFormat) {
       response.responseCode = 406;
       response.body = e;
     }
-  };
+  }
 
   stringRepresentation = String(middleware)
     .replace("allowedFormats", JSON.stringify(allowedFormats))
     .replace("defaultFormat", JSON.stringify(defaultFormat));
 
   return middleware;
-};
+}
 
 exports.FormatMiddleware = FormatMiddleware;
 

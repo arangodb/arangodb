@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertNotEqual  */
+/*jshint globalstrict: false */
+/*global require, fail, assertEqual, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the skip-list index

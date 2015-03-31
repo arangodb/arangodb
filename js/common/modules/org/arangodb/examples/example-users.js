@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief example-users
@@ -1030,7 +1031,6 @@ var regions = {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.createUsers = function (name) {
-  'use strict';
 
   var i;
 
@@ -1055,7 +1055,6 @@ exports.createUsers = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.createRegions = function (name) {
-  'use strict';
 
   var i;
 
@@ -1082,7 +1081,6 @@ exports.createRegions = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.createLocations = function (name, usersCollection, limit) {
-  'use strict';
 
   var i;
 

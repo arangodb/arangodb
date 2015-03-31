@@ -579,10 +579,10 @@ ArangoCollection.prototype.closedRange = function (name, left, right) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoCollection.prototype.geo = function(loc, order) {
+ArangoCollection.prototype.geo = function (loc, order) {
   var idx;
 
-  var locateGeoIndex1 = function(collection, loc, order) {
+  function locateGeoIndex1(collection, loc, order) {
     var inds = collection.getIndexes();
     var i;
 
@@ -597,9 +597,9 @@ ArangoCollection.prototype.geo = function(loc, order) {
     }
 
     return null;
-  };
+  }
 
-  var locateGeoIndex2 = function(collection, lat, lon) {
+  function locateGeoIndex2(collection, lat, lon) {
     var inds = collection.getIndexes();
     var i;
 
@@ -614,7 +614,7 @@ ArangoCollection.prototype.geo = function(loc, order) {
     }
 
     return null;
-  };
+  }
 
   if (order === undefined) {
     if (typeof loc === "object") {
@@ -809,7 +809,7 @@ ArangoCollection.prototype.fulltext = function (attribute, query, iid) {
 /// @EXAMPLES
 ///
 /// ```
-/// arango> db.example.getIndexes().map(function(x) { return x.id; });
+/// arango> db.example.getIndexes().map(function (x) { return x.id; });
 /// ["93013/0"]
 /// arango> db.example.index("93013/0");
 /// { "id" : "93013/0", "type" : "primary", "fields" : ["_id"] }

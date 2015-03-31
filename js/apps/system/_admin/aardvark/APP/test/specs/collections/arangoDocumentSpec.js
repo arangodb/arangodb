@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*jshint unused: false */
+/*jshint browser: true, unused: false */
 /*global XMLHttpRequestException, describe, beforeEach, afterEach, it, spyOn,
  arangoHelper, expect*/
 /*global $*/
