@@ -245,6 +245,7 @@ ERROR_QUERY_IN_USE,1592,"query with this ID is in use", "Will be raised when an 
 ################################################################################
 
 ERROR_CURSOR_NOT_FOUND,1600,"cursor not found","Will be raised when a cursor is requested via its id but a cursor with that id cannot be found."
+ERROR_CURSOR_BUSY,1601,"cursor is busy","Will be raised when a cursor is requested via its id but a concurrent request is still using the cursor."
 
 ################################################################################
 ## ArangoDB transaction errors

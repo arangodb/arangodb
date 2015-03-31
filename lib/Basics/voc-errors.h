@@ -458,6 +458,9 @@
 /// - 1600: @LIT{cursor not found}
 ///   Will be raised when a cursor is requested via its id but a cursor with
 ///   that id cannot be found.
+/// - 1601: @LIT{cursor is busy}
+///   Will be raised when a cursor is requested via its id but a concurrent
+///   request is still using the cursor.
 /// - 1650: @LIT{internal transaction error}
 ///   Will be raised when a wrong usage of transactions is detected. this is an
 ///   internal error and indicates a bug in ArangoDB.
@@ -2508,6 +2511,17 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_CURSOR_NOT_FOUND                                        (1600)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 1601: ERROR_CURSOR_BUSY
+///
+/// cursor is busy
+///
+/// Will be raised when a cursor is requested via its id but a concurrent
+/// request is still using the cursor.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_CURSOR_BUSY                                             (1601)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 1650: ERROR_TRANSACTION_INTERNAL

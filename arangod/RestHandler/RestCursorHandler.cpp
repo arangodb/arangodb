@@ -1,14 +1,12 @@
-/*jshint strict: false */
-/*global require, CURSOR, DELETE_CURSOR, AQL_EXECUTE */
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query results cursor actions
+/// @brief cursor request handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
 /// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -24,23 +22,219 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Achim Brandt
 /// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var arangodb = require("org/arangodb");
-var actions = require("org/arangodb/actions");
-var internal = require("internal");
+#include "RestCursorHandler.h"
+#include "Aql/Query.h"
+#include "Aql/QueryRegistry.h"
+#include "Basics/Exceptions.h"
+#include "Basics/json.h"
+#include "Basics/MutexLocker.h"
+#include "Basics/ScopeGuard.h"
+#include "Utils/Cursor.h"
+#include "Utils/CursorRepository.h"
+#include "V8Server/ApplicationV8.h"
+
+using namespace triagens::arango;
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  global variables
+// --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor
+////////////////////////////////////////////////////////////////////////////////
+
+RestCursorHandler::RestCursorHandler (HttpRequest* request,
+                                      std::pair<triagens::arango::ApplicationV8*, triagens::aql::QueryRegistry*>* pair) 
+  : RestVocbaseBaseHandler(request),
+    _applicationV8(pair->first),
+    _queryRegistry(pair->second),
+    _queryLock(),
+    _query(nullptr),
+    _queryKilled(false) {
+
+}
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 private functions
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler::status_t RestCursorHandler::execute () {
+  // extract the sub-request type
+  HttpRequest::HttpRequestType type = _request->requestType();
+
+  if (type == HttpRequest::HTTP_REQUEST_POST) {
+    createCursor();
+    return status_t(HANDLER_DONE);
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+    modifyCursor();
+    return status_t(HANDLER_DONE);
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+    deleteCursor();
+    return status_t(HANDLER_DONE);
+  }
+   
+  generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED); 
+  return status_t(HANDLER_DONE);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestCursorHandler::cancel (bool running) {
+  if (running) {
+    cancelQuery();
+    return true;
+  }
+
+  generateCanceled();
+  return true;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the currently running query
+////////////////////////////////////////////////////////////////////////////////
+
+void RestCursorHandler::registerQuery (triagens::aql::Query* query) {
+  MUTEX_LOCKER(_queryLock);
+
+  TRI_ASSERT(_query == nullptr);
+  _query = query;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unregister the currently running query
+////////////////////////////////////////////////////////////////////////////////
+
+void RestCursorHandler::unregisterQuery () {
+  MUTEX_LOCKER(_queryLock);
+
+  _query = nullptr;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel the currently running query
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestCursorHandler::cancelQuery () {
+  MUTEX_LOCKER(_queryLock);
+
+  if (_query != nullptr) {
+    _query->killed(true);
+    _queryKilled = true;
+    return true;
+  }
+
+  return false;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was cancelled
+////////////////////////////////////////////////////////////////////////////////
+
+bool RestCursorHandler::wasCancelled () {
+  MUTEX_LOCKER(_queryLock);
+  return _queryKilled;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build options for the query as JSON
+////////////////////////////////////////////////////////////////////////////////
+
+triagens::basics::Json RestCursorHandler::buildOptions (TRI_json_t const* json) {
+  auto getAttribute = [&json] (char const* name) {
+    return TRI_LookupObjectJson(json, name);
+  };
+
+  triagens::basics::Json options(triagens::basics::Json::Object);
+
+  auto attribute = getAttribute("count");
+  options.set("count", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
+
+  attribute = getAttribute("batchSize");
+  options.set("batchSize", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 1000.0));
+
+  if (TRI_IsNumberJson(attribute) && static_cast<size_t>(attribute->_value._number) == 0) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
+  }
+
+  attribute = getAttribute("options");
+  if (TRI_IsObjectJson(attribute)) {
+    for (size_t i = 0; i < attribute->_value._objects._length; i += 2) {
+      auto key   = static_cast<TRI_json_t const*>(TRI_AtVector(&attribute->_value._objects, i));
+      auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&attribute->_value._objects, i + 1));
+
+      if (! TRI_IsStringJson(key) || value == nullptr) {
+        continue;
+      }
+
+      auto keyName = key->_value._string.data;
+
+      if (strcmp(keyName, "count") != 0 && 
+          strcmp(keyName, "batchSize") != 0) { 
+        options.set(keyName, triagens::basics::Json(
+          TRI_UNKNOWN_MEM_ZONE, 
+          TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value),
+          triagens::basics::Json::NOFREE
+        ));
+      }
+    }
+  }
+
+  if (! options.has("ttl")) {
+    attribute = getAttribute("ttl");
+    options.set("ttl", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 30.0));
+  }
+
+  return options;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the "extra" attribute values from the result.
+/// note that the "extra" object will take ownership from the result for 
+/// several values
+////////////////////////////////////////////////////////////////////////////////
+      
+triagens::basics::Json RestCursorHandler::buildExtra (triagens::aql::QueryResult& queryResult) {
+  // build "extra" attribute
+  triagens::basics::Json extra(triagens::basics::Json::Object); 
+ 
+  if (queryResult.stats != nullptr) {
+    extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, triagens::basics::Json::AUTOFREE));
+    queryResult.stats = nullptr;
+  }
+  if (queryResult.profile != nullptr) {
+    extra.set("profile", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile, triagens::basics::Json::AUTOFREE));
+    queryResult.profile = nullptr;
+  }
+  if (queryResult.warnings == nullptr) {
+    extra.set("warnings", triagens::basics::Json(triagens::basics::Json::Array));
+  }
+  else {
+    extra.set("warnings", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings, triagens::basics::Json::AUTOFREE));
+    queryResult.warnings = nullptr;
+  }
+
+  return extra;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_post_api_cursor
@@ -360,56 +554,154 @@ var internal = require("internal");
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function post_api_cursor(req, res) {
-  if (req.suffix.length !== 0) {
-    actions.resultNotFound(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
+void RestCursorHandler::createCursor () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 0) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting POST /_api/cursor");
     return;
   }
 
-  var json = actions.getJsonBody(req, res);
+  try { 
+    std::unique_ptr<TRI_json_t> json(parseJsonBody());
 
-  if (json === undefined) {
-    actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
-    return;
-  }
+    if (json.get() == nullptr) {
+      return;
+    }
 
-  var cursor;
-  var options = { 
-    count: json.count || false,
-    batchSize: json.batchSize || 1000,
-    ttl: json.ttl,
-  };
+    if (! TRI_IsObjectJson(json.get())) {
+      generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+      return;
+    }
 
-  if (json.options !== null && typeof json.options === 'object') {
-    for (var i in json.options) {
-      if (json.options.hasOwnProperty(i)) {
-        options[i] = json.options[i];
+    auto const* queryString = TRI_LookupObjectJson(json.get(), "query");
+
+    if (! TRI_IsStringJson(queryString)) {
+      generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
+      return;
+    }
+
+    auto const* bindVars = TRI_LookupObjectJson(json.get(), "bindVars");
+
+    if (bindVars != nullptr) {
+      if (! TRI_IsObjectJson(bindVars) && 
+          ! TRI_IsNullJson(bindVars)) {
+        generateError(HttpResponse::BAD, TRI_ERROR_TYPE_ERROR, "expecting object for <bindVars>");
+        return;
       }
     }
-  }
+    
+    auto options = buildOptions(json.get());
+  
+    triagens::aql::Query query(_applicationV8, 
+                               false, 
+                               _vocbase, 
+                               queryString->_value._string.data,
+                               static_cast<size_t>(queryString->_value._string.length - 1),
+                               (bindVars != nullptr ? TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, bindVars) : nullptr),
+                               TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, options.json()), 
+                               triagens::aql::PART_MAIN);
+ 
+    registerQuery(&query); 
+    auto queryResult = query.execute(_queryRegistry);
+    unregisterQuery(); 
 
-  if (json.query !== undefined) {
-    cursor = AQL_EXECUTE(json.query, json.bindVars, options);
-  }
-  else {
-    actions.resultBad(req, res, arangodb.ERROR_QUERY_EMPTY);
-    return;
-  }
+    if (queryResult.code != TRI_ERROR_NO_ERROR) {
+      if (queryResult.code == TRI_ERROR_REQUEST_CANCELED ||
+          (queryResult.code == TRI_ERROR_QUERY_KILLED && wasCancelled())) {
+        THROW_ARANGO_EXCEPTION(TRI_ERROR_REQUEST_CANCELED);
+      }
 
-  // error occurred
-  if (cursor instanceof Error) {
-    actions.resultException(req, res, cursor, undefined, false);
-    return;
-  }
+      THROW_ARANGO_EXCEPTION_MESSAGE(queryResult.code, queryResult.details);
+    }
 
-  // this might dispose or persist the cursor
-  actions.resultCursor(req,
-                       res,
-                       cursor,
-                       actions.HTTP_CREATED,
-                       {
-                         countRequested: json.count ? true : false
-                       });
+    TRI_ASSERT(TRI_IsArrayJson(queryResult.json));
+   
+    { 
+      _response = createResponse(HttpResponse::CREATED);
+      _response->setContentType("application/json; charset=utf-8");
+
+      // build "extra" attribute
+      triagens::basics::Json extra(triagens::basics::Json::Object); 
+ 
+      if (queryResult.stats != nullptr) {
+        extra.set("stats", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.stats, triagens::basics::Json::AUTOFREE));
+        queryResult.stats = nullptr;
+      }
+      if (queryResult.profile != nullptr) {
+        extra.set("profile", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.profile, triagens::basics::Json::AUTOFREE));
+        queryResult.profile = nullptr;
+      }
+      if (queryResult.warnings == nullptr) {
+        extra.set("warnings", triagens::basics::Json(triagens::basics::Json::Array));
+      }
+      else {
+        extra.set("warnings", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.warnings, triagens::basics::Json::AUTOFREE));
+        queryResult.warnings = nullptr;
+      }
+
+
+      size_t batchSize = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "batchSize", 1000);
+      size_t const n = TRI_LengthArrayJson(queryResult.json);
+
+      if (n <= batchSize) {
+        // result is smaller than batchSize and will be returned directly. no need to create a cursor
+
+        triagens::basics::Json result(triagens::basics::Json::Object);
+        result.set("result", triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, queryResult.json, triagens::basics::Json::AUTOFREE));
+        queryResult.json = nullptr;
+
+        result.set("hasMore", triagens::basics::Json(false));
+
+        if (triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false)) {
+          result.set("count", triagens::basics::Json(static_cast<double>(n)));
+        }
+      
+        result.set("extra", extra);
+        result.set("error", triagens::basics::Json(false));
+        result.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+
+        result.dump(_response->body());
+        return;
+      }
+        
+      // result is bigger than batchSize, and a cursor will be created
+      auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+      TRI_ASSERT(cursors != nullptr);
+
+      double ttl = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "ttl", 30);
+      bool count = triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false);
+      
+      // steal the query JSON, cursor will take over the ownership
+      auto j = queryResult.json;
+      triagens::arango::JsonCursor* cursor = cursors->createFromJson(j, batchSize, extra.steal(), ttl, count); 
+      queryResult.json = nullptr;
+
+      try {
+        _response->body().appendChar('{');
+        cursor->dump(_response->body());
+        _response->body().appendText(",\"error\":false,\"code\":");
+        _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+        _response->body().appendChar('}');
+
+        cursors->release(cursor);
+      }
+      catch (...) {
+        cursors->release(cursor);
+        throw;
+      }
+    }
+  }  
+  catch (triagens::basics::Exception const& ex) {
+    unregisterQuery(); 
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (...) {
+    unregisterQuery(); 
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -508,28 +800,57 @@ function post_api_cursor(req, res) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function put_api_cursor (req, res) {
-  if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+void RestCursorHandler::modifyCursor () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting PUT /_api/cursor/<cursor-id>");
     return;
   }
+  
+  std::string const& id = suffix[0];
 
-  var cursorId = decodeURIComponent(req.suffix[0]);
-  var cursor = CURSOR(cursorId);
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+  TRI_ASSERT(cursors != nullptr);
 
-  if (! (cursor instanceof arangodb.ArangoCursor)) {
-    actions.resultBad(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
+  auto cursorId = static_cast<triagens::arango::CursorId>(triagens::basics::StringUtils::uint64(id));
+  bool busy;
+  auto cursor = cursors->find(cursorId, busy);
+
+  if (cursor == nullptr) {
+    if (busy) {
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
+    }
+    else {
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
+    }
     return;
   }
 
   try {
-    // note: this might dispose or persist the cursor
-    actions.resultCursor(req, res, cursor, actions.HTTP_OK);
-  }
-  catch (e) {
-  }
+    _response = createResponse(HttpResponse::OK);
+    _response->setContentType("application/json; charset=utf-8");
 
-  cursor = null;
+    _response->body().appendChar('{');
+    cursor->dump(_response->body());
+    _response->body().appendText(",\"error\":false,\"code\":");
+    _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+    _response->body().appendChar('}');
+
+    cursors->release(cursor);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    cursors->release(cursor);
+
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (...) {
+    cursors->release(cursor);
+
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -594,59 +915,39 @@ function put_api_cursor (req, res) {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-function delete_api_cursor(req, res) {
-  if (req.suffix.length !== 1) {
-    actions.resultBad(req, res, arangodb.ERROR_HTTP_BAD_PARAMETER);
+void RestCursorHandler::deleteCursor () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting DELETE /_api/cursor/<cursor-id>");
+    return;
+  }
+  
+  std::string const& id = suffix[0];
+
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+  TRI_ASSERT(cursors != nullptr);
+ 
+  auto cursorId = static_cast<triagens::arango::CursorId>(triagens::basics::StringUtils::uint64(id));
+  bool found = cursors->remove(cursorId);
+
+  if (! found) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
     return;
   }
 
-  var cursorId = decodeURIComponent(req.suffix[0]);
-  if (! DELETE_CURSOR(cursorId)) {
-    actions.resultNotFound(req, res, arangodb.ERROR_CURSOR_NOT_FOUND);
-    return;
-  }
+  _response = createResponse(HttpResponse::ACCEPTED);
+  _response->setContentType("application/json; charset=utf-8");
+   
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  json.set("id", triagens::basics::Json(id)); // id as a string! 
+  json.set("error", triagens::basics::Json(false)); 
+  json.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
 
-  actions.resultOk(req, res, actions.HTTP_ACCEPTED, { id : cursorId });
-
-  // we want the garbage collection to clean unused cursors immediately
-  internal.wait(0.0);
+  json.dump(_response->body());
 }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       initialiser
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief cursor actions gateway
-////////////////////////////////////////////////////////////////////////////////
-
-actions.defineHttp({
-  url : "_api/cursor",
-
-  callback : function (req, res) {
-    try {
-      switch (req.requestType) {
-        case actions.POST:
-          post_api_cursor(req, res);
-          break;
-
-        case actions.PUT:
-          put_api_cursor(req, res);
-          break;
-
-        case actions.DELETE:
-          delete_api_cursor(req, res);
-          break;
-
-        default:
-          actions.resultUnsupported(req, res);
-      }
-    }
-    catch (err) {
-      actions.resultException(req, res, err, undefined, false);
-    }
-  }
-});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

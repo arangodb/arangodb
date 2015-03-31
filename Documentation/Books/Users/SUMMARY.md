@@ -164,6 +164,7 @@
   * [Edges](HttpEdge/README.md)
     * [Address and ETag](HttpEdge/AddressAndEtag.md)
     * [Working with Edges](HttpEdge/WorkingWithEdges.md)
+  * [Exporting data](HttpExport/README.md)
   * [AQL Query Cursors](HttpAqlQueryCursor/README.md)
     * [Query Results](HttpAqlQueryCursor/QueryResults.md)
     * [Accessing Cursors](HttpAqlQueryCursor/AccessingCursors.md)

@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief cursor request handler
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,38 +22,38 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_CURSOR_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_CURSOR_HANDLER_H 1
 
-#include "Rest/Handler.h"
-
-#include "Rest/HttpResponse.h"
+#include "Basics/Common.h"
+#include "Basics/Mutex.h"
+#include "Aql/QueryResult.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                           class RestCursorHandler
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace rest {
-    class HttpHandlerFactory;
-    class HttpRequest;
+  namespace aql {
+    class Query;
+    class QueryRegistry;
+  }
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpHandler
-// -----------------------------------------------------------------------------
+  namespace arango {
+    class ApplicationV8;
+    class Cursor;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief cursor request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpHandler : public Handler {
-      HttpHandler (HttpHandler const&) = delete;
-      HttpHandler& operator= (HttpHandler const&) = delete;
+    class RestCursorHandler : public RestVocbaseBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -62,68 +62,11 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
-///
-/// Note that the handler owns the request and the response. It is its
-/// responsibility to destroy them both. See also the two steal methods.
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        HttpHandler (HttpRequest*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
-////////////////////////////////////////////////////////////////////////////////
-
-        ~HttpHandler ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a response
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void addResponse (HttpHandler*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the server object
-////////////////////////////////////////////////////////////////////////////////
-
-        void setServer (HttpHandlerFactory* server);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the request
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest const* getRequest () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the pointer to the request
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest* stealRequest ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* getResponse () const;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* stealResponse ();
+        RestCursorHandler (rest::HttpRequest*,
+                           std::pair<triagens::arango::ApplicationV8*, triagens::aql::QueryRegistry*>*);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
@@ -135,50 +78,117 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        Job* createJob (HttpServer*, bool isDetached) override;
+        status_t execute () override;
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool cancel (bool running) override;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-      protected:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure the handler has only one response, otherwise we'd have a leak
+/// @brief register the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removePreviousResponse ();
+        void registerQuery (triagens::aql::Query*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new HTTP response
+/// @brief unregister the currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* createResponse (HttpResponse::HttpResponseCode);
+        void unregisterQuery ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief cancel the currently running query
+////////////////////////////////////////////////////////////////////////////////
+
+        bool cancelQuery ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was cancelled
+////////////////////////////////////////////////////////////////////////////////
+
+        bool wasCancelled ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build options for the query as JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json buildOptions (TRI_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief builds the "extra" attribute values from the result.
+/// note that the "extra" object will take ownership from the result for 
+/// several values
+////////////////////////////////////////////////////////////////////////////////
+      
+        triagens::basics::Json buildExtra (triagens::aql::QueryResult&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief append the contents of the cursor into the response body
+////////////////////////////////////////////////////////////////////////////////
+
+        void dumpCursor (triagens::arango::Cursor*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create a cursor and return the first results
+////////////////////////////////////////////////////////////////////////////////
+
+        void createCursor ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the next results from an existing cursor
+////////////////////////////////////////////////////////////////////////////////
+        
+        void modifyCursor ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispose an existing cursor
+////////////////////////////////////////////////////////////////////////////////
+        
+        void deleteCursor ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-      protected:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the request
+/// @brief _applicationV8
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest* _request;
+        triagens::arango::ApplicationV8* _applicationV8;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the response
+/// @brief our query registry
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* _response;
+        triagens::aql::QueryRegistry* _queryRegistry;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the server
+/// @brief lock for currently running query
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpHandlerFactory* _server;
+        triagens::basics::Mutex _queryLock;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief currently running query
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::aql::Query* _query;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the query was killed
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _queryKilled;
     };
   }
 }

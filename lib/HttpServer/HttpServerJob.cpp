@@ -171,7 +171,7 @@ bool HttpServerJob::cancel (bool running) {
 void HttpServerJob::cleanup () {
   bool abandon = _abandon.load();
 
-  if (! abandon && _server != 0) {
+  if (! abandon && _server != nullptr) {
     _server->jobDone(this);
   }
 
