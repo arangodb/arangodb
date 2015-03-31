@@ -1565,6 +1565,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
     TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
   }
 
+  // mark all cursors as deleted so underlying collections can be freed soon
+  if (vocbase->_cursorRepository != nullptr) {
+    static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository)->garbageCollect(true);
+  }
+
   TRI_vector_pointer_t collections;
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
 

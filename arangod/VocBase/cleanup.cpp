@@ -235,7 +235,12 @@ static void CleanupCursors (TRI_vocbase_t* vocbase,
   auto cursors = static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
   TRI_ASSERT(cursors != nullptr);
 
-  cursors->garbageCollect(force);
+  try {
+    cursors->garbageCollect(force);
+  }
+  catch (...) {
+    LOG_WARNING("caught exception during cursor cleanup");
+  }
 }
 
 // -----------------------------------------------------------------------------

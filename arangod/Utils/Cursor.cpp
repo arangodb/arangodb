@@ -184,6 +184,11 @@ void JsonCursor::dump (triagens::basics::StringBuffer& buffer) {
     buffer.appendText(",\"extra\":");
     TRI_StringifyJson(buffer.stringBuffer(), extraJson);
   }
+    
+  if (! hasNext()) {
+    // mark the cursor as deleted
+    this->deleted();
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -216,15 +221,17 @@ ExportCursor::ExportCursor (TRI_vocbase_t* vocbase,
                             triagens::arango::CollectionExport* ex,
                             size_t batchSize,
                             double ttl, 
-                            bool hasCount) 
+                            bool hasCount)
   : Cursor(id, batchSize, nullptr, ttl, hasCount),
     _vocbase(vocbase),
-    _ex(ex) {
+    _ex(ex),
+    _size(ex->_documents->size()) {
 
   TRI_UseVocBase(vocbase);
 }
         
 ExportCursor::~ExportCursor () {
+  delete _ex;
   TRI_ReleaseVocBase(_vocbase);
 }
 
@@ -237,7 +244,11 @@ ExportCursor::~ExportCursor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool ExportCursor::hasNext () {
-  return (_position < _ex->_documents->size());
+  if (_ex == nullptr) {
+    return false;
+  }
+
+  return (_position < _size);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -245,6 +256,7 @@ bool ExportCursor::hasNext () {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_json_t* ExportCursor::next () {
+  // should not be called directly
   return nullptr;
 }
 
@@ -253,7 +265,7 @@ TRI_json_t* ExportCursor::next () {
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t ExportCursor::count () const {
-  return _ex->_documents->size();
+  return _size;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -261,6 +273,8 @@ size_t ExportCursor::count () const {
 ////////////////////////////////////////////////////////////////////////////////
         
 void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
+  TRI_ASSERT(_ex != nullptr);
+
   TRI_shaper_t* shaper = _ex->_document->getShaper();
 
   buffer.appendText("\"result\":[");
@@ -327,6 +341,14 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
   if (hasCount()) {
     buffer.appendText(",\"count\":");
     buffer.appendInteger(static_cast<uint64_t>(count()));
+  }
+
+  if (! hasNext()) {
+    delete _ex;
+    _ex = nullptr;
+
+    // mark the cursor as deleted
+    this->deleted();
   }
 }
 

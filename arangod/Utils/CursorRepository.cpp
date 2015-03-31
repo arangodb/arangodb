@@ -249,7 +249,7 @@ void CursorRepository::release (Cursor* cursor) {
 bool CursorRepository::garbageCollect (bool force) {
   std::vector<triagens::arango::Cursor*> found;
   found.reserve(MaxCollectCount);
- 
+
   auto const now = TRI_microtime();
 
   {
@@ -258,7 +258,8 @@ bool CursorRepository::garbageCollect (bool force) {
     for (auto it = _cursors.begin(); it != _cursors.end(); /* no hoisting */) {
       auto cursor = (*it).second;
 
-      if (! force && cursor->isUsed()) {
+      if (cursor->isUsed()) {
+        // must not destroy used cursors
         ++it;
         continue;
       } 
@@ -281,8 +282,6 @@ bool CursorRepository::garbageCollect (bool force) {
             found.size() >= MaxCollectCount) {
           break;
         }
-
-        continue;
       }
       else {
         ++it;

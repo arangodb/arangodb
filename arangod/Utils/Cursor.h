@@ -230,6 +230,7 @@ namespace triagens {
 
         struct TRI_vocbase_s*               _vocbase;
         triagens::arango::CollectionExport* _ex;
+        size_t const                        _size;
     };
 
   }
