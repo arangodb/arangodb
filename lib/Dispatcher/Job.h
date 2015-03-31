@@ -40,10 +40,6 @@
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace basics {
-    class TriagensError;
-  }
-
   namespace rest {
     class DispatcherThread;
 
@@ -166,13 +162,13 @@ namespace triagens {
 /// Note that initialise can change the job type.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual JobType type () = 0;
+        virtual JobType type () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name to use
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::string const& queue ();
+        virtual std::string const& queue () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the thread which currently dealing with the job
@@ -220,13 +216,25 @@ namespace triagens {
 /// @brief name of the job
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string& _name;
+        std::string const _name;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief job id (only used for detached jobs)
 ////////////////////////////////////////////////////////////////////////////////
 
         uint64_t _id;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                               protected variables
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief name of default queue
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string const QUEUE_NAME;
     };
   }
 }

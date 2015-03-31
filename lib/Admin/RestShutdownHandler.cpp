@@ -38,16 +38,6 @@ using namespace triagens::admin;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                          static private variables
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-const string RestShutdownHandler::QUEUE_NAME = "STANDARD";
-
-// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -70,16 +60,8 @@ RestShutdownHandler::RestShutdownHandler (triagens::rest::HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestShutdownHandler::isDirect () {
+bool RestShutdownHandler::isDirect () const {
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-string const& RestShutdownHandler::queue () const {
-  return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

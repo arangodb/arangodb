@@ -34,7 +34,6 @@
 #include "Basics/MutexLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
-
 #include "Dispatcher/DispatcherQueue.h"
 #include "Dispatcher/DispatcherThread.h"
 #include "Dispatcher/Job.h"
@@ -44,6 +43,12 @@ using namespace triagens::basics;
 using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+  
+std::string const Dispatcher::QUEUE_NAME = "STANDARD";
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
@@ -51,7 +56,7 @@ using namespace triagens::rest;
 /// @brief returns the default dispatcher thread
 ////////////////////////////////////////////////////////////////////////////////
 
-static DispatcherThread* defaultDispatcherThread (DispatcherQueue* queue, void*) {
+static DispatcherThread* DefaultDispatcherThread (DispatcherQueue* queue, void*) {
   return new DispatcherThread(queue);
 }
 
@@ -105,20 +110,18 @@ bool Dispatcher::isRunning () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Dispatcher::addStandardQueue (size_t nrThreads,
-                                   size_t maxSize) {
+                                  size_t maxSize) {
   MUTEX_LOCKER(_accessDispatcher);
 
-  static const string name = "STANDARD";
-
-  if (_queues.find(name) != _queues.end()) {
+  if (_queues.find(QUEUE_NAME) != _queues.end()) {
     return TRI_ERROR_QUEUE_ALREADY_EXISTS;
   }
 
-  _queues[name] = new DispatcherQueue(
+  _queues[QUEUE_NAME] = new DispatcherQueue(
     _scheduler,
     this,
-    name,
-    defaultDispatcherThread,
+    QUEUE_NAME,
+    DefaultDispatcherThread,
     nullptr,
     nrThreads,
     maxSize);
@@ -131,10 +134,10 @@ int Dispatcher::addStandardQueue (size_t nrThreads,
 ////////////////////////////////////////////////////////////////////////////////
 
 int Dispatcher::startNamedQueue (std::string const& name,
-                                  newDispatcherThread_fptr func,
-                                  void* threadData,
-                                  size_t nrThreads,
-                                  size_t maxSize) {
+                                 newDispatcherThread_fptr func,
+                                 void* threadData,
+                                 size_t nrThreads,
+                                 size_t maxSize) {
   MUTEX_LOCKER(_accessDispatcher);
 
   if (_queues.find(name) != _queues.end()) {
@@ -341,7 +344,7 @@ DispatcherQueue* Dispatcher::lookupQueue (const std::string& name) {
   map<std::string, DispatcherQueue*>::const_iterator i = _queues.find(name);
 
   if (i == _queues.end()) {
-    return 0;
+    return nullptr;
   }
   else {
     return i->second;

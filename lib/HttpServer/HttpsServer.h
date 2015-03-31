@@ -30,20 +30,9 @@
 #ifndef ARANGODB_HTTP_SERVER_HTTPS_SERVER_H
 #define ARANGODB_HTTP_SERVER_HTTPS_SERVER_H 1
 
-#include "GeneralServer/GeneralSslServer.h"
-
-#include "Basics/Common.h"
+#include "HttpServer/HttpServer.h"
 
 #include <openssl/ssl.h>
-
-#include "Basics/ssl-helper.h"
-#include "Basics/logging.h"
-
-#include "HttpServer/AsyncJobManager.h"
-#include "HttpServer/GeneralHttpServer.h"
-#include "HttpServer/HttpCommTask.h"
-#include "HttpServer/HttpHandler.h"
-#include "Scheduler/Scheduler.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpsServer
@@ -56,8 +45,7 @@ namespace triagens {
 /// @brief http server
 ////////////////////////////////////////////////////////////////////////////////
 
-    class HttpsServer : public GeneralSslServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >,
-                        public GeneralHttpServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> > {
+    class HttpsServer : public HttpServer {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -69,37 +57,18 @@ namespace triagens {
 /// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpsServer (Scheduler* scheduler,
-                     Dispatcher* dispatcher,
-                     AsyncJobManager* jobManager,
+        HttpsServer (Scheduler*,
+                     Dispatcher*,
+                     HttpHandlerFactory*,
+                     AsyncJobManager*,
                      double keepAliveTimeout,
-                     HttpHandlerFactory* handlerFactory,
-                     SSL_CTX* ctx)
-        : GeneralServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, keepAliveTimeout),
-          GeneralSslServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, keepAliveTimeout, handlerFactory, ctx),
-          GeneralHttpServer<HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >(scheduler, dispatcher, jobManager, keepAliveTimeout, handlerFactory) {
-        }
+                     SSL_CTX*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpsServer () {
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                             static public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return the protocol
-////////////////////////////////////////////////////////////////////////////////
-
-        static const char* protocol () {
-          return "https";
-        }
+        ~HttpsServer ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -108,29 +77,64 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+        void setVerificationMode (int mode);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+        void setVerificationCallback (int (*func)(int, X509_STORE_CTX *));
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                HttpServer methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        void handleConnected (TRI_socket_t socket, ConnectionInfo& info) {
-          GeneralSslServer< HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer> >::handleConnected(socket, info);
-        }
+        const char* protocol () const override;
 
-        virtual Endpoint::EncryptionType getEncryption() const {
-          return  GeneralSslServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::getEncryption();
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-        virtual void shutdownHandlers() {
-          GeneralHttpServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::shutdownHandlers();
-        }
+        Endpoint::EncryptionType encryptionType () const override;
 
-        bool handleRequest(HttpCommTask<HttpsServer> * task, HttpHandlerFactory::GeneralHandler* handler) {
-          return  GeneralHttpServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::handleRequest(task, handler);
-        }
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
 
-        virtual void shutdownHandlerByTask(Task* task) {
-          GeneralHttpServer < HttpsServer, HttpHandlerFactory, HttpCommTask<HttpsServer>>::shutdownHandlerByTask(task);
-        }
+        HttpCommTask* createCommTask (TRI_socket_t, const ConnectionInfo&) override;
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl context
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL_CTX* _ctx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+        int _verificationMode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+        int (*_verificationCallback)(int, X509_STORE_CTX*);
     };
   }
 }

@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief query request handler
+/// @brief general server job
 ///
 /// @file
 ///
@@ -23,135 +23,179 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
+/// @author Achim Brandt
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_HANDLER_REST_QUERY_HANDLER_H
-#define ARANGODB_REST_HANDLER_REST_QUERY_HANDLER_H 1
+#include "HttpServerJob.h"
 
-#include "Basics/Common.h"
+#include "Basics/logging.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpServer.h"
 
-#include "RestHandler/RestVocbaseBaseHandler.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace arango {
-    class ApplicationV8;
+using namespace triagens::rest;
+using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class RestQueryHandler
+// --SECTION--                                               class HttpServerJob
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief document request handler
-////////////////////////////////////////////////////////////////////////////////
-
-    class RestQueryHandler : public RestVocbaseBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructor
+/// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        RestQueryHandler (rest::HttpRequest*, ApplicationV8*);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDirect () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t execute () override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the list of properties
-////////////////////////////////////////////////////////////////////////////////
-
-        bool readQueryProperties ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the list of slow queries
-////////////////////////////////////////////////////////////////////////////////
-
-        bool readQuery (bool slow);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns AQL query tracking
-////////////////////////////////////////////////////////////////////////////////
-
-        bool readQuery ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes the slow log
-////////////////////////////////////////////////////////////////////////////////
-
-        bool deleteQuerySlow ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interrupts a named query
-////////////////////////////////////////////////////////////////////////////////
-
-        bool deleteQuery (const std::string& name);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief interrupts a query
-////////////////////////////////////////////////////////////////////////////////
-
-        bool deleteQuery ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief changes the settings
-////////////////////////////////////////////////////////////////////////////////
-
-        bool replaceProperties ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief parses a query
-////////////////////////////////////////////////////////////////////////////////
-
-        bool parseQuery ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief application V8
-////////////////////////////////////////////////////////////////////////////////
-
-        ApplicationV8* _applicationV8;
-    };
-  }
+HttpServerJob::HttpServerJob (HttpServer* server,
+                              HttpHandler* handler,
+                              bool isDetached)
+  : Job("HttpServerJob"),
+    _server(server),
+    _handler(handler),
+    _shutdown(false),
+    _abandon(false),
+    _isDetached(isDetached) {
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructs a server job
+////////////////////////////////////////////////////////////////////////////////
+
+HttpServerJob::~HttpServerJob () {
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief returns the underlying handler
+////////////////////////////////////////////////////////////////////////////////
+
+HttpHandler* HttpServerJob::getHandler () const {
+  return _handler;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the job is detached
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::isDetached () const {
+  return _isDetached;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abandon job
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::abandon () {
+  _abandon.store(true);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       Job methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Job::JobType HttpServerJob::type () const {
+  return _handler->type();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpServerJob::queue () const {
+  return _handler->queue();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::setDispatcherThread (DispatcherThread* thread) {
+  _handler->setDispatcherThread(thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Job::status_t HttpServerJob::work () {
+  LOG_TRACE("beginning job %p", (void*) this);
+
+  this->RequestStatisticsAgent::transfer(_handler);
+
+  if (_shutdown.load()) {
+    return status_t(Job::JOB_DONE);
+  }
+
+  RequestStatisticsAgentSetRequestStart(_handler);
+  _handler->prepareExecute();
+  Handler::status_t status;
+
+  try {
+    status = _handler->execute();
+  }
+  catch (...) {
+    _handler->finalizeExecute();
+    throw;
+  }
+
+  _handler->finalizeExecute();
+  RequestStatisticsAgentSetRequestEnd(_handler);
+
+  LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
+
+  return status.jobStatus();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::cancel (bool running) {
+  return _handler->cancel(running);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::cleanup () {
+  bool abandon = _abandon.load();
+
+  if (! abandon && _server != nullptr) {
+    _server->jobDone(this);
+  }
+
+  delete this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::beginShutdown () {
+  LOG_TRACE("shutdown job %p", (void*) this);
+
+  _shutdown.store(true);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::handleError (basics::Exception const& ex) {
+  _handler->handleError(ex);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

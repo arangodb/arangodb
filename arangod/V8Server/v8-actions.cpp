@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "v8-actions.h"
+
 #include "Actions/actions.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -38,6 +39,9 @@
 #include "Basics/json.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
+#include "Cluster/ClusterComm.h"
+#include "Cluster/ServerState.h"
+#include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
 #include "V8/v8-buffer.h"
@@ -47,8 +51,6 @@
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/server.h"
 #include "VocBase/vocbase.h"
-#include "Cluster/ClusterComm.h"
-#include "Cluster/ServerState.h"
 
 using namespace std;
 using namespace triagens::basics;
@@ -396,6 +398,9 @@ static v8::Handle<v8::Object> RequestCppToV8 (v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(ProtocolKey);
   req->ForceSet(ProtocolKey, TRI_V8_STD_STRING(protocol));
 
+  // set the task id
+  const string&& taskId = StringUtils::itoa(request->clientTaskId());
+
   // set the connection info
   const ConnectionInfo& info = request->connectionInfo();
 
@@ -413,6 +418,8 @@ static v8::Handle<v8::Object> RequestCppToV8 (v8::Isolate* isolate,
   v8::Handle<v8::Object> clientArray = v8::Object::New(isolate);
   clientArray->ForceSet(AddressKey, TRI_V8_STD_STRING(info.clientAddress));
   clientArray->ForceSet(PortKey, v8::Number::New(isolate, info.clientPort));
+  TRI_GET_GLOBAL_STRING(IdKey);
+  clientArray->ForceSet(IdKey, TRI_V8_STD_STRING(taskId));
   TRI_GET_GLOBAL_STRING(ClientKey);
   req->ForceSet(ClientKey, clientArray);
 
@@ -1366,6 +1373,32 @@ static void JS_ClusterTest (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_V8_RETURN(r);
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sendChunk
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_SendChunk (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("sendChunk(<id>, <value>)");
+  }
+
+  TRI_Utf8ValueNFC idStr(TRI_UNKNOWN_MEM_ZONE, args[0]);
+  uint64_t id = StringUtils::uint64(*idStr);
+
+  TRI_Utf8ValueNFC data(TRI_UNKNOWN_MEM_ZONE, args[1]);
+
+  int res = HttpServer::sendChunk(id, *data);
+
+  if (res != TRI_ERROR_NO_ERROR && res != TRI_ERROR_TASK_NOT_FOUND) {
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot send chunk");
+  }
+
+  TRI_V8_RETURN(res == TRI_ERROR_NO_ERROR ? v8::True(isolate) : v8::False(isolate));
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -1387,13 +1420,14 @@ void TRI_InitV8Actions (v8::Isolate* isolate,
   // create the global functions
   // .............................................................................
 
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_CLUSTER_TEST"), JS_ClusterTest, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_DEFINE_ACTION"), JS_DefineAction);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION"), JS_ExecuteGlobalContextFunction);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_CURRENT_REQUEST"), JS_GetCurrentRequest);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GET_CURRENT_RESPONSE"), JS_GetCurrentResponse);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_CLUSTER_TEST"), JS_ClusterTest, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_RAW_REQUEST_BODY"), JS_RawRequestBody, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_REQUEST_PARTS"), JS_RequestParts, true);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_SEND_CHUNK"), JS_SendChunk);
 }
 
 // -----------------------------------------------------------------------------

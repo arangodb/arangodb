@@ -202,12 +202,6 @@ namespace triagens {
       return status_t(HANDLER_DONE);
     }
 
-
-
-    void PathHandler::handleError (const TriagensError&) {
-      _response = createResponse(HttpResponse::SERVER_ERROR);
-    }
-
     void PathHandler::handleError (const Exception&) {
       _response = createResponse(HttpResponse::SERVER_ERROR);
     }

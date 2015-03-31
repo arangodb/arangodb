@@ -31,6 +31,7 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/logging.h"
+#include "HttpServer/HttpHandlerFactory.h"
 #include "HttpServer/HttpServer.h"
 #include "Rest/HttpRequest.h"
 
@@ -228,9 +229,6 @@ Handler::status_t RestBatchHandler::execute () {
       // error
       generateError(HttpResponse::BAD, TRI_ERROR_HTTP_BAD_PARAMETER, "invalid multipart message received");
       LOG_WARNING("received a corrupted multipart message");
-#ifdef TRI_ENABLE_MAINTAINER_MODE
-      LOG_WARNING("We tried to analyse this:\n %s", _request->body());
-#endif
 
       return status_t(Handler::HANDLER_FAILED);
     }
@@ -241,14 +239,14 @@ Handler::status_t RestBatchHandler::execute () {
     const size_t partLength = helper.foundLength;
 
     const char* headerStart = partStart;
-    char* bodyStart = 0;
+    char* bodyStart = nullptr;
     size_t headerLength = 0;
     size_t bodyLength = 0;
 
     // assume Windows linebreak \r\n\r\n as delimiter
     char* p = strstr((char*) headerStart, "\r\n\r\n");
 
-    if (p != 0 && p + 4 <= partEnd) {
+    if (p != nullptr && p + 4 <= partEnd) {
       headerLength = p - partStart;
       bodyStart = p + 4;
       bodyLength = partEnd - bodyStart;
@@ -257,7 +255,7 @@ Handler::status_t RestBatchHandler::execute () {
       // test Unix linebreak
       p = strstr((char*) headerStart, "\n\n");
 
-      if (p != 0 && p + 2 <= partEnd) {
+      if (p != nullptr && p + 2 <= partEnd) {
         headerLength = p - partStart;
         bodyStart = p + 2;
         bodyLength = partEnd - bodyStart;
@@ -272,7 +270,7 @@ Handler::status_t RestBatchHandler::execute () {
     LOG_TRACE("part header is: %s", string(headerStart, headerLength).c_str());
     HttpRequest* request = new HttpRequest(_request->connectionInfo(), headerStart, headerLength, _request->compatibility(), false);
 
-    if (request == 0) {
+    if (request == nullptr) {
       generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_OUT_OF_MEMORY);
 
       return status_t(Handler::HANDLER_FAILED);

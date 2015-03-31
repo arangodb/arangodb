@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,20 +23,21 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "HttpHandler.h"
 
 #include "Basics/logging.h"
-#include "HttpServer/HttpServer.h"
-#include "HttpServer/HttpsServer.h"
+#include "HttpServer/HttpServerJob.h"
 #include "Rest/HttpRequest.h"
-#include "Rest/HttpResponse.h"
-#include "GeneralServer/GeneralServerJob.h"
 
 using namespace triagens::rest;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 class HttpHandler
+// -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -62,8 +63,46 @@ HttpHandler::~HttpHandler () {
 }
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            virtual public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a response
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpHandler::addResponse (HttpHandler*) {
+  // nothing by default
+}
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the server object
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpHandler::setServer (HttpHandlerFactory* server) {
+  _server = server;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the request
+////////////////////////////////////////////////////////////////////////////////
+
+HttpRequest const* HttpHandler::getRequest () const {
+  return _request;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the request
+////////////////////////////////////////////////////////////////////////////////
+
+HttpRequest* HttpHandler::stealRequest () {
+  HttpRequest* tmp = _request;
+  _request = nullptr;
+  return tmp;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the response
@@ -83,16 +122,6 @@ HttpResponse* HttpHandler::stealResponse () {
   return tmp;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the request
-////////////////////////////////////////////////////////////////////////////////
-
-HttpRequest* HttpHandler::stealRequest () {
-  HttpRequest* tmp = _request;
-  _request = nullptr;
-  return tmp;
-}
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
@@ -101,24 +130,8 @@ HttpRequest* HttpHandler::stealRequest () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-Job* HttpHandler::createJob (AsyncJobServer* server,
-                             bool isDetached) {
-  HttpServer* httpServer = dynamic_cast<HttpServer*>(server);
-
-  // check if we are an HTTP server at all
-  if (httpServer != nullptr) {
-    return new GeneralServerJob<HttpServer, HttpHandlerFactory::GeneralHandler>(httpServer, this, isDetached);
-  }
-
-  // check if we are an HTTPs server at all
-  HttpsServer* httpsServer = dynamic_cast<HttpsServer*>(server);
-
-  if (httpsServer != nullptr) {
-    return new GeneralServerJob<HttpsServer, HttpHandlerFactory::GeneralHandler>(httpsServer, this, isDetached);
-  }
-
-  LOG_WARNING("cannot convert AsyncJobServer into a HttpServer");
-  return nullptr;
+Job* HttpHandler::createJob (HttpServer* server, bool isDetached) {
+  return new HttpServerJob(server, this, isDetached);
 }
 
 // -----------------------------------------------------------------------------
@@ -145,6 +158,7 @@ HttpResponse* HttpHandler::createResponse (HttpResponse::HttpResponseCode code) 
   removePreviousResponse();
 
   int32_t apiCompatibility;
+
   if (this->_request != nullptr) {
     apiCompatibility = this->_request->compatibility();
   }
