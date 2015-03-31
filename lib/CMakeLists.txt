@@ -172,7 +172,6 @@ add_library(
     Dispatcher/RequeueTask.cpp
     HttpServer/ApplicationEndpointServer.cpp
     HttpServer/AsyncJobManager.cpp
-    HttpServer/GeneralServer.cpp
     HttpServer/HttpCommTask.cpp
     HttpServer/HttpHandler.cpp
     HttpServer/HttpHandlerFactory.cpp
