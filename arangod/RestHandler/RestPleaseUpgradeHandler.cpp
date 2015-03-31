@@ -53,7 +53,7 @@ RestPleaseUpgradeHandler::RestPleaseUpgradeHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestPleaseUpgradeHandler::isDirect () {
+bool RestPleaseUpgradeHandler::isDirect () const {
   return true;
 }
 
@@ -77,13 +77,6 @@ HttpHandler::status_t RestPleaseUpgradeHandler::execute () {
   buffer.appendText("Please check the log file for details.\r\n");
 
   return status_t(HANDLER_DONE);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-void RestPleaseUpgradeHandler::handleError (const TriagensError&) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

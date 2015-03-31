@@ -29,10 +29,7 @@
 
 #include "SslClientConnection.h"
 
-#include "Basics/ssl-helper.h"
-#include "Basics/socket-utils.h"
-#include "GeneralServer/GeneralSslServer.h"
-#include "HttpServer/HttpsServer.h"
+#include <openssl/ssl.h>
 
 #ifdef TRI_HAVE_LINUX_SOCKETS
 #include <netinet/in.h>
@@ -40,7 +37,6 @@
 #include <netdb.h>
 #include <sys/socket.h>
 #endif
-
 
 #ifdef TRI_HAVE_WINSOCK2_H
 #include <WinSock2.h>
@@ -50,6 +46,10 @@
 #include <sys/types.h>
 
 #include <openssl/ssl.h>
+
+#include "Basics/ssl-helper.h"
+#include "Basics/socket-utils.h"
+#include "HttpServer/HttpsServer.h"
 
 #ifdef _WIN32
 #define STR_ERROR()                             \
@@ -92,22 +92,24 @@ SslClientConnection::SslClientConnection (Endpoint* endpoint,
 
   SSL_METHOD SSL_CONST* meth = nullptr;
 
-  switch (HttpsServer::protocol_e(sslProtocol)) {
+  switch (protocol_e(sslProtocol)) {
 #ifndef OPENSSL_NO_SSL2
-    case HttpsServer::SSL_V2:
+    case SSL_V2:
       meth = SSLv2_method();
       break;
 #endif
+
 #ifndef OPENSSL_NO_SSL3_METHOD
-    case HttpsServer::SSL_V3:
+    case SSL_V3:
       meth = SSLv3_method();
       break;
 #endif
-    case HttpsServer::SSL_V23:
+
+    case SSL_V23:
       meth = SSLv23_method();
       break;
 
-    case HttpsServer::TLS_V1:
+    case TLS_V1:
       meth = TLSv1_method();
       break;
 

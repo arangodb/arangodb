@@ -36,9 +36,6 @@
 
 #include <openssl/ssl.h>
 
-#include "Basics/ReadLocker.h"
-#include "Basics/WriteLocker.h"
-#include "GeneralServer/EndpointServer.h"
 #include "Rest/EndpointList.h"
 #include "HttpServer/HttpHandlerFactory.h"
 
@@ -51,6 +48,7 @@ namespace triagens {
     class ApplicationDispatcher;
     class ApplicationScheduler;
     class AsyncJobManager;
+    class HttpServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                   class ApplicationEndpointServer
@@ -278,7 +276,7 @@ namespace triagens {
 /// @brief all constructed servers
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<EndpointServer*> _servers;
+        std::vector<HttpServer*> _servers;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server basepath

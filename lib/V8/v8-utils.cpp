@@ -37,6 +37,7 @@
 #include <regex.h>
 
 #include "Basics/Dictionary.h"
+#include "Basics/FileUtils.h"
 #include "Basics/Nonce.h"
 #include "Basics/ProgramOptions.h"
 #include "Basics/RandomGenerator.h"
@@ -50,7 +51,6 @@
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
 #include "Basics/utf8-helper.h"
-#include "Basics/FileUtils.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
@@ -3749,7 +3749,7 @@ static void JS_IsIP (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::HandleScope scope(isolate);
 
   if (args.Length() != 1) {
-    TRI_V8_THROW_EXCEPTION_USAGE("base64Decode(<value>)");
+    TRI_V8_THROW_EXCEPTION_USAGE("isIP(<value>)");
   }
 
   TRI_Utf8ValueNFC address(TRI_UNKNOWN_MEM_ZONE, args[0]);
@@ -4276,13 +4276,14 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
 
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_CHMOD"), JS_ChMod);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_EXISTS"), JS_Exists);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_FILESIZE"), JS_SizeFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_FILE"), JS_GetTempFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_GET_TEMP_PATH"), JS_GetTempPath);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_IS_DIRECTORY"), JS_IsDirectory);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_IS_FILE"), JS_IsFile);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_ABSOLUTE"), JS_MakeAbsolute);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST"), JS_List);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_ABSOLUTE"), JS_MakeAbsolute);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"), JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY_RECURSIVE"), JS_MakeDirectoryRecursive);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_MoveFile);
@@ -4290,7 +4291,6 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE_DIRECTORY"), JS_RemoveDirectory);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE_RECURSIVE_DIRECTORY"), JS_RemoveRecursiveDirectory);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_FILESIZE"), JS_SizeFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_UNZIP_FILE"), JS_UnzipFile);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_ZIP_FILE"), JS_ZipFile);
 
@@ -4308,7 +4308,6 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GEN_RANDOM_SALT"), JS_RandomSalt);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_GETLINE"), JS_Getline);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_HMAC"), JS_HMAC);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PBKDF2"), JS_PBKDF2);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_HTTP_STATISTICS"), JS_HttpStatistics);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_IS_IP"), JS_IsIP);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_KILL_EXTERNAL"), JS_KillExternal);
@@ -4320,11 +4319,12 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_OUTPUT"), JS_Output);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE"), JS_Parse);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PARSE_FILE"), JS_ParseFile);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PBKDF2"), JS_PBKDF2);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_PROCESS_STATISTICS"), JS_ProcessStatistics);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_RAND"), JS_Rand);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_READ"), JS_Read);
-  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_READ_BUFFER"), JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_READ64"), JS_Read64);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_READ_BUFFER"), JS_ReadBuffer);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_SAVE"), JS_Save);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_SERVER_STATISTICS"), JS_ServerStatistics);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("SYS_SHA1"), JS_Sha1);

@@ -653,22 +653,29 @@ QueryResult Query::execute (QueryRegistry* registry) {
     triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
     triagens::basics::Json stats;
 
-    AqlItemBlock* value;
+    AqlItemBlock* value = nullptr;
 
-    while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-      auto doc = value->getDocumentCollection(0);
-      size_t const n = value->size();
-      // reserve space for n additional results at once
-      jsonResult.reserve(n);
+    try {
+      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+        auto doc = value->getDocumentCollection(0);
+        size_t const n = value->size();
+        // reserve space for n additional results at once
+        jsonResult.reserve(n);
 
-      for (size_t i = 0; i < n; ++i) {
-        AqlValue val = value->getValue(i, 0);
+        for (size_t i = 0; i < n; ++i) {
+          AqlValue val = value->getValue(i, 0);
 
-        if (! val.isEmpty()) {
-          jsonResult.add(val.toJson(_trx, doc)); 
+          if (! val.isEmpty()) {
+            jsonResult.add(val.toJson(_trx, doc)); 
+          }
         }
+        delete value;
+        value = nullptr;
       }
+    }
+    catch (...) {
       delete value;
+      throw;
     }
 
     stats = _engine->_stats.toJson();
@@ -727,22 +734,28 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
     result.result  = v8::Array::New(isolate);
     triagens::basics::Json stats;
 
-    AqlItemBlock* value;
+    AqlItemBlock* value = nullptr;
 
-    while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-      auto doc = value->getDocumentCollection(0);
-      size_t const n = value->size();
-      // reserve space for n additional results at once
-      /// json.reserve(n);
-      
-      for (size_t i = 0; i < n; ++i) {
-        AqlValue val = value->getValueReference(i, 0);
+    try {
+      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+        auto doc = value->getDocumentCollection(0);
 
-        if (! val.isEmpty()) {
-          result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
+        size_t const n = value->size();
+        
+        for (size_t i = 0; i < n; ++i) {
+          AqlValue val = value->getValueReference(i, 0);
+
+          if (! val.isEmpty()) {
+            result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
+          }
         }
+        delete value;
+        value = nullptr;
       }
+    }
+    catch (...) {
       delete value;
+      throw;
     }
 
     stats = _engine->_stats.toJson();

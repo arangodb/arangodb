@@ -100,12 +100,6 @@ const string RestVocbaseBaseHandler::REPLICATION_PATH       = "/_api/replication
 
 const string RestVocbaseBaseHandler::UPLOAD_PATH            = "/_api/upload";
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-const string RestVocbaseBaseHandler::QUEUE_NAME = "STANDARD";
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -591,14 +585,6 @@ TRI_json_t* RestVocbaseBaseHandler::parseJsonBody () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-string const& RestVocbaseBaseHandler::queue () const {
-  return QUEUE_NAME;
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a string attribute from a JSON array

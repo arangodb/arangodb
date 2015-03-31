@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief linked list implementation
+/// @brief https communication
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,149 +23,191 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Achim Brandt
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LINKED__LIST_H
-#define ARANGODB_BASICS_C_LINKED__LIST_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H
+#define ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H 1
 
-#include "Basics/Common.h"
+#include "HttpServer/HttpCommTask.h"
 
-#include "Basics/associative.h"
+#include <openssl/ssl.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                       LINKED LIST
+// --SECTION--                                               class HttpsCommTask
 // -----------------------------------------------------------------------------
 
+namespace triagens {
+  namespace rest {
+    class HttpsServer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief https communication
+////////////////////////////////////////////////////////////////////////////////
+
+    class HttpsCommTask : public HttpCommTask {
+      HttpsCommTask (HttpsCommTask const&) = delete;
+      HttpsCommTask const& operator= (HttpsCommTask const&) = delete;
+
 // -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
+// --SECTION--                                          static private variables
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief linked list entry
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_linked_list_entry_s {
-  void const* _data;
-  struct TRI_linked_list_entry_s* _prev;
-  struct TRI_linked_list_entry_s* _next;
-}
-TRI_linked_list_entry_t;
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief linked list
+/// @brief read block size
 ////////////////////////////////////////////////////////////////////////////////
 
-typedef struct TRI_linked_list_s {
-  TRI_memory_zone_t* _memoryZone;
-  TRI_linked_list_entry_t* _begin;
-  TRI_linked_list_entry_t* _end;
-}
-TRI_linked_list_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief linked array
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_linked_array_s {
-  TRI_memory_zone_t* _memoryZone;
-  TRI_linked_list_t _list;
-  TRI_associative_pointer_t _array;
-}
-TRI_linked_array_t;
+        static const size_t READ_BLOCK_SIZE = 10000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inits a linked list
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitLinkedList (TRI_linked_list_t*, TRI_memory_zone_t*);
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inits a linked array
+/// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_InitLinkedArray (TRI_linked_array_t*, TRI_memory_zone_t*);
+        HttpsCommTask (HttpsServer*,
+                       TRI_socket_t,
+                       const ConnectionInfo&,
+                       double keepAliveTimeout,
+                       SSL_CTX* ctx,
+                       int verificationMode,
+                       int (*verificationCallback)(int, X509_STORE_CTX*));
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked list, but does not free the pointer
+/// @brief destructs a task
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyLinkedList (TRI_linked_list_t*, TRI_memory_zone_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked list and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeLinkedList (TRI_memory_zone_t*, TRI_linked_list_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked array, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyLinkedArray (TRI_linked_array_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked list and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeLinkedArray (TRI_memory_zone_t*, TRI_linked_array_t*);
+      protected:
+        ~HttpsCommTask ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                      Task methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool setup (Scheduler*, EventLoop);
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool handleEvent (EventToken, EventType);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Socket methods
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the end of a linked list
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddLinkedList (TRI_linked_list_t*, TRI_linked_list_entry_t*);
+        bool fillReadBuffer (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the beginning of a linked list
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddFrontLinkedList (TRI_linked_list_t*, TRI_linked_list_entry_t*);
+        bool handleWrite (bool& closed);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from a linked list
+/// @brief accepts SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveLinkedList (TRI_linked_list_t*, TRI_linked_list_entry_t*);
+        bool trySSLAccept ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the end of a linked array
+/// @brief reads from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddLinkedArray (TRI_linked_array_t*, void const* data);
+        bool trySSLRead (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the beginning of a linked array
+/// @brief writes from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddFrontLinkedArray (TRI_linked_array_t*, void const* data);
+        bool trySSLWrite (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from a linked array
+/// @brief shuts down the SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveLinkedArray (TRI_linked_array_t*, void const* data);
+        void shutdownSsl (bool initShutdown);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moves an entry to the end of a linked array
+/// @brief accepted done
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_MoveToBackLinkedArray (TRI_linked_array_t* array, void const* data);
+        bool _accepted;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pops front entry from list
+/// @brief read blocked on write
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_PopFrontLinkedArray (TRI_linked_array_t* array);
+        bool _readBlockedOnWrite;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write blocked on read
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _writeBlockedOnRead;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief temporary buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        char * _tmpReadBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL* _ssl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief context
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL_CTX* _ctx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+        int _verificationMode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+        int (*_verificationCallback)(int, X509_STORE_CTX*);
+    };
+  }
+}
 
 #endif
 

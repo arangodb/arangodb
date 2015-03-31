@@ -34,7 +34,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/json-utilities.cpp \
 	lib/Basics/JsonHelper.cpp \
 	lib/Basics/levenshtein.cpp \
-	lib/Basics/linked-list.cpp \
 	lib/Basics/locks-macos.cpp \
 	lib/Basics/locks-posix.cpp \
 	lib/Basics/logging.cpp \
@@ -158,8 +157,15 @@ lib_libarango_fe_a_SOURCES = \
 	lib/Dispatcher/Job.cpp \
 	lib/Dispatcher/RequeueTask.cpp \
 	lib/HttpServer/ApplicationEndpointServer.cpp \
+	lib/HttpServer/AsyncJobManager.cpp \
+	lib/HttpServer/HttpCommTask.cpp \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
+	lib/HttpServer/HttpListenTask.cpp \
+	lib/HttpServer/HttpServer.cpp \
+	lib/HttpServer/HttpServerJob.cpp \
+	lib/HttpServer/HttpsCommTask.cpp \
+	lib/HttpServer/HttpsServer.cpp \
 	lib/HttpServer/PathHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \

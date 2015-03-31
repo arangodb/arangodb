@@ -35,25 +35,12 @@
 #include "Dispatcher/Dispatcher.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/HttpResponse.h"
-
 #include "HttpServer/HttpServer.h"
 #include "HttpServer/HttpHandlerFactory.h"
-#include "GeneralServer/GeneralServerJob.h"
-#include "GeneralServer/GeneralServer.h"
 
 using namespace std;
 using namespace triagens::arango;
 using namespace triagens::rest;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                  public constants
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-const string RestShardHandler::QUEUE_NAME = "STANDARD";
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -78,16 +65,8 @@ RestShardHandler::RestShardHandler (triagens::rest::HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestShardHandler::isDirect () {
+bool RestShardHandler::isDirect () const {
   return true;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-string const& RestShardHandler::queue () const {
-  return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
