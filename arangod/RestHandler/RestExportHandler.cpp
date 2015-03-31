@@ -69,6 +69,16 @@ HttpHandler::status_t RestExportHandler::execute () {
     return status_t(HANDLER_DONE);
   }
 
+  if (type == HttpRequest::HTTP_REQUEST_PUT) {
+    modifyCursor();
+    return status_t(HANDLER_DONE);
+  }
+
+  if (type == HttpRequest::HTTP_REQUEST_DELETE) {
+    deleteCursor();
+    return status_t(HANDLER_DONE);
+  }
+
   generateError(HttpResponse::METHOD_NOT_ALLOWED, TRI_ERROR_HTTP_METHOD_NOT_ALLOWED); 
   return status_t(HANDLER_DONE);
 }
@@ -97,6 +107,9 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
   if (TRI_IsNumberJson(attribute) && static_cast<size_t>(attribute->_value._number) == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
   }
+  
+  attribute = getAttribute("flush");
+  options.set("flush", triagens::basics::Json(TRI_IsBooleanJson(attribute) ? attribute->_value._boolean : false));
 
   if (! options.has("ttl")) {
     attribute = getAttribute("ttl");
@@ -125,8 +138,31 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 /// specified collection. In contrast to other data-producing APIs, the internal
 /// data structures produced by the export API are more lightweight, so it is
 /// the preferred way to retrieve all documents from a collection.
+/// 
+/// Documents are returned in a similar manner as in the `/_api/cursor` REST API. 
+/// If all documents of the collection fit into the first batch, then no cursor
+/// will be created, and the result object's *hasMore* attribute will be set to
+/// *false*. If not all documents fit into the first batch, then the result 
+/// object's *hasMore* attribute will be set to *true*, and the *id* attribute
+/// of the result will contain a cursor id.
 ///
-/// The following attributes can be used inside the JSON object:
+/// By default, only those documents from the collection will be returned that are
+/// stored in the collection's datafiles. Documents that are present in the write-ahead
+/// log (WAL) only will not be exported. To force an export of these documents, too, 
+/// there is a *flush* option. This will trigger a WAL flush so documents get copied
+/// from the WAL to the collection datafiles.
+/// 
+/// The order in which the documents are returned is not specified.
+///
+/// The following attributes can be used inside the JSON request object:
+///
+/// - *flush*: if set to *true*, a WAL flush operation will be executed prior to the
+///   export. The flush operation will ensure all documents have been copied from the
+///   WAL to the collection's datafiles. There will be an additional wait time of up
+///   to 10 seconds after the flush to allow the WAL collector to change adjust
+///   document meta-data to point to the datafiles, too. 
+///   The default value is *false* (i.e. no flush) so most recently inserted or updated
+///   documents from the collection might be missing in the export.
 ///
 /// - *count*: boolean flag that indicates whether the number of documents
 ///   in the result set should be returned in the "count" attribute of the result (optional).
@@ -178,6 +214,12 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 ///
 /// - *errorMessage*: a descriptive error message
 ///
+/// Note: clients should always delete a cursor result as early as possible because a
+/// lingering export cursor will prevent the underlying collection from being being
+/// compacted or unloaded. By default, unused cursors will be deleted automatically 
+/// after a server-defined idle time, and clients can adjust this idle time by setting
+/// the *ttl* value.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
@@ -228,7 +270,7 @@ void RestExportHandler::createCursor () {
         generateError(HttpResponse::BAD, TRI_ERROR_QUERY_EMPTY);
         return;
       }
-    
+   
       options = buildOptions(json.get());
     }
     else {
@@ -236,7 +278,8 @@ void RestExportHandler::createCursor () {
       options = triagens::basics::Json(triagens::basics::Json::Object);
     }
       
-    bool flush = triagens::basics::JsonHelper::getBooleanValue(options.json(), "flush", true);
+    uint64_t waitTime = 0;
+    bool flush = triagens::basics::JsonHelper::getBooleanValue(options.json(), "flush", false);
 
     if (flush) {
       // flush the logfiles so the export can fetch all documents
@@ -245,29 +288,36 @@ void RestExportHandler::createCursor () {
       if (res != TRI_ERROR_NO_ERROR) {
         THROW_ARANGO_EXCEPTION(res);
       }
+
+      waitTime = 10 * 1000 * 1000; // wait at most 10 seconds for full logfile collection
     }
 
     // this may throw!
     std::unique_ptr<CollectionExport> collectionExport(new CollectionExport(_vocbase, name));
-    collectionExport->run();
+    collectionExport->run(waitTime);
 
     { 
-      _response = createResponse(HttpResponse::CREATED);
-      _response->setContentType("application/json; charset=utf-8");
-
       size_t batchSize = triagens::basics::JsonHelper::getNumericValue<size_t>(options.json(), "batchSize", 1000);
       double ttl = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "ttl", 30);
       bool count = triagens::basics::JsonHelper::getBooleanValue(options.json(), "count", false);
+      
+      _response = createResponse(HttpResponse::CREATED);
+      _response->setContentType("application/json; charset=utf-8");
 
       auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
       TRI_ASSERT(cursors != nullptr);
       
       // create a cursor from the result
-      triagens::arango::Cursor* cursor = cursors->createFromExport(collectionExport.get(), batchSize, ttl, count); 
+      triagens::arango::ExportCursor* cursor = cursors->createFromExport(collectionExport.get(), batchSize, ttl, count); 
       collectionExport.release();
-
+      
       try {
+        _response->body().appendChar('{');
         cursor->dump(_response->body());
+        _response->body().appendText(",\"error\":false,\"code\":");
+        _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+        _response->body().appendChar('}');
+
         cursors->release(cursor);
       }
       catch (...) {
@@ -282,6 +332,93 @@ void RestExportHandler::createCursor () {
   catch (...) {
     generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
   }
+}
+
+void RestExportHandler::modifyCursor () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting PUT /_api/export/<cursor-id>");
+    return;
+  }
+  
+  std::string const& id = suffix[0];
+
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+  TRI_ASSERT(cursors != nullptr);
+
+  auto cursorId = static_cast<triagens::arango::CursorId>(triagens::basics::StringUtils::uint64(id));
+  bool busy;
+  auto cursor = cursors->find(cursorId, busy);
+
+  if (cursor == nullptr) {
+    if (busy) {
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
+    }
+    else {
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
+    }
+    return;
+  }
+
+  try {
+    _response = createResponse(HttpResponse::OK);
+    _response->setContentType("application/json; charset=utf-8");
+
+    _response->body().appendChar('{');
+    cursor->dump(_response->body());
+    _response->body().appendText(",\"error\":false,\"code\":");
+    _response->body().appendInteger(static_cast<uint32_t>(_response->responseCode()));
+    _response->body().appendChar('}');
+
+    cursors->release(cursor);
+  }
+  catch (triagens::basics::Exception const& ex) {
+    cursors->release(cursor);
+
+    generateError(HttpResponse::responseCode(ex.code()), ex.code(), ex.what());
+  }
+  catch (...) {
+    cursors->release(cursor);
+
+    generateError(HttpResponse::SERVER_ERROR, TRI_ERROR_INTERNAL);
+  }
+}
+
+void RestExportHandler::deleteCursor () {
+  std::vector<std::string> const& suffix = _request->suffix();
+
+  if (suffix.size() != 1) {
+    generateError(HttpResponse::BAD,
+                  TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "expecting DELETE /_api/export/<cursor-id>");
+    return;
+  }
+  
+  std::string const& id = suffix[0];
+
+  auto cursors = static_cast<triagens::arango::CursorRepository*>(_vocbase->_cursorRepository);
+  TRI_ASSERT(cursors != nullptr);
+ 
+  auto cursorId = static_cast<triagens::arango::CursorId>(triagens::basics::StringUtils::uint64(id));
+  bool found = cursors->remove(cursorId);
+
+  if (! found) {
+    generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
+    return;
+  }
+
+  _response = createResponse(HttpResponse::ACCEPTED);
+  _response->setContentType("application/json; charset=utf-8");
+   
+  triagens::basics::Json json(triagens::basics::Json::Object);
+  json.set("id", triagens::basics::Json(id)); // id as a string! 
+  json.set("error", triagens::basics::Json(false)); 
+  json.set("code", triagens::basics::Json(static_cast<double>(_response->responseCode())));
+
+  json.dump(_response->body());
 }
 
 // -----------------------------------------------------------------------------

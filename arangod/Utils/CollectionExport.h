@@ -67,7 +67,7 @@ namespace triagens {
 
       public:
 
-        void run ();
+        void run (uint64_t);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

@@ -821,10 +821,10 @@ void RestCursorHandler::modifyCursor () {
 
   if (cursor == nullptr) {
     if (busy) {
-      generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_BUSY);
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_BUSY), TRI_ERROR_CURSOR_BUSY);
     }
     else {
-      generateError(HttpResponse::NOT_FOUND, TRI_ERROR_CURSOR_NOT_FOUND);
+      generateError(HttpResponse::responseCode(TRI_ERROR_CURSOR_NOT_FOUND), TRI_ERROR_CURSOR_NOT_FOUND);
     }
     return;
   }

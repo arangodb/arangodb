@@ -32,6 +32,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
 #include "VocBase/barrier.h"
+#include "VocBase/compactor.h"
 #include "VocBase/vocbase.h"
 
 using namespace triagens::arango;
@@ -73,12 +74,22 @@ CollectionExport::~CollectionExport () {
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
-void CollectionExport::run () {
+void CollectionExport::run (uint64_t maxWaitTime) {
   // create a fake transaction for iterating over the collection
   TransactionBase trx(true);
-
+    
+  // try to acquire the exclusive lock on the compaction
+  while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
+    // didn't get it. try again...
+    usleep(5000);
+  }
+  
   _barrier = TRI_CreateBarrierElement(&_document->_barrierList);
+  
+  // release the lock
+  TRI_UnlockCompactorVocBase(_document->_vocbase);
 
+  // now we either have a barrier or not
   if (_barrier == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
@@ -86,15 +97,29 @@ void CollectionExport::run () {
 
   TRI_ASSERT(_documents == nullptr);
   _documents = new std::vector<void const*>();
+ 
+  { 
+    static const uint64_t SleepTime = 10000;
+
+    uint64_t tries = 0;
+    uint64_t const maxTries = maxWaitTime / SleepTime;
+
+    while (++tries < maxTries) {
+      if (TRI_IsFullyCollectedDocumentCollection(_document)) {
+        break;
+      }
+      usleep(SleepTime);
+    }
+  }
 
   // RAII read-lock
   {
     triagens::arango::CollectionReadLocker lock(_document, true);
 
-    size_t const n = _document->_primaryIndex._nrUsed;
+    size_t const n = _document->_primaryIndex._nrAlloc;
   
     _documents->reserve(n);
-   
+  
     for (size_t i = 0; i < n; ++i) {
       auto ptr = _document->_primaryIndex._table[i];
 

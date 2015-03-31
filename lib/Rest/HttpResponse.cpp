@@ -211,6 +211,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
     
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+    case TRI_ERROR_CURSOR_NOT_FOUND:
       return NOT_FOUND;
 
     case TRI_ERROR_REQUEST_CANCELED:
@@ -219,7 +220,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
 
     case TRI_ERROR_ARANGO_CONFLICT:
     case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+    case TRI_ERROR_CURSOR_BUSY:
       return CONFLICT;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
