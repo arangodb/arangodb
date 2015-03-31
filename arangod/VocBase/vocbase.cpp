@@ -46,13 +46,13 @@
 #include "Basics/tri-strings.h"
 #include "Basics/threads.h"
 #include "Basics/Exceptions.h"
+#include "Utils/CursorRepository.h"
 #include "Utils/transactions.h"
 #include "VocBase/auth.h"
 #include "VocBase/barrier.h"
 #include "VocBase/cleanup.h"
 #include "VocBase/compactor.h"
 #include "VocBase/document-collection.h"
-#include "VocBase/general-cursor.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/server.h"
 #include "VocBase/transaction.h"
@@ -1369,7 +1369,8 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
   vocbase->_isOwnAppsDirectory = true;
   vocbase->_replicationApplier = nullptr;
   vocbase->_userStructures     = nullptr;
-
+  vocbase->_cursorRepository   = nullptr;
+  vocbase->_queries            = nullptr;
   vocbase->_oldTransactions    = nullptr;
 
   try {
@@ -1384,12 +1385,11 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
     return nullptr;
   }
 
-  // use the defaults provided
-  TRI_ApplyVocBaseDefaults(vocbase, defaults);
-
-  vocbase->_cursors = TRI_CreateStoreGeneralCursor();
-
-  if (vocbase->_cursors == nullptr) {
+  try {
+    vocbase->_cursorRepository = new triagens::arango::CursorRepository(vocbase);
+  }
+  catch (...) {
+    delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_name);
     TRI_Free(TRI_CORE_MEM_ZONE, vocbase->_path);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, vocbase);
@@ -1397,6 +1397,9 @@ TRI_vocbase_t* TRI_CreateInitialVocBase (TRI_server_t* server,
 
     return nullptr;
   }
+
+  // use the defaults provided
+  TRI_ApplyVocBaseDefaults(vocbase, defaults);
 
   // init usage info
   TRI_InitSpin(&vocbase->_usage._lock);
@@ -1468,9 +1471,11 @@ void TRI_DestroyInitialVocBase (TRI_vocbase_t* vocbase) {
   TRI_DestroyVectorPointer(&vocbase->_deadCollections);
 
   TRI_DestroySpin(&vocbase->_usage._lock);
-
-  TRI_FreeStoreGeneralCursor(vocbase->_cursors);
   
+  if (vocbase->_cursorRepository != nullptr) {
+    delete static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
+  }
+
   if (vocbase->_queries != nullptr) {
     delete static_cast<triagens::aql::QueryList*>(vocbase->_queries);
   }
@@ -1558,6 +1563,11 @@ void TRI_DestroyVocBase (TRI_vocbase_t* vocbase) {
   // stop replication
   if (vocbase->_replicationApplier != nullptr) {
     TRI_StopReplicationApplier(vocbase->_replicationApplier, false);
+  }
+
+  // mark all cursors as deleted so underlying collections can be freed soon
+  if (vocbase->_cursorRepository != nullptr) {
+    static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository)->garbageCollect(true);
   }
 
   TRI_vector_pointer_t collections;

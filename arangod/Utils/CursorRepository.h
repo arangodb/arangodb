@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
+/// @brief list of cursors present in database
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,72 +22,50 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
+/// @author Jan Steemann
+/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
-#define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
+#ifndef ARANGODB_ARANGO_CURSORS_H
+#define ARANGODB_ARANGO_CURSORS_H 1
 
-#include "Rest/Handler.h"
+#include "Basics/Common.h"
+#include "Basics/Mutex.h"
+#include "Utils/Cursor.h"
+#include "VocBase/voc-types.h"
 
-#include "Rest/HttpResponse.h"
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+struct TRI_json_t;
+struct TRI_vocbase_s;
 
 namespace triagens {
-  namespace rest {
-    class HttpHandlerFactory;
-    class HttpRequest;
+  namespace arango {
+
+    class CollectionExport;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                 class HttpHandler
+// --SECTION--                                            class CursorRepository
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abstract class for http handlers
-////////////////////////////////////////////////////////////////////////////////
-
-    class HttpHandler : public Handler {
-      HttpHandler (HttpHandler const&) = delete;
-      HttpHandler& operator= (HttpHandler const&) = delete;
+    class CursorRepository {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new handler
-///
-/// Note that the handler owns the request and the response. It is its
-/// responsibility to destroy them both. See also the two steal methods.
+/// @brief create a cursors repository
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        HttpHandler (HttpRequest*);
+        explicit CursorRepository (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a handler
+/// @brief destroy a cursors repository
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~HttpHandler ();
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            virtual public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief adds a response
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void addResponse (HttpHandler*);
+        ~CursorRepository ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -96,90 +74,85 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register the server object
+/// @brief creates a cursor and stores it in the registry
+/// the cursor will be returned with the usage flag set to true. it must be
+/// returned later using release() 
+/// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setServer (HttpHandlerFactory* server);
+        JsonCursor* createFromJson (struct TRI_json_t*,
+                                    size_t,
+                                    struct TRI_json_t*,
+                                    double, 
+                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the request
+/// @brief creates a cursor and stores it in the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest const* getRequest () const;
+        ExportCursor* createFromExport (triagens::arango::CollectionExport*,
+                                        size_t,
+                                        double, 
+                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the pointer to the request
+/// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest* stealRequest ();
+        bool remove (CursorId);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the response
+/// @brief find an existing cursor by id
+/// if found, the cursor will be returned with the usage flag set to true. 
+/// it must be returned later using release() 
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* getResponse () const;
+        Cursor* find (CursorId,
+                      bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the response
+/// @brief return a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* stealResponse ();
+        void release (Cursor*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run a garbage collection on the cursors
+////////////////////////////////////////////////////////////////////////////////
+
+        bool garbageCollect (bool);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   Handler methods
+// --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
-      public:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
+/// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-        Job* createJob (HttpServer*, bool isDetached) override;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 protected methods
-// -----------------------------------------------------------------------------
-
-      protected:
+        struct TRI_vocbase_s* _vocbase;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief ensure the handler has only one response, otherwise we'd have a leak
+/// @brief mutex for the cursors repository
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removePreviousResponse ();
+        triagens::basics::Mutex _lock;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief create a new HTTP response
+/// @brief list of current cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpResponse* createResponse (HttpResponse::HttpResponseCode);
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-      protected:
+        std::unordered_map<CursorId, Cursor*> _cursors;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the request
+/// @brief maximum number of cursors to garbage-collect in one go
 ////////////////////////////////////////////////////////////////////////////////
 
-        HttpRequest* _request;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the response
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpResponse* _response;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief the server
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpHandlerFactory* _server;
-
+        static size_t const MaxCollectCount;
     };
+
   }
 }
 

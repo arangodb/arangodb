@@ -49,8 +49,8 @@ using namespace triagens::rest;
 
 HttpHandler::HttpHandler (HttpRequest* request)
   : _request(request),
-    _response(0),
-    _server(0) {
+    _response(nullptr),
+    _server(nullptr) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,13 +58,8 @@ HttpHandler::HttpHandler (HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::~HttpHandler () {
-  if (_request != 0) {
-    delete _request;
-  }
-
-  if (_response != 0) {
-    delete _response;
-  }
+  delete _request;
+  delete _response;
 }
 
 // -----------------------------------------------------------------------------
@@ -95,7 +90,7 @@ void HttpHandler::setServer (HttpHandlerFactory* server) {
 /// @brief return a pointer to the request
 ////////////////////////////////////////////////////////////////////////////////
 
-const HttpRequest* HttpHandler::getRequest () const {
+HttpRequest const* HttpHandler::getRequest () const {
   return _request;
 }
 
@@ -105,7 +100,7 @@ const HttpRequest* HttpHandler::getRequest () const {
 
 HttpRequest* HttpHandler::stealRequest () {
   HttpRequest* tmp = _request;
-  _request = 0;
+  _request = nullptr;
   return tmp;
 }
 
@@ -123,7 +118,7 @@ HttpResponse* HttpHandler::getResponse () const {
 
 HttpResponse* HttpHandler::stealResponse () {
   HttpResponse* tmp = _response;
-  _response = 0;
+  _response = nullptr;
   return tmp;
 }
 

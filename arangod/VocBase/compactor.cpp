@@ -1175,8 +1175,6 @@ static void UnlockCompaction (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
-  double now = TRI_microtime();
-
   // check if we can acquire the write lock instantly
   if (! TryLockCompaction(vocbase)) {
     // couldn't acquire the write lock
@@ -1184,6 +1182,7 @@ static bool CheckAndLockCompaction (TRI_vocbase_t* vocbase) {
   }
 
   // we are now holding the write lock
+  double now = TRI_microtime();
 
   // check if we have a still-valid compaction blocker
   size_t const n = vocbase->_compactionBlockers._data._length;
@@ -1229,10 +1228,6 @@ void TRI_DestroyCompactorVocBase (TRI_vocbase_t* vocbase) {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
-  double now;
-
-  now = TRI_microtime();
-
   // check if we can instantly acquire the lock
   if (! TryLockCompaction(vocbase)) {
     // couldn't acquire lock
@@ -1240,6 +1235,7 @@ bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
   }
 
   // we are now holding the write lock
+  double now = TRI_microtime();
 
   size_t n = vocbase->_compactionBlockers._data._length;
   size_t i = 0;
@@ -1267,19 +1263,17 @@ bool TRI_CleanupCompactorVocBase (TRI_vocbase_t* vocbase) {
 int TRI_InsertBlockerCompactorVocBase (TRI_vocbase_t* vocbase,
                                        double lifetime,
                                        TRI_voc_tick_t* id) {
-  compaction_blocker_t blocker;
-  int res;
-
   if (lifetime <= 0.0) {
     return TRI_ERROR_BAD_PARAMETER;
   }
 
+  compaction_blocker_t blocker;
   blocker._id      = TRI_NewTickServer();
   blocker._expires = TRI_microtime() + lifetime;
 
   LockCompaction(vocbase);
 
-  res = TRI_PushBackVector(&vocbase->_compactionBlockers._data, &blocker);
+  int res = TRI_PushBackVector(&vocbase->_compactionBlockers._data, &blocker);
 
   UnlockCompaction(vocbase);
 

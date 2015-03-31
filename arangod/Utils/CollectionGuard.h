@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
+#include "Basics/StringUtils.h"
 #include "VocBase/vocbase.h"
 
 namespace triagens {
@@ -83,7 +84,13 @@ namespace triagens {
             _originalStatus(TRI_VOC_COL_STATUS_CORRUPTED),
             _restoreOriginalStatus(restoreOriginalStatus) {
 
-          _collection = TRI_UseCollectionByNameVocBase(_vocbase, name, _originalStatus);
+          if (name != nullptr && *name >= '0' && *name <= '9') {
+            TRI_voc_cid_t id = triagens::basics::StringUtils::uint64(name);
+            _collection = TRI_UseCollectionByIdVocBase(_vocbase, id, _originalStatus);
+          }
+          else {
+            _collection = TRI_UseCollectionByNameVocBase(_vocbase, name, _originalStatus);
+          }
 
           if (_collection == nullptr) {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);

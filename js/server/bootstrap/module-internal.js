@@ -1,5 +1,5 @@
 /*jshint -W051: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, ShapedJson,
+/*global require, db, ArangoCollection, ArangoDatabase, ShapedJson,
   RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
   WAL_FLUSH, WAL_PROPERTIES,
   REPLICATION_LOGGER_STATE, REPLICATION_SERVER_ID,
@@ -69,13 +69,6 @@
 
   internal.ArangoDatabase = ArangoDatabase;
   delete ArangoDatabase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoCursor
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.ArangoCursor = ArangoCursor;
-  delete ArangoCursor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ShapedJson

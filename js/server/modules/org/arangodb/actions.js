@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, module */
+/*global require, exports, module, JSON_CURSOR */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions module
@@ -1845,43 +1845,37 @@ function resultCursor (req, res, cursor, code, options) {
     hasNext = false;
     cursorId = null;
   }
-  else if (typeof cursor === 'object') {
-    if (cursor.getExtra !== undefined) {
-      // cursor is assumed to be an ArangoCursor
-      hasCount = cursor.hasCount();
-      count = cursor.count();
-      rows = cursor.toArray();
-
-      // must come after toArray()
-      hasNext = cursor.hasNext();
-      extra = cursor.getExtra();
-
-      if (hasNext) {
-        cursor.persist();
-        cursorId = cursor.id();
+  else if (typeof cursor === 'object' && cursor.hasOwnProperty('json')) {
+    // cursor is a regular JS object (performance optimisation)
+    hasCount = ((options && options.countRequested) ? true : false);
+    count = cursor.json.length;
+    rows = cursor.json;
+    extra = { };
+    [ "stats", "warnings", "profile" ].forEach(function(d) {
+      if (cursor.hasOwnProperty(d)) {
+        extra[d] = cursor[d];
       }
-      else {
-        cursorId = null;
-        cursor.dispose();
-      }
+    });
+    hasNext = false;
+    cursorId = null;
+  }
+  else if (typeof cursor === 'string' && cursor.match(/^\d+$/)) {
+    // cursor is assumed to be a cursor id
+    var tmp = JSON_CURSOR(cursor);
+
+    hasCount = true;
+    count = tmp.count;
+    rows = tmp.result;
+    hasNext = tmp.hasOwnProperty('id');
+    extra = undefined;
+
+    if (hasNext) {
+      cursorId = tmp.id;
     }
-    else if (cursor.hasOwnProperty('json')) {
-      // cursor is a regular JS object (performance optimisation)
-      hasCount = ((options && options.countRequested) ? true : false);
-      count = cursor.json.length;
-      rows = cursor.json;
-      extra = { };
-      [ "stats", "warnings", "profile" ].forEach(function(d) {
-        if (cursor.hasOwnProperty(d)) {
-          extra[d] = cursor[d];
-        }
-      });
-      hasNext = false;
+    else {
       cursorId = null;
     }
   }
-
-  // do not use cursor after this
 
   var result = {
     result : rows,

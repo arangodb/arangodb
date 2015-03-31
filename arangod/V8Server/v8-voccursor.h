@@ -31,14 +31,9 @@
 #define ARANGODB_V8SERVER_V8__CURSOR_H 1
 
 #include "Basics/Common.h"
-#include "VocBase/server.h"
 #include "v8-vocbase.h"
 
-
-extern void TRI_InitV8cursor (v8::Handle<v8::Context> context,
-                              TRI_v8_global_t* v8g);
-
-void TRI_WrapGeneralCursor (const v8::FunctionCallbackInfo<v8::Value>& args,
-                            TRI_general_cursor_t* cursor);
+extern void TRI_InitV8cursor (v8::Handle<v8::Context>,
+                              TRI_v8_global_t*);
 
 #endif
