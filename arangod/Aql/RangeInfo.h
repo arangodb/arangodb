@@ -28,11 +28,9 @@
 #ifndef ARANGODB_AQL_RANGE_INFO_H
 #define ARANGODB_AQL_RANGE_INFO_H 1
 
-#include <Basics/Common.h>
-#include <Basics/JsonHelper.h>
-
+#include "Basics/Common.h"
 #include "Aql/AstNode.h"
-
+#include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 
 namespace triagens {
@@ -95,6 +93,21 @@ namespace triagens {
 
           if (! bound.isEmpty()) {
             _bound = bound;
+            _defined = true;
+          }
+        }
+
+        RangeInfoBound (bool include,
+                        bool isConstant,
+                        triagens::basics::Json& json) 
+          : _bound(),
+            _include(include),
+            _isConstant(isConstant),
+            _defined(false),
+            _expressionAst(nullptr) {
+
+          if (! json.isEmpty()) {
+            _bound = triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, json.steal());
             _defined = true;
           }
         }
