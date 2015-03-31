@@ -493,7 +493,7 @@ int Scheduler::registerTask (Task* task, ssize_t* got, ssize_t want) {
     }
 
     if (nullptr != got) {
-      *got = n;
+      *got = static_cast<ssize_t>(n);
     }
 
     thread = threads[n];
