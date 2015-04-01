@@ -703,10 +703,11 @@ void HttpCommTask::finishedChunked () {
   _writeBuffersStats.push_back(0);
 #endif
 
-  fillWriteBuffer();
-
-  _requestPending = false;
   _isChunked = false;
+  _requestPending = false;
+
+  fillWriteBuffer();
+  processRead();
 }
 
 // -----------------------------------------------------------------------------
@@ -1211,7 +1212,7 @@ void HttpCommTask::completedWriteBuffer (bool& closed) {
 
   fillWriteBuffer();
 
-  if (_closeRequested && ! hasWriteBuffer() && _writeBuffers.empty()) {
+  if (_closeRequested && ! hasWriteBuffer() && _writeBuffers.empty() && ! _isChunked) {
     closed = true;
     _server->handleCommunicationClosed(this);
   }
