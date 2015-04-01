@@ -78,12 +78,8 @@
       });
     },
 
-    setup: function(callback) {
-      sendRequest(this, callback, "PATCH", "setup");
-    },
-
-    teardown: function(callback) {
-      sendRequest(this, callback, "PATCH", "teardown");
+    runScript: function(name, callback) {
+      sendRequest(this, callback, "POST", "scripts/" + name);
     },
 
     isSystem: function() {

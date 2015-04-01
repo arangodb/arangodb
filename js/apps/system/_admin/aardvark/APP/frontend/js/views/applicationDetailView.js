@@ -13,9 +13,8 @@
       'click .delete': 'deleteApp',
       'click #configure-app': 'showConfigureDialog',
       'click #app-switch-mode': 'toggleDevelopment',
-      'click #app-setup': 'setup',
-      'click #app-teardown': 'teardown',
       "click #app-scripts": "toggleScripts",
+      "click #app-scripts [data-script]": "runScript",
       "click #app-upgrade": "upgradeApp",
       "click #download-app": "downloadApp"
     },
@@ -34,7 +33,9 @@
     },
 
     toggleScripts: function() {
-      $("#scripts_dropdown").toggle(200);
+      if (this.model.get('scripts').length) {
+        $("#scripts_dropdown").toggle(200);
+      }
     },
 
     updateConfig: function() {
@@ -62,16 +63,11 @@
       }.bind(this));
     },
 
-    setup: function() {
-      this.model.setup(function() {
-
+    runScript: function(event) {
+      console.log('script', $(event.currentTarget).data('script'), $(event.currentTarget).attr('data-script'));
+      this.model.runScript($(event.currentTarget).attr('data-script'), function() {
       });
-    },
-
-    teardown: function() {
-      this.model.teardown(function() {
-
-      });
+      this.toggleScripts();
     },
 
     render: function() {
