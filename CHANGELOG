@@ -1,5 +1,25 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
+* Breaking Changes:
+
+  * AQL command: `GRAPH_SHORTEST_PATH` now only returns IDs and does not extract data any more. 
+    It yields an additional option `includeData` which is an object, taking exactly two keys:
+    * `edges` set to true will extract all data stored alongside the edges of each path.
+    * `vertices` set to true will extract all data stored alongside the vertices of each path.
+    The default value of these parameters has been set to `false`
+
+  * JS Module: general-graph:
+    All graph measurements returning exactly one value returned an array containing exactly this one value.
+    Now they will return the value directly.
+    Modified functions are:
+    * `graph._absoluteEccentricity`
+    * `graph._eccentricity`
+    * `graph._absoluteCloseness`
+    * `graph._closeness`
+    * `graph._absoluteBetweenness`
+    * `graph._betweenness`
+    * `graph._radius`
+    * `graph._diameter`
 
 * Improved GRAPH_SHORTEST_PATH computation
 
