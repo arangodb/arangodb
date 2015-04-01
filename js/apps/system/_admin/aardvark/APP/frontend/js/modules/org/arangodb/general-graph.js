@@ -3485,6 +3485,9 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
     "ex1": ex1
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -3534,6 +3537,9 @@ Graph.prototype._eccentricity = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -3624,6 +3630,9 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
     "ex1": ex1
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -3682,10 +3691,11 @@ Graph.prototype._closeness = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_betweenness
@@ -3693,12 +3703,15 @@ Graph.prototype._closeness = function(options) {
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// of all vertices in the graph.
 ///
-/// `graph._absoluteBetweenness(options)`
+/// `graph._absoluteBetweenness(vertexExample, options)`
 ///
 /// The complexity of the function is described
 /// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// @PARAMS
+///
+/// @PARAM{vertexExample, object, optional}
+/// Filter the vertices, see [Definition of examples](#definition_of_examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -3741,18 +3754,23 @@ Graph.prototype._closeness = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._absoluteBetweenness = function(options) {
+Graph.prototype._absoluteBetweenness = function(example, options) {
 
   var query = "RETURN"
     + " GRAPH_ABSOLUTE_BETWEENNESS(@graphName"
-    + ',@options'
-    + ')';
+    + ",@example"
+    + ",@options"
+    + ")";
   options = options || {};
   var bindVars = {
+    "example": example,
     "graphName": this.__name,
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -3809,6 +3827,9 @@ Graph.prototype._betweenness = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -3883,6 +3904,9 @@ Graph.prototype._radius = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -3956,6 +3980,9 @@ Graph.prototype._diameter = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -4593,7 +4620,7 @@ exports._undirectedRelation = _undirectedRelation;
 /// Deprecated function (announced 2.3)
 exports._directedRelation = function () {
   return _relation.apply(this, arguments);
-} ;
+};
 exports._relation = _relation;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;

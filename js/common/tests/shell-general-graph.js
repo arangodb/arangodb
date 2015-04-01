@@ -2818,35 +2818,6 @@ function MeasurementsSuite() {
     vertex = g[vc2].save({first_name: "Tum"});
     ids.vId35 = vertex._id;
 
-    /*
-    var edge = g[ec1].save(ids.vId11, ids.vId12, {});
-    ids.eId11 = edge._id;
-    edge = g[ec1].save(ids.vId11, ids.vId13, {});
-    ids.eId12 = edge._id;
-    edge = g[ec1].save(ids.vId11, ids.vId14, {});
-    ids.eId13 = edge._id;
-    edge = g[ec1].save(ids.vId11, ids.vId15, {});
-    ids.eId14 = edge._id;
-    edge = g[ec1].save(ids.vId12, ids.vId11, {});
-    ids.eId15 = edge._id;
-    edge = g[ec1].save(ids.vId13, ids.vId11, {});
-    ids.eId16 = edge._id;
-    edge = g[ec1].save(ids.vId14, ids.vId11, {});
-    ids.eId17 = edge._id;
-    edge = g[ec1].save(ids.vId15, ids.vId11, {});
-    ids.eId18 = edge._id;
-    edge = g[ec2].save(ids.vId11, ids.vId31, {});
-    ids.eId21 = edge._id;
-    edge = g[ec2].save(ids.vId11, ids.vId32, {});
-    ids.eId22 = edge._id;
-    edge = g[ec2].save(ids.vId11, ids.vId33, {});
-    ids.eId23 = edge._id;
-    edge = g[ec2].save(ids.vId11, ids.vId34, {});
-    ids.eId24 = edge._id;
-    edge = g[ec2].save(ids.vId11, ids.vId35, {});
-    ids.eId25 = edge._id;
-    */
-
     ids.eId11 = g[ec1].save(ids.vId11, ids.vId12, {});
     ids.eId12 = g[ec1].save(ids.vId12, ids.vId13, {});
     ids.eId13 = g[ec1].save(ids.vId13, ids.vId14, {});
@@ -2889,41 +2860,43 @@ function MeasurementsSuite() {
 
     test_absoluteEccentricity : function () {
       var a = g._absoluteEccentricity({});
-      assertEqual(Object.keys(a[0]).length , 10);
+      assertEqual(Object.keys(a).length , 10);
     },
 
     test_eccentricity : function () {
       var a = g._eccentricity({});
-      assertEqual(Object.keys(a[0]).length , 10);
+      assertEqual(Object.keys(a).length , 10);
     },
     test_absoluteCloseness : function () {
       var a = g._absoluteCloseness({});
-      assertEqual(Object.keys(a[0]).length , 10);
+      assertEqual(Object.keys(a).length , 10);
     },
     test_closeness : function () {
       var a = g._closeness({});
-      assertEqual(Object.keys(a[0]).length , 10);
+      assertEqual(Object.keys(a).length , 10);
     },
     test_absoluteBetweenness : function () {
       var a = g._absoluteBetweenness({});
-      assertEqual(Object.keys(a[0]).length , 10);
+      assertEqual(Object.keys(a).length , 10);
     },
     test_betweenness : function () {
       var a = g._betweenness({});
-      assertEqual(Object.keys(a[0]).length , 10);
+      assertEqual(Object.keys(a).length , 10);
     },
     test_radius : function () {
       var a = g._radius({});
-      assertEqual(a[0] , 1);
+      assertEqual(a , 3);
     },
     test_diameter : function () {
       var a = g._diameter({});
-      assertEqual(a[0] , 2);
+      assertEqual(a , 5);
     },
+
     test_paths : function () {
       var a = g._paths({maxLength : 2});
-      assertEqual(a[0].length , 50);
+      assertEqual(a[0].length , 28);
     },
+
     test_shortestPaths : function () {
       var a = g._shortestPath([{first_name: 'Tim',
                                 age : 24},
