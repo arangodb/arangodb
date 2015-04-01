@@ -5,7 +5,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,16 +23,15 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 #ifndef ARANGODB_HTTP_SERVER_HTTP_HANDLER_H
 #define ARANGODB_HTTP_SERVER_HTTP_HANDLER_H 1
 
-#include "Basics/Common.h"
-
 #include "Rest/Handler.h"
+
 #include "Rest/HttpResponse.h"
 
 // -----------------------------------------------------------------------------
@@ -43,8 +42,6 @@ namespace triagens {
   namespace rest {
     class HttpHandlerFactory;
     class HttpRequest;
-    class HttpServer;
-    class HttpsServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 class HttpHandler
@@ -55,9 +52,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class HttpHandler : public Handler {
-      private:
-        HttpHandler (HttpHandler const&);
-        HttpHandler& operator= (HttpHandler const&);
+      HttpHandler (HttpHandler const&) = delete;
+      HttpHandler& operator= (HttpHandler const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -82,10 +78,40 @@ namespace triagens {
         ~HttpHandler ();
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                            virtual public methods
+// -----------------------------------------------------------------------------
+
+      public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief adds a response
+////////////////////////////////////////////////////////////////////////////////
+
+        virtual void addResponse (HttpHandler*);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
       public:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register the server object
+////////////////////////////////////////////////////////////////////////////////
+
+        void setServer (HttpHandlerFactory* server);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return a pointer to the request
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpRequest const* getRequest () const;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief steal the pointer to the request
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpRequest* stealRequest ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the response
@@ -106,41 +132,10 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief register the server object
-////////////////////////////////////////////////////////////////////////////////
-
-        void setServer (HttpHandlerFactory* server) {
-          _server = server;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return a pointer to the request
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest const* getRequest () const {
-          return _request;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief steal the pointer to the request
-////////////////////////////////////////////////////////////////////////////////
-
-        HttpRequest* stealRequest ();
-
-////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Job* createJob (AsyncJobServer*,
-                                bool);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the response of a sub handler
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void addResponse (HttpHandler*) {
-          // nothing by default
-        }
+        Job* createJob (HttpServer*, bool isDetached) override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods

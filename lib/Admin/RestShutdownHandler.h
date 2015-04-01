@@ -30,11 +30,8 @@
 #define ARANGODB_ADMIN_REST_SHUTDOWN_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "ApplicationServer/ApplicationServer.h"
-
 #include "Admin/RestBaseHandler.h"
-
+#include "ApplicationServer/ApplicationServer.h"
 #include "Rest/HttpResponse.h"
 
 namespace triagens {
@@ -72,31 +69,19 @@ namespace triagens {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isDirect ();
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string const& queue () const;
+        bool isDirect () const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initiates the shutdown process
 ////////////////////////////////////////////////////////////////////////////////
 
-        status_t execute ();
+        status_t execute () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
       private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-        static const std::string QUEUE_NAME;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief application server

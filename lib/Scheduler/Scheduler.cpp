@@ -353,41 +353,24 @@ int Scheduler::unregisterUserTasks () {
 ////////////////////////////////////////////////////////////////////////////////
 
 int Scheduler::registerTask (Task* task) {
-  SchedulerThread* thread = nullptr;
+  return registerTask(task, nullptr, -1);
+}
 
-  if (task->isUserDefined() && task->id().empty()) {
-    // user-defined task without id is invalid
-    return TRI_ERROR_TASK_INVALID_ID;
-  }
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a new task and returns the chosen threads number
+////////////////////////////////////////////////////////////////////////////////
 
-  string const name = task->name();
-  LOG_TRACE("registerTask for task %p (%s)", (void*) task, name.c_str());
+int Scheduler::registerTask (Task* task, ssize_t* tn) {
+  *tn = -1;
+  return registerTask(task, tn, -1);
+}
 
-  {
-    size_t n = 0;
-    MUTEX_LOCKER(schedulerLock);
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a new task with a pre-selected thread number
+////////////////////////////////////////////////////////////////////////////////
 
-    int res = checkInsertTask(task);
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      return res;
-    }
-
-    if (multiThreading && ! task->needsMainEventLoop()) {
-      n = (++nextLoop) % nrThreads;
-    }
-
-    thread = threads[n];
-
-    task2thread[task] = thread;
-    taskRegistered.insert(task);
-  }
-
-  if (! thread->registerTask(this, task)) {
-    return TRI_ERROR_INTERNAL;
-  }
-
-  return TRI_ERROR_NO_ERROR;
+int Scheduler::registerTaskInThread (Task* task, ssize_t tn) {
+  return registerTask(task, nullptr, tn);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -470,6 +453,61 @@ void Scheduler::reportStatus () {
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief registers a new task
+////////////////////////////////////////////////////////////////////////////////
+
+int Scheduler::registerTask (Task* task, ssize_t* got, ssize_t want) {
+  SchedulerThread* thread = nullptr;
+
+  if (task->isUserDefined() && task->id().empty()) {
+    // user-defined task without id is invalid
+    return TRI_ERROR_TASK_INVALID_ID;
+  }
+
+  string const name = task->name();
+  LOG_TRACE("registerTask for task %p (%s)", (void*) task, name.c_str());
+
+  {
+    size_t n = 0;
+    MUTEX_LOCKER(schedulerLock);
+
+    int res = checkInsertTask(task);
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+
+    if (0 <= want) {
+      n = want;
+
+      if (nrThreads <= n) {
+        return TRI_ERROR_INTERNAL;
+      }
+    }
+    else {
+      if (multiThreading && ! task->needsMainEventLoop()) {
+        n = (++nextLoop) % nrThreads;
+      }
+    }
+
+    if (nullptr != got) {
+      *got = static_cast<ssize_t>(n);
+    }
+
+    thread = threads[n];
+
+    task2thread[task] = thread;
+    taskRegistered.insert(task);
+  }
+
+  if (! thread->registerTask(this, task)) {
+    return TRI_ERROR_INTERNAL;
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether a task can be inserted

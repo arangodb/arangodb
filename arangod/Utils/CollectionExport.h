@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief async server for jobs
+/// @brief collection export result container
 ///
 /// @file
 ///
@@ -22,47 +22,66 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Martin Schoenert
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_REST_ASYNC_JOB_SERVER_H
-#define ARANGODB_REST_ASYNC_JOB_SERVER_H 1
+#ifndef ARANGODB_ARANGO_COLLECTION_EXPORT_H
+#define ARANGODB_ARANGO_COLLECTION_EXPORT_H 1
 
 #include "Basics/Common.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/voc-types.h"
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
-// -----------------------------------------------------------------------------
+struct TRI_barrier_s;
+struct TRI_document_collection_t;
+struct TRI_vocbase_s;
 
 namespace triagens {
-  namespace rest {
-    class Job;
+  namespace arango {
+
+    class CollectionGuard;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class AsyncJobServer
+// --SECTION--                                            class CollectionExport
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief async server for jobs
-////////////////////////////////////////////////////////////////////////////////
+    class CollectionExport {
 
-    class AsyncJobServer {
+      friend class ExportCursor;
+
+      public:
+
+        CollectionExport (CollectionExport const&) = delete;
+        CollectionExport& operator= (CollectionExport const&) = delete;
+
+        CollectionExport (TRI_vocbase_s*, 
+                          std::string const&);
+
+        ~CollectionExport ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
       public:
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief notify the server
-////////////////////////////////////////////////////////////////////////////////
+        void run (uint64_t);
 
-        virtual void jobDone (Job*) = 0;
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+        triagens::arango::CollectionGuard*           _guard;
+        struct TRI_document_collection_t*            _document;
+        struct TRI_barrier_s*                        _barrier;
+        triagens::arango::CollectionNameResolver     _resolver;
+        std::vector<void const*>*                    _documents;
     };
+
   }
 }
 

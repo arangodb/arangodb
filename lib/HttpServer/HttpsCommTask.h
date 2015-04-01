@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
+/// @brief https communication
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -24,41 +24,44 @@
 ///
 /// @author Dr. Frank Celler
 /// @author Achim Brandt
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_SERVER_JOB_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_SERVER_JOB_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H
+#define ARANGODB_HTTP_SERVER_HTTPS_COMM_TASK_H 1
 
-#include "Basics/Common.h"
+#include "HttpServer/HttpCommTask.h"
 
-#include "Dispatcher/Job.h"
-
-#include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
-#include "Basics/Mutex.h"
-#include "Basics/MutexLocker.h"
-#include "Basics/logging.h"
-#include "Rest/Handler.h"
-#include "Scheduler/AsyncTask.h"
+#include <openssl/ssl.h>
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                            class GeneralServerJob
+// --SECTION--                                               class HttpsCommTask
 // -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
+    class HttpsServer;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server job
+/// @brief https communication
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename H>
-    class GeneralServerJob : public Job {
+    class HttpsCommTask : public HttpCommTask {
+      HttpsCommTask (HttpsCommTask const&) = delete;
+      HttpsCommTask const& operator= (HttpsCommTask const&) = delete;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                          static private variables
+// -----------------------------------------------------------------------------
+
       private:
-        GeneralServerJob (GeneralServerJob const&);
-        GeneralServerJob& operator= (GeneralServerJob const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read block size
+////////////////////////////////////////////////////////////////////////////////
+
+        static const size_t READ_BLOCK_SIZE = 10000;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -67,206 +70,141 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new server job
+/// @brief constructs a new task with a given socket
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralServerJob (S* server,
-                          H* handler,
-                          bool isDetached)
-          : Job("HttpServerJob"),
-            _server(server),
-            _handler(handler),
-            _shutdown(0),
-            _abandon(false),
-            _isDetached(isDetached) {
-        }
+        HttpsCommTask (HttpsServer*,
+                       TRI_socket_t,
+                       const ConnectionInfo&,
+                       double keepAliveTimeout,
+                       SSL_CTX* ctx,
+                       int verificationMode,
+                       int (*verificationCallback)(int, X509_STORE_CTX*));
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a server job
+/// @brief destructs a task
 ////////////////////////////////////////////////////////////////////////////////
 
-        ~GeneralServerJob () {
-        }
+      protected:
+        ~HttpsCommTask ();
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief abandon job
-////////////////////////////////////////////////////////////////////////////////
-
-        void abandon () {
-          MUTEX_LOCKER(_abandonLock);
-          _abandon = true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the underlying handler
-////////////////////////////////////////////////////////////////////////////////
-
-        H* getHandler () const {
-          return _handler;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the job is detached
-////////////////////////////////////////////////////////////////////////////////
-
-        bool isDetached () const {
-          return _isDetached;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       Job methods
-// -----------------------------------------------------------------------------
-
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        JobType type () {
-          return _handler->type();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        std::string const& queue () {
-          return _handler->queue();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void setDispatcherThread (DispatcherThread* thread) {
-          _handler->setDispatcherThread(thread);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        status_t work () {
-          LOG_TRACE("beginning job %p", (void*) this);
-
-          this->RequestStatisticsAgent::transfer(_handler);
-
-          if (_shutdown != 0) {
-            return status_t(Job::JOB_DONE);
-          }
-
-          RequestStatisticsAgentSetRequestStart(_handler);
-          _handler->prepareExecute();
-          Handler::status_t status;
-          try {
-            status = _handler->execute();
-          }
-          catch (...) {
-            _handler->finalizeExecute();
-            throw;
-          }
-          _handler->finalizeExecute();
-          RequestStatisticsAgentSetRequestEnd(_handler);
-
-          LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
-
-          return status.jobStatus();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool cancel (bool running) {
-          return _handler->cancel(running);
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void cleanup () {
-          bool abandon;
-
-          {
-            MUTEX_LOCKER(_abandonLock);
-            abandon = _abandon;
-          }
-
-          if (! abandon && _server != 0) {
-            _server->jobDone(this);
-          }
-
-          delete this;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool beginShutdown () {
-          LOG_TRACE("shutdown job %p", (void*) this);
-
-          _shutdown = 1;
-          return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void handleError (basics::Exception const& ex) {
-          _handler->handleError(ex);
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                      Task methods
 // -----------------------------------------------------------------------------
 
       protected:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general server
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        S* _server;
+        bool setup (Scheduler*, EventLoop);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief handler
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        H* _handler;
+        bool handleEvent (EventToken, EventType);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    Socket methods
+// -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief shutdown in progress
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        volatile sig_atomic_t _shutdown;
+        bool fillReadBuffer (bool& closed);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server is dead lock
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        basics::Mutex _abandonLock;
+        bool handleWrite (bool& closed);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief server is dead
+/// @brief accepts SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _abandon;
+        bool trySSLAccept ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief job is detached (executed without a comm-task)
+/// @brief reads from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool _isDetached;
+        bool trySSLRead (bool& closed);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief writes from SSL connection
+////////////////////////////////////////////////////////////////////////////////
+
+        bool trySSLWrite (bool& closed);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief shuts down the SSL connection
+////////////////////////////////////////////////////////////////////////////////
+
+        void shutdownSsl (bool initShutdown);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief accepted done
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _accepted;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief read blocked on write
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _readBlockedOnWrite;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief write blocked on read
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _writeBlockedOnRead;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief temporary buffer
+////////////////////////////////////////////////////////////////////////////////
+
+        char * _tmpReadBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief ssl
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL* _ssl;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief context
+////////////////////////////////////////////////////////////////////////////////
+
+        SSL_CTX* _ctx;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+        int _verificationMode;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+        int (*_verificationCallback)(int, X509_STORE_CTX*);
     };
   }
 }

@@ -75,7 +75,7 @@ RestActionHandler::RestActionHandler (HttpRequest* request,
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestActionHandler::isDirect () {
+bool RestActionHandler::isDirect () const {
   return _action == nullptr;
 }
 

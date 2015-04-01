@@ -1,11 +1,11 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief base class for all servers
+/// @brief general server job
 ///
 /// @file
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2014 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2015 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -22,131 +22,180 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Jan Steemann
-/// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
+/// @author Dr. Frank Celler
+/// @author Achim Brandt
+/// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
+/// @author Copyright 2009-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_ENDPOINT_SERVER_H
-#define ARANGODB_GENERAL_SERVER_ENDPOINT_SERVER_H 1
+#include "HttpServerJob.h"
 
-#include "Basics/Common.h"
+#include "Basics/logging.h"
+#include "HttpServer/HttpHandler.h"
+#include "HttpServer/HttpServer.h"
 
-#include "lib/Rest/Endpoint.h"
+using namespace triagens::rest;
+using namespace std;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              class EndpointServer
+// --SECTION--                                               class HttpServerJob
 // -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-
-    class EndpointList;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief endpoint server
-////////////////////////////////////////////////////////////////////////////////
-
-    class EndpointServer {
-      private:
-        EndpointServer (EndpointServer const&);
-        EndpointServer const& operator= (EndpointServer const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new endpoint server
+/// @brief constructs a new server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        explicit
-        EndpointServer () :
-          _endpointList(0) {
-        }
+HttpServerJob::HttpServerJob (HttpServer* server,
+                              HttpHandler* handler,
+                              bool isDetached)
+  : Job("HttpServerJob"),
+    _server(server),
+    _handler(handler),
+    _shutdown(false),
+    _abandon(false),
+    _isDetached(isDetached) {
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys an endpoint server
+/// @brief destructs a server job
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~EndpointServer () {
-        }
+HttpServerJob::~HttpServerJob () {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the encryption to be used
+/// @brief returns the underlying handler
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Endpoint::EncryptionType getEncryption () const = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add the endpoint list
-////////////////////////////////////////////////////////////////////////////////
-
-        void setEndpointList (const EndpointList* list) {
-          _endpointList = list;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief add another endpoint at runtime
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool addEndpoint (Endpoint*) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief remove an endpoint at runtime
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual bool removeEndpoint (Endpoint*) = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief starts listening
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void startListening () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief shuts down handlers
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void shutdownHandlers () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief stops listining
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void stopListening () = 0;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief removes all listen and comm tasks
-////////////////////////////////////////////////////////////////////////////////
-
-        virtual void stop () = 0;
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief defined ports and addresses
-////////////////////////////////////////////////////////////////////////////////
-
-        const EndpointList* _endpointList;
-
-    };
-  }
+HttpHandler* HttpServerJob::getHandler () const {
+  return _handler;
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the job is detached
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::isDetached () const {
+  return _isDetached;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief abandon job
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::abandon () {
+  _abandon.store(true);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                       Job methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Job::JobType HttpServerJob::type () const {
+  return _handler->type();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+const string& HttpServerJob::queue () const {
+  return _handler->queue();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::setDispatcherThread (DispatcherThread* thread) {
+  _handler->setDispatcherThread(thread);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Job::status_t HttpServerJob::work () {
+  LOG_TRACE("beginning job %p", (void*) this);
+
+  this->RequestStatisticsAgent::transfer(_handler);
+
+  if (_shutdown.load()) {
+    return status_t(Job::JOB_DONE);
+  }
+
+  RequestStatisticsAgentSetRequestStart(_handler);
+  _handler->prepareExecute();
+  Handler::status_t status;
+
+  try {
+    status = _handler->execute();
+  }
+  catch (...) {
+    _handler->finalizeExecute();
+    throw;
+  }
+
+  _handler->finalizeExecute();
+  RequestStatisticsAgentSetRequestEnd(_handler);
+
+  LOG_TRACE("finished job %p with status %d", (void*) this, (int) status.status);
+
+  return status.jobStatus();
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::cancel (bool running) {
+  return _handler->cancel(running);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::cleanup () {
+  bool abandon = _abandon.load();
+
+  if (! abandon && _server != nullptr) {
+    _server->jobDone(this);
+  }
+
+  delete this;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpServerJob::beginShutdown () {
+  LOG_TRACE("shutdown job %p", (void*) this);
+
+  _shutdown.store(true);
+  return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpServerJob::handleError (triagens::basics::Exception const& ex) {
+  _handler->handleError(ex);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

@@ -36,6 +36,12 @@ var actions = require("org/arangodb/actions");
 var arangodb = require("org/arangodb");
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+// var queue = Foxx.queues.create("internal-demo-queue");
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
 
@@ -126,6 +132,41 @@ actions.defineHttp({
     res.responseCode = actions.HTTP_OK;
     res.contentType = "application/json; charset=utf-8";
     req.rawRequestBody = require('internal').rawRequestBody(req);
+    res.body = JSON.stringify(req);
+  }
+});
+
+////////////////////////////////////////////////////////////////////////////////
+/// @startDocuBlock JSF_get_admin_long_echo
+///
+/// @RESTHEADER{GET /_admin/long_echo, Return current request and continues}
+///
+/// @RESTDESCRIPTION
+///
+/// The call returns an object with the following attributes:
+///
+/// - *headers*: object with HTTP headers received
+///
+/// - *requestType*: the HTTP request method (e.g. GET)
+///
+/// - *parameters*: object with URL parameters received
+///
+/// @RESTRETURNCODES
+///
+/// @RESTRETURNCODE{200}
+/// Echo was returned successfully.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+actions.defineHttp({
+  url : "_admin/long_echo",
+  prefix : true,
+
+  callback : function (req, res) {
+    res.responseCode = actions.HTTP_OK;
+    res.contentType = "application/json; charset=utf-8";
+    res.headers = { 'transfer-encoding': 'chunked' };
+
     res.body = JSON.stringify(req);
   }
 });

@@ -43,8 +43,8 @@
 
 namespace triagens {
   namespace rest {
-    class AsyncJobServer;
     class Dispatcher;
+    class HttpServer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                     class Handler
@@ -139,13 +139,13 @@ namespace triagens {
 /// @brief returns the job type
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Job::JobType type ();
+        virtual Job::JobType type () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns true if a handler is executed directly
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool isDirect () = 0;
+        virtual bool isDirect () const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the queue name
@@ -193,7 +193,7 @@ namespace triagens {
 /// @brief creates a job
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual Job* createJob (AsyncJobServer*, bool) = 0;
+        virtual Job* createJob (HttpServer*, bool) = 0;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
@@ -206,6 +206,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         DispatcherThread* _dispatcherThread;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief standard queue name
+////////////////////////////////////////////////////////////////////////////////
+
+        static std::string const STANDARD_QUEUE;
     };
   }
 }

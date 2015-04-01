@@ -28,80 +28,42 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_LISTEN_TASK_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_LISTEN_TASK_H 1
+#include "HttpListenTask.h"
 
-#include "Basics/Common.h"
+#include "HttpServer/HttpServer.h"
 
-#include "Basics/socket-utils.h"
-#include "Scheduler/ListenTask.h"
-#include "Rest/Endpoint.h"
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralListenTask
+// --SECTION--                                              class HttpListenTask
 // -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief task used to establish connections
-////////////////////////////////////////////////////////////////////////////////
-
-    template<typename S>
-    class GeneralListenTask : public ListenTask {
-      private:
-        GeneralListenTask (GeneralListenTask const&);
-        GeneralListenTask& operator= (GeneralListenTask const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-      public:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralListenTask (S* server, Endpoint* endpoint)
-          : Task("GeneralListenTask"),
-            ListenTask(endpoint),
-            server(server) {
-        }
+HttpListenTask::HttpListenTask (HttpServer* server, Endpoint* endpoint)
+  : Task("HttpListenTask"),
+    ListenTask(endpoint),
+    server(server) {
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                ListenTask methods
 // -----------------------------------------------------------------------------
 
-      protected:
-
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool handleConnected (TRI_socket_t s, ConnectionInfo const& info) {
-          ConnectionInfo newInfo = info;
-          server->handleConnected(s, newInfo);
-          return true;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
-      private:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief underlying general server
-////////////////////////////////////////////////////////////////////////////////
-
-        S* server;
-    };
-  }
+bool HttpListenTask::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
+  server->handleConnected(s, info);
+  return true;
 }
-
-#endif
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

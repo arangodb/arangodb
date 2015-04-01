@@ -198,10 +198,10 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
   TRI_ASSERT(code != TRI_ERROR_NO_ERROR);
 
   switch (code) {
+    case TRI_ERROR_BAD_PARAMETER:
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_BAD:
     case TRI_ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED:
     case TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID:
-    case TRI_ERROR_BAD_PARAMETER:
     case TRI_ERROR_CLUSTER_MUST_NOT_CHANGE_SHARDING_ATTRIBUTES:
     case TRI_ERROR_CLUSTER_MUST_NOT_SPECIFY_KEY: 
       return BAD;
@@ -211,6 +211,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
     
     case TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND:
     case TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND:
+    case TRI_ERROR_CURSOR_NOT_FOUND:
       return NOT_FOUND;
 
     case TRI_ERROR_REQUEST_CANCELED:
@@ -219,7 +220,7 @@ HttpResponse::HttpResponseCode HttpResponse::responseCode (int code) {
 
     case TRI_ERROR_ARANGO_CONFLICT:
     case TRI_ERROR_ARANGO_GEO_INDEX_VIOLATED:
-    case TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED:
+    case TRI_ERROR_CURSOR_BUSY:
       return CONFLICT;
 
     case TRI_ERROR_ARANGO_OUT_OF_KEYS:
@@ -260,6 +261,7 @@ HttpResponse::HttpResponse (HttpResponseCode code,
   : _code(code),
     _apiCompatibility(apiCompatibility),
     _isHeadResponse(false),
+    _isChunked(false),
     _headers(6),
     _body(TRI_UNKNOWN_MEM_ZONE),
     _bodySize(0),
@@ -325,6 +327,14 @@ size_t HttpResponse::contentLength () {
 
 void HttpResponse::setContentType (string const& contentType) {
   setHeader("content-type", 12, contentType);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks if chunked encoding is set
+////////////////////////////////////////////////////////////////////////////////
+
+bool HttpResponse::isChunked () const {
+  return _isChunked;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -429,6 +439,7 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, string co
 
     if (v != 0) {
       _headers.insert(key, keyLength, v);
+      checkHeader(key, v);
 
       _freeables.push_back(v);
     }
@@ -445,6 +456,7 @@ void HttpResponse::setHeader (const char* key, const size_t keyLength, const cha
   }
   else {
     _headers.insert(key, keyLength, value);
+    checkHeader(key, value);
   }
 }
 
@@ -465,6 +477,7 @@ void HttpResponse::setHeader (string const& key, string const& value) {
     char const* v = StringUtils::duplicate(value);
 
     _headers.insert(k, lk.size(), v);
+    checkHeader(k, v);
 
     _freeables.push_back(k);
     _freeables.push_back(v);
@@ -823,6 +836,7 @@ void HttpResponse::headResponse (size_t size) {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deflates the response body
+///
 /// the body must already be set. deflate is then run on the existing body
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -835,6 +849,25 @@ int HttpResponse::deflate (size_t bufferSize) {
 
   setHeader("content-encoding", strlen("content-encoding"), "deflate");
   return TRI_ERROR_NO_ERROR;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief checks for special headers
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpResponse::checkHeader (const char* key, const char* value) {
+  if (key[0] == 't' && strcmp(key, "transfer-encoding") == 0) {
+    if (TRI_CaseEqualString(value, "chunked")) {
+      _isChunked = true;
+    }
+    else {
+      _isChunked = false;
+    }
+  }
 }
 
 // -----------------------------------------------------------------------------

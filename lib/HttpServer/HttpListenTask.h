@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task for specific communication
+/// @brief tasks used to establish connections
 ///
 /// @file
 ///
@@ -28,29 +28,27 @@
 /// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_SPECIFIC_COMM_TASK_H
-#define ARANGODB_GENERAL_SERVER_SPECIFIC_COMM_TASK_H 1
+#ifndef ARANGODB_HTTP_SERVER_HTTP_LISTEN_TASK_H
+#define ARANGODB_HTTP_SERVER_HTTP_LISTEN_TASK_H 1
 
-#include "Basics/Common.h"
+#include "Scheduler/ListenTask.h"
 
-#include "GeneralServer/GeneralCommTask.h"
+// -----------------------------------------------------------------------------
+// --SECTION--                                              class HttpListenTask
+// -----------------------------------------------------------------------------
 
 namespace triagens {
   namespace rest {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                            class SpecificCommTask
-// -----------------------------------------------------------------------------
+    class HttpServer;
+    class Endpoint;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task for specific communication
+/// @brief task used to establish connections
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename HF, typename T>
-    class SpecificCommTask : public T {
-      private:
-        SpecificCommTask (SpecificCommTask const&);
-        SpecificCommTask& operator= (SpecificCommTask const&);
+    class HttpListenTask : public ListenTask {
+      HttpListenTask (HttpListenTask const&) = delete;
+      HttpListenTask& operator= (HttpListenTask const&) = delete;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -59,12 +57,34 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new task with a given socket
+/// @brief listen to given port
 ////////////////////////////////////////////////////////////////////////////////
 
-        SpecificCommTask (S* server, TRI_socket_t s, ConnectionInfo const& info, double keepAliveTimeout)
-          : Task("SpecificCommTask"),  T(server, s, info, keepAliveTimeout) {
-        }
+        HttpListenTask (HttpServer* server, Endpoint* endpoint);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                ListenTask methods
+// -----------------------------------------------------------------------------
+
+      protected:
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+        bool handleConnected (TRI_socket_t s, ConnectionInfo const& info);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief underlying general server
+////////////////////////////////////////////////////////////////////////////////
+
+        HttpServer* server;
     };
   }
 }
