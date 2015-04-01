@@ -64,10 +64,8 @@
     },
 
     runScript: function(event) {
-      console.log('script', $(event.currentTarget).data('script'), $(event.currentTarget).attr('data-script'));
       this.model.runScript($(event.currentTarget).attr('data-script'), function() {
       });
-      this.toggleScripts();
     },
 
     render: function() {

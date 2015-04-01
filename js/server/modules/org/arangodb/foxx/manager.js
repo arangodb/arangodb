@@ -1,4 +1,4 @@
-/*jshint esnext: true */
+/*jshint esnext: true, globalstrict: true */
 /*global module, require, exports*/
 /*global ArangoServerState, ArangoClusterInfo, ArangoClusterComm */
 'use strict';

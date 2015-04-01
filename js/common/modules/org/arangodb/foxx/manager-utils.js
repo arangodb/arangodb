@@ -1,3 +1,4 @@
+/*jshint globalstrict: true */
 /*global require, exports */
 'use strict';
 
@@ -282,9 +283,14 @@ function listJson (showPrefix, onlyDevelopment) {
   }
   var result = [];
   var doc, res;
+  function toScriptItem(scriptName) {
+    return {
+      name: scriptName,
+      title: getReadableName(scriptName)
+    };
+  }
   while (cursor.hasNext()) {
     doc = cursor.next();
-
     res = {
       mountId: doc._key,
       mount: doc.mount,
@@ -299,12 +305,7 @@ function listJson (showPrefix, onlyDevelopment) {
       scripts: (
         doc.manifest.scripts ?
         Object.keys(doc.manifest.scripts)
-        .map(function (scriptName) {
-          return {
-            name: scriptName,
-            title: getReadableName(scriptName)
-          };
-        }) : []
+        .map(toScriptItem) : []
       )
     };
 
