@@ -247,7 +247,7 @@ function setupIndexQuery (name, func, isExampleQuery) {
             result.limit(limit);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
       catch (err) {
@@ -402,7 +402,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }
@@ -676,7 +676,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }
@@ -852,7 +852,7 @@ actions.defineHttp({
             result = result.distance(distance);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }
@@ -1005,7 +1005,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }
@@ -1129,7 +1129,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }
@@ -1283,7 +1283,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }
@@ -1775,7 +1775,7 @@ actions.defineHttp({
             result = result.limit(limit);
           }
 
-          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), true, body.batchSize, body.ttl));
+          createCursorResponse(req, res, CREATE_CURSOR(result.toArray(), body.batchSize, body.ttl));
         }
       }
     }

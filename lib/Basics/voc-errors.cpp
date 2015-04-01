@@ -185,6 +185,7 @@ void TRI_InitialiseErrorMessages () {
   REG_ERROR(ERROR_QUERY_NOT_FOUND, "query ID not found");
   REG_ERROR(ERROR_QUERY_IN_USE, "query with this ID is in use");
   REG_ERROR(ERROR_CURSOR_NOT_FOUND, "cursor not found");
+  REG_ERROR(ERROR_CURSOR_BUSY, "cursor is busy");
   REG_ERROR(ERROR_TRANSACTION_INTERNAL, "internal transaction error");
   REG_ERROR(ERROR_TRANSACTION_NESTED, "nested transactions detected");
   REG_ERROR(ERROR_TRANSACTION_UNREGISTERED_COLLECTION, "unregistered collection used in transaction");

@@ -67,7 +67,6 @@ add_library(
     Basics/json-utilities.cpp
     Basics/JsonHelper.cpp
     Basics/levenshtein.cpp 
-    Basics/linked-list.cpp
     Basics/logging.cpp
     Basics/memory.cpp
     Basics/mimetypes.cpp
@@ -172,8 +171,15 @@ add_library(
     Dispatcher/Job.cpp
     Dispatcher/RequeueTask.cpp
     HttpServer/ApplicationEndpointServer.cpp
+    HttpServer/AsyncJobManager.cpp
+    HttpServer/HttpCommTask.cpp
     HttpServer/HttpHandler.cpp
     HttpServer/HttpHandlerFactory.cpp
+    HttpServer/HttpListenTask.cpp
+    HttpServer/HttpServer.cpp
+    HttpServer/HttpServerJob.cpp
+    HttpServer/HttpsCommTask.cpp
+    HttpServer/HttpsServer.cpp
     HttpServer/PathHandler.cpp
     Scheduler/ApplicationScheduler.cpp
     Scheduler/AsyncTask.cpp

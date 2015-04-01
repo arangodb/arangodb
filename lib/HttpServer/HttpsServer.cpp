@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief task for general communication
+/// @brief https server
 ///
 /// @file
 ///
@@ -23,132 +23,97 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Dr. Frank Celler
-/// @author Achim Brandt
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_GENERAL_SERVER_GENERAL_ASYNC_COMM_TASK_H
-#define ARANGODB_GENERAL_SERVER_GENERAL_ASYNC_COMM_TASK_H 1
+#include "HttpsServer.h"
 
-#include "Basics/Common.h"
+#include "HttpServer/HttpsCommTask.h"
 
-#include "GeneralServer/GeneralCommTask.h"
-
-#include "Basics/Exceptions.h"
-
-#include "Scheduler/AsyncTask.h"
-#include "Rest/Handler.h"
+using namespace triagens::rest;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                        class GeneralAsyncCommTask
+// --SECTION--                                                 class HttpsServer
 // -----------------------------------------------------------------------------
-
-namespace triagens {
-  namespace rest {
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief task for general communication
-////////////////////////////////////////////////////////////////////////////////
-
-    template<typename S, typename HF, typename T>
-    class GeneralAsyncCommTask : public T, public AsyncTask {
-      private:
-        GeneralAsyncCommTask (GeneralAsyncCommTask const&);
-        GeneralAsyncCommTask& operator= (GeneralAsyncCommTask const&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new task with a given socket
+/// @brief constructs a new http server
 ////////////////////////////////////////////////////////////////////////////////
 
-      public:
-
-        GeneralAsyncCommTask (S* server, TRI_socket_t s, ConnectionInfo const& info, double keepAliveTimeout)
-          : Task("GeneralAsyncCommTask"),
-            T(server, s, info, keepAliveTimeout) {
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destructs a task
-////////////////////////////////////////////////////////////////////////////////
-
-      protected:
-
-        ~GeneralAsyncCommTask () {
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      Task methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool setup (Scheduler* scheduler, EventLoop loop) {
-          bool ok = SocketTask::setup(scheduler, loop);
-
-          if (! ok) {
-            return false;
-          }
-
-          ok = AsyncTask::setup(scheduler, loop);
-
-          if (! ok) {
-            return false;
-          }
-
-          return true;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        void cleanup () {
-          SocketTask::cleanup();
-          AsyncTask::cleanup();
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-        bool handleEvent (EventToken token, EventType events) {
-          bool result = T::handleEvent(token, events);
-
-          if (result) {
-            result = AsyncTask::handleEvent(token, events);
-          }
-
-          return result;
-        }
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 AsyncTask methods
-// -----------------------------------------------------------------------------
-
-      protected:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief handles the signal
-////////////////////////////////////////////////////////////////////////////////
-
-        bool handleAsync () {
-          this->_server->handleAsync(this);
-          return true;
-        }
-    };
-  }
+HttpsServer::HttpsServer (Scheduler* scheduler,
+                          Dispatcher* dispatcher,
+                          HttpHandlerFactory* handlerFactory,
+                          AsyncJobManager* jobManager,
+                          double keepAliveTimeout,
+                          SSL_CTX* ctx)
+  : HttpServer(scheduler, dispatcher, handlerFactory, jobManager, keepAliveTimeout),
+    _ctx(ctx),
+    _verificationMode(SSL_VERIFY_NONE),
+    _verificationCallback(0) {
 }
 
-#endif
+////////////////////////////////////////////////////////////////////////////////
+/// @brief destructor
+////////////////////////////////////////////////////////////////////////////////
+
+HttpsServer::~HttpsServer () {
+  // don't free context here but in dtor of ApplicationEndpointServer
+  // SSL_CTX_free(ctx);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification mode
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpsServer::setVerificationMode (int mode) {
+  _verificationMode = mode;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the verification callback
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpsServer::setVerificationCallback (int (*func)(int, X509_STORE_CTX *)) {
+  _verificationCallback = func;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                HttpServer methods
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+const char* HttpsServer::protocol () const {
+  return "https";
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+Endpoint::EncryptionType HttpsServer::encryptionType () const {
+  return Endpoint::ENCRYPTION_SSL;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// {@inheritDoc}
+////////////////////////////////////////////////////////////////////////////////
+
+HttpCommTask* HttpsServer::createCommTask (TRI_socket_t s, const ConnectionInfo& info) {
+  return new HttpsCommTask(
+    this, s, info, _keepAliveTimeout, _ctx, _verificationMode, _verificationCallback);
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE

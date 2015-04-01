@@ -102,8 +102,10 @@ add_executable(
     Replication/InitialSyncer.cpp
     Replication/Syncer.cpp
     RestHandler/RestBatchHandler.cpp
+    RestHandler/RestCursorHandler.cpp
     RestHandler/RestDocumentHandler.cpp
     RestHandler/RestEdgeHandler.cpp
+    RestHandler/RestExportHandler.cpp
     RestHandler/RestImportHandler.cpp
     RestHandler/RestPleaseUpgradeHandler.cpp
     RestHandler/RestQueryHandler.cpp
@@ -115,6 +117,9 @@ add_executable(
     RestServer/VocbaseContext.cpp
     RestServer/arangod.cpp
     SkipLists/skiplistIndex.cpp
+    Utils/CollectionExport.cpp
+    Utils/Cursor.cpp
+    Utils/CursorRepository.cpp
     Utils/DocumentHelper.cpp
     Utils/StandaloneTransactionContext.cpp
     Utils/Transaction.cpp
@@ -146,7 +151,6 @@ add_executable(
     VocBase/datafile.cpp
     VocBase/document-collection.cpp
     VocBase/edge-collection.cpp
-    VocBase/general-cursor.cpp
     VocBase/headers.cpp
     VocBase/index.cpp
     VocBase/key-generator.cpp

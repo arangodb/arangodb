@@ -40,12 +40,6 @@ using namespace triagens::rest;
 using namespace triagens::admin;
 using namespace std;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief name of the queue
-////////////////////////////////////////////////////////////////////////////////
-
-const string RestDebugHelperHandler::QUEUE_NAME = "STANDARD";
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
@@ -66,16 +60,8 @@ RestDebugHelperHandler::RestDebugHelperHandler (HttpRequest* request)
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestDebugHelperHandler::isDirect () {
+bool RestDebugHelperHandler::isDirect () const {
   return false;
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// {@inheritDoc}
-////////////////////////////////////////////////////////////////////////////////
-
-string const& RestDebugHelperHandler::queue () const {
-  return QUEUE_NAME;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

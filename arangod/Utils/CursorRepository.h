@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief linked list implementation
+/// @brief list of cursors present in database
 ///
 /// @file
 ///
@@ -22,150 +22,139 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_BASICS_C_LINKED__LIST_H
-#define ARANGODB_BASICS_C_LINKED__LIST_H 1
+#ifndef ARANGODB_ARANGO_CURSORS_H
+#define ARANGODB_ARANGO_CURSORS_H 1
 
 #include "Basics/Common.h"
+#include "Basics/Mutex.h"
+#include "Utils/Cursor.h"
+#include "VocBase/voc-types.h"
 
-#include "Basics/associative.h"
+struct TRI_json_t;
+struct TRI_vocbase_s;
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       LINKED LIST
-// -----------------------------------------------------------------------------
+namespace triagens {
+  namespace arango {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                      public types
-// -----------------------------------------------------------------------------
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief linked list entry
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_linked_list_entry_s {
-  void const* _data;
-  struct TRI_linked_list_entry_s* _prev;
-  struct TRI_linked_list_entry_s* _next;
-}
-TRI_linked_list_entry_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief linked list
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_linked_list_s {
-  TRI_memory_zone_t* _memoryZone;
-  TRI_linked_list_entry_t* _begin;
-  TRI_linked_list_entry_t* _end;
-}
-TRI_linked_list_t;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief linked array
-////////////////////////////////////////////////////////////////////////////////
-
-typedef struct TRI_linked_array_s {
-  TRI_memory_zone_t* _memoryZone;
-  TRI_linked_list_t _list;
-  TRI_associative_pointer_t _array;
-}
-TRI_linked_array_t;
+    class CollectionExport;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                            class CursorRepository
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inits a linked list
-////////////////////////////////////////////////////////////////////////////////
+    class CursorRepository {
 
-void TRI_InitLinkedList (TRI_linked_list_t*, TRI_memory_zone_t*);
+// -----------------------------------------------------------------------------
+// --SECTION--                                        constructors / destructors
+// -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inits a linked array
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_InitLinkedArray (TRI_linked_array_t*, TRI_memory_zone_t*);
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked list, but does not free the pointer
+/// @brief create a cursors repository
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_DestroyLinkedList (TRI_linked_list_t*, TRI_memory_zone_t*);
+        explicit CursorRepository (struct TRI_vocbase_s*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked list and frees the pointer
+/// @brief destroy a cursors repository
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_FreeLinkedList (TRI_memory_zone_t*, TRI_linked_list_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked array, but does not free the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_DestroyLinkedArray (TRI_linked_array_t*);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroys a linked list and frees the pointer
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_FreeLinkedArray (TRI_memory_zone_t*, TRI_linked_array_t*);
+        ~CursorRepository ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the end of a linked list
-////////////////////////////////////////////////////////////////////////////////
-
-void TRI_AddLinkedList (TRI_linked_list_t*, TRI_linked_list_entry_t*);
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the beginning of a linked list
+/// @brief creates a cursor and stores it in the registry
+/// the cursor will be returned with the usage flag set to true. it must be
+/// returned later using release() 
+/// the cursor will take ownership of both json and extra
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_AddFrontLinkedList (TRI_linked_list_t*, TRI_linked_list_entry_t*);
+        JsonCursor* createFromJson (struct TRI_json_t*,
+                                    size_t,
+                                    struct TRI_json_t*,
+                                    double, 
+                                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from a linked list
+/// @brief creates a cursor and stores it in the registry
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveLinkedList (TRI_linked_list_t*, TRI_linked_list_entry_t*);
+        ExportCursor* createFromExport (triagens::arango::CollectionExport*,
+                                        size_t,
+                                        double, 
+                                        bool);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the end of a linked array
+/// @brief remove a cursor by id
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddLinkedArray (TRI_linked_array_t*, void const* data);
+        bool remove (CursorId);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief inserts an entry at the beginning of a linked array
+/// @brief find an existing cursor by id
+/// if found, the cursor will be returned with the usage flag set to true. 
+/// it must be returned later using release() 
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_AddFrontLinkedArray (TRI_linked_array_t*, void const* data);
+        Cursor* find (CursorId,
+                      bool&);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief removes an entry from a linked array
+/// @brief return a cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_RemoveLinkedArray (TRI_linked_array_t*, void const* data);
+        void release (Cursor*);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief moves an entry to the end of a linked array
+/// @brief run a garbage collection on the cursors
 ////////////////////////////////////////////////////////////////////////////////
 
-void TRI_MoveToBackLinkedArray (TRI_linked_array_t* array, void const* data);
+        bool garbageCollect (bool);
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief pops front entry from list
+/// @brief vocbase
 ////////////////////////////////////////////////////////////////////////////////
 
-void const* TRI_PopFrontLinkedArray (TRI_linked_array_t* array);
+        struct TRI_vocbase_s* _vocbase;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief mutex for the cursors repository
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Mutex _lock;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief list of current cursors
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_map<CursorId, Cursor*> _cursors;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief maximum number of cursors to garbage-collect in one go
+////////////////////////////////////////////////////////////////////////////////
+
+        static size_t const MaxCollectCount;
+    };
+
+  }
+}
 
 #endif
 

@@ -1,12 +1,12 @@
 /*jshint -W051: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ArangoCursor, ShapedJson,
+/*global require, db, ArangoCollection, ArangoDatabase, ShapedJson,
   RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
   WAL_FLUSH, WAL_PROPERTIES,
   REPLICATION_LOGGER_STATE, REPLICATION_SERVER_ID,
   REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
   REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
   ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
-  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS, FE_VERSION_CHECK */
+  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS, FE_VERSION_CHECK, SYS_SEND_CHUNK */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -69,13 +69,6 @@
 
   internal.ArangoDatabase = ArangoDatabase;
   delete ArangoDatabase;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief ArangoCursor
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.ArangoCursor = ArangoCursor;
-  delete ArangoCursor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ShapedJson
@@ -340,6 +333,15 @@
   if (typeof SYS_REQUEST_PARTS !== "undefined") {
     internal.requestParts = SYS_REQUEST_PARTS;
     delete SYS_REQUEST_PARTS;
+  }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief send chunks
+////////////////////////////////////////////////////////////////////////////////
+
+  if (typeof SYS_SEND_CHUNK !== "undefined") {
+    internal.sendChunk = SYS_SEND_CHUNK;
+    delete SYS_SEND_CHUNK;
   }
 
 }());

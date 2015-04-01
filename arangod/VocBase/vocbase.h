@@ -46,7 +46,6 @@
 
 struct TRI_document_collection_t;
 struct TRI_col_info_s;
-struct TRI_general_cursor_store_s;
 struct TRI_json_t;
 struct TRI_server_s;
 struct TRI_vector_pointer_s;
@@ -314,6 +313,7 @@ typedef struct TRI_vocbase_s {
   // structures for user-defined volatile data
   void*                      _userStructures;
   void*                      _queries;
+  void*                      _cursorRepository;
 
   TRI_associative_pointer_t  _authInfo;
   TRI_associative_pointer_t  _authCache;
@@ -337,8 +337,6 @@ typedef struct TRI_vocbase_s {
 
   TRI_thread_t               _compactor;
   TRI_thread_t               _cleanup;
-
-  struct TRI_general_cursor_store_s* _cursors;
 
   struct {
     TRI_read_write_lock_t _lock;

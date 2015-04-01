@@ -33,6 +33,12 @@ using namespace triagens::rest;
 using namespace std;
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                  static variables
+// -----------------------------------------------------------------------------
+  
+std::string const Handler::STANDARD_QUEUE{ "STANDARD" };
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
@@ -59,7 +65,7 @@ Handler::~Handler () {
 /// @brief returns the job type
 ////////////////////////////////////////////////////////////////////////////////
 
-Job::JobType Handler::type () {
+Job::JobType Handler::type () const {
   return Job::READ_JOB;
 }
 
@@ -68,8 +74,7 @@ Job::JobType Handler::type () {
 ////////////////////////////////////////////////////////////////////////////////
 
 string const& Handler::queue () const {
-  static string const standard = "STANDARD";
-  return standard;
+  return STANDARD_QUEUE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -84,7 +89,7 @@ void Handler::setDispatcherThread (DispatcherThread* dispatcherThread) {
 /// @brief prepares for execution
 ////////////////////////////////////////////////////////////////////////////////
 
-void  Handler::prepareExecute () {
+void Handler::prepareExecute () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////

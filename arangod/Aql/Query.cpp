@@ -480,7 +480,6 @@ void Query::registerErrorCustom (int code,
   errorMessage.append(": ");
   errorMessage.append(details);
 
-std::cout << "REGISTER ERROR CUSTOM: " << errorMessage << "\n";
   THROW_ARANGO_EXCEPTION_MESSAGE(code, errorMessage);
 }
 
@@ -523,11 +522,6 @@ QueryResult Query::prepare (QueryRegistry* registry) {
       parser->parse(false);
       // put in bind parameters
       parser->ast()->injectBindParameters(_bindParameters);
-
-      // optimize the ast
-      enterState(AST_OPTIMIZATION);
-      parser->ast()->validateAndOptimize();
-      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
     }
 
     // create the transaction object, but do not start it yet
@@ -544,8 +538,15 @@ QueryResult Query::prepare (QueryRegistry* registry) {
         return transactionError(res);
       }
 
+      // optimize the ast
+      enterState(AST_OPTIMIZATION);
+
+      parser->ast()->validateAndOptimize();
+      // std::cout << "AST: " << triagens::basics::JsonHelper::toString(parser->ast()->toJson(TRI_UNKNOWN_MEM_ZONE, false)) << "\n";
+
       enterState(PLAN_INSTANCIATION);
       plan.reset(ExecutionPlan::instanciateFromAst(parser->ast()));
+
       if (plan.get() == nullptr) {
         // oops
         return QueryResult(TRI_ERROR_INTERNAL, "failed to create query execution engine");
@@ -652,22 +653,29 @@ QueryResult Query::execute (QueryRegistry* registry) {
     triagens::basics::Json jsonResult(triagens::basics::Json::Array, 16);
     triagens::basics::Json stats;
 
-    AqlItemBlock* value;
+    AqlItemBlock* value = nullptr;
 
-    while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-      auto doc = value->getDocumentCollection(0);
-      size_t const n = value->size();
-      // reserve space for n additional results at once
-      jsonResult.reserve(n);
+    try {
+      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+        auto doc = value->getDocumentCollection(0);
+        size_t const n = value->size();
+        // reserve space for n additional results at once
+        jsonResult.reserve(n);
 
-      for (size_t i = 0; i < n; ++i) {
-        AqlValue val = value->getValue(i, 0);
+        for (size_t i = 0; i < n; ++i) {
+          AqlValue val = value->getValue(i, 0);
 
-        if (! val.isEmpty()) {
-          jsonResult.add(val.toJson(_trx, doc)); 
+          if (! val.isEmpty()) {
+            jsonResult.add(val.toJson(_trx, doc)); 
+          }
         }
+        delete value;
+        value = nullptr;
       }
+    }
+    catch (...) {
       delete value;
+      throw;
     }
 
     stats = _engine->_stats.toJson();
@@ -726,22 +734,28 @@ QueryResultV8 Query::executeV8 (v8::Isolate* isolate, QueryRegistry* registry) {
     result.result  = v8::Array::New(isolate);
     triagens::basics::Json stats;
 
-    AqlItemBlock* value;
+    AqlItemBlock* value = nullptr;
 
-    while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
-      auto doc = value->getDocumentCollection(0);
-      size_t const n = value->size();
-      // reserve space for n additional results at once
-      /// json.reserve(n);
-      
-      for (size_t i = 0; i < n; ++i) {
-        AqlValue val = value->getValueReference(i, 0);
+    try {
+      while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
+        auto doc = value->getDocumentCollection(0);
 
-        if (! val.isEmpty()) {
-          result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
+        size_t const n = value->size();
+        
+        for (size_t i = 0; i < n; ++i) {
+          AqlValue val = value->getValueReference(i, 0);
+
+          if (! val.isEmpty()) {
+            result.result->Set(j++, val.toV8(isolate, _trx, doc)); 
+          }
         }
+        delete value;
+        value = nullptr;
       }
+    }
+    catch (...) {
       delete value;
+      throw;
     }
 
     stats = _engine->_stats.toJson();
@@ -971,6 +985,8 @@ void Query::enterContext () {
       }
     
       // register transaction and resolver in context
+      TRI_ASSERT(_trx != nullptr);
+
       ISOLATE;
       TRI_GET_GLOBALS();
       auto ctx = static_cast<triagens::arango::V8TransactionContext*>(v8g->_transactionContext);
@@ -1003,6 +1019,19 @@ void Query::exitContext () {
     }
     TRI_ASSERT(_context == nullptr);
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not a V8 context will actually be exited
+////////////////////////////////////////////////////////////////////////////////
+
+bool Query::willExitContext () const {
+  if (! _contextOwnedByExterior) {
+    if (_context != nullptr) {
+      return true;
+    }
+  }
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

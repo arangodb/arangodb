@@ -71,7 +71,7 @@ RestQueryHandler::RestQueryHandler (HttpRequest* request, ApplicationV8* applica
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool RestQueryHandler::isDirect () {
+bool RestQueryHandler::isDirect () const {
   return  _request->requestType() != HttpRequest::HTTP_REQUEST_POST;
 }
 

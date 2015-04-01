@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief general http server
+/// @brief export request handler
 ///
 /// @file
 ///
@@ -22,36 +22,32 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
-/// @author Achim Brandt
+/// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2009-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2010-2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_HTTP_SERVER_GENERAL_HTTP_SERVER_H
-#define ARANGODB_HTTP_SERVER_GENERAL_HTTP_SERVER_H 1
+#ifndef ARANGODB_REST_HANDLER_REST_EXPORT_HANDLER_H
+#define ARANGODB_REST_HANDLER_REST_EXPORT_HANDLER_H 1
 
 #include "Basics/Common.h"
-
-#include "GeneralServer/GeneralServerDispatcher.h"
+#include "Basics/Mutex.h"
+#include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                              forward declarations
+// --SECTION--                                           class RestExportHandler
 // -----------------------------------------------------------------------------
 
 namespace triagens {
-  namespace rest {
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                           class GeneralHttpServer
-// -----------------------------------------------------------------------------
+  namespace arango {
+    class Cursor;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief http server implementation
+/// @brief document request handler
 ////////////////////////////////////////////////////////////////////////////////
 
-    template<typename S, typename HF, typename CT>
-    class GeneralHttpServer : public GeneralServerDispatcher<S, HF, CT> {
+    class RestExportHandler : public RestVocbaseBaseHandler {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -60,38 +56,58 @@ namespace triagens {
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief constructs a new general http server
+/// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
 
-        GeneralHttpServer (Scheduler* scheduler,
-                           Dispatcher* dispatcher,
-                           AsyncJobManager* jobManager,
-                           double keepAliveTimeout,
-                           HF* handlerFactory)
-        : GeneralServer<S, HF, CT>(scheduler, keepAliveTimeout),
-          GeneralServerDispatcher<S, HF, CT>(scheduler, dispatcher, jobManager, keepAliveTimeout),
-          _handlerFactory(handlerFactory) {
-        }
+        RestExportHandler (rest::HttpRequest*);
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    public methods
+// --SECTION--                                                   Handler methods
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the handler factory
+/// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-        HF* getHandlerFactory () const {
-          return _handlerFactory;
-        }
+        status_t execute () override;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                               protected variables
+// --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-        HF* _handlerFactory;
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief build options for the query as JSON
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::Json buildOptions (TRI_json_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create an export cursor and return the first results
+////////////////////////////////////////////////////////////////////////////////
+
+        void createCursor ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the next results from an existing cursor
+////////////////////////////////////////////////////////////////////////////////
+
+        void modifyCursor ();
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dispose an existing cursor
+////////////////////////////////////////////////////////////////////////////////
+
+        void deleteCursor ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
 
     };
   }
