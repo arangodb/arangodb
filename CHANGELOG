@@ -1,6 +1,13 @@
 v2.5.2 (XXXX-XX-XX)
 -------------------
 
+* added iterator for edge index in AQL queries
+
+  this change may lead to less edges being read when used together with a LIMIT clause
+
+* make graph viewer in web interface issue less expensive queries for determining
+  a random vertex from the graph, and for determining vertex attributes
+
 * issue #1285: syntax error, unexpected $undefined near '@_to RETURN obj
 
   this allows AQL bind parameter names to also start with underscores
