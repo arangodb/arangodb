@@ -1,4 +1,5 @@
 /*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB Application Launcher Utilities
@@ -43,8 +44,13 @@ var mountAppRegEx = /\/APP(\/|$)/i;
 var mountNumberRegEx = /^\/[\d\-%]/;
 var pathRegex = /^((\.{0,2}(\/|\\))|(~\/)|[a-zA-Z]:\\)/;
 
+var getReadableName = function(name) {
+  return name.split(/([-_]|\s)/).map(function (token) {
+    return token.slice(0, 1).toUpperCase() + token.slice(1);
+  }).join(' ');
+};
+
 var getStorage = function() {
-  "use strict";
   var c = db._collection("_apps");
   if (c === null) {
     c = db._create("_apps", {isSystem: true});
@@ -58,7 +64,6 @@ var getStorage = function() {
 ////////////////////////////////////////////////////////////////////////////////
 
 var compareMounts = function(l, r) {
-  "use strict";
   var left = l.mount.toLowerCase();
   var right = r.mount.toLowerCase();
 
@@ -73,8 +78,6 @@ var compareMounts = function(l, r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function buildGithubUrl (repository, version) {
-  'use strict';
-
   if (version === undefined) {
     version = "master";
   }
@@ -87,8 +90,6 @@ function buildGithubUrl (repository, version) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function extractNameAndVersionManifest (source, filename) {
-  'use strict';
-
   var manifest = JSON.parse(fs.read(filename));
 
   source.name = manifest.name;
@@ -101,8 +102,6 @@ function extractNameAndVersionManifest (source, filename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function processDirectory (source) {
-  'use strict';
-
   var location = source.location;
 
   if (! fs.exists(location) || ! fs.isDirectory(location)) {
@@ -150,8 +149,6 @@ function processDirectory (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function repackZipFile (source) {
-  'use strict';
-
   var i;
 
   var filename = source.filename;
@@ -238,8 +235,6 @@ function repackZipFile (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function processGithubRepository (source) {
-  'use strict';
-
   var url = buildGithubUrl(source.location, source.version);
   var tempFile = fs.getTempFile("downloads", false);
 
@@ -278,8 +273,6 @@ function processGithubRepository (source) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function listJson (showPrefix, onlyDevelopment) {
-  'use strict';
-
   var mounts = getStorage();
   var cursor;
   if (onlyDevelopment) {
@@ -302,7 +295,17 @@ function listJson (showPrefix, onlyDevelopment) {
       development: doc.isDevelopment || false,
       license: doc.manifest.license,
       version: doc.version,
-      path: fs.join(fs.makeAbsolute(doc.root), doc.path)
+      path: fs.join(fs.makeAbsolute(doc.root), doc.path),
+      scripts: (
+        doc.manifest.scripts ?
+        Object.keys(doc.manifest.scripts)
+        .map(function (scriptName) {
+          return {
+            name: scriptName,
+            title: getReadableName(scriptName)
+          };
+        }) : []
+      )
     };
 
     if (showPrefix) {
@@ -321,7 +324,6 @@ function listJson (showPrefix, onlyDevelopment) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function list(onlyDevelopment) {
-  "use strict";
   var apps = listJson(undefined, onlyDevelopment);
 
   arangodb.printTable(
@@ -348,7 +350,6 @@ function list(onlyDevelopment) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function listDevelopmentJson (showPrefix) {
-  'use strict';
   return listJson(showPrefix, true);
 }
 
@@ -357,7 +358,6 @@ function listDevelopmentJson (showPrefix) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function listDevelopment() {
-  'use strict';
   return list(true);
 }
 
@@ -366,7 +366,6 @@ function listDevelopment() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateMount(mount, internal) {
-  'use strict';
   if (mount[0] !== "/") {
     throw new ArangoError({
       errorNum: errors.ERROR_INVALID_MOUNTPOINT.code,
@@ -410,8 +409,6 @@ function validateMount(mount, internal) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function validateAppName (name) {
-  'use strict';
-
   if (typeof name === 'string' && name.length > 0) {
     return;
   }
@@ -427,7 +424,6 @@ function validateAppName (name) {
 /// @brief get the app mounted at this mount point
 ////////////////////////////////////////////////////////////////////////////////
 function mountedApp (mount) {
-  "use strict";
   return getStorage().firstExample({mount: mount});
 }
 
@@ -435,7 +431,6 @@ function mountedApp (mount) {
 /// @brief Update the app mounted at this mountpoint with the new app
 ////////////////////////////////////////////////////////////////////////////////
 function updateApp (mount, update) {
-  "use strict";
   return getStorage().updateByExample({mount: mount}, update);
 }
 
@@ -454,7 +449,6 @@ var typeToRegex = {
 /// @brief creates a zip archive of a foxx app. Returns the absolute path
 ////////////////////////////////////////////////////////////////////////////////
 var zipDirectory = function(directory) {
-  "use strict";
   if (!fs.isDirectory(directory)) {
     throw directory + " is not a directory.";
   }
@@ -485,6 +479,7 @@ var zipDirectory = function(directory) {
 
 exports.mountedApp = mountedApp;
 exports.updateApp = updateApp;
+exports.getReadableName = getReadableName;
 exports.list = list;
 exports.listJson = listJson;
 exports.listDevelopment = listDevelopment;

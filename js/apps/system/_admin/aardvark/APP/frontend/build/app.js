@@ -80619,6 +80619,20 @@ function clone (obj) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test if object is empty
+////////////////////////////////////////////////////////////////////////////////
+
+function isEmpty(obj) {
+  for(var key in obj) {
+    if (obj.hasOwnProperty(key)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief traversal abortion exception
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -81781,6 +81795,136 @@ function dijkstraSearch () {
   };
 }
 
+function dijkstraSearchMulti () {
+  return {
+    nodes: { },
+
+    requiresEndVertex: function () {
+      return true;
+    },
+
+    makeNode: function (vertex) {
+      var id = vertex._id;
+      if (! this.nodes.hasOwnProperty(id)) {
+        this.nodes[id] = { vertex: vertex, dist: Infinity };
+      }
+
+      return this.nodes[id];
+    },
+
+    vertexList: function (vertex) {
+      var result = [ ];
+      while (vertex) {
+        result.push(vertex);
+        vertex = vertex.parent;
+      }
+      return result;
+    },
+
+    buildPath: function (vertex) {
+      var path = { vertices: [ vertex.vertex ], edges: [ ] };
+      var v = vertex;
+
+      while (v.parent) {
+        path.vertices.unshift(v.parent.vertex);
+        path.edges.unshift(v.parentEdge);
+        v = v.parent;
+      }
+      return path;
+    },
+
+    run: function (config, result, startVertex, endVertex) {
+      var maxIterations = config.maxIterations, visitCounter = 0;
+
+      var heap = new BinaryHeap(function (node) {
+        return node.dist;
+      });
+
+      var startNode = this.makeNode(startVertex);
+      startNode.dist = 0;
+      heap.push(startNode);
+
+      while (heap.size() > 0) {
+        if (visitCounter++ > maxIterations) {
+          var err = new ArangoError();
+          err.errorNum = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.code;
+          err.errorMessage = arangodb.errors.ERROR_GRAPH_TOO_MANY_ITERATIONS.message;
+          throw err;
+        }
+
+        var currentNode = heap.pop();
+        var i, n;
+
+        if (endVertex.hasOwnProperty(currentNode.vertex._id)) {
+          delete endVertex[currentNode.vertex._id];
+          config.visitor(config, result, currentNode, this.buildPath(currentNode));
+          if (isEmpty(endVertex)) {
+            return;
+          }
+        }
+
+        if (currentNode.visited) {
+          continue;
+        }
+
+        if (currentNode.dist === Infinity) {
+          break;
+        }
+
+        currentNode.visited = true;
+
+        var path = this.buildPath(currentNode);
+        var filterResult = parseFilterResult(config.filter(config, currentNode.vertex, path));
+
+        if (! filterResult.visit) {
+          currentNode.hide = true;
+        }
+
+        if (! filterResult.expand) {
+          continue;
+        }
+
+        var dist = currentNode.dist;
+        var connected = config.expander(config, currentNode.vertex, path);
+        n = connected.length;
+
+        for (i = 0; i < n; ++i) {
+          var neighbor = this.makeNode(connected[i].vertex);
+
+          if (neighbor.visited) {
+            continue;
+          }
+
+          var edge = connected[i].edge;
+          var weight = 1;
+          if (config.distance) {
+            weight = config.distance(config, currentNode.vertex, neighbor.vertex, edge);
+          }
+          else if (config.weight) {
+            if (typeof edge[config.weight] === "number") {
+              weight = edge[config.weight];
+            }
+            else if (config.defaultWeight) {
+              weight = config.defaultWeight;
+            }
+            else {
+              weight = Infinity;
+            }
+          }
+
+          var alt = dist + weight;
+          if (alt < neighbor.dist) {
+            neighbor.dist = alt;
+            neighbor.parent = currentNode;
+            neighbor.parentEdge = edge;
+            heap.push(neighbor);
+          }
+        }
+      }
+    }
+  };
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief implementation details for a* shortest path strategy
 ////////////////////////////////////////////////////////////////////////////////
@@ -81998,7 +82142,8 @@ ArangoTraverser = function (config) {
     depthfirst: ArangoTraverser.DEPTH_FIRST,
     breadthfirst: ArangoTraverser.BREADTH_FIRST,
     astar: ArangoTraverser.ASTAR_SEARCH,
-    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH
+    dijkstra: ArangoTraverser.DIJKSTRA_SEARCH,
+    dijkstramulti: ArangoTraverser.DIJKSTRA_SEARCH_MULTI
   }, "strategy");
 
   config.order = validate(config.order, {
@@ -82109,6 +82254,9 @@ ArangoTraverser.prototype.traverse = function (result, startVertex, endVertex) {
   else if (this.config.strategy === ArangoTraverser.DIJKSTRA_SEARCH) {
     strategy = dijkstraSearch();
   }
+  else if (this.config.strategy === ArangoTraverser.DIJKSTRA_SEARCH_MULTI) {
+    strategy = dijkstraSearchMulti();
+  }
   else if (this.config.strategy === ArangoTraverser.BREADTH_FIRST) {
     strategy = breadthFirstSearch();
   }
@@ -82194,6 +82342,12 @@ ArangoTraverser.ASTAR_SEARCH         = 2;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoTraverser.DIJKSTRA_SEARCH      = 3;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief dijkstra search with multiple end vertices
+////////////////////////////////////////////////////////////////////////////////
+
+ArangoTraverser.DIJKSTRA_SEARCH_MULTI = 4;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pre-order traversal, visitor called before expander
@@ -90128,6 +90282,9 @@ Graph.prototype._absoluteEccentricity = function(vertexExample, options) {
     "ex1": ex1
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -90177,6 +90334,9 @@ Graph.prototype._eccentricity = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -90267,6 +90427,9 @@ Graph.prototype._absoluteCloseness = function(vertexExample, options) {
     "ex1": ex1
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -90325,10 +90488,11 @@ Graph.prototype._closeness = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
-
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_general_graph_absolute_betweenness
@@ -90336,12 +90500,15 @@ Graph.prototype._closeness = function(options) {
 /// [betweenness](http://en.wikipedia.org/wiki/Betweenness_centrality)
 /// of all vertices in the graph.
 ///
-/// `graph._absoluteBetweenness(options)`
+/// `graph._absoluteBetweenness(vertexExample, options)`
 ///
 /// The complexity of the function is described
 /// [here](../Aql/GraphOperations.html#the_complexity_of_the_shortest_path_algorithms).
 ///
 /// @PARAMS
+///
+/// @PARAM{vertexExample, object, optional}
+/// Filter the vertices, see [Definition of examples](#definition_of_examples)
 ///
 /// @PARAM{options, object, optional}
 /// An object defining further options. Can have the following values:
@@ -90384,18 +90551,23 @@ Graph.prototype._closeness = function(options) {
 /// @endDocuBlock
 //
 ////////////////////////////////////////////////////////////////////////////////
-Graph.prototype._absoluteBetweenness = function(options) {
+Graph.prototype._absoluteBetweenness = function(example, options) {
 
   var query = "RETURN"
     + " GRAPH_ABSOLUTE_BETWEENNESS(@graphName"
-    + ',@options'
-    + ')';
+    + ",@example"
+    + ",@options"
+    + ")";
   options = options || {};
   var bindVars = {
+    "example": example,
     "graphName": this.__name,
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -90452,6 +90624,9 @@ Graph.prototype._betweenness = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -90526,6 +90701,9 @@ Graph.prototype._radius = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -90599,6 +90777,9 @@ Graph.prototype._diameter = function(options) {
     "options": options
   };
   var result = db._query(query, bindVars).toArray();
+  if (result.length === 1) {
+    return result[0];
+  }
   return result;
 };
 
@@ -91236,7 +91417,7 @@ exports._undirectedRelation = _undirectedRelation;
 /// Deprecated function (announced 2.3)
 exports._directedRelation = function () {
   return _relation.apply(this, arguments);
-} ;
+};
 exports._relation = _relation;
 exports._graph = _graph;
 exports._edgeDefinitions = _edgeDefinitions;
@@ -99773,12 +99954,8 @@ window.Users = Backbone.Model.extend({
       });
     },
 
-    setup: function(callback) {
-      sendRequest(this, callback, "PATCH", "setup");
-    },
-
-    teardown: function(callback) {
-      sendRequest(this, callback, "PATCH", "teardown");
+    runScript: function(name, callback) {
+      sendRequest(this, callback, "POST", "scripts/" + name);
     },
 
     isSystem: function() {
@@ -101658,9 +101835,8 @@ window.ArangoUsers = Backbone.Collection.extend({
       'click .delete': 'deleteApp',
       'click #configure-app': 'showConfigureDialog',
       'click #app-switch-mode': 'toggleDevelopment',
-      'click #app-setup': 'setup',
-      'click #app-teardown': 'teardown',
       "click #app-scripts": "toggleScripts",
+      "click #app-scripts [data-script]": "runScript",
       "click #app-upgrade": "upgradeApp",
       "click #download-app": "downloadApp"
     },
@@ -101679,7 +101855,9 @@ window.ArangoUsers = Backbone.Collection.extend({
     },
 
     toggleScripts: function() {
-      $("#scripts_dropdown").toggle(200);
+      if (this.model.get('scripts').length) {
+        $("#scripts_dropdown").toggle(200);
+      }
     },
 
     updateConfig: function() {
@@ -101707,16 +101885,11 @@ window.ArangoUsers = Backbone.Collection.extend({
       }.bind(this));
     },
 
-    setup: function() {
-      this.model.setup(function() {
-
+    runScript: function(event) {
+      console.log('script', $(event.currentTarget).data('script'), $(event.currentTarget).attr('data-script'));
+      this.model.runScript($(event.currentTarget).attr('data-script'), function() {
       });
-    },
-
-    teardown: function() {
-      this.model.teardown(function() {
-
-      });
+      this.toggleScripts();
     },
 
     render: function() {
