@@ -34,3 +34,10 @@ build-book:
 	cp Users/cookbookLogo.png books/Users/
 	cp Users/googlegroupsIcon.png books/Users/
 	python deprecated.py
+	@if test "`grep -r \"@startDocuBlock\" --include \"*.html\" books/Users | wc -l`" -ne 0; then \
+	  echo ; \
+	  echo "@startDocuBlock markers still found in generated output files:"; \
+	  grep -rl "@startDocuBlock" --include "*.html" books/Users | sed -e "s/^/- /g"; \
+	  exit 1; \
+	fi
+
