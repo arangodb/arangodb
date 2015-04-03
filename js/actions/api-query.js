@@ -198,6 +198,14 @@ function get_api_query (req, res) {
 ///
 /// @RESTHEADER{DELETE /_api/query/{query-id}, Kills a running AQL query}
 ///
+/// @RESTURLPARAMETERS
+///
+/// @RESTURLPARAM{query-id,string,required}
+/// The id of the query.
+///
+/// Kills a running query. The query will be terminated at the next cancellation
+/// point.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{200}
