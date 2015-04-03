@@ -253,7 +253,7 @@ static int SetupExampleObject (v8::Handle<v8::Object> const example,
 
       values[i] = TRI_ShapedJsonV8Object(isolate, val, shaper, false);
 
-      if (values[i] == 0) {
+      if (values[i] == nullptr) {
         CleanupExampleObject(shaper->_memoryZone, i, pids, values);
         return TRI_RESULT_ELEMENT_NOT_FOUND;
       }
