@@ -44,7 +44,7 @@ import sys, os, json, string
 files = { 
   "js/actions/api-aqlfunction.js" : "aqlfunction",
   "arangod/RestHandler/RestBatchHandler.cpp" : "batch",
-  "js/actions/api-collection.js" : "collection",
+  "js/actions/_api/collection/app.js" : "collection",
   "js/actions/api-cursor.js" : "cursor",
   "js/actions/api-database.js" : "database",
   "arangod/RestHandler/RestDocumentHandler.cpp" : "document",
@@ -57,7 +57,7 @@ files = {
   "js/actions/api-index.js" : "index",
   "lib/HttpServer/AsyncJobManager.h" : "job",
   "lib/Admin/RestAdminLogHandler.cpp" : "log",
-  "js/actions/api-query.js" : "query",
+  "arangod/RestHandler/RestQueryHandler.cpp" : "query",
   "arangod/RestHandler/RestReplicationHandler.cpp" : "replication",
   "js/actions/api-simple.js" : "simple",
   "js/actions/api-structure.js" : "structure",
@@ -65,7 +65,7 @@ files = {
   "js/actions/api-tasks.js" : "tasks",
   "js/actions/api-transaction.js" : "transaction",
   "js/actions/api-traversal.js" : "traversal",
-  "js/actions/api-user.js" : "user",
+  "js/actions/_api/user/app.js" : "user",
   "lib/Admin/RestVersionHandler.cpp" : "version"
 }
 
