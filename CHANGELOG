@@ -1,6 +1,8 @@
 v2.5.2 (XXXX-XX-XX)
 -------------------
 
+* added missing query-id parameter in documentation of HTTP DELETE `/_api/query` endpoint
+
 * added iterator for edge index in AQL queries
 
   this change may lead to less edges being read when used together with a LIMIT clause
