@@ -49,19 +49,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 struct BasicShapes {
-  static TRI_shape_pid_t const TRI_SHAPE_SID_NULL;
-  static TRI_shape_pid_t const TRI_SHAPE_SID_BOOLEAN;
-  static TRI_shape_pid_t const TRI_SHAPE_SID_NUMBER;
-  static TRI_shape_pid_t const TRI_SHAPE_SID_SHORT_STRING;
-  static TRI_shape_pid_t const TRI_SHAPE_SID_LONG_STRING;
-  static TRI_shape_pid_t const TRI_SHAPE_SID_LIST;
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_NULL;
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_BOOLEAN;
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_NUMBER;
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_SHORT_STRING;
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_LONG_STRING;
+  static TRI_shape_pid_t const   TRI_SHAPE_SID_LIST;
 
-  static TRI_shape_t const     _shapeNull;
-  static TRI_shape_t const     _shapeBoolean;
-  static TRI_shape_t const     _shapeNumber;
-  static TRI_shape_t const     _shapeShortString;
-  static TRI_shape_t const     _shapeLongString;
-  static TRI_shape_t const     _shapeList;
+  static TRI_shape_t const       _shapeNull;
+  static TRI_shape_t const       _shapeBoolean;
+  static TRI_shape_t const       _shapeNumber;
+  static TRI_shape_t const       _shapeShortString;
+  static TRI_shape_t const       _shapeLongString;
+  static TRI_shape_t const       _shapeList;
+
+  static uint32_t const          TypeLengths[5];
+  static TRI_shape_t const*      ShapeAddresses[7]; 
 };
 
 // -----------------------------------------------------------------------------
