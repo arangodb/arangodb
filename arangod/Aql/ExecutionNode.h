@@ -560,8 +560,8 @@ namespace triagens {
 
           RegisterPlan ()
             : depth(0), totalNrRegs(0), me(nullptr) {
-            nrRegsHere.push_back(0);
-            nrRegs.push_back(0);
+            nrRegsHere.emplace_back(0);
+            nrRegs.emplace_back(0);
           };
           
           void clear ();
@@ -787,17 +787,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new SingletonNode(plan, _id);
 
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -809,7 +809,7 @@ namespace triagens {
 /// @brief the cost of a singleton is 1
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual double estimateCost (size_t&) const override final;
+        double estimateCost (size_t&) const override final;
 
     };
 
@@ -863,33 +863,31 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of an enumerate collection node is a multiple of the cost of
 /// its unique dependency
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual double estimateCost (size_t&) const override final;
+        double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          v.push_back(_outVariable);
-          return v;
+        std::vector<Variable const*> getVariablesSetHere () const override final{
+          return std::vector<Variable const*>{ _outVariable };
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1026,40 +1024,38 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the cost of an enumerate list node is . . . FIXME
 ////////////////////////////////////////////////////////////////////////////////
         
-        virtual double estimateCost (size_t&) const override final;
+        double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v{ _inVariable };
-          return v;
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          return std::vector<Variable const*>{ _inVariable };
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v{ _outVariable };
-          return v;
+        std::vector<Variable const*> getVariablesSetHere () const override final {
+          return std::vector<Variable const*>{ _outVariable };
         }
 
 // -----------------------------------------------------------------------------
@@ -1170,39 +1166,37 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          v.push_back(_outVariable);
-          return v;
+        std::vector<Variable const*> getVariablesSetHere () const override final {
+          return std::vector<Variable const*>{ _outVariable };
         }
         
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
+        std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual double estimateCost (size_t&) const override final;
+        double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether the pattern matches this node's index
@@ -1337,17 +1331,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const override final {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new LimitNode(plan, _id, _offset, _limit);
 
           if (_fullCount) {
@@ -1463,17 +1457,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return out variable
@@ -1501,7 +1495,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::unordered_set<Variable*> vars = _expression->variables();
           std::vector<Variable const*> v;
           v.reserve(vars.size());
@@ -1522,8 +1516,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v;
-          v.push_back(_outVariable);
+          std::vector<Variable const*> v{ _outVariable };
           return v;
         }
 
@@ -1616,17 +1609,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getter for subquery
@@ -1656,15 +1649,14 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
+        std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
-          std::vector<Variable const*> v{ _outVariable };
-          return v;
+        std::vector<Variable const*> getVariablesSetHere () const override final {
+          return std::vector<Variable const*>{ _outVariable };
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1744,17 +1736,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
@@ -1766,9 +1758,8 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v{ _inVariable };
-          return v;
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          return std::vector<Variable const*>{ _inVariable };
         }
 
       private:
@@ -1895,17 +1886,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new SortNode(plan, _id, _elements, _stable);
 
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -1923,7 +1914,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.emplace_back(p.first);
@@ -2029,17 +2020,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
@@ -2110,13 +2101,13 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final;
+        std::vector<Variable const*> getVariablesUsedHere () const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
+        std::vector<Variable const*> getVariablesSetHere () const {
           std::vector<Variable const*> v;
           size_t const n = _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1);
           v.reserve(n);
@@ -2216,17 +2207,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const;
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief estimateCost
@@ -2238,9 +2229,8 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
-          std::vector<Variable const*> v{ _inVariable };
-          return v;
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
+          return std::vector<Variable const*>{ _inVariable };
         }
 
 // -----------------------------------------------------------------------------
@@ -2950,17 +2940,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new NoResultsNode(plan, _id);
 
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -3025,17 +3015,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new RemoteNode(plan, _id, _vocbase, _collection, _server, _ownName, _queryId);
 
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -3199,17 +3189,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new ScatterNode(plan, _id, _vocbase, _collection);
 
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -3314,17 +3304,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new DistributeNode(plan, _id, _vocbase, _collection, _varId, _alternativeVarId, _createKeys);
           
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -3433,17 +3423,17 @@ namespace triagens {
 /// @brief export to JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void toJsonHelper (triagens::basics::Json&,
-                                   TRI_memory_zone_t*,
-                                   bool) const override;
+        void toJsonHelper (triagens::basics::Json&,
+                           TRI_memory_zone_t*,
+                           bool) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clone ExecutionNode recursively
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ExecutionNode* clone (ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
+        ExecutionNode* clone (ExecutionPlan* plan,
+                              bool withDependencies,
+                              bool withProperties) const override final {
           auto c = new GatherNode(plan, _id, _vocbase, _collection);
 
           CloneHelper(c, plan, withDependencies, withProperties);
@@ -3461,7 +3451,7 @@ namespace triagens {
 /// @brief getVariablesUsedHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesUsedHere () const override final {
+        std::vector<Variable const*> getVariablesUsedHere () const override final {
           std::vector<Variable const*> v;
           for (auto p : _elements) {
             v.emplace_back(p.first);
