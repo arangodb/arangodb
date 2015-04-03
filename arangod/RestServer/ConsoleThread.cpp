@@ -141,12 +141,29 @@ void ConsoleThread::inner () {
     const uint64_t gcInterval = 10;
     uint64_t nrCommands = 0;
 
-    const std::string pretty = "start_pretty_print();";
+    // read and eval .arangod.rc from home directory if it exists
+    char const* startupScript = R"SCRIPT(
+start_pretty_print();
+
+(function () {
+  var __fs__ = require("fs"); 
+  var __rcf__ = __fs__.join(__fs__.home(), ".arangod.rc"); 
+  if (__fs__.exists(__rcf__)) { 
+    try { 
+      var __content__ = __fs__.read(__rcf__); 
+      eval(__content__); 
+    } 
+    catch (err) {
+      require("console").log("error in rc file '%s': %s", __rcf__, String(err.stack || err)); 
+    } 
+  }
+})();
+)SCRIPT";
 
     TRI_ExecuteJavaScriptString(isolate,
                                 localContext,
-                                TRI_V8_STD_STRING(pretty),
-                                TRI_V8_ASCII_STRING("(internal)"),
+                                TRI_V8_ASCII_STRING(startupScript),
+                                TRI_V8_ASCII_STRING("(startup)"),
                                 false);
 
     V8LineEditor console(localContext, ".arangod.history");
