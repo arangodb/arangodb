@@ -203,6 +203,28 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief get expression type as string
+////////////////////////////////////////////////////////////////////////////////
+
+        std::string typeString () {
+          if (_type == UNPROCESSED) {
+            analyzeExpression();
+          }
+          switch (_type) {
+            case JSON:
+              return "json";
+            case SIMPLE:
+              return "simple";
+            case V8:
+              return "v8";
+            case UNPROCESSED: {
+            }
+          }
+          TRI_ASSERT(false);
+          return "unknown";
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is an attribute access of any degree (e.g. a.b, 
 /// a.b.c, ...)
 ////////////////////////////////////////////////////////////////////////////////

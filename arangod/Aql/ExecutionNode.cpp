@@ -167,7 +167,7 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
         for (size_t i = 0; i < n; i++) {
           triagens::basics::Json keepVariable = jsonKeepVariables.at(static_cast<int>(i));
           Variable const* variable = varFromJson(plan->getAst(), keepVariable, "variable");
-          keepVariables.push_back(variable);
+          keepVariables.emplace_back(variable);
         }
       }
 
@@ -277,7 +277,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _registerPlan->nrRegs.reserve(len);
   for (size_t i = 0; i < len; i++) {
     RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsList.at(i).json(), 0);
-    _registerPlan->nrRegs.push_back(oneReg);
+    _registerPlan->nrRegs.emplace_back(oneReg);
   }
   
   auto jsonNrRegsHereList = json.get("nrRegsHere");
@@ -289,7 +289,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
   _registerPlan->nrRegsHere.reserve(len);
   for (size_t i = 0; i < len; i++) {
     RegisterId oneReg = JsonHelper::getNumericValue<RegisterId>(jsonNrRegsHereList.at(i).json(), 0);
-    _registerPlan->nrRegsHere.push_back(oneReg);
+    _registerPlan->nrRegsHere.emplace_back(oneReg);
   }
 
   auto jsonRegsToClearList = json.get("regsToClear");
@@ -847,8 +847,8 @@ ExecutionNode::RegisterPlan::RegisterPlan (RegisterPlan const& v,
     me(nullptr) {
   nrRegs.resize(depth);
   nrRegsHere.resize(depth);
-  nrRegsHere.push_back(0);
-  nrRegs.push_back(nrRegs.back());
+  nrRegsHere.emplace_back(0);
+  nrRegs.emplace_back(nrRegs.back());
 }
 
 void ExecutionNode::RegisterPlan::clear () {
@@ -881,8 +881,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::ENUMERATE_COLLECTION: 
     case ExecutionNode::INDEX_RANGE: {
       depth++;
-      nrRegsHere.push_back(1);
-      nrRegs.push_back(1 + nrRegs.back());
+      nrRegsHere.emplace_back(1);
+      nrRegs.emplace_back(1 + nrRegs.back());
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(make_pair(ep->_outVariable->id,
@@ -892,8 +892,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     }
     case ExecutionNode::ENUMERATE_LIST: {
       depth++;
-      nrRegsHere.push_back(1);
-      nrRegs.push_back(1 + nrRegs.back());
+      nrRegsHere.emplace_back(1);
+      nrRegs.emplace_back(1 + nrRegs.back());
       auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(make_pair(ep->_outVariable->id,
@@ -920,14 +920,14 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
       varInfo.emplace(make_pair(ep->_outVariable->id,
                                VarInfo(depth, totalNrRegs)));
       totalNrRegs++;
-      subQueryNodes.push_back(en);
+      subQueryNodes.emplace_back(en);
       break;
     }
 
     case ExecutionNode::AGGREGATE: {
       depth++;
-      nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(nrRegs.back());
 
       auto ep = static_cast<AggregateNode const*>(en);
       for (auto p : ep->_aggregateVariables) {
@@ -963,8 +963,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
     case ExecutionNode::REMOVE: {
       depth++;
-      nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(nrRegs.back());
 
       auto ep = static_cast<RemoveNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
@@ -979,8 +979,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
     case ExecutionNode::INSERT: {
       depth++;
-      nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(nrRegs.back());
 
       auto ep = static_cast<InsertNode const*>(en);
       if (ep->getOutVariableNew() != nullptr) {
@@ -995,8 +995,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
     case ExecutionNode::UPDATE: {
       depth++;
-      nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(nrRegs.back());
 
       auto ep = static_cast<UpdateNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
@@ -1018,8 +1018,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
     case ExecutionNode::REPLACE: {
       depth++;
-      nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(nrRegs.back());
 
       auto ep = static_cast<ReplaceNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
@@ -1041,8 +1041,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
 
     case ExecutionNode::UPSERT: {
       depth++;
-      nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      nrRegsHere.emplace_back(0);
+      nrRegs.emplace_back(nrRegs.back());
 
       auto ep = static_cast<UpsertNode const*>(en);
       if (ep->getOutVariableNew() != nullptr) {
@@ -1242,9 +1242,9 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
       if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_ID)) != attrs.end() ||
           attrs.find(std::string(TRI_VOC_ATTRIBUTE_KEY)) != attrs.end()) {
         // can use index
-        idxs.push_back(idx);
+        idxs.emplace_back(idx);
         // <prefixes> not used for this type of index
-        prefixes.push_back(0);
+        prefixes.emplace_back(0);
       }
     }
 
@@ -1253,9 +1253,9 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
 
       if (prefix == idx->fields.size()) {
         // can use index
-        idxs.push_back(idx);
+        idxs.emplace_back(idx);
         // <prefixes> not used for this type of index
-        prefixes.push_back(0);
+        prefixes.emplace_back(0);
       } 
     }
 
@@ -1264,8 +1264,8 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
 
       if (prefix > 0) {
         // can use index
-        idxs.push_back(idx);
-        prefixes.push_back(prefix);
+        idxs.emplace_back(idx);
+        prefixes.emplace_back(prefix);
       }
     }
     
@@ -1274,9 +1274,9 @@ void EnumerateCollectionNode::getIndexesForIndexRangeNode (std::unordered_set<st
       if (attrs.find(std::string(TRI_VOC_ATTRIBUTE_FROM)) != attrs.end() ||
           attrs.find(std::string(TRI_VOC_ATTRIBUTE_TO)) != attrs.end()) {
         // can use index
-        idxs.push_back(idx);
+        idxs.emplace_back(idx);
         // <prefixes> not used for this type of index
-        prefixes.push_back(0);
+        prefixes.emplace_back(0);
       }
     }
     
@@ -1301,7 +1301,7 @@ std::vector<EnumerateCollectionNode::IndexMatch>
     IndexMatch match = CompareIndex(this, idx, attrs);
 
     if (match.index != nullptr) {
-      out.push_back(match);
+      out.emplace_back(match);
     }
   }
 
@@ -1475,10 +1475,10 @@ ExecutionNode* IndexRangeNode::clone (ExecutionPlan* plan,
                                       bool withProperties) const {
   std::vector<std::vector<RangeInfo>> ranges;
   for (size_t i = 0; i < _ranges.size(); i++){
-    ranges.push_back(std::vector<RangeInfo>());
+    ranges.emplace_back(std::vector<RangeInfo>());
     
     for (auto x: _ranges.at(i)){
-      ranges.at(i).push_back(x);
+      ranges.at(i).emplace_back(x);
     }
   }
 
@@ -1730,7 +1730,7 @@ std::vector<Variable const*> IndexRangeNode::getVariablesUsedHere () const {
   v.reserve(s.size());
 
   for (auto vv : s) {
-    v.push_back(vv);
+    v.emplace_back(vv);
   }
   return v;
 }
@@ -1840,6 +1840,8 @@ void CalculationNode::toJsonHelper (triagens::basics::Json& nodes,
   if (_conditionVariable != nullptr) {
     json("conditionVariable", _conditionVariable->toJson());
   }
+
+  json("expressionType", triagens::basics::Json(_expression->typeString()));
 
   // And add it:
   nodes(json);
@@ -1995,7 +1997,7 @@ std::vector<Variable const*> SubqueryNode::getVariablesUsedHere () const {
   std::vector<Variable const*> v;
   for (auto it = finder._usedLater.begin(); it != finder._usedLater.end(); ++it) {
     if (finder._valid.find(*it) == finder._valid.end()) {
-      v.push_back((*it));
+      v.emplace_back((*it));
     }
   }
   return v;
@@ -2381,7 +2383,7 @@ struct UserVarFinder : public WalkerWorker<ExecutionNode> {
       auto vars = en->getVariablesSetHere();
       for (auto v : vars) {
         if (v->isUserDefined()) {
-          userVars.push_back(v);
+          userVars.emplace_back(v);
         }
       }
     }
@@ -2427,7 +2429,7 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
   std::vector<Variable const*> vv;
   vv.reserve(v.size());
   for (auto x : v) {
-    vv.push_back(x);
+    vv.emplace_back(x);
   }
   return vv;
 }
