@@ -1582,22 +1582,10 @@ int TRI_CompareShapeTypes (char const* leftDocument,
 void TRI_InspectShapedSub (TRI_shaped_sub_t const* element,
                            char const* shapedJson,
                            TRI_shaped_json_t& shaped) {
-  if (element->_sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+  if (element->_sid <= BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
     shaped._data.data = (char*) &element->_value._data;
-    shaped._data.length = 0;
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
-    shaped._data.data = (char*) &element->_value._data;
-    shaped._data.length = sizeof(TRI_shape_boolean_t);
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
-    shaped._data.data = (char*) &element->_value._data;
-    shaped._data.length = sizeof(TRI_shape_number_t);
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    shaped._data.data = (char*) &element->_value._data;
-    shaped._data.length = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-  } 
+    shaped._data.length = BasicShapes::TypeLengths[element->_sid];
+  }
   else {
     shaped._data.data = const_cast<char*>(shapedJson) + element->_value._position._offset;  // ONLY IN INDEX
     shaped._data.length = element->_value._position._length; 
@@ -1608,22 +1596,10 @@ void TRI_InspectShapedSub (TRI_shaped_sub_t const* element,
                            TRI_doc_mptr_t const* mptr,
                            char const*& ptr,
                            size_t& length) {
-  if (element->_sid == BasicShapes::TRI_SHAPE_SID_NULL) {
+  if (element->_sid <= BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
     ptr = (char const*) &element->_value._data;
-    length = 0;
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
-    ptr = (char const*) &element->_value._data;
-    length = sizeof(TRI_shape_boolean_t);
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
-    ptr = (char const*) &element->_value._data;
-    length = sizeof(TRI_shape_number_t);
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    ptr = (char const*) &element->_value._data;
-    length = sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT;
-  } 
+    length = BasicShapes::TypeLengths[element->_sid];
+  }
   else {
     ptr = mptr->getShapedJsonPtr() + element->_value._position._offset;  // ONLY IN INDEX
     length = element->_value._position._length; 
@@ -1635,17 +1611,9 @@ void TRI_FillShapedSub (TRI_shaped_sub_t* element,
                         char const* ptr) {
   element->_sid = shapedObject->_sid;
 
-  if (element->_sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
-    memcpy((char*) &element->_value._data, shapedObject->_data.data, sizeof(TRI_shape_boolean_t));
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
-    memcpy((char*) &element->_value._data, shapedObject->_data.data, sizeof(TRI_shape_number_t));
-  } 
-  else if (element->_sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    memcpy((char*) &element->_value._data, shapedObject->_data.data, sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT);
-  } 
+  if (element->_sid <= BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
+    memcpy((char*) &element->_value._data, shapedObject->_data.data, BasicShapes::TypeLengths[element->_sid]);
+  }
   else {
     element->_value._position._length = shapedObject->_data.length;
     element->_value._position._offset = static_cast<uint32_t>(((char const*) shapedObject->_data.data) - ptr);

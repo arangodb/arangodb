@@ -73,30 +73,14 @@ static int CompareKeyElement (TRI_shaped_json_t const* left,
 
   auto rightSubobjects = SkiplistIndex_Subobjects(right);
 
-  int result = TRI_CompareShapeTypes(nullptr,
-                                     nullptr,
-                                     left,
-                                     shaper,
-                                     right->_document->getShapedJsonPtr(),
-                                     &rightSubobjects[rightPosition],
-                                     nullptr,
-                                     shaper);
-
-  // ...........................................................................
-  // In the above function CompareShapeTypes we use strcmp which may
-  // return an integer greater than 1 or less than -1. From this
-  // function we only need to know whether we have equality (0), less
-  // than (-1) or greater than (1)
-  // ...........................................................................
-
-  if (result < 0) {
-    result = -1;
-  }
-  else if (result > 0) {
-    result = 1;
-  }
-
-  return result;
+  return TRI_CompareShapeTypes(nullptr,
+                               nullptr,
+                               left,
+                               shaper,
+                               right->_document->getShapedJsonPtr(),
+                               &rightSubobjects[rightPosition],
+                               nullptr,
+                               shaper);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -114,30 +98,14 @@ static int CompareElementElement (TRI_skiplist_index_element_t const* left,
   auto leftSubobjects = SkiplistIndex_Subobjects(left);
   auto rightSubobjects = SkiplistIndex_Subobjects(right);
 
-  int result = TRI_CompareShapeTypes(left->_document->getShapedJsonPtr(),
-                                     &leftSubobjects[leftPosition],
-                                     nullptr,
-                                     shaper,
-                                     right->_document->getShapedJsonPtr(),
-                                     &rightSubobjects[rightPosition],
-                                     nullptr,
-                                     shaper);
-
-  // ...........................................................................
-  // In the above function CompareShapeTypes we use strcmp which may
-  // return an integer greater than 1 or less than -1. From this
-  // function we only need to know whether we have equality (0), less
-  // than (-1) or greater than (1)
-  // ...........................................................................
-
-  if (result < 0) {
-    return -1;
-  }
-  else if (result > 0) {
-    return 1;
-  }
-
-  return 0;
+  return TRI_CompareShapeTypes(left->_document->getShapedJsonPtr(),
+                               &leftSubobjects[leftPosition],
+                               nullptr,
+                               shaper,
+                               right->_document->getShapedJsonPtr(),
+                               &rightSubobjects[rightPosition],
+                               nullptr,
+                               shaper);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

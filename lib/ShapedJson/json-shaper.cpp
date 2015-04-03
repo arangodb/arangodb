@@ -92,6 +92,33 @@ TRI_shape_t const BasicShapes::_shapeList = {
   TRI_SHAPE_SIZE_VARIABLE 
 };
 
+TRI_shape_t const* BasicShapes::ShapeAddresses[7] = {
+  nullptr,
+  &BasicShapes::_shapeNull,
+  &BasicShapes::_shapeBoolean,
+  &BasicShapes::_shapeNumber,
+  &BasicShapes::_shapeShortString,
+  &BasicShapes::_shapeLongString,
+  &BasicShapes::_shapeList
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief static const length information for basic shape types
+////////////////////////////////////////////////////////////////////////////////
+
+uint32_t const BasicShapes::TypeLengths[5] = {
+  0, // not used
+  0, // null
+  sizeof(TRI_shape_boolean_t),
+  sizeof(TRI_shape_number_t),
+  sizeof(TRI_shape_length_short_string_t) + TRI_SHAPE_SHORT_STRING_CUT
+};
+
+static_assert(BasicShapes::TRI_SHAPE_SID_NULL == 1, "invalid shape id for null shape");
+static_assert(BasicShapes::TRI_SHAPE_SID_BOOLEAN == 2, "invalid shape id for boolean shape");
+static_assert(BasicShapes::TRI_SHAPE_SID_NUMBER == 3, "invalid shape id for number shape");
+static_assert(BasicShapes::TRI_SHAPE_SID_SHORT_STRING == 4, "invalid shape id for short string shape");
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
@@ -420,30 +447,11 @@ void TRI_FreeShaper (TRI_shaper_t* shaper) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TRI_shape_t const* TRI_LookupSidBasicShapeShaper (TRI_shape_sid_t sid) {
-  if (sid >= TRI_FirstCustomShapeIdShaper() || sid == 0) {
+  if (sid > BasicShapes::TRI_SHAPE_SID_LIST) {
     return nullptr;
   }
 
-  if (sid == BasicShapes::TRI_SHAPE_SID_NULL) {
-    return &BasicShapes::_shapeNull;
-  }
-  else if (sid == BasicShapes::TRI_SHAPE_SID_BOOLEAN) {
-    return &BasicShapes::_shapeBoolean;
-  }
-  else if (sid == BasicShapes::TRI_SHAPE_SID_NUMBER) {
-    return &BasicShapes::_shapeNumber;
-  }
-  else if (sid == BasicShapes::TRI_SHAPE_SID_SHORT_STRING) {
-    return &BasicShapes::_shapeShortString;
-  }
-  else if (sid == BasicShapes::TRI_SHAPE_SID_LONG_STRING) {
-    return &BasicShapes::_shapeLongString;
-  }
-  else if (sid == BasicShapes::TRI_SHAPE_SID_LIST) {
-    return &BasicShapes::_shapeList;
-  }
-
-  return nullptr;
+  return BasicShapes::ShapeAddresses[sid];
 }
 
 ////////////////////////////////////////////////////////////////////////////////

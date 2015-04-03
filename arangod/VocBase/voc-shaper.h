@@ -138,22 +138,21 @@ int TRI_CompareShapeTypes (char const* leftDocument,
 /// @brief extracts the shape identifier pointer from a marker
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(
-                   TRI_shape_sid_t& dst,
-                   void const* src) {
+static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER (TRI_shape_sid_t& dst,
+                                                        void const* src) {
 
-  TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(src);
+  auto type = static_cast<TRI_df_marker_t const*>(src)->_type;
 
-  if (marker->_type == TRI_DOC_MARKER_KEY_DOCUMENT) {
+  if (type == TRI_DOC_MARKER_KEY_DOCUMENT) {
     dst = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
   }
-  else if (marker->_type == TRI_DOC_MARKER_KEY_EDGE) {
+  else if (type == TRI_DOC_MARKER_KEY_EDGE) {
     dst = static_cast<TRI_doc_edge_key_marker_t const*>(src)->base._shape;
   }
-  else if (marker->_type == TRI_WAL_MARKER_DOCUMENT) {
+  else if (type == TRI_WAL_MARKER_DOCUMENT) {
     dst = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
   }
-  else if (marker->_type == TRI_WAL_MARKER_EDGE) {
+  else if (type == TRI_WAL_MARKER_EDGE) {
     dst = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
   }
   else {
@@ -167,32 +166,24 @@ static inline void TRI_EXTRACT_SHAPE_IDENTIFIER_MARKER(
 
 static inline void TRI_EXTRACT_SHAPED_JSON_MARKER (TRI_shaped_json_t& dst,
                                                    void const* src) {
-  if (static_cast<TRI_df_marker_t const*>(src)->_type ==
-      TRI_DOC_MARKER_KEY_DOCUMENT) {
+  auto type = static_cast<TRI_df_marker_t const*>(src)->_type;
+
+  if (type == TRI_DOC_MARKER_KEY_DOCUMENT ||
+      type == TRI_DOC_MARKER_KEY_EDGE) {
     dst._sid = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
     dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
     dst._data.data = const_cast<char*>(static_cast<char const*>(src))
       + static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type ==
-           TRI_DOC_MARKER_KEY_EDGE) {
-    dst._sid = static_cast<TRI_doc_document_key_marker_t const*>(src)->_shape;
-    dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
-      - static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
-    dst._data.data = const_cast<char*>(static_cast<char const*>(src))
-      + static_cast<TRI_doc_document_key_marker_t const*>(src)->_offsetJson;
-  }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type ==
-           TRI_WAL_MARKER_DOCUMENT) {
+  else if (type == TRI_WAL_MARKER_DOCUMENT) {
     dst._sid = static_cast<triagens::wal::document_marker_t const*>(src)->_shape;
     dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
     dst._data.data = const_cast<char*>(static_cast<char const*>(src))
       + static_cast<triagens::wal::document_marker_t const*>(src)->_offsetJson;
   }
-  else if (static_cast<TRI_df_marker_t const*>(src)->_type ==
-           TRI_WAL_MARKER_EDGE) {
+  else if (type == TRI_WAL_MARKER_EDGE) {
     dst._sid = static_cast<triagens::wal::edge_marker_t const*>(src)->_shape;
     dst._data.length = static_cast<TRI_df_marker_t const*>(src)->_size
       - static_cast<triagens::wal::edge_marker_t const*>(src)->_offsetJson;
