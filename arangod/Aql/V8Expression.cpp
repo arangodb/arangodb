@@ -46,9 +46,11 @@ using namespace triagens::aql;
 ////////////////////////////////////////////////////////////////////////////////
 
 V8Expression::V8Expression (v8::Isolate* isolate,
-                            v8::Handle<v8::Function> func)
+                            v8::Handle<v8::Function> func,
+                            bool isSimple)
   : isolate(isolate),
-    _func() {
+    _func(),
+    _isSimple(isSimple) {
 
   _func.Reset(isolate, func);
 }
@@ -150,7 +152,12 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   }
   else {
     // expression had a result. convert it to JSON
-    json.reset(TRI_ObjectToJson(isolate, result));
+    if (_isSimple) { 
+      json.reset(TRI_ObjectToJsonSimple(isolate, result));
+    }
+    else {
+      json.reset(TRI_ObjectToJson(isolate, result));
+    }
   }
 
   if (json.get() == nullptr) {

@@ -293,7 +293,21 @@ V8Expression* Executor::generateExpression (AstNode const* node) {
   // exit early if an error occurred
   HandleV8Error(tryCatch, func);
 
-  return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func));
+  // a "simple" expression here is any expression that will only return non-cyclic
+  // data and will not return any special JavaScript types such as Date, RegExp or
+  // Function
+  // as we know that all built-in AQL functions are simple but do not know anything
+  // about user-defined functions, we use the following approximation:
+  // - all user-defined functions are marked as potentially throwing
+  // - some of the internal functions are marked as potentially throwing
+  // - if an expression is marked as potentially throwing, it may contain a user-
+  //   defined function (which may be non-simple) and is thus considered non-simple
+  // - if an expression is marked as not throwing, it will not contain a user-
+  //   defined function but only internal AQL functions (which are simple) so the
+  //   whole expression is considered simple
+  bool isSimple = (! node->canThrow());
+
+  return new V8Expression(isolate, v8::Handle<v8::Function>::Cast(func), isSimple);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
