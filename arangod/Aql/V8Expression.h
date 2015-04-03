@@ -56,7 +56,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       V8Expression (v8::Isolate*,
-                    v8::Handle<v8::Function>);
+                    v8::Handle<v8::Function>, 
+                    bool);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destroy the v8 expression
@@ -114,6 +115,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
       
        std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributeRestrictions;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the expression is simple. simple in this case means
+/// that the expression result will always contain non-cyclic data and no 
+/// special JavaScript types such as Date, RegExp, Function etc.
+////////////////////////////////////////////////////////////////////////////////
+       
+       bool const _isSimple;
 
     };
 

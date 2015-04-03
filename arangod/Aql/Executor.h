@@ -82,7 +82,7 @@ namespace triagens {
 /// @brief generates an expression execution object
 ////////////////////////////////////////////////////////////////////////////////
 
-        V8Expression* generateExpression (AstNode const*);
+        V8Expression* generateExpression (AstNode const*); 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes an expression directly
