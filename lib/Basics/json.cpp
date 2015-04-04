@@ -233,8 +233,14 @@ static inline void InitBoolean (TRI_json_t* result,
 
 static inline void InitNumber (TRI_json_t* result,
                                double value) {
-  result->_type = TRI_JSON_NUMBER;
-  result->_value._number = value;
+  // check if the number can be represented in JSON
+  if (std::isnan(value) || value == HUGE_VAL || value == -HUGE_VAL) { 
+    result->_type = TRI_JSON_NULL;
+  }
+  else {
+    result->_type = TRI_JSON_NUMBER;
+    result->_value._number = value;
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
