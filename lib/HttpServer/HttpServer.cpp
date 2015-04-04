@@ -346,10 +346,14 @@ void HttpServer::handleConnected (TRI_socket_t s, const ConnectionInfo& info) {
 
   // registers the task and get the number of the scheduler thread
   ssize_t n;
-  _scheduler->registerTask(task, &n);
+  int res = _scheduler->registerTask(task, &n);
 
   // register the ChunkedTask in the same thread
-  registerChunkedTask(task, n);
+  if (res == TRI_ERROR_NO_ERROR) {
+    registerChunkedTask(task, n);
+  }
+
+  task->setupDone();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -177,7 +177,8 @@ HttpCommTask::HttpCommTask (HttpServer* server,
     _sinceCompactification(0),
     _originalBodyLength(0),
     _isChunked(false),
-    _chunkedTask(this) {
+    _chunkedTask(this),
+    _setupDone(false) {
   LOG_TRACE(
     "connection established, client %d, server ip %s, server port %d, client ip %s, client port %d",
     (int) TRI_get_fd_or_handle_of_socket(socket),
@@ -710,6 +711,14 @@ void HttpCommTask::finishedChunked () {
   processRead();
 }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief task set up complete
+////////////////////////////////////////////////////////////////////////////////
+
+void HttpCommTask::setupDone () {
+  _setupDone.store(true, std::memory_order_relaxed);
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 protected methods
 // -----------------------------------------------------------------------------
@@ -1171,6 +1180,10 @@ bool HttpCommTask::handleAsync () {
 
 bool HttpCommTask::handleRead (bool& closed)  {
   bool res = true;
+
+  if (! _setupDone.load(std::memory_order_relaxed)) {
+    return res;
+  }
 
   if (! _closeRequested) {
     res = fillReadBuffer(closed);
