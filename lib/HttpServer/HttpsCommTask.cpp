@@ -151,7 +151,7 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
   bool result = HttpCommTask::handleEvent(token, revents);
 
   // we might need to start listing for writes (even we only want to READ)
-  if (result) {
+  if (result && ! _clientClosed) {
     if (_readBlockedOnWrite || _writeBlockedOnRead) {
       _scheduler->startSocketEvents(writeWatcher);
     }
@@ -168,9 +168,9 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpsCommTask::fillReadBuffer (bool& closed) {
+bool HttpsCommTask::fillReadBuffer () {
   if (nullptr == _ssl) {
-    closed = true;
+    _clientClosed = true;
     return false;
   }
 
@@ -179,16 +179,16 @@ bool HttpsCommTask::fillReadBuffer (bool& closed) {
     return false;
   }
 
-  return trySSLRead(closed);
+  return trySSLRead();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpsCommTask::handleWrite (bool& closed) {
+bool HttpsCommTask::handleWrite () {
   if (nullptr == _ssl) {
-    closed = true;
+    _clientClosed = true;
     return false;
   }
 
@@ -197,7 +197,7 @@ bool HttpsCommTask::handleWrite (bool& closed) {
     return false;
   }
 
-  return trySSLWrite(closed);
+  return trySSLWrite();
 }
 
 // -----------------------------------------------------------------------------
@@ -258,8 +258,7 @@ bool HttpsCommTask::trySSLAccept () {
 /// @brief reads from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpsCommTask::trySSLRead (bool& closed) {
-  closed = false;
+bool HttpsCommTask::trySSLRead () {
   _readBlockedOnWrite = false;
 
 again:
@@ -284,7 +283,7 @@ again:
 
       case SSL_ERROR_ZERO_RETURN:
         shutdownSsl(true);
-        closed = true;
+        _clientClosed = true;
         return false;
 
       case SSL_ERROR_WANT_READ:
@@ -339,8 +338,7 @@ again:
 /// @brief writes from SSL connection
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpsCommTask::trySSLWrite (bool& closed) {
-  closed = false;
+bool HttpsCommTask::trySSLWrite () {
   _writeBlockedOnRead = false;
 
   bool callCompletedWriteBuffer = false;
@@ -370,7 +368,7 @@ bool HttpsCommTask::trySSLWrite (bool& closed) {
 
         case SSL_ERROR_ZERO_RETURN:
           shutdownSsl(true);
-          closed = true;
+          _clientClosed = true;
           return false;
 
         case SSL_ERROR_WANT_CONNECT:
@@ -428,12 +426,12 @@ bool HttpsCommTask::trySSLWrite (bool& closed) {
 
   // we have to release the lock, before calling completedWriteBuffer
   if (callCompletedWriteBuffer) {
-    completedWriteBuffer(closed);
+    completedWriteBuffer();
+  }
 
-    // return immediately, everything is closed down
-    if (closed) {
-      return false;
-    }
+  // return immediately, everything is closed down
+  if (_clientClosed) {
+    return false;
   }
 
   // we might have a new write buffer

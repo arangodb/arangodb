@@ -117,33 +117,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief fills the read buffer
 ///
-/// @param closed
-///     will be set to true, if the system receives a close on the socket.
-///
 /// The function should be called by the input task if the scheduler has
 /// indicated that new data is available. It will return true, if data could
 /// be read and false if the connection has been closed.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool fillReadBuffer (bool& closed);
+        virtual bool fillReadBuffer ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a read
-///
-/// @param closed
-///     will be set to true, if the system receives a close on the socket.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleRead (bool& closed) = 0;
+        virtual bool handleRead () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a write
-///
-/// @param closed
-///     will be set to true, if the system receives a close on the socket.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool handleWrite (bool& closed);
+        virtual bool handleWrite ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief called if write buffer has been sent
@@ -152,7 +143,7 @@ namespace triagens {
 /// completly to the client.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void completedWriteBuffer (bool& closed) = 0;
+        virtual void completedWriteBuffer () = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief handles a keep-alive timeout
@@ -170,7 +161,9 @@ namespace triagens {
 /// @brief sets an active write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-        void setWriteBuffer (basics::StringBuffer*, TRI_request_statistics_t*, bool ownBuffer = true);
+        void setWriteBuffer (basics::StringBuffer*,
+                             TRI_request_statistics_t*,
+                             bool ownBuffer = true);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks for presence of an active write buffer
@@ -282,6 +275,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         basics::StringBuffer* _readBuffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief client has closed the connection
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _clientClosed;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected variables
