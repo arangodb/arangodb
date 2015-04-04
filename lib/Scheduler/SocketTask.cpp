@@ -64,8 +64,8 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     ownBuffer(true),
     writeLength(0),
     _readBuffer(nullptr),
-    tid(0),
-    _clientClosed(false) {
+    _clientClosed(false),
+    tid(0) {
 
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -91,7 +91,7 @@ SocketTask::~SocketTask () {
 
 #ifdef TRI_ENABLE_FIGURES
 
-  if (_writeBufferStatistics != 0) {
+  if (_writeBufferStatistics != nullptr) {
     TRI_ReleaseRequestStatistics(_writeBufferStatistics);
   }
 
@@ -253,7 +253,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
 
   _writeBufferStatistics = statistics;
 
-  if (_writeBufferStatistics != 0) {
+  if (_writeBufferStatistics != nullptr) {
     _writeBufferStatistics->_writeStart = TRI_StatisticsTime();
     _writeBufferStatistics->_sentBytes += buffer->length();
   }
@@ -292,7 +292,7 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer,
   // we might have a new write buffer or none at all
   TRI_ASSERT(tid == Thread::currentThreadId());
 
-  if (_writeBuffer == 0) {
+  if (_writeBuffer == nullptr) {
     _scheduler->stopSocketEvents(writeWatcher);
   }
   else {
@@ -382,7 +382,7 @@ bool SocketTask::setup (Scheduler* scheduler, EventLoop loop) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SocketTask::cleanup () {
-  if (_scheduler == 0) {
+  if (_scheduler == nullptr) {
     LOG_WARNING("In SocketTask::cleanup the scheduler has disappeared -- invalid pointer");
     watcher = 0;
     keepAliveWatcher = 0;
