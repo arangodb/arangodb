@@ -368,7 +368,6 @@ void HttpServer::handleCommunicationClosed (HttpCommTask* task) {
   GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
   unregisterChunkedTask(task);
-  _scheduler->destroyTask(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -383,7 +382,6 @@ void HttpServer::handleCommunicationFailure (HttpCommTask* task) {
   GENERAL_SERVER_UNLOCK(&_commTasksLock);
 
   unregisterChunkedTask(task);
-  _scheduler->destroyTask(task);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -406,7 +404,6 @@ void HttpServer::handleAsync (HttpCommTask* task) {
   _task2handler.erase(it);
 
   HttpHandler* handler = element._handler;
-
   _handlers.erase(handler);
 
   GENERAL_SERVER_UNLOCK(&_mappingLock);
@@ -730,6 +727,8 @@ void HttpServer::shutdownHandlerByTask (Task* task) {
 
   handler_task_job_t& element = it->second;
   HttpHandler* handler = element._handler;
+
+  _task2handler.erase(it);
 
   // check if the handler contains a job or not
   auto&& jt = _handlers.find(handler);
