@@ -1,6 +1,6 @@
 module.define("org/arangodb/arango-query-cursor", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
+/*global require, exports, more:true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoQueryCursor
@@ -79,19 +79,34 @@ exports.ArangoQueryCursor = ArangoQueryCursor;
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toString = function () {
-  var result = "[object ArangoQueryCursor";
-  if (this.data.id) {
-    result += ":" + this.data.id;
+  var rows = [ ], i = 0;
+  while (++i <= 10 && this.hasNext()) {
+    rows.push(this.next());
   }
 
-  if (this.data && this.data.extra && this.data.extra.hasOwnProperty("operations")) {
-    result += " - operations executed: " + this.data.extra.operations.executed;
+  var result = "[object ArangoQueryCursor";
+
+  if (this.data.id) {
+    result += " " + this.data.id;
   }
-  else {
-    result += " - count: " + this._count + ", hasMore: " + (this._hasMore ? "true" : "false");
+
+  if (this._count !== null && this._count !== undefined) {
+    result += ", count: " + this._count;
   }
+
+  result += ", hasMore: " + (this.hasNext() ? "true" : "false");
 
   result += "]";
+
+  if (rows.length > 0) {
+    internal.startCaptureMode();
+    internal.print(rows);
+    result += "\n\n" + internal.stopCaptureMode();
+    if (this.hasNext()) {
+      result += "\ntype 'more' to show more documents\n";
+      more = this; // assign cursor to global variable more!
+    }
+  }
 
   return result;
 };
@@ -104,12 +119,11 @@ ArangoQueryCursor.prototype.toString = function () {
 /// server. Calling this function will also fully exhaust the cursor.
 ////////////////////////////////////////////////////////////////////////////////
 
-ArangoQueryCursor.prototype.toArray =
-ArangoQueryCursor.prototype.elements = function () {
+ArangoQueryCursor.prototype.toArray = function () {
   var result = [];
 
   while (this.hasNext()) {
-    result.push( this.next() );
+    result.push(this.next());
   }
 
   return result;

@@ -1,5 +1,45 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
+
+* changed behavior of `db._query()` in the ArangoShell:
+
+  if the command's result is printed in the shell, the first 10 results will be printed. Previously
+  only a basic description of the underlying query result cursor was printed. Additionally, if the
+  cursor result contains more than 10 results, the cursor is assigned to a global variable `more`,
+  which can be used to iterate over the cursor result. 
+
+  Example:
+
+      arangosh [_system]> db._query("FOR i IN 1..15 RETURN i")
+      [object ArangoQueryCursor, count: 15, hasMore: true]
+
+      [ 
+        1, 
+        2, 
+        3, 
+        4, 
+        5, 
+        6, 
+        7, 
+        8, 
+        9, 
+        10 
+      ]
+
+      type 'more' to show more documents
+
+
+      arangosh [_system]> more
+      [object ArangoQueryCursor, count: 15, hasMore: false]
+
+      [ 
+        11, 
+        12, 
+        13, 
+        14, 
+        15 
+      ]
+
 * Breaking Changes:
 
   * AQL command: `GRAPH_SHORTEST_PATH` now only returns IDs and does not extract data any more. 
