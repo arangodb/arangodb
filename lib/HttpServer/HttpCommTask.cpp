@@ -473,10 +473,13 @@ bool HttpCommTask::processRead () {
           // we need to close the connection, because there is no way we 
           // know what to remove and then continue
           resetState(true);
-          handleResponse(&response);
 
           // force a socket close, response will be ignored!
           TRI_CLOSE_SOCKET(_commSocket);
+          TRI_invalidatesocket(&_commSocket);
+
+          // might delete this
+          handleResponse(&response);
 
           return false;
         }
@@ -535,15 +538,7 @@ bool HttpCommTask::processRead () {
   // readRequestBody might have changed, so cannot use else
   if (_readRequestBody) {
     if (_readBuffer->length() - _bodyPosition < _bodyLength) {
-      // still more data to be read
-      SocketTask* socketTask = dynamic_cast<SocketTask*>(this);
-
-      if (socketTask) {
-        // set read request time-out
-        LOG_TRACE("waiting for rest of body to be received. request timeout set to 60 s");
-
-        socketTask->setKeepAliveTimeout(60.0);
-      }
+      setKeepAliveTimeout(60.0);
 
       // let client send more
       return false;
@@ -1154,6 +1149,10 @@ bool HttpCommTask::handleEvent (EventToken token, EventType events) {
     result = AsyncTask::handleEvent(token, events);
   }
 
+  if (_clientClosed) {
+    _scheduler->destroyTask(this);
+  }
+
   return result;
 }
 
@@ -1178,7 +1177,7 @@ bool HttpCommTask::handleAsync () {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-bool HttpCommTask::handleRead (bool& closed)  {
+bool HttpCommTask::handleRead ()  {
   bool res = true;
 
   if (! _setupDone.load(std::memory_order_relaxed)) {
@@ -1186,7 +1185,7 @@ bool HttpCommTask::handleRead (bool& closed)  {
   }
 
   if (! _closeRequested) {
-    res = fillReadBuffer(closed);
+    res = fillReadBuffer();
 
     // process as much data as we got
     while (processRead()) {
@@ -1196,11 +1195,12 @@ bool HttpCommTask::handleRead (bool& closed)  {
     }
   }
 
-  if (closed) {
+  if (_clientClosed) {
     res = false;
     _server->handleCommunicationClosed(this);
   }
   else if (! res) {
+    _clientClosed = true;
     _server->handleCommunicationFailure(this);
   }
 
@@ -1211,7 +1211,7 @@ bool HttpCommTask::handleRead (bool& closed)  {
 /// {@inheritDoc}
 ////////////////////////////////////////////////////////////////////////////////
 
-void HttpCommTask::completedWriteBuffer (bool& closed) {
+void HttpCommTask::completedWriteBuffer () {
   _writeBuffer = nullptr;
 
 #ifdef TRI_ENABLE_FIGURES
@@ -1225,8 +1225,8 @@ void HttpCommTask::completedWriteBuffer (bool& closed) {
 
   fillWriteBuffer();
 
-  if (_closeRequested && ! hasWriteBuffer() && _writeBuffers.empty() && ! _isChunked) {
-    closed = true;
+  if (! _clientClosed && _closeRequested && ! hasWriteBuffer() && _writeBuffers.empty() && ! _isChunked) {
+    _clientClosed = true;
     _server->handleCommunicationClosed(this);
   }
 }

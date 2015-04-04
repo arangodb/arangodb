@@ -151,7 +151,7 @@ bool HttpsCommTask::handleEvent (EventToken token, EventType revents) {
   bool result = HttpCommTask::handleEvent(token, revents);
 
   // we might need to start listing for writes (even we only want to READ)
-  if (result) {
+  if (result && ! _clientClosed) {
     if (_readBlockedOnWrite || _writeBlockedOnRead) {
       _scheduler->startSocketEvents(writeWatcher);
     }
@@ -428,12 +428,12 @@ bool HttpsCommTask::trySSLWrite (bool& closed) {
 
   // we have to release the lock, before calling completedWriteBuffer
   if (callCompletedWriteBuffer) {
-    completedWriteBuffer(closed);
+    completedWriteBuffer();
+  }
 
-    // return immediately, everything is closed down
-    if (closed) {
-      return false;
-    }
+  // return immediately, everything is closed down
+  if (_clientClosed) {
+    return false;
   }
 
   // we might have a new write buffer

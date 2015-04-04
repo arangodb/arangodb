@@ -64,7 +64,8 @@ SocketTask::SocketTask (TRI_socket_t socket, double keepAliveTimeout)
     ownBuffer(true),
     writeLength(0),
     _readBuffer(nullptr),
-    tid(0) {
+    tid(0),
+    _clientClosed(false) {
 
   _readBuffer = new StringBuffer(TRI_UNKNOWN_MEM_ZONE);
 
@@ -124,8 +125,7 @@ void SocketTask::setKeepAliveTimeout (double timeout) {
 /// @brief fills the read buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::fillReadBuffer (bool& closed) {
-  closed = false;
+bool SocketTask::fillReadBuffer () {
 
   // reserve some memory for reading
   if (_readBuffer->reserve(READ_BLOCK_SIZE) == TRI_ERROR_OUT_OF_MEMORY) {
@@ -142,7 +142,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
     return true;
   }
   else if (nr == 0) {
-    closed = true;
+    _clientClosed = true;
 
     LOG_TRACE("read returned 0");
 
@@ -150,7 +150,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
   }
   else {
     if (errno == EINTR) {
-      return fillReadBuffer(closed);
+      return fillReadBuffer();
     }
     else if (errno != EWOULDBLOCK) {
       LOG_TRACE("read failed with %d: %s", (int) errno, strerror(errno));
@@ -169,9 +169,7 @@ bool SocketTask::fillReadBuffer (bool& closed) {
 /// @brief handles a write
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SocketTask::handleWrite (bool& closed) {
-  closed = false;
-
+bool SocketTask::handleWrite () {
   bool callCompletedWriteBuffer = false;
 
   // size_t is unsigned, should never get < 0
@@ -189,7 +187,7 @@ bool SocketTask::handleWrite (bool& closed) {
 
     if (nr < 0) {
       if (errno == EINTR) {
-        return handleWrite(closed);
+        return handleWrite();
       }
       else if (errno != EWOULDBLOCK) {
         LOG_DEBUG("write failed with %d: %s", (int) errno, strerror(errno));
@@ -216,15 +214,15 @@ bool SocketTask::handleWrite (bool& closed) {
   }
 
   if (callCompletedWriteBuffer) {
-    completedWriteBuffer(closed);
-
-    if (closed) {
-      return false;
-    }
+    completedWriteBuffer();
 
     // rearm timer for keep-alive timeout
     // TODO: do we need some lock before we modify the scheduler?
     setKeepAliveTimeout(_keepAliveTimeout);
+  }
+
+  if (_clientClosed) {
+    return false;
   }
 
   // we might have a new write buffer or none at all
@@ -246,7 +244,9 @@ bool SocketTask::handleWrite (bool& closed) {
 /// @brief sets an active write buffer
 ////////////////////////////////////////////////////////////////////////////////
 
-void SocketTask::setWriteBuffer (StringBuffer* buffer, TRI_request_statistics_t* statistics, bool ownBuffer) {
+void SocketTask::setWriteBuffer (StringBuffer* buffer,
+                                 TRI_request_statistics_t* statistics,
+                                 bool ownBuffer) {
   bool callCompletedWriteBuffer = false;
 
 #ifdef TRI_ENABLE_FIGURES
@@ -281,8 +281,12 @@ void SocketTask::setWriteBuffer (StringBuffer* buffer, TRI_request_statistics_t*
   }
 
   if (callCompletedWriteBuffer) {
-    bool closed;
-    completedWriteBuffer(closed);
+    completedWriteBuffer();
+
+  }
+
+  if (_clientClosed) {
+    return;
   }
 
   // we might have a new write buffer or none at all
@@ -406,7 +410,6 @@ void SocketTask::cleanup () {
 
 bool SocketTask::handleEvent (EventToken token, EventType revents) {
   bool result = true;
-  bool closed = false;
 
   if (token == keepAliveWatcher && (revents & EVENT_TIMER)) {
     // got a keep-alive timeout
@@ -426,12 +429,12 @@ bool SocketTask::handleEvent (EventToken token, EventType revents) {
       _scheduler->clearTimer(keepAliveWatcher);
     }
 
-    result = handleRead(closed);
+    result = handleRead();
   }
 
-  if (result && ! closed && token == writeWatcher) {
+  if (result && ! _clientClosed && token == writeWatcher) {
     if (revents & EVENT_SOCKET_WRITE) {
-      result = handleWrite(closed);
+      result = handleWrite();
     }
   }
 
