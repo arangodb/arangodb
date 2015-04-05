@@ -420,7 +420,7 @@ function require (path) {
 /// @brief checks if a file exists as document in a collection
 ////////////////////////////////////////////////////////////////////////////////
 
-  function checkModulePathDB (origin, path) {
+  function checkModulePathDb (origin, path) {
     'use strict';
 
     if (internal.db === undefined) {
@@ -435,9 +435,11 @@ function require (path) {
     }
 
     var n;
+    var mc;
+    var collection = m[1];
 
     try {
-      var mc = internal.db._collection(m[1]);
+      mc = internal.db._collection(collection);
 
       if (mc === null || typeof mc.firstExample !== "function") {
         return null;
@@ -459,7 +461,8 @@ function require (path) {
         path: normalizeModuleName(path + "/.."),
         origin: origin + path.substr(1),
         type: "js",
-        content: n.content
+        content: n.content,
+        revision: mc.revision()
       };
     }
 
@@ -633,8 +636,8 @@ function require (path) {
 
       description = checkModulePathFile(currentPackage, root, path);
     }
-    else if (currentPackage._origin.substr(0, 5) === "db://") {
-      description = checkModulePathDB(currentPackage._origin, path);
+    else if (currentPackage._isDbPackage) {
+      description = checkModulePathDb(currentPackage._origin, path);
     }
     else if (currentPackage._origin.substr(0, 10) === "system:///") {
       description = null;
@@ -650,7 +653,18 @@ function require (path) {
     var localModule = currentPackage.module(description.id, description.type);
 
     if (localModule !== null) {
-      return localModule;
+      if (currentPackage._isDbPackage) {
+        if (localModule._revision === description.revision) {
+          return localModule;
+        }
+        else {
+          currentPackage.clearModule(description.id, description.type);
+          localModule = null;
+        }
+      }
+      else {
+        return localModule;
+      }
     }
 
     if (currentPackage._origin.substr(0, 7) === "file://") {
@@ -671,12 +685,12 @@ function require (path) {
         throw err;
       }
     }
-    else if (currentPackage._origin.substr(0, 5) !== "db://") {
+    else if (! currentPackage._isDbPackage) {
       throw new Error("package origin '" + currentPackage._origin + "' not supported");
     }
 
     if (description.type === "js") {
-      return createModule(currentModule, currentPackage, description);
+      localModule = createModule(currentModule, currentPackage, description);
     }
 
     if (description.type === "coffee") {
@@ -684,16 +698,20 @@ function require (path) {
 
       description.content = cs.compile(description.content, {bare: true});
 
-      return createModule(currentModule, currentPackage, description);
+      localModule = createModule(currentModule, currentPackage, description);
     }
 
     if (description.type === "json") {
       localModule = { exports: JSON.parse(description.content) };
 
-      return currentPackage.defineModule(description.id, description.type, localModule);
+      localModule = currentPackage.defineModule(description.id, description.type, localModule);
     }
 
-    return null;
+    if (localModule !== null && currentPackage._isDbPackage) {
+      localModule._revision = description.revision;
+    }
+
+    return localModule;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1013,6 +1031,7 @@ function require (path) {
 
     this._origin = origin;              // root of the package
     this._isSystem = isSystem;          // is a system package
+    this._isDbPackage = false;
   };
 
   (function () {
@@ -1029,6 +1048,7 @@ function require (path) {
     }
 
     pkg = new Package("/", {}, undefined, "db://_modules/", false);
+    pkg._isDbPackage = true;
     globalPackages.push(pkg);
 
     systemPackage = new Package("/", { name: "ArangoDB system" }, undefined, "system:///", true);

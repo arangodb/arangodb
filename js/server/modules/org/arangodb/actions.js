@@ -877,8 +877,21 @@ function buildRoutingTree (routes) {
         analyseRoutes(storage, route);
       }
       else {
-        installRoute(storage.routes, route, "", {});
-       }
+
+        // use normal root module or app context
+        var appContext;
+
+        if (route.hasOwnProperty('appContext')) {
+          appContext = routes.appContext;
+        }
+        else {
+          appContext = {
+            module: module.root
+          };
+        }
+
+        installRoute(storage.routes, route, "", appContext);
+      }
     }
     catch (err) {
       console.errorLines("cannot install route '%s': %s", route.name, String(err.stack || err));
