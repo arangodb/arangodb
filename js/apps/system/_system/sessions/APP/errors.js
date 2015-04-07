@@ -1,22 +1,20 @@
 /*global exports */
-(function () {
-  'use strict';
-  function SessionNotFound(sid) {
-    this.message = 'Session with session id ' + sid + ' not found.';
-    var err = new Error(this.message);
-    err.name = this.constructor.name;
-    this.stack = err.stack;
-  }
-  SessionNotFound.prototype = new Error();
+'use strict';
+function SessionNotFound(sid) {
+  this.message = 'Session with session id ' + sid + ' not found.';
+  this.name = this.constructor.name;
+  Error.captureStackTrace(this, SessionNotFound);
+}
+SessionNotFound.prototype = new Error();
+SessionNotFound.prototype.constructor = SessionNotFound;
 
-  function SessionExpired(sid) {
-    this.message = 'Session with session id ' + sid + ' has expired.';
-    var err = new Error(this.message);
-    err.name = this.constructor.name;
-    this.stack = err.stack;
-  }
-  SessionExpired.prototype = Object.create(SessionNotFound.prototype);
+function SessionExpired(sid) {
+  this.message = 'Session with session id ' + sid + ' has expired.';
+  this.name = this.constructor.name;
+  Error.captureStackTrace(this, SessionExpired);
+}
+SessionExpired.prototype = Object.create(SessionNotFound.prototype);
+SessionExpired.prototype.constructor = SessionExpired;
 
-  exports.SessionNotFound = SessionNotFound;
-  exports.SessionExpired = SessionExpired;
-}());
+exports.SessionNotFound = SessionNotFound;
+exports.SessionExpired = SessionExpired;
