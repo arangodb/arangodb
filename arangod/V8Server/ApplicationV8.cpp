@@ -1345,13 +1345,13 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
     for (size_t j = 0;  j < files.size();  ++j) {
       switch (_startupLoader.loadScript(isolate, localContext, files[j])) {
       case JSLoader::eSuccess:
-        LOG_TRACE("loaded JavaScript file '%s'", files[i].c_str());
+        LOG_TRACE("loaded JavaScript file '%s'", files[j].c_str());
         break;
       case JSLoader::eFailLoad:
-        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[i].c_str());
+        LOG_FATAL_AND_EXIT("cannot load JavaScript file '%s'", files[j].c_str());
         break;
       case JSLoader::eFailExecute:
-        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[i].c_str());
+        LOG_FATAL_AND_EXIT("error during execution of JavaScript file '%s'", files[j].c_str());
         break;
       }
     }
