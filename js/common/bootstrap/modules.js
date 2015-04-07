@@ -823,16 +823,15 @@ function require (path) {
 
   function requireModuleAbsolute (currentModule, path) {
     'use strict';
-
     path = normalizeModuleName(path);
 
-   if (path === "/") {
-     var pkg = currentModule._package;
+    if (path === "/") {
+      var pkg = currentModule._package;
 
-     if (pkg.hasOwnProperty("_packageModule")) {
-       return pkg._packageModule;
-     }
-   }
+      if (pkg.hasOwnProperty("_packageModule")) {
+        return pkg._packageModule;
+      }
+    }
 
     return requireModuleFrom(currentModule, currentModule._package, path);
   }
@@ -843,9 +842,10 @@ function require (path) {
 
   function requireModuleRelative (currentModule, path) {
     'use strict';
-
-    return requireModuleAbsolute(currentModule,
-                                 normalizeModuleName(currentModule._path, path));
+    return requireModuleAbsolute(
+      currentModule,
+      normalizeModuleName(currentModule._path, path)
+    );
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -945,12 +945,14 @@ function require (path) {
     if (app._manifest.hasOwnProperty("lib")) {
       libpath = fs.join(libpath, app._manifest.lib);
     }
-    return new Module("/application-module",
-                      this,
-                      app._context,
-                      "/" + (path ? path : ""),
-                      path2FileUri(libpath),
-                      false);
+    return new Module(
+      "/application-module",
+      this,
+      app._context,
+      "/" + (path ? path : ""),
+      path2FileUri(libpath),
+      false
+    );
   };
 
 // -----------------------------------------------------------------------------
@@ -968,12 +970,14 @@ function require (path) {
       throw new Error("path '" + path + "' must be absolute");
     }
 
-    return new Module(path,
-                      this,
-                      undefined,
-                      path,
-                      "system://" + path,
-                      true);
+    return new Module(
+      path,
+      this,
+      undefined,
+      path,
+      "system://" + path,
+      true
+    );
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1335,13 +1339,13 @@ function require (path) {
     if (app._manifest.hasOwnProperty("lib")) {
       libpath = fs.join(libpath, app._manifest.lib);
     }
-    var pkg = new Package("application-package",
-                          {name: "application '" + app._name + "'"},
-                          undefined,
-                          path2FileUri(libpath),
-                          false);
-
-    return pkg;
+    return new Package(
+      "application-package",
+      {name: "application '" + app._name + "'"},
+      undefined,
+      path2FileUri(libpath),
+      false
+    );
   };
 
   Module.prototype.normalizeModuleName = normalizeModuleName;
@@ -1349,20 +1353,23 @@ function require (path) {
   Module.prototype.run = function(content, context) {
     'use strict';
     var filename = fileUri2Path(this._origin);
-    var err;
     // test for parse errors first and fail early if a parse error detected
 
     if (typeof content !== "string") {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
-        errorMessage: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Content: " + content
+        errorMessage: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
+        + " File: " + filename
+        + " Content: " + content
       });
     }
 
     if (!internal.parse(content)) {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
-        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message + " File: " + filename + " Content: " + content
+        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
+        + " File: " + filename
+        + " Content: " + content
       });
     }
 
@@ -1389,16 +1396,18 @@ function require (path) {
 
     var keys = Object.keys(args);
     var script = Function.apply(null, keys.concat(content));
-    var fun = internal.executeScript("(" + script + ")", undefined, filename);
+    var fn = internal.executeScript("(" + script + ")", undefined, filename);
 
-    if (typeof fun !== 'function') {
+    if (typeof fn !== 'function') {
       throw new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
-        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message + " File: " + filename + " Content: " + content
+        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
+        + " File: " + filename
+        + " Content: " + content
       });
     }
 
-    fun.apply(null, keys.map(function (key) {
+    fn.apply(null, keys.map(function (key) {
       return args[key];
     }));
 
