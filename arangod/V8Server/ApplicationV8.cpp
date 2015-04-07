@@ -1297,6 +1297,11 @@ bool ApplicationV8::prepareV8Instance (const string& name, size_t i, bool useAct
       LOG_FATAL_AND_EXIT("cannot initialize V8 engine");
     }
 
+    v8::Handle<v8::Object> globalObj = localContext->Global();
+    globalObj->Set(TRI_V8_ASCII_STRING("GLOBAL"), globalObj);
+    globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
+    globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
+
     TRI_InitV8VocBridge(isolate, this, localContext, _queryRegistry, _server, _vocbase, &_startupLoader, i);
     TRI_InitV8Queries(isolate, localContext);
     TRI_InitV8UserStructures(isolate, localContext);
