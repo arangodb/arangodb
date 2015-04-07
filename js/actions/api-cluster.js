@@ -758,6 +758,16 @@ actions.defineHttp({
   prefix: false,
 
   callback: function (req, res) {
+    if (req.requestType !== actions.POST) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only POST requests are allowed");
+      return;
+    }
+    if (!require("org/arangodb/cluster").isCoordinator()) {
+      actions.resultError(req, res, actions.HTTP_FORBIDDEN, 0,
+                          "only allowed on coordinator");
+      return;
+    }
     var body = actions.getJsonBody(req, res);
 
     try {
