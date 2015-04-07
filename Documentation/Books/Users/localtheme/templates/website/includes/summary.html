@@ -8,7 +8,7 @@
     {% if item.level != "0" %}
     <b>{{ item.level }}.</b>
     {% endif %}
-    {% if item.introduction and not item.title %}{% i18n "SUMMARY_INTRODUCTION" %}Introduction{% endi18n %}{% else %}{{ item.title }}{% endif %}
+    {{ item.title }}
   </a>
   {% else %}
   <a target="_blank" href="{{ item.path }}">
@@ -33,7 +33,7 @@
 
 <div class="book-summary">
   <div class="book-search">
-    <input type="text" placeholder="{% i18n "SEARCH_PLACEHOLDER" %}Type to search{% endi18n %}" class="form-control" />
+    <input type="text" placeholder="{{ __("SEARCH_PLACEHOLDER") }}" class="form-control" />
   </div>
   <ul class="summary">
     {% set _divider = false %}
@@ -56,12 +56,16 @@
       </div>
     </li>
     <span style="margin-left:15px; color:#333; font-size: 16px; font-weight:600">ArangoDB VERSION_NUMBER - Manual</span>
+
     {% if _divider %}
     <li class="divider"></li>
     {% endif %}
 
     {{ articles(summary.chapters) }}
 
+    {% if options.links.gitbook != false %}
+    <li class="divider"></li>
+    {% endif %}
   </ul>
 </div>
 <script src="https://code.jquery.com/jquery-1.9.1.min.js"></script>
