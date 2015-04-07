@@ -1366,9 +1366,9 @@ function require (path) {
     if (!internal.parse(content)) {
       e = new Error(
         "corrupted package '"
-        + path
+        + this._path
         + "', Javascript parse error in file '"
-        + origin
+        + this._origin
         + "'"
       );
       e.moduleNotFound = false;
