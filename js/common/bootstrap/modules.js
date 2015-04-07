@@ -1345,37 +1345,22 @@ function require (path) {
 
   Module.prototype.run = function(content, context) {
     'use strict';
-    var e;
+    var filename = fileUri2Path(this._origin);
+    var err;
     // test for parse errors first and fail early if a parse error detected
 
     if (typeof content !== "string") {
-      e = new Error(
-        "corrupted package '"
-        + this._path
-        + "', module content must be a string, not '"
-        + typeof content
-        + "'"
-      );
-      e.moduleNotFound = false;
-      e._path = this._path;
-      e._package = this._package.id;
-      e._packageOrigin = this._package._origin;
-      throw e;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
+        errorMessage: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Content: " + content
+      });
     }
 
     if (!internal.parse(content)) {
-      e = new Error(
-        "corrupted package '"
-        + this._path
-        + "', Javascript parse error in file '"
-        + this._origin
-        + "'"
-      );
-      e.moduleNotFound = false;
-      e._path = this._path;
-      e._package = this._package.id;
-      e._packageOrigin = this._package._origin;
-      throw e;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
+        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message + " File: " + filename + " Content: " + content
+      });
     }
 
     var self = this;
@@ -1388,7 +1373,6 @@ function require (path) {
       }
     };
 
-    var filename = fileUri2Path(this._origin);
     if (filename !== null) {
       args.__filename = filename;
       args.__dirname = normalizeModuleName(filename + '/..');
@@ -1404,18 +1388,11 @@ function require (path) {
     var script = Function.apply(null, keys.concat(content));
     var fun = internal.executeScript("(" + script + ")", undefined, filename);
 
-    if (fun === undefined) {
-      e = new Error(
-        "corrupted package '"
-        + this._path
-        + "', cannot create module context function for: "
-        + script
-      );
-      e.moduleNotFound = false;
-      e._path = this._path;
-      e._package = this._package.id;
-      e._packageOrigin = this._package._origin;
-      throw e;
+    if (typeof fun !== 'function') {
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
+        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message + " File: " + filename + " Content: " + content
+      });
     }
 
     fun.apply(null, keys.map(function (key) {

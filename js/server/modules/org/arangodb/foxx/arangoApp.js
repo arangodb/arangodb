@@ -403,6 +403,9 @@ var computeRootAppPath = function(mount, isValidation) {
     try {
       return localModule.run(fileContent, context);
     } catch(e) {
+      if (e instanceof ArangoError) {
+        throw e;
+      }
       var err = new ArangoError({
         errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
         errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message + " File: " + filename + " Content: " + fileContent
