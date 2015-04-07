@@ -77,6 +77,11 @@
 * https://jasmine.github.io
 * MIT
 
+### mocha
+
+* http://mochajs.org
+* MIT
+
 ### coffee-script
 
 * http://coffeescript.org
