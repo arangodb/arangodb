@@ -1100,7 +1100,7 @@ function updateGlobals() {
       description: "create statistics collections",
 
       mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
-      cluster:     [ CLUSTER_NONE, CLUSTER_LOCAL, CLUSTER_COORDINATOR_GLOBAL ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
