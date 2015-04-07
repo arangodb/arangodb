@@ -141,7 +141,8 @@ global.tutorial = require("org/arangodb/tutorial");
 /// @brief prints help
 ////////////////////////////////////////////////////////////////////////////////
 
-(function() {
+window.initHelp = function() {
+  "use strict";
   var internal = require("internal");
 
   if (internal.db) {
@@ -192,7 +193,7 @@ global.tutorial = require("org/arangodb/tutorial");
     delete global.IS_UNIT_TESTS;
     delete global.IS_JS_LINT;
   } catch (e) {}
-}());
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
