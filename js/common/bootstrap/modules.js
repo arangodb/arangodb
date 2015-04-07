@@ -483,138 +483,48 @@ function require (path) {
 
   function createModule (currentModule, currentPackage, description) {
     'use strict';
-
-    var e;
-    var key;
-
-    var id = description.id;
-    var path = description.path;
-    var origin = description.origin;
-    var content = description.content;
-
-    // test for parse errors first and fail early if a parse error detected
-    if (typeof content !== "string") {
-      e = new Error("corrupted package '" + path
-                  + "', module content must be a string, not '"
-                  + typeof content + "'");
-
-      e.moduleNotFound = false;
-      e._path = path;
-      e._package = currentPackage.id;
-      e._packageOrigin = currentPackage._origin;
-
-      throw e;
-    }
-
-    if (! internal.parse(content)) {
-      e = new Error("corrupted package '" + path
-                  + "', Javascript parse error in file '"
-                  + origin + "'");
-
-      e.moduleNotFound = false;
-      e._path = path;
-      e._package = currentPackage.id;
-      e._packageOrigin = currentPackage._origin;
-
-      throw e;
-    }
-
-    // create a new module
+    var localModule;
     try {
-      var localModule = currentPackage.defineModule(
-        id,
+      localModule = currentPackage.defineModule(
+        description.id,
         "js",
-        new Module(id,
-                   currentPackage,
-                   currentModule._applicationContext,
-                   path,
-                   origin,
-                   currentPackage._isSystem));
+        new Module(
+          description.id,
+          currentPackage,
+          currentModule._applicationContext,
+          description.path,
+          description.origin,
+          currentPackage._isSystem
+        )
+      );
 
-      inFlight[id] = localModule;
+      inFlight[localModule.id] = localModule;
 
-      // create a new sandbox and execute
+      var context = {};
+
       var env = currentPackage._environment;
-
-      var sandbox = {};
-      sandbox.print = internal.print;
-
       if (env !== undefined) {
-        for (key in env) {
-          if (env.hasOwnProperty(key) && key !== "__myenv__") {
-            sandbox[key] = env[key];
-          }
-        }
+        Object.keys(env).forEach(function (key) {
+          context[key] = env[key];
+        });
       }
 
-      var filename = fileUri2Path(origin);
-
-      if (filename !== null) {
-        sandbox.__filename = filename;
-        sandbox.__dirname = normalizeModuleName(filename + "/..");
+      if (localModule._applicationContext) {
+        context.applicationContext = localModule._applicationContext;
       }
 
-      sandbox.module = localModule;
-      sandbox.exports = localModule.exports;
-
-      sandbox.require = function(path) {
-        return localModule.require(path);
-      };
-
-      if (localModule.hasOwnProperty("_applicationContext")) {
-        sandbox.applicationContext = localModule._applicationContext;
-      }
-
-      // try to execute the module source code
-      var script = "(function (__myenv__) {";
-
-      for (key in sandbox) {
-        if (sandbox.hasOwnProperty(key)) {
-          // using `key` like below is not safe (imagine a key named `foo bar`!)
-          // TODO: fix this
-          script += "var " + key + " = __myenv__[" + JSON.stringify(key) + "];";
-        }
-      }
-
-      // put to together a function body for the code
-      script += "delete __myenv__;"
-             +  "(function () {"
-             +  content
-             +  "\n}());"
-             +  "});";
-      // note: at least one newline character must be used here, otherwise
-      // a script ending with a single-line comment (two forward slashes)
-      // would render the function tail invalid
-      // adding a newline at the end will create stack traces with a line number
-      // one higher than the last line in the script file
-
-      var fun = internal.executeScript(script, undefined, filename);
-
-      if (fun === undefined) {
-        e = new Error("corrupted package '" + path
-                    + "', cannot create module context function for: "
-                    + script);
-
-        e.moduleNotFound = false;
-        e._path = path;
-        e._package = currentPackage.id;
-        e._packageOrigin = currentPackage._origin;
-
-        throw e;
-      }
-
-      fun(sandbox);
-
-      delete inFlight[id];
+      localModule.run(description.content, context);
 
       return localModule;
-    }
-    catch (err) {
-      delete inFlight[id];
-
-      currentPackage.clearModule(id, "js");
-
+    } catch (err) {
+      if (localModule) {
+        currentPackage.clearModule(localModule.id, "js");
+      }
       throw err;
+    } finally {
+      if (localModule) {
+        delete inFlight[localModule.id];
+      }
     }
   }
 
@@ -781,12 +691,7 @@ function require (path) {
     var pkg = new Package(path, desc, currentPackage, path2FileUri(dirname), currentPackage._isSystem);
 
     pkg._environment = {
-      global: {},
-      process: require("process"),
-      setTimeout: function() {},
-      clearTimeout: function() {},
-      setInterval: function() {},
-      clearInterval: function() {}
+      process: require("process")
     };
 
     pkg._packageModule = createModule(currentModule, pkg, description);
@@ -1030,6 +935,20 @@ function require (path) {
 
     systemPackage = new Package("/", { name: "ArangoDB system" }, undefined, "system:///", true);
   }());
+
+  Package.prototype.createAppModule = function (app, path) {
+    'use strict';
+    var libpath = fs.join(app._root, app._path);
+    if (app._manifest.hasOwnProperty("lib")) {
+      libpath = fs.join(libpath, app._manifest.lib);
+    }
+    return new Module("/application-module",
+                      this,
+                      app._context,
+                      "/" + (path ? path : ""),
+                      path2FileUri(libpath),
+                      false);
+  };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -1404,10 +1323,10 @@ function require (path) {
   };
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief createAppModule, is used to create foxx applications
+/// @brief createAppPackage, is used to create foxx applications
 ////////////////////////////////////////////////////////////////////////////////
 
-  Module.prototype.createAppModule = function (app) {
+  Module.prototype.createAppPackage = function (app) {
     'use strict';
     var libpath = fs.join(app._root, app._path);
     if (app._manifest.hasOwnProperty("lib")) {
@@ -1419,19 +1338,92 @@ function require (path) {
                           path2FileUri(libpath),
                           false);
 
-    pkg._environment = {
-      console: require("org/arangodb/foxx/console")(app._mount)
-    };
-
-    return new Module("/application-module",
-                      pkg,
-                      app._context,
-                      "/",
-                      path2FileUri(libpath),
-                      false);
+    return pkg;
   };
 
   Module.prototype.normalizeModuleName = normalizeModuleName;
+
+  Module.prototype.run = function(content, context) {
+    'use strict';
+    var e;
+    // test for parse errors first and fail early if a parse error detected
+
+    if (typeof content !== "string") {
+      e = new Error(
+        "corrupted package '"
+        + this._path
+        + "', module content must be a string, not '"
+        + typeof content
+        + "'"
+      );
+      e.moduleNotFound = false;
+      e._path = this._path;
+      e._package = this._package.id;
+      e._packageOrigin = this._package._origin;
+      throw e;
+    }
+
+    if (!internal.parse(content)) {
+      e = new Error(
+        "corrupted package '"
+        + path
+        + "', Javascript parse error in file '"
+        + origin
+        + "'"
+      );
+      e.moduleNotFound = false;
+      e._path = this._path;
+      e._package = this._package.id;
+      e._packageOrigin = this._package._origin;
+      throw e;
+    }
+
+    var self = this;
+    var args = {
+      print: internal.print,
+      module: this,
+      exports: this.exports,
+      require: function (path) {
+        return self.require(path);
+      }
+    };
+
+    var filename = fileUri2Path(this._origin);
+    if (filename !== null) {
+      args.__filename = filename;
+      args.__dirname = normalizeModuleName(filename + '/..');
+    }
+
+    if (context) {
+      Object.keys(context).forEach(function (key) {
+        args[key] = context[key];
+      });
+    }
+
+    var keys = Object.keys(args);
+    var script = Function.apply(null, keys.concat(content));
+    var fun = internal.executeScript("(" + script + ")", undefined, filename);
+
+    if (fun === undefined) {
+      e = new Error(
+        "corrupted package '"
+        + this._path
+        + "', cannot create module context function for: "
+        + script
+      );
+      e.moduleNotFound = false;
+      e._path = this._path;
+      e._package = this._package.id;
+      e._packageOrigin = this._package._origin;
+      throw e;
+    }
+
+    fun.apply(null, keys.map(function (key) {
+      return args[key];
+    }));
+
+    return this.exports;
+  };
 }());
 
 // -----------------------------------------------------------------------------
