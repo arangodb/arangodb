@@ -460,7 +460,7 @@ var executeAppScript = function (scriptName, app) {
   // Only run setup/teardown scripts if they exist
   if (scripts[scriptName] || (scriptName !== 'setup' && scriptName !== 'teardown')) {
     try {
-        app.loadAppScript(scripts[scriptName]);
+      app.loadAppScript(scripts[scriptName]);
     } catch (err) {
       console.errorLines(
         "Running script '" + readableName + "' not possible for mount '%s': %s",
