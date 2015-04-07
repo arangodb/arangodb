@@ -100,7 +100,9 @@
     },
 
     logs: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.logsView) {
         var newLogsAllCollection = new window.ArangoLogs(
           {upto: true, loglevel: 4}
@@ -130,7 +132,9 @@
     },
 
     applicationDetail: function (mount) {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       this.naviView.selectMenuItem('applications-menu');
 
       if (this.foxxList.length === 0) {
@@ -160,7 +164,9 @@
     },
 
     collections: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       var naviView = this.naviView, self = this;
       if (!this.collectionsView) {
         this.collectionsView = new window.CollectionsView({
@@ -176,7 +182,9 @@
     },
 
     documents: function (colid, pageid) {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.documentsView) {
         this.documentsView = new window.DocumentsView({
           collection: new window.arangoDocuments(),
@@ -190,7 +198,9 @@
     },
 
     document: function (colid, docid) {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.documentView) {
         this.documentView = new window.DocumentView({
           collection: this.arangoDocumentStore
@@ -204,7 +214,9 @@
     },
 
     shell: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.shellView) {
         this.shellView = new window.shellView();
       }
@@ -213,7 +225,9 @@
     },
 
     query: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.queryView) {
         this.queryView = new window.queryView({
           collection: this.queryCollection
@@ -234,7 +248,9 @@
     },
 
     api: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.apiView) {
         this.apiView = new window.ApiView();
       }
@@ -243,7 +259,9 @@
     },
 
     databases: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (arangoHelper.databaseAllowed() === true) {
         if (! this.databaseView) {
           this.databaseView = new window.databaseView({
@@ -262,7 +280,9 @@
     },
 
     dashboard: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       this.naviView.selectMenuItem('dashboard-menu');
       if (this.dashboardView === undefined) {
         this.dashboardView = new window.DashboardView({
@@ -274,7 +294,9 @@
     },
 
     graphManagement: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.graphManagementView) {
         this.graphManagementView =
         new window.GraphManagementView(
@@ -289,7 +311,9 @@
     },
 
     applications: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (this.applicationsView === undefined) {
         this.applicationsView = new window.ApplicationsView({
           collection: this.foxxList
@@ -300,14 +324,18 @@
     },
 
     appDocumentation: function (mount) {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       var docuView = new window.AppDocumentationView({mount: mount});
       docuView.render();
       this.naviView.selectMenuItem('applications-menu');
     },
 
     handleSelectDatabase: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       this.naviView.handleSelectDatabase();
     },
 
@@ -324,7 +352,9 @@
     },
 
     userManagement: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.userManagementView) {
         this.userManagementView = new window.userManagementView({
           collection: this.userCollection
@@ -335,7 +365,9 @@
     },
 
     userProfile: function () {
-      if (!this.checkUser()) return;
+      if (!this.checkUser()) {
+        return;
+      }
       if (!this.userManagementView) {
         this.userManagementView = new window.userManagementView({
           collection: this.userCollection
