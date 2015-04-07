@@ -35,20 +35,22 @@ var EventEmitter = require('events').EventEmitter;
 
 function Mocha() {
   this.suite = new mocha.Suite('', new mocha.Context());
+  this.options = {};
   this.suite.on('pre-require', function (context) {
     require('console').log('########', Date(), 'pre-require', context);
   });
+  Object.keys(mocha.interfaces).forEach(function (key) {
+    mocha.interfaces[key](this.suite);
+  }.bind(this));
   EventEmitter.call(this);
 }
 util.inherits(Mocha, EventEmitter);
 
 Mocha.prototype.run = function () {
   var runner = new mocha.Runner(this.suite, false);
-  var result;
-  runner.run(function (failures) {
-    result = failures;
-  });
-  return result;
+  var reporter = new mocha.reporters.JSON(runner, this.options);
+  runner.run();
+  return reporter.stats;
 };
 
 Mocha.prototype.loadFiles = function (app) {

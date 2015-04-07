@@ -217,6 +217,14 @@
     res.json(FoxxManager.configure(mount, {configuration: data}));
   }).queryParam("mount", mountPoint);
 
+  /** Run tests for an app
+   *
+   * Used to run the tests of an app
+   */
+  controller.post("/tests", function (req, res) {
+    var mount = validateMount(req);
+    res.json(FoxxManager.runTests(mount));
+  }).queryParam("mount", mountPoint);
 
   /** Run a script for an app
    *
