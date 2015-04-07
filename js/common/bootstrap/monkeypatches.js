@@ -32,6 +32,11 @@
 // --SECTION--                                                    monkey-patches
 // -----------------------------------------------------------------------------
 
+global.setInterval = function () {};
+global.clearInterval = function () {};
+global.setTimeout = function () {};
+global.clearTimeout = function () {};
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
