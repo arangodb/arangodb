@@ -29,10 +29,7 @@
 
 #include "HttpHandlerFactory.h"
 
-#include "Basics/MutexLocker.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
-#include "Basics/WriteLocker.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
 #include "HttpServer/HttpHandler.h"
@@ -179,19 +176,19 @@ HttpHandlerFactory::size_restriction_t HttpHandlerFactory::sizeRestrictions () c
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpResponse::HttpResponseCode HttpHandlerFactory::authenticateRequest (HttpRequest* request) {
-  RequestContext* rc = request->getRequestContext();
+  auto context = request->getRequestContext();
 
-  if (rc == nullptr) {
+  if (context == nullptr) {
     if (! setRequestContext(request)) {
       return HttpResponse::NOT_FOUND;
     }
 
-    rc = request->getRequestContext();
+    context = request->getRequestContext();
   }
 
-  TRI_ASSERT(rc != nullptr);
+  TRI_ASSERT(context != nullptr);
 
-  return rc->authenticate();
+  return context->authenticate();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -208,6 +205,7 @@ bool HttpHandlerFactory::setRequestContext (HttpRequest* request) {
 
 string HttpHandlerFactory::authenticationRealm (HttpRequest* request) const {
   auto context = request->getRequestContext();
+
   if (context != nullptr) {
     auto realm = context->getRealm();
 

@@ -20,13 +20,25 @@
         lastUpdate: joi.number().integer().required()
       }
     }),
-    sessions;
+    sessions,
+    isSystem = (applicationContext.mount.indexOf('/_system/') === 0);
 
-  if (applicationContext.mount.indexOf('/_system/') === 0) {
+  if (isSystem) {
     sessions = new Foxx.Repository(
       db._collection('_sessions'),
       {model: Session}
     );
+
+    try {
+      var cursor = internal.db._query("FOR s IN _sessions FOR u IN _users FILTER s.uid == u._id RETURN { sid: s._key, user: u.user }");
+
+      while (cursor.hasNext()) {
+        var doc = cursor.next();
+
+        internal.createSid(doc.sid, doc.user);
+      }
+    } catch (err) {
+    }
   } else {
     sessions = new Foxx.Repository(
       applicationContext.collection('sessions'),
@@ -72,6 +84,15 @@
       action: function () {
         try {
           session = sessions.byId(sid);
+
+          if (isSystem) {
+            var accessTime = internal.accessSid(sid);
+
+            if (session.get('lastAccess') < accessTime) {
+              session.set('lastAccess', accessTime);
+            }
+          }
+
           session.enforceTimeout();
         } catch (err) {
           if (
@@ -139,9 +160,17 @@
       if (user) {
         session.set('uid', user.get('_id'));
         session.set('userData', user.get('userData'));
+
+        if (isSystem) {
+          internal.createSid(session.get('_key'), user.get('user'));
+        }
       } else {
         delete session.attributes.uid;
         session.set('userData', {});
+
+        if (isSystem) {
+          internal.cleanSid(session.get('_key'));
+        }
       }
       return session;
     },
@@ -159,7 +188,12 @@
       session.set('lastAccess', now);
       session.set('lastUpdate', now);
       try {
-        deleteSession(session.get('_key'));
+        var key = session.get('_key');
+        deleteSession(key);
+
+        if (isSystem) {
+          internal.clearSid(key);
+        }
         return true;
       } catch (e) {
         if (e instanceof errors.SessionNotFound) {
