@@ -396,9 +396,6 @@ var computeRootAppPath = function(mount, isValidation) {
     context.__dirname = module.normalizeModuleName(full + "/..");
     context.console = require("org/arangodb/foxx/console")(this._mount);
     context.applicationContext = appContext;
-    context.require = function (path) {
-      return appContext.appModule.require(path);
-    };
 
     try {
       return localModule.run(fileContent, context);

@@ -195,6 +195,9 @@ function require (path) {
     // relative path
     if (p[0] === "." || p[0] === "..") {
       q = prefix.split('/');
+      if (q[q.length - 1].indexOf('.') > 0) {
+        q = q.slice(0, -1);
+      }
       q = q.concat(p);
     }
 
