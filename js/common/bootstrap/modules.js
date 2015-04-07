@@ -841,11 +841,17 @@ function require (path) {
       }
     }
 
-    // check if there is a global module with this name
+    // check if there is a global module with this name, skip db:// ones
+    // at first, see below for them
     for (i = 0;  i < globalPackages.length;  ++i) {
+      var gpkg = globalPackages[i];
+
+      if (gpkg._origin.substr(0,5) === "db://") {
+        continue;
+      }
 
       // use the GLOBAL module as current module
-      localModule = requireModuleFrom(module, globalPackages[i], path);
+      localModule = requireModuleFrom(module, gpkg, path);
 
       if (localModule !== null) {
         return localModule;
@@ -865,7 +871,6 @@ function require (path) {
 
     // check if there is a global package with this name
     for (i = 0;  i < globalPackages.length;  ++i) {
-
       // use the GLOBAL module as current module
       localModule = requirePackageFrom(module, globalPackages[i], path);
 
@@ -874,7 +879,8 @@ function require (path) {
       }
     }
 
-    // check if there is a package containing this module
+    // check if there is a global package containing this module
+    var origpath = path;
     path = path.substr(1);
     if (path.indexOf('/') !== -1) {
       var p = path.split('/');
@@ -883,6 +889,23 @@ function require (path) {
 
       if (localModule !== null) {
         localModule = requirePackage(localModule, '/' + p.join('/'));
+        return localModule;
+      }
+    }
+
+    // check if there is a global module with this name, now take the 
+    // db:// ones only, the others have been checked above
+    for (i = 0;  i < globalPackages.length;  ++i) {
+      var gpkg2 = globalPackages[i];
+
+      if (gpkg2._origin.substr(0,5) !== "db://") {
+        continue;
+      }
+
+      // use the GLOBAL module as current module
+      localModule = requireModuleFrom(module, gpkg2, origpath);
+
+      if (localModule !== null) {
         return localModule;
       }
     }
