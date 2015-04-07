@@ -32,6 +32,10 @@
 
   "setup": "setup.js",
 
+  "tests": [
+    "./test/errors.js"
+  ],
+
   "configuration": {
     "timeToLive": {
       "description": "Session expiry timeout in milliseconds.",
