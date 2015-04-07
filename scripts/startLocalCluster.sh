@@ -33,11 +33,12 @@ start() {
     mkdir cluster/data$PORT
     echo Starting $TYPE on port $PORT
     bin/arangod --database.directory cluster/data$PORT \
-                --cluster.agency-endpoint tcp://localhost:4001 \
-                --cluster.my-address tcp://localhost:$PORT \
-                --server.endpoint tcp://localhost:$PORT \
-                --cluster.my-local-info $TYPE:localhost:$PORT \
-                --log.file cluster/$PORT.log > cluster/$PORT.stdout 2>&1 &
+                --cluster.agency-endpoint tcp://127.0.0.1:4001 \
+                --cluster.my-address tcp://127.0.0.1:$PORT \
+                --server.endpoint tcp://127.0.0.1:$PORT \
+                --cluster.my-local-info $TYPE:127.0.0.1:$PORT \
+                --log.file cluster/$PORT.log \
+                > cluster/$PORT.stdout 2>&1 &
 }
 
 PORTTOPDB=`expr 8629 + $NRDBSERVERS - 1`
@@ -55,7 +56,7 @@ testServer() {
     PORT=$1
     while true ; do
         sleep 1
-        curl -s -X GET "http://localhost:$PORT/_api/version" > /dev/null 2>&1
+        curl -s -X GET "http://127.0.0.1:$PORT/_api/version" > /dev/null 2>&1
         if [ "$?" != "0" ] ; then
             echo Server on port $PORT does not answer yet.
         else
@@ -65,29 +66,34 @@ testServer() {
     done
 }
 
-testServer $PORTTOPCO
-if [ "8530" != "$PORTTOPCO" ] ; then
-    testServer 8530
-fi
-
-echo Bootstrapping DBServers...
-for p in `seq 8629 $PORTTOPDB` ; do
-    curl -s -X POST "http://localhost:$p/_admin/cluster/bootstrapDbServers" \
-         -d '{"isRelaunch":false}' >> cluster/DBServer.boot.log 2>&1
+for p in `seq 8530 $PORTTOPCO` ; do
+    testServer $p
 done
 
+echo Bootstrapping DBServers...
+curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/bootstrapDbServers" \
+     -d '{"isRelaunch":false}' >> cluster/DBServersUpgrade.log 2>&1
+
 echo Running DB upgrade on cluster...
-curl -s -X POST "http://localhost:8530/_admin/cluster/upgradeClusterDatabase" \
+curl -s -X POST "http://127.0.0.1:8530/_admin/cluster/upgradeClusterDatabase" \
      -d '{"isRelaunch":false}' >> cluster/DBUpgrade.log 2>&1
 
 echo Bootstrapping Coordinators...
+PIDS=""
 for p in `seq 8530 $PORTTOPCO` ; do
-    curl -s -X POST "http://localhost:8530/_admin/cluster/bootstrapCoordinator" \
-         -d '{"isRelaunch":false}' >> cluster/Coordinator.boot.log 2>&1
+    curl -s -X POST "http://127.0.0.1:$p/_admin/cluster/bootstrapCoordinator" \
+         -d '{"isRelaunch":false}' >> cluster/Coordinator.boot.log 2>&1 &
+    PIDS="$PIDS $!"
+done
+
+echo Pids: $PIDS
+for p in $PIDS ; do
+    wait $p
+    echo PID $p done
 done
 
 echo Done, your cluster is ready at
 for p in `seq 8530 $PORTTOPCO` ; do
-    echo "   bin/arangosh --server.endpoint tcp://localhost:$p"
+    echo "   bin/arangosh --server.endpoint tcp://127.0.0.1:$p"
 done
 
