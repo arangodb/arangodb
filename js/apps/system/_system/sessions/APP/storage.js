@@ -96,7 +96,6 @@ function getSession(sid) {
 
         if (isSystem) {
           var accessTime = internal.accessSid(sid);
-
           if (session.get('lastAccess') < accessTime) {
             session.set('lastAccess', accessTime);
           }
@@ -169,14 +168,12 @@ _.extend(Session.prototype, {
     if (user) {
       session.set('uid', user.get('_id'));
       session.set('userData', user.get('userData'));
-
       if (isSystem) {
         internal.createSid(session.get('_key'), user.get('user'));
       }
     } else {
       delete session.attributes.uid;
       session.set('userData', {});
-
       if (isSystem) {
         internal.cleanSid(session.get('_key'));
       }
@@ -198,11 +195,10 @@ _.extend(Session.prototype, {
     session.set('lastUpdate', now);
     try {
       var key = session.get('_key');
-      deleteSession(key);
-
       if (isSystem) {
         internal.clearSid(key);
       }
+      deleteSession(key);
       return true;
     } catch (e) {
       if (e instanceof errors.SessionNotFound) {
