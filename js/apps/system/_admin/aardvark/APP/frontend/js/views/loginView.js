@@ -35,7 +35,7 @@
 
       if (!username) {
         //Heiko: Form-Validator - please fill out all req. fields
-        console.log(username, 'empty');
+        //console.log(username, 'empty');
         return;
       }
       username = this.collection.login(username, password);
