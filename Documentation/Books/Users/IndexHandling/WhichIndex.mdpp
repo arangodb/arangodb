@@ -24,10 +24,10 @@ different usage scenarios:
   attribute(s) are equality comparisons. It will be the most efficient index 
   type if the index is declared unique. 
   
-  Insertions into a non-unique hash index are also very efficent. Update and
+  Insertions into a non-unique hash index are also very efficient. Update and
   removal performance in a non-unique hash index depend on the key selectivity.
   If the selectivity is low and keys repeat a lot, update and removal performance
-  in a non-unique hash index will degarde.
+  in a non-unique hash index will degrade.
 
   A non-unique hash index should therefore not be used if duplicate index values 
   are allowed and it is known that there will be many duplicate values in the index 
@@ -67,7 +67,7 @@ different usage scenarios:
   the selected language provided at server start.
 
   The index supports complete match queries (full words) and prefix queries.
-  Fulltexts indexes will only be invoked via special functions.
+  Fulltext indexes will only be invoked via special functions.
 
 - cap constraint: the cap constraint provided by ArangoDB indexes documents
   not to speed up search queries, but to limit (cap) the number or size of
@@ -120,7 +120,7 @@ the lookup value cannot be `null`, a sparse index may be used. When uncertain, t
 will not make use of a sparse index in a query in order to produce correct results.
 
 For example, the following queries cannot use a sparse index on `attr` because the optimizer
-will not know beforehand whether the comparsion values for `doc.attr` will include `null`:
+will not know beforehand whether the comparison values for `doc.attr` will include `null`:
 
     FOR doc In collection 
       FILTER doc.attr == SOME_FUNCTION(...) 
