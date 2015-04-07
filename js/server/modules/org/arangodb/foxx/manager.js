@@ -147,6 +147,10 @@ var manifestSchema = {
   ),
   setup: joi.string().optional(), // TODO remove in 2.8
   teardown: joi.string().optional(), // TODO remove in 2.8
+  tests: (
+    joi.array().optional()
+    .items(joi.string().required())
+  ),
   thumbnail: joi.string().optional(),
   version: joi.string().required(),
   rootElement: joi.boolean().default(false)
@@ -742,6 +746,27 @@ var runScript = function (scriptName, mount) {
   executeAppScript(scriptName, app);
 
   return app.simpleJSON();
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief run a Foxx application's tests
+///
+/// Input:
+/// * mount: the mount path starting with a "/"
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+var runTests = function (mount) {
+  checkParameter(
+    "runTests(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ]
+  );
+
+  var app = lookupApp(mount);
+  return require('org/arangodb/foxx/mocha').run(app);
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1407,6 +1432,7 @@ var syncWithFolder = function(options) {
 
 exports.syncWithFolder = syncWithFolder;
 exports.install = install;
+exports.runTests = runTests;
 exports.runScript = runScript;
 exports.setup = R.partialRight(runScript, 'setup');
 exports.teardown = R.partialRight(runScript, 'teardown');
