@@ -1,5 +1,5 @@
 /*jshint globalstrict: true */
-/*global global, require, module */
+/*global global, require, exports */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
