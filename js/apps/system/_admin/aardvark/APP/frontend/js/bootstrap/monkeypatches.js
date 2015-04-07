@@ -1,4 +1,5 @@
-/*jshint strict: false */
+/*jshint strict:false */
+/*global global:true, window */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief monkey-patches to built-in prototypes
@@ -31,6 +32,14 @@
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    monkey-patches
 // -----------------------------------------------------------------------------
+
+if (typeof global === 'undefined' && typeof window !== 'undefined') {
+  global = window;
+}
+global.setInterval = global.setInterval || function () {};
+global.clearInterval = global.clearInterval || function () {};
+global.setTimeout = global.setTimeout || function () {};
+global.clearTimeout = global.clearTimeout || function () {};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
