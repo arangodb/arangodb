@@ -118,6 +118,9 @@
         else if (arg === null) {
           arg = "null";
         }
+        else if (arg instanceof Date || arg instanceof RegExp) {
+          arg = String(arg);
+        }
         else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
           arg = inspect(arg, {prettyPrint: false});
         }
