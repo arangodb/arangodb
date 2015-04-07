@@ -1,3 +1,4 @@
+/*jshint globalstrict:true */
 /*global exports */
 'use strict';
 function SessionNotFound(sid) {
