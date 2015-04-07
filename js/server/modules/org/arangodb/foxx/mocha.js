@@ -36,9 +36,6 @@ var EventEmitter = require('events').EventEmitter;
 function Mocha() {
   this.suite = new mocha.Suite('', new mocha.Context());
   this.options = {};
-  this.suite.on('pre-require', function (context) {
-    require('console').log('########', Date(), 'pre-require', context);
-  });
   Object.keys(mocha.interfaces).forEach(function (key) {
     mocha.interfaces[key](this.suite);
   }.bind(this));
