@@ -609,6 +609,33 @@
 ///   No app found at this mountpoint
 /// - 3010: @LIT{App not configured}
 ///   The app has to be configured before it can be used
+/// - 3100: @LIT{cannot locate module}
+///   The module path could not be resolved.
+/// - 3101: @LIT{syntax error in module}
+///   The module could not be parsed because of a syntax error.
+/// - 3102: @LIT{failed to wrap module}
+///   The module wrapper could not be generated. This may indicate a problem
+///   with some of the names of the module's context variables.
+/// - 3103: @LIT{failed to invoke module}
+///   Failed to invoke the module in its context.
+/// - 3110: @LIT{unknown file type}
+///   The module path resolves to a file of an unknown type.
+/// - 3111: @LIT{path must be absolute}
+///   The module path must be absolute.
+/// - 3112: @LIT{cannot use '..' to escape top-level-directory}
+///   The relative module path can not escape the module's top-level directory.
+/// - 3113: @LIT{drive local path is not supported}
+///   The module path contains a Windows drive letter, which is not supported.
+/// - 3120: @LIT{corrupted module origin}
+///   The module origin is invalid.
+/// - 3121: @LIT{corrupted package origin}
+///   The package origin is invalid.
+/// - 3125: @LIT{no content}
+///   The module resolves to a document which is empty or malformed.
+/// - 3130: @LIT{cannot read main file}
+///   The module's main file is not readable.
+/// - 3131: @LIT{main file is not of type 'js'}
+///   The module's main file is not a JavaScript file.
 /// - 10000: @LIT{element not inserted into structure, because it already exists}
 ///   Will be returned if the element was not insert because it already exists.
 /// - 10001: @LIT{element not found in structure}
@@ -3228,6 +3255,137 @@ void TRI_InitialiseErrorMessages ();
 ////////////////////////////////////////////////////////////////////////////////
 
 #define TRI_ERROR_APP_NEEDS_CONFIGURATION                                 (3010)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3100: ERROR_MODULE_NOT_FOUND
+///
+/// cannot locate module
+///
+/// The module path could not be resolved.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_NOT_FOUND                                        (3100)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3101: ERROR_MODULE_SYNTAX_ERROR
+///
+/// syntax error in module
+///
+/// The module could not be parsed because of a syntax error.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_SYNTAX_ERROR                                     (3101)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3102: ERROR_MODULE_BAD_WRAPPER
+///
+/// failed to wrap module
+///
+/// The module wrapper could not be generated. This may indicate a problem with
+/// some of the names of the module's context variables.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_BAD_WRAPPER                                      (3102)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3103: ERROR_MODULE_FAILURE
+///
+/// failed to invoke module
+///
+/// Failed to invoke the module in its context.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_FAILURE                                          (3103)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3110: ERROR_MODULE_UNKNOWN_FILE_TYPE
+///
+/// unknown file type
+///
+/// The module path resolves to a file of an unknown type.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_UNKNOWN_FILE_TYPE                                (3110)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3111: ERROR_MODULE_PATH_MUST_BE_ABSOLUTE
+///
+/// path must be absolute
+///
+/// The module path must be absolute.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_PATH_MUST_BE_ABSOLUTE                            (3111)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3112: ERROR_MODULE_CAN_NOT_ESCAPE
+///
+/// cannot use '..' to escape top-level-directory
+///
+/// The relative module path can not escape the module's top-level directory.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_CAN_NOT_ESCAPE                                   (3112)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3113: ERROR_MODULE_DRIVE_LETTER
+///
+/// drive local path is not supported
+///
+/// The module path contains a Windows drive letter, which is not supported.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_DRIVE_LETTER                                     (3113)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3120: ERROR_MODULE_BAD_MODULE_ORIGIN
+///
+/// corrupted module origin
+///
+/// The module origin is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_BAD_MODULE_ORIGIN                                (3120)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3121: ERROR_MODULE_BAD_PACKAGE_ORIGIN
+///
+/// corrupted package origin
+///
+/// The package origin is invalid.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_BAD_PACKAGE_ORIGIN                               (3121)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3125: ERROR_MODULE_DOCUMENT_IS_EMPTY
+///
+/// no content
+///
+/// The module resolves to a document which is empty or malformed.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_DOCUMENT_IS_EMPTY                                (3125)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3130: ERROR_MODULE_MAIN_NOT_READABLE
+///
+/// cannot read main file
+///
+/// The module's main file is not readable.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_MAIN_NOT_READABLE                                (3130)
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief 3131: ERROR_MODULE_MAIN_NOT_JS
+///
+/// main file is not of type 'js'
+///
+/// The module's main file is not a JavaScript file.
+////////////////////////////////////////////////////////////////////////////////
+
+#define TRI_ERROR_MODULE_MAIN_NOT_JS                                      (3131)
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief 10000: RESULT_ELEMENT_EXISTS
