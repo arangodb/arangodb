@@ -699,11 +699,6 @@ function require (path) {
 
     // create a new package and module
     var pkg = new Package(path, desc, currentPackage, path2FileUri(dirname), currentPackage._isSystem);
-
-    pkg._environment = {
-      process: require("process")
-    };
-
     pkg._packageModule = createModule(currentModule, pkg, description);
 
     return pkg;

@@ -1,5 +1,5 @@
-/*jshint strict:false */
-/*global global:true, window */
+/*jshint globalstrict:true */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief monkey-patches to built-in prototypes
@@ -33,14 +33,6 @@
 // --SECTION--                                                    monkey-patches
 // -----------------------------------------------------------------------------
 
-if (typeof global === 'undefined' && typeof window !== 'undefined') {
-  global = window;
-}
-global.setInterval = global.setInterval || function () {};
-global.clearInterval = global.clearInterval || function () {};
-global.setTimeout = global.setTimeout || function () {};
-global.clearTimeout = global.clearTimeout || function () {};
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
 // -----------------------------------------------------------------------------
@@ -51,10 +43,9 @@ global.clearTimeout = global.clearTimeout || function () {};
 
 Object.defineProperty(Object.prototype, "_shallowCopy", {
   get: function () {
-    var that = this;
-
-    return this.propertyKeys.reduce(function (previous, element) {
-      previous[element] = that[element];
+    var self = this;
+    return this.propertyKeys.reduce(function (previous, key) {
+      previous[key] = self[key];
       return previous;
     }, {});
   }
@@ -66,8 +57,8 @@ Object.defineProperty(Object.prototype, "_shallowCopy", {
 
 Object.defineProperty(Object.prototype, "propertyKeys", {
   get: function () {
-    return Object.keys(this).filter(function (element) {
-      return (element[0] !== '_' && element[0] !== '$');
+    return Object.keys(this).filter(function (key) {
+      return (key.charAt(0) !== '_' && key.charAt(0) !== '$');
     });
   }
 });
