@@ -1,4 +1,4 @@
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
+/*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, Dygraph, _,templateEngine */
 
 (function() {

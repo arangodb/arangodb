@@ -1,5 +1,3 @@
-/*global require, exports
-*/
 var measurements = ["time",
                     "ast optimization",
                     "plan instanciation",
@@ -9,7 +7,7 @@ var measurements = ["time",
                     "initialization"];
 
 var loadTestRunner = function (tests, options, testMethods) {
-  "use strict";
+  'use strict';
   // declare some useful modules and functions
   var internal = require("internal"), 
       time = internal.time, 

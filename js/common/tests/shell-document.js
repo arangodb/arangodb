@@ -1,5 +1,5 @@
-/*jshint strict: true, maxlen: 5000 */
-/*global require, fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
+/*jshint globalstrict:false, strict:false, maxlen: 5000 */
+/*global fail, assertTrue, assertFalse, assertEqual, assertNotEqual, assertTypeOf */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the document interface
@@ -45,7 +45,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuiteErrorHandling () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionBasics";
   var collection = null;
 
@@ -192,7 +192,7 @@ function CollectionDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionDocumentSuite () {
-  "use strict";
+  'use strict';
   var ERRORS = require("internal").errors;
 
   var cn = "UnitTestsCollectionBasics";
@@ -1300,7 +1300,7 @@ function CollectionDocumentSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuiteErrorHandling () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
 
@@ -1373,7 +1373,7 @@ function DatabaseDocumentSuiteErrorHandling () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseDocumentSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionBasics";
   var ERRORS = require("internal").errors;
   var collection = null;

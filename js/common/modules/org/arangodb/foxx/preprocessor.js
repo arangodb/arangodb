@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Preprocessor
@@ -27,81 +27,66 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Preprocessor,
-  preprocess,
-  ArrayIterator,
-  extend = require("underscore").extend,
+var extend = require("underscore").extend,
   coffeeScript = require("coffee-script");
 
-ArrayIterator = function (arr) {
-  'use strict';
+function ArrayIterator(arr) {
   this.array = arr;
   this.currentLineNumber = -1;
-};
+}
 
 extend(ArrayIterator.prototype, {
   next: function () {
-    'use strict';
-    this.currentLineNumber += 1;
+      this.currentLineNumber += 1;
     return this.array[this.currentLineNumber];
   },
 
   current: function () {
-    'use strict';
-    return this.array[this.currentLineNumber];
+      return this.array[this.currentLineNumber];
   },
 
   hasNext: function () {
-    'use strict';
-    return this.currentLineNumber < (this.array.length - 1);
+      return this.currentLineNumber < (this.array.length - 1);
   },
 
   replaceWith: function (newLine) {
-    'use strict';
-    this.array[this.currentLineNumber] = newLine;
+      this.array[this.currentLineNumber] = newLine;
   },
 
   entireString: function () {
-    'use strict';
-    return this.array.join("\n");
+      return this.array.join("\n");
   },
 
   getCurrentLineNumber: function () {
-    'use strict';
-    if (this.hasNext()) {
+      if (this.hasNext()) {
       return this.currentLineNumber;
     }
   }
 });
 
-Preprocessor = function (input, type) {
-  'use strict';
-
+function Preprocessor(input, type) {
   if (type === 'coffee') {
     input = coffeeScript.compile(input, {bare: true});
   }
 
   this.iterator = new ArrayIterator(input.replace('\r', '').split("\n"));
   this.inJSDoc = false;
-};
+}
 
 extend(Preprocessor.prototype, {
   result: function () {
-    'use strict';
-    return this.iterator.entireString();
+      return this.iterator.entireString();
   },
 
   convert: function () {
-    'use strict';
-    while (this.searchNext()) {
+      while (this.searchNext()) {
       this.convertLine();
     }
     return this;
   },
 
   searchNext: function () {
-    'use strict';
-    while (this.iterator.hasNext()) {
+      while (this.iterator.hasNext()) {
       if (this.isJSDoc(this.iterator.next())) {
         return true;
       }
@@ -109,22 +94,19 @@ extend(Preprocessor.prototype, {
   },
 
   convertLine: function () {
-    'use strict';
-    this.iterator.replaceWith(
+      this.iterator.replaceWith(
       "applicationContext.comment(\"" + this.stripComment(this.iterator.current()) + "\");"
     );
   },
 
   getCurrentLineNumber: function () {
-    'use strict';
-    return this.iterator.getCurrentLineNumber();
+      return this.iterator.getCurrentLineNumber();
   },
 
   // helper
 
   stripComment: function (str) {
-    'use strict';
-    return str.replace(/^\s*\/\*\*/, '').       // start of JSDoc comment
+      return str.replace(/^\s*\/\*\*/, '').       // start of JSDoc comment
                replace(/^(.*?)\*\/.*$/, '$1').  // end of JSDoc comment
                replace(/^\s*\*/, '').           // continuation of JSDoc comment
                replace(/\\/g, '\\\\').          // replace backslashes
@@ -133,8 +115,7 @@ extend(Preprocessor.prototype, {
   },
 
   isJSDoc: function (str) {
-    'use strict';
-    var matched;
+      var matched;
 
     if (this.inJSDoc) {
       if (str.match(/\*\//)) {
@@ -158,11 +139,10 @@ extend(Preprocessor.prototype, {
   }
 });
 
-preprocess = function (input, type) {
-  'use strict';
+function preprocess(input, type) {
   var processor = new Preprocessor(input, type);
   return processor.convert().result();
-};
+}
 
 // Only Exported for Tests, please use `process`
 exports.Preprocessor = Preprocessor;

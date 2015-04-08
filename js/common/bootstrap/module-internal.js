@@ -1,5 +1,4 @@
-/*jshint esnext:true, globalstrict:true, -W051:true */
-/*global global, require */
+/*jshint esnext:true, -W051:true */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////

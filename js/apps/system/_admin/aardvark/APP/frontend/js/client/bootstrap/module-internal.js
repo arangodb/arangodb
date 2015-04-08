@@ -1,5 +1,5 @@
-/*jshint strict: false, -W051: true */
-/*global require, ArangoConnection, SYS_ARANGO, window */
+/*jshint -W051:true */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -32,26 +32,23 @@
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
 (function () {
-  var internal = require("internal");
+
+var exports = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hide global variables
 ////////////////////////////////////////////////////////////////////////////////
 
-    if (typeof ArangoConnection !== "undefined") {
-      internal.ArangoConnection = ArangoConnection;
-      delete ArangoConnection;
-    }
+if (global.ArangoConnection) {
+  exports.ArangoConnection = global.ArangoConnection;
+  delete global.ArangoConnection;
+}
 
-    if (typeof SYS_ARANGO !== "undefined") {
-      internal.arango = SYS_ARANGO;
-      delete SYS_ARANGO;
-    }
+if (global.SYS_ARANGO) {
+  exports.arango = global.SYS_ARANGO;
+  delete global.SYS_ARANGO;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -61,212 +58,212 @@
 /// @brief write-ahead log functionality
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.wal = {
-    flush: function (waitForSync, waitForCollector) {
-      if (typeof internal.arango !== 'undefined') {
-        var wfs = waitForSync ? "true" : "false";
-        var wfc = waitForCollector ? "true" : "false";
-        internal.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
-        return;
-      }
-
-      throw "not connected";
-    },
-
-    properties: function (value) {
-      if (typeof internal.arango !== 'undefined') {
-        if (value !== undefined) {
-          return internal.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
-        }
-
-        return internal.arango.GET("/_admin/wal/properties", "");
-      }
-
-      throw "not connected";
+exports.wal = {
+  flush: function (waitForSync, waitForCollector) {
+    if (exports.arango) {
+      var wfs = waitForSync ? "true" : "false";
+      var wfc = waitForCollector ? "true" : "false";
+      exports.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
+      return;
     }
-  };
+
+    throw "not connected";
+  },
+
+  properties: function (value) {
+    if (exports.arango) {
+      if (value !== undefined) {
+        return exports.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
+      }
+
+      return exports.arango.GET("/_admin/wal/properties", "");
+    }
+
+    throw "not connected";
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the AQL user functions
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.reloadAqlFunctions = function () {
-    if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/aql/reload", "");
-      return;
-    }
+exports.reloadAqlFunctions = function () {
+  if (exports.arango) {
+    exports.arango.POST("/_admin/aql/reload", "");
+    return;
+  }
 
-    throw "not connected";
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rebuilds the routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.reloadRouting = function () {
-    if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/routing/reload", "");
-      return;
-    }
-
-    throw "not connected";
-  };
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rebuilds the routing cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.routingCache = function () {
-    if (typeof internal.arango !== 'undefined') {
-      return internal.arango.GET("/_admin/routing/routes", "");
+exports.reloadRouting = function () {
+  if (exports.arango) {
+    exports.arango.POST("/_admin/routing/reload", "");
+    return;
+  }
 
-    }
+  throw "not connected";
+};
 
-    throw "not connected";
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+exports.routingCache = function () {
+  if (exports.arango) {
+    return exports.arango.GET("/_admin/routing/routes", "");
+
+  }
+
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rebuilds the authentication cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.reloadAuth = function () {
-    if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/auth/reload", "");
-      return;
-    }
+exports.reloadAuth = function () {
+  if (exports.arango) {
+    exports.arango.POST("/_admin/auth/reload", "");
+    return;
+  }
 
-    throw "not connected";
-  };
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute javascript file on the server
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.executeServer = function (body) {
-    if (typeof internal.arango !== 'undefined') {
-      return internal.arango.POST("/_admin/execute", body);
-    }
+exports.executeServer = function (body) {
+  if (exports.arango) {
+    return exports.arango.POST("/_admin/execute", body);
+  }
 
-    throw "not connected";
-  };
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a request in curl format
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendCurlRequest = function (appender) {
-    return function (method, url, body, headers) {
-      var response;
-      var curl;
-      var i;
+exports.appendCurlRequest = function (appender) {
+  return function (method, url, body, headers) {
+    var response;
+    var curl;
+    var i;
 
-      if (typeof body !== 'string') {
-        body = internal.inspect(body);
-      }
+    if (typeof body !== 'string') {
+      body = exports.inspect(body);
+    }
 
-      curl = "shell> curl ";
+    curl = "shell> curl ";
 
-      if (method === 'POST') {
-        response = internal.arango.POST_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'PUT') {
-        response = internal.arango.PUT_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'GET') {
-        response = internal.arango.GET_RAW(url, headers);
-      }
-      else if (method === 'DELETE') {
-        response = internal.arango.DELETE_RAW(url, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'PATCH') {
-        response = internal.arango.PATCH_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'HEAD') {
-        response = internal.arango.HEAD_RAW(url, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'OPTION') {
-        response = internal.arango.OPTION_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      if (headers !== undefined && headers !== "") {
-        for (i in headers) {
-          if (headers.hasOwnProperty(i)) {
-            curl += "--header \'" + i + ": " + headers[i] + "\' ";
-          }
+    if (method === 'POST') {
+      response = exports.arango.POST_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'PUT') {
+      response = exports.arango.PUT_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'GET') {
+      response = exports.arango.GET_RAW(url, headers);
+    }
+    else if (method === 'DELETE') {
+      response = exports.arango.DELETE_RAW(url, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'PATCH') {
+      response = exports.arango.PATCH_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'HEAD') {
+      response = exports.arango.HEAD_RAW(url, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'OPTION') {
+      response = exports.arango.OPTION_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    if (headers !== undefined && headers !== "") {
+      for (i in headers) {
+        if (headers.hasOwnProperty(i)) {
+          curl += "--header \'" + i + ": " + headers[i] + "\' ";
         }
       }
+    }
 
-      if (body !== undefined && body !== "") {
-        curl += "--data-binary @- ";
-      }
+    if (body !== undefined && body !== "") {
+      curl += "--data-binary @- ";
+    }
 
-      curl += "--dump - http://localhost:8529" + url;
+    curl += "--dump - http://localhost:8529" + url;
 
-      appender(curl + "\n");
+    appender(curl + "\n");
 
-      if (body !== undefined && body !== "" && body !== "undefined") {
-        appender(body + "\n");
-      }
+    if (body !== undefined && body !== "" && body) {
+      appender(body + "\n");
+    }
 
-      appender("\n");
+    appender("\n");
 
-      return response;
-    };
+    return response;
   };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a raw response
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendRawResponse = function (appender) {
-    return function (response) {
-      var key;
-      var headers = response.headers;
+exports.appendRawResponse = function (appender) {
+  return function (response) {
+    var key;
+    var headers = response.headers;
 
-      // generate header
-      appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
+    // generate header
+    appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
 
-      for (key in headers) {
-        if (headers.hasOwnProperty(key)) {
-          if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-              && key !== 'content-length') {
-            appender(key + ": " + headers[key] + "\n");
-          }
+    for (key in headers) {
+      if (headers.hasOwnProperty(key)) {
+        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+            && key !== 'content-length') {
+          appender(key + ": " + headers[key] + "\n");
         }
       }
+    }
 
+    appender("\n");
+
+    // append body
+    if (response.body !== undefined) {
+      appender(exports.inspect(response.body));
       appender("\n");
-
-      // append body
-      if (response.body !== undefined) {
-        appender(internal.inspect(response.body));
-        appender("\n");
-      }
-    };
+    }
   };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a response in JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendJsonResponse = function (appender) {
-    return function (response) {
-      var rawAppend = internal.appendRawResponse(appender);
+exports.appendJsonResponse = function (appender) {
+  return function (response) {
+    var rawAppend = exports.appendRawResponse(appender);
 
-      // copy original body (this is necessary because "response" is passed by reference)
-      var copy = response.body;
-      // overwrite body with parsed JSON && append
-      response.body = JSON.parse(response.body);
-      rawAppend(response);
-      // restore original body
-      response.body = copy;
-    };
+    // copy original body (this is necessary because "response" is passed by reference)
+    var copy = response.body;
+    // overwrite body with parsed JSON && append
+    response.body = JSON.parse(response.body);
+    rawAppend(response);
+    // restore original body
+    response.body = copy;
   };
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -276,40 +273,39 @@
 /// @brief log function
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.log = function (level, msg) {
-    internal.output(level, ": ", msg, "\n");
-  };
+exports.log = function (level, msg) {
+  exports.output(level, ": ", msg, "\n");
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sprintf wrapper
 ////////////////////////////////////////////////////////////////////////////////
 
-  try {
-    if (window) {
-      internal.sprintf = function (format) {
-        var n = arguments.length;
-        if (n === 0) {
-          return "";
-        }
-        if (n <= 1) {
-          return String(format);
-        }
+try {
+  if (typeof window !== 'undefined') {
+    exports.sprintf = function (format) {
+      var n = arguments.length;
+      if (n === 0) {
+        return "";
+      }
+      if (n <= 1) {
+        return String(format);
+      }
 
-        var i;
-        var args = [ ];
-        for (i = 1; i < arguments.length; ++i) {
-          args.push(arguments[i]);
-        }
-        i = 0;
+      var i;
+      var args = [ ];
+      for (i = 1; i < arguments.length; ++i) {
+        args.push(arguments[i]);
+      }
+      i = 0;
 
-        return format.replace(/%[dfs]/, function () {
-          return String(args[i++]);
-        });
-      };
-    }
+      return format.replace(/%[dfs]/, function () {
+        return String(args[i++]);
+      });
+    };
   }
-  catch (err) {
-  }
+}
+catch (e) {}
 
 }());
 

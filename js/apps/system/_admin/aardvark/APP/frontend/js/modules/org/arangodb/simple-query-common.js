@@ -1,6 +1,5 @@
 module.define("org/arangodb/simple-query-common", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language

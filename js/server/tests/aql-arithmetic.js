@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global require, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, arithmetic operators

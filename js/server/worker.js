@@ -1,4 +1,4 @@
-/*global require, ArangoAgency */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief worker initialisation
@@ -37,7 +37,6 @@
 
 (function () {
   var internal = require("internal");
-  var db = internal.db;
 
   // autoload all modules
   internal.loadStartup("server/bootstrap/autoload.js").startup();

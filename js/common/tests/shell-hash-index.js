@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertTrue, assertNotEqual */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -41,7 +42,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function HashIndexSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionHash";
   var collection = null;
 

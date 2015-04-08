@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertNotEqual, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the unique constraint
@@ -40,7 +40,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function UniqueConstraintSuite() {
-  "use strict";
+  'use strict';
   var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionHash";
   var collection = null;

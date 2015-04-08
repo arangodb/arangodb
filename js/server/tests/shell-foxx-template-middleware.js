@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertTrue, assertFalse, assertNotNull */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertFalse, assertNotNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -33,7 +33,7 @@ var jsunity = require("jsunity"),
   db = arangodb.db;
 
 function TemplateMiddlewareSpec () {
-  "use strict";
+  'use strict';
   var TemplateMiddleware, templateMiddleware, templateCollection, request, response, options, next, error;
 
   return {

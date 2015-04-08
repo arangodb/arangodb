@@ -1,5 +1,5 @@
-/*jshint strict: true, maxlen: 400 */
-/*global require, fail, assertEqual, AQL_EXECUTE */
+/*jshint globalstrict:false, strict:false, maxlen: 400 */
+/*global fail, assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test failure scenarios
@@ -42,7 +42,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlFailureSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsAhuacatlFailures";
   var c;
   var count = 5000;

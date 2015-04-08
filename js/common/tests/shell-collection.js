@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global require, assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertNull, assertUndefined, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTypeOf, assertNotEqual, assertTrue, assertNull, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface

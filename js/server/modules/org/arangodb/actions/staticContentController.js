@@ -1,5 +1,4 @@
 /*jshint strict: false, unused: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deliver static content from collection

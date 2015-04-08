@@ -1,5 +1,5 @@
 /*jslint indent: 2, nomen: true, maxlen: 100, white: true, plusplus: true, unparam: true */
-/*global require, applicationContext */
+/*global applicationContext */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief An example Foxx-Application for ArangoDB
@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  "use strict";
+  'use strict';
 
   // initialise a new FoxxApplication
   var FoxxApplication = require("org/arangodb/foxx").Controller;

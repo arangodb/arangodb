@@ -1,5 +1,5 @@
-/*jshint strict: true, unused : false */
-/*global require, assertEqual, assertFalse, assertTrue */
+/*jshint globalstrict:false, strict:false, unused : false */
+/*global assertEqual, assertFalse, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -33,7 +33,7 @@ var internal = require("internal");
 var jsunity = require("jsunity");
 
 function runSetup () {
-  "use strict";
+  'use strict';
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery1");
@@ -73,7 +73,7 @@ function runSetup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
-  "use strict";
+  'use strict';
   jsunity.jsUnity.attachAssertions();
 
   return {
@@ -124,7 +124,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
-  "use strict";
+  'use strict';
   if (argv[1] === "setup") {
     runSetup();
     return 0;

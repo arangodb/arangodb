@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, AQL_EXECUTE, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, AQL_EXECUTE, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for cost estimation

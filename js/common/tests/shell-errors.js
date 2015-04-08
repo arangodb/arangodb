@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, fail, assertFalse, assertTrue, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertFalse, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the error codes
@@ -42,7 +42,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ErrorsSuite () {
-  "use strict";
+  'use strict';
   var throwError = function (code, message) {
     var err = new ArangoError();
     err.errorNum = code; 

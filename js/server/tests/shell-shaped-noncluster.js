@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, fail, assertFalse, assertTrue, assertEqual, assertUndefined */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertFalse, assertTrue, assertEqual, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the shaped json behavior
@@ -43,7 +43,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function DocumentShapedJsonSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionShaped";
   var c;
 
@@ -598,7 +598,7 @@ function DocumentShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EdgeShapedJsonSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionShaped";
   var c;
 
@@ -752,7 +752,7 @@ function EdgeShapedJsonSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoShapedJsonSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionShaped";
   var c;
 

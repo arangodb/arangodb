@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -30,13 +30,9 @@
 var internal = require("internal");
 var common = require("org/arangodb-common");
 
-var key;
-
-for (key in common) {
-  if (common.hasOwnProperty(key)) {
-    exports[key] = common[key];
-  }
-}
+Object.keys(common).forEach(function (key) {
+  exports[key] = common[key];
+});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS

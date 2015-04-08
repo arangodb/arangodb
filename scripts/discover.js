@@ -1,5 +1,4 @@
-/*jshint strict: false, -W083 */
-/*global require */
+/*jshint globalstrict:false, strict:false, -W083 */
 
 // Discover a new server and give it a role
 

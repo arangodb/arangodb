@@ -1,5 +1,4 @@
 /*jslint indent: 2, nomen: true, maxlen: 100 */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A configuration model for foxx templates

@@ -1,4 +1,4 @@
-/*global require, applicationContext */
+/*global applicationContext */
 (function () {
   'use strict';
   var _ = require('underscore'),

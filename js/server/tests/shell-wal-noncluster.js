@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, fail, assertTrue, assertNotEqual, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertTrue, assertNotEqual, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -43,7 +43,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function walFailureSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsWal";
   var c;
   var props;
@@ -201,7 +201,7 @@ function walFailureSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function walSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsWal";
   var c;
   var props;

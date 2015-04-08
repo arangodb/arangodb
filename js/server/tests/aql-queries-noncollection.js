@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertException */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertException */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, simple non-collection-based queries

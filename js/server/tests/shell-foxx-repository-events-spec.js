@@ -1,4 +1,5 @@
-/*global require, describe, expect, it, beforeEach, createSpyObj */
+/*jshint globalstrict:false, strict:false */
+/*global describe, expect, it, beforeEach, createSpyObj */
 
 var FoxxRepository = require("org/arangodb/foxx/repository").Repository,
   Model = require("org/arangodb/foxx/model").Model;

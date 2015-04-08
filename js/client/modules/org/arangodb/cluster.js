@@ -1,5 +1,4 @@
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API for cluster operation
@@ -32,7 +31,7 @@ var arangosh = require("org/arangodb/arangosh");
 var db = require("org/arangodb").db;
 
 function Planner (userConfig) {
-  "use strict";
+  'use strict';
   if (typeof userConfig !== "object") {
     throw "userConfig must be an object";
   }
@@ -48,7 +47,7 @@ Planner.prototype.getPlan = function () {
 };
 
 function Kickstarter (clusterPlan, myname) {
-  "use strict";
+  'use strict';
   if (typeof clusterPlan !== "object") {
     throw "clusterPlan must be an object";
   }
@@ -62,7 +61,7 @@ function Kickstarter (clusterPlan, myname) {
 }
 
 Kickstarter.prototype.launch = function () {
-  "use strict";
+  'use strict';
   var r = db._connection.POST("/_admin/clusterDispatch",
                               JSON.stringify({"action": "launch",
                                               "clusterPlan": this.clusterPlan,
@@ -72,7 +71,7 @@ Kickstarter.prototype.launch = function () {
 };
 
 Kickstarter.prototype.shutdown = function () {
-  "use strict";
+  'use strict';
   var r = db._connection.POST("/_admin/clusterDispatch",
                               JSON.stringify({"action": "shutdown",
                                               "clusterPlan": this.clusterPlan,
@@ -82,7 +81,7 @@ Kickstarter.prototype.shutdown = function () {
 };
 
 Kickstarter.prototype.relaunch = function () {
-  "use strict";
+  'use strict';
   var r = db._connection.POST("/_admin/clusterDispatch",
                               JSON.stringify({"action": "relaunch",
                                               "clusterPlan": this.clusterPlan,
@@ -92,7 +91,7 @@ Kickstarter.prototype.relaunch = function () {
 };
 
 Kickstarter.prototype.cleanup = function () {
-  "use strict";
+  'use strict';
   var r = db._connection.POST("/_admin/clusterDispatch",
                               JSON.stringify({"action": "cleanup",
                                               "clusterPlan": this.clusterPlan,
@@ -101,7 +100,7 @@ Kickstarter.prototype.cleanup = function () {
 };
 
 Kickstarter.prototype.isHealthy = function () {
-  "use strict";
+  'use strict';
   var r = db._connection.POST("/_admin/clusterDispatch",
                               JSON.stringify({"action": "isHealthy",
                                               "clusterPlan": this.clusterPlan,
@@ -111,7 +110,7 @@ Kickstarter.prototype.isHealthy = function () {
 };
 
 Kickstarter.prototype.upgrade = function (username, password) {
-  "use strict";
+  'use strict';
   if (username === undefined || password === undefined) {
     username = "root";
     password = "";

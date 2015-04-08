@@ -1,5 +1,6 @@
-/*jshint strict: true, maxlen: 500 */
-/*global require, assertTrue, assertEqual, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertTrue, assertEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the crypto interface
 ///
@@ -39,7 +40,7 @@ var crypto = require("org/arangodb/crypto");
 ////////////////////////////////////////////////////////////////////////////////
 
 function CryptoSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

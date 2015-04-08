@@ -1,5 +1,6 @@
-/*jshint strict: true, sub: true */
-/*global require, assertTrue, assertFalse, assertEqual, assertNotEqual */
+/*jshint globalstrict:false, strict:false, sub: true */
+/*global assertTrue, assertFalse, assertEqual, assertNotEqual */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test filesystem functions
 ///
@@ -38,7 +39,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function EnvironmentSuite () {
-  "use strict";
+  'use strict';
   var env = require("process").env;
 
   return {

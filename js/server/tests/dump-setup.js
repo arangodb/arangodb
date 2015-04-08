@@ -1,5 +1,4 @@
-/*jshint strict: true, maxlen:4000, unused:false */
-/*global require */
+/*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setup collections for dump/reload tests
@@ -29,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
   var db = require("org/arangodb").db;
   var i, c;
 

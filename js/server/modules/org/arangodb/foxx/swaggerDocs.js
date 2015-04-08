@@ -1,4 +1,3 @@
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Swagger documentation
@@ -28,7 +27,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  "use strict";
+  'use strict';
 
   var foxxInternal = require("org/arangodb/foxx/internals");
   var _ = require("underscore");

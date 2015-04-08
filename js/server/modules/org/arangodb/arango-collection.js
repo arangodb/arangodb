@@ -965,7 +965,7 @@ ArangoCollection.prototype.updateByExample = function (example,
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
-  "use strict";
+  'use strict';
 
   return this.ensureIndex({
     type: "cap",
@@ -1009,7 +1009,7 @@ ArangoCollection.prototype.ensureCapConstraint = function (size, byteSize) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueSkiplist = function () {
-  "use strict";
+  'use strict';
 
   return this.ensureIndex(addIndexOptions({
     type: "skiplist",
@@ -1046,7 +1046,7 @@ ArangoCollection.prototype.ensureUniqueSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureSkiplist = function () {
-  "use strict";
+  'use strict';
 
   return this.ensureIndex(addIndexOptions({
     type: "skiplist"
@@ -1076,7 +1076,7 @@ ArangoCollection.prototype.ensureSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
-  "use strict";
+  'use strict';
 
   if (! Array.isArray(field)) {
     field = [ field ];
@@ -1126,7 +1126,7 @@ ArangoCollection.prototype.ensureFulltextIndex = function (field, minLength) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureUniqueConstraint = function () {
-  "use strict";
+  'use strict';
 
   return this.ensureIndex(addIndexOptions({
     type: "hash",
@@ -1166,7 +1166,7 @@ ArangoCollection.prototype.ensureUniqueConstraint = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureHashIndex = function () {
-  "use strict";
+  'use strict';
 
   return this.ensureIndex(addIndexOptions({
     type: "hash"
@@ -1221,7 +1221,7 @@ ArangoCollection.prototype.ensureHashIndex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
-  "use strict";
+  'use strict';
 
   if (typeof lat !== "string") {
     throw "usage: ensureGeoIndex(<lat>, <lon>) or ensureGeoIndex(<loc>[, <geoJson>])";
@@ -1266,7 +1266,7 @@ ArangoCollection.prototype.ensureGeoIndex = function (lat, lon) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
-  "use strict";
+  'use strict';
 
   return this.ensureGeoIndex(lat, lon);
 };
@@ -1276,7 +1276,7 @@ ArangoCollection.prototype.ensureGeoConstraint = function (lat, lon) {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupUniqueConstraint = function () {
-  "use strict";
+  'use strict';
 
   return this.lookupIndex({
     type: "hash",
@@ -1290,7 +1290,7 @@ ArangoCollection.prototype.lookupUniqueConstraint = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupHashIndex = function () {
-  "use strict";
+  'use strict';
 
   return this.lookupIndex({
     type: "hash",
@@ -1303,7 +1303,7 @@ ArangoCollection.prototype.lookupHashIndex = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupUniqueSkiplist = function () {
-  "use strict";
+  'use strict';
 
   return this.lookupIndex({
     type: "skiplist",
@@ -1317,7 +1317,7 @@ ArangoCollection.prototype.lookupUniqueSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupSkiplist = function () {
-  "use strict";
+  'use strict';
 
   return this.lookupIndex({
     type: "skiplist",
@@ -1335,7 +1335,7 @@ ArangoCollection.prototype.lookupSkiplist = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 ArangoCollection.prototype.lookupFulltextIndex = function (field, minLength) {
-  "use strict";
+  'use strict';
 
   if (! Array.isArray(field)) {
     field = [ field ];

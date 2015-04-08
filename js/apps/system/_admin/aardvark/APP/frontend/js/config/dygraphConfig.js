@@ -1,4 +1,4 @@
-/*global require, _, Dygraph, window, document */
+/*global _, Dygraph, window, document */
 
 (function () {
   "use strict";

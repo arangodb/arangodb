@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, assertTrue, assertEqual, fail, 
+/*global assertTrue, assertEqual, fail, 
   AQL_EXECUTE, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTEJSON */
 
 ////////////////////////////////////////////////////////////////////////////////

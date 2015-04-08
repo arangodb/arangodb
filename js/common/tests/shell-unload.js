@@ -1,4 +1,4 @@
-/*global require */
+/*jshint globalstrict:false, strict:false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests unloading while there are still document barriers
@@ -39,7 +39,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function UnloadSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionUnload";
   var collection;
 

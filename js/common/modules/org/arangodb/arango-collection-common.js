@@ -1,5 +1,4 @@
 /*jshint strict: false, unused: false, maxlen: 200 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection

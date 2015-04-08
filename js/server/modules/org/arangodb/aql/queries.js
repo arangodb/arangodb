@@ -1,4 +1,4 @@
-/*global exports, AQL_QUERIES_SLOW, AQL_QUERIES_CURRENT, AQL_QUERIES_PROPERTIES,
+/*global AQL_QUERIES_SLOW, AQL_QUERIES_CURRENT, AQL_QUERIES_PROPERTIES,
   AQL_QUERIES_KILL */
 
 ////////////////////////////////////////////////////////////////////////////////

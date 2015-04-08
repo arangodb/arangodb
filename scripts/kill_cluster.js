@@ -1,8 +1,6 @@
-/*jshint unused: false */
-/*global require */
+/*jshint globalstrict:false, unused:false */
 function main (argv) {
   "use strict";
-
   var runInfoName = "runInfo.json";
   var fs = require("fs");
   var print = require("internal").print;

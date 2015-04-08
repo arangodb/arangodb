@@ -1,6 +1,5 @@
 module.define("org/arangodb/aql/explainer", function(exports, module) {
 /*jshint strict: false, maxlen: 300 */
-/*global require, exports */
 
 var db = require("org/arangodb").db,
   internal = require("internal"),
@@ -14,7 +13,7 @@ if (typeof internal.printBrowser === "function") {
 
 /* set colors for output */
 function setColors (useSystemColors) {
-  "use strict";
+  'use strict';
 
   [ "COLOR_RESET", 
     "COLOR_CYAN", "COLOR_BLUE", "COLOR_GREEN", "COLOR_MAGENTA", "COLOR_YELLOW", "COLOR_RED", "COLOR_WHITE",
@@ -27,27 +26,27 @@ function setColors (useSystemColors) {
 /* colorizer and output helper functions */ 
 
 function passthru (v) {
-  "use strict";
+  'use strict';
   return v;
 }
   
 function keyword (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
 }
 
 function annotation (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_BLUE + v + colors.COLOR_RESET;
 }
 
 function value (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
   
 function variable (v) {
-  "use strict";
+  'use strict';
   if (v[0] === "#") {
     return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
   }
@@ -55,37 +54,37 @@ function variable (v) {
 }
 
 function func (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
   
 function collection (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
 function attribute (v) {
-  "use strict";
+  'use strict';
   return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";
 }
 
 function header (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
 }
 
 function section (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;
 }
 
 function pad (n) {
-  "use strict";
+  'use strict';
   return new Array(n).join(" ");
 }
 
 function wrap (str, width) { 
-  "use strict";
+  'use strict';
   var re = ".{1," + width + "}(\\s|$)|\\S+?(\\s|$)";
   return str.match(new RegExp(re, "g")).join("\n");
 }
@@ -95,7 +94,7 @@ function wrap (str, width) {
 
 /* print query string */  
 function printQuery (query) {
-  "use strict";
+  'use strict';
   print(section("Query string:"));
   print(" " + value(wrap(query, 100).replace(/\n/g, "\n ", query)));
   print(); 
@@ -103,7 +102,7 @@ function printQuery (query) {
 
 /* print write query modification flags */
 function printModificationFlags (flags) {
-  "use strict";
+  'use strict';
   if (flags === undefined) {
     return;
   }
@@ -123,7 +122,7 @@ function printModificationFlags (flags) {
 
 /* print optimizer rules */
 function printRules (rules) {
-  "use strict";
+  'use strict';
   print(section("Optimization rules applied:"));
   if (rules.length === 0) {
     print(" " + value("none"));
@@ -140,7 +139,7 @@ function printRules (rules) {
 
 /* print warnings */
 function printWarnings (warnings) {
-  "use strict";
+  'use strict';
   if (! Array.isArray(warnings) || warnings.length === 0) {
     return;
   }
@@ -156,7 +155,7 @@ function printWarnings (warnings) {
 
 /* print indexes used */
 function printIndexes (indexes) {
-  "use strict";
+  'use strict';
   print(section("Indexes used:"));
   if (indexes.length === 0) {
     print(" " + value("none"));
@@ -224,7 +223,7 @@ function printIndexes (indexes) {
 
 /* analzye and print execution plan */
 function processQuery (query, explain) {
-  "use strict";
+  'use strict';
   var nodes = { }, 
     parents = { }, 
     rootNode = null,
@@ -584,7 +583,7 @@ function processQuery (query, explain) {
 
 /* the exposed function */
 function explain (data, options) { 
-  "use strict";
+  'use strict';
   if (typeof data === "string") {
     data = { query: data };
   }

@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require,  assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the edges interface
@@ -44,7 +44,7 @@ var wait = require("internal").wait;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionEdgeSuite () {
-  "use strict";
+  'use strict';
   var vn = "UnitTestsCollectionVertex";
   var vertex = null;
 

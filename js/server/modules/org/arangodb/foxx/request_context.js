@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Request Context
@@ -28,23 +28,16 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var RequestContext,
-  RequestContextBuffer,
-  SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
+var SwaggerDocs = require("org/arangodb/foxx/swaggerDocs").Docs,
   joi = require("joi"),
   _ = require("underscore"),
   extend = _.extend,
   internal = require("org/arangodb/foxx/internals"),
   toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
   is = require("org/arangodb/is"),
-  isJoi,
-  createBodyParamExtractor,
-  createModelInstantiator,
-  validateOrThrow,
   UnauthorizedError = require("org/arangodb/foxx/sessions").UnauthorizedError;
 
-createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
-  'use strict';
+function createBodyParamExtractor(rootElement, paramName, allowInvalid) {
   var extractElement;
 
   if (rootElement) {
@@ -68,10 +61,9 @@ createBodyParamExtractor = function (rootElement, paramName, allowInvalid) {
       return {};
     }
   };
-};
+}
 
-createModelInstantiator = function (Model, allowInvalid) {
-  'use strict';
+function createModelInstantiator(Model, allowInvalid) {
   var multiple = is.array(Model);
   Model = multiple ? Model[0] : Model;
   var instantiate = function (raw) {
@@ -86,10 +78,9 @@ createModelInstantiator = function (Model, allowInvalid) {
   return function (raw) {
     return _.map(raw, instantiate);
   };
-};
+}
 
-isJoi = function (schema) {
-  'use strict';
+function isJoi(schema) {
   if (!schema || typeof schema !== 'object' || is.array(schema)) {
     return false;
   }
@@ -101,10 +92,9 @@ isJoi = function (schema) {
   return Object.keys(schema).some(function (key) {
     return schema[key].isJoi;
   });
-};
+}
 
-validateOrThrow = function (raw, schema, allowInvalid) {
-  'use strict';
+function validateOrThrow(raw, schema, allowInvalid) {
   if (!isJoi(schema)) {
     return raw;
   }
@@ -113,7 +103,7 @@ validateOrThrow = function (raw, schema, allowInvalid) {
     throw result.error;
   }
   return result.value;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_RequestContext_initializer
@@ -122,8 +112,7 @@ validateOrThrow = function (raw, schema, allowInvalid) {
 /// Used for documenting and constraining the routes.
 ////////////////////////////////////////////////////////////////////////////////
 
-RequestContext = function (executionBuffer, models, route, rootElement, constraints, extensions) {
-  'use strict';
+function RequestContext(executionBuffer, models, route, rootElement, constraints, extensions) {
   this.route = route;
   this.typeToRegex = {
     "int": "/[0-9]+/",
@@ -149,7 +138,7 @@ RequestContext = function (executionBuffer, models, route, rootElement, constrai
       this[attr] = extensionWrapper(this, extensions[attr]);
     }
   }
-};
+}
 
 extend(RequestContext.prototype, {
 
@@ -192,7 +181,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   pathParam: function (paramName, attributes) {
-    'use strict';
     var url = this.route.url,
       urlConstraint = url.constraint || {},
       type = attributes.type,
@@ -302,7 +290,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   queryParam: function (paramName, attributes) {
-    'use strict';
     var type = attributes.type,
       required = attributes.required,
       description = attributes.description,
@@ -448,7 +435,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   bodyParam: function (paramName, attributes) {
-    'use strict';
     var type = attributes.type,
       description = attributes.description,
       allowInvalid = attributes.allowInvalid,
@@ -515,7 +501,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   summary: function (summary) {
-    'use strict';
     if (summary.length > 8192) {
       throw new Error("Summary can't be longer than 8192 characters");
     }
@@ -530,7 +515,6 @@ extend(RequestContext.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   notes: function (notes) {
-    'use strict';
     this.docs.addNotes(notes);
     return this;
   },
@@ -578,7 +562,6 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   errorResponse: function (errorClass, code, reason, errorHandler) {
-    'use strict';
     this.route.action.errorResponses.push({
       errorClass: errorClass,
       code: code,
@@ -608,7 +591,6 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIf: function (check) {
-    'use strict';
     this.route.action.checks.push({
       check: check
     });
@@ -636,7 +618,6 @@ extend(RequestContext.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   onlyIfAuthenticated: function (code, reason) {
-    'use strict';
     var check;
 
     check = function (req) {
@@ -662,14 +643,12 @@ extend(RequestContext.prototype, {
   }
 });
 
-RequestContextBuffer = function () {
-  'use strict';
+function RequestContextBuffer() {
   this.applyChain = [];
-};
+}
 
 extend(RequestContextBuffer.prototype, {
   applyEachFunction: function (target) {
-    'use strict';
     _.each(this.applyChain, function (x) {
       target[x.functionName].apply(target, x.argumentList);
     });
@@ -740,7 +719,6 @@ _.each([
 ////////////////////////////////////////////////////////////////////////////////
   "onlyIfAuthenticated"
 ], function (functionName) {
-  'use strict';
   extend(RequestContextBuffer.prototype[functionName] = function () {
     this.applyChain.push({
       functionName: functionName,

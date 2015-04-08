@@ -1,4 +1,4 @@
-/*jshint unused: false */
+/*jshint globalstrict:false, strict:false, unused: false */
 /*global assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -29,6 +29,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function main(args) {
-  "use strict";
+  'use strict';
   while (true) {assertTrue(true);}
 }

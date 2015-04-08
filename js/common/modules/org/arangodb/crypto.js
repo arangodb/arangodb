@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, Buffer */
+/*global Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Some crypto functions

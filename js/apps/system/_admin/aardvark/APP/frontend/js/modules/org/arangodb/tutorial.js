@@ -1,6 +1,5 @@
 module.define("org/arangodb/tutorial", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Shell tutorial

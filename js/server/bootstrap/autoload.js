@@ -1,6 +1,4 @@
-/*jshint globalstrict:true */
-/*global require */
-"use strict";
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief autoload modules

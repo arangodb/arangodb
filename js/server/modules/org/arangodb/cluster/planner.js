@@ -1,5 +1,4 @@
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster planning functionality
@@ -433,7 +432,7 @@ function checkDispatcherIps (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function Planner (userConfig) {
-  "use strict";
+  'use strict';
   if (typeof userConfig !== "object") {
     throw new Error("userConfig must be an object");
   }

@@ -1,4 +1,4 @@
-/*global require, exports, ArangoServerState */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statistics handler
@@ -57,8 +57,6 @@ var initialized = false;
 ////////////////////////////////////////////////////////////////////////////////
 
 function createStatisticsCollection (name) {
-  'use strict';
-
   var collection = db._collection(name);
 
   if (collection === null) {
@@ -89,8 +87,6 @@ function createStatisticsCollection (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function collectGarbage (collection, start) {
-  'use strict';
-
   var values = db._query(
       "FOR s in @@collection "
     + "  FILTER s.time < @start "
@@ -115,8 +111,6 @@ function collectGarbage (collection, start) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function lastEntry (collection, start, clusterId) {
-  'use strict';
-
   var filter = "";
 
   if (clusterId !== undefined) {
@@ -143,8 +137,6 @@ function lastEntry (collection, start, clusterId) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function avgPercentDistributon (now, last, cuts) {
-  'use strict';
-
   var n = cuts.length + 1;
   var result = new Array(n);
   var count = 0;
@@ -183,8 +175,6 @@ function avgPercentDistributon (now, last, cuts) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function computePerSeconds (current, prev) {
-  'use strict';
-
   // sanity check if we have restarted the server
   if (prev.time + exports.STATISTICS_INTERVAL * 1.5 < current.time) {
     return null;
@@ -318,8 +308,6 @@ function computePerSeconds (current, prev) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function compute15Minute (start, clusterId) {
-  'use strict';
-
   var filter = "";
 
   if (clusterId !== undefined) {
@@ -460,8 +448,6 @@ exports.STATISTICS_HISTORY_INTERVAL = 15 * 60;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.createStatisticsCollections = function () {
-  'use strict';
-
   if (initialized) {
     return true;
   }
@@ -485,8 +471,6 @@ exports.createStatisticsCollections = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.historian = function () {
-  "use strict";
-
   if (! exports.createStatisticsCollections()) {
     return;
   }
@@ -497,7 +481,7 @@ exports.historian = function () {
   var clusterId;
 
   if (cluster.isCluster()) {
-    clusterId = ArangoServerState.id();
+    clusterId = global.ArangoServerState.id();
   }
 
   try {
@@ -546,8 +530,6 @@ exports.historian = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.historianAverage = function () {
-  "use strict";
-
   if (! exports.createStatisticsCollections()) {
     return;
   }
@@ -557,7 +539,7 @@ exports.historianAverage = function () {
   var clusterId;
 
   if (cluster.isCluster()) {
-    clusterId = ArangoServerState.id();
+    clusterId = global.ArangoServerState.id();
   }
 
   try {
@@ -600,8 +582,6 @@ exports.historianAverage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.garbageCollector = function () {
-  'use strict';
-
   if (! exports.createStatisticsCollections()) {
     return;
   }
@@ -618,8 +598,6 @@ exports.garbageCollector = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.startup = function () {
-  'use strict';
-
   if (typeof internal.registerTask !== "function") {
     return;
   }

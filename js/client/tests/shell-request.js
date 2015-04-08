@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, arango, Buffer */
+/*jshint globalstrict:false, strict:false */
+/*global arango, Buffer */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test request module
@@ -44,7 +44,7 @@ var qs = require('qs');
 ////////////////////////////////////////////////////////////////////////////////
 
 function RequestSuite () {
-  "use strict";
+  'use strict';
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';

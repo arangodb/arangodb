@@ -1,5 +1,5 @@
-/*jshint unused:false */
-/*global require, assertEqual, assertTrue, assertFalse, assertUndefined */
+/*jshint globalstrict:false, strict:false, unused:false */
+/*global assertEqual, assertTrue, assertFalse, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries
@@ -1754,7 +1754,7 @@ function FoxxControllerWithRootElement () {
 }
 
 function ExtendFoxxControllerSpec () {
-  "use strict";
+  'use strict';
   var app, routes;
 
   return {

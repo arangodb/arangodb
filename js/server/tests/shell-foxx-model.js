@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertFalse, assertTrue, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertFalse, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -33,7 +33,7 @@ var _ = require("underscore"),
   jsunity = require("jsunity");
 
 function ModelSpec () {
-  "use strict";
+  'use strict';
   var FoxxModel, instance;
 
   return {
@@ -358,7 +358,7 @@ function ModelSpec () {
 }
 
 function ModelAnnotationSpec () {
-  "use strict";
+  'use strict';
   var FoxxModel, toJSONSchema, jsonSchema, instance;
 
   return {

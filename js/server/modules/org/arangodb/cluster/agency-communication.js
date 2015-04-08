@@ -1,5 +1,5 @@
 /*jshint unused: false */
-/*global require, exports, ArangoAgency */
+/*global ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Agency Communication
@@ -32,7 +32,7 @@
 // --SECTION--                                              Agency-Communication
 // -----------------------------------------------------------------------------
 exports.Communication = function() {
-  "use strict";
+  'use strict';
   var agency,
     AgencyWrapper,
     splitServerName,
@@ -857,7 +857,7 @@ exports.Communication = function() {
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 exports._createAgency = function() {
-  "use strict";
+  'use strict';
   var agency;
   if (agency) {
     return agency;

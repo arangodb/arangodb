@@ -1,6 +1,5 @@
 module.define("org/arangodb/arango-database", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase

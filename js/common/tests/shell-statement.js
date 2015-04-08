@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue, assertFalse, assertUndefined, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertFalse, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -42,7 +43,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function StatementSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

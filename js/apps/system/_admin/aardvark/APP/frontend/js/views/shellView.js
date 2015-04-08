@@ -1,6 +1,6 @@
 /*jshint browser: true, evil: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
+/*global Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 /*global templateEngine*/
 
 (function() {

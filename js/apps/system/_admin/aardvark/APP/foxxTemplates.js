@@ -1,4 +1,4 @@
-/*global require, applicationContext*/
+/*global applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to generate new FoxxApps

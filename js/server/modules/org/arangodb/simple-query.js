@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, ArangoClusterComm, ArangoClusterInfo */
+/*global ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -235,7 +235,7 @@ function supportsQuery (idx, attributes) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function docType (value) {
-  "use strict";
+  'use strict';
 
   if (value !== undefined && value !== null) {
     if (Array.isArray(value)) {
@@ -266,7 +266,7 @@ function docType (value) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function isContained (doc, example) {
-  "use strict";
+  'use strict';
 
   var eType = docType(example);
   var dType = docType(doc);

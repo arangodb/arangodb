@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertMatch, assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the common database interface
@@ -42,7 +42,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function DatabaseSuite () {
-  "use strict";
+  'use strict';
   return {
 
     setUp : function () {

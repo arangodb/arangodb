@@ -1,4 +1,5 @@
-/*global require, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the statement class
@@ -43,7 +44,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ExplainSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsExplain";
 
   return {

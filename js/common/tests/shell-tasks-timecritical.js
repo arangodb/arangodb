@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global require, assertTrue, assertEqual, assertMatch, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertTrue, assertEqual, assertMatch, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the task manager

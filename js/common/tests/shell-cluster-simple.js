@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertTrue, assertNull */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertTrue, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test simple queries in a cluster
@@ -34,7 +35,7 @@ var db = arangodb.db;
 var _ = require("underscore");
 
 var createCollection = function (properties) {
-  "use strict";
+  'use strict';
   try {
     db._drop("UnitTestsClusterCrud");
   }
@@ -58,7 +59,7 @@ var createCollection = function (properties) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterCrudSimpleSuite () {
-  "use strict";
+  'use strict';
   var queryToArray = function (q, n, cb) {
     var result = q.toArray();
     assertEqual(n, result.length);

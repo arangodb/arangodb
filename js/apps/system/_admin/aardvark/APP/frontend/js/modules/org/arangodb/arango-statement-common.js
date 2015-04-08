@@ -1,6 +1,5 @@
 module.define("org/arangodb/arango-statement-common", function(exports, module) {
 /*jshint strict: false */
-/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements

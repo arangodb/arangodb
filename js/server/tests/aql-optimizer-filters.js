@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertNotEqual, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for filters

@@ -1,4 +1,4 @@
-/*global require, exports, applicationContext */
+/*global applicationContext */
 (function () {
   'use strict';
   var crypto = require('org/arangodb/crypto'),

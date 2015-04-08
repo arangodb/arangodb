@@ -1,5 +1,5 @@
-/*jshint strict: false, unused: false */
-/*global $, jqconsole, window, document */
+/*jshint node:false, browser:true, strict: false, unused: false */
+/*global global:true, $, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB web browser shell
@@ -67,6 +67,10 @@ Module.prototype.moduleCache["/internal"] = new Module("/internal");
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
+if (typeof global === 'undefined' && typeof window !== 'undefined') {
+  global = window;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoShell
 /// @{
@@ -76,7 +80,7 @@ Module.prototype.moduleCache["/internal"] = new Module("/internal");
 /// @brief module
 ////////////////////////////////////////////////////////////////////////////////
 
-var module = Module.prototype.moduleCache["/"] = new Module("/");
+global.module = Module.prototype.moduleCache["/"] = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -201,7 +205,7 @@ Module.prototype.require = function (path) {
 };
 
 function require (path) {
-  return module.require(path);
+  return global.module.require(path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

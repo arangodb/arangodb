@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue, assertFalse, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -40,7 +41,7 @@ var errors = internal.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ensureIndexSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 

@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global require, $, Joi, _, alert, templateEngine*/
+/*global $, Joi, _, alert, templateEngine*/
 (function() {
   "use strict";
 

@@ -1,4 +1,4 @@
-/*global require, module, describe, it, beforeEach */
+/*global describe, it, beforeEach */
 (function () {
   'use strict';
   var sinon = require('sinon'),

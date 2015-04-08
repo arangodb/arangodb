@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx internals
@@ -28,13 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var _ = require("underscore"),
-  is = require("org/arangodb/is"),
-  constructUrlObject,
-  constructNickname,
-  constructRoute,
-  constructPathParamDoc,
-  constructQueryParamDoc,
-  constructErrorResponseDoc;
+  is = require("org/arangodb/is");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_internals_constructUrlObject
@@ -53,8 +47,7 @@ var _ = require("underscore"),
 /// @endcode
 ////////////////////////////////////////////////////////////////////////////////
 
-constructUrlObject = function (url, constraint, method) {
-  'use strict';
+function constructUrlObject(url, constraint, method) {
   var urlObject = {};
 
   if (is.noString(url)) {
@@ -69,23 +62,21 @@ constructUrlObject = function (url, constraint, method) {
   }
 
   return urlObject;
-};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @fn JSF_foxx_internals_constructNickname
 /// @brief Construct a swagger-compatible nickname from a httpMethod and URL
 ////////////////////////////////////////////////////////////////////////////////
 
-constructNickname = function (httpMethod, url) {
-  'use strict';
+function constructNickname(httpMethod, url) {
   return (httpMethod + "_" + url)
     .replace(/\W/g, '_')
     .replace(/((_){2,})/g, '_')
     .toLowerCase();
-};
+}
 
-constructRoute = function (method, route, callback, controller, constraints) {
-  'use strict';
+function constructRoute(method, route, callback, controller, constraints) {
   var res = {};
   res.url = constructUrlObject(route, undefined, method);
   res.docs = {
@@ -114,10 +105,9 @@ constructRoute = function (method, route, callback, controller, constraints) {
   res.action.bodyParams = [];
   res.action.checks = [];
   return res;
-};
+}
 
-constructPathParamDoc = function (paramName, description, dataType, required) {
-  'use strict';
+function constructPathParamDoc(paramName, description, dataType, required) {
   return {
     paramType: "path",
     name: paramName,
@@ -125,10 +115,9 @@ constructPathParamDoc = function (paramName, description, dataType, required) {
     dataType: dataType,
     required: required
   };
-};
+}
 
-constructQueryParamDoc = function (paramName, description, dataType, required, allowMultiple) {
-  'use strict';
+function constructQueryParamDoc(paramName, description, dataType, required, allowMultiple) {
   return {
     paramType: "query",
     name: paramName,
@@ -137,15 +126,14 @@ constructQueryParamDoc = function (paramName, description, dataType, required, a
     required: required,
     allowMultiple: allowMultiple
   };
-};
+}
 
-constructErrorResponseDoc = function (code, reason) {
-  'use strict';
+function constructErrorResponseDoc(code, reason) {
   return {
     code: code,
     reason: reason
   };
-};
+}
 
 exports.constructUrlObject = constructUrlObject;
 exports.constructNickname = constructNickname;

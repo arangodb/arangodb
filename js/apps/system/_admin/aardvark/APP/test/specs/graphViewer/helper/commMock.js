@@ -1,4 +1,4 @@
-/*jshint unused: false */
+/*jshint globalstrict:false, unused: false */
 /*global document, window, d3*/
 
 ////////////////////////////////////////////////////////////////////////////////

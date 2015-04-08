@@ -1,7 +1,8 @@
+/*jshint globalstrict:false, strict:false */
 /*global describe, require, beforeEach, it, expect, afterEach, arango */
 
 (function() {
-  "use strict";
+  'use strict';
     
   describe("AQL query analyzer", function() {
     var isServer = false;

@@ -1,4 +1,4 @@
-/*global exports, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx schema helper
@@ -31,7 +31,6 @@ var _ = require('underscore'),
   joi = require('joi');
 
 function toJSONSchema(id, schema) {
-  'use strict';
   var jsonSchema = {
     id: id,
     required: [],

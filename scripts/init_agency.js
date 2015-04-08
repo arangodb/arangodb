@@ -1,5 +1,4 @@
-/*jshint strict: false */
-/*global require*/
+/*jshint globalstrict:false, strict:false */
 var agencyData = {
   "arango" : {
      "Sync" : {

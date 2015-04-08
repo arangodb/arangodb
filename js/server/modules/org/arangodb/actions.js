@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, module, JSON_CURSOR */
+/*global JSON_CURSOR */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript actions module

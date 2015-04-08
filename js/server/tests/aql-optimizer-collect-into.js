@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, AQL_EXECUTE */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ INTO var = expr

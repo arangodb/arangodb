@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
+/*global Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
 (function() {
   "use strict";
 

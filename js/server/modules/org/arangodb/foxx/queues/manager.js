@@ -1,4 +1,4 @@
-/*global exports, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues manager
@@ -33,7 +33,6 @@ var QUEUE_MANAGER_PERIOD = 1000, // in ms
   db = require('org/arangodb').db;
 
 exports.manage = function () {
-  'use strict';
   db._executeTransaction({
     collections: {
       read: ['_queues', '_jobs'],
@@ -79,7 +78,6 @@ exports.manage = function () {
 };
 
 exports.run = function () {
-  'use strict';
   db._jobs.updateByExample({status: 'progress'}, {status: 'pending'});
   return tasks.register({
     command: function () {

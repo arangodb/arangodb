@@ -1,6 +1,6 @@
 module.define("org/arangodb/graph/traversal", function(exports, module) {
 /*jshint strict: false, unused: false */
-/*global require, exports, ArangoClusterComm, AQL_QUERY_IS_KILLED */
+/*global ArangoClusterComm, AQL_QUERY_IS_KILLED */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"

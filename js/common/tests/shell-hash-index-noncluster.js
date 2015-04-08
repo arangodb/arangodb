@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertTrue, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the hash index, selectivity estimates
@@ -40,7 +40,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function HashIndexSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionHash";
   var collection = null;
 

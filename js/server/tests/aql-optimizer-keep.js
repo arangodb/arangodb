@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertTrue, assertFalse, assertEqual, AQL_EXECUTE */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertTrue, assertFalse, assertEqual, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for COLLECT w/ KEEP

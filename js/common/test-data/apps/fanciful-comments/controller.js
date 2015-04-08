@@ -1,5 +1,5 @@
 (function() {
-  "use strict";
+  'use strict';
   var FoxxApplication = require("org/arangodb/foxx").Controller;
   var controller = new FoxxApplication(applicationContext);
 

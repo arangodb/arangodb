@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The Foxx Framework
@@ -27,23 +27,17 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Controller = require("org/arangodb/foxx/controller").Controller,
-  Model = require("org/arangodb/foxx/model").Model,
-  Repository = require("org/arangodb/foxx/repository").Repository,
-  queues = require("org/arangodb/foxx/queues"),
-  createQuery = require("org/arangodb/foxx/query").createQuery,
-  manager = require("org/arangodb/foxx/manager"),
-  toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema,
-  arangodb = require("org/arangodb");
+exports.Controller = require("org/arangodb/foxx/controller").Controller;
+exports.Model = require("org/arangodb/foxx/model").Model;
+exports.Repository = require("org/arangodb/foxx/repository").Repository;
+exports.queues = require("org/arangodb/foxx/queues");
+exports.createQuery = require("org/arangodb/foxx/query").createQuery;
+exports.toJSONSchema = require("org/arangodb/foxx/schema").toJSONSchema;
 
-exports.Controller = Controller;
-exports.Model = Model;
-exports.Repository = Repository;
-exports.queues = queues;
-exports.createQuery = createQuery;
-exports.toJSONSchema = toJSONSchema;
+var manager = require("org/arangodb/foxx/manager");
+var arangodb = require("org/arangodb");
+
 exports.requireApp = function (path) {
-  'use strict';
   return manager.requireApp(arangodb.normalizeURL('/' + path));
 };
 

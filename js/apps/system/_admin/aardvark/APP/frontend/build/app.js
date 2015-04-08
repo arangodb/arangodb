@@ -77684,8 +77684,8 @@ return returnVal;
   }
 }());
 
-/*jshint strict: false, unused: false */
-/*global $, jqconsole, window, document */
+/*jshint node:false, browser:true, strict: false, unused: false */
+/*global global:true, $, jqconsole */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDB web browser shell
@@ -77753,6 +77753,10 @@ Module.prototype.moduleCache["/internal"] = new Module("/internal");
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
 
+if (typeof global === 'undefined' && typeof window !== 'undefined') {
+  global = window;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @addtogroup ArangoShell
 /// @{
@@ -77762,7 +77766,7 @@ Module.prototype.moduleCache["/internal"] = new Module("/internal");
 /// @brief module
 ////////////////////////////////////////////////////////////////////////////////
 
-var module = Module.prototype.moduleCache["/"] = new Module("/");
+global.module = Module.prototype.moduleCache["/"] = new Module("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @}
@@ -77887,7 +77891,7 @@ Module.prototype.require = function (path) {
 };
 
 function require (path) {
-  return module.require(path);
+  return global.module.require(path);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -78266,7 +78270,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}"
 // End:
 
-/*global require, _, Dygraph, window, document */
+/*global _, Dygraph, window, document */
 
 (function () {
   "use strict";
@@ -80099,7 +80103,6 @@ module.define("underscore", function(exports, module) {
 
 module.define("org/arangodb/aql/explainer", function(exports, module) {
 /*jshint strict: false, maxlen: 300 */
-/*global require, exports */
 
 var db = require("org/arangodb").db,
   internal = require("internal"),
@@ -80113,7 +80116,7 @@ if (typeof internal.printBrowser === "function") {
 
 /* set colors for output */
 function setColors (useSystemColors) {
-  "use strict";
+  'use strict';
 
   [ "COLOR_RESET", 
     "COLOR_CYAN", "COLOR_BLUE", "COLOR_GREEN", "COLOR_MAGENTA", "COLOR_YELLOW", "COLOR_RED", "COLOR_WHITE",
@@ -80126,27 +80129,27 @@ function setColors (useSystemColors) {
 /* colorizer and output helper functions */ 
 
 function passthru (v) {
-  "use strict";
+  'use strict';
   return v;
 }
   
 function keyword (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_CYAN + v + colors.COLOR_RESET;
 }
 
 function annotation (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_BLUE + v + colors.COLOR_RESET;
 }
 
 function value (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
   
 function variable (v) {
-  "use strict";
+  'use strict';
   if (v[0] === "#") {
     return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
   }
@@ -80154,37 +80157,37 @@ function variable (v) {
 }
 
 function func (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_GREEN + v + colors.COLOR_RESET;
 }
   
 function collection (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_RED + v + colors.COLOR_RESET;
 }
 
 function attribute (v) {
-  "use strict";
+  'use strict';
   return "`" + colors.COLOR_YELLOW + v + colors.COLOR_RESET + "`";
 }
 
 function header (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_MAGENTA + v + colors.COLOR_RESET;
 }
 
 function section (v) {
-  "use strict";
+  'use strict';
   return colors.COLOR_BOLD_BLUE + v + colors.COLOR_RESET;
 }
 
 function pad (n) {
-  "use strict";
+  'use strict';
   return new Array(n).join(" ");
 }
 
 function wrap (str, width) { 
-  "use strict";
+  'use strict';
   var re = ".{1," + width + "}(\\s|$)|\\S+?(\\s|$)";
   return str.match(new RegExp(re, "g")).join("\n");
 }
@@ -80194,7 +80197,7 @@ function wrap (str, width) {
 
 /* print query string */  
 function printQuery (query) {
-  "use strict";
+  'use strict';
   print(section("Query string:"));
   print(" " + value(wrap(query, 100).replace(/\n/g, "\n ", query)));
   print(); 
@@ -80202,7 +80205,7 @@ function printQuery (query) {
 
 /* print write query modification flags */
 function printModificationFlags (flags) {
-  "use strict";
+  'use strict';
   if (flags === undefined) {
     return;
   }
@@ -80222,7 +80225,7 @@ function printModificationFlags (flags) {
 
 /* print optimizer rules */
 function printRules (rules) {
-  "use strict";
+  'use strict';
   print(section("Optimization rules applied:"));
   if (rules.length === 0) {
     print(" " + value("none"));
@@ -80239,7 +80242,7 @@ function printRules (rules) {
 
 /* print warnings */
 function printWarnings (warnings) {
-  "use strict";
+  'use strict';
   if (! Array.isArray(warnings) || warnings.length === 0) {
     return;
   }
@@ -80255,7 +80258,7 @@ function printWarnings (warnings) {
 
 /* print indexes used */
 function printIndexes (indexes) {
-  "use strict";
+  'use strict';
   print(section("Indexes used:"));
   if (indexes.length === 0) {
     print(" " + value("none"));
@@ -80323,7 +80326,7 @@ function printIndexes (indexes) {
 
 /* analzye and print execution plan */
 function processQuery (query, explain) {
-  "use strict";
+  'use strict';
   var nodes = { }, 
     parents = { }, 
     rootNode = null,
@@ -80683,7 +80686,7 @@ function processQuery (query, explain) {
 
 /* the exposed function */
 function explain (data, options) { 
-  "use strict";
+  'use strict';
   if (typeof data === "string") {
     data = { query: data };
   }
@@ -80708,7 +80711,6 @@ exports.explain = explain;
 
 module.define("org/arangodb/aql/functions", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
@@ -80756,7 +80758,7 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
-  "use strict";
+  'use strict';
 
   var functions = db._collection("_aqlfunctions");
 
@@ -80776,7 +80778,7 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var getFiltered = function (group) {
-  "use strict";
+  'use strict';
 
   var result = [ ];
 
@@ -80805,7 +80807,7 @@ var getFiltered = function (group) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (name) {
-  "use strict";
+  'use strict';
 
   if (typeof name !== 'string' ||
       ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
@@ -80823,7 +80825,7 @@ var validateName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var stringifyFunction = function (code, name) {
-  "use strict";
+  'use strict';
 
   if (typeof code === 'function') {
     code = String(code) + "\n";
@@ -80881,7 +80883,7 @@ var stringifyFunction = function (code, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
-  "use strict";
+  'use strict';
 
   var func = null;
 
@@ -80929,7 +80931,7 @@ var unregisterFunction = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunctionsGroup = function (group) {
-  "use strict";
+  'use strict';
 
   if (group.length === 0) {
     var err = new ArangoError();
@@ -81096,7 +81098,7 @@ var registerFunction = function (name, code, isDeterministic) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function (group) {
-  "use strict";
+  'use strict';
 
   var result = [ ];
 
@@ -81128,7 +81130,7 @@ exports.toArray         = toArrayFunctions;
 });
 
 module.define("org/arangodb/aql/queries", function(exports, module) {
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
@@ -81169,8 +81171,6 @@ var arangosh = require("org/arangodb/arangosh");
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.clearSlow = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.DELETE("/_api/query/slow", "");
@@ -81184,8 +81184,6 @@ exports.clearSlow = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.slow = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/query/slow", "");
@@ -81199,8 +81197,6 @@ exports.slow = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.current = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/query/current", "");
@@ -81214,8 +81210,6 @@ exports.current = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.properties = function (config) {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult;
@@ -81237,8 +81231,6 @@ exports.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.kill = function (id) {
-  'use strict';
-  
   if (typeof id === 'object' && 
       id.hasOwnProperty('id')) {
     id = id.id;
@@ -81265,7 +81257,7 @@ exports.kill = function (id) {
 
 module.define("org/arangodb/graph/traversal", function(exports, module) {
 /*jshint strict: false, unused: false */
-/*global require, exports, ArangoClusterComm, AQL_QUERY_IS_KILLED */
+/*global ArangoClusterComm, AQL_QUERY_IS_KILLED */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
@@ -83175,7 +83167,6 @@ exports.Traverser                       = ArangoTraverser;
 
 module.define("org/arangodb/arango-collection-common", function(exports, module) {
 /*jshint strict: false, unused: false, maxlen: 200 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -84218,7 +84209,6 @@ ArangoCollection.prototype.updateByExample = function (example, newValue, keepNu
 
 module.define("org/arangodb/arango-collection", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -85601,7 +85591,6 @@ ArangoCollection.prototype.updateByExample = function (example,
 
 module.define("org/arangodb/arango-database", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -86646,7 +86635,7 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 
 module.define("org/arangodb/arango-query-cursor", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports, more:true */
+/*global more:true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoQueryCursor
@@ -86921,7 +86910,6 @@ ArangoQueryCursor.prototype._baseurl = function () {
 
 module.define("org/arangodb/arango-statement-common", function(exports, module) {
 /*jshint strict: false */
-/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
@@ -87161,7 +87149,6 @@ exports.ArangoStatement = ArangoStatement;
 
 module.define("org/arangodb/arango-statement", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
@@ -87365,7 +87352,6 @@ exports.ArangoStatement = ArangoStatement;
 
 module.define("org/arangodb/arangosh", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -87556,7 +87542,7 @@ exports.helpExtended = exports.createHelpHeadline("More help") +
 
 module.define("org/arangodb/general-graph", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports, ArangoClusterComm */
+/*global ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -92236,7 +92222,6 @@ exports._listObjects = _listObjects;
 
 module.define("org/arangodb/graph-blueprint", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -92605,7 +92590,6 @@ require("org/arangodb/graph/algorithms-common");
 
 module.define("org/arangodb/graph-common", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -93538,7 +93522,6 @@ exports.Iterator = Iterator;
 
 module.define("org/arangodb/graph", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -93593,7 +93576,7 @@ Object.keys(gp).forEach(function (m) {
 });
 
 module.define("org/arangodb/is", function(exports, module) {
-/*global exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if something is something
@@ -93623,28 +93606,24 @@ module.define("org/arangodb/is", function(exports, module) {
 ////////////////////////////////////////////////////////////////////////////////
 
 // Check if a value is not undefined or null
-var existy = function (x) {
-  "use strict";
+function existy (x) {
   return x !== null && x !== undefined;
-};
+}
 
 // Check if a value is undefined or null
-var notExisty = function (x) {
-  "use strict";
+function notExisty (x) {
   return !existy(x);
-};
+}
 
 // Check if a value is existy and not false
-var truthy = function (x) {
-  "use strict";
+function truthy (x) {
   return (x !== false) && existy(x);
-};
+}
 
 // Check if a value is not truthy
-var falsy = function (x) {
-  "use strict";
+function falsy (x) {
   return !truthy(x);
-};
+}
 
 // is.object, is.noObject, is.array, is.noArray...
 [
@@ -93657,12 +93636,11 @@ var falsy = function (x) {
   'String',
   'RegExp'
 ].forEach(function(type) {
-  "use strict";
-  exports[type.toLowerCase()] = function(obj) {
+  exports[type.toLowerCase()] = function (obj) {
     return Object.prototype.toString.call(obj) === '[object '+type+']';
   };
 
-  exports["no" + type] = function(obj) {
+  exports["no" + type] = function (obj) {
     return Object.prototype.toString.call(obj) !== '[object '+type+']';
   };
 });
@@ -93681,7 +93659,6 @@ module.define("org/arangodb/mimetypes", function(exports, module) {
          vars: true,
          white: true,
          plusplus: true */
-/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from mimetypes.dat
@@ -93768,7 +93745,7 @@ exports.extensions = {
 });
 
 module.define("org/arangodb/replication", function(exports, module) {
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
@@ -93816,8 +93793,6 @@ var applier = { };
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.state = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/logger-state");
@@ -93831,8 +93806,6 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.start = function (initialTick) {
-  'use strict';
-
   var db = internal.db;
   var append = "";
 
@@ -93851,8 +93824,6 @@ applier.start = function (initialTick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.stop = applier.shutdown = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.PUT("/_api/replication/applier-stop", "");
@@ -93866,8 +93837,6 @@ applier.stop = applier.shutdown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.state = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/applier-state");
@@ -93881,8 +93850,6 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.forget = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.DELETE("/_api/replication/applier-state");
@@ -93896,8 +93863,6 @@ applier.forget = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.properties = function (config) {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult;
@@ -93923,8 +93888,6 @@ applier.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {
-  'use strict';
-
   var db = internal.db;
 
   var body = JSON.stringify(config || { });
@@ -93940,8 +93903,6 @@ var sync = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var serverId = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/server-id");
@@ -93973,7 +93934,6 @@ exports.serverId = serverId;
 
 module.define("org/arangodb/simple-query-common", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -95441,7 +95401,6 @@ exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 module.define("org/arangodb/simple-query", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -95964,7 +95923,6 @@ exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 
 module.define("org/arangodb/tutorial", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Shell tutorial
@@ -96172,7 +96130,7 @@ exports._PRINT = function (context) {
 });
 
 module.define("org/arangodb-common", function(exports, module) {
-/*global require, module, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -96219,17 +96177,10 @@ var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 /// @brief errors
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  'use strict';
 
-  var name;
-
-  for (name in internal.errors) {
-    if (internal.errors.hasOwnProperty(name)) {
-      exports[name] = internal.errors[name].code;
-    }
-  }
-}());
+Object.keys(internal.errors).forEach(function (key) {
+  exports[key] = internal.errors[key].code;
+});
 
 exports.errors = internal.errors;
 
@@ -96252,8 +96203,6 @@ exports.ArangoError = internal.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineModule = function (path, file) {
-  'use strict';
-
   var content;
   var m;
   var mc;
@@ -96282,8 +96231,6 @@ exports.defineModule = function (path, file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.guessContentType = function (filename, defaultValue) {
-  'use strict';
-
   var re = /\.([a-zA-Z0-9]+)$/;
   var match = re.exec(filename);
 
@@ -96322,8 +96269,6 @@ exports.guessContentType = function (filename, defaultValue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.normalizeURL = function (path) {
-  'use strict';
-
   var i;
   var n;
   var p;
@@ -96404,8 +96349,6 @@ exports.inspect = internal.inspect;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.output = function () {
-  'use strict';
-
   internal.output.apply(internal.output, arguments);
 };
 
@@ -96438,8 +96381,6 @@ exports.printObject = internal.printObject;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printTable = function  (list, columns, options) {
-  'use strict';
-
   options = options || { };
   if (options.totalString === undefined) {
     options.totalString = "%s document(s)\n";
@@ -96590,8 +96531,6 @@ exports.printTable = function  (list, columns, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.stringPadding = function (str, len, pad, dir) {
-  'use strict';
-
   // yes, this is more code than new Array(length).join(chr), but it makes jslint happy
   function fill (length, chr) {
     var result = '', i;
@@ -96638,8 +96577,6 @@ exports.stringPadding = function (str, len, pad, dir) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.throwDownloadError = function (msg) {
-  'use strict';
-
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code,
     errorMessage: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg)
@@ -96651,8 +96588,6 @@ exports.throwDownloadError = function (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.throwFileNotFound = function (msg) {
-  'use strict';
-
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_FILE_NOT_FOUND.code,
     errorMessage: exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg)
@@ -96664,8 +96599,6 @@ exports.throwFileNotFound = function (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.throwBadParameter = function (msg) {
-  'use strict';
-
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_BAD_PARAMETER.code,
     errorMessage: exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg)
@@ -96677,8 +96610,6 @@ exports.throwBadParameter = function (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.checkParameter = function (usage, descs, vars) {
-  'use strict';
-
   var i;
 
   for (i = 0;  i < descs.length;  ++i) {
@@ -96706,7 +96637,7 @@ exports.checkParameter = function (usage, descs, vars) {
 });
 
 module.define("org/arangodb", function(exports, module) {
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -96738,13 +96669,9 @@ module.define("org/arangodb", function(exports, module) {
 var internal = require("internal");
 var common = require("org/arangodb-common");
 
-var key;
-
-for (key in common) {
-  if (common.hasOwnProperty(key)) {
-    exports[key] = common[key];
-  }
-}
+Object.keys(common).forEach(function (key) {
+  exports[key] = common[key];
+});
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    MODULE EXPORTS
@@ -96810,14 +96737,13 @@ if (typeof internal.arango !== 'undefined') {
 });
 
 /*jshint maxlen: 240 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
   var internal = require("internal");
 
   internal.errors = {
@@ -97095,7 +97021,6 @@ if (typeof internal.arango !== 'undefined') {
 }());
 
 
-/*jshint globalstrict:true */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -97169,28 +97094,8 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
 
-/*jshint esnext: true, strict: false, unused: false, -W051: true */
-/*global Symbol, require, module, Module, ArangoError, SleepAndRequeue,
-  CONFIGURE_ENDPOINT, REMOVE_ENDPOINT, LIST_ENDPOINTS, STARTUP_PATH,
-  SYS_BASE64DECODE, SYS_BASE64ENCODE, SYS_DEBUG_SEGFAULT,
-  SYS_DEBUG_CAN_USE_FAILAT, SYS_DEBUG_SET_FAILAT, SYS_DEBUG_REMOVE_FAILAT, SYS_DEBUG_CLEAR_FAILAT,
-  SYS_DOWNLOAD, SYS_EXECUTE, SYS_GET_CURRENT_REQUEST, SYS_GET_CURRENT_RESPONSE,
-  SYS_LOAD, SYS_LOG_LEVEL, SYS_MD5, SYS_OUTPUT, SYS_PROCESS_STATISTICS,
-  SYS_RAND, SYS_SERVER_STATISTICS, SYS_SPRINTF, SYS_TIME, SYS_START_PAGER, SYS_STOP_PAGER,
-  SYS_HMAC, SYS_PBKDF2, SYS_SHA512, SYS_SHA384, SYS_SHA256, SYS_SHA224, SYS_SHA1, SYS_SLEEP, SYS_WAIT,
-  SYS_PARSE, SYS_PARSE_FILE, SYS_IMPORT_CSV_FILE, SYS_IMPORT_JSON_FILE, SYS_LOG,
-  SYS_GEN_RANDOM_NUMBERS, SYS_GEN_RANDOM_ALPHA_NUMBERS, SYS_GEN_RANDOM_SALT, SYS_CREATE_NONCE,
-  SYS_CHECK_AND_MARK_NONCE, SYS_CLIENT_STATISTICS, SYS_HTTP_STATISTICS, SYS_UNIT_TESTS, SYS_UNIT_TESTS_RESULT:true,
-  SYS_PROCESS_CSV_FILE, SYS_PROCESS_JSON_FILE, ARANGO_QUIET, COLORS, COLOR_OUTPUT,
-  COLOR_OUTPUT_RESET, COLOR_BRIGHT, COLOR_BLACK, COLOR_BOLD_BLACK, COLOR_BLINK, COLOR_BLUE,
-  COLOR_BOLD_BLUE, COLOR_BOLD_GREEN, COLOR_RED, COLOR_BOLD_RED, COLOR_GREEN, COLOR_WHITE,
-  COLOR_BOLD_WHITE, COLOR_YELLOW, COLOR_BOLD_YELLOW, COLOR_CYAN, COLOR_BOLD_CYAN, COLOR_MAGENTA,
-  COLOR_BOLD_MAGENTA, PRETTY_PRINT, VALGRIND, COVERAGE, VERSION,
-  BYTES_SENT_DISTRIBUTION, BYTES_RECEIVED_DISTRIBUTION, CONNECTION_TIME_DISTRIBUTION,
-  REQUEST_TIME_DISTRIBUTION, THREAD_NUMBER, LOGFILE_PATH,
-  SYS_PLATFORM, SYS_EXECUTE_EXTERNAL, SYS_STATUS_EXTERNAL, SYS_EXECUTE_EXTERNAL_AND_WAIT, 
-  SYS_KILL_EXTERNAL, SYS_REGISTER_TASK, SYS_UNREGISTER_TASK, SYS_GET_TASK, SYS_TEST_PORT,
-  SYS_IS_IP, SYS_OPTIONS, ENV */
+/*jshint esnext:true, -W051:true */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -97220,9 +97125,8 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  /*jshint strict: false */
 
-  var exports = require("internal");
+var exports = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 Module "internal"
@@ -97236,53 +97140,53 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief ArangoError
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof ArangoError !== "undefined") {
-    exports.ArangoError = ArangoError;
-    delete ArangoError;
-  }
-  else {
-    exports.ArangoError = function (error) {
-      if (error !== undefined) {
-        this.error = error.error;
-        this.code = error.code;
-        this.errorNum = error.errorNum;
-        this.errorMessage = error.errorMessage;
-      }
+if (global.ArangoError) {
+  exports.ArangoError = global.ArangoError;
+  delete global.ArangoError;
+}
+else {
+  exports.ArangoError = function (error) {
+    if (error !== undefined) {
+      this.error = error.error;
+      this.code = error.code;
+      this.errorNum = error.errorNum;
+      this.errorMessage = error.errorMessage;
+    }
 
-      this.message = this.toString();
-    };
-
-    exports.ArangoError.prototype = new Error();
-  }
-
-  exports.ArangoError.prototype._PRINT = function (context) {
-    context.output += this.toString();
+    this.message = this.toString();
   };
 
-  exports.ArangoError.prototype.toString = function() {
-    var errorNum = this.errorNum;
-    var errorMessage = this.errorMessage || this.message;
+  exports.ArangoError.prototype = new Error();
+}
 
-    return "[ArangoError " + errorNum + ": " + errorMessage + "]";
-  };
+exports.ArangoError.prototype._PRINT = function (context) {
+  context.output += this.toString();
+};
+
+exports.ArangoError.prototype.toString = function() {
+  var errorNum = this.errorNum;
+  var errorMessage = this.errorMessage || this.message;
+
+  return "[ArangoError " + errorNum + ": " + errorMessage + "]";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief SleepAndRequeue
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SleepAndRequeue !== "undefined") {
-    exports.SleepAndRequeue = SleepAndRequeue;
-    delete SleepAndRequeue;
+if (global.SleepAndRequeue) {
+  exports.SleepAndRequeue = global.SleepAndRequeue;
+  delete global.SleepAndRequeue;
 
-    exports.SleepAndRequeue.prototype._PRINT = function (context) {
-      context.output += this.toString();
-    };
-
-    exports.SleepAndRequeue.prototype.toString = function() {
-      return "[SleepAndRequeue sleep: " + this.sleep + "]";
+  exports.SleepAndRequeue.prototype._PRINT = function (context) {
+    context.output += this.toString();
   };
 
-  }
+  exports.SleepAndRequeue.prototype.toString = function() {
+    return "[SleepAndRequeue sleep: " + this.sleep + "]";
+};
+
+}
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public constants
 // -----------------------------------------------------------------------------
@@ -97291,141 +97195,141 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief threadNumber
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.threadNumber = 0;
+exports.threadNumber = 0;
 
-  if (typeof THREAD_NUMBER !== "undefined") {
-    exports.threadNumber = THREAD_NUMBER;
-    delete THREAD_NUMBER;
-  }
+if (global.THREAD_NUMBER) {
+  exports.threadNumber = global.THREAD_NUMBER;
+  delete global.THREAD_NUMBER;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief developmentMode. this is only here for backwards compatibility
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.developmentMode = false;
+exports.developmentMode = false;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logfilePath
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof LOGFILE_PATH !== "undefined") {
-    exports.logfilePath = LOGFILE_PATH;
-    delete LOGFILE_PATH;
-  }
+if (global.LOGFILE_PATH) {
+  exports.logfilePath = global.LOGFILE_PATH;
+  delete global.LOGFILE_PATH;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quiet
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.quiet = false;
+exports.quiet = false;
 
-  if (typeof ARANGO_QUIET !== "undefined") {
-    exports.quiet = ARANGO_QUIET;
-    delete ARANGO_QUIET;
-  }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief valgrind
-////////////////////////////////////////////////////////////////////////////////
-
-  exports.valgrind = false;
-
-  if (typeof VALGRIND !== "undefined") {
-    exports.valgrind = VALGRIND;
-    delete VALGRIND;
-  }
+if (global.ARANGO_QUIET) {
+  exports.quiet = global.ARANGO_QUIET;
+  delete global.ARANGO_QUIET;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief valgrind
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.coverage = false;
+exports.valgrind = false;
 
-  if (typeof COVERAGE !== "undefined") {
-    exports.coverage = COVERAGE;
-    delete COVERAGE;
-  }
+if (global.VALGRIND) {
+  exports.valgrind = global.VALGRIND;
+  delete global.VALGRIND;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief valgrind
+////////////////////////////////////////////////////////////////////////////////
+
+exports.coverage = false;
+
+if (global.COVERAGE) {
+  exports.coverage = global.COVERAGE;
+  delete global.COVERAGE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief version
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.version = "unknown";
+exports.version = "unknown";
 
-  if (typeof VERSION !== "undefined") {
-    exports.version = VERSION;
-    delete VERSION;
-  }
+if (global.VERSION) {
+  exports.version = global.VERSION;
+  delete global.VERSION;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief platform
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.platform = "unknown";
+exports.platform = "unknown";
 
-  if (typeof SYS_PLATFORM !== "undefined") {
-    exports.platform = SYS_PLATFORM;
-    delete SYS_PLATFORM;
-  }
+if (global.SYS_PLATFORM) {
+  exports.platform = global.SYS_PLATFORM;
+  delete global.SYS_PLATFORM;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytesSentDistribution
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.bytesSentDistribution = [];
+exports.bytesSentDistribution = [];
 
-  if (typeof BYTES_SENT_DISTRIBUTION !== "undefined") {
-    exports.bytesSentDistribution = BYTES_SENT_DISTRIBUTION;
-    delete BYTES_SENT_DISTRIBUTION;
-  }
+if (global.BYTES_SENT_DISTRIBUTION) {
+  exports.bytesSentDistribution = global.BYTES_SENT_DISTRIBUTION;
+  delete global.BYTES_SENT_DISTRIBUTION;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief bytesReceivedDistribution
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.bytesReceivedDistribution = [];
+exports.bytesReceivedDistribution = [];
 
-  if (typeof BYTES_RECEIVED_DISTRIBUTION !== "undefined") {
-    exports.bytesReceivedDistribution = BYTES_RECEIVED_DISTRIBUTION;
-    delete BYTES_RECEIVED_DISTRIBUTION;
-  }
+if (global.BYTES_RECEIVED_DISTRIBUTION) {
+  exports.bytesReceivedDistribution = global.BYTES_RECEIVED_DISTRIBUTION;
+  delete global.BYTES_RECEIVED_DISTRIBUTION;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief connectionTimeDistribution
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.connectionTimeDistribution = [];
+exports.connectionTimeDistribution = [];
 
-  if (typeof CONNECTION_TIME_DISTRIBUTION !== "undefined") {
-    exports.connectionTimeDistribution = CONNECTION_TIME_DISTRIBUTION;
-    delete CONNECTION_TIME_DISTRIBUTION;
-  }
+if (global.CONNECTION_TIME_DISTRIBUTION) {
+  exports.connectionTimeDistribution = global.CONNECTION_TIME_DISTRIBUTION;
+  delete global.CONNECTION_TIME_DISTRIBUTION;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief requestTimeDistribution
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.requestTimeDistribution = [];
+exports.requestTimeDistribution = [];
 
-  if (typeof REQUEST_TIME_DISTRIBUTION !== "undefined") {
-    exports.requestTimeDistribution = REQUEST_TIME_DISTRIBUTION;
-    delete REQUEST_TIME_DISTRIBUTION;
-  }
+if (global.REQUEST_TIME_DISTRIBUTION) {
+  exports.requestTimeDistribution = global.REQUEST_TIME_DISTRIBUTION;
+  delete global.REQUEST_TIME_DISTRIBUTION;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startupPath
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.startupPath = "";
+exports.startupPath = "";
 
-  if (typeof STARTUP_PATH !== "undefined") {
-    exports.startupPath = STARTUP_PATH;
-    delete STARTUP_PATH;
-  }
+if (global.STARTUP_PATH) {
+  exports.startupPath = global.STARTUP_PATH;
+  delete global.STARTUP_PATH;
+}
 
-  if (exports.startupPath === "") {
-    exports.startupPath = ".";
-  }
+if (exports.startupPath === "") {
+  exports.startupPath = ".";
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -97435,496 +97339,498 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief configureEndpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof CONFIGURE_ENDPOINT !== "undefined") {
-    exports.configureEndpoint = CONFIGURE_ENDPOINT;
-    delete CONFIGURE_ENDPOINT;
-  }
+if (global.CONFIGURE_ENDPOINT) {
+  exports.configureEndpoint = global.CONFIGURE_ENDPOINT;
+  delete global.CONFIGURE_ENDPOINT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removeEndpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REMOVE_ENDPOINT !== "undefined") {
-    exports.removeEndpoint = REMOVE_ENDPOINT;
-    delete REMOVE_ENDPOINT;
-  }
+if (global.REMOVE_ENDPOINT) {
+  exports.removeEndpoint = global.REMOVE_ENDPOINT;
+  delete global.REMOVE_ENDPOINT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief listEndpoints
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof LIST_ENDPOINTS !== "undefined") {
-    exports.listEndpoints = LIST_ENDPOINTS;
-    delete LIST_ENDPOINTS;
-  }
+if (global.LIST_ENDPOINTS) {
+  exports.listEndpoints = global.LIST_ENDPOINTS;
+  delete global.LIST_ENDPOINTS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base64Decode
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_BASE64DECODE !== "undefined") {
-    exports.base64Decode = SYS_BASE64DECODE;
-    delete SYS_BASE64DECODE;
-  }
+if (global.SYS_BASE64DECODE) {
+  exports.base64Decode = global.SYS_BASE64DECODE;
+  delete global.SYS_BASE64DECODE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief base64Encode
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_BASE64ENCODE !== "undefined") {
-    exports.base64Encode = SYS_BASE64ENCODE;
-    delete SYS_BASE64ENCODE;
-  }
+if (global.SYS_BASE64ENCODE) {
+  exports.base64Encode = global.SYS_BASE64ENCODE;
+  delete global.SYS_BASE64ENCODE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugSegfault
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEBUG_SEGFAULT !== "undefined") {
-    exports.debugSegfault = SYS_DEBUG_SEGFAULT;
-    delete SYS_DEBUG_SEGFAULT;
-  }
+if (global.SYS_DEBUG_SEGFAULT) {
+  exports.debugSegfault = global.SYS_DEBUG_SEGFAULT;
+  delete global.SYS_DEBUG_SEGFAULT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugSetFailAt
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEBUG_SET_FAILAT !== "undefined") {
-    exports.debugSetFailAt = SYS_DEBUG_SET_FAILAT;
-    delete SYS_DEBUG_SET_FAILAT;
-  }
+if (global.SYS_DEBUG_SET_FAILAT) {
+  exports.debugSetFailAt = global.SYS_DEBUG_SET_FAILAT;
+  delete global.SYS_DEBUG_SET_FAILAT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugRemoveFailAt
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEBUG_REMOVE_FAILAT !== "undefined") {
-    exports.debugRemoveFailAt = SYS_DEBUG_REMOVE_FAILAT;
-    delete SYS_DEBUG_REMOVE_FAILAT;
-  }
+if (global.SYS_DEBUG_REMOVE_FAILAT) {
+  exports.debugRemoveFailAt = global.SYS_DEBUG_REMOVE_FAILAT;
+  delete global.SYS_DEBUG_REMOVE_FAILAT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugClearFailAt
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEBUG_CLEAR_FAILAT !== "undefined") {
-    exports.debugClearFailAt = SYS_DEBUG_CLEAR_FAILAT;
-    delete SYS_DEBUG_CLEAR_FAILAT;
-  }
+if (global.SYS_DEBUG_CLEAR_FAILAT) {
+  exports.debugClearFailAt = global.SYS_DEBUG_CLEAR_FAILAT;
+  delete global.SYS_DEBUG_CLEAR_FAILAT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugCanUseFailAt
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEBUG_CAN_USE_FAILAT !== "undefined") {
-    exports.debugCanUseFailAt = SYS_DEBUG_CAN_USE_FAILAT;
-    delete SYS_DEBUG_CAN_USE_FAILAT;
-  }
+if (global.SYS_DEBUG_CAN_USE_FAILAT) {
+  exports.debugCanUseFailAt = global.SYS_DEBUG_CAN_USE_FAILAT;
+  delete global.SYS_DEBUG_CAN_USE_FAILAT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief download
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DOWNLOAD !== "undefined") {
-    exports.download = SYS_DOWNLOAD;
-    delete SYS_DOWNLOAD;
-  }
+if (global.SYS_DOWNLOAD) {
+  exports.download = global.SYS_DOWNLOAD;
+  delete global.SYS_DOWNLOAD;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executeScript
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_EXECUTE !== "undefined") {
-    exports.executeScript = SYS_EXECUTE;
-    delete SYS_EXECUTE;
-  }
+if (global.SYS_EXECUTE) {
+  exports.executeScript = global.SYS_EXECUTE;
+  delete global.SYS_EXECUTE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getCurrentRequest
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GET_CURRENT_REQUEST !== "undefined") {
-    exports.getCurrentRequest = SYS_GET_CURRENT_REQUEST;
-    delete SYS_GET_CURRENT_REQUEST;
-  }
+if (global.SYS_GET_CURRENT_REQUEST) {
+  exports.getCurrentRequest = global.SYS_GET_CURRENT_REQUEST;
+  delete global.SYS_GET_CURRENT_REQUEST;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getCurrentResponse
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GET_CURRENT_RESPONSE !== "undefined") {
-    exports.getCurrentResponse = SYS_GET_CURRENT_RESPONSE;
-    delete SYS_GET_CURRENT_RESPONSE;
-  }
+if (global.SYS_GET_CURRENT_RESPONSE) {
+  exports.getCurrentResponse = global.SYS_GET_CURRENT_RESPONSE;
+  delete global.SYS_GET_CURRENT_RESPONSE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extend
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.extend = function (target, source) {
-    'use strict';
+exports.extend = function (target, source) {
 
-    Object.getOwnPropertyNames(source)
-      .forEach(function(propName) {
-        Object.defineProperty(target, propName,
-                              Object.getOwnPropertyDescriptor(source, propName));
-      });
+  Object.getOwnPropertyNames(source)
+  .forEach(function(propName) {
+    Object.defineProperty(
+      target,
+      propName,
+      Object.getOwnPropertyDescriptor(source, propName)
+    );
+  });
 
-    return target;
-  };
+  return target;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief load
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_LOAD !== "undefined") {
-    exports.load = SYS_LOAD;
-    delete SYS_LOAD;
-  }
+if (global.SYS_LOAD) {
+  exports.load = global.SYS_LOAD;
+  delete global.SYS_LOAD;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logLevel
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_LOG_LEVEL !== "undefined") {
-    exports.logLevel = SYS_LOG_LEVEL;
-    delete SYS_LOG_LEVEL;
-  }
+if (global.SYS_LOG_LEVEL) {
+  exports.logLevel = global.SYS_LOG_LEVEL;
+  delete global.SYS_LOG_LEVEL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief md5
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_MD5 !== "undefined") {
-    exports.md5 = SYS_MD5;
-    delete SYS_MD5;
-  }
+if (global.SYS_MD5) {
+  exports.md5 = global.SYS_MD5;
+  delete global.SYS_MD5;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief genRandomNumbers
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GEN_RANDOM_NUMBERS !== "undefined") {
-    exports.genRandomNumbers = SYS_GEN_RANDOM_NUMBERS;
-    delete SYS_GEN_RANDOM_NUMBERS;
-  }
+if (global.SYS_GEN_RANDOM_NUMBERS) {
+  exports.genRandomNumbers = global.SYS_GEN_RANDOM_NUMBERS;
+  delete global.SYS_GEN_RANDOM_NUMBERS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief genRandomAlphaNumbers
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GEN_RANDOM_ALPHA_NUMBERS !== "undefined") {
-    exports.genRandomAlphaNumbers = SYS_GEN_RANDOM_ALPHA_NUMBERS;
-    delete SYS_GEN_RANDOM_ALPHA_NUMBERS;
-  }
+if (global.SYS_GEN_RANDOM_ALPHA_NUMBERS) {
+  exports.genRandomAlphaNumbers = global.SYS_GEN_RANDOM_ALPHA_NUMBERS;
+  delete global.SYS_GEN_RANDOM_ALPHA_NUMBERS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief genRandomSalt
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GEN_RANDOM_SALT !== "undefined") {
-    exports.genRandomSalt = SYS_GEN_RANDOM_SALT;
-    delete SYS_GEN_RANDOM_SALT;
-  }
+if (global.SYS_GEN_RANDOM_SALT) {
+  exports.genRandomSalt = global.SYS_GEN_RANDOM_SALT;
+  delete global.SYS_GEN_RANDOM_SALT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hmac
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_HMAC !== "undefined") {
-    exports.hmac = SYS_HMAC;
-    delete SYS_HMAC;
-  }
+if (global.SYS_HMAC) {
+  exports.hmac = global.SYS_HMAC;
+  delete global.SYS_HMAC;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief pbkdf2-hmac
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PBKDF2 !== "undefined") {
-    exports.pbkdf2 = SYS_PBKDF2;
-    delete SYS_PBKDF2;
-  }
+if (global.SYS_PBKDF2) {
+  exports.pbkdf2 = global.SYS_PBKDF2;
+  delete global.SYS_PBKDF2;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createNonce
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_CREATE_NONCE !== "undefined") {
-    exports.createNonce = SYS_CREATE_NONCE;
-    delete SYS_CREATE_NONCE;
-  }
+if (global.SYS_CREATE_NONCE) {
+  exports.createNonce = global.SYS_CREATE_NONCE;
+  delete global.SYS_CREATE_NONCE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checkAndMarkNonce
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_CHECK_AND_MARK_NONCE !== "undefined") {
-    exports.checkAndMarkNonce = SYS_CHECK_AND_MARK_NONCE;
-    delete SYS_CHECK_AND_MARK_NONCE;
-  }
+if (global.SYS_CHECK_AND_MARK_NONCE) {
+  exports.checkAndMarkNonce = global.SYS_CHECK_AND_MARK_NONCE;
+  delete global.SYS_CHECK_AND_MARK_NONCE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief output
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_OUTPUT !== "undefined") {
-    exports.stdOutput = SYS_OUTPUT;
-    exports.output = exports.stdOutput;
-    delete SYS_OUTPUT;
-  }
+if (global.SYS_OUTPUT) {
+  exports.stdOutput = global.SYS_OUTPUT;
+  exports.output = exports.stdOutput;
+  delete global.SYS_OUTPUT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parse
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PARSE !== "undefined") {
-    exports.parse = SYS_PARSE;
-    delete SYS_PARSE;
-  }
+if (global.SYS_PARSE) {
+  exports.parse = global.SYS_PARSE;
+  delete global.SYS_PARSE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parseFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PARSE_FILE !== "undefined") {
-    exports.parseFile = SYS_PARSE_FILE;
-    delete SYS_PARSE_FILE;
-  }
+if (global.SYS_PARSE_FILE) {
+  exports.parseFile = global.SYS_PARSE_FILE;
+  delete global.SYS_PARSE_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PROCESS_STATISTICS !== "undefined") {
-    exports.processStatistics = SYS_PROCESS_STATISTICS;
-    delete SYS_PROCESS_STATISTICS;
-  }
+if (global.SYS_PROCESS_STATISTICS) {
+  exports.processStatistics = global.SYS_PROCESS_STATISTICS;
+  delete global.SYS_PROCESS_STATISTICS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rand
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_RAND !== "undefined") {
-    exports.rand = SYS_RAND;
-    delete SYS_RAND;
-  }
+if (global.SYS_RAND) {
+  exports.rand = global.SYS_RAND;
+  delete global.SYS_RAND;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha512
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SHA512 !== "undefined") {
-    exports.sha512 = SYS_SHA512;
-    delete SYS_SHA512;
-  }
+if (global.SYS_SHA512) {
+  exports.sha512 = global.SYS_SHA512;
+  delete global.SYS_SHA512;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha384
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SHA384 !== "undefined") {
-    exports.sha384 = SYS_SHA384;
-    delete SYS_SHA384;
-  }
+if (global.SYS_SHA384) {
+  exports.sha384 = global.SYS_SHA384;
+  delete global.SYS_SHA384;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha256
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SHA256 !== "undefined") {
-    exports.sha256 = SYS_SHA256;
-    delete SYS_SHA256;
-  }
+if (global.SYS_SHA256) {
+  exports.sha256 = global.SYS_SHA256;
+  delete global.SYS_SHA256;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha224
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SHA224 !== "undefined") {
-    exports.sha224 = SYS_SHA224;
-    delete SYS_SHA224;
-  }
+if (global.SYS_SHA224) {
+  exports.sha224 = global.SYS_SHA224;
+  delete global.SYS_SHA224;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sha1
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SHA1 !== "undefined") {
-    exports.sha1 = SYS_SHA1;
-    delete SYS_SHA1;
-  }
+if (global.SYS_SHA1) {
+  exports.sha1 = global.SYS_SHA1;
+  delete global.SYS_SHA1;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief serverStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SERVER_STATISTICS !== "undefined") {
-    exports.serverStatistics = SYS_SERVER_STATISTICS;
-    delete SYS_SERVER_STATISTICS;
-  }
+if (global.SYS_SERVER_STATISTICS) {
+  exports.serverStatistics = global.SYS_SERVER_STATISTICS;
+  delete global.SYS_SERVER_STATISTICS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sleep
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SLEEP !== "undefined") {
-    exports.sleep = SYS_SLEEP;
-    delete SYS_SLEEP;
-  }
+if (global.SYS_SLEEP) {
+  exports.sleep = global.SYS_SLEEP;
+  delete global.SYS_SLEEP;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_TIME !== "undefined") {
-    exports.time = SYS_TIME;
-    delete SYS_TIME;
-  }
+if (global.SYS_TIME) {
+  exports.time = global.SYS_TIME;
+  delete global.SYS_TIME;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief wait
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_WAIT !== "undefined") {
-    exports.wait = SYS_WAIT;
-    delete SYS_WAIT;
-  }
+if (global.SYS_WAIT) {
+  exports.wait = global.SYS_WAIT;
+  delete global.SYS_WAIT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief importCsvFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_IMPORT_CSV_FILE !== "undefined") {
-    exports.importCsvFile = SYS_IMPORT_CSV_FILE;
-    delete SYS_IMPORT_CSV_FILE;
-  }
+if (global.SYS_IMPORT_CSV_FILE) {
+  exports.importCsvFile = global.SYS_IMPORT_CSV_FILE;
+  delete global.SYS_IMPORT_CSV_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief importJsonFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_IMPORT_JSON_FILE !== "undefined") {
-    exports.importJsonFile = SYS_IMPORT_JSON_FILE;
-    delete SYS_IMPORT_JSON_FILE;
-  }
+if (global.SYS_IMPORT_JSON_FILE) {
+  exports.importJsonFile = global.SYS_IMPORT_JSON_FILE;
+  delete global.SYS_IMPORT_JSON_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processCsvFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PROCESS_CSV_FILE !== "undefined") {
-    exports.processCsvFile = SYS_PROCESS_CSV_FILE;
-    delete SYS_PROCESS_CSV_FILE;
-  }
+if (global.SYS_PROCESS_CSV_FILE) {
+  exports.processCsvFile = global.SYS_PROCESS_CSV_FILE;
+  delete global.SYS_PROCESS_CSV_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief processJsonFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_PROCESS_JSON_FILE !== "undefined") {
-    exports.processJsonFile = SYS_PROCESS_JSON_FILE;
-    delete SYS_PROCESS_JSON_FILE;
-  }
+if (global.SYS_PROCESS_JSON_FILE) {
+  exports.processJsonFile = global.SYS_PROCESS_JSON_FILE;
+  delete global.SYS_PROCESS_JSON_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clientStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_CLIENT_STATISTICS !== "undefined") {
-    exports.clientStatistics = SYS_CLIENT_STATISTICS;
-    delete SYS_CLIENT_STATISTICS;
-  }
+if (global.SYS_CLIENT_STATISTICS) {
+  exports.clientStatistics = global.SYS_CLIENT_STATISTICS;
+  delete global.SYS_CLIENT_STATISTICS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief httpStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_HTTP_STATISTICS !== "undefined") {
-    exports.httpStatistics = SYS_HTTP_STATISTICS;
-    delete SYS_HTTP_STATISTICS;
-  }
+if (global.SYS_HTTP_STATISTICS) {
+  exports.httpStatistics = global.SYS_HTTP_STATISTICS;
+  delete global.SYS_HTTP_STATISTICS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executeExternal
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_EXECUTE_EXTERNAL !== "undefined") {
-    exports.executeExternal = SYS_EXECUTE_EXTERNAL;
-    delete SYS_EXECUTE_EXTERNAL;
-  }
+if (global.SYS_EXECUTE_EXTERNAL) {
+  exports.executeExternal = global.SYS_EXECUTE_EXTERNAL;
+  delete global.SYS_EXECUTE_EXTERNAL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief executeExternalAndWait - instantly waits for the exit, returns 
-///   joint result.
+/// @brief executeExternalAndWait - instantly waits for the exit, returns
+/// joint result.
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_EXECUTE_EXTERNAL_AND_WAIT !== "undefined") {
-    exports.executeExternalAndWait = SYS_EXECUTE_EXTERNAL_AND_WAIT;
-    delete SYS_EXECUTE_EXTERNAL_AND_WAIT;
-  }
+if (global.SYS_EXECUTE_EXTERNAL_AND_WAIT) {
+  exports.executeExternalAndWait = global.SYS_EXECUTE_EXTERNAL_AND_WAIT;
+  delete global.SYS_EXECUTE_EXTERNAL_AND_WAIT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief killExternal
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_KILL_EXTERNAL !== "undefined") {
-    exports.killExternal = SYS_KILL_EXTERNAL;
-    delete SYS_KILL_EXTERNAL;
-  }
+if (global.SYS_KILL_EXTERNAL) {
+  exports.killExternal = global.SYS_KILL_EXTERNAL;
+  delete global.SYS_KILL_EXTERNAL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief statusExternal
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_STATUS_EXTERNAL !== "undefined") {
-    exports.statusExternal = SYS_STATUS_EXTERNAL;
-    delete SYS_STATUS_EXTERNAL;
-  }
+if (global.SYS_STATUS_EXTERNAL) {
+  exports.statusExternal = global.SYS_STATUS_EXTERNAL;
+  delete global.SYS_STATUS_EXTERNAL;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief registerTask
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_REGISTER_TASK !== "undefined") {
-    exports.registerTask = SYS_REGISTER_TASK;
-    delete SYS_REGISTER_TASK;
-  }
+if (global.SYS_REGISTER_TASK) {
+  exports.registerTask = global.SYS_REGISTER_TASK;
+  delete global.SYS_REGISTER_TASK;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unregisterTask
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_UNREGISTER_TASK !== "undefined") {
-    exports.unregisterTask = SYS_UNREGISTER_TASK;
-    delete SYS_UNREGISTER_TASK;
-  }
+if (global.SYS_UNREGISTER_TASK) {
+  exports.unregisterTask = global.SYS_UNREGISTER_TASK;
+  delete global.SYS_UNREGISTER_TASK;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getTasks
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GET_TASK !== "undefined") {
-    exports.getTask = SYS_GET_TASK;
-    delete SYS_GET_TASK;
-  }
+if (global.SYS_GET_TASK) {
+  exports.getTask = global.SYS_GET_TASK;
+  delete global.SYS_GET_TASK;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief testPort
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_TEST_PORT !== "undefined") {
-    exports.testPort = SYS_TEST_PORT;
-    delete SYS_TEST_PORT;
-  }
+if (global.SYS_TEST_PORT) {
+  exports.testPort = global.SYS_TEST_PORT;
+  delete global.SYS_TEST_PORT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isIP
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_IS_IP !== "undefined") {
-    exports.isIP = SYS_IS_IP;
-    delete SYS_IS_IP;
-  }
+if (global.SYS_IS_IP) {
+  exports.isIP = global.SYS_IS_IP;
+  delete global.SYS_IS_IP;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -97934,20 +97840,17 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief unitTests
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.unitTests = function () {
-    'use strict';
-
-    return SYS_UNIT_TESTS;
-  };
+exports.unitTests = function () {
+  return global.SYS_UNIT_TESTS;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief setUnitTestsResult
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.setUnitTestsResult = function (value) {
-    // do not use strict here
-    SYS_UNIT_TESTS_RESULT = value;
-  };
+exports.setUnitTestsResult = function (value) {
+  global.SYS_UNIT_TESTS_RESULT = value;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                     Commandline argument handling
@@ -97959,139 +97862,129 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 ///                      or --opt value
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.toArgv = function (structure, longOptsEqual) {
-    "use strict";
-    if (typeof(longOptsEqual) === 'undefined') {
-      longOptsEqual = false;
-    }
-    var vec = [];
-    for (var key in structure) {
-      if (structure.hasOwnProperty(key)) {
-        if (key === 'commandSwitches') {
-          var multivec = "";
-          for (var i = 0; i < structure[key].length; i ++) {
-            if (structure[key][i].length > 1) {
-              vec.push(structure[key][i]);
-            }
-            else {
-              multivec += structure[key][i];
-            }
-          }
-          if (multivec.length > 0) {
-            vec.push(multivec);
-          }
-        }
-        else if (key === 'flatCommands') {
-          vec = vec.concat(structure[key]);
-        }
-        else {
-          if (longOptsEqual) {
-            vec.push('--' + key + '=' + structure[key]);
+exports.toArgv = function (structure, longOptsEqual) {
+  if (typeof(longOptsEqual) === 'undefined') {
+    longOptsEqual = false;
+  }
+  var vec = [];
+  for (var key in structure) {
+    if (structure.hasOwnProperty(key)) {
+      if (key === 'commandSwitches') {
+        var multivec = "";
+        for (var i = 0; i < structure[key].length; i ++) {
+          if (structure[key][i].length > 1) {
+            vec.push(structure[key][i]);
           }
           else {
-            vec.push('--' + key);
-            vec.push(structure[key]);
+            multivec += structure[key][i];
           }
+        }
+        if (multivec.length > 0) {
+          vec.push(multivec);
+        }
+      }
+      else if (key === 'flatCommands') {
+        vec = vec.concat(structure[key]);
+      }
+      else {
+        if (longOptsEqual) {
+          vec.push('--' + key + '=' + structure[key]);
+        }
+        else {
+          vec.push('--' + key);
+          vec.push(structure[key]);
         }
       }
     }
-    return vec;
-  };
+  }
+  return vec;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief argv to structured
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.parseArgv = function (argv, startOffset) {
-    "use strict";
-
-    function setOption(ret, option, value) {
-      if (option.indexOf(':') > 0) {
-        var n = option.indexOf(':');
-        var topOption = option.slice(0, n);
-        if (! ret.hasOwnProperty(topOption)) {
-          ret[topOption] = {};
-        }
-        setOption(ret[topOption], option.slice(n + 1, option.length), value);
+exports.parseArgv = function (argv, startOffset) {
+  function setOption(ret, option, value) {
+    if (option.indexOf(':') > 0) {
+      var n = option.indexOf(':');
+      var topOption = option.slice(0, n);
+      if (! ret.hasOwnProperty(topOption)) {
+        ret[topOption] = {};
       }
-      else if (argv[i + 1] === 'true') {
-        ret[option] = true;
-      }
-      else if (argv[i + 1] === 'false') {
-        ret[option] = false;
-      }
-      else if (! isNaN(argv[i + 1])) {
-        ret[option] = parseInt(argv[i + 1]);
-      }
-      else {
-        ret[option] = argv[i + 1];
-      }
+      setOption(ret[topOption], option.slice(n + 1, option.length), value);
     }
-    function setSwitch(ret, option) {
-      if (! ret.hasOwnProperty('commandSwitches')) {
-        ret.commandSwitches = [];
-      }
-      ret.commandSwitches.push(option);
+    else if (argv[i + 1] === 'true') {
+      ret[option] = true;
     }
-
-    function setSwitchVec(ret, option) {
-      for (var i = 0; i < option.length; i++) {
-        setSwitch(ret, option[i]);
-      }
+    else if (argv[i + 1] === 'false') {
+      ret[option] = false;
     }
-
-    function setFlatCommand(ret, thisString) {
-      if (! ret.hasOwnProperty('flatCommands')) {
-        ret.flatCommands = [];
-      }
-      ret.flatCommands.push(thisString);
+    else if (! isNaN(argv[i + 1])) {
+      ret[option] = parseInt(argv[i + 1]);
     }
+    else {
+      ret[option] = argv[i + 1];
+    }
+  }
+  function setSwitch(ret, option) {
+    if (! ret.hasOwnProperty('commandSwitches')) {
+      ret.commandSwitches = [];
+    }
+    ret.commandSwitches.push(option);
+  }
 
-    var inFlat = false;
-    var ret = {};
-    for (var i = startOffset; i < argv.length; i++) {
-      var thisString = argv[i];
-      if (! inFlat) {
-        if ((thisString.length > 2) &&
-            (thisString.slice(0,2) === '--')) {
-          var option = thisString.slice(2, thisString.length);
-          if ((argv.length > i) &&
-              (argv[i + 1].slice(0,1) !== '-')) {
-            setOption(ret, option, argv[i + 1]);
-            i++;
-          }
-          else {
-            setSwitch(ret, option);
-          }
-        }
-        else if (thisString === '--') {
-          inFlat = true;
-        }
-        else if ((thisString.length > 1) &&
-                (thisString.slice(0, 1) === '-')) {
-          setSwitchVec(ret, thisString.slice(1, thisString.length));
+  function setSwitchVec(ret, option) {
+    for (var i = 0; i < option.length; i++) {
+      setSwitch(ret, option[i]);
+    }
+  }
+
+  function setFlatCommand(ret, thisString) {
+    if (! ret.hasOwnProperty('flatCommands')) {
+      ret.flatCommands = [];
+    }
+    ret.flatCommands.push(thisString);
+  }
+
+  var inFlat = false;
+  var ret = {};
+  for (var i = startOffset; i < argv.length; i++) {
+    var thisString = argv[i];
+    if (! inFlat) {
+      if ((thisString.length > 2) &&
+          (thisString.slice(0,2) === '--')) {
+        var option = thisString.slice(2, thisString.length);
+        if ((argv.length > i) &&
+            (argv[i + 1].slice(0,1) !== '-')) {
+          setOption(ret, option, argv[i + 1]);
+          i++;
         }
         else {
-          setFlatCommand(ret, thisString);
+          setSwitch(ret, option);
         }
+      }
+      else if (thisString === '--') {
+        inFlat = true;
+      }
+      else if ((thisString.length > 1) &&
+              (thisString.slice(0, 1) === '-')) {
+        setSwitchVec(ret, thisString.slice(1, thisString.length));
       }
       else {
         setFlatCommand(ret, thisString);
       }
     }
-    return ret;
-  };
-
-}());
+    else {
+      setFlatCommand(ret, thisString);
+    }
+  }
+  return ret;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                          PRINTING
 // -----------------------------------------------------------------------------
-
-(function () {
-  // cannot use strict here as we are going to delete globals
-
-  var exports = require("internal");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         public printing variables
@@ -98101,30 +97994,30 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief COLORS
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.COLORS = {};
+exports.COLORS = {};
 
-  if (typeof COLORS !== "undefined") {
-    exports.COLORS = COLORS;
-    delete COLORS;
-  }
-  else {
-    [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
-      'COLOR_BLUE', 'COLOR_BOLD_BLUE', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW',
-      'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_CYAN', 'COLOR_BOLD_CYAN',
-      'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA', 'COLOR_BLACK', 'COLOR_BOLD_BLACK',
-      'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
-        exports.COLORS[color] = '';
-      });
-  }
+if (global.COLORS) {
+  exports.COLORS = global.COLORS;
+  delete global.COLORS;
+}
+else {
+  [ 'COLOR_RED', 'COLOR_BOLD_RED', 'COLOR_GREEN', 'COLOR_BOLD_GREEN',
+    'COLOR_BLUE', 'COLOR_BOLD_BLUE', 'COLOR_YELLOW', 'COLOR_BOLD_YELLOW',
+    'COLOR_WHITE', 'COLOR_BOLD_WHITE', 'COLOR_CYAN', 'COLOR_BOLD_CYAN',
+    'COLOR_MAGENTA', 'COLOR_BOLD_MAGENTA', 'COLOR_BLACK', 'COLOR_BOLD_BLACK',
+    'COLOR_BLINK', 'COLOR_BRIGHT', 'COLOR_RESET' ].forEach(function(color) {
+      exports.COLORS[color] = '';
+    });
+}
 
-  exports.COLORS.COLOR_PUNCTUATION = exports.COLORS.COLOR_RESET;
-  exports.COLORS.COLOR_STRING = exports.COLORS.COLOR_BRIGHT;
-  exports.COLORS.COLOR_NUMBER = exports.COLORS.COLOR_BRIGHT;
-  exports.COLORS.COLOR_INDEX = exports.COLORS.COLOR_BRIGHT;
-  exports.COLORS.COLOR_TRUE = exports.COLORS.COLOR_BRIGHT;
-  exports.COLORS.COLOR_FALSE = exports.COLORS.COLOR_BRIGHT;
-  exports.COLORS.COLOR_NULL = exports.COLORS.COLOR_BRIGHT;
-  exports.COLORS.COLOR_UNDEFINED = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_PUNCTUATION = exports.COLORS.COLOR_RESET;
+exports.COLORS.COLOR_STRING = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_NUMBER = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_INDEX = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_TRUE = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_FALSE = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_NULL = exports.COLORS.COLOR_BRIGHT;
+exports.COLORS.COLOR_UNDEFINED = exports.COLORS.COLOR_BRIGHT;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        private printing variables
@@ -98134,236 +98027,151 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief quote cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  var characterQuoteCache = {
-    '\b': '\\b', // ASCII 8, Backspace
-    '\t': '\\t', // ASCII 9, Tab
-    '\n': '\\n', // ASCII 10, Newline
-    '\f': '\\f', // ASCII 12, Formfeed
-    '\r': '\\r', // ASCII 13, Carriage Return
-    '\"': '\\"',
-    '\\': '\\\\'
-  };
+var characterQuoteCache = {
+  '\b': '\\b', // ASCII 8, Backspace
+  '\t': '\\t', // ASCII 9, Tab
+  '\n': '\\n', // ASCII 10, Newline
+  '\f': '\\f', // ASCII 12, Formfeed
+  '\r': '\\r', // ASCII 13, Carriage Return
+  '\"': '\\"',
+  '\\': '\\\\'
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief colors
 ////////////////////////////////////////////////////////////////////////////////
 
-  var colors = exports.COLORS;
+var colors = exports.COLORS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief useColor
 ////////////////////////////////////////////////////////////////////////////////
 
-  var useColor = false;
+var useColor = false;
 
-  if (typeof COLOR_OUTPUT !== "undefined") {
-    useColor = COLOR_OUTPUT;
-    delete COLOR_OUTPUT;
-  }
+if (global.COLOR_OUTPUT) {
+  useColor = global.COLOR_OUTPUT;
+  delete global.COLOR_OUTPUT;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief usePrettyPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-  var usePrettyPrint = false;
+var usePrettyPrint = false;
 
-  if (typeof PRETTY_PRINT !== "undefined") {
-    usePrettyPrint = PRETTY_PRINT;
-    delete PRETTY_PRINT;
-  }
+if (global.PRETTY_PRINT) {
+  usePrettyPrint = global.PRETTY_PRINT;
+  delete global.PRETTY_PRINT;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        private printing functions
 // -----------------------------------------------------------------------------
 
-  var printRecursive;
+var printRecursive;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a single character
 ////////////////////////////////////////////////////////////////////////////////
 
-  function quoteSingleJsonCharacter (c) {
-    'use strict';
+function quoteSingleJsonCharacter (c) {
 
-    if (characterQuoteCache.hasOwnProperty(c)) {
-      return characterQuoteCache[c];
-    }
-
-    var charCode = c.charCodeAt(0);
-    var result;
-
-    if (charCode < 16) {
-      result = '\\u000';
-    }
-    else if (charCode < 256) {
-      result = '\\u00';
-    }
-    else if (charCode < 4096) {
-      result = '\\u0';
-    }
-    else {
-      result = '\\u';
-    }
-
-    result += charCode.toString(16);
-    characterQuoteCache[c] = result;
-
-    return result;
+  if (characterQuoteCache.hasOwnProperty(c)) {
+    return characterQuoteCache[c];
   }
+
+  var charCode = c.charCodeAt(0);
+  var result;
+
+  if (charCode < 16) {
+    result = '\\u000';
+  }
+  else if (charCode < 256) {
+    result = '\\u00';
+  }
+  else if (charCode < 4096) {
+    result = '\\u0';
+  }
+  else {
+    result = '\\u';
+  }
+
+  result += charCode.toString(16);
+  characterQuoteCache[c] = result;
+
+  return result;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief quotes a string character
 ////////////////////////////////////////////////////////////////////////////////
 
-  var quotable = /[\\\"\x00-\x1f]/g;
+var quotable = /[\\\"\x00-\x1f]/g;
 
-  function quoteJsonString (str) {
-    'use strict';
+function quoteJsonString (str) {
 
-    return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
-  }
+  return '"' + str.replace(quotable, quoteSingleJsonCharacter) + '"';
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the ident for pretty printing
 ////////////////////////////////////////////////////////////////////////////////
 
-  function printIndent (context) {
-    'use strict';
+function printIndent (context) {
 
-    var j;
-    var indent = "";
+  var j;
+  var indent = "";
 
-    if (context.prettyPrint) {
-      indent += "\n";
+  if (context.prettyPrint) {
+    indent += "\n";
 
-      for (j = 0; j < context.level; ++j) {
-        indent += "  ";
-      }
+    for (j = 0; j < context.level; ++j) {
+      indent += "  ";
     }
-
-    context.output += indent;
   }
+
+  context.output += indent;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints the JSON representation of an array
 ////////////////////////////////////////////////////////////////////////////////
 
-  function printArray (object, context) {
-    'use strict';
+function printArray (object, context) {
 
-    var useColor = context.useColor;
+  var useColor = context.useColor;
 
-    if (object.length === 0) {
-      if (useColor) {
-        context.output += colors.COLOR_PUNCTUATION;
-      }
-
-      context.output += "[ ]";
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
+  if (object.length === 0) {
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
     }
-    else {
-      var i;
 
-      if (useColor) {
-        context.output += colors.COLOR_PUNCTUATION;
-      }
+    context.output += "[ ]";
 
-      context.output += "[";
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-
-      var newLevel = context.level + 1;
-      var sep = " ";
-
-      context.level = newLevel;
-
-      for (i = 0;  i < object.length;  i++) {
-        if (useColor) {
-          context.output += colors.COLOR_PUNCTUATION;
-        }
-
-        context.output += sep;
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-
-        printIndent(context);
-
-        var path = context.path;
-        context.path += "[" + i + "]";
-
-        printRecursive(object[i], context);
-
-        if (context.emit && context.output.length >= context.emit) {
-          exports.output(context.output);
-          context.output = "";
-        }
-
-        context.path = path;
-        sep = ", ";
-      }
-
-      context.level = newLevel - 1;
-      context.output += " ";
-
-      printIndent(context);
-
-      if (useColor) {
-        context.output += colors.COLOR_PUNCTUATION;
-      }
-
-      context.output += "]";
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
     }
   }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief prints an object
-////////////////////////////////////////////////////////////////////////////////
-
-  function printObject (object, context) {
-    'use strict';
-
-    var useColor = context.useColor;
-    var sep = " ";
+  else {
+    var i;
 
     if (useColor) {
       context.output += colors.COLOR_PUNCTUATION;
     }
 
-    context.output += "{";
+    context.output += "[";
 
     if (useColor) {
       context.output += colors.COLOR_RESET;
     }
 
     var newLevel = context.level + 1;
+    var sep = " ";
 
     context.level = newLevel;
 
-    var keys;
-    try {
-      keys = Object.keys(object);
-    }
-    catch (err) {
-      // ES6 proxy objects don't support key enumeration
-      keys = [ ];
-    }
-    var i, n = keys.length;
-
-    for (i = 0; i < n; ++i) {
-      var k = keys[i];
-      var val = object[k];
-
+    for (i = 0;  i < object.length;  i++) {
       if (useColor) {
         context.output += colors.COLOR_PUNCTUATION;
       }
@@ -98376,30 +98184,18 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 
       printIndent(context);
 
-      if (useColor) {
-        context.output += colors.COLOR_INDEX;
-      }
-
-      context.output += quoteJsonString(k);
-
-      if (useColor) {
-        context.output += colors.COLOR_RESET;
-      }
-
-      context.output += " : ";
-
       var path = context.path;
-      context.path += "[" + k + "]";
+      context.path += "[" + i + "]";
 
-      printRecursive(val, context);
-
-      context.path = path;
-      sep = ", ";
+      printRecursive(object[i], context);
 
       if (context.emit && context.output.length >= context.emit) {
         exports.output(context.output);
         context.output = "";
       }
+
+      context.path = path;
+      sep = ", ";
     }
 
     context.level = newLevel - 1;
@@ -98411,260 +98207,350 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
       context.output += colors.COLOR_PUNCTUATION;
     }
 
-    context.output += "}";
+    context.output += "]";
 
     if (useColor) {
       context.output += colors.COLOR_RESET;
     }
   }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief prints an object
+////////////////////////////////////////////////////////////////////////////////
+
+function printObject (object, context) {
+
+  var useColor = context.useColor;
+  var sep = " ";
+
+  if (useColor) {
+    context.output += colors.COLOR_PUNCTUATION;
+  }
+
+  context.output += "{";
+
+  if (useColor) {
+    context.output += colors.COLOR_RESET;
+  }
+
+  var newLevel = context.level + 1;
+
+  context.level = newLevel;
+
+  var keys;
+  try {
+    keys = Object.keys(object);
+  }
+  catch (err) {
+    // ES6 proxy objects don't support key enumeration
+    keys = [ ];
+  }
+  var i, n = keys.length;
+
+  for (i = 0; i < n; ++i) {
+    var k = keys[i];
+    var val = object[k];
+
+    if (useColor) {
+      context.output += colors.COLOR_PUNCTUATION;
+    }
+
+    context.output += sep;
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+
+    printIndent(context);
+
+    if (useColor) {
+      context.output += colors.COLOR_INDEX;
+    }
+
+    context.output += quoteJsonString(k);
+
+    if (useColor) {
+      context.output += colors.COLOR_RESET;
+    }
+
+    context.output += " : ";
+
+    var path = context.path;
+    context.path += "[" + k + "]";
+
+    printRecursive(val, context);
+
+    context.path = path;
+    sep = ", ";
+
+    if (context.emit && context.output.length >= context.emit) {
+      exports.output(context.output);
+      context.output = "";
+    }
+  }
+
+  context.level = newLevel - 1;
+  context.output += " ";
+
+  printIndent(context);
+
+  if (useColor) {
+    context.output += colors.COLOR_PUNCTUATION;
+  }
+
+  context.output += "}";
+
+  if (useColor) {
+    context.output += colors.COLOR_RESET;
+  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints objects to standard output without a new-line
 ////////////////////////////////////////////////////////////////////////////////
 
-  var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
-  var func2RE = /function ([^\(]*)?\((.*)\) \{/;
+var funcRE = /function ([^\(]*)?\(\) \{ \[native code\] \}/;
+var func2RE = /function ([^\(]*)?\((.*)\) \{/;
 
-  exports.printRecursive = printRecursive = function (value, context) {
-    'use strict';
+exports.printRecursive = printRecursive = function (value, context) {
 
-    var useColor = context.useColor;
-    var customInspect = context.customInspect;
-    var useToString = context.useToString;
-    var limitString = context.limitString;
-    var showFunction = context.showFunction;
+  var useColor = context.useColor;
+  var customInspect = context.customInspect;
+  var useToString = context.useToString;
+  var limitString = context.limitString;
+  var showFunction = context.showFunction;
 
-    if (typeof context.seen === "undefined") {
-      context.seen = [];
-      context.names = [];
-    }
+  if (typeof context.seen === "undefined") {
+    context.seen = [];
+    context.names = [];
+  }
 
-    var p = context.seen.indexOf(value);
+  var p = context.seen.indexOf(value);
 
-    if (0 <= p) {
-      context.output += context.names[p];
-    }
-    else {
-      if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
-        context.seen.push(value);
-        context.names.push(context.path);
-        if (customInspect && typeof value._PRINT === "function") {
-          value._PRINT(context);
+  if (0 <= p) {
+    context.output += context.names[p];
+  }
+  else {
+    if (value && (value instanceof Object || (typeof value === 'object' && Object.getPrototypeOf(value) === null))) {
+      context.seen.push(value);
+      context.names.push(context.path);
+      if (customInspect && typeof value._PRINT === "function") {
+        value._PRINT(context);
 
-          if (context.emit && context.output.length >= context.emit) {
-            exports.output(context.output);
-            context.output = "";
+        if (context.emit && context.output.length >= context.emit) {
+          exports.output(context.output);
+          context.output = "";
+        }
+      }
+      else if (value instanceof Array) {
+        printArray(value, context);
+      }
+      else if (
+        value.toString === Object.prototype.toString
+        || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
+      ) {
+        var handled = false;
+        try {
+          if (value instanceof Set ||
+              value instanceof Map ||
+              value instanceof WeakSet ||
+              value instanceof WeakMap ||
+              typeof value[Symbol.iterator] === "function") {
+            // ES6 iterators
+            context.output += value.toString();
+            handled = true;
           }
         }
-        else if (value instanceof Array) {
-          printArray(value, context);
+        catch (err) {
+          // ignore any errors thrown above, and simply fall back to normal printing
         }
-        else if (
-          value.toString === Object.prototype.toString
-          || (typeof value === 'object' && Object.getPrototypeOf(value) === null)
-        ) {
-          var handled = false;
-          try {
-            if (value instanceof Set ||
-                value instanceof Map ||
-                value instanceof WeakSet ||
-                value instanceof WeakMap ||
-                typeof value[Symbol.iterator] === "function") {
-              // ES6 iterators
-              context.output += value.toString();
-              handled = true;
-            }
-          }
-          catch (err) {
-            // ignore any errors thrown above, and simply fall back to normal printing
-          }
 
-          if (! handled) {
-            // all other objects
-            printObject(value, context);
-          }
-
-          if (context.emit && context.output.length >= context.emit) {
-            exports.output(context.output);
-            context.output = "";
-          }
+        if (! handled) {
+          // all other objects
+          printObject(value, context);
         }
-        else if (typeof value === "function") {
-          // it's possible that toString() throws, and this looks quite ugly
-          try {
-            var s = value.toString();
 
-            if (0 < context.level && ! showFunction) {
-              var a = s.split("\n");
-              var f = a[0];
+        if (context.emit && context.output.length >= context.emit) {
+          exports.output(context.output);
+          context.output = "";
+        }
+      }
+      else if (typeof value === "function") {
+        // it's possible that toString() throws, and this looks quite ugly
+        try {
+          var s = value.toString();
 
-              var m = funcRE.exec(f);
+          if (0 < context.level && ! showFunction) {
+            var a = s.split("\n");
+            var f = a[0];
 
-              if (m !== null) {
-                if (m[1] === undefined) {
-                  context.output += 'function { [native code] }';
-                }
-                else {
-                  context.output += 'function ' + m[1] + ' { [native code] }';
-                }
+            var m = funcRE.exec(f);
+
+            if (m !== null) {
+              if (m[1] === undefined) {
+                context.output += 'function { [native code] }';
               }
               else {
-                m = func2RE.exec(f);
-
-                if (m !== null) {
-                  if (m[1] === undefined) {
-                    context.output += 'function ' + '(' + m[2] +') { ... }';
-                  }
-                  else {
-                    context.output += 'function ' + m[1] + ' (' + m[2] +') { ... }';
-                  }
-                }
-                else {
-                  f = f.substr(8, f.length - 10).trim();
-                  context.output += '[Function "' + f + '" ...]';
-                }
+                context.output += 'function ' + m[1] + ' { [native code] }';
               }
             }
             else {
-              context.output += s;
+              m = func2RE.exec(f);
+
+              if (m !== null) {
+                if (m[1] === undefined) {
+                  context.output += 'function ' + '(' + m[2] +') { ... }';
+                }
+                else {
+                  context.output += 'function ' + m[1] + ' (' + m[2] +') { ... }';
+                }
+              }
+              else {
+                f = f.substr(8, f.length - 10).trim();
+                context.output += '[Function "' + f + '" ...]';
+              }
             }
           }
-          catch (e1) {
-            exports.stdOutput(String(e1));
-            context.output += "[Function]";
+          else {
+            context.output += s;
           }
         }
-        else if (useToString && typeof value.toString === "function") {
-          try {
-            context.output += value.toString();
-          }
-          catch (e2) {
-            context.output += "[Object ";
-            printObject(value, context);
-            context.output += "]";
-          }
+        catch (e1) {
+          exports.stdOutput(String(e1));
+          context.output += "[Function]";
         }
-        else {
+      }
+      else if (useToString && typeof value.toString === "function") {
+        try {
+          context.output += value.toString();
+        }
+        catch (e2) {
           context.output += "[Object ";
           printObject(value, context);
           context.output += "]";
         }
       }
-      else if (value === undefined) {
-        if (useColor) {
-          context.output += colors.COLOR_UNDEFINED;
-        }
-
-        context.output += "undefined";
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-      }
-      else if (typeof(value) === "string") {
-        if (useColor) {
-          context.output += colors.COLOR_STRING;
-        }
-
-        if (limitString) {
-          if (limitString < value.length) {
-            value = value.substr(0, limitString) + "...";
-          }
-        }
-
-        context.output += quoteJsonString(value);
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-      }
-      else if (typeof(value) === "boolean") {
-        if (useColor) {
-          context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
-        }
-
-        context.output += String(value);
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-      }
-      else if (typeof(value) === "number") {
-        if (useColor) {
-          context.output += colors.COLOR_NUMBER;
-        }
-
-        context.output += String(value);
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-      }
-      else if (value === null) {
-        if (useColor) {
-          context.output += colors.COLOR_NULL;
-        }
-
-        context.output += String(value);
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-      }
-      /* jshint notypeof: true */
-      else if (typeof(value) === "symbol") {
-      /* jshint notypeof: false */
-        // handle ES6 symbols
-        if (useColor) {
-          context.output += colors.COLOR_NULL;
-        }
-
-        context.output += value.toString();
-
-        if (useColor) {
-          context.output += colors.COLOR_RESET;
-        }
-      }
       else {
-        context.output += String(value);
+        context.output += "[Object ";
+        printObject(value, context);
+        context.output += "]";
       }
     }
-  };
+    else if (value === undefined) {
+      if (useColor) {
+        context.output += colors.COLOR_UNDEFINED;
+      }
+
+      context.output += "undefined";
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (typeof(value) === "string") {
+      if (useColor) {
+        context.output += colors.COLOR_STRING;
+      }
+
+      if (limitString) {
+        if (limitString < value.length) {
+          value = value.substr(0, limitString) + "...";
+        }
+      }
+
+      context.output += quoteJsonString(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (typeof(value) === "boolean") {
+      if (useColor) {
+        context.output += value ? colors.COLOR_TRUE : colors.COLOR_FALSE;
+      }
+
+      context.output += String(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (typeof(value) === "number") {
+      if (useColor) {
+        context.output += colors.COLOR_NUMBER;
+      }
+
+      context.output += String(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else if (value === null) {
+      if (useColor) {
+        context.output += colors.COLOR_NULL;
+      }
+
+      context.output += String(value);
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    /* jshint notypeof: true */
+    else if (typeof(value) === "symbol") {
+    /* jshint notypeof: false */
+      // handle ES6 symbols
+      if (useColor) {
+        context.output += colors.COLOR_NULL;
+      }
+
+      context.output += value.toString();
+
+      if (useColor) {
+        context.output += colors.COLOR_RESET;
+      }
+    }
+    else {
+      context.output += String(value);
+    }
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief buffers output instead of printing it
 ////////////////////////////////////////////////////////////////////////////////
 
-  function bufferOutput () {
-    'use strict';
+function bufferOutput () {
 
-    var i;
+  var i;
 
-    for (i = 0;  i < arguments.length;  ++i) {
-      var value = arguments[i];
-      var text;
+  for (i = 0;  i < arguments.length;  ++i) {
+    var value = arguments[i];
+    var text;
 
-      if (value === null) {
-        text = "null";
+    if (value === null) {
+      text = "null";
+    }
+    else if (value === undefined) {
+      text = "undefined";
+    }
+    else if (typeof(value) === "object") {
+      try {
+        text = JSON.stringify(value);
       }
-      else if (value === undefined) {
-        text = "undefined";
-      }
-      else if (typeof(value) === "object") {
-        try {
-          text = JSON.stringify(value);
-        }
-        catch (err) {
-          text = String(value);
-        }
-      }
-      else {
+      catch (err) {
         text = String(value);
       }
-
-      exports.outputBuffer += text;
     }
+    else {
+      text = String(value);
+    }
+
+    exports.outputBuffer += text;
   }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prints all arguments
@@ -98677,44 +98563,43 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @FN{_PRINT}, then this function is called. A final newline is printed.
 ////////////////////////////////////////////////////////////////////////////////
 
-  function printShell () {
-    'use strict';
+function printShell () {
 
-    var output = exports.output;
-    var i;
+  var output = exports.output;
+  var i;
 
-    for (i = 0;  i < arguments.length;  ++i) {
-      if (0 < i) {
-        output(" ");
-      }
-
-      if (typeof(arguments[i]) === "string") {
-        output(arguments[i]);
-      }
-      else {
-        var context = {
-          customInspect: true,
-          emit: 16384,
-          level: 0,
-          limitString: 80,
-          names: [],
-          output: "",
-          path: "~",
-          prettyPrint: usePrettyPrint,
-          seen: [],
-          showFunction: false,
-          useColor: useColor,
-          useToString: true
-        };
-
-        printRecursive(arguments[i], context);
-
-        output(context.output);
-      }
+  for (i = 0;  i < arguments.length;  ++i) {
+    if (0 < i) {
+      output(" ");
     }
 
-    output("\n");
+    if (typeof(arguments[i]) === "string") {
+      output(arguments[i]);
+    }
+    else {
+      var context = {
+        customInspect: true,
+        emit: 16384,
+        level: 0,
+        limitString: 80,
+        names: [],
+        output: "",
+        path: "~",
+        prettyPrint: usePrettyPrint,
+        seen: [],
+        showFunction: false,
+        useColor: useColor,
+        useToString: true
+      };
+
+      printRecursive(arguments[i], context);
+
+      output(context.output);
+    }
   }
+
+  output("\n");
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         public printing functions
@@ -98724,297 +98609,280 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief flatten
 ////////////////////////////////////////////////////////////////////////////////
 
-  var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
+var hasOwnProperty = Function.prototype.call.bind(Object.prototype.hasOwnProperty);
 
-  exports.flatten = function (obj, seen) {
-    'use strict';
+exports.flatten = function (obj, seen) {
 
-    if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
-      return obj;
+  if (!obj || (typeof obj !== 'object' && typeof obj !== 'function')) {
+    return obj;
+  }
+
+  if (obj instanceof Date) {
+    return obj.toJSON();
+  }
+
+  if (!seen) {
+    seen = [];
+  }
+
+  var result = Object.create(null),
+    src = obj,
+    keys,
+    i,
+    key,
+    val;
+
+  if (typeof obj === 'function') {
+    result.__exec = String(obj);
+  }
+
+  while (src) {
+    if (
+      seen.indexOf(src) !== -1
+        || (obj.constructor && src === obj.constructor.prototype)
+    ) {
+      break;
     }
-
-    if (obj instanceof Date) {
-      return obj.toJSON();
-    }
-
-    if (!seen) {
-      seen = [];
-    }
-
-    var result = Object.create(null),
-      src = obj,
-      keys,
-      i,
-      key,
-      val;
-
-    if (typeof obj === 'function') {
-      result.__exec = String(obj);
-    }
-
-    while (src) {
-      if (
-        seen.indexOf(src) !== -1
-          || (obj.constructor && src === obj.constructor.prototype)
-      ) {
-        break;
-      }
-      seen.push(src);
-      keys = Object.getOwnPropertyNames(src);
-      for (i = 0; i < keys.length; i++) {
-        key = keys[i];
-        if (typeof src !== 'function' || (
-          key !== 'arguments' && key !== 'caller' && key !== 'callee'
-        )) {
-          if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
-            val = obj[key];
-            if (seen.indexOf(val) !== -1 && (
-              typeof val === 'object' || typeof val === 'function'
-            )) {
-              result[key] = '[Circular]';
-            } else {
-              result[key] = exports.flatten(val, seen);
-            }
+    seen.push(src);
+    keys = Object.getOwnPropertyNames(src);
+    for (i = 0; i < keys.length; i++) {
+      key = keys[i];
+      if (typeof src !== 'function' || (
+        key !== 'arguments' && key !== 'caller' && key !== 'callee'
+      )) {
+        if (key.charAt(0) !== '_' && !hasOwnProperty(result, key)) {
+          val = obj[key];
+          if (seen.indexOf(val) !== -1 && (
+            typeof val === 'object' || typeof val === 'function'
+          )) {
+            result[key] = '[Circular]';
+          } else {
+            result[key] = exports.flatten(val, seen);
           }
         }
       }
-      src = Object.getPrototypeOf(src);
     }
+    src = Object.getPrototypeOf(src);
+  }
 
-    if (obj.constructor && obj.constructor.name) {
-      if (obj instanceof Error && obj.name === Error.name) {
-        result.name = obj.constructor.name;
-      } else if (!hasOwnProperty(result, 'constructor')) {
-        result.constructor = {name: obj.constructor.name};
-      }
+  if (obj.constructor && obj.constructor.name) {
+    if (obj instanceof Error && obj.name === Error.name) {
+      result.name = obj.constructor.name;
+    } else if (!hasOwnProperty(result, 'constructor')) {
+      result.constructor = {name: obj.constructor.name};
     }
+  }
 
-    return result;
-  };
+  return result;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief inspect
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.inspect = function (object, options) {
-    'use strict';
+exports.inspect = function (object, options) {
 
-    var context = {
-      customInspect: options && options.customInspect,
-      emit: false,
-      level: 0,
-      limitString: false,
-      names: [],
-      output: "",
-      prettyPrint: true,
-      path: "~",
-      seen: [],
-      showFunction: true,
-      useColor: false,
-      useToString: false
-    };
-
-    if (options && options.hasOwnProperty("prettyPrint")) {
-      context.prettyPrint = options.prettyPrint;
-    }
-
-    printRecursive(object, context);
-
-    return context.output;
+  var context = {
+    customInspect: options && options.customInspect,
+    emit: false,
+    level: 0,
+    limitString: false,
+    names: [],
+    output: "",
+    prettyPrint: true,
+    path: "~",
+    seen: [],
+    showFunction: true,
+    useColor: false,
+    useToString: false
   };
+
+  if (options && options.hasOwnProperty("prettyPrint")) {
+    context.prettyPrint = options.prettyPrint;
+  }
+
+  printRecursive(object, context);
+
+  return context.output;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sprintf
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SPRINTF !== "undefined") {
-    exports.sprintf = SYS_SPRINTF;
-    delete SYS_SPRINTF;
-  }
+if (global.SYS_SPRINTF) {
+  exports.sprintf = global.SYS_SPRINTF;
+  delete global.SYS_SPRINTF;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief printf
 ////////////////////////////////////////////////////////////////////////////////
 
-  var sprintf = exports.sprintf;
+var sprintf = exports.sprintf;
 
-  exports.printf = function () {
-    'use strict';
-
-    exports.output(sprintf.apply(sprintf, arguments));
-  };
+exports.printf = function () {
+  exports.output(sprintf.apply(sprintf, arguments));
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof exports.printBrowser === "function") {
-    exports.printShell = printShell;
-    exports.print = exports.printBrowser;
-  }
-  else {
-    exports.print = printShell;
-  }
+if (typeof exports.printBrowser === "function") {
+  exports.printShell = printShell;
+  exports.print = exports.printBrowser;
+}
+else {
+  exports.print = printShell;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief printObject
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.printObject = printObject;
+exports.printObject = printObject;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.startCaptureMode = function () {
-    'use strict';
-
-    exports.outputBuffer = "";
-    exports.output = bufferOutput;
-  };
+exports.startCaptureMode = function () {
+  exports.outputBuffer = "";
+  exports.output = bufferOutput;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stopCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.stopCaptureMode = function () {
-    'use strict';
+exports.stopCaptureMode = function () {
+  var buffer = exports.outputBuffer;
 
-    var buffer = exports.outputBuffer;
+  exports.outputBuffer = "";
+  exports.output = exports.stdOutput;
 
-    exports.outputBuffer = "";
-    exports.output = exports.stdOutput;
-
-    return buffer;
-  };
+  return buffer;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startPager
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.startPager = function () {};
+exports.startPager = function () {};
 
-  if (typeof SYS_START_PAGER !== "undefined") {
-    exports.startPager = SYS_START_PAGER;
-    delete SYS_START_PAGER;
-  }
+if (global.SYS_START_PAGER) {
+  exports.startPager = global.SYS_START_PAGER;
+  delete global.SYS_START_PAGER;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stopPager
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.stopPager = function () {};
+exports.stopPager = function () {};
 
-  if (typeof SYS_STOP_PAGER !== "undefined") {
-    exports.stopPager = SYS_STOP_PAGER;
-    delete SYS_STOP_PAGER;
-  }
+if (global.SYS_STOP_PAGER) {
+  exports.stopPager = global.SYS_STOP_PAGER;
+  delete global.SYS_STOP_PAGER;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startPrettyPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.startPrettyPrint = function (silent) {
-    'use strict';
+exports.startPrettyPrint = function (silent) {
+  if (! usePrettyPrint && !silent) {
+    exports.print("using pretty printing");
+  }
 
-    if (! usePrettyPrint && ! silent) {
-      exports.print("using pretty printing");
-    }
-
-    usePrettyPrint = true;
-  };
+  usePrettyPrint = true;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stopPrettyPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.stopPrettyPrint = function (silent) {
-    'use strict';
+exports.stopPrettyPrint = function (silent) {
+  if (usePrettyPrint && !silent) {
+    exports.print("disabled pretty printing");
+  }
 
-    if (usePrettyPrint && ! silent) {
-      exports.print("disabled pretty printing");
-    }
-
-    usePrettyPrint = false;
-  };
+  usePrettyPrint = false;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startColorPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.startColorPrint = function (color, silent) {
-    'use strict';
-
-    var schemes = {
-      arangodb: {
-        COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
-        COLOR_STRING: exports.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_NUMBER: exports.COLORS.COLOR_BOLD_GREEN,
-        COLOR_INDEX: exports.COLORS.COLOR_BOLD_CYAN,
-        COLOR_TRUE: exports.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_FALSE: exports.COLORS.COLOR_BOLD_MAGENTA,
-        COLOR_NULL: exports.COLORS.COLOR_BOLD_YELLOW,
-        COLOR_UNDEFINED: exports.COLORS.COLOR_BOLD_YELLOW
-      }
-    };
-
-    if (! useColor && ! silent) {
-      exports.print("starting color printing");
+exports.startColorPrint = function (color, silent) {
+  var schemes = {
+    arangodb: {
+      COLOR_PUNCTUATION: exports.COLORS.COLOR_RESET,
+      COLOR_STRING: exports.COLORS.COLOR_BOLD_MAGENTA,
+      COLOR_NUMBER: exports.COLORS.COLOR_BOLD_GREEN,
+      COLOR_INDEX: exports.COLORS.COLOR_BOLD_CYAN,
+      COLOR_TRUE: exports.COLORS.COLOR_BOLD_MAGENTA,
+      COLOR_FALSE: exports.COLORS.COLOR_BOLD_MAGENTA,
+      COLOR_NULL: exports.COLORS.COLOR_BOLD_YELLOW,
+      COLOR_UNDEFINED: exports.COLORS.COLOR_BOLD_YELLOW
     }
-
-    if (color === undefined || color === null) {
-      color = null;
-    }
-    else if (typeof color === "string") {
-      var c;
-
-      color = color.toLowerCase();
-
-      if (schemes.hasOwnProperty(color)) {
-        colors = schemes[color];
-
-        for (c in exports.COLORS) {
-          if (exports.COLORS.hasOwnProperty(c) && ! colors.hasOwnProperty(c)) {
-            colors[c] = exports.COLORS[c];
-          }
-        }
-      }
-      else {
-        colors = exports.COLORS;
-
-        var setColor = function (key) {
-          [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
-            'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
-            colors[what] = exports.COLORS[key];
-          });
-        };
-
-        for (c in exports.COLORS) {
-          if (exports.COLORS.hasOwnProperty(c) &&
-              c.replace(/^COLOR_/, '').toLowerCase() === color) {
-            setColor(c);
-            break;
-          }
-        }
-      }
-    }
-
-    useColor = true;
   };
+
+  if (!useColor && !silent) {
+    exports.print("starting color printing");
+  }
+
+  if (color === undefined || color === null) {
+    color = null;
+  }
+  else if (typeof color === "string") {
+    color = color.toLowerCase();
+    var c;
+
+    if (schemes.hasOwnProperty(color)) {
+      colors = schemes[color];
+
+      for (c in exports.COLORS) {
+        if (exports.COLORS.hasOwnProperty(c) && ! colors.hasOwnProperty(c)) {
+          colors[c] = exports.COLORS[c];
+        }
+      }
+    }
+    else {
+      colors = exports.COLORS;
+
+      var setColor = function (key) {
+        [ 'COLOR_STRING', 'COLOR_NUMBER', 'COLOR_INDEX', 'COLOR_TRUE',
+          'COLOR_FALSE', 'COLOR_NULL', 'COLOR_UNDEFINED' ].forEach(function (what) {
+          colors[what] = exports.COLORS[key];
+        });
+      };
+
+      for (c in exports.COLORS) {
+        if (exports.COLORS.hasOwnProperty(c) &&
+            c.replace(/^COLOR_/, '').toLowerCase() === color) {
+          setColor(c);
+          break;
+        }
+      }
+    }
+  }
+
+  useColor = true;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stopColorPrint
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.stopColorPrint = function (silent) {
-    'use strict';
+exports.stopColorPrint = function (silent) {
+  if (useColor && !silent) {
+    exports.print("disabled color printing");
+  }
 
-    if (useColor && ! silent) {
-      exports.print("disabled color printing");
-    }
-
-    useColor = false;
-  };
+  useColor = false;
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                          public utility functions
@@ -99024,39 +98892,36 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief exponentialBackoff
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.exponentialBackOff = function (n, i) {
-    'use strict';
-    if (i === 0) {
-      return 0;
-    }
-    if (n === 0) {
-      return 0;
-    }
-    if (n === 1) {
-      return Math.random() < 0.5 ? 0 : i;
-    }
-    return Math.floor(Math.random() * (n + 1)) * i;
-  };
+exports.exponentialBackOff = function (n, i) {
+  if (i === 0) {
+    return 0;
+  }
+  if (n === 0) {
+    return 0;
+  }
+  if (n === 1) {
+    return Math.random() < 0.5 ? 0 : i;
+  }
+  return Math.floor(Math.random() * (n + 1)) * i;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief env
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof ENV !== 'undefined') {
-    exports.env = new ENV();
-    delete ENV;
-  }
+if (typeof ENV !== 'undefined') {
+  exports.env = new global.ENV();
+  delete global.ENV;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief options
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_OPTIONS !== 'undefined') {
-    exports.options = SYS_OPTIONS;
-    delete SYS_OPTIONS;
-  }
-
-}());
+if (typeof SYS_OPTIONS !== 'undefined') {
+  exports.options = global.SYS_OPTIONS;
+  delete global.SYS_OPTIONS;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                         global printing functions
@@ -99066,31 +98931,25 @@ Object.defineProperty(Object.prototype, "propertyKeys", {
 /// @brief print
 ////////////////////////////////////////////////////////////////////////////////
 
-function print () {
-  'use strict';
-
+global.print = function print () {
   var internal = require("internal");
   internal.print.apply(internal.print, arguments);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief printf
 ////////////////////////////////////////////////////////////////////////////////
 
-function printf () {
-  'use strict';
-
+global.printf = function printf () {
   var internal = require("internal");
   internal.printf.apply(internal.printf, arguments);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print_plain
 ////////////////////////////////////////////////////////////////////////////////
 
-function print_plain () {
-  'use strict';
-
+global.print_plain = function print_plain () {
   var output = require("internal").output;
   var printRecursive = require("internal").printRecursive;
   var i;
@@ -99122,47 +98981,41 @@ function print_plain () {
   }
 
   output("\n");
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start_pretty_print
 ////////////////////////////////////////////////////////////////////////////////
 
-function start_pretty_print () {
-  'use strict';
-
+global.start_pretty_print = function start_pretty_print () {
   require("internal").startPrettyPrint();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop_pretty_print
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_pretty_print () {
-  'use strict';
-
+global.stop_pretty_print = function stop_pretty_print () {
   require("internal").stopPrettyPrint();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief start_color_print
 ////////////////////////////////////////////////////////////////////////////////
 
-function start_color_print (color) {
-  'use strict';
-
+global.start_color_print = function start_color_print (color) {
   require("internal").startColorPrint(color, false);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop_color_print
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_color_print () {
-  'use strict';
-
+global.stop_color_print = function stop_color_print () {
   require("internal").stopColorPrint();
-}
+};
+
+}());
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
@@ -99173,8 +99026,8 @@ function stop_color_print () {
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
 
-/*jshint strict: false, -W051: true */
-/*global require, ArangoConnection, SYS_ARANGO, window */
+/*jshint -W051:true */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -99207,26 +99060,23 @@ function stop_color_print () {
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
-// -----------------------------------------------------------------------------
-// --SECTION--                                                 private variables
-// -----------------------------------------------------------------------------
-
 (function () {
-  var internal = require("internal");
+
+var exports = require("internal");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hide global variables
 ////////////////////////////////////////////////////////////////////////////////
 
-    if (typeof ArangoConnection !== "undefined") {
-      internal.ArangoConnection = ArangoConnection;
-      delete ArangoConnection;
-    }
+if (global.ArangoConnection) {
+  exports.ArangoConnection = global.ArangoConnection;
+  delete global.ArangoConnection;
+}
 
-    if (typeof SYS_ARANGO !== "undefined") {
-      internal.arango = SYS_ARANGO;
-      delete SYS_ARANGO;
-    }
+if (global.SYS_ARANGO) {
+  exports.arango = global.SYS_ARANGO;
+  delete global.SYS_ARANGO;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -99236,212 +99086,212 @@ function stop_color_print () {
 /// @brief write-ahead log functionality
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.wal = {
-    flush: function (waitForSync, waitForCollector) {
-      if (typeof internal.arango !== 'undefined') {
-        var wfs = waitForSync ? "true" : "false";
-        var wfc = waitForCollector ? "true" : "false";
-        internal.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
-        return;
-      }
-
-      throw "not connected";
-    },
-
-    properties: function (value) {
-      if (typeof internal.arango !== 'undefined') {
-        if (value !== undefined) {
-          return internal.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
-        }
-
-        return internal.arango.GET("/_admin/wal/properties", "");
-      }
-
-      throw "not connected";
+exports.wal = {
+  flush: function (waitForSync, waitForCollector) {
+    if (exports.arango) {
+      var wfs = waitForSync ? "true" : "false";
+      var wfc = waitForCollector ? "true" : "false";
+      exports.arango.PUT("/_admin/wal/flush?waitForSync=" + wfs + "&waitForCollector=" + wfc, "");
+      return;
     }
-  };
+
+    throw "not connected";
+  },
+
+  properties: function (value) {
+    if (exports.arango) {
+      if (value !== undefined) {
+        return exports.arango.PUT("/_admin/wal/properties", JSON.stringify(value));
+      }
+
+      return exports.arango.GET("/_admin/wal/properties", "");
+    }
+
+    throw "not connected";
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the AQL user functions
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.reloadAqlFunctions = function () {
-    if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/aql/reload", "");
-      return;
-    }
+exports.reloadAqlFunctions = function () {
+  if (exports.arango) {
+    exports.arango.POST("/_admin/aql/reload", "");
+    return;
+  }
 
-    throw "not connected";
-  };
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief rebuilds the routing cache
-////////////////////////////////////////////////////////////////////////////////
-
-  internal.reloadRouting = function () {
-    if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/routing/reload", "");
-      return;
-    }
-
-    throw "not connected";
-  };
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rebuilds the routing cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.routingCache = function () {
-    if (typeof internal.arango !== 'undefined') {
-      return internal.arango.GET("/_admin/routing/routes", "");
+exports.reloadRouting = function () {
+  if (exports.arango) {
+    exports.arango.POST("/_admin/routing/reload", "");
+    return;
+  }
 
-    }
+  throw "not connected";
+};
 
-    throw "not connected";
-  };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief rebuilds the routing cache
+////////////////////////////////////////////////////////////////////////////////
+
+exports.routingCache = function () {
+  if (exports.arango) {
+    return exports.arango.GET("/_admin/routing/routes", "");
+
+  }
+
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rebuilds the authentication cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.reloadAuth = function () {
-    if (typeof internal.arango !== 'undefined') {
-      internal.arango.POST("/_admin/auth/reload", "");
-      return;
-    }
+exports.reloadAuth = function () {
+  if (exports.arango) {
+    exports.arango.POST("/_admin/auth/reload", "");
+    return;
+  }
 
-    throw "not connected";
-  };
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief execute javascript file on the server
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.executeServer = function (body) {
-    if (typeof internal.arango !== 'undefined') {
-      return internal.arango.POST("/_admin/execute", body);
-    }
+exports.executeServer = function (body) {
+  if (exports.arango) {
+    return exports.arango.POST("/_admin/execute", body);
+  }
 
-    throw "not connected";
-  };
+  throw "not connected";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a request in curl format
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendCurlRequest = function (appender) {
-    return function (method, url, body, headers) {
-      var response;
-      var curl;
-      var i;
+exports.appendCurlRequest = function (appender) {
+  return function (method, url, body, headers) {
+    var response;
+    var curl;
+    var i;
 
-      if (typeof body !== 'string') {
-        body = internal.inspect(body);
-      }
+    if (typeof body !== 'string') {
+      body = exports.inspect(body);
+    }
 
-      curl = "shell> curl ";
+    curl = "shell> curl ";
 
-      if (method === 'POST') {
-        response = internal.arango.POST_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'PUT') {
-        response = internal.arango.PUT_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'GET') {
-        response = internal.arango.GET_RAW(url, headers);
-      }
-      else if (method === 'DELETE') {
-        response = internal.arango.DELETE_RAW(url, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'PATCH') {
-        response = internal.arango.PATCH_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'HEAD') {
-        response = internal.arango.HEAD_RAW(url, headers);
-        curl += "-X " + method + " ";
-      }
-      else if (method === 'OPTION') {
-        response = internal.arango.OPTION_RAW(url, body, headers);
-        curl += "-X " + method + " ";
-      }
-      if (headers !== undefined && headers !== "") {
-        for (i in headers) {
-          if (headers.hasOwnProperty(i)) {
-            curl += "--header \'" + i + ": " + headers[i] + "\' ";
-          }
+    if (method === 'POST') {
+      response = exports.arango.POST_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'PUT') {
+      response = exports.arango.PUT_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'GET') {
+      response = exports.arango.GET_RAW(url, headers);
+    }
+    else if (method === 'DELETE') {
+      response = exports.arango.DELETE_RAW(url, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'PATCH') {
+      response = exports.arango.PATCH_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'HEAD') {
+      response = exports.arango.HEAD_RAW(url, headers);
+      curl += "-X " + method + " ";
+    }
+    else if (method === 'OPTION') {
+      response = exports.arango.OPTION_RAW(url, body, headers);
+      curl += "-X " + method + " ";
+    }
+    if (headers !== undefined && headers !== "") {
+      for (i in headers) {
+        if (headers.hasOwnProperty(i)) {
+          curl += "--header \'" + i + ": " + headers[i] + "\' ";
         }
       }
+    }
 
-      if (body !== undefined && body !== "") {
-        curl += "--data-binary @- ";
-      }
+    if (body !== undefined && body !== "") {
+      curl += "--data-binary @- ";
+    }
 
-      curl += "--dump - http://localhost:8529" + url;
+    curl += "--dump - http://localhost:8529" + url;
 
-      appender(curl + "\n");
+    appender(curl + "\n");
 
-      if (body !== undefined && body !== "" && body !== "undefined") {
-        appender(body + "\n");
-      }
+    if (body !== undefined && body !== "" && body) {
+      appender(body + "\n");
+    }
 
-      appender("\n");
+    appender("\n");
 
-      return response;
-    };
+    return response;
   };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a raw response
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendRawResponse = function (appender) {
-    return function (response) {
-      var key;
-      var headers = response.headers;
+exports.appendRawResponse = function (appender) {
+  return function (response) {
+    var key;
+    var headers = response.headers;
 
-      // generate header
-      appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
+    // generate header
+    appender("HTTP/1.1 " + headers['http/1.1'] + "\n");
 
-      for (key in headers) {
-        if (headers.hasOwnProperty(key)) {
-          if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
-              && key !== 'content-length') {
-            appender(key + ": " + headers[key] + "\n");
-          }
+    for (key in headers) {
+      if (headers.hasOwnProperty(key)) {
+        if (key !== 'http/1.1' && key !== 'server' && key !== 'connection'
+            && key !== 'content-length') {
+          appender(key + ": " + headers[key] + "\n");
         }
       }
+    }
 
+    appender("\n");
+
+    // append body
+    if (response.body !== undefined) {
+      appender(exports.inspect(response.body));
       appender("\n");
-
-      // append body
-      if (response.body !== undefined) {
-        appender(internal.inspect(response.body));
-        appender("\n");
-      }
-    };
+    }
   };
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logs a response in JSON
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.appendJsonResponse = function (appender) {
-    return function (response) {
-      var rawAppend = internal.appendRawResponse(appender);
+exports.appendJsonResponse = function (appender) {
+  return function (response) {
+    var rawAppend = exports.appendRawResponse(appender);
 
-      // copy original body (this is necessary because "response" is passed by reference)
-      var copy = response.body;
-      // overwrite body with parsed JSON && append
-      response.body = JSON.parse(response.body);
-      rawAppend(response);
-      // restore original body
-      response.body = copy;
-    };
+    // copy original body (this is necessary because "response" is passed by reference)
+    var copy = response.body;
+    // overwrite body with parsed JSON && append
+    response.body = JSON.parse(response.body);
+    rawAppend(response);
+    // restore original body
+    response.body = copy;
   };
+};
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -99451,40 +99301,39 @@ function stop_color_print () {
 /// @brief log function
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.log = function (level, msg) {
-    internal.output(level, ": ", msg, "\n");
-  };
+exports.log = function (level, msg) {
+  exports.output(level, ": ", msg, "\n");
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sprintf wrapper
 ////////////////////////////////////////////////////////////////////////////////
 
-  try {
-    if (window) {
-      internal.sprintf = function (format) {
-        var n = arguments.length;
-        if (n === 0) {
-          return "";
-        }
-        if (n <= 1) {
-          return String(format);
-        }
+try {
+  if (typeof window !== 'undefined') {
+    exports.sprintf = function (format) {
+      var n = arguments.length;
+      if (n === 0) {
+        return "";
+      }
+      if (n <= 1) {
+        return String(format);
+      }
 
-        var i;
-        var args = [ ];
-        for (i = 1; i < arguments.length; ++i) {
-          args.push(arguments[i]);
-        }
-        i = 0;
+      var i;
+      var args = [ ];
+      for (i = 1; i < arguments.length; ++i) {
+        args.push(arguments[i]);
+      }
+      i = 0;
 
-        return format.replace(/%[dfs]/, function () {
-          return String(args[i++]);
-        });
-      };
-    }
+      return format.replace(/%[dfs]/, function () {
+        return String(args[i++]);
+      });
+    };
   }
-  catch (err) {
-  }
+}
+catch (e) {}
 
 }());
 
@@ -99497,7 +99346,7 @@ function stop_color_print () {
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|/// @page\\|// --SECTION--\\|/// @\\}\\|/\\*jslint"
 // End:
 
-/*jshint globalstrict:true, -W051:true */
+/*jshint -W051:true */
 /*global global:true, window, require */
 'use strict';
 
@@ -99702,8 +99551,9 @@ global.tutorial = require("org/arangodb/tutorial");
 // outline-regexp: "\\(/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @\\}\\)"
 // End:
 
-/*jshint -W051: true */
-/*global require, SYS_GETLINE, SYS_LOG, jqconsole, Symbol */
+/*jshint -W051:true */
+/*global jqconsole, Symbol */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -99732,38 +99582,37 @@ global.tutorial = require("org/arangodb/tutorial");
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  /*jshint strict: false */
-  var exports = require("console");
-
-  var sprintf = require("internal").sprintf;
-  var inspect = require("internal").inspect;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
+
+(function () {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+var exports = require("console");
+var sprintf = require("internal").sprintf;
+var inspect = require("internal").inspect;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief group level
 ////////////////////////////////////////////////////////////////////////////////
 
-  var groupLevel = "";
+var groupLevel = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timers
 ////////////////////////////////////////////////////////////////////////////////
 
-  var timers;
-  try {
-    timers = Object.create(null);
-  }
-  catch (err) {
-    timers = {};
-  }
+var timers;
+try {
+  timers = Object.create(null);
+}
+catch (e) {
+  timers = {};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -99773,68 +99622,65 @@ global.tutorial = require("org/arangodb/tutorial");
 /// @brief internal logging
 ////////////////////////////////////////////////////////////////////////////////
 
-  var log;
+var log;
 
-  try {
-    // this will work when we are in arangod but not in the browser / web interface
-    log = SYS_LOG;
-    delete SYS_LOG;
-  }
-  catch (err) {
-    // this will work in the web interface
-    log = function (level, message) {
-      if (jqconsole) {
-        jqconsole.Write(message + "\n", 'jssuccess');
-      }
-    };
-  }
+if (global.SYS_LOG) {
+  // this will work when we are in arangod but not in the browser / web interface
+  log = global.SYS_LOG;
+  delete global.SYS_LOG;
+}
+else {
+  // this will work in the web interface
+  log = function (level, message) {
+    if (typeof jqconsole !== 'undefined') {
+      jqconsole.Write(message + "\n", 'jssuccess');
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal logging with group level
 ////////////////////////////////////////////////////////////////////////////////
 
-  function logGroup (level, msg) {
-    'use strict';
-
-    log(level, groupLevel + msg);
-  }
+function logGroup (level, msg) {
+  log(level, groupLevel + msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to prettify
 ////////////////////////////////////////////////////////////////////////////////
 
-  function prepareArgs (args) {
-    var ShapedJson = require("internal").ShapedJson;
-    var result = [];
-    var i;
+function prepareArgs (args) {
+  var ShapedJson = require("internal").ShapedJson;
+  var result = [];
 
-    if (0 < args.length && typeof args[0] !== "string") {
-      result.push("%s");
-    }
-
-    for (i = 0;  i < args.length;  ++i) {
-      var arg = args[i];
-
-      if (typeof arg === "object") {
-        if (ShapedJson !== undefined && arg instanceof ShapedJson) {
-          arg = inspect(arg, {prettyPrint: false});
-        }
-        else if (arg === null) {
-          arg = "null";
-        }
-        else if (arg instanceof Date || arg instanceof RegExp) {
-          arg = String(arg);
-        }
-        else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
-          arg = inspect(arg, {prettyPrint: false});
-        }
-      }
-
-      result.push(arg);
-    }
-
-    return result;
+  if (0 < args.length && typeof args[0] !== "string") {
+    result.push("%s");
   }
+
+  for (var i = 0; i < args.length; ++i) {
+    var arg = args[i];
+
+    if (typeof arg === "object") {
+      if (ShapedJson !== undefined && arg instanceof ShapedJson) {
+        arg = inspect(arg, {prettyPrint: false});
+      }
+      else if (arg === null) {
+        arg = "null";
+      }
+      else if (arg instanceof Date || arg instanceof RegExp) {
+        arg = String(arg);
+      }
+      else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
+        arg = inspect(arg, {prettyPrint: false});
+      }
+    }
+
+    result.push(arg);
+  }
+
+  return result;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -99844,329 +99690,297 @@ global.tutorial = require("org/arangodb/tutorial");
 /// @brief assert
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.assert = function (condition) {
-    'use strict';
+exports.assert = function (condition) {
+  if (condition) {
+    return;
+  }
 
-    if (condition) {
-      return;
-    }
+  var args = Array.prototype.slice.call(arguments, 1);
+  var msg;
 
-    var args = Array.prototype.slice.call(arguments, 1);
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(args));
+  }
+  catch (e) {
+    msg = e + ": " + args;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(args));
-    }
-    catch (err) {
-      msg = err + ": " + args;
-    }
+  logGroup("error", msg);
 
-    logGroup("error", msg);
-
-    require('assert').ok(condition, msg);
-  };
+  require('assert').ok(condition, msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debug
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.debug = function () {
-    'use strict';
+exports.debug = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("debug", msg);
-  };
+  logGroup("debug", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.debugLines = function () {
-    'use strict';
+exports.debugLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+  var a = msg.split("\n");
+  var i;
 
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("debug", a[i]);
-    }
-  };
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("debug", a[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dir
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.dir = function (object) {
-    'use strict';
-
-    logGroup("info", inspect(object));
-  };
+exports.dir = function (object) {
+  logGroup("info", inspect(object));
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.error = function () {
-    'use strict';
+exports.error = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("error", msg);
-  };
+  logGroup("error", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief errorLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.errorLines = function () {
-    'use strict';
+exports.errorLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("error", a[i]);
-    }
-  };
+  var a = msg.split("\n");
+  for (var i = 0; i < a.length; ++i) {
+    logGroup("error", a[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getline
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GETLINE !== "undefined") {
-    exports.getline = SYS_GETLINE;
-    delete SYS_GETLINE;
-  }
+if (global.SYS_GETLINE) {
+  exports.getline = global.SYS_GETLINE;
+  delete global.SYS_GETLINE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief group
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.group = function () {
-    'use strict';
+exports.group = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    groupLevel = groupLevel + "  ";
-    logGroup("info", msg);
-  };
+  groupLevel = groupLevel + "  ";
+  logGroup("info", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief groupCollapsed
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.groupCollapsed = function () {
-    'use strict';
+exports.groupCollapsed = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("info", msg);
-    groupLevel = groupLevel + "  ";
-  };
+  logGroup("info", msg);
+  groupLevel = groupLevel + "  ";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief groupEnd
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.groupEnd = function () {
-    'use strict';
-
-    groupLevel = groupLevel.substr(2);
-  };
+exports.groupEnd = function () {
+  groupLevel = groupLevel.substr(2);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief info
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.info = function () {
-    'use strict';
+exports.info = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("info", msg);
-  };
+  logGroup("info", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief infoLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.infoLines = function () {
-    'use strict';
+exports.infoLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+  var a = msg.split("\n");
+  var i;
 
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("info", a[i]);
-    }
-  };
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("info", a[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.log = exports.info;
+exports.log = exports.info;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.logLines = exports.infoLines;
+exports.logLines = exports.infoLines;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.time = function (label) {
-    'use strict';
+exports.time = function (label) {
+  if (typeof label !== 'string') {
+    throw new Error('label must be a string');
+  }
 
-    if (typeof label !== 'string') {
-      throw new Error('label must be a string');
-    }
+  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
 
-    var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
-
-    timers[symbol] = Date.now();
-  };
+  timers[symbol] = Date.now();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeEnd
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.timeEnd = function(label) {
-    'use strict';
+exports.timeEnd = function(label) {
+  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
+  var time = timers[symbol];
 
-    var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
-    var time = timers[symbol];
+  if (! time) {
+    throw new Error('No such label: ' + label);
+  }
 
-    if (! time) {
-      throw new Error('No such label: ' + label);
-    }
+  var duration = Date.now() - time;
 
-    var duration = Date.now() - time;
+  delete timers[symbol];
 
-    delete timers[symbol];
-
-    logGroup("info", sprintf('%s: %dms', label, duration));
+  logGroup("info", sprintf('%s: %dms', label, duration));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief trace
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.trace = function () {
-    var err = new Error();
-    err.name = 'trace';
-    err.message = sprintf.apply(sprintf, prepareArgs(arguments));
-    Error.captureStackTrace(err, exports.trace);
-    logGroup("info", err.stack);
-  };
+exports.trace = function () {
+  var err = new Error();
+  err.name = 'trace';
+  err.message = sprintf.apply(sprintf, prepareArgs(arguments));
+  Error.captureStackTrace(err, exports.trace);
+  logGroup("info", err.stack);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief warn
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.warn = function () {
-    'use strict';
+exports.warn = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("warning", msg);
-  };
+  logGroup("warning", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief warnLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.warnLines = function () {
-    'use strict';
+exports.warnLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+  var a = msg.split("\n");
+  var i;
 
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("warning", a[i]);
-    }
-  };
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("warning", a[i]);
+  }
+};
 
 }());
 
@@ -100963,7 +100777,7 @@ window.Users = Backbone.Model.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
+/*global Backbone, window, arangoCollectionModel, $, arangoHelper, data, _ */
 (function() {
   "use strict";
 
@@ -101293,7 +101107,7 @@ window.Users = Backbone.Model.extend({
 
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global require, exports, Backbone, window, arangoDocument, arangoDocumentModel, $, arangoHelper */
+/*global Backbone, window, arangoDocument, arangoDocumentModel, $, arangoHelper */
 
 window.arangoDocument = Backbone.Collection.extend({
   url: '/_api/document/',
@@ -101516,7 +101330,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
+/*global window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
 (function() {
   "use strict";
 
@@ -101877,7 +101691,7 @@ window.arangoDocument = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
+/*global Backbone, activeUser, window, ArangoQuery, $, data, _, arangoHelper*/
 (function() {
   "use strict";
 
@@ -102039,7 +101853,7 @@ window.ArangoReplication = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, window */
+/*global Backbone, window */
 window.StatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
   url: "/_admin/statistics"
@@ -102047,7 +101861,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global require, exports, Backbone, window */
+/*global Backbone, window */
 window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   model: window.StatisticsDescription,
   url: "/_admin/statistics-description",
@@ -102409,7 +102223,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, templateEngine */
+/*global Backbone, EJS, $, window, arangoHelper, templateEngine */
 
 (function() {
     "use strict";
@@ -102529,7 +102343,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
+/*global Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
 /*global templateEngine*/
 
 (function() {
@@ -102967,7 +102781,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, window, exports, Backbone, EJS, $, templateEngine, arangoHelper, Joi*/
+/*global window, exports, Backbone, EJS, $, templateEngine, arangoHelper, Joi*/
 
 (function() {
   "use strict";
@@ -103679,7 +103493,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
+/*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, console, Dygraph, _,templateEngine */
 
 (function () {
@@ -104804,7 +104618,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
+/*global Backbone, EJS, $, window, arangoHelper, jsoneditor, templateEngine */
 /*global document, _ */
 
 (function() {
@@ -105087,7 +104901,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
+/*global arangoHelper, _, $, window, arangoHelper, templateEngine, Joi, btoa */
 
 (function() {
   "use strict";
@@ -106489,7 +106303,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 }());
 
 /*jshint browser: true */
-/*global require, $, Joi, _, alert, templateEngine*/
+/*global $, Joi, _, alert, templateEngine*/
 (function() {
   "use strict";
 
@@ -107503,7 +107317,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
+/*global Backbone, EJS, arangoHelper, window, setTimeout, $, templateEngine*/
 
 (function() {
   "use strict";
@@ -108419,7 +108233,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
+/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _ */
 /*global _, arangoHelper, templateEngine, jQuery, Joi*/
 
 (function () {
@@ -108628,7 +108442,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
+/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {
@@ -109559,7 +109373,7 @@ window.ArangoUsers = Backbone.Collection.extend({
 
 /*jshint browser: true, evil: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
+/*global Backbone, EJS, $, window, ace, jqconsole, handler, help, location*/
 /*global templateEngine*/
 
 (function() {

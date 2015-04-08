@@ -1,5 +1,5 @@
-/*jshint strict: true, maxlen: 50000 */
-/*global require, assertTrue, assertFalse, assertEqual, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 50000 */
+/*global assertTrue, assertFalse, assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for fulltext indexes
@@ -36,7 +36,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function fulltextCreateSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsFulltext";
   var c = null;
 
@@ -300,7 +300,7 @@ function fulltextCreateSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function fulltextQuerySuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsFulltext";
   var collection = null;
   var idx = null;
@@ -1387,7 +1387,7 @@ function fulltextQuerySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /*
 function fulltextQuerySubstringSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsFulltext";
   var collection = null;
   var idx = null;

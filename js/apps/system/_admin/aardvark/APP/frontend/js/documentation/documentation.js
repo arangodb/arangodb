@@ -1,5 +1,5 @@
 /*jshint browser: true */
-/*global require, SwaggerUi, $, hljs*/
+/*global SwaggerUi, $, hljs*/
 (function() {
   "use strict";
   var internal = require("internal");

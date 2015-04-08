@@ -68576,7 +68576,7 @@ ArangoConnection.prototype.PATCH = ArangoConnection.prototype.patch;
 // outline-regexp: "/// @brief\\|/// @addtogroup\\|// --SECTION--\\|/// @page\\|/// @}"
 // End:
 
-/*global require, _, Dygraph, window, document */
+/*global _, Dygraph, window, document */
 
 (function () {
   "use strict";
@@ -70409,7 +70409,6 @@ module.define("underscore", function(exports, module) {
 
 module.define("org/arangodb/aql/functions", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
@@ -70830,7 +70829,7 @@ exports.toArray         = toArrayFunctions;
 
 module.define("org/arangodb/graph/traversal", function(exports, module) {
 /*jshint strict: false, unused: false */
-/*global require, exports, ArangoClusterComm, AQL_QUERY_IS_KILLED */
+/*global ArangoClusterComm, AQL_QUERY_IS_KILLED */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Traversal "classes"
@@ -72586,7 +72585,6 @@ exports.Traverser                       = ArangoTraverser;
 
 module.define("org/arangodb/arango-collection-common", function(exports, module) {
 /*jshint strict: false, unused: false, maxlen: 200 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -73629,7 +73627,6 @@ ArangoCollection.prototype.updateByExample = function (example, newValue, keepNu
 
 module.define("org/arangodb/arango-collection", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
@@ -75012,7 +75009,6 @@ ArangoCollection.prototype.updateByExample = function (example,
 
 module.define("org/arangodb/arango-database", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
@@ -76057,7 +76053,6 @@ ArangoDatabase.prototype._executeTransaction = function (data) {
 
 module.define("org/arangodb/arango-query-cursor", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoQueryCursor
@@ -76318,7 +76313,6 @@ ArangoQueryCursor.prototype._baseurl = function () {
 
 module.define("org/arangodb/arango-statement-common", function(exports, module) {
 /*jshint strict: false */
-/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango statements
@@ -76558,7 +76552,6 @@ exports.ArangoStatement = ArangoStatement;
 
 module.define("org/arangodb/arango-statement", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement
@@ -76762,7 +76755,6 @@ exports.ArangoStatement = ArangoStatement;
 
 module.define("org/arangodb/arangosh", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -76953,7 +76945,7 @@ exports.helpExtended = exports.createHelpHeadline("More help") +
 
 module.define("org/arangodb/general-graph", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports, ArangoClusterComm */
+/*global ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -81606,7 +81598,6 @@ exports._listObjects = _listObjects;
 
 module.define("org/arangodb/graph-blueprint", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -81975,7 +81966,6 @@ require("org/arangodb/graph/algorithms-common");
 
 module.define("org/arangodb/graph-common", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -82908,7 +82898,6 @@ exports.Iterator = Iterator;
 
 module.define("org/arangodb/graph", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality
@@ -82963,7 +82952,6 @@ Object.keys(gp).forEach(function (m) {
 });
 
 module.define("org/arangodb/is", function(exports, module) {
-/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Check if something is something
@@ -83051,7 +83039,6 @@ module.define("org/arangodb/mimetypes", function(exports, module) {
          vars: true,
          white: true,
          plusplus: true */
-/*global exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from mimetypes.dat
@@ -83138,7 +83125,6 @@ exports.extensions = {
 });
 
 module.define("org/arangodb/replication", function(exports, module) {
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
@@ -83343,7 +83329,6 @@ exports.serverId = serverId;
 
 module.define("org/arangodb/simple-query-common", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -84811,7 +84796,6 @@ exports.SimpleQueryFulltext = SimpleQueryFulltext;
 
 module.define("org/arangodb/simple-query", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Arango Simple Query Language
@@ -85334,7 +85318,6 @@ exports.SimpleQueryWithinRectangle = SimpleQueryWithinRectangle;
 
 module.define("org/arangodb/tutorial", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Shell tutorial
@@ -85542,7 +85525,6 @@ exports._PRINT = function (context) {
 });
 
 module.define("org/arangodb-common", function(exports, module) {
-/*global require, module, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -86076,7 +86058,6 @@ exports.checkParameter = function (usage, descs, vars) {
 });
 
 module.define("org/arangodb", function(exports, module) {
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -86180,7 +86161,6 @@ if (typeof internal.arango !== 'undefined') {
 });
 
 /*jshint maxlen: 240 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from errors.dat
@@ -88531,7 +88511,7 @@ function stop_color_print () {
 // End:
 
 /*jshint strict: false, -W051: true */
-/*global require, ArangoConnection, SYS_ARANGO, window */
+/*global ArangoConnection, SYS_ARANGO, window */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -88855,7 +88835,7 @@ function stop_color_print () {
 // End:
 
 /*jshint unused: false, -W051: true */
-/*global require, console: true, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
+/*global console: true, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -89079,7 +89059,7 @@ var tutorial = require("org/arangodb/tutorial");
 // End:
 
 /*jshint -W051: true */
-/*global require, SYS_GETLINE, SYS_LOG, jqconsole, Symbol */
+/*global SYS_GETLINE, SYS_LOG, jqconsole, Symbol */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"

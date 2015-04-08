@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined*/
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertTrue, assertFalse, assertUndefined, assertNotUndefined*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -34,7 +35,7 @@
   // -----------------------------------------------------------------------------
 
   var createResult = function(prefixes, list) {
-    "use strict";
+    'use strict';
     var prefix = prefixes.join("/") + "/";
     var res = {};
     _.each(list, function(v, k) {
@@ -68,7 +69,7 @@
     }
   };
   var resetToDefault = function() {
-    "use strict";
+    'use strict';
     var dbServers = {
       "pavel": "sandro",
       "paul": "sally",
@@ -237,14 +238,14 @@
     dummy.sync.interval = "1000";
   };
   var setup = function() {
-    "use strict";
+    'use strict';
     resetToDefault();
     comm = new Communication.Communication();
   };
   var teardown = function() {};
   var agencyMock = {
     get: function(route, recursive) {
-      "use strict";
+      'use strict';
       var parts = route.split("/");
       var res;
       var returnResult = function(base) {
@@ -322,7 +323,7 @@
       fail("Requested route: GET " + route);
     },
     list: function(route, recursive, flat) {
-      "use strict";
+      'use strict';
       var parts = route.split("/");
       var returnResult = function(route) {
         if (parts[1] === agencyRoutes.sub.databases) {
@@ -367,7 +368,7 @@
   };
 
   Communication._createAgency = function() {
-    "use strict";
+    'use strict';
     return agencyMock;
   };
 
@@ -376,7 +377,7 @@
   // -----------------------------------------------------------------------------
 
   function runTargetTests(test) {
-    "use strict";
+    'use strict';
 
   // -----------------------------------------------------------------------------
   // --SECTION--                                                         DBServers
@@ -720,7 +721,7 @@
   // -----------------------------------------------------------------------------
 
   function runPlanTests(test) {
-    "use strict";
+    'use strict';
 
     function DBServersSuite() {
       var servers;
@@ -867,7 +868,7 @@
   // -----------------------------------------------------------------------------
 
   function runCurrentTests(test) {
-    "use strict";
+    'use strict';
     function DBServersSuite() {
       var targetServers;
 
@@ -1033,7 +1034,7 @@
   // -----------------------------------------------------------------------------
 
   function runSyncTests(test) {
-    "use strict";
+    'use strict';
     function HeartbeatSuite() {
       var beats;
 
@@ -1106,7 +1107,7 @@
   // -----------------------------------------------------------------------------
 
   function runHighLevelTests(test) {
-    "use strict";
+    'use strict';
     function ConfigureSuite() {
 
       var targetServers;

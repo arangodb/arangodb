@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertTrue, assertEqual, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the traditional key generators
@@ -43,7 +43,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function TraditionalSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsKeyGen";
 
   return {

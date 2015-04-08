@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, CREATE_CURSOR */
+/*global CREATE_CURSOR */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries

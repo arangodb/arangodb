@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertTrue, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, graph functions

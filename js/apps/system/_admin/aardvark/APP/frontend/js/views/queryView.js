@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
+/*global Backbone, EJS, $, setTimeout, localStorage, ace, Storage, window, _, console */
 /*global _, arangoHelper, templateEngine, jQuery, Joi, d3*/
 
 (function () {

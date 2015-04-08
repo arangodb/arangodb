@@ -1,5 +1,4 @@
-/*jshint strict: true */
-/*global require */
+/*jshint globalstrict:false, strict:false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief teardown for import tests
@@ -29,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
   var db = require("org/arangodb").db;
 
   db._drop("UnitTestsImportJson1");

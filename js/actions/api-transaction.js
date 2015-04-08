@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, TRANSACTION */
+/*global TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief transaction actions
