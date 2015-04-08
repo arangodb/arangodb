@@ -194,6 +194,37 @@ function ModelSpec () {
       assertTrue(instance.isValid);
     },
 
+    testJoiObject: function () {
+      var Model = FoxxModel.extend({
+        schema: joi.object().keys({
+          lol: joi.string()
+        })
+      });
+
+      instance = new Model({lol: 5});
+      assertEqual(_.keys(instance.attributes).length, 1);
+      assertEqual(instance.get("lol"), 5);
+      assertEqual(_.keys(instance.errors).length, 1);
+      assertFalse(instance.isValid);
+    },
+
+    testAttributeDefaults: function () {
+      var special = function () {
+        return 42;
+      };
+
+      var Model = FoxxModel.extend({
+        schema: {
+          aString: joi.any().default("potato"),
+          special: joi.any().default(special, "current date")
+        }
+      });
+
+      instance = new Model();
+      assertEqual(instance.get("aString"), "potato");
+      assertEqual(instance.get("special"), special());
+    },
+
     testCoerceAttributes: function () {
       var Model = FoxxModel.extend({
         schema: {

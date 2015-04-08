@@ -34,7 +34,9 @@ var Repository,
   ArangoError = arangodb.ArangoError,
   ArangoCollection = arangodb.ArangoCollection,
   errors = arangodb.errors,
-  extend = require('extendible');
+  extend = require('extendible'),
+  EventEmitter = require('events').EventEmitter,
+  util = require('util');
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_repository_initializer
@@ -127,7 +129,11 @@ Repository = function (collection, opts) {
       this.collection.ensureIndex(index);
     }, this);
   }
+
+  EventEmitter.call(this);
 };
+
+util.inherits(Repository, EventEmitter);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                           Methods
@@ -155,11 +161,15 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   save: function (model) {
     'use strict';
+    this.emit('beforeCreate', model);
     model.emit('beforeCreate');
+    this.emit('beforeSave', model);
     model.emit('beforeSave');
     var id_and_rev = this.collection.save(model.forDB());
     model.set(id_and_rev);
+    this.emit('afterSave', model);
     model.emit('afterSave');
+    this.emit('afterCreate', model);
     model.emit('afterCreate');
     return model;
   },
@@ -316,9 +326,11 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   remove: function (model) {
     'use strict';
+    this.emit('beforeRemove', model);
     model.emit('beforeRemove');
     var id = model.get('_id'),
       result = this.collection.remove(id);
+    this.emit('afterRemove', model);
     model.emit('afterRemove');
     return result;
   },
@@ -457,13 +469,17 @@ _.extend(Repository.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
   update: function (model, data) {
     'use strict';
+    this.emit('beforeUpdate', model, data);
     model.emit('beforeUpdate', data);
+    this.emit('beforeSave', model, data);
     model.emit('beforeSave', data);
     var id = model.get("_id") || model.get("_key"),
       id_and_rev = this.collection.update(id, data);
     model.set(data);
     model.set(id_and_rev);
+    this.emit('afterSave', model, data);
     model.emit('afterSave', data);
+    this.emit('afterUpdate', model, data);
     model.emit('afterUpdate', data);
     return model;
   },
