@@ -1,4 +1,6 @@
-/*global require, UPGRADE_ARGS: true */
+/*jshint globalstrict:true */
+/*global global, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a new database
@@ -36,18 +38,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  /*jshint strict: false */
   var internal = require("internal");
 
   // do not overwrite arguments set from the calling C++ code
-  if (! UPGRADE_ARGS) {
-    UPGRADE_ARGS = { };
+  if (!global.UPGRADE_ARGS) {
+    global.UPGRADE_ARGS = {};
   }
 
   // merge in our arguments
-  UPGRADE_ARGS.isCluster = true;
-  UPGRADE_ARGS.isCoordinator = true;
-  UPGRADE_ARGS.isRelaunch = false;
+  global.UPGRADE_ARGS.isCluster = true;
+  global.UPGRADE_ARGS.isCoordinator = true;
+  global.UPGRADE_ARGS.isRelaunch = false;
 
   // run the local upgrade-database script
   return internal.loadStartup("server/bootstrap/local-database.js");

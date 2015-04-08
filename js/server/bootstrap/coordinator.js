@@ -1,4 +1,6 @@
-/*global require, ArangoServerState */
+/*jshint globalstrict:true */
+/*global global, require */
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a new database
@@ -36,11 +38,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  var internal = require("internal");
+  var console = require("console");
   return function () {
-    var internal = require("internal");
-    var console = require("console");
-
     // statistics can be turned off
     if (internal.enableStatistics) {
       require("org/arangodb/statistics").startup();
@@ -55,7 +55,7 @@
     // start the queue manager once
     require('org/arangodb/foxx/queues/manager').run();
 
-    console.info("bootstraped coordinator %s", ArangoServerState.id());
+    console.info("bootstraped coordinator %s", global.ArangoServerState.id());
     return true;
   };
 }());
