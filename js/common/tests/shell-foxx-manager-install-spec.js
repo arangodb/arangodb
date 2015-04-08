@@ -37,8 +37,17 @@ var fs = require("fs");
 var errors = require("internal").errors;
 var basePath = fs.makeAbsolute(fs.join(module.startupPath(), "common", "test-data", "apps"));
 
-describe("Foxx Manager install", function() {
+function validateError(type, error) {
+  expect(error instanceof ArangoError).toBeTruthy();
+  expect(error.errorNum).toEqual(
+    type.code,
+    "Invalid code returned: expected " + type.code + " got " + error.errorNum
+    + " Message: " + error
+    + " Trace: " + error.stack
+  );
+}
 
+describe("Foxx Manager install", function() {
   beforeEach(function() {
     try {
       FoxxManager.uninstall("/unittest/broken");
@@ -54,29 +63,16 @@ describe("Foxx Manager install", function() {
   });
 
   describe("failing for an invalid app", function() {
-    var validateError;
-
     beforeEach(function() {
       try {
         FoxxManager.uninstall("/unittest/broken", {force: true});
-      } catch(e) {
-      }
-      validateError = function(type, error) {
-        expect(error instanceof ArangoError).toBeTruthy();
-        expect(error.errorNum).toEqual(
-          type.code,
-          "Invalid code returned: expected " + type.code + " got " + error.errorNum
-          + " Message: " + error
-          + " Trace: " + error.stack
-        );
-      };
+      } catch(e) {}
     });
 
     afterEach(function() {
       try {
         FoxxManager.uninstall("/unittest/broken");
-      } catch(e) {
-      }
+      } catch(e) {}
     });
 
     it("without manifest", function() {
@@ -111,8 +107,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-name"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        expect(e instanceof ArangoError).toBeTruthy();
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
+        validateError(errors.ERROR_INVALID_APPLICATION_MANIFEST, e);
       }
     });
 
@@ -121,8 +116,7 @@ describe("Foxx Manager install", function() {
         FoxxManager.install(fs.join(basePath, "malformed-version"), "/unittest/broken");
         expect(true).toBeFalsy("Managed to install broken application");
       } catch(e) {
-        expect(e instanceof ArangoError).toBeTruthy();
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_APPLICATION_MANIFEST.code);
+        validateError(errors.ERROR_INVALID_APPLICATION_MANIFEST, e);
       }
     });
 
@@ -245,7 +239,6 @@ describe("Foxx Manager install", function() {
   });
 
   describe("success with", function() {
-
     it("a minimal app", function() {
       try {
         FoxxManager.install(fs.join(basePath, "minimal-working-manifest"), "/unittest/broken");
@@ -263,11 +256,9 @@ describe("Foxx Manager install", function() {
       }
       FoxxManager.uninstall("/unittest/broken", {force: true});
     });
-
   });
 
   describe("should not install on invalid mountpoint", function() {
-
     it("starting with _", function() {
       var mount = "/_disallowed";
       try {
@@ -275,7 +266,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -286,7 +277,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -297,7 +288,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -308,7 +299,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -319,7 +310,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -330,7 +321,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -341,7 +332,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -352,7 +343,7 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
 
@@ -363,10 +354,9 @@ describe("Foxx Manager install", function() {
         expect(true).toBeFalsy("Installed app at invalid mountpoint.");
         FoxxManager.uninstall(mount);
       } catch(e) {
-        expect(e.errorNum).toEqual(errors.ERROR_INVALID_MOUNTPOINT.code);
+        validateError(errors.ERROR_INVALID_MOUNTPOINT, e);
       }
     });
-
   });
 
   it("checking marvolous comments", function() {
@@ -389,5 +379,4 @@ describe("Foxx Manager install", function() {
       expect(e).toBeUndefined();
     }
   });
-
 });
