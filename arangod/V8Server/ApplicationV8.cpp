@@ -28,6 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationV8.h"
+#include <libplatform/libplatform.h>
+
+#include <thread>
+
 #include "Actions/actions.h"
 #include "Aql/QueryRegistry.h"
 #include "ApplicationServer/ApplicationServer.h"
@@ -1056,15 +1060,16 @@ bool ApplicationV8::prepare2 () {
     _contexts[DEFAULT_NAME] = new V8Context*[nrInstances];
   }
 
-  for (size_t i = 0;  i < nrInstances;  ++i) {
-    bool ok = prepareV8Instance(DEFAULT_NAME, i, _useActions);
-
-    if (! ok) {
-      return false;
-    }
+  std::vector<std::thread> threads;
+  _ok = true;
+  for (size_t i = 0; i < nrInstances;  ++i) {
+    threads.push_back(std::thread(&ApplicationV8::prepareV8InstanceInThread, 
+                                  this, DEFAULT_NAME, i, _useActions));
   }
-
-  return true;
+  for (size_t i = 0; i < nrInstances; ++i) {
+    threads[i].join();
+  }
+  return _ok;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
