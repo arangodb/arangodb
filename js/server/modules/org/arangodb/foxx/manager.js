@@ -950,6 +950,7 @@ var _install = function(appInfo, mount, options, runSetup) {
     try {
       fs.removeDirectoryRecursive(targetPath, true);
     } catch (err) {
+      console.errorLines(err.stack);
     }
     try {
       if (!options.__clusterDistribution) {
@@ -964,6 +965,21 @@ var _install = function(appInfo, mount, options, runSetup) {
         });
       }
     } catch (err) {
+      console.errorLines(err.stack);
+    }
+    if (e instanceof ArangoError) {
+      if (e.errorNum === errors.ERROR_MODULE_SYNTAX_ERROR.code) {
+        throw _.extend(new ArangoError({
+          errorNum: errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
+          errorMessage: errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
+        }), {stack: e.stack});
+      }
+      if (e.errorNum === errors.ERROR_MODULE_FAILURE.code) {
+        throw _.extend(new ArangoError({
+          errorNum: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
+          errorMessage: errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
+        }), {stack: e.stack});
+      }
     }
     throw e;
   }

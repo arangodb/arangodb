@@ -63,8 +63,12 @@ describe("Foxx Manager install", function() {
       }
       validateError = function(type, error) {
         expect(error instanceof ArangoError).toBeTruthy();
-        expect(error.errorNum).toEqual(type.code, "Invalid code returned: expected " + type.code + " got "
-          + error.errorNum + " Message: " + String(error) + " Trace: " + error.stack);
+        expect(error.errorNum).toEqual(
+          type.code,
+          "Invalid code returned: expected " + type.code + " got " + error.errorNum
+          + " Message: " + error
+          + " Trace: " + error.stack
+        );
       };
     });
 
