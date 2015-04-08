@@ -1,4 +1,6 @@
+/*jshint globalstrict:true */
 /*global require */
+"use strict";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief autoload modules
@@ -36,26 +38,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  var internal = require("internal");
+  var console = require("console");
+  var db = internal.db;
+
   return {
     startup: function () {
-      var internal = require("internal");
-      var console = require("console");
-      var db = internal.db;
-
       db._useDatabase("_system");
-
       var databases = db._listDatabases();
-      var i;
 
-      for (i = 0;  i < databases.length;  ++i) {
+      for (var i = 0; i < databases.length; ++i) {
         var name = databases[i];
-
         try {
           db._useDatabase(name);
           internal.autoloadModules();
         }
-        catch (err) {
+        catch (e) {
           console.info("trying to autoload new database %s, ignored", name);
         }
       }

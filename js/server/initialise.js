@@ -51,7 +51,7 @@
   load(startupPath + "/server/bootstrap/module-internal.js");
 }());
 
-// globals
+// common globals
 global.Buffer = require("buffer").Buffer;
 global.process = require("process");
 global.setInterval = function () {};

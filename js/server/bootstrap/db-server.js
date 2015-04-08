@@ -1,5 +1,6 @@
-/*jshint -W051: true */
-/*global require, UPGRADE_ARGS: true, UPGRADE_STARTED: true, ArangoServerState */
+/*jshint globalstrict:true, -W051:true */
+/*global global, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a new database
@@ -37,19 +38,17 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  /*jshint strict: false */
+  var internal = require("internal");
+  var console = require("console");
   return function () {
-    var internal = require("internal");
-    var console = require("console");
-
-    // run the local upgrade-database script (UPGRADE_ARGS has been set)
+    // run the local upgrade-database script (global.UPGRADE_ARGS has been set)
     var result = internal.loadStartup("server/upgrade-database.js");
 
-    result = UPGRADE_STARTED && result;
-    delete UPGRADE_STARTED;
-    delete UPGRADE_ARGS;
+    result = global.UPGRADE_STARTED && result;
+    delete global.UPGRADE_STARTED;
+    delete global.UPGRADE_ARGS;
 
-    if (! result) {
+    if (!result) {
       return false;
     }
 
@@ -61,7 +60,7 @@
     // start the queue manager once
     require('org/arangodb/foxx/queues/manager').run();
 
-    console.info("bootstraped DB server %s", ArangoServerState.id());
+    console.info("bootstraped DB server %s", global.ArangoServerState.id());
     return true;
   };
 }());

@@ -1,6 +1,6 @@
-/*jshint -W051: true */
-/*global require, module: true, STARTUP_PATH, DEV_APP_PATH, APP_PATH, MODULES_PATH,
-  EXPORTS_SLOW_BUFFER, SYS_PLATFORM, REGISTER_EXECUTE_FILE, SYS_EXECUTE, SYS_READ */
+/*jshint globalstrict:true, -W051:true */
+/*global global, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript server functions
@@ -37,7 +37,7 @@
 /// @brief top-level module
 ////////////////////////////////////////////////////////////////////////////////
 
-module = null;
+global.module = null;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global functions
@@ -48,8 +48,7 @@ module = null;
 ////////////////////////////////////////////////////////////////////////////////
 
 function require (path) {
-  "use strict";
-  return module.require(path);
+  return global.module.require(path);
 }
 
 // -----------------------------------------------------------------------------
@@ -57,13 +56,12 @@ function require (path) {
 // -----------------------------------------------------------------------------
 
 (function () {
-  /*jshint strict: false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief running under windows
 ////////////////////////////////////////////////////////////////////////////////
 
-  var isWindows = SYS_PLATFORM.substr(0, 3) === 'win';
+  var isWindows = global.SYS_PLATFORM.substr(0, 3) === 'win';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief appPath
@@ -71,9 +69,9 @@ function require (path) {
 
   var appPath;
 
-  if (typeof APP_PATH !== "undefined") {
-    appPath = APP_PATH;
-    delete APP_PATH;
+  if (global.APP_PATH) {
+    appPath = global.APP_PATH;
+    delete global.APP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -82,9 +80,9 @@ function require (path) {
 
   var devAppPath;
 
-  if (typeof DEV_APP_PATH !== "undefined") {
-    devAppPath = DEV_APP_PATH;
-    delete DEV_APP_PATH;
+  if (global.DEV_APP_PATH) {
+    devAppPath = global.DEV_APP_PATH;
+    delete global.DEV_APP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -93,9 +91,9 @@ function require (path) {
 
   var modulesPaths = [];
 
-  if (typeof MODULES_PATH !== "undefined") {
-    modulesPaths = MODULES_PATH;
-    delete MODULES_PATH;
+  if (global.MODULES_PATH) {
+    modulesPaths = global.MODULES_PATH;
+    delete global.MODULES_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -104,8 +102,8 @@ function require (path) {
 
   var startupPath = "";
 
-  if (typeof STARTUP_PATH !== "undefined") {
-    startupPath = STARTUP_PATH;
+  if (global.STARTUP_PATH) {
+    startupPath = global.STARTUP_PATH;
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -164,7 +162,6 @@ function require (path) {
 // -----------------------------------------------------------------------------
 
   function extend(a, b) {
-    'use strict';
     if (b) {
       Object.keys(b).forEach(function (key) {
         a[key] = b[key];
@@ -186,7 +183,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function normalizeModuleName (prefix, path) {
-    'use strict';
 
     var i;
 
@@ -247,7 +243,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function path2FileUri (path) {
-    'use strict';
 
     if (isWindows) {
       path = path.replace(/\\/g, '/');
@@ -287,7 +282,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function fileUri2Path (uri) {
-    'use strict';
 
     if (uri.substr(0, 8) !== "file:///") {
       return null;
@@ -321,7 +315,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function checkModulePathFileNoCache (root, path) {
-    'use strict';
 
     var filename = fs.join(root, path);
     var agumented;
@@ -432,7 +425,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function checkModulePathDb (origin, path) {
-    'use strict';
 
     if (internal.db === undefined) {
       return null;
@@ -493,7 +485,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function createModule (currentModule, currentPackage, description) {
-    'use strict';
     var localModule;
     try {
       localModule = currentPackage.defineModule(
@@ -544,7 +535,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function requireModuleFrom (currentModule, currentPackage, path) {
-    'use strict';
 
     var description = null;
 
@@ -653,7 +643,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function createPackageAndModule (currentModule, currentPackage, path, dirname, filename) {
-    'use strict';
     var desc = JSON.parse(fs.read(filename));
     var mainfile = desc.main || "./index.js";
 
@@ -709,7 +698,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function requirePackageFrom (currentModule, currentPackage, path) {
-    'use strict';
 
     if (currentPackage._origin.substr(0, 10) === "system:///") {
       return null;
@@ -754,7 +742,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function requirePackage (currentModule, path) {
-    'use strict';
 
     var localModule;
     var i;
@@ -783,7 +770,7 @@ function require (path) {
       }
 
       // use the GLOBAL module as current module
-      localModule = requireModuleFrom(module, gpkg, path);
+      localModule = requireModuleFrom(global.module, gpkg, path);
 
       if (localModule !== null) {
         return localModule;
@@ -804,7 +791,7 @@ function require (path) {
     // check if there is a global package with this name
     for (i = 0;  i < globalPackages.length;  ++i) {
       // use the GLOBAL module as current module
-      localModule = requirePackageFrom(module, globalPackages[i], path);
+      localModule = requirePackageFrom(global.module, globalPackages[i], path);
 
       if (localModule !== null) {
         return localModule;
@@ -835,7 +822,7 @@ function require (path) {
       }
 
       // use the GLOBAL module as current module
-      localModule = requireModuleFrom(module, gpkg2, origpath);
+      localModule = requireModuleFrom(global.module, gpkg2, origpath);
 
       if (localModule !== null) {
         return localModule;
@@ -851,7 +838,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function requireModuleAbsolute (currentModule, path) {
-    'use strict';
     path = normalizeModuleName(path);
 
     if (path === "/") {
@@ -870,7 +856,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   function requireModuleRelative (currentModule, path) {
-    'use strict';
     return requireModuleAbsolute(
       currentModule,
       normalizeModuleName(currentModule._path, path)
@@ -881,9 +866,9 @@ function require (path) {
 /// @brief executes a file with preprocessor
 ////////////////////////////////////////////////////////////////////////////////
 
-  REGISTER_EXECUTE_FILE((function () {
-    var read = SYS_READ;
-    var execute = SYS_EXECUTE;
+  global.REGISTER_EXECUTE_FILE((function () {
+    var read = global.SYS_READ;
+    var execute = global.SYS_EXECUTE;
 
     return function (filename) {
       var fileContent = read(filename);
@@ -898,7 +883,7 @@ function require (path) {
     };
   }()));
 
-  delete REGISTER_EXECUTE_FILE;
+  delete global.REGISTER_EXECUTE_FILE;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief cleans up after cancelation
@@ -932,7 +917,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package = function (id, description, parent, origin, isSystem) {
-    'use strict';
 
     this.id = id;			// name of the package
 
@@ -949,7 +933,6 @@ function require (path) {
   };
 
   (function () {
-    'use strict';
 
     var i;
     var pkg;
@@ -969,7 +952,6 @@ function require (path) {
   }());
 
   Package.prototype.createAppModule = function (app, path) {
-    'use strict';
     var libpath = fs.join(app._root, app._path);
     if (app._manifest.hasOwnProperty("lib")) {
       libpath = fs.join(libpath, app._manifest.lib);
@@ -993,7 +975,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype.defineSystemModule = function (path) {
-    'use strict';
 
     if (path[0] !== '/') {
       throw new internal.ArangoError({
@@ -1018,7 +999,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype._PRINT = function (context) {
-    'use strict';
 
     var parent = "";
 
@@ -1037,7 +1017,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype.defineModule = function (id, type, module) {
-    'use strict';
 
     var key = id + "." + type;
 
@@ -1051,7 +1030,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype.clearModule = function (id, type) {
-    'use strict';
 
     var key = id + "." + type;
 
@@ -1063,7 +1041,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype.module = function (id, type) {
-    'use strict';
 
     var key = id + "." + type;
 
@@ -1079,7 +1056,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype.definePackage = function (id, pkg) {
-    'use strict';
 
     this._packageCache[id] = pkg;
 
@@ -1091,7 +1067,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Package.prototype.knownPackage = function (id) {
-    'use strict';
 
     if (this._packageCache.hasOwnProperty(id)) {
       return this._packageCache[id];
@@ -1113,7 +1088,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module = function (id, pkg, appContext, path, origin, isSystem) {
-    'use strict';
 
     this.id = id;                    // commonjs Module/1.1.1
     this.exports = {};               // commonjs Module/1.1.1
@@ -1135,7 +1109,7 @@ function require (path) {
 /// @brief module "/"
 ////////////////////////////////////////////////////////////////////////////////
 
-  module = Module.prototype.root = systemPackage.defineSystemModule("/");
+  global.module = Module.prototype.root = systemPackage.defineSystemModule("/");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -1144,20 +1118,18 @@ function require (path) {
   internal = systemPackage.defineSystemModule("/internal").exports;
 
   (function () {
-    'use strict';
-
     var key;
 
-    for (key in EXPORTS_SLOW_BUFFER) {
-      if (EXPORTS_SLOW_BUFFER.hasOwnProperty(key)) {
-        internal[key] = EXPORTS_SLOW_BUFFER[key];
+    for (key in global.EXPORTS_SLOW_BUFFER) {
+      if (global.EXPORTS_SLOW_BUFFER.hasOwnProperty(key)) {
+        internal[key] = global.EXPORTS_SLOW_BUFFER[key];
       }
     }
 
     internal.cleanupCancelation = cleanupCancelation;
   }());
 
-  delete EXPORTS_SLOW_BUFFER;
+  delete global.EXPORTS_SLOW_BUFFER;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "fs"
@@ -1180,8 +1152,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype._PRINT = function (context) {
-    'use strict';
-
     var type = "module";
 
     if (this._isSystem) {
@@ -1204,7 +1174,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.require = function (path) {
-    'use strict';
 
     // special modules are returned immediately
     if (path === "internal") {
@@ -1254,7 +1223,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.basePaths = function () {
-    'use strict';
     if (appPath === undefined && devAppPath === undefined) {
       return undefined;
     }
@@ -1269,7 +1237,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.appPath = function () {
-    'use strict';
     if (appPath === undefined) {
       return undefined;
     }
@@ -1282,7 +1249,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.oldAppPath = function () {
-    'use strict';
     if (appPath === undefined) {
       return undefined;
     }
@@ -1294,7 +1260,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.devAppPath = function () {
-    'use strict';
     if (devAppPath === undefined) {
       return undefined;
     }
@@ -1306,7 +1271,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.systemAppPath = function () {
-    'use strict';
     return fs.join(startupPath, 'apps', 'system');
   };
 
@@ -1315,7 +1279,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.startupPath = function () {
-    'use strict';
     return startupPath;
   };
 
@@ -1324,7 +1287,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.normalize = function (path) {
-    'use strict';
 
     // normalizeModuleName handles absolute and relative paths
     return normalizeModuleName(this._modulePath, path);
@@ -1358,7 +1320,6 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.createAppPackage = function (app) {
-    'use strict';
     var libpath = fs.join(app._root, app._path);
     if (app._manifest.hasOwnProperty("lib")) {
       libpath = fs.join(libpath, app._manifest.lib);
@@ -1375,7 +1336,6 @@ function require (path) {
   Module.prototype.normalizeModuleName = normalizeModuleName;
 
   Module.prototype.run = function(content, context) {
-    'use strict';
     var filename = fileUri2Path(this._origin);
 
     if (typeof content !== "string") {

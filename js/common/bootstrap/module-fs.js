@@ -1,13 +1,9 @@
-/*jshint -W051: true */
-/*global require, FS_MAKE_DIRECTORY, FS_MAKE_DIRECTORY_RECURSIVE, 
-  FS_MOVE, FS_REMOVE, FS_REMOVE_DIRECTORY, FS_LIST,
-  FS_REMOVE_RECURSIVE_DIRECTORY, FS_EXISTS, FS_CHMOD, FS_IS_DIRECTORY, FS_IS_FILE,
-  FS_MAKE_ABSOLUTE, FS_FILESIZE, FS_GET_TEMP_FILE, FS_GET_TEMP_PATH, FS_LIST_TREE,
-  FS_UNZIP_FILE, FS_ZIP_FILE, FS_MTIME, SYS_READ, SYS_READ_BUFFER, SYS_READ64, SYS_SAVE,
-  PATH_SEPARATOR, HOME */
+/*jshint globalstrict:true, -W051:true */
+/*global global, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief module "js"
+/// @brief module "fs"
 ///
 /// @file
 ///
@@ -57,10 +53,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  /*jshint strict: false */
 
-  var exports = require("fs");
-  var isWindows = require("internal").platform.substr(0, 3) === 'win';
+var exports = require("fs");
+var isWindows = require("internal").platform.substr(0, 3) === 'win';
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       Module "fs"
@@ -74,12 +69,12 @@
 /// @brief pathSeparator
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.pathSeparator = "/";
+exports.pathSeparator = "/";
 
-  if (typeof PATH_SEPARATOR !== "undefined") {
-    exports.pathSeparator = PATH_SEPARATOR;
-    delete PATH_SEPARATOR;
-  }
+if (global.PATH_SEPARATOR) {
+  exports.pathSeparator = global.PATH_SEPARATOR;
+  delete global.PATH_SEPARATOR;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -94,114 +89,104 @@
 /// relative and absolute paths)
 ////////////////////////////////////////////////////////////////////////////////
 
-  function normalizeArray (parts, allowAboveRoot) {
-    'use strict';
+function normalizeArray (parts, allowAboveRoot) {
+  // if the path tries to go above the root, `up` ends up > 0
+  var up = 0;
 
-    var i;
+  for (var i = parts.length - 1; i >= 0; i--) {
+    var last = parts[i];
 
-    // if the path tries to go above the root, `up` ends up > 0
-    var up = 0;
-
-    for (i = parts.length - 1; i >= 0; i--) {
-      var last = parts[i];
-
-      if (last === '.') {
-        parts.splice(i, 1);
-      }
-      else if (last === '..') {
-        parts.splice(i, 1);
-        up++;
-      }
-      else if (up) {
-        parts.splice(i, 1);
-        up--;
-      }
+    if (last === '.') {
+      parts.splice(i, 1);
     }
-
-    // if the path is allowed to go above the root, restore leading ..s
-    if (allowAboveRoot) {
-      for (up; up--; up) {
-        parts.unshift('..');
-      }
+    else if (last === '..') {
+      parts.splice(i, 1);
+      up++;
     }
-
-    return parts;
+    else if (up) {
+      parts.splice(i, 1);
+      up--;
+    }
   }
+
+  // if the path is allowed to go above the root, restore leading ..s
+  if (allowAboveRoot) {
+    for (up; up--; up) {
+      parts.unshift('..');
+    }
+  }
+
+  return parts;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes a path string
 ////////////////////////////////////////////////////////////////////////////////
 
-  var splitDeviceRe =
-    /^([a-zA-Z]:|[\\\/]{2}[^\\\/]+[\\\/]+[^\\\/]+)?([\\\/])?([\s\S]*?)$/;
+var splitDeviceRe =
+  /^([a-zA-Z]:|[\\\/]{2}[^\\\/]+[\\\/]+[^\\\/]+)?([\\\/])?([\s\S]*?)$/;
 
-  function normalizeUNCRoot (device) {
-    'use strict';
+function normalizeUNCRoot (device) {
+  return '\\\\' + device.replace(/^[\\\/]+/, '').replace(/[\\\/]+/g, '\\');
+}
 
-    return '\\\\' + device.replace(/^[\\\/]+/, '').replace(/[\\\/]+/g, '\\');
+function normalizeWindows (path) {
+  var result = splitDeviceRe.exec(path);
+  var device = result[1] || '';
+  var isUnc = device && device.charAt(1) !== ':';
+  var isAbsolute = !!result[2] || isUnc; // UNC paths are always absolute
+  var tail = result[3];
+  var trailingSlash = /[\\\/]$/.test(tail);
+
+  // If device is a drive letter, we'll normalize to lower case.
+  if (device && device.charAt(1) === ':') {
+    device = device[0].toLowerCase() + device.substr(1);
   }
 
-  function normalizeWindows (path) {
-    'use strict';
+  // Normalize the tail path
+  tail = normalizeArray(tail.split(/[\\\/]+/).filter(function(p) {
+    return !!p;
+  }), !isAbsolute).join('\\');
 
-    var result = splitDeviceRe.exec(path);
-    var device = result[1] || '';
-    var isUnc = device && device.charAt(1) !== ':';
-    var isAbsolute = !!result[2] || isUnc; // UNC paths are always absolute
-    var tail = result[3];
-    var trailingSlash = /[\\\/]$/.test(tail);
-
-    // If device is a drive letter, we'll normalize to lower case.
-    if (device && device.charAt(1) === ':') {
-      device = device[0].toLowerCase() + device.substr(1);
-    }
-
-    // Normalize the tail path
-    tail = normalizeArray(tail.split(/[\\\/]+/).filter(function(p) {
-      return !!p;
-    }), !isAbsolute).join('\\');
-
-    if (!tail && !isAbsolute) {
-      tail = '.';
-    }
-    if (tail && trailingSlash) {
-      tail += '\\';
-    }
-
-    // Convert slashes to backslashes when `device` points to an UNC root.
-    // Also squash multiple slashes into a single one where appropriate.
-
-    if (isUnc) {
-      device = normalizeUNCRoot(device);
-    }
-
-    return device + (isAbsolute ? '\\' : '') + tail;
+  if (!tail && !isAbsolute) {
+    tail = '.';
+  }
+  if (tail && trailingSlash) {
+    tail += '\\';
   }
 
-  function normalizePosix (path) {
-    'use strict';
+  // Convert slashes to backslashes when `device` points to an UNC root.
+  // Also squash multiple slashes into a single one where appropriate.
 
-    var isAbsolute = path.charAt(0) === '/';
-    var trailingSlash = path.substr(-1) === '/';
-
-    // Normalize the path
-    path = normalizeArray(path.split('/').filter(function(p) {
-      return !!p;
-    }), !isAbsolute).join('/');
-
-    if (!path && !isAbsolute) {
-      path = '.';
-    }
-    if (path && trailingSlash) {
-      path += '/';
-    }
-
-    return (isAbsolute ? '/' : '') + path;
+  if (isUnc) {
+    device = normalizeUNCRoot(device);
   }
 
-  var normalize = isWindows ? normalizeWindows : normalizePosix;
+  return device + (isAbsolute ? '\\' : '') + tail;
+}
 
-  exports.normalize = normalize;
+function normalizePosix (path) {
+  var isAbsolute = path.charAt(0) === '/';
+  var trailingSlash = path.substr(-1) === '/';
+
+  // Normalize the path
+  path = normalizeArray(path.split('/').filter(function(p) {
+    return !!p;
+  }), !isAbsolute).join('/');
+
+  if (!path && !isAbsolute) {
+    path = '.';
+  }
+  if (path && trailingSlash) {
+    path += '/';
+  }
+
+  return (isAbsolute ? '/' : '') + path;
+}
+
+var normalize = isWindows ? normalizeWindows : normalizePosix;
+
+exports.normalize = normalize;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -211,357 +196,345 @@
 /// @brief exists
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_EXISTS !== "undefined") {
-    exports.exists = FS_EXISTS;
-    delete FS_EXISTS;
-  }
+if (global.FS_EXISTS) {
+  exports.exists = global.FS_EXISTS;
+  delete global.FS_EXISTS;
+}
 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief chmod
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_CHMOD !== "undefined") {
-    exports.chmod = FS_CHMOD;
-    delete FS_CHMOD;
-  }
+if (global.FS_CHMOD) {
+  exports.chmod = global.FS_CHMOD;
+  delete global.FS_CHMOD;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getTempFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_GET_TEMP_FILE !== "undefined") {
-    exports.getTempFile = FS_GET_TEMP_FILE;
-    delete FS_GET_TEMP_FILE;
-  }
+if (global.FS_GET_TEMP_FILE) {
+  exports.getTempFile = global.FS_GET_TEMP_FILE;
+  delete global.FS_GET_TEMP_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getTempPath
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_GET_TEMP_PATH !== "undefined") {
-    exports.getTempPath = FS_GET_TEMP_PATH;
-    delete FS_GET_TEMP_PATH;
-  }
+if (global.FS_GET_TEMP_PATH) {
+  exports.getTempPath = global.FS_GET_TEMP_PATH;
+  delete global.FS_GET_TEMP_PATH;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief home
 ////////////////////////////////////////////////////////////////////////////////
 
-  var homeDirectory = "";
+var homeDirectory = "";
 
-  if (typeof HOME !== "undefined") {
-    homeDirectory = HOME;
-    delete HOME;
-  }
+if (global.HOME) {
+  homeDirectory = global.HOME;
+  delete global.HOME;
+}
 
-  exports.home = function () {
-    'use strict';
-
-    return homeDirectory;
-  };
+exports.home = function () {
+  return homeDirectory;
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_IS_DIRECTORY !== "undefined") {
-    exports.isDirectory = FS_IS_DIRECTORY;
-    delete FS_IS_DIRECTORY;
-  }
+if (global.FS_IS_DIRECTORY) {
+  exports.isDirectory = global.FS_IS_DIRECTORY;
+  delete global.FS_IS_DIRECTORY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief isFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_IS_FILE !== "undefined") {
-    exports.isFile = FS_IS_FILE;
-    delete FS_IS_FILE;
-  }
+if (global.FS_IS_FILE) {
+  exports.isFile = global.FS_IS_FILE;
+  delete global.FS_IS_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makeAbsolute
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_MAKE_ABSOLUTE !== "undefined") {
-    exports.makeAbsolute = FS_MAKE_ABSOLUTE;
-    delete FS_MAKE_ABSOLUTE;
-  }
+if (global.FS_MAKE_ABSOLUTE) {
+  exports.makeAbsolute = global.FS_MAKE_ABSOLUTE;
+  delete global.FS_MAKE_ABSOLUTE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief join
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (isWindows) {
+if (isWindows) {
 
-    exports.join = function () {
-      'use strict';
+  exports.join = function () {
+    function f(p) {
+      if (typeof p !== 'string') {
+        throw new TypeError('Arguments to path.join must be strings');
+      }
+      return p;
+    }
 
-      function f(p) {
-        if (typeof p !== 'string') {
-          throw new TypeError('Arguments to path.join must be strings');
-        }
+    var paths = Array.prototype.filter.call(arguments, f);
+    var joined = paths.join('\\');
 
-        return p;
+    // Make sure that the joined path doesn't start with two slashes, because
+    // normalize() will mistake it for an UNC path then.
+    //
+    // This step is skipped when it is very clear that the user actually
+    // intended to point at an UNC path. This is assumed when the first
+    // non-empty string arguments starts with exactly two slashes followed by
+    // at least one more non-slash character.
+    //
+    // Note that for normalize() to treat a path as an UNC path it needs to
+    // have at least 2 components, so we don't filter for that here.
+    // This means that the user can use join to construct UNC paths from
+    // a server name and a share name; for example:
+    //   path.join('//server', 'share') -> '\\\\server\\share\')
+
+    if (!/^[\\\/]{2}[^\\\/]/.test(paths[0])) {
+      joined = joined.replace(/^[\\\/]{2,}/, '\\');
+    }
+
+    return normalize(joined);
+  };
+
+}
+else {
+  exports.join = function () {
+    var paths = Array.prototype.slice.call(arguments, 0);
+
+    return normalize(paths.filter(function(p) {
+      if (typeof p !== 'string') {
+        throw new TypeError('Arguments to path.join must be strings');
       }
 
-      var paths = Array.prototype.filter.call(arguments, f);
-      var joined = paths.join('\\');
+      return p;
+    }).join('/'));
+  };
 
-      // Make sure that the joined path doesn't start with two slashes, because
-      // normalize() will mistake it for an UNC path then.
-      //
-      // This step is skipped when it is very clear that the user actually
-      // intended to point at an UNC path. This is assumed when the first
-      // non-empty string arguments starts with exactly two slashes followed by
-      // at least one more non-slash character.
-      //
-      // Note that for normalize() to treat a path as an UNC path it needs to
-      // have at least 2 components, so we don't filter for that here.
-      // This means that the user can use join to construct UNC paths from
-      // a server name and a share name; for example:
-      //   path.join('//server', 'share') -> '\\\\server\\share\')
-
-      if (!/^[\\\/]{2}[^\\\/]/.test(paths[0])) {
-        joined = joined.replace(/^[\\\/]{2,}/, '\\');
-      }
-
-      return normalize(joined);
-    };
-
-  }
-  else {
-
-    exports.join = function () {
-      'use strict';
-
-      var paths = Array.prototype.slice.call(arguments, 0);
-
-      return normalize(paths.filter(function(p) {
-        if (typeof p !== 'string') {
-          throw new TypeError('Arguments to path.join must be strings');
-        }
-
-        return p;
-      }).join('/'));
-    };
-
-  }
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief safe-join
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (isWindows) {
-    exports.safeJoin = function (base, relative) {
-      'use strict';
+if (isWindows) {
+  exports.safeJoin = function (base, relative) {
+    base = normalize(base + "/");
+    var path = normalizeArray(relative.split(/[\\\/]+/), false).join("/");
 
-      base = normalize(base + "/");
-      var path = normalizeArray(relative.split(/[\\\/]+/), false).join("/");
+    return base + path;
+  };
+}
+else {
+  exports.safeJoin = function (base, relative) {
+    base = normalize(base + "/");
+    var path = normalizeArray(relative.split("/"), false).join("/");
+    base = normalize(base + "/");
 
-      return base + path;
-    };
-  }
-  else {
-    exports.safeJoin = function (base, relative) {
-      'use strict';
-
-      base = normalize(base + "/");
-      var path = normalizeArray(relative.split("/"), false).join("/");
-      base = normalize(base + "/");
-
-      return base + path;
-    };
-  }
+    return base + path;
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief list
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_LIST !== "undefined") {
-    exports.list = FS_LIST;
-    delete FS_LIST;
-  }
+if (global.FS_LIST) {
+  exports.list = global.FS_LIST;
+  delete global.FS_LIST;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief listTree
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_LIST_TREE !== "undefined") {
-    exports.listTree = FS_LIST_TREE;
-    delete FS_LIST_TREE;
-  }
+if (global.FS_LIST_TREE) {
+  exports.listTree = global.FS_LIST_TREE;
+  delete global.FS_LIST_TREE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makeDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_MAKE_DIRECTORY !== "undefined") {
-    exports.makeDirectory = FS_MAKE_DIRECTORY;
-    delete FS_MAKE_DIRECTORY;
-  }
+if (global.FS_MAKE_DIRECTORY) {
+  exports.makeDirectory = global.FS_MAKE_DIRECTORY;
+  delete global.FS_MAKE_DIRECTORY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief makeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_MAKE_DIRECTORY_RECURSIVE !== "undefined") {
-    exports.makeDirectoryRecursive = FS_MAKE_DIRECTORY_RECURSIVE;
-    delete FS_MAKE_DIRECTORY_RECURSIVE;
-  }
+if (global.FS_MAKE_DIRECTORY_RECURSIVE) {
+  exports.makeDirectoryRecursive = global.FS_MAKE_DIRECTORY_RECURSIVE;
+  delete global.FS_MAKE_DIRECTORY_RECURSIVE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief mtime
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_MTIME !== "undefined") {
-    exports.mtime = FS_MTIME;
-    delete FS_MTIME;
-  }
+if (global.FS_MTIME) {
+  exports.mtime = global.FS_MTIME;
+  delete global.FS_MTIME;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief move
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_MOVE !== "undefined") {
-    var move = FS_MOVE;
-    var fs = exports;
-    // File system moving directories fallback function
-    exports.move = function(source, target) {
-      if (fs.isDirectory(source) && !fs.exists(target)) {
-        // File systems cannot move directories correctly
-        var tempFile = fs.getTempFile("zip", false);
-        var tree = fs.listTree(source);
-        var files = [];
-        var i;
-        var filename;
-        for (i = 0;  i < tree.length;  ++i) {
-          filename = fs.join(source, tree[i]);
-          if (fs.isFile(filename)) {
-            files.push(tree[i]);
-          }
+if (typeof global.FS_MOVE) {
+  var move = global.FS_MOVE;
+  var fs = exports;
+  // File system moving directories fallback function
+  exports.move = function(source, target) {
+    if (fs.isDirectory(source) && !fs.exists(target)) {
+      // File systems cannot move directories correctly
+      var tempFile = fs.getTempFile("zip", false);
+      var tree = fs.listTree(source);
+      var files = [];
+      var i;
+      var filename;
+      for (i = 0;  i < tree.length;  ++i) {
+        filename = fs.join(source, tree[i]);
+        if (fs.isFile(filename)) {
+          files.push(tree[i]);
         }
-        var res;
-        if (files.length === 0) {
-          res = fs.makeDirectory(target);
-          fs.removeDirectoryRecursive(source, true);
-        } else {
-          fs.zipFile(tempFile, source, files);
-          res = fs.unzipFile(tempFile, target, false, true);
-          fs.remove(tempFile);
-          fs.removeDirectoryRecursive(source, true);
-        }
-        return res;
       }
-      return move(source, target);
-    };
-    delete FS_MOVE;
-  }
+      var res;
+      if (files.length === 0) {
+        res = fs.makeDirectory(target);
+        fs.removeDirectoryRecursive(source, true);
+      } else {
+        fs.zipFile(tempFile, source, files);
+        res = fs.unzipFile(tempFile, target, false, true);
+        fs.remove(tempFile);
+        fs.removeDirectoryRecursive(source, true);
+      }
+      return res;
+    }
+    return move(source, target);
+  };
+  delete global.FS_MOVE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_READ !== "undefined") {
-    exports.read = SYS_READ;
-    delete SYS_READ;
-  }
+if (global.SYS_READ) {
+  exports.read = global.SYS_READ;
+  delete global.SYS_READ;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief readBuffer and readFileSync
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_READ_BUFFER !== "undefined") {
-    exports.readBuffer = SYS_READ_BUFFER;
-    delete SYS_READ_BUFFER;
-  
-    exports.readFileSync = function (filename, encoding) {
-      if (encoding !== undefined && encoding !== null) {
-        return exports.readBuffer(filename).toString(encoding);
-      }
-      return exports.readBuffer(filename);
-    };
-  }
+if (global.SYS_READ_BUFFER) {
+  exports.readBuffer = global.SYS_READ_BUFFER;
+  delete global.SYS_READ_BUFFER;
+
+  exports.readFileSync = function (filename, encoding) {
+    if (encoding !== undefined && encoding !== null) {
+      return exports.readBuffer(filename).toString(encoding);
+    }
+    return exports.readBuffer(filename);
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read64
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_READ64 !== "undefined") {
-    exports.read64 = SYS_READ64;
-    delete SYS_READ64;
-  }
+if (global.SYS_READ64) {
+  exports.read64 = global.SYS_READ64;
+  delete global.SYS_READ64;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_REMOVE !== "undefined") {
-    exports.remove = FS_REMOVE;
-    delete FS_REMOVE;
-  }
+if (global.FS_REMOVE) {
+  exports.remove = global.FS_REMOVE;
+  delete global.FS_REMOVE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removeDirectory
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_REMOVE_DIRECTORY !== "undefined") {
-    exports.removeDirectory = FS_REMOVE_DIRECTORY;
-    delete FS_REMOVE_DIRECTORY;
-  }
+if (global.FS_REMOVE_DIRECTORY) {
+  exports.removeDirectory = global.FS_REMOVE_DIRECTORY;
+  delete global.FS_REMOVE_DIRECTORY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief removeDirectoryRecursive
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_REMOVE_RECURSIVE_DIRECTORY !== "undefined") {
-    exports.removeDirectoryRecursive = FS_REMOVE_RECURSIVE_DIRECTORY;
-    delete FS_REMOVE_RECURSIVE_DIRECTORY;
-  }
+if (global.FS_REMOVE_RECURSIVE_DIRECTORY) {
+  exports.removeDirectoryRecursive = global.FS_REMOVE_RECURSIVE_DIRECTORY;
+  delete global.FS_REMOVE_RECURSIVE_DIRECTORY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief size
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_FILESIZE !== "undefined") {
-    exports.size = FS_FILESIZE;
-    delete FS_FILESIZE;
-  }
+if (global.FS_FILESIZE) {
+  exports.size = global.FS_FILESIZE;
+  delete global.FS_FILESIZE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief unzipFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_UNZIP_FILE !== "undefined") {
-    exports.unzipFile = FS_UNZIP_FILE;
-    delete FS_UNZIP_FILE;
-  }
+if (global.FS_UNZIP_FILE) {
+  exports.unzipFile = global.FS_UNZIP_FILE;
+  delete global.FS_UNZIP_FILE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SAVE !== "undefined") {
-    exports.write = SYS_SAVE;
-    delete SYS_SAVE;
-  }
+if (global.SYS_SAVE) {
+  exports.write = global.SYS_SAVE;
+  delete global.SYS_SAVE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief writeFileSync (node compatibility)
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.writeFileSync = function (filename, content) {
-    return exports.write(filename, content);
-  };
+exports.writeFileSync = function (filename, content) {
+  return exports.write(filename, content);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief zipFile
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof FS_ZIP_FILE !== "undefined") {
-    exports.zipFile = FS_ZIP_FILE;
-    delete FS_ZIP_FILE;
-  }
+if (global.FS_ZIP_FILE) {
+  exports.zipFile = global.FS_ZIP_FILE;
+  delete global.FS_ZIP_FILE;
+}
 
 }());
 

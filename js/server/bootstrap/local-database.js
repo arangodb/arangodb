@@ -1,5 +1,6 @@
-/*jshint -W051: true */
-/*global require, UPGRADE_STARTED: true, UPGRADE_ARGS: true */
+/*jshint globalstrict:true, -W051:true */
+/*global global, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a new database
@@ -37,7 +38,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  /*jshint strict: false */
   var internal = require("internal");
   var console = require("console");
   var db = internal.db;
@@ -45,9 +45,9 @@
   // run the upgrade-database script
   var result = internal.loadStartup("server/upgrade-database.js");
 
-  result = UPGRADE_STARTED && result;
-  delete UPGRADE_STARTED;
-  delete UPGRADE_ARGS;
+  result = global.UPGRADE_STARTED && result;
+  delete global.UPGRADE_STARTED;
+  delete global.UPGRADE_ARGS;
 
   // set-up foxx routes for this database
   if (result) {
