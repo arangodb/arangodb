@@ -526,7 +526,7 @@
 
       task: function () {
         return createSystemCollection("_users", { 
-          waitForSync : true, 
+          waitForSync : false, 
           shardKeys: [ "user" ] 
         });
       }
@@ -685,7 +685,7 @@
 
       task: function () {
         return createSystemCollection("_graphs", {
-          waitForSync : true,
+          waitForSync : false,
           journalSize: 1024 * 1024
         });
       }
@@ -952,7 +952,7 @@
 
       task: function () {
         return createSystemCollection("_aal", {
-          waitForSync : true,
+          waitForSync : false,
           shardKeys: [ "name", "version" ]
         });
       }
