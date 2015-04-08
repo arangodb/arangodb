@@ -228,7 +228,7 @@ function requireModule (name, route) {
     return { module: require(name) };
   }
   catch (err) {
-    if (err.hasOwnProperty("moduleNotFound") && err.moduleNotFound) {
+    if (err instanceof internal.ArangoError && err.errorNum === internal.errors.ERROR_MODULE_NOT_FOUND.code) {
       return notImplementedFunction(
         route,
         "an error occurred while loading the action module '" + name
