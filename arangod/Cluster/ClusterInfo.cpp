@@ -684,7 +684,7 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
     ++tries;
   }
 
-  while (++tries <= 2) {
+  while (true) {   // left by break
     {
       READ_LOCKER(_lock);
       // look up database by id
@@ -698,6 +698,9 @@ shared_ptr<CollectionInfo> ClusterInfo::getCollection
           return (*it2).second;
         }
       }
+    }
+    if (++tries >= 2) {
+      break;
     }
 
     // must load collections outside the lock
