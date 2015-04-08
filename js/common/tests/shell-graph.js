@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue, assertNotNull, assertNull */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertNotNull, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -44,7 +45,7 @@ var print = arangodb.print;
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphCreationSuite() {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -202,7 +203,7 @@ function GraphCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphBasicsSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -487,7 +488,7 @@ function GraphBasicsSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function VertexSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -619,7 +620,7 @@ function VertexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function EdgeSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",

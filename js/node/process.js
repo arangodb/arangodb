@@ -1,5 +1,5 @@
 /*jshint esnext: true, strict: false, unused: false, -W051: true */
-/*global require, module, exports:true */
+/*global exports:true */
 var EventEmitter = require('events').EventEmitter;
 exports = module.exports = new EventEmitter();
 exports.env = require("internal").env;

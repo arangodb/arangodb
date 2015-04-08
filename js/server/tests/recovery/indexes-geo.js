@@ -1,5 +1,5 @@
-/*jshint strict: true, unused : false */
-/*global require, assertEqual, assertFalse, assertTrue, assertNotNull */
+/*jshint globalstrict:false, strict:false, unused : false */
+/*global assertEqual, assertFalse, assertTrue, assertNotNull */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for transactions
 ///
@@ -33,7 +33,7 @@ var simple = require("org/arangodb/simple-query");
 var jsunity = require("jsunity");
 
 function runSetup () {
-  "use strict";
+  'use strict';
   internal.debugClearFailAt();
   
   db._drop("UnitTestsRecovery1");
@@ -79,7 +79,7 @@ function runSetup () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
-  "use strict";
+  'use strict';
   jsunity.jsUnity.attachAssertions();
 
   return {
@@ -152,7 +152,7 @@ function recoverySuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
-  "use strict";
+  'use strict';
   if (argv[1] === "setup") {
     runSetup();
     return 0;

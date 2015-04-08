@@ -1,4 +1,5 @@
-/*global require, describe, beforeEach, it, expect, spyOn, createSpy, createSpyObj */
+/*jshint globalstrict:false, strict:false */
+/*global describe, beforeEach, it, expect, spyOn, createSpy, createSpyObj */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Spec for foxx repository

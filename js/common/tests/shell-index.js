@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the index
@@ -41,7 +42,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function indexSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 
@@ -231,7 +232,7 @@ function indexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getIndexesSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 
@@ -571,7 +572,7 @@ function getIndexesSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function getIndexesEdgesSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionIdx";
   var collection = null;
 

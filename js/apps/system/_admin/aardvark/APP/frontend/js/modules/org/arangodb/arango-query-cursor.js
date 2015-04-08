@@ -1,6 +1,6 @@
 module.define("org/arangodb/arango-query-cursor", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports, more:true */
+/*global more:true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoQueryCursor

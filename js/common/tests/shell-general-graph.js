@@ -1,5 +1,5 @@
-/*jshint unused: false */
-/*global require, assertEqual, assertTrue, assertFalse, fail */
+/*jshint globalstrict:false, strict:false, unused: false */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the general-graph class
@@ -45,7 +45,7 @@ var _ = require("underscore");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphCreationSuite() {
-  "use strict";
+  'use strict';
   var rn = "UnitTestRelationName";
   var rn1 = "UnitTestRelationName1";
   var vn1 = "UnitTestVerticies1";
@@ -689,7 +689,7 @@ function GeneralGraphCreationSuite() {
 // -----------------------------------------------------------------------------
 
 function GeneralGraphAQLQueriesSuite() {
-  "use strict";
+  'use strict';
   // Definition of names
   var graphName = "UnitTestsGraph";
   var included = "UnitTestIncluded";
@@ -957,7 +957,7 @@ function GeneralGraphAQLQueriesSuite() {
 }
 
 function ChainedFluentAQLResultsSuite() {
-  "use strict";
+  'use strict';
 
   var gn = "UnitTestGraph";
   var user = "UnitTestUsers";
@@ -1810,7 +1810,7 @@ function ChainedFluentAQLResultsSuite() {
 }
 
 function EdgesAndVerticesSuite() {
-  "use strict";
+  'use strict';
 
   var g;
   var vertexId1, vertexId2;
@@ -2385,7 +2385,7 @@ function EdgesAndVerticesSuite() {
 }
 
 function GeneralGraphCommonNeighborsSuite() {
-  "use strict";
+  'use strict';
   var testGraph, actual;
 
   var v1ColName = "UnitTestsAhuacatlVertex1";
@@ -2611,7 +2611,7 @@ function GeneralGraphCommonNeighborsSuite() {
 }
 
 function OrphanCollectionSuite() {
-  "use strict";
+  'use strict';
   var prefix = "UnitTestGraphVertexCollection",
     g1,
     g2,
@@ -2783,7 +2783,7 @@ function OrphanCollectionSuite() {
 }
 
 function MeasurementsSuite() {
-  "use strict";
+  'use strict';
   var g;
   var vertexId1, vertexId2;
   var unitTestGraphName = "unitTestGraph";

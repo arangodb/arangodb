@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, AQL_EXECUTE, assertTrue, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, AQL_EXECUTE, assertTrue, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for optimizer rules

@@ -1,4 +1,4 @@
-/*global require, ArangoAgency */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief server initialisation
@@ -41,11 +41,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
   var internal = require("internal");
 
   // in the cluster the kickstarter will call boostrap-role.js
-  if (ArangoAgency.prefix() !== "") {
+  if (global.ArangoAgency.prefix() !== "") {
     return true;
   }
 

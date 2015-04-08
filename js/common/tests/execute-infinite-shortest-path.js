@@ -1,5 +1,4 @@
-/*jshint strict: true, unused:false */
-/*global require */
+/*jshint globalstrict:false, strict:false, unused:false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -29,7 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 function main(args) {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",

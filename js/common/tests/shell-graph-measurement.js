@@ -1,5 +1,5 @@
-/*jshint unused:false */
-/*global require, assertEqual, assertException */
+/*jshint globalstrict:false, strict:false, unused:false */
+/*global assertEqual, assertException */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -40,7 +40,7 @@ var jsunity = require("jsunity"),
 ////////////////////////////////////////////////////////////////////////////////
 
 function measurementSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/general-graph"),
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -215,7 +215,7 @@ function measurementSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function geodesicSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/general-graph"),
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -383,7 +383,7 @@ function geodesicSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function normalizedSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/general-graph"),
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",

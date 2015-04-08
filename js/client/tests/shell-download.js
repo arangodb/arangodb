@@ -1,5 +1,5 @@
-/*jshint strict: true, sub: true */
-/*global require, fail, assertEqual, assertTrue, assertFalse, assertNotEqual, arango */
+/*jshint globalstrict:false, strict:false, sub: true */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNotEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test download function
@@ -42,7 +42,7 @@ var fs = require("fs");
 ////////////////////////////////////////////////////////////////////////////////
 
 function DownloadSuite () {
-  "use strict";
+  'use strict';
   var tempDir;
   var tempName;
 

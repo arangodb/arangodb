@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Replication management
@@ -46,8 +46,6 @@ var applier = { };
 ////////////////////////////////////////////////////////////////////////////////
 
 logger.state = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/logger-state");
@@ -61,8 +59,6 @@ logger.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.start = function (initialTick) {
-  'use strict';
-
   var db = internal.db;
   var append = "";
 
@@ -81,8 +77,6 @@ applier.start = function (initialTick) {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.stop = applier.shutdown = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.PUT("/_api/replication/applier-stop", "");
@@ -96,8 +90,6 @@ applier.stop = applier.shutdown = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.state = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/applier-state");
@@ -111,8 +103,6 @@ applier.state = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.forget = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.DELETE("/_api/replication/applier-state");
@@ -126,8 +116,6 @@ applier.forget = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 applier.properties = function (config) {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult;
@@ -153,8 +141,6 @@ applier.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var sync = function (config) {
-  'use strict';
-
   var db = internal.db;
 
   var body = JSON.stringify(config || { });
@@ -170,8 +156,6 @@ var sync = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var serverId = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/replication/server-id");

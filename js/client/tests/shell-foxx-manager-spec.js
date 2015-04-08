@@ -1,5 +1,5 @@
-/*jshint globalstrict: true */
-/*global module, require, describe, beforeEach, afterEach, it, expect*/
+/*jshint globalstrict:false, strict:false, globalstrict: true */
+/*global describe, beforeEach, afterEach, it, expect*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Spec for foxx manager
@@ -28,7 +28,7 @@
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-"use strict";
+'use strict';
 
 var FoxxManager = require("org/arangodb/foxx/manager");
 var fs = require("fs");

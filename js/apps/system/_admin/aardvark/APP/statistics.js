@@ -1,4 +1,4 @@
-/*global require, applicationContext, ArangoServerState, ArangoClusterInfo, ArangoClusterComm*/
+/*global applicationContext, ArangoServerState, ArangoClusterInfo, ArangoClusterComm*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to handle the statistics

@@ -1,5 +1,6 @@
-/*jshint strict: true, maxlen : 200 */
-/*global require, fail, assertTrue, assertEqual, TRANSACTION */
+/*jshint globalstrict:false, strict:false, maxlen : 200 */
+/*global fail, assertTrue, assertEqual, TRANSACTION */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for transactions
 ///
@@ -35,7 +36,7 @@ var db = arangodb.db;
 var testHelper = require("org/arangodb/test-helper").Helper;
 
 var compareStringIds = function (l, r) {
-  "use strict";
+  'use strict';
   var i;
   if (l.length !== r.length) {
     return l.length - r.length < 0 ? -1 : 1;
@@ -52,7 +53,7 @@ var compareStringIds = function (l, r) {
 };
   
 var sortedKeys = function (col) {
-  "use strict";
+  'use strict';
   var keys = [ ];
 
   col.toArray().forEach(function (d) { 
@@ -64,7 +65,7 @@ var sortedKeys = function (col) {
 };
 
 var assertOrder = function (keys, col) {
-  "use strict";
+  'use strict';
   assertEqual(keys.length, col.count());
   assertEqual(keys, col.first(keys.length).map(function (doc) { return doc._key; }));
 };
@@ -78,7 +79,7 @@ var assertOrder = function (keys, col) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionInvocationSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -326,7 +327,7 @@ function transactionInvocationSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionCollectionsSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -901,7 +902,7 @@ function transactionCollectionsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionOperationsSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -1795,7 +1796,7 @@ function transactionOperationsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionBarriersSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -1930,7 +1931,7 @@ function transactionBarriersSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionGraphSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsVertices";
   var cn2 = "UnitTestsEdges";
 
@@ -2189,7 +2190,7 @@ function transactionGraphSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionRollbackSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsTransaction1";
 
   var c1 = null;
@@ -3485,7 +3486,7 @@ function transactionRollbackSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionCountSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsTransaction1";
 
   var c1 = null;
@@ -3679,7 +3680,7 @@ function transactionCountSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionCrossCollectionSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsTransaction1";
   var cn2 = "UnitTestsTransaction2";
 
@@ -4004,7 +4005,7 @@ function transactionCrossCollectionSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionConstraintsSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsTransaction";
 
   var c = null;
@@ -4232,7 +4233,7 @@ function transactionConstraintsSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function transactionServerFailuresSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsTransaction";
 
   var c = null;

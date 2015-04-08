@@ -1,5 +1,5 @@
-/*jshint unused: false */
-/*global require, start_pretty_print */
+/*jshint globalstrict:false, unused:false */
+/*global start_pretty_print */
 
 var yaml = require("js-yaml");
 

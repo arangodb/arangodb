@@ -1,5 +1,3 @@
-/*jshint globalstrict:true */
-/*global exports */
 'use strict';
 function SessionNotFound(sid) {
   this.message = 'Session with session id ' + sid + ' not found.';

@@ -1,4 +1,5 @@
-/*global require, fail, assertTrue, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the endpoints
@@ -43,7 +44,7 @@ var originalEndpoint = arango.getEndpoint().replace(/localhost/, '127.0.0.1');
 ////////////////////////////////////////////////////////////////////////////////
 
 function EndpointsSuite () {
-  "use strict";
+  'use strict';
   var cleanupEndpoints = function () {
     db._useDatabase("_system");
 

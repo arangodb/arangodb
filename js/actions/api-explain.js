@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, AQL_EXPLAIN */
+/*global AQL_EXPLAIN */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief query explain actions

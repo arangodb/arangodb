@@ -1,5 +1,4 @@
-/*jshint strict: false, unused: false */
-/*global ArangoAgency, ArangoClusterComm, ArangoClusterInfo, ArangoServerState, require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript cluster functionality
@@ -180,15 +179,15 @@ function writeLocked (lockInfo, cb, args) {
     timeout *= 10;
   }
 
-  ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
+  global.ArangoAgency.lockWrite(lockInfo.part, ttl, timeout);
 
   try {
-    cb.apply(this, args);
-    ArangoAgency.increaseVersion(lockInfo.part + "/Version");
-    ArangoAgency.unlockWrite(lockInfo.part, timeout);
+    cb.apply(null, args);
+    global.ArangoAgency.increaseVersion(lockInfo.part + "/Version");
+    global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
   }
   catch (err) {
-    ArangoAgency.unlockWrite(lockInfo.part, timeout);
+    global.ArangoAgency.unlockWrite(lockInfo.part, timeout);
     throw err;
   }
 }
@@ -249,10 +248,10 @@ function getLocalCollections () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createLocalDatabases (plannedDatabases) {
-  var ourselves = ArangoServerState.id();
+  var ourselves = global.ArangoServerState.id();
 
   var createDatabaseAgency = function (payload) {
-    ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
+    global.ArangoAgency.set("Current/Databases/" + payload.name + "/" + ourselves,
                      payload);
   };
 
@@ -302,11 +301,11 @@ function createLocalDatabases (plannedDatabases) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function dropLocalDatabases (plannedDatabases) {
-  var ourselves = ArangoServerState.id();
+  var ourselves = global.ArangoServerState.id();
 
   var dropDatabaseAgency = function (payload) {
     try {
-      ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ourselves);
+      global.ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ourselves);
     }
     catch (err) {
       // ignore errors
@@ -341,11 +340,11 @@ function dropLocalDatabases (plannedDatabases) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function cleanupCurrentDatabases () {
-  var ourselves = ArangoServerState.id();
+  var ourselves = global.ArangoServerState.id();
 
   var dropDatabaseAgency = function (payload) {
     try {
-      ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ourselves);
+      global.ArangoAgency.remove("Current/Databases/" + payload.name + "/" + ourselves);
     }
     catch (err) {
       // ignore errors
@@ -355,7 +354,7 @@ function cleanupCurrentDatabases () {
   var db = require("internal").db;
   db._useDatabase("_system");
 
-  var all = ArangoAgency.get("Current/Databases", true);
+  var all = global.ArangoAgency.get("Current/Databases", true);
   var currentDatabases = getByPrefix3d(all, "Current/Databases/");
   var localDatabases = getLocalDatabases();
   var name;
@@ -383,7 +382,7 @@ function cleanupCurrentDatabases () {
 /// @brief handle database changes
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleDatabaseChanges (plan, current) {
+function handleDatabaseChanges (plan) {
   var plannedDatabases = getByPrefix(plan, "Plan/Databases/");
 
   createLocalDatabases(plannedDatabases);
@@ -396,10 +395,10 @@ function handleDatabaseChanges (plan, current) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function createLocalCollections (plannedCollections) {
-  var ourselves = ArangoServerState.id();
+  var ourselves = global.ArangoServerState.id();
 
   var createCollectionAgency = function (database, shard, payload) {
-    ArangoAgency.set("Current/Collections/" + database + "/" + payload.planId + "/" + shard,
+    global.ArangoAgency.set("Current/Collections/" + database + "/" + payload.planId + "/" + shard,
                      payload);
   };
 
@@ -636,11 +635,11 @@ function createLocalCollections (plannedCollections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function dropLocalCollections (plannedCollections) {
-  var ourselves = ArangoServerState.id();
+  var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, shardID, id) {
     try {
-      ArangoAgency.remove("Current/Collections/" + database + "/" + id + "/" + shardID);
+      global.ArangoAgency.remove("Current/Collections/" + database + "/" + id + "/" + shardID);
     }
     catch (err) {
       // ignore errors
@@ -707,11 +706,11 @@ function dropLocalCollections (plannedCollections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function cleanupCurrentCollections (plannedCollections) {
-  var ourselves = ArangoServerState.id();
+  var ourselves = global.ArangoServerState.id();
 
   var dropCollectionAgency = function (database, collection, shardID) {
     try {
-      ArangoAgency.remove("Current/Collections/" + database + "/" + collection + "/" + shardID);
+      global.ArangoAgency.remove("Current/Collections/" + database + "/" + collection + "/" + shardID);
     }
     catch (err) {
       // ignore errors
@@ -721,7 +720,7 @@ function cleanupCurrentCollections (plannedCollections) {
   var db = require("internal").db;
   db._useDatabase("_system");
 
-  var all = ArangoAgency.get("Current/Collections", true);
+  var all = global.ArangoAgency.get("Current/Collections", true);
   var currentCollections = getByPrefix4d(all, "Current/Collections/");
   var shardMap = getShardMap(plannedCollections);
   var database;
@@ -765,7 +764,7 @@ function cleanupCurrentCollections (plannedCollections) {
 /// @brief handle collection changes
 ////////////////////////////////////////////////////////////////////////////////
 
-function handleCollectionChanges (plan, current) {
+function handleCollectionChanges (plan) {
   var plannedCollections = getByPrefix3d(plan, "Plan/Collections/");
 
   createLocalCollections(plannedCollections);
@@ -799,7 +798,7 @@ var raiseError = function (code, msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var shardList = function (dbName, collectionName) {
-  var ci = ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
+  var ci = global.ArangoClusterInfo.getCollectionInfo(dbName, collectionName);
 
   if (ci === undefined || typeof ci !== 'object') {
     throw "unable to determine shard list for '" + dbName + "/" + collectionName + "'";
@@ -828,7 +827,7 @@ var wait = function (data, shards) {
   var received = [ ];
 
   while (received.length < shards.length) {
-    var result = ArangoClusterComm.wait(data);
+    var result = global.ArangoClusterComm.wait(data);
     var status = result.status;
 
     if (status === "ERROR") {
@@ -879,8 +878,8 @@ var wait = function (data, shards) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var isCluster = function () {
-  return (typeof ArangoServerState !== "undefined" &&
-          ArangoServerState.initialised());
+  return (typeof global.ArangoServerState !== "undefined" &&
+          global.ArangoServerState.initialised());
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -892,7 +891,7 @@ var isCoordinator = function () {
     return false;
   }
 
-  return ArangoServerState.isCoordinator();
+  return global.ArangoServerState.isCoordinator();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -904,7 +903,7 @@ var role = function () {
     return undefined;
   }
 
-  return ArangoServerState.role();
+  return global.ArangoServerState.role();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -916,7 +915,7 @@ var status = function () {
     return undefined;
   }
 
-  return ArangoServerState.status();
+  return global.ArangoServerState.status();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -941,8 +940,8 @@ var handlePlanChange = function () {
   }
 
   try {
-    var plan    = ArangoAgency.get("Plan", true);
-    var current = ArangoAgency.get("Current", true);
+    var plan    = global.ArangoAgency.get("Plan", true);
+    var current = global.ArangoAgency.get("Current", true);
 
     handleChanges(plan, current);
     console.info("plan change handling successful");
@@ -959,7 +958,7 @@ var handlePlanChange = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var dispatcherDisabled = function () {
-  return ArangoServerState.disableDispatcherFrontend();
+  return global.ArangoServerState.disableDispatcherFrontend();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -970,7 +969,7 @@ var coordinatorId = function () {
   if (! isCoordinator()) {
     console.error("not a coordinator");
   }
-  return ArangoServerState.id();
+  return global.ArangoServerState.id();
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -978,21 +977,21 @@ var coordinatorId = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var bootstrapDbServers = function (isRelaunch) {
-  ArangoClusterInfo.reloadDBServers();
+  global.ArangoClusterInfo.reloadDBServers();
 
-  var dbServers = ArangoClusterInfo.getDBServers();
+  var dbServers = global.ArangoClusterInfo.getDBServers();
   var ops = [];
   var i;
 
   var options = {
-    coordTransactionID: ArangoClusterInfo.uniqid(),
+    coordTransactionID: global.ArangoClusterInfo.uniqid(),
     timeout: 90
   };
 
   for (i = 0;  i < dbServers.length;  ++i) {
     var server = dbServers[i];
 
-    var op = ArangoClusterComm.asyncRequest(
+    var op = global.ArangoClusterComm.asyncRequest(
       "POST",
       "server:" + server,
       "_system",
@@ -1007,7 +1006,7 @@ var bootstrapDbServers = function (isRelaunch) {
   var result = true;
 
   for (i = 0;  i < ops.length;  ++i) {
-    var r = ArangoClusterComm.wait(ops[i]);
+    var r = global.ArangoClusterComm.wait(ops[i]);
 
     if (r.status === "RECEIVED") {
       console.info("bootstraped DB server %s", dbServers[i]);

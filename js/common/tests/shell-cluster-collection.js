@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertTrue, assertFalse, assertNull */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test collection functionality in a cluster
@@ -41,7 +42,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterCollectionSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

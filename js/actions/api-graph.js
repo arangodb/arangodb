@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, AQL_EXECUTE */
+/*global AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief graph api

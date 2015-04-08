@@ -1,4 +1,4 @@
-/*global module, require, exports, print, printf */
+/*global print, printf */
 
 // Reporter
 //  progress [default]: Dots

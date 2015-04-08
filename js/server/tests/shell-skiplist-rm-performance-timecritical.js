@@ -1,4 +1,5 @@
-/*global require, assertFalse */
+/*jshint globalstrict:false, strict:false */
+/*global assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the performance of removal with a skip-list index
@@ -39,7 +40,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function SkipListPerfSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionSkiplistPerf";
   var collection = null;
 

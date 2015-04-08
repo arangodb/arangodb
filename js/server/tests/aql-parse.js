@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 700 */
-/*global require, assertEqual, assertTrue */
+/*jshint globalstrict:false, strict:false, maxlen: 700 */
+/*global assertEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, PARSE function

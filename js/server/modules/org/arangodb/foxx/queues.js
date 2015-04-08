@@ -1,4 +1,4 @@
-/*global module, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx queues
@@ -31,29 +31,20 @@ var _ = require('underscore'),
   flatten = require('internal').flatten,
   arangodb = require('org/arangodb'),
   console = require('console'),
-  db = arangodb.db,
-  failImmutable,
-  queueMap,
-  jobMap,
-  queues,
-  getJobs,
-  Job,
-  Queue;
+  db = arangodb.db;
 
-failImmutable = function (name) {
-  'use strict';
+function failImmutable(name) {
   return function () {
     throw new Error(name + ' is not mutable');
   };
-};
+}
 
-queueMap = Object.create(null);
-jobMap = Object.create(null);
+var queueMap = Object.create(null);
+var jobMap = Object.create(null);
 
-queues = {
+var queues = {
   _jobTypes: Object.create(null),
   get: function (key) {
-    'use strict';
 
     var queueKey = db._name() + ":" + key;
     if (!queueMap[queueKey]) {
@@ -65,7 +56,6 @@ queues = {
     return queueMap[queueKey];
   },
   create: function (key, maxWorkers) {
-    'use strict';
     try {
       db._queues.save({_key: key, maxWorkers: maxWorkers || 1});
     } catch (err) {
@@ -84,7 +74,6 @@ queues = {
     return queueMap[queueKey];
   },
   delete: function (key) {
-    'use strict';
     var result = false;
     db._executeTransaction({
       collections: {
@@ -101,7 +90,6 @@ queues = {
     return result;
   },
   registerJobType: function (type, opts) {
-    'use strict';
     if (typeof opts === 'function') {
       opts = {execute: opts};
     }
@@ -116,8 +104,7 @@ queues = {
   }
 };
 
-getJobs = function (queue, status, type) {
-  'use strict';
+function getJobs(queue, status, type) {
   var vars = {},
     aql = 'FOR job IN _jobs';
   if (queue !== undefined) {
@@ -137,10 +124,9 @@ getJobs = function (queue, status, type) {
     query: aql,
     bindVars: vars
   }).execute().toArray();
-};
+}
 
-Job = function Job(id) {
-  'use strict';
+function Job(id) {
   var self = this;
   Object.defineProperty(self, 'id', {
     get: function () {
@@ -160,11 +146,10 @@ Job = function Job(id) {
       enumerable: true
     });
   });
-};
+}
 
 _.extend(Job.prototype, {
   abort: function () {
-    'use strict';
     var self = this;
     db._executeTransaction({
       collections: {
@@ -186,15 +171,13 @@ _.extend(Job.prototype, {
     });
   },
   reset: function () {
-    'use strict';
     db._jobs.update(this.id, {
       status: 'pending'
     });
   }
 });
 
-Queue = function Queue(name) {
-  'use strict';
+function Queue(name) {
   Object.defineProperty(this, 'name', {
     get: function () {
       return name;
@@ -203,11 +186,10 @@ Queue = function Queue(name) {
     configurable: false,
     enumerable: true
   });
-};
+}
 
 _.extend(Queue.prototype, {
   push: function (name, data, opts) {
-    'use strict';
     var type, result, now;
     if (typeof name !== 'string') {
       throw new Error('Must pass a job type!');
@@ -250,7 +232,6 @@ _.extend(Queue.prototype, {
     })._id;
   },
   get: function (id) {
-    'use strict';
     if (id === undefined || id === null) {
       throw new Error('Invalid job id');
     }
@@ -263,7 +244,6 @@ _.extend(Queue.prototype, {
     return jobMap[id];
   },
   delete: function (id) {
-    'use strict';
     return db._executeTransaction({
       collections: {
         read: ['_jobs'],
@@ -280,23 +260,18 @@ _.extend(Queue.prototype, {
     });
   },
   pending: function (jobType) {
-    'use strict';
     return getJobs(this.name, 'pending', jobType);
   },
   complete: function (jobType) {
-    'use strict';
     return getJobs(this.name, 'complete', jobType);
   },
   failed: function (jobType) {
-    'use strict';
     return getJobs(this.name, 'failed', jobType);
   },
   progress: function (jobType) {
-    'use strict';
     return getJobs(this.name, 'progress', jobType);
   },
   all: function (jobType) {
-    'use strict';
     return getJobs(this.name, undefined, jobType);
   }
 });

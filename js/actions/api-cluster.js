@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, AQL_EXECUTE, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
+/*global AQL_EXECUTE, SYS_CLUSTER_TEST, UPGRADE_ARGS: true,
   ArangoServerState, ArangoClusterComm, ArangoClusterInfo */
 
 ////////////////////////////////////////////////////////////////////////////////

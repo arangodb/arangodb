@@ -1,6 +1,5 @@
 module.define("org/arangodb/arango-collection-common", function(exports, module) {
 /*jshint strict: false, unused: false, maxlen: 200 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection

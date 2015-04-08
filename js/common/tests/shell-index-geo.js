@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertFalse, assertNotEqual, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the geo index
@@ -40,7 +41,7 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoIndexCreationSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -491,7 +492,7 @@ function GeoIndexCreationSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoIndexErrorHandlingSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 
@@ -557,7 +558,7 @@ function GeoIndexErrorHandlingSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeoIndexSimpleQueriesSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionGeo";
   var collection = null;
 

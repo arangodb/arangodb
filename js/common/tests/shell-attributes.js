@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertTrue, assertFalse, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertFalse, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test attribute naming
@@ -44,7 +44,7 @@ var wait = require("internal").wait;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AttributesSuite () {
-  "use strict";
+  'use strict';
   var ERRORS = require("internal").errors;
   var cn = "UnitTestsCollectionAttributes";
   var c = null;

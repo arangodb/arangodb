@@ -1,5 +1,6 @@
-/*jshint strict: true */
-/*global require, assertFalse, assertTrue, assertEqual, ArangoAgency, ArangoServerState, ArangoClusterInfo */
+/*jshint globalstrict:false, strict:false */
+/*global assertFalse, assertTrue, assertEqual, ArangoAgency, ArangoServerState, ArangoClusterInfo */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cluster helper functions
 ///
@@ -31,7 +32,7 @@ var cluster = require("org/arangodb/cluster");
 var jsunity = require("jsunity");
 
 var compareStringIds = function (l, r) {
-  "use strict";
+  'use strict';
   var i;
   if (l.length !== r.length) {
     return l.length - r.length < 0 ? -1 : 1;
@@ -56,7 +57,7 @@ var compareStringIds = function (l, r) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterEnabledSuite () {
-  "use strict";
+  'use strict';
   var agency = ArangoAgency;
   var ss = ArangoServerState;
   var ci = ArangoClusterInfo;
@@ -409,7 +410,7 @@ function ClusterEnabledSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ClusterDisabledSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

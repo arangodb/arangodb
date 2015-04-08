@@ -1,5 +1,5 @@
-/*jshint globalstrict:true, -W051:true */
-/*global global, require, jqconsole, Symbol */
+/*jshint -W051:true */
+/*global jqconsole, Symbol */
 'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////

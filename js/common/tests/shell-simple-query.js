@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertNotNull, assertNull */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertNotNull, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -41,7 +42,7 @@ var SimpleQueryArray = require("org/arangodb/simple-query").SimpleQueryArray;
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryArraySkipLimitSuite () {
-  "use strict";
+  'use strict';
   var numbers = null;
   var query = null;
 
@@ -157,7 +158,7 @@ function SimpleQueryArraySkipLimitSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryAllSkipLimitSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionSkipLimit";
   var collection = null;
   var numbers = null;
@@ -271,7 +272,7 @@ function SimpleQueryAllSkipLimitSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var id = function(d) { return d._id; };
@@ -1302,7 +1303,7 @@ function SimpleQueryByExampleSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleHashSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var errors = require("org/arangodb").errors;
@@ -1504,7 +1505,7 @@ function SimpleQueryByExampleHashSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleSkiplistSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionByExample";
   var collection = null;
   var errors = require("org/arangodb").errors;
@@ -1706,7 +1707,7 @@ function SimpleQueryByExampleSkiplistSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryByExampleEdgeSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionByExample";
   var c1 = "UnitTestsCollectionByExampleEdge";
   var collection = null;
@@ -1887,7 +1888,7 @@ function SimpleQueryByExampleEdgeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryRangeSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
@@ -1947,7 +1948,7 @@ function SimpleQueryRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQuerySparseRangeSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
@@ -2039,7 +2040,7 @@ function SimpleQuerySparseRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryUniqueRangeSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
@@ -2099,7 +2100,7 @@ function SimpleQueryUniqueRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryUniqueSparseRangeSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionRange";
   var collection = null;
   var age = function(d) { return d.age; };
@@ -2190,7 +2191,7 @@ function SimpleQueryUniqueSparseRangeSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function SimpleQueryAnySuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionAny";
   var collectionEmpty = null;
   var collectionOne = null;

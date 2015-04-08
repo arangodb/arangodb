@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertEqual, assertNotEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the collection interface
@@ -45,7 +45,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function FiguresSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

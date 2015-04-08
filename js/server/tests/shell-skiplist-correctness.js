@@ -1,4 +1,5 @@
-/*global require, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the correctness of a skip-list index
@@ -39,7 +40,7 @@ var internal = require("internal");
 ////////////////////////////////////////////////////////////////////////////////
 
 function SkipListCorrSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionSkiplistCorr";
   var coll = null;
   var helper = require("org/arangodb/aql-helper");

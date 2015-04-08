@@ -1,4 +1,5 @@
-/*global require, assertEqual, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the users management
@@ -43,7 +44,7 @@ var users = require("org/arangodb/users");
 ////////////////////////////////////////////////////////////////////////////////
 
 function UsersSuite () {
-  "use strict";
+  'use strict';
   var c = db._collection("_users");
 
   var clearGarbage = function () {

@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertMatch */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the random document selector 
@@ -42,7 +42,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function RenameSuite () {
-  "use strict";
+  'use strict';
   var cn1 = "UnitTestsRename1";
   var cn2 = "UnitTestsRename2";
 

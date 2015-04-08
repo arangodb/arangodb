@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Controller
@@ -27,8 +27,7 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Controller,
-  RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
+var RequestContext = require("org/arangodb/foxx/request_context").RequestContext,
   RequestContextBuffer = require("org/arangodb/foxx/request_context").RequestContextBuffer,
   BaseMiddleware = require("org/arangodb/foxx/base_middleware").BaseMiddleware,
   _ = require("underscore"),
@@ -62,8 +61,7 @@ var Controller,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-Controller = function (context, options) {
-  'use strict';
+function Controller(context, options) {
   var urlPrefix, baseMiddleware;
   context.clearComments();
 
@@ -126,13 +124,12 @@ Controller = function (context, options) {
   }
 
   this.applicationContext = context;
-};
+}
 
 extend(Controller.prototype, {
   currentPriority: 0,
 
   addInjector: function (name, factory) {
-    'use strict';
     if (factory === undefined) {
       _.extend(this.injectors, name);
     } else {
@@ -151,7 +148,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   handleRequest: function (method, route, callback) {
-    'use strict';
     var constraints = {queryParams: {}, urlParams: {}},
       newRoute = internal.constructRoute(method, route, callback, this, constraints),
       requestContext = new RequestContext(
@@ -196,7 +192,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   head: function (route, callback) {
-    'use strict';
     return this.handleRequest("head", route, callback);
   },
 
@@ -224,7 +219,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   get: function (route, callback) {
-    'use strict';
     return this.handleRequest("get", route, callback);
   },
 
@@ -248,7 +242,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   post: function (route, callback) {
-    'use strict';
     return this.handleRequest("post", route, callback);
   },
 
@@ -272,7 +265,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   put: function (route, callback) {
-    'use strict';
     return this.handleRequest("put", route, callback);
   },
 
@@ -296,7 +288,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   patch: function (route, callback) {
-    'use strict';
     return this.handleRequest("patch", route, callback);
   },
 
@@ -328,12 +319,10 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   'delete': function (route, callback) {
-    'use strict';
     return this.handleRequest("delete", route, callback);
   },
 
   del: function (route, callback) {
-    'use strict';
     return this['delete'](route, callback);
   },
 
@@ -363,7 +352,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   before: function (path, func) {
-    'use strict';
     if (is.notExisty(func)) {
       func = path;
       path = "/*";
@@ -403,7 +391,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   after: function (path, func) {
-    'use strict';
     if (is.notExisty(func)) {
       func = path;
       path = "/*";
@@ -443,7 +430,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   around: function (path, func) {
-    'use strict';
 
     if (is.notExisty(func)) {
       func = path;
@@ -466,7 +452,6 @@ extend(Controller.prototype, {
 /// @brief Get the users of this controller
 ////////////////////////////////////////////////////////////////////////////////
   getUsers: function () {
-    'use strict';
     var foxxAuthentication = require("org/arangodb/foxx/authentication"),
       users = new foxxAuthentication.Users(this.applicationContext);
 
@@ -478,7 +463,6 @@ extend(Controller.prototype, {
 /// @brief Get the auth object of this controller
 ////////////////////////////////////////////////////////////////////////////////
   getAuth: function () {
-    'use strict';
     if (is.notExisty(this.auth)) {
       throw new Error("Setup authentication first");
     }
@@ -513,7 +497,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   activateAuthentication: function (opts) {
-    'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
 
     this.auth = authentication.createAuthObject(this.applicationContext, opts);
@@ -555,7 +538,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   login: function (route, opts) {
-    'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
     return this.post(route, authentication.createStandardLoginHandler(this.getAuth(), this.getUsers(), opts));
   },
@@ -593,7 +575,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   logout: function (route, opts) {
-    'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
     return this.post(route, authentication.createStandardLogoutHandler(this.getAuth(), opts));
   },
@@ -642,7 +623,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   register: function (route, opts) {
-    'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
     return this.post(
       route,
@@ -684,7 +664,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   changePassword: function (route, opts) {
-    'use strict';
     var authentication = require("org/arangodb/foxx/authentication");
     return this.post(route, authentication.createStandardChangePasswordHandler(this.getUsers(), opts));
   },
@@ -694,7 +673,6 @@ extend(Controller.prototype, {
 /// @brief Get the sessions object of this controller
 ////////////////////////////////////////////////////////////////////////////////
   getSessions: function () {
-    'use strict';
     return this.sessions;
   },
 
@@ -727,7 +705,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   activateSessions: function (opts) {
-    'use strict';
     var sessions = require("org/arangodb/foxx/sessions");
 
     this.sessions = new sessions.Sessions(opts);
@@ -761,7 +738,6 @@ extend(Controller.prototype, {
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
   destroySession: function (route, opts) {
-    'use strict';
     var method = opts.method;
     if (typeof method === 'string') {
       method = method.toLowerCase();
@@ -784,7 +760,6 @@ extend(Controller.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   extend: function(extensions) {
-    'use strict';
     var attr;
     for (attr in extensions) {
       if (extensions.hasOwnProperty(attr)) {

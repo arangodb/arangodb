@@ -1,5 +1,6 @@
-/*jshint strict: true, maxlen: 5000 */
-/*global require, assertEqual, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 5000 */
+/*global assertEqual, fail */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the non-traditional key generators
 ///
@@ -44,7 +45,7 @@ var ERRORS = arangodb.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AutoIncrementSuite () {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsKeyGen";
 
   return {

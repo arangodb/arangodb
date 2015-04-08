@@ -1,6 +1,5 @@
 module.define("org/arangodb/aql/functions", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL user functions management
@@ -48,7 +47,7 @@ var ArangoError = arangodb.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 var getStorage = function () {
-  "use strict";
+  'use strict';
 
   var functions = db._collection("_aqlfunctions");
 
@@ -68,7 +67,7 @@ var getStorage = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 var getFiltered = function (group) {
-  "use strict";
+  'use strict';
 
   var result = [ ];
 
@@ -97,7 +96,7 @@ var getFiltered = function (group) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var validateName = function (name) {
-  "use strict";
+  'use strict';
 
   if (typeof name !== 'string' ||
       ! name.match(/^[a-zA-Z0-9_]+(::[a-zA-Z0-9_]+)+$/) ||
@@ -115,7 +114,7 @@ var validateName = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var stringifyFunction = function (code, name) {
-  "use strict";
+  'use strict';
 
   if (typeof code === 'function') {
     code = String(code) + "\n";
@@ -173,7 +172,7 @@ var stringifyFunction = function (code, name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunction = function (name) {
-  "use strict";
+  'use strict';
 
   var func = null;
 
@@ -221,7 +220,7 @@ var unregisterFunction = function (name) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var unregisterFunctionsGroup = function (group) {
-  "use strict";
+  'use strict';
 
   if (group.length === 0) {
     var err = new ArangoError();
@@ -388,7 +387,7 @@ var registerFunction = function (name, code, isDeterministic) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var toArrayFunctions = function (group) {
-  "use strict";
+  'use strict';
 
   var result = [ ];
 

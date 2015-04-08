@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, more:true */
+/*global more:true */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoQueryCursor

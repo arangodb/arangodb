@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertNotEqual  */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertNotEqual  */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the skip-list index
@@ -40,7 +41,7 @@ var errors = internal.errors;
 ////////////////////////////////////////////////////////////////////////////////
 
 function SkipListSuite() {
-  "use strict";
+  'use strict';
   var cn = "UnitTestsCollectionSkiplist";
   var collection = null;
 

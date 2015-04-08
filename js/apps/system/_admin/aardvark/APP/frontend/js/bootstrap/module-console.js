@@ -1,5 +1,6 @@
-/*jshint -W051: true */
-/*global require, SYS_GETLINE, SYS_LOG, jqconsole, Symbol */
+/*jshint -W051:true */
+/*global jqconsole, Symbol */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "console"
@@ -28,38 +29,37 @@
 /// @author Copyright 2010-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  /*jshint strict: false */
-  var exports = require("console");
-
-  var sprintf = require("internal").sprintf;
-  var inspect = require("internal").inspect;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  Module "console"
 // -----------------------------------------------------------------------------
+
+(function () {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
+var exports = require("console");
+var sprintf = require("internal").sprintf;
+var inspect = require("internal").inspect;
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief group level
 ////////////////////////////////////////////////////////////////////////////////
 
-  var groupLevel = "";
+var groupLevel = "";
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timers
 ////////////////////////////////////////////////////////////////////////////////
 
-  var timers;
-  try {
-    timers = Object.create(null);
-  }
-  catch (err) {
-    timers = {};
-  }
+var timers;
+try {
+  timers = Object.create(null);
+}
+catch (e) {
+  timers = {};
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -69,68 +69,65 @@
 /// @brief internal logging
 ////////////////////////////////////////////////////////////////////////////////
 
-  var log;
+var log;
 
-  try {
-    // this will work when we are in arangod but not in the browser / web interface
-    log = SYS_LOG;
-    delete SYS_LOG;
-  }
-  catch (err) {
-    // this will work in the web interface
-    log = function (level, message) {
-      if (jqconsole) {
-        jqconsole.Write(message + "\n", 'jssuccess');
-      }
-    };
-  }
+if (global.SYS_LOG) {
+  // this will work when we are in arangod but not in the browser / web interface
+  log = global.SYS_LOG;
+  delete global.SYS_LOG;
+}
+else {
+  // this will work in the web interface
+  log = function (level, message) {
+    if (typeof jqconsole !== 'undefined') {
+      jqconsole.Write(message + "\n", 'jssuccess');
+    }
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief internal logging with group level
 ////////////////////////////////////////////////////////////////////////////////
 
-  function logGroup (level, msg) {
-    'use strict';
-
-    log(level, groupLevel + msg);
-  }
+function logGroup (level, msg) {
+  log(level, groupLevel + msg);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief try to prettify
 ////////////////////////////////////////////////////////////////////////////////
 
-  function prepareArgs (args) {
-    var ShapedJson = require("internal").ShapedJson;
-    var result = [];
-    var i;
+function prepareArgs (args) {
+  var ShapedJson = require("internal").ShapedJson;
+  var result = [];
 
-    if (0 < args.length && typeof args[0] !== "string") {
-      result.push("%s");
-    }
-
-    for (i = 0;  i < args.length;  ++i) {
-      var arg = args[i];
-
-      if (typeof arg === "object") {
-        if (ShapedJson !== undefined && arg instanceof ShapedJson) {
-          arg = inspect(arg, {prettyPrint: false});
-        }
-        else if (arg === null) {
-          arg = "null";
-        }
-        else if (arg instanceof Date || arg instanceof RegExp) {
-          arg = String(arg);
-        }
-        else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
-          arg = inspect(arg, {prettyPrint: false});
-        }
-      }
-
-      result.push(arg);
-    }
-
-    return result;
+  if (0 < args.length && typeof args[0] !== "string") {
+    result.push("%s");
   }
+
+  for (var i = 0; i < args.length; ++i) {
+    var arg = args[i];
+
+    if (typeof arg === "object") {
+      if (ShapedJson !== undefined && arg instanceof ShapedJson) {
+        arg = inspect(arg, {prettyPrint: false});
+      }
+      else if (arg === null) {
+        arg = "null";
+      }
+      else if (arg instanceof Date || arg instanceof RegExp) {
+        arg = String(arg);
+      }
+      else if (Object.prototype.isPrototypeOf(arg) || Array.isArray(arg)) {
+        arg = inspect(arg, {prettyPrint: false});
+      }
+    }
+
+    result.push(arg);
+  }
+
+  return result;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions
@@ -140,329 +137,297 @@
 /// @brief assert
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.assert = function (condition) {
-    'use strict';
+exports.assert = function (condition) {
+  if (condition) {
+    return;
+  }
 
-    if (condition) {
-      return;
-    }
+  var args = Array.prototype.slice.call(arguments, 1);
+  var msg;
 
-    var args = Array.prototype.slice.call(arguments, 1);
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(args));
+  }
+  catch (e) {
+    msg = e + ": " + args;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(args));
-    }
-    catch (err) {
-      msg = err + ": " + args;
-    }
+  logGroup("error", msg);
 
-    logGroup("error", msg);
-
-    require('assert').ok(condition, msg);
-  };
+  require('assert').ok(condition, msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debug
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.debug = function () {
-    'use strict';
+exports.debug = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("debug", msg);
-  };
+  logGroup("debug", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief debugLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.debugLines = function () {
-    'use strict';
+exports.debugLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+  var a = msg.split("\n");
+  var i;
 
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("debug", a[i]);
-    }
-  };
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("debug", a[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dir
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.dir = function (object) {
-    'use strict';
-
-    logGroup("info", inspect(object));
-  };
+exports.dir = function (object) {
+  logGroup("info", inspect(object));
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief error
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.error = function () {
-    'use strict';
+exports.error = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("error", msg);
-  };
+  logGroup("error", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief errorLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.errorLines = function () {
-    'use strict';
+exports.errorLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("error", a[i]);
-    }
-  };
+  var a = msg.split("\n");
+  for (var i = 0; i < a.length; ++i) {
+    logGroup("error", a[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getline
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_GETLINE !== "undefined") {
-    exports.getline = SYS_GETLINE;
-    delete SYS_GETLINE;
-  }
+if (global.SYS_GETLINE) {
+  exports.getline = global.SYS_GETLINE;
+  delete global.SYS_GETLINE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief group
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.group = function () {
-    'use strict';
+exports.group = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    groupLevel = groupLevel + "  ";
-    logGroup("info", msg);
-  };
+  groupLevel = groupLevel + "  ";
+  logGroup("info", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief groupCollapsed
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.groupCollapsed = function () {
-    'use strict';
+exports.groupCollapsed = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("info", msg);
-    groupLevel = groupLevel + "  ";
-  };
+  logGroup("info", msg);
+  groupLevel = groupLevel + "  ";
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief groupEnd
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.groupEnd = function () {
-    'use strict';
-
-    groupLevel = groupLevel.substr(2);
-  };
+exports.groupEnd = function () {
+  groupLevel = groupLevel.substr(2);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief info
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.info = function () {
-    'use strict';
+exports.info = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("info", msg);
-  };
+  logGroup("info", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief infoLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.infoLines = function () {
-    'use strict';
+exports.infoLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+  var a = msg.split("\n");
+  var i;
 
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("info", a[i]);
-    }
-  };
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("info", a[i]);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief log
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.log = exports.info;
+exports.log = exports.info;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief logLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.logLines = exports.infoLines;
+exports.logLines = exports.infoLines;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief time
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.time = function (label) {
-    'use strict';
+exports.time = function (label) {
+  if (typeof label !== 'string') {
+    throw new Error('label must be a string');
+  }
 
-    if (typeof label !== 'string') {
-      throw new Error('label must be a string');
-    }
+  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
 
-    var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
-
-    timers[symbol] = Date.now();
-  };
+  timers[symbol] = Date.now();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief timeEnd
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.timeEnd = function(label) {
-    'use strict';
+exports.timeEnd = function(label) {
+  var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
+  var time = timers[symbol];
 
-    var symbol = typeof Symbol === 'undefined' ? '%' + label : Symbol.for(label);
-    var time = timers[symbol];
+  if (! time) {
+    throw new Error('No such label: ' + label);
+  }
 
-    if (! time) {
-      throw new Error('No such label: ' + label);
-    }
+  var duration = Date.now() - time;
 
-    var duration = Date.now() - time;
+  delete timers[symbol];
 
-    delete timers[symbol];
-
-    logGroup("info", sprintf('%s: %dms', label, duration));
+  logGroup("info", sprintf('%s: %dms', label, duration));
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief trace
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.trace = function () {
-    var err = new Error();
-    err.name = 'trace';
-    err.message = sprintf.apply(sprintf, prepareArgs(arguments));
-    Error.captureStackTrace(err, exports.trace);
-    logGroup("info", err.stack);
-  };
+exports.trace = function () {
+  var err = new Error();
+  err.name = 'trace';
+  err.message = sprintf.apply(sprintf, prepareArgs(arguments));
+  Error.captureStackTrace(err, exports.trace);
+  logGroup("info", err.stack);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief warn
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.warn = function () {
-    'use strict';
+exports.warn = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
-
-    logGroup("warning", msg);
-  };
+  logGroup("warning", msg);
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief warnLines
 ////////////////////////////////////////////////////////////////////////////////
 
-  exports.warnLines = function () {
-    'use strict';
+exports.warnLines = function () {
+  var msg;
 
-    var msg;
+  try {
+    msg = sprintf.apply(sprintf, prepareArgs(arguments));
+  }
+  catch (e) {
+    msg = e + ": " + arguments;
+  }
 
-    try {
-      msg = sprintf.apply(sprintf, prepareArgs(arguments));
-    }
-    catch (err) {
-      msg = err + ": " + arguments;
-    }
+  var a = msg.split("\n");
+  var i;
 
-    var a = msg.split("\n");
-    var i;
-
-    for (i = 0;  i < a.length;  ++i) {
-      logGroup("warning", a[i]);
-    }
-  };
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("warning", a[i]);
+  }
+};
 
 }());
 

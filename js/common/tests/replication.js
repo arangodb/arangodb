@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertTrue, assertMatch, assertNotEqual,
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertTrue, assertMatch, assertNotEqual,
   assertUndefined, assertFalse, fail, REPLICATION_LOGGER_LAST */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +46,7 @@ var replication = require("org/arangodb/replication");
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationLoggerSuite () {
-  "use strict";
+  'use strict';
   var cn  = "UnitTestsReplication";
   var cn2 = "UnitTestsReplication2";
 
@@ -1757,7 +1758,7 @@ function ReplicationLoggerSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationApplierSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2083,7 +2084,7 @@ function ReplicationApplierSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ReplicationSyncSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

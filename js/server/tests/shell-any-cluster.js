@@ -1,5 +1,6 @@
-/*jshint strict: true */
-/*global require, assertTrue */
+/*jshint globalstrict:false, strict:false */
+/*global assertTrue */
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the random document selector 
 ///
@@ -41,7 +42,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function AnySuite () {
-  "use strict";
+  'use strict';
   var cn = "example";
   var c;
 

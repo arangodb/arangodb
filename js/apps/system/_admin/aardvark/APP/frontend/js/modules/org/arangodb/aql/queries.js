@@ -1,5 +1,5 @@
 module.define("org/arangodb/aql/queries", function(exports, module) {
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AQL query management
@@ -40,8 +40,6 @@ var arangosh = require("org/arangodb/arangosh");
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.clearSlow = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.DELETE("/_api/query/slow", "");
@@ -55,8 +53,6 @@ exports.clearSlow = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.slow = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/query/slow", "");
@@ -70,8 +66,6 @@ exports.slow = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.current = function () {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult = db._connection.GET("/_api/query/current", "");
@@ -85,8 +79,6 @@ exports.current = function () {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.properties = function (config) {
-  'use strict';
-
   var db = internal.db;
 
   var requestResult;
@@ -108,8 +100,6 @@ exports.properties = function (config) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.kill = function (id) {
-  'use strict';
-  
   if (typeof id === 'object' && 
       id.hasOwnProperty('id')) {
     id = id.id;

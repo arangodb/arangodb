@@ -1,5 +1,5 @@
-/*jshint unused: false */
-/*global require, assertEqual */
+/*jshint globalstrict:false, strict:false, unused: false */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph class
@@ -41,7 +41,7 @@ var console = require("console");
 ////////////////////////////////////////////////////////////////////////////////
 
 function neighborSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -157,7 +157,7 @@ function neighborSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function dijkstraSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",
@@ -450,7 +450,7 @@ function dijkstraSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function commonSuite() {
-  "use strict";
+  'use strict';
   var Graph = require("org/arangodb/graph").Graph,
     graph_name = "UnitTestsCollectionGraph",
     vertex = "UnitTestsCollectionVertex",

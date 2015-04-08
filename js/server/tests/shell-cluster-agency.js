@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, fail, assertFalse, assertTrue, assertEqual, assertNotEqual, ArangoAgency */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertFalse, assertTrue, assertEqual, assertNotEqual, ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -39,7 +39,7 @@ var jsunity = require("jsunity");
 ////////////////////////////////////////////////////////////////////////////////
 
 function AgencySuite () {
-  "use strict";
+  'use strict';
   var agency = ArangoAgency;
   var oldPrefix = agency.prefix(true);
 

@@ -1,6 +1,6 @@
 module.define("org/arangodb/general-graph", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports, ArangoClusterComm */
+/*global ArangoClusterComm */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality

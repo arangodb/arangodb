@@ -1,5 +1,5 @@
 /*jshint globalstrict: true */
-/*global require, applicationContext*/
+/*global applicationContext*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A Foxx.Controller to show all Foxx Applications

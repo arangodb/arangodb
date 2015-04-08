@@ -1,9 +1,7 @@
-/*global require, exports
- */
 var fs = require("fs");
 
 var generatePerfReportXML = function (reportName, testdata) {
-  "use strict";
+  'use strict';
   var x = '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<report name="' + reportName + '" categ="' + reportName + '">\n' + 
     '<start> <date format="YYYYMMDD" val="20000101" /> <time format="HHMMSS" val="195043" /> </start>\n'; //// TODO: zeit einsetzen.
@@ -41,7 +39,7 @@ var generatePerfReportXML = function (reportName, testdata) {
 };
 
 var generatePerfReportGrinderCSV = function (reportName, testdata) {
-  "use strict";
+  'use strict';
   var x = "Thread, Run, Test 1, Start time (ms since Epoch), Test time, Errors, TPS , HTTP response length, HTTP response errors, Time to resolve host, Time to establish connection, Time to first byte, New connections";
 
 

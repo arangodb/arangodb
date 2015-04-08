@@ -1,5 +1,5 @@
-/*jshint strict: true, unused: false */
-/*global require, assertEqual */
+/*jshint globalstrict:false, strict:false, unused: false */
+/*global assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the graph traversal class
@@ -47,7 +47,7 @@ var Traverser = traversal.Traverser;
 ////////////////////////////////////////////////////////////////////////////////
 
 function GraphTraversalSuite () {
-  "use strict";
+  'use strict';
   var gn = "UnitTestsGraphTraversal";
   var vn = "UnitTestsGraphTraversalVertices";
   var en = "UnitTestsGraphTraversalEdges";
@@ -228,7 +228,7 @@ function GraphTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function memoryDatasource (nodes, connections) {
-  "use strict";
+  'use strict';
   var vertices = { };
   var inEdges  = { };
   var outEdges = { };
@@ -332,7 +332,7 @@ function memoryDatasource (nodes, connections) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function MemoryTraversalSuite () {
-  "use strict";
+  'use strict';
   var datasourceWorld;
   var datasourcePeople;
 
@@ -1541,7 +1541,7 @@ function MemoryTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function CollectionTraversalSuite () {
-  "use strict";
+  'use strict';
   var vn = "UnitTestsVertices";
   var en = "UnitTestsEdges";
 
@@ -1883,7 +1883,7 @@ function CollectionTraversalSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function GeneralGraphTraversalSuite () {
-  "use strict";
+  'use strict';
   // Definition of the edges: A -> BDEH <-> CFGI
   var vnA = "UnitTestsVertices1";
   var enDir = "UnitTestsEdges1";

@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, ArangoServerState */
+/*global ArangoServerState */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Cluster kickstarting functionality using dispatchers

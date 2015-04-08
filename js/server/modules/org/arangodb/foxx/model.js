@@ -1,4 +1,4 @@
-/*global require, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Foxx Model
@@ -27,14 +27,12 @@
 /// @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var Model,
-  _ = require('underscore'),
+var _ = require('underscore'),
   joi = require('joi'),
   is = require('org/arangodb/is'),
   extend = require('extendible'),
   EventEmitter = require('events').EventEmitter,
   util = require('util'),
-  excludeExtraAttributes,
   metadataSchema = {
     _id: joi.string().optional(),
     _key: joi.string().optional(),
@@ -62,8 +60,7 @@ var Model,
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
 
-excludeExtraAttributes = function (attributes, model) {
-  'use strict';
+function excludeExtraAttributes(attributes, model) {
   if (!model.schema) {
     return _.clone(attributes);
   }
@@ -71,10 +68,9 @@ excludeExtraAttributes = function (attributes, model) {
     _.keys(metadataSchema),
     _.keys(model.schema)
   ));
-};
+}
 
-Model = function (attributes) {
-  'use strict';
+function Model(attributes) {
 ////////////////////////////////////////////////////////////////////////////////
 /// @startDocuBlock JSF_foxx_model_attributes
 ///
@@ -127,12 +123,11 @@ Model = function (attributes) {
     this.attributes = _.clone(attributes);
   }
   EventEmitter.call(this);
-};
+}
 
 util.inherits(Model, EventEmitter);
 
 Model.fromClient = function (attributes) {
-  'use strict';
   var model = new this();
   model.set(excludeExtraAttributes(attributes, model));
   return model;
@@ -160,7 +155,6 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   get: function (attributeName) {
-    'use strict';
     return this.attributes[attributeName];
   },
 
@@ -187,7 +181,6 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   set: function (attributeName, value) {
-    'use strict';
 
     if (is.object(attributeName)) {
       _.each(attributeName, function (value, key) {
@@ -243,7 +236,6 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   has: function (attributeName) {
-    'use strict';
     return !(_.isUndefined(this.attributes[attributeName]) ||
              _.isNull(this.attributes[attributeName]));
   },
@@ -258,7 +250,6 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   forDB: function () {
-    'use strict';
     return this.attributes;
   },
 
@@ -272,7 +263,6 @@ _.extend(Model.prototype, {
 ////////////////////////////////////////////////////////////////////////////////
 
   forClient: function () {
-    'use strict';
     return excludeExtraAttributes(this.attributes, this);
   }
 });

@@ -1,4 +1,4 @@
-/*global require, exports, module, UPGRADE_ARGS */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check if the version of database is a match

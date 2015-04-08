@@ -1,4 +1,4 @@
-/*global require */
+/*jshint globalstrict:false, strict:false */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Foxx console
@@ -37,7 +37,7 @@ var qb = require('aqb');
 var mountPath = '##TEST##';
 
 function ls() {
-  "use strict";
+  'use strict';
   if (!db._foxxlog) {
     return [];
   }
@@ -50,7 +50,7 @@ function ls() {
 }
 
 function rmrf() {
-  "use strict";
+  'use strict';
   if (!db._foxxlog) {
     return [];
   }
@@ -66,7 +66,7 @@ function rmrf() {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ConsoleTestSuite () {
-  "use strict";
+  'use strict';
   var console;
 
   return {

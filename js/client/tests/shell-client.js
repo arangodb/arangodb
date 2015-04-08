@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertNotEqual,
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertNotEqual,
   print, print_plain, COMPARE_STRING, NORMALIZE_STRING,
   help, start_pager, stop_pager, start_pretty_print, stop_pretty_print, start_color_print, stop_color_print */
 
@@ -37,7 +38,7 @@ var db = require("org/arangodb").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function clientTestSuite () {
-  "use strict";
+  'use strict';
   return {
 
 ////////////////////////////////////////////////////////////////////////////////

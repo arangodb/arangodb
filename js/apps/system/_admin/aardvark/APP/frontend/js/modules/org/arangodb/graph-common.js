@@ -1,6 +1,5 @@
 module.define("org/arangodb/graph-common", function(exports, module) {
 /*jshint strict: false */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Graph functionality

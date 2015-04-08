@@ -1,4 +1,4 @@
-/*global require, exports, Backbone, window */
+/*global Backbone, window */
 window.ClusterStatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
 

@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, module, AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTE */
+/*global AQL_PARSE, AQL_EXPLAIN, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoStatement

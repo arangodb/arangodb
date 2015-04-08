@@ -1,5 +1,5 @@
-/*jshint maxlen: 200, unused: false*/
-/*global require, assertEqual, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 200, unused: false*/
+/*global assertEqual, fail */
 
 /* unused for functions with 'what' parameter.*/
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,7 +45,7 @@ var aqlfunctions = require("org/arangodb/aql/functions");
 ////////////////////////////////////////////////////////////////////////////////
 
 function AqlFunctionsSuite () {
-  "use strict";
+  'use strict';
   var unregister = function (name) {
     try {
       aqlfunctions.unregister(name);

@@ -1,4 +1,4 @@
-/*global module, require, exports, print */
+/*global print */
 
 /** Jasmine Wrapper
  *

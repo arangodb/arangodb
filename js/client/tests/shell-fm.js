@@ -1,4 +1,5 @@
-/*global require, fail, assertTrue, assertFalse, assertEqual, assertMatch, assertNotNull */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertTrue, assertFalse, assertEqual, assertMatch, assertNotNull */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the foxx manager
@@ -41,7 +42,7 @@ var db = require("internal").db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function FoxxManagerSuite () {
-  "use strict";
+  'use strict';
   function inList (list, name) {
     var i;
 

@@ -1,4 +1,5 @@
-/*global require, assertEqual, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for client/server side transaction invocation
@@ -42,7 +43,7 @@ var db = arangodb.db;
 ////////////////////////////////////////////////////////////////////////////////
 
 function TransactionsInvocationsSuite () {
-  "use strict";
+  'use strict';
 
   return {
 

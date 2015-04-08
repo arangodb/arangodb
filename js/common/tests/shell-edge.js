@@ -1,5 +1,5 @@
-/*jshint strict: false */
-/*global require, assertEqual, assertMatch, assertTypeOf, fail */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertMatch, assertTypeOf, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the document interface

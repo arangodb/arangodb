@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
+/*global Backbone, EJS, window, SwaggerUi, hljs, document, $, arango */
 /*global templateEngine*/
 
 (function() {

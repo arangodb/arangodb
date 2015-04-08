@@ -1,4 +1,5 @@
-/*global require, fail, assertEqual, assertTrue, assertNotEqual */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertEqual, assertTrue, assertNotEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the cap constraint
@@ -40,7 +41,7 @@ var testHelper = require("org/arangodb/test-helper").Helper;
 ////////////////////////////////////////////////////////////////////////////////
 
 function CapConstraintSuite() {
-  "use strict";
+  'use strict';
   var ERRORS = internal.errors;
   var cn = "UnitTestsCollectionCap";
   var collection = null;

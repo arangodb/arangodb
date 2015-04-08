@@ -1,4 +1,4 @@
-/*global exports, appCollection*/
+/*global appCollection*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief A TODO-List Foxx-Application written for ArangoDB

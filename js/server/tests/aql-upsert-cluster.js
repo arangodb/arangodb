@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertFalse, assertNull, assertTrue, AQL_EXECUTE */
+/*jshint globalstrict:false, strict:false, strict: false, maxlen: 500 */
+/*global assertEqual, assertFalse, assertNull, assertTrue, AQL_EXECUTE */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for query language, bind parameters

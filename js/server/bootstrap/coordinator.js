@@ -1,6 +1,4 @@
-/*jshint globalstrict:true */
-/*global global, require */
-"use strict";
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief initialise a new database

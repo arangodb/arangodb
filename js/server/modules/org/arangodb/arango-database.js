@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, module, TRANSACTION */
+/*global TRANSACTION */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase

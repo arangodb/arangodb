@@ -1,5 +1,5 @@
 module.define("org/arangodb-common", function(exports, module) {
-/*global require, module, exports */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript base module
@@ -46,17 +46,10 @@ var mimetypes = require("org/arangodb/mimetypes").mimeTypes;
 /// @brief errors
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  'use strict';
 
-  var name;
-
-  for (name in internal.errors) {
-    if (internal.errors.hasOwnProperty(name)) {
-      exports[name] = internal.errors[name].code;
-    }
-  }
-}());
+Object.keys(internal.errors).forEach(function (key) {
+  exports[key] = internal.errors[key].code;
+});
 
 exports.errors = internal.errors;
 
@@ -79,8 +72,6 @@ exports.ArangoError = internal.ArangoError;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.defineModule = function (path, file) {
-  'use strict';
-
   var content;
   var m;
   var mc;
@@ -109,8 +100,6 @@ exports.defineModule = function (path, file) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.guessContentType = function (filename, defaultValue) {
-  'use strict';
-
   var re = /\.([a-zA-Z0-9]+)$/;
   var match = re.exec(filename);
 
@@ -149,8 +138,6 @@ exports.guessContentType = function (filename, defaultValue) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.normalizeURL = function (path) {
-  'use strict';
-
   var i;
   var n;
   var p;
@@ -231,8 +218,6 @@ exports.inspect = internal.inspect;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.output = function () {
-  'use strict';
-
   internal.output.apply(internal.output, arguments);
 };
 
@@ -265,8 +250,6 @@ exports.printObject = internal.printObject;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.printTable = function  (list, columns, options) {
-  'use strict';
-
   options = options || { };
   if (options.totalString === undefined) {
     options.totalString = "%s document(s)\n";
@@ -417,8 +400,6 @@ exports.printTable = function  (list, columns, options) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.stringPadding = function (str, len, pad, dir) {
-  'use strict';
-
   // yes, this is more code than new Array(length).join(chr), but it makes jslint happy
   function fill (length, chr) {
     var result = '', i;
@@ -465,8 +446,6 @@ exports.stringPadding = function (str, len, pad, dir) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.throwDownloadError = function (msg) {
-  'use strict';
-
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.code,
     errorMessage: exports.errors.ERROR_APPLICATION_DOWNLOAD_FAILED.message + ': ' + String(msg)
@@ -478,8 +457,6 @@ exports.throwDownloadError = function (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.throwFileNotFound = function (msg) {
-  'use strict';
-
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_FILE_NOT_FOUND.code,
     errorMessage: exports.errors.ERROR_FILE_NOT_FOUND.message + ': ' + String(msg)
@@ -491,8 +468,6 @@ exports.throwFileNotFound = function (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.throwBadParameter = function (msg) {
-  'use strict';
-
   throw new exports.ArangoError({
     errorNum: exports.errors.ERROR_BAD_PARAMETER.code,
     errorMessage: exports.errors.ERROR_BAD_PARAMETER.message + ': ' + String(msg)
@@ -504,8 +479,6 @@ exports.throwBadParameter = function (msg) {
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.checkParameter = function (usage, descs, vars) {
-  'use strict';
-
   var i;
 
   for (i = 0;  i < descs.length;  ++i) {

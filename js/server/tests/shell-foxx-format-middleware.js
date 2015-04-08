@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertEqual, assertFalse */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertFalse */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for dump/reload
@@ -30,7 +30,7 @@
 var jsunity = require("jsunity");
 
 function FormatMiddlewareSpec () {
-  "use strict";
+  'use strict';
   var Middleware, middleware, request, response, options, next;
 
   return {

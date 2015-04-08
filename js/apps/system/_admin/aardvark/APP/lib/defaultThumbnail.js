@@ -1,4 +1,4 @@
-/*global exports, appCollection*/
+/*global appCollection*/
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief The default thumbnail for foxx apps

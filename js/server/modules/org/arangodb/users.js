@@ -1,5 +1,5 @@
 /*jshint strict: false */
-/*global require, exports, ArangoAgency */
+/*global ArangoAgency */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief User management

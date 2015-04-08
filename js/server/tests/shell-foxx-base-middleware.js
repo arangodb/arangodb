@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, assertTrue, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test the agency communication layer
@@ -31,7 +31,7 @@
 var jsunity = require("jsunity");
 
 function BaseMiddlewareSpec () {
-  "use strict";
+  'use strict';
   var request, response, options, next, baseMiddleware;
 
   return {

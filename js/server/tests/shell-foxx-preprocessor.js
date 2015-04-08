@@ -1,4 +1,5 @@
-/*global require, assertEqual, assertUndefined */
+/*jshint globalstrict:false, strict:false */
+/*global assertEqual, assertUndefined */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief simple queries
@@ -34,7 +35,7 @@ var jsunity = require("jsunity"),
 
 // High Level Spec Suite for the preprocess Function
 function PreprocessSpec () {
-  "use strict";
+  'use strict';
   var testFileWithoutJSDoc, testFileWithJSDoc, testFileWithJSDocTransformed;
 
   return {
@@ -80,7 +81,7 @@ function PreprocessSpec () {
 
 // Low level Spec Suite for the Transform prototype
 function PreprocessorSpec () {
-  "use strict";
+  'use strict';
   var i;
   var testFileWithSingleJSDoc;
   var testFileWithJSDocAndMultiline;

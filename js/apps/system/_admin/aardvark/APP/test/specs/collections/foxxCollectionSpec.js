@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, describe, beforeEach, it, expect, exports, Backbone, window, $, arangoLog */
+/*global describe, beforeEach, it, expect, exports, Backbone, window, $, arangoLog */
 /*global runs, waitsFor, spyOn, jasmine */
 (function () {
   "use strict";

@@ -1,5 +1,5 @@
-/*jshint strict: true */
-/*global require, fail, assertTrue, assertEqual */
+/*jshint globalstrict:false, strict:false */
+/*global fail, assertTrue, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for readonly mode of arango
@@ -40,7 +40,7 @@ var arangodb = require("org/arangodb");
 ////////////////////////////////////////////////////////////////////////////////
 
 function databaseTestSuite () {
-  "use strict";
+  'use strict';
   var db = require("internal").db;
 
   return {
@@ -111,7 +111,7 @@ function databaseTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
 function operationsTestSuite () {
-  "use strict";
+  'use strict';
   var db = require("internal").db;
   var collection;
 

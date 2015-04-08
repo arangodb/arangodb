@@ -1,5 +1,5 @@
-/*jshint strict: false, maxlen: 500 */
-/*global require, assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, fail */
+/*jshint globalstrict:false, strict:false, maxlen: 500 */
+/*global assertEqual, assertTrue, AQL_EXPLAIN, AQL_EXECUTE, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief tests for Ahuacatl, replace-or-with-in rule

@@ -1,5 +1,5 @@
 /*jshint strict: false, unused: false */
-/*global require, exports, FORMAT_DATETIME, PARSE_DATETIME */
+/*global FORMAT_DATETIME, PARSE_DATETIME */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief formatter functions

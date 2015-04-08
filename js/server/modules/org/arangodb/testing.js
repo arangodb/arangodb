@@ -1,5 +1,4 @@
 /*jshint strict: false, sub: true */
-/*global require, exports */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief General unittest framework

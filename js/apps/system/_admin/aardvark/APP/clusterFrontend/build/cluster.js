@@ -602,7 +602,7 @@ return returnVal;
   });
 }());
 
-/*global require, exports, Backbone, window */
+/*global Backbone, window */
 window.ClusterStatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
 
@@ -1256,7 +1256,7 @@ window.StatisticsDescription = Backbone.Model.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, window */
+/*global Backbone, window */
 window.StatisticsCollection = Backbone.Collection.extend({
   model: window.Statistics,
   url: "/_admin/statistics"
@@ -1264,7 +1264,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
+/*global window, Backbone, arangoDocumentModel, _, arangoHelper, $*/
 (function() {
   "use strict";
 
@@ -1727,7 +1727,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint unused: false */
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
+/*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, console, Dygraph, _,templateEngine */
 
 (function () {
@@ -2902,7 +2902,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
   });
 }());
 
-/*global require, _, Dygraph, window, document */
+/*global _, Dygraph, window, document */
 
 (function () {
   "use strict";
@@ -3196,7 +3196,7 @@ window.StatisticsCollection = Backbone.Collection.extend({
 
 /*jshint browser: true */
 /*jshint strict: false, unused: false */
-/*global require, exports, Backbone, window */
+/*global Backbone, window */
 window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   model: window.StatisticsDescription,
   url: "/_admin/statistics-description",
@@ -3383,7 +3383,7 @@ window.StatisticsDescriptionCollection = Backbone.Collection.extend({
   });
 }());
 
-/*global require, exports, Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
+/*global Backbone, EJS, $, flush, window, arangoHelper, nv, d3, localStorage*/
 /*global document, Dygraph, _,templateEngine */
 
 (function() {
