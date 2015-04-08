@@ -488,6 +488,7 @@ SHELL_SERVER_ONLY = \
                @top_srcdir@/js/server/tests/shell-database-noncluster.js \
                @top_srcdir@/js/server/tests/shell-foxx.js \
                @top_srcdir@/js/server/tests/shell-foxx-repository-spec.js \
+               @top_srcdir@/js/server/tests/shell-foxx-repository-events-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-query-spec.js \
                @top_srcdir@/js/server/tests/shell-foxx-model.js \
                @top_srcdir@/js/server/tests/shell-foxx-model-events-spec.js \

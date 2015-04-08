@@ -140,6 +140,8 @@ v2.6.0 (XXXX-XX-XX)
 
 * added `extendible` package.
 
+* added Foxx model lifecycle events to repositories. See #1257.
+
 
 v2.5.2 (XXXX-XX-XX)
 -------------------
