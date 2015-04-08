@@ -163,6 +163,16 @@ function require (path) {
 // --SECTION--                                                 private functions
 // -----------------------------------------------------------------------------
 
+  function extend(a, b) {
+    'use strict';
+    if (b) {
+      Object.keys(b).forEach(function (key) {
+        a[key] = b[key];
+      });
+    }
+    return a;
+  }
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalizes a module name
 ///
@@ -214,8 +224,12 @@ function require (path) {
 
       if (x === "..") {
         if (n.length === 0) {
-          throw new Error("cannot use '..' to escape top-level-directory, prefix = '"
-                          + prefix + "', path = '" + path + "'");
+          throw new internal.ArangoError({
+            errorNum: internal.errors.ERROR_MODULE_CAN_NOT_ESCAPE.code,
+            errorMessage: internal.errors.ERROR_MODULE_CAN_NOT_ESCAPE.message
+            + " Prefix: " + prefix
+            + " Path: " + path
+          });
         }
 
         n.pop();
@@ -254,13 +268,11 @@ function require (path) {
     if (isWindows) {
       if (path[1] === ':') {
         if (path[2] !== '/') {
-          var e = new Error("drive local path '" + path
-                          + "'is not supported");
-
-          e.moduleNotFound = false;
-          e._path = path;
-
-          throw e;
+          throw new internal.ArangoError({
+            errorNum: internal.errors.ERROR_MODULE_DRIVE_LETTER.code,
+            errorMessage: internal.errors.ERROR_MODULE_DRIVE_LETTER.message
+            + " Path: " + path
+          });
         }
 
         return "file:///" + path;
@@ -290,13 +302,11 @@ function require (path) {
     if (isWindows) {
       if (filename[1] === ':') {
         if (filename[2] !== '/') {
-          var e = new Error("drive local path '" + filename
-                          + "'is not supported");
-
-          e.moduleNotFound = false;
-          e._path = filename;
-
-          throw e;
+          throw new internal.ArangoError({
+            errorNum: internal.errors.ERROR_MODULE_DRIVE_LETTER.code,
+            errorMessage: internal.errors.ERROR_MODULE_DRIVE_LETTER.message
+            + " Path: " + filename
+          });
         }
 
         return filename;
@@ -334,21 +344,18 @@ function require (path) {
         type = "coffee";
       }
       else {
-        var e = new Error("corrupted package '" + path
-                         + "', unknown file type");
-
-        e.moduleNotFound = false;
-        e._path = path;
-        e._filename = filename;
-
-        throw e;
+        throw new internal.ArangoError({
+          errorNum: internal.errors.ERROR_MODULE_UNKNOWN_FILE_TYPE.code,
+          errorMessage: internal.errors.ERROR_MODULE_UNKNOWN_FILE_TYPE.message
+          + " Path: " + path
+        });
       }
 
       return {
         id: id,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(filename),
-        type: type 
+        type: type
       };
     }
 
@@ -360,7 +367,8 @@ function require (path) {
         id: path,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(agumented),
-        type: "js" };
+        type: "js"
+      };
     }
 
     // try to append ".json"
@@ -371,7 +379,7 @@ function require (path) {
         id: path,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(agumented),
-        type: "json" 
+        type: "json"
       };
     }
 
@@ -383,7 +391,7 @@ function require (path) {
         id: path,
         path: normalizeModuleName(path + "/.."),
         origin: path2FileUri(agumented),
-        type: "coffee" 
+        type: "coffee"
       };
     }
 
@@ -396,7 +404,7 @@ function require (path) {
           id: fs.join(path, "index"),
           path: path,
           origin: path2FileUri(agumented),
-          type: "js" 
+          type: "js"
         };
       }
     }
@@ -430,54 +438,54 @@ function require (path) {
       return null;
     }
 
-    var re = /^db:\/\/(.*)\/$/;
-    var m = re.exec(origin);
+    var match = /^db:\/\/(.*)\/$/.exec(origin);
 
-    if (m === null) {
-      throw new Error("corrupted package origin '" + origin + "'");
+    if (match === null) {
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
+        errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
+        + " Origin: " + origin
+      });
     }
 
-    var n;
-    var mc;
-    var collection = m[1];
+    var doc;
+    var collection;
+    var collectionName = match[1];
 
     try {
-      mc = internal.db._collection(collection);
+      collection = internal.db._collection(collectionName);
 
-      if (mc === null || typeof mc.firstExample !== "function") {
+      if (collection === null || typeof collection.firstExample !== "function") {
         return null;
       }
 
-      n = mc.firstExample({ path: path });
+      doc = collection.firstExample({ path: path });
     }
     catch (err) {
       return null;
     }
 
-    if (n === null) {
+    if (doc === null) {
       return null;
     }
 
-    if (n.hasOwnProperty('content')) {
+    if (doc.hasOwnProperty('content')) {
       return {
         id: path,
         path: normalizeModuleName(path + "/.."),
         origin: origin + path.substr(1),
         type: "js",
-        content: n.content,
-        revision: mc.revision()
+        content: doc.content,
+        revision: collection.revision()
       };
     }
 
-    var e = new Error("corrupted module '" + path
-                    + "', in collection '" + m[1]
-                    + "', no content");
-
-    e.moduleNotFound = false;
-    e._path = path;
-    e._origin = origin;
-
-    throw e;
+    throw new internal.ArangoError({
+      errorNum: internal.errors.ERROR_MODULE_DOCUMENT_IS_EMPTY.code,
+      errorMessage: internal.errors.ERROR_MODULE_DOCUMENT_IS_EMPTY.message
+      + " Collection: " + match[1]
+      + " Path: " + path
+    });
   }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -544,7 +552,11 @@ function require (path) {
       var root = fileUri2Path(currentPackage._origin);
 
       if (root === null) {
-        throw new Error("corrupted package origin '" + currentPackage._origin + "'");
+        throw new internal.ArangoError({
+          errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
+          errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
+          + " Origin: " + currentPackage._origin
+        });
       }
 
       description = checkModulePathFile(currentPackage, root, path);
@@ -556,7 +568,11 @@ function require (path) {
       description = null;
     }
     else {
-      throw new Error("package origin '" + currentPackage._origin + "' not supported");
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
+        errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
+        + " Origin: " + currentPackage._origin
+      });
     }
 
     if (description === null) {
@@ -584,7 +600,11 @@ function require (path) {
       var filename = fileUri2Path(description.origin);
 
       if (filename === null) {
-        throw new Error("module origin '" + description.origin + "' not supported");
+        throw new internal.ArangoError({
+          errorNum: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.code,
+          errorMessage: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.message
+          + " Origin: " + description.origin
+        });
       }
 
       try {
@@ -598,8 +618,12 @@ function require (path) {
         throw err;
       }
     }
-    else if (! currentPackage._isDbPackage) {
-      throw new Error("package origin '" + currentPackage._origin + "' not supported");
+    else if (!currentPackage._isDbPackage) {
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.code,
+        errorMessage: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.message
+        + " Origin: " + currentPackage._origin
+      });
     }
 
     if (description.type === "js") {
@@ -608,15 +632,12 @@ function require (path) {
 
     if (description.type === "coffee") {
       var cs = require("coffee-script");
-
       description.content = cs.compile(description.content, {bare: true});
-
       localModule = createModule(currentModule, currentPackage, description);
     }
 
     if (description.type === "json") {
       localModule = { exports: JSON.parse(description.content) };
-
       localModule = currentPackage.defineModule(description.id, description.type, localModule);
     }
 
@@ -633,9 +654,6 @@ function require (path) {
 
   function createPackageAndModule (currentModule, currentPackage, path, dirname, filename) {
     'use strict';
-
-    var e;
-
     var desc = JSON.parse(fs.read(filename));
     var mainfile = desc.main || "./index.js";
 
@@ -648,44 +666,33 @@ function require (path) {
     var description = checkModulePathFile(currentPackage, dirname, mainfile);
 
     if (description === null) {
-      e = new Error("corrupted package '" + path
-                  + "', cannot read main file '"
-                  + mainfile + "'");
-
-      e.moduleNotFound = false;
-      e._path = path;
-      e._package = currentPackage.id;
-      e._packageOrigin = currentPackage._origin;
-
-      throw e;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_MAIN_NOT_READABLE.code,
+        errorMessage: internal.errors.ERROR_MODULE_MAIN_NOT_READABLE.message
+        + " Path: " + path
+        + " Main File: " + mainfile
+      });
     }
 
     if (description.type !== "js") {
-      e = new Error("corrupted package '" + path
-                  + "', main file '"
-                  + mainfile + "' is not of type js");
-
-      e.moduleNotFound = false;
-      e._path = path;
-      e._package = currentPackage.id;
-      e._packageOrigin = currentPackage._origin;
-
-      throw e;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_MAIN_NOT_JS.code,
+        errorMessage: internal.errors.ERROR_MODULE_MAIN_NOT_JS.message
+        + " Path: " + path
+        + " Main File: " + mainfile
+        + " Type: " + description.type
+      });
     }
 
     var fname = fileUri2Path(description.origin);
 
     if (fname === null) {
-      e = new Error("corrupted package '" + path
-                  + "', module origin '" + description.origin
-                  + "' not supported");
-
-      e.moduleNotFound = false;
-      e._path = path;
-      e._package = currentPackage.id;
-      e._packageOrigin = currentPackage._origin;
-
-      throw e;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.code,
+        errorMessage: internal.errors.ERROR_MODULE_BAD_MODULE_ORIGIN.message
+        + " Path: " + path
+        + " Origin: " + description.origin
+      });
     }
 
     description.content = fs.read(fname);
@@ -720,7 +727,11 @@ function require (path) {
     var root = fileUri2Path(currentPackage._origin);
 
     if (root === null) {
-      throw new Error("package origin '" + currentPackage._origin + "' not supported");
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.code,
+        errorMessage: internal.errors.ERROR_MODULE_BAD_PACKAGE_ORIGIN.message
+        + " Origin: " + currentPackage._origin
+      });
     }
 
     path = normalizeModuleName(path);
@@ -967,7 +978,11 @@ function require (path) {
     'use strict';
 
     if (path[0] !== '/') {
-      throw new Error("path '" + path + "' must be absolute");
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_PATH_MUST_BE_ABSOLUTE.code,
+        errorMessage: internal.errors.ERROR_MODULE_PATH_MUST_BE_ABSOLUTE.message
+        + " Path: " + path
+      });
     }
 
     return new Module(
@@ -1206,14 +1221,11 @@ function require (path) {
 
     // try to generate a suitable error message
     if (localModule === null) {
-      var e = new Error("cannot locate module '" + path + "'");
-
-      e.moduleNotFound = true;
-      e._path = path;
-      e._package = this._package.id;
-      e._packageOrigin = this._package._origin;
-
-      throw e;
+      throw new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_NOT_FOUND.code,
+        errorMessage: internal.errors.ERROR_MODULE_NOT_FOUND.message
+        + " Path: " + path
+      });
     }
 
     return localModule.exports;
@@ -1225,11 +1237,9 @@ function require (path) {
 
   Module.prototype.basePaths = function () {
     'use strict';
-
     if (appPath === undefined && devAppPath === undefined) {
       return undefined;
     }
-
     return {
       appPath: appPath,
       devAppPath: devAppPath
@@ -1242,11 +1252,9 @@ function require (path) {
 
   Module.prototype.appPath = function () {
     'use strict';
-
     if (appPath === undefined) {
       return undefined;
     }
-
     return fs.join(appPath, '_db', internal.db._name());
   };
 
@@ -1257,11 +1265,9 @@ function require (path) {
 
   Module.prototype.oldAppPath = function () {
     'use strict';
-
     if (appPath === undefined) {
       return undefined;
     }
-
     return fs.join(appPath, 'databases', internal.db._name());
   };
 
@@ -1271,11 +1277,9 @@ function require (path) {
 
   Module.prototype.devAppPath = function () {
     'use strict';
-
     if (devAppPath === undefined) {
       return undefined;
     }
-
     return fs.join(devAppPath, 'databases', internal.db._name());
   };
 
@@ -1285,7 +1289,6 @@ function require (path) {
 
   Module.prototype.systemAppPath = function () {
     'use strict';
-
     return fs.join(startupPath, 'apps', 'system');
   };
 
@@ -1295,7 +1298,6 @@ function require (path) {
 
   Module.prototype.startupPath = function () {
     'use strict';
-
     return startupPath;
   };
 
@@ -1315,18 +1317,22 @@ function require (path) {
 ////////////////////////////////////////////////////////////////////////////////
 
   Module.prototype.createTestEnvironment = function (path) {
-    var pkg = new Package("/test",
-                          { name: "ArangoDB test" },
-                          undefined,
-                          "file:///" + path,
-                          false);
+    var pkg = new Package(
+      "/test",
+      {name: "ArangoDB test"},
+      undefined,
+      "file:///" + path,
+      false
+    );
 
-    return new Module("/",
-                      pkg,
-                      undefined,
-                      "/",
-                      "system:///",
-                      false);
+    return new Module(
+      "/",
+      pkg,
+      undefined,
+      "/",
+      "system:///",
+      false
+    );
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1353,21 +1359,16 @@ function require (path) {
   Module.prototype.run = function(content, context) {
     'use strict';
     var filename = fileUri2Path(this._origin);
-    // test for parse errors first and fail early if a parse error detected
 
     if (typeof content !== "string") {
-      throw new internal.ArangoError({
-        errorNum: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.code,
-        errorMessage: internal.errors.ERROR_FAILED_TO_EXECUTE_SCRIPT.message
-        + " File: " + filename
-        + " Content: " + content
-      });
+      throw new TypeError('Expected module content to be a string, not ' + typeof content);
     }
 
+    // test for parse errors first and fail early if a parse error detected
     if (!internal.parse(content)) {
       throw new internal.ArangoError({
-        errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
-        errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
+        errorNum: internal.errors.ERROR_MODULE_SYNTAX_ERROR.code,
+        errorMessage: internal.errors.ERROR_MODULE_SYNTAX_ERROR.message
         + " File: " + filename
         + " Content: " + content
       });
@@ -1395,21 +1396,49 @@ function require (path) {
     }
 
     var keys = Object.keys(args);
-    var script = Function.apply(null, keys.concat(content));
-    var fn = internal.executeScript("(" + script + ")", undefined, filename);
+    var script;
 
-    if (typeof fn !== 'function') {
-      throw new internal.ArangoError({
+    try {
+      script = Function.apply(null, keys.concat(content));
+    } catch (e) {
+      throw extend(new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_BAD_WRAPPER.code,
+        errorMessage: internal.errors.ERROR_MODULE_BAD_WRAPPER.message
+        + " File: " + filename
+        + " Context variables: " + JSON.stringify(Object.keys(args))
+      }), {stack: e.stack});
+    }
+
+    var fn;
+
+    try {
+      fn = internal.executeScript("(" + script + ")", undefined, filename);
+    } catch (e) {
+      // This should never happen, right?
+      throw extend(new internal.ArangoError({
         errorNum: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.code,
         errorMessage: internal.errors.ERROR_SYNTAX_ERROR_IN_SCRIPT.message
         + " File: " + filename
         + " Content: " + content
-      });
+      }), {stack: e.stack});
     }
 
-    fn.apply(null, keys.map(function (key) {
-      return args[key];
-    }));
+    if (typeof fn !== 'function') {
+      throw new TypeError('Expected internal.executeScript to return a function, not ' + typeof fn);
+    }
+
+    try {
+      fn.apply(null, keys.map(function (key) {
+        return args[key];
+      }));
+    } catch (e) {
+      throw extend(new internal.ArangoError({
+        errorNum: internal.errors.ERROR_MODULE_FAILURE.code,
+        errorMessage: internal.errors.ERROR_MODULE_FAILURE.message
+        + " File: " + filename
+        + " Content: " + content
+      }), {stack: e.stack});
+    }
 
     return this.exports;
   };
