@@ -2431,6 +2431,11 @@ int main (int argc, char* args[]) {
 
       localContext->Enter();
 
+      v8::Handle<v8::Object> globalObj = localContext->Global();
+      globalObj->Set(TRI_V8_ASCII_STRING("GLOBAL"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING("global"), globalObj);
+      globalObj->Set(TRI_V8_ASCII_STRING("root"), globalObj);
+
       InitCallbacks(isolate, useServer, runMode);
 
       promptError = printHelo(useServer, promptError);
