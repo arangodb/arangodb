@@ -1,5 +1,6 @@
-/*jshint unused: false, -W051: true */
-/*global require, console: true, IS_EXECUTE_SCRIPT, IS_EXECUTE_STRING, IS_CHECK_SCRIPT, IS_UNIT_TESTS, IS_JS_LINT */
+/*jshint globalstrict:true, -W051:true */
+/*global global:true, window, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoShell client API
@@ -28,36 +29,48 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+if (typeof global === 'undefined' && typeof window !== 'undefined') {
+  global = window;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  global functions
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+// @brief common globals
+////////////////////////////////////////////////////////////////////////////////
+
+global.Buffer = require("buffer").Buffer;
+global.process = require("process");
+global.setInterval = global.setInterval || function () {};
+global.clearInterval = global.clearInterval || function () {};
+global.setTimeout = global.setTimeout || function () {};
+global.clearTimeout = global.clearTimeout || function () {};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief start paging
 ////////////////////////////////////////////////////////////////////////////////
 
-function start_pager () {
-  "use strict";
+global.start_pager = function start_pager () {
   var internal = require("internal");
   internal.startPager();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stop paging
 ////////////////////////////////////////////////////////////////////////////////
 
-function stop_pager () {
-  "use strict";
+global.stop_pager = function stop_pager () {
   var internal = require("internal");
   internal.stopPager();
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief print the overall help
 ////////////////////////////////////////////////////////////////////////////////
 
-function help () {
-  "use strict";
+global.help = function help () {
   var internal = require("internal");
   var arangodb = require("org/arangodb");
   var arangosh = require("org/arangodb/arangosh");
@@ -68,67 +81,57 @@ function help () {
   arangodb.ArangoStatement.prototype._help();
   arangodb.ArangoQueryCursor.prototype._help();
   internal.print(arangosh.helpExtended);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief clear screen (poor man's way)
 ////////////////////////////////////////////////////////////////////////////////
 
-function clear () {
-  "use strict";
+global.clear = function clear () {
   var internal = require("internal");
-  var i;
   var result = '';
 
-  for (i = 0; i < 100; ++i) {
+  for (var i = 0; i < 100; ++i) {
     result += '\n';
   }
   internal.print(result);
-}
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'console'
 ////////////////////////////////////////////////////////////////////////////////
 
-if (typeof console === 'undefined') {
-  console = require("console");
-}
+global.console = global.console || require("console");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'db'
 ////////////////////////////////////////////////////////////////////////////////
 
-var db = require("org/arangodb").db;
+global.db = require("org/arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'arango'
 ////////////////////////////////////////////////////////////////////////////////
 
-var arango = require("org/arangodb").arango;
+global.arango = require("org/arangodb").arango;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'fm'
 ////////////////////////////////////////////////////////////////////////////////
 
-var fm = require("org/arangodb/foxx/manager");
+global.fm = require("org/arangodb/foxx/manager");
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief global 'ArangoStatement'
 ////////////////////////////////////////////////////////////////////////////////
 
-var ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief global 'Buffer'
-////////////////////////////////////////////////////////////////////////////////
-
-var Buffer = require("buffer").Buffer;
+global.ArangoStatement = require("org/arangodb/arango-statement").ArangoStatement;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shell tutorial
 ////////////////////////////////////////////////////////////////////////////////
 
-var tutorial = require("org/arangodb/tutorial");
+global.tutorial = require("org/arangodb/tutorial");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        initialise
@@ -139,53 +142,33 @@ var tutorial = require("org/arangodb/tutorial");
 ////////////////////////////////////////////////////////////////////////////////
 
 (function() {
-  "use strict";
   var internal = require("internal");
-  var arangosh = require("org/arangodb/arangosh");
-  var special;
 
-  if (internal.db !== undefined) {
+  if (internal.db) {
     try {
       internal.db._collections();
     }
-    catch (err) {
-    }
+    catch (e) {}
   }
 
-  try {
-    // these variables don't exist in the browser context
-    special = IS_EXECUTE_SCRIPT || IS_EXECUTE_STRING || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
-  }
-  catch (err2) {
-    special = false;
-  }
-
-  if (internal.quiet !== true && ! special) {
-    if (typeof internal.arango !== "undefined") {
-      if (typeof internal.arango.isConnected !== "undefined" && internal.arango.isConnected()) {
-        internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
-      }
+  if (internal.quiet !== true) {
+    if (internal.arango && internal.arango.isConnected && internal.arango.isConnected()) {
+      internal.print("Type 'tutorial' for a tutorial or 'help' to see common examples");
     }
   }
-}());
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read rc file
 ////////////////////////////////////////////////////////////////////////////////
 
-(function () {
-  /*jshint strict: false */
-  var __special__;
-
-  try {
-    // these variables are not defined in the browser context
-    __special__ = IS_EXECUTE_SCRIPT || IS_EXECUTE_STRING || IS_CHECK_SCRIPT || IS_UNIT_TESTS || IS_JS_LINT;
-  }
-  catch (err) {
-    __special__ = true;
-  }
-
-  if (! __special__) {
+  // these variables are not defined in the browser context
+  if (
+    global.IS_EXECUTE_SCRIPT ||
+    global.IS_EXECUTE_STRING ||
+    global.IS_CHECK_SCRIPT ||
+    global.IS_UNIT_TESTS ||
+    global.IS_JS_LINT
+  ) {
     try {
       // this will not work from within a browser
       var __fs__ = require("fs");
@@ -197,20 +180,18 @@ var tutorial = require("org/arangodb/tutorial");
         eval(__content__);
       }
     }
-    catch (err2) {
-      require("console").warn("arangosh.rc: %s", String(err2));
+    catch (e) {
+      require("console").warn("arangosh.rc: %s", String(e));
     }
   }
 
   try {
-    delete IS_EXECUTE_SCRIPT;
-    delete IS_EXECUTE_STRING;
-    delete IS_CHECK_SCRIPT;
-    delete IS_UNIT_TESTS;
-    delete IS_JS_LINT;
-  }
-  catch (err3) {
-  }
+    delete global.IS_EXECUTE_SCRIPT;
+    delete global.IS_EXECUTE_STRING;
+    delete global.IS_CHECK_SCRIPT;
+    delete global.IS_UNIT_TESTS;
+    delete global.IS_JS_LINT;
+  } catch (e) {}
 }());
 
 // -----------------------------------------------------------------------------

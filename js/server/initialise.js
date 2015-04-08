@@ -1,4 +1,4 @@
-/*global require, STARTUP_PATH, SYS_LOAD */
+/*global global, require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief basic initialisation
@@ -35,8 +35,8 @@
 // -----------------------------------------------------------------------------
 
 (function () {
-  var startupPath = STARTUP_PATH;
-  var load = SYS_LOAD;
+  var startupPath = global.STARTUP_PATH;
+  var load = global.SYS_LOAD;
 
   if (startupPath === "") {
     startupPath = ".";
@@ -51,8 +51,13 @@
   load(startupPath + "/server/bootstrap/module-internal.js");
 }());
 
-// global Buffer
-var Buffer = require("buffer").Buffer;
+// globals
+global.Buffer = require("buffer").Buffer;
+global.process = require("process");
+global.setInterval = function () {};
+global.clearInterval = function () {};
+global.setTimeout = function () {};
+global.clearTimeout = function () {};
 
 // extend prototypes for internally defined classes
 require("org/arangodb");

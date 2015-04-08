@@ -1,12 +1,6 @@
-/*jshint -W051: true */
-/*global require, db, ArangoCollection, ArangoDatabase, ShapedJson,
-  RELOAD_AUTH, SYS_DEFINE_ACTION, SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION,
-  WAL_FLUSH, WAL_PROPERTIES,
-  REPLICATION_LOGGER_STATE, REPLICATION_SERVER_ID,
-  REPLICATION_APPLIER_CONFIGURE, REPLICATION_APPLIER_START, REPLICATION_APPLIER_SHUTDOWN,
-  REPLICATION_APPLIER_FORGET, REPLICATION_APPLIER_STATE, REPLICATION_SYNCHRONISE,
-  ENABLE_STATISTICS, DISPATCHER_THREADS, SYS_CREATE_NAMED_QUEUE, SYS_ADD_JOB,
-  SYS_RAW_REQUEST_BODY, SYS_REQUEST_PARTS, FE_VERSION_CHECK, SYS_SEND_CHUNK */
+/*jshint globalstrict:true, -W051:true */
+/*global global, require */
+'use strict';
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief module "internal"
@@ -39,11 +33,9 @@
 // --SECTION--                                                 Module "internal"
 // -----------------------------------------------------------------------------
 
-(function () {
-  /*jshint strict: false */
-  var internal = require("internal");
-  var fs = require("fs");
-  var console = require("console");
+var exports = require("internal");
+var fs = require("fs");
+var console = require("console");
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -53,50 +45,50 @@
 /// @brief db
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.db = db;
-  delete db;
+exports.db = global.db;
+delete global.db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoCollection
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.ArangoCollection = ArangoCollection;
-  delete ArangoCollection;
+exports.ArangoCollection = global.ArangoCollection;
+delete global.ArangoCollection;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ArangoDatabase
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.ArangoDatabase = ArangoDatabase;
-  delete ArangoDatabase;
+exports.ArangoDatabase = global.ArangoDatabase;
+delete global.ArangoDatabase;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief ShapedJson
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.ShapedJson = ShapedJson;
-  delete ShapedJson;
+exports.ShapedJson = global.ShapedJson;
+delete global.ShapedJson;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief enableStatistics
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.enableStatistics = ENABLE_STATISTICS;
-  delete ENABLE_STATISTICS;
+exports.enableStatistics = global.ENABLE_STATISTICS;
+delete global.ENABLE_STATISTICS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief dispatcherThreads
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.dispatcherThreads = DISPATCHER_THREADS;
-  delete DISPATCHER_THREADS;
+exports.dispatcherThreads = global.DISPATCHER_THREADS;
+delete global.DISPATCHER_THREADS;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief frontendVersionCheck
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.frontendVersionCheck = FE_VERSION_CHECK;
-  delete FE_VERSION_CHECK;
+exports.frontendVersionCheck = global.FE_VERSION_CHECK;
+delete global.FE_VERSION_CHECK;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -106,245 +98,237 @@
 /// @brief resets engine in development mode
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.resetEngine = function () {
-    'use strict';
-
-    require("org/arangodb/actions").reloadRouting();
-  };
+exports.resetEngine = function () {
+  require("org/arangodb/actions").reloadRouting();
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief rebuilds the authentication cache
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.reloadAuth = RELOAD_AUTH;
-  delete RELOAD_AUTH;
+exports.reloadAuth = global.RELOAD_AUTH;
+delete global.RELOAD_AUTH;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write-ahead log object
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.wal = {
-    flush: function () {
-      return WAL_FLUSH.apply(null, arguments);
-    },
+exports.wal = {
+  flush: function () {
+    return global.WAL_FLUSH.apply(null, arguments);
+  },
 
-    properties: function () {
-      return WAL_PROPERTIES.apply(null, arguments);
-    }
-  };
+  properties: function () {
+    return global.WAL_PROPERTIES.apply(null, arguments);
+  }
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief defines an action
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_DEFINE_ACTION !== "undefined") {
-    internal.defineAction = SYS_DEFINE_ACTION;
-    delete SYS_DEFINE_ACTION;
-  }
+if (global.SYS_DEFINE_ACTION) {
+  exports.defineAction = global.SYS_DEFINE_ACTION;
+  delete global.SYS_DEFINE_ACTION;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief autoload modules from database
 ////////////////////////////////////////////////////////////////////////////////
 
-  // autoload specific modules
-  internal.autoloadModules = function () {
-    'use strict';
+// autoload specific modules
+exports.autoloadModules = function () {
+  console.debug("autoloading actions");
+  var modules = exports.db._collection("_modules");
 
-    console.debug("autoloading actions");
+  if (modules !== null) {
+    modules = modules.byExample({ autoload: true }).toArray();
+    modules.forEach(function(module) {
 
-    var modules = internal.db._collection("_modules");
+      // this module is only meant to be executed in one thread
+      if (exports.threadNumber !== 0 && ! module.perThread) {
+        return;
+      }
 
-    if (modules !== null) {
-      modules = modules.byExample({ autoload: true }).toArray();
+      console.debug("autoloading module: %s", module.path);
 
-      modules.forEach(function(module) {
+      try {
 
-        // this module is only meant to be executed in one thread
-        if (internal.threadNumber !== 0 && ! module.perThread) {
-          return;
+        // require a module
+        if (module.path !== undefined) {
+          require(module.path);
         }
 
-        console.debug("autoloading module: %s", module.path);
-
-        try {
-
-          // require a module
-          if (module.path !== undefined) {
-            require(module.path);
-          }
-
-          // execute a user function
-          else if (module.func !== undefined) {
-              /*jshint evil: true */
-              var func = new Function(module.func);
-              func();
-          }
+        // execute a user function
+        else if (module.func !== undefined) {
+            /*jshint evil: true */
+            var func = new Function(module.func);
+            func();
         }
-        catch (err) {
-          console.error("error while loading startup module '%s': %s", module.name || module.path, String(err));
-        }
-      });
-    }
+      }
+      catch (err) {
+        console.error("error while loading startup module '%s': %s", module.name || module.path, String(err));
+      }
+    });
+  }
 
-    console.debug("autoloading actions finished");
-  };
+  console.debug("autoloading actions finished");
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief executes a string in all V8 contexts
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
-    internal.executeGlobalContextFunction = function() {
-      // nothing to do. we're probably in --no-server mode
-    };
-  }
-  else {
-    internal.executeGlobalContextFunction = SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }
+if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
+  exports.executeGlobalContextFunction = global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
+}
+else {
+  exports.executeGlobalContextFunction = function() {
+    // nothing to do. we're probably in --no-server mode
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief reloads the AQL user functions
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION === "undefined") {
-    internal.reloadAqlFunctions = function () {
-      require("org/arangodb/aql").reload();
-    };
-  }
-  else {
-    internal.reloadAqlFunctions = function () {
-      internal.executeGlobalContextFunction("reloadAql");
-      require("org/arangodb/aql").reload();
-    };
-    delete SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
-  }
+if (global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION) {
+  exports.reloadAqlFunctions = function () {
+    exports.executeGlobalContextFunction("reloadAql");
+    require("org/arangodb/aql").reload();
+  };
+  delete global.SYS_EXECUTE_GLOBAL_CONTEXT_FUNCTION;
+}
+else {
+  exports.reloadAqlFunctions = function () {
+    require("org/arangodb/aql").reload();
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getStateReplicationLogger
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_LOGGER_STATE !== "undefined") {
-    internal.getStateReplicationLogger = REPLICATION_LOGGER_STATE;
-    delete REPLICATION_LOGGER_STATE;
-  }
+if (global.REPLICATION_LOGGER_STATE) {
+  exports.getStateReplicationLogger = global.REPLICATION_LOGGER_STATE;
+  delete global.REPLICATION_LOGGER_STATE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief configureReplicationApplier
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_APPLIER_CONFIGURE !== "undefined") {
-    internal.configureReplicationApplier = REPLICATION_APPLIER_CONFIGURE;
-    delete REPLICATION_APPLIER_CONFIGURE;
-  }
+if (global.REPLICATION_APPLIER_CONFIGURE) {
+  exports.configureReplicationApplier = global.REPLICATION_APPLIER_CONFIGURE;
+  delete global.REPLICATION_APPLIER_CONFIGURE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief startReplicationApplier
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_APPLIER_START !== "undefined") {
-    internal.startReplicationApplier = REPLICATION_APPLIER_START;
-    delete REPLICATION_APPLIER_START;
-  }
+if (global.REPLICATION_APPLIER_START) {
+  exports.startReplicationApplier = global.REPLICATION_APPLIER_START;
+  delete global.REPLICATION_APPLIER_START;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdownReplicationApplier
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_APPLIER_SHUTDOWN !== "undefined") {
-    internal.shutdownReplicationApplier = REPLICATION_APPLIER_SHUTDOWN;
-    delete REPLICATION_APPLIER_SHUTDOWN;
-  }
+if (global.REPLICATION_APPLIER_SHUTDOWN) {
+  exports.shutdownReplicationApplier = global.REPLICATION_APPLIER_SHUTDOWN;
+  delete global.REPLICATION_APPLIER_SHUTDOWN;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getStateReplicationApplier
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_APPLIER_STATE !== "undefined") {
-    internal.getStateReplicationApplier = REPLICATION_APPLIER_STATE;
-    delete REPLICATION_APPLIER_STATE;
-  }
+if (global.REPLICATION_APPLIER_STATE) {
+  exports.getStateReplicationApplier = global.REPLICATION_APPLIER_STATE;
+  delete global.REPLICATION_APPLIER_STATE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief forgetStateReplicationApplier
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_APPLIER_FORGET !== "undefined") {
-    internal.forgetStateReplicationApplier = REPLICATION_APPLIER_FORGET;
-    delete REPLICATION_APPLIER_FORGET;
-  }
+if (global.REPLICATION_APPLIER_FORGET) {
+  exports.forgetStateReplicationApplier = global.REPLICATION_APPLIER_FORGET;
+  delete global.REPLICATION_APPLIER_FORGET;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sychroniseReplication
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_SYNCHRONISE !== "undefined") {
-    internal.synchroniseReplication = REPLICATION_SYNCHRONISE;
-    delete REPLICATION_SYNCHRONISE;
-  }
+if (global.REPLICATION_SYNCHRONISE) {
+  exports.synchroniseReplication = global.REPLICATION_SYNCHRONISE;
+  delete global.REPLICATION_SYNCHRONISE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief serverId
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof REPLICATION_SERVER_ID !== "undefined") {
-    internal.serverId = REPLICATION_SERVER_ID;
-    delete REPLICATION_SERVER_ID;
-  }
+if (global.REPLICATION_SERVER_ID) {
+  exports.serverId = global.REPLICATION_SERVER_ID;
+  delete global.REPLICATION_SERVER_ID;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief loadStartup
 ////////////////////////////////////////////////////////////////////////////////
 
-  internal.loadStartup = function (path) {
-    return internal.load(fs.join(internal.startupPath, path));
-  };
+exports.loadStartup = function (path) {
+  return exports.load(fs.join(exports.startupPath, path));
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief createNamedQueue
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_CREATE_NAMED_QUEUE !== "undefined") {
-    internal.createNamedQueue = SYS_CREATE_NAMED_QUEUE;
-    delete SYS_CREATE_NAMED_QUEUE;
-  }
+if (global.SYS_CREATE_NAMED_QUEUE) {
+  exports.createNamedQueue = global.SYS_CREATE_NAMED_QUEUE;
+  delete global.SYS_CREATE_NAMED_QUEUE;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief addJob
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_ADD_JOB !== "undefined") {
-    internal.addJob = SYS_ADD_JOB;
-    delete SYS_ADD_JOB;
-  }
+if (global.SYS_ADD_JOB) {
+  exports.addJob = global.SYS_ADD_JOB;
+  delete global.SYS_ADD_JOB;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief raw request body
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_RAW_REQUEST_BODY !== "undefined") {
-    internal.rawRequestBody = SYS_RAW_REQUEST_BODY;
-    delete SYS_RAW_REQUEST_BODY;
-  }
+if (global.SYS_RAW_REQUEST_BODY) {
+  exports.rawRequestBody = global.SYS_RAW_REQUEST_BODY;
+  delete global.SYS_RAW_REQUEST_BODY;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief request parts
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_REQUEST_PARTS !== "undefined") {
-    internal.requestParts = SYS_REQUEST_PARTS;
-    delete SYS_REQUEST_PARTS;
-  }
+if (global.SYS_REQUEST_PARTS) {
+  exports.requestParts = global.SYS_REQUEST_PARTS;
+  delete global.SYS_REQUEST_PARTS;
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief send chunks
 ////////////////////////////////////////////////////////////////////////////////
 
-  if (typeof SYS_SEND_CHUNK !== "undefined") {
-    internal.sendChunk = SYS_SEND_CHUNK;
-    delete SYS_SEND_CHUNK;
-  }
-
-}());
+if (global.SYS_SEND_CHUNK) {
+  exports.sendChunk = global.SYS_SEND_CHUNK;
+  delete global.SYS_SEND_CHUNK;
+}
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
