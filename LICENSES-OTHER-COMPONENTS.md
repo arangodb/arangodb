@@ -5,7 +5,7 @@
 ### Google V8
 
 * https://code.google.com/p/v8/
-* [BSD 3 License](http://opensource.org/licenses/BSD-3-Clause)
+* [BSD 3-Clause License](http://opensource.org/licenses/BSD-3-Clause)
 
 ### icu
 
@@ -21,7 +21,7 @@
 
 * only used for the shell
 * https://github.com/mruby/mruby
-* [MIT license](https://github.com/mruby/mruby/blob/master/LEGAL)
+* [MIT License](https://github.com/mruby/mruby/blob/master/LEGAL)
 
 ### zlib
 
@@ -41,7 +41,7 @@
 ### fpconv_dtoa
 
 * https://github.com/night-shift/fpconv/
-* [MIT license](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
+* [MIT License](https://raw.githubusercontent.com/night-shift/fpconv/master/license)
 
 ## Programs
 
@@ -52,99 +52,173 @@
 
 ## Javascript, Node and NPM
 
-### node
+### Node core modules
 
-* http://nodejs.org/
-* [MIT license](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE)
+* http://nodejs.org
+* [MIT License](https://raw.githubusercontent.com/joyent/node/v0.10.33/LICENSE)
 
-### underscore
+### Bundled NPM modules
 
-* http://underscorejs.org/
-* [free as-is license](https://github.com/jashkenas/underscore/blob/master/LICENSE)
-
-### joi
-
-* https://github.com/hapijs/joi
-* [free as-is license](https://github.com/hapijs/joi/blob/master/LICENSE)
-
-### ramda
-
-* https://github.com/ramda/ramda
-* MIT
-
-### jasmine
+#### Jasmine
 
 * https://jasmine.github.io
-* MIT
+* MIT License
 
-### mocha
+#### JSUnity
 
-* http://mochajs.org
-* MIT
+* https://github.com/atesgoral/jsunity
+* MIT License
 
-### coffee-script
+#### ArangoDB Query Builder
+
+* https://github.com/arangodb/aqbjs
+* Apache 2
+
+#### CoffeeScript
 
 * http://coffeescript.org
-* MIT
+* MIT License
 
-### extendible
+#### stacktrace.js
+
+* http://www.stacktracejs.com/
+* [The Unlicense](http://unlicense.org)
+
+#### expect.js
+
+* https://github.com/Automattic/expect.js
+* MIT License
+
+#### extendible
 
 * https://github.com/3rd-Eden/extendible
-* MIT
+* MIT License
 
-### swagger
+#### Foxx Generator
+
+* https://github.com/moonglum/foxx_generator
+* Apache 2 License
+
+#### http-errors
+
+* https://github.com/jshttp/http-errors
+* MIT License
+
+#### i
+
+* https://github.com/pksunkara/inflect
+* MIT License
+
+#### Joi
+
+* https://github.com/hapijs/joi
+* BSD 3-Clause License
+
+#### YAML
+
+* https://github.com/nodeca/js-yaml
+* MIT License
+
+#### JSHint
+
+* http://jshint.com
+* MIT License
+
+#### minimatch
+
+* https://github.com/isaacs/minimatch
+* MIT License
+
+#### mocha
+
+* http://mochajs.org
+* MIT License
+
+#### qs
+
+* https://github.com/hapijs/qs
+* BSD 3-Clause License
+
+#### Ramda
+
+* http://ramdajs.com
+* MIT License
+
+#### semver
+
+* https://github.com/npm/node-semver
+* [BSD 2-Clause License](http://opensource.org/licenses/BSD-2-Clause)
+
+#### Sinon.JS
+
+* http://sinonjs.org
+* BSD 3-Clause License
+
+#### underscore
+
+* http://underscorejs.org
+* MIT License
+
+### Frontend libraries
+
+#### swagger
 
 * http://swagger.io
-* Apache License 2
+* Apache 2 License
 
-### Backbone.js
+#### Backbone.js
 
-- MIT
+* http://backbonejs.org
+* MIT License
 
-### Bootstrap
+#### Bootstrap
 
-- MIT
+* http://getbootstrap.com
+* MIT License
 
-### D3js
+#### D3js
 
-- [BSD](http://opensource.org/licenses/BSD-3-Clause)
+* http://d3js.org
+* BSD 3-Clause License
 
-### dygraph
+#### dygraph
 
-- MIT
+* http://dygraphs.com
+* MIT License
 
-### EJS
+#### EJS
 
-- MIT
+* http://www.embeddedjs.com
+* MIT License
 
-### Handlebars
+#### Handlebars
 
-- MIT
 
-### Highlight.js
+* MIT License
 
-- BSD
+#### Highlight.js
 
-### Joi
+* https://highlightjs.org
+* BSD 3-Clause License
 
-- BSD
+#### jqconsole
 
-### jqconsole
+* MIT License
 
-- MIT
+#### jQuery
 
-### jquery
+* http://jquery.com
+* MIT License
 
-- MIT
+#### jsoneditor.js
 
-### jsoneditor.js
+* Apache 2 License
 
-- Apache 2
+#### Crypto.js
 
-### Crypto.js
+* https://github.com/brix/crypto-js
+* MIT License / BSD 3-Clause License
 
-- AS-IS
+#### select2
 
-### select2
-
-- Apache 2
+* Apache 2 License

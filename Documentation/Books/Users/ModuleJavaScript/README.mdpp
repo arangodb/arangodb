@@ -17,20 +17,18 @@ standardized. CommonJS has defined some important modules. ArangoDB implements
 the following
 
 * "console" is a well known logging facility to all the JavaScript developers.
-  ArangoDB implements all of the functions described
-  <a href="http://wiki.commonjs.org/wiki/Console">here</a>, with the exceptions
-  of *profile* and *count*.
+  ArangoDB implements most of the [Console API](http://wiki.commonjs.org/wiki/Console),
+  with the exceptions of *profile* and *count*.
 
-* "fs" provides a file system API for the manipulation of paths, directories, 
+* "fs" provides a file system API for the manipulation of paths, directories,
   files, links, and the construction of file streams. ArangoDB implements
-  most of Filesystem/A functions described
-  <a href="http://wiki.commonjs.org/wiki/Filesystem/A">here</a>.
+  most [Filesystem/A](http://wiki.commonjs.org/wiki/Filesystem/A) functions.
 
-* Modules are implemented according to 
-  <a href="http://wiki.commonjs.org/wiki/Modules">Modules/1.1.1</a>
+* Modules are implemented according to
+  [Modules/1.1.1](http://wiki.commonjs.org/wiki/Modules)
 
 * Packages are implemented according to
-  <a href="http://wiki.commonjs.org/wiki/Packages">Packages/1.0</a>
+  [Packages/1.0](http://wiki.commonjs.org/wiki/Packages)
 
 !SUBSECTION ArangoDB Specific Modules
 
@@ -39,56 +37,70 @@ are described in the following chapters.
 
 !SUBSECTION Node Modules
 
-ArangoDB also supports some [node](http://www.nodejs.org/) modules.
+ArangoDB also supports some [node](http://www.nodejs.org) modules.
 
-* <a href="http://nodejs.org/api/assert.html">"assert"</a> implements 
+* ["assert"](http://nodejs.org/api/assert.html) implements
   assertion and testing functions.
 
-* <a href="http://nodejs.org/api/buffer.html">"buffer"</a> implements
+* ["buffer"](http://nodejs.org/api/buffer.html) implements
   a binary data type for JavaScript.
 
-* <a href="http://nodejs.org/api/path.html">"path"</a> implements
+* ["path"](http://nodejs.org/api/path.html) implements
   functions dealing with filenames and paths.
 
-* <a href="http://nodejs.org/api/punycode.html">"punycode"</a> implements
+* ["punycode"](http://nodejs.org/api/punycode.html) implements
   conversion functions for
-  <a href="http://en.wikipedia.org/wiki/Punycode">punycode</a> encoding.
+  [punycode](http://en.wikipedia.org/wiki/Punycode) encoding.
 
-* <a href="http://nodejs.org/api/querystring.html">"querystring"</a>
+* ["querystring"](http://nodejs.org/api/querystring.html)
   provides utilities for dealing with query strings.
 
-* <a href="http://nodejs.org/api/stream.html">"stream"</a>
+* ["stream"](http://nodejs.org/api/stream.html)
   provides a streaming interface.
 
-* <a href="http://nodejs.org/api/url.html">"url"</a>
+* ["url"](http://nodejs.org/api/url.html)
   has utilities for URL resolution and parsing.
 
-!SUBSECTION Node Packages
+!SUBSECTION Bundled NPM Modules
 
-The following <a href="https://npmjs.org/">node packages</a> are preinstalled.
+The following [NPM modules](https://npmjs.org) are preinstalled.
 
-* <a href="http://docs.busterjs.org/en/latest/modules/buster-format/">"buster-format"</a>
+* ["aqb"](https://github.com/arangodb/aqbjs)
+  is the ArangoDB Query Builder and can be used to construct
+  AQL queries with a chaining JavaScript API.
 
-* <a href="http://matthewmueller.github.io/cheerio/">"Cheerio.JS"</a>
+* ["error-stack-parser"](http://www.stacktracejs.com)
 
-* <a href="http://coffeescript.org/">"coffee-script"</a> implements a
-  coffee-script to JavaScript compiler. ArangoDB supports the *compile* 
-  function of the package, but not the *eval* functions.
+* ["expect.js"](https://github.com/Automattic/expect.js)
 
-* <a href="https://github.com/fb55/htmlparser2">"htmlparser2"</a>
+* ["extendible"](https://github.com/3rd-Eden/extendible)
 
-* <a href="http://sinonjs.org/">"Sinon.JS"</a>
+* ["foxx_generator"](https://github.com/moonglum/foxx_generator)
 
-* <a href="https://github.com/hapijs/qs">"qs"</a>
+* ["http-errors"](https://github.com/jshttp/http-errors)
+
+* ["i"](https://github.com/pksunkara/inflect)
+
+* ["joi"](https://github.com/hapijs/joi)
+  is a validation library that is used throughout the Foxx framework.
+
+* ["js-yaml"](https://github.com/nodeca/js-yaml)
+
+* ["minimatch"](https://github.com/isaacs/minimatch)
+
+* ["qs"](https://github.com/hapijs/qs)
   provides utilities for dealing with query strings using a different format
-  than the "querystring" module.
+  than the **querystring** module.
 
-* <a href="http://underscorejs.org/">"underscore"</a> is a utility-belt library
-  for JavaScript that provides a lot of the functional programming support that 
-  you would expect in Prototype.js (or Ruby), but without extending any of the
-  built-in JavaScript objects.
+* ["ramda"](http://ramdajs.com)
 
-Other node modules may be installed and used in ArangoDB, too. However,
+* ["semver"](https://github.com/npm/node-semver)
+
+* ["sinon"](http://sinonjs.org)
+
+* ["underscore"](http://underscorejs.org)
+
+Other node modules can be installed and used in ArangoDB, too. However,
 only those modules will work in ArangoDB that do not refer to node.js-internal
 variables or methods and do not include further node modules that do so.
 

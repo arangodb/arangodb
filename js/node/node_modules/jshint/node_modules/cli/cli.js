@@ -64,7 +64,7 @@ for (var module in natives) {
     define_native(module);
 }
 
-cli.output = cli.native.util.print;
+cli.output = console.log;
 cli.exit = require('exit');
 
 /**
@@ -1093,7 +1093,8 @@ cli.exec = function (cmd, callback, errback) {
  * @api public
  */
 var last_progress_call, progress_len = 74;
-cli.progress = function (progress, decimals) {
+cli.progress = function (progress, decimals, stream) {
+    stream = stream || process.stdout;
     if (progress < 0 || progress > 1 || isNaN(progress)) return;
     if (!decimals) decimals = 0;
     var now = (new Date()).getTime();
@@ -1116,7 +1117,13 @@ cli.progress = function (progress, decimals) {
     for (i = 0; i < decimals; i++) {
         percentage += ' ';
     }
-    cli.native.util.print('[' + str + '] ' +  percentage + (progress === 1 ? '\n' : '\u000D'));
+    stream.clearLine();
+    stream.write('[' + str + '] ' +  percentage);
+    if (progress === 1) {
+        stream.write('\n');
+    } else {
+        stream.cursorTo(0);
+    }
 };
 
 /**
@@ -1126,15 +1133,20 @@ cli.progress = function (progress, decimals) {
  * @api public
  */
 var spinnerInterval;
-cli.spinner = function (prefix, end) {
+cli.spinner = function (prefix, end, stream) {
+    stream = stream || process.stdout;
     if (end) {
-        cli.native.util.print('\u000D' + prefix);
+        stream.clearLine();
+        stream.cursorTo(0);
+        stream.write(prefix + '\n');
         return clearInterval(spinnerInterval);
     }
     prefix = prefix + ' ' || '';
     var spinner = ['-','\\','|','/'], i = 0, l = spinner.length;
     spinnerInterval = setInterval(function () {
-        cli.native.util.print('\u000D' + prefix + spinner[i++]);
+        stream.clearLine();
+        stream.cursorTo(0);
+        stream.write(prefix + spinner[i++]);
         if (i == l) i = 0;
     }, 200);
 };
