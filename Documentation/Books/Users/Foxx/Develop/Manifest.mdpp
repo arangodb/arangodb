@@ -67,19 +67,20 @@ A more complete example for a Manifest file:
 !SUBSECTION The setup and teardown scripts
 
 You can provide a path to a JavaScript file that prepares ArangoDB for your
-application (or respectively removes it entirely). These scripts have access to
-**appCollection** and **appCollectionName**. Use the **setup** script to create all
-collections your application needs and fill them with initial data if you want
-to. Use the **teardown** script to remove all collections you have created.
+application (or respectively removes it entirely).
+Use the **setup** script to create all collections your application needs
+and fill them with initial data if you want to.
+Use the **teardown** script to remove all collections you have created.
 
 Note: the setup script is called on each request in the development mode.
-If your application needs to set up specific collections, you should always
-check in the setup script whether they are already there.
+If your application needs to set up specific collections,
+you should always check in the setup script whether they are already there.
 
-The teardown script is called when an application is uninstalled. It is good
-practice to drop any collections in the teardown script that the application used
-exclusively, but this is not enforced. Maybe there are reasons to keep application
-data even after removing an application. It's up to you to decide what to do.
+The teardown script is called when an application is uninstalled.
+It is good practice to drop any collections in the teardown script
+that the application used exclusively, but this is not enforced.
+Maybe there are reasons to keep application data even after removing an application.
+It's up to you to decide what to do.
 
 !SUBSECTION Defining controllers
 
