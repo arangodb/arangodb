@@ -28,8 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 var mocha = require('mocha');
-var util = require('util');
-var EventEmitter = require('events').EventEmitter;
 
 function Mocha() {
   this.suite = new mocha.Suite('', new mocha.Context());
@@ -37,9 +35,7 @@ function Mocha() {
   Object.keys(mocha.interfaces).forEach(function (key) {
     mocha.interfaces[key](this.suite);
   }.bind(this));
-  EventEmitter.call(this);
 }
-util.inherits(Mocha, EventEmitter);
 
 Mocha.prototype.run = function () {
   var runner = new mocha.Runner(this.suite, false);
