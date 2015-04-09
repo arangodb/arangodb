@@ -42,6 +42,7 @@ var joi = require("joi");
 var utils = require("org/arangodb/foxx/manager-utils");
 var store = require("org/arangodb/foxx/store");
 var console = require("console");
+var Foxx = require("org/arangodb/foxx");
 var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
 var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
 var routeApp = require("org/arangodb/foxx/routing").routeApp;
@@ -107,6 +108,11 @@ var manifestSchema = {
     )
   ),
   defaultDocument: joi.string().allow("").optional(),
+  dependencies: (
+    joi.object().optional()
+    .pattern(RE_EMPTY, joi.forbidden())
+    .pattern(RE_NOT_EMPTY, joi.string().required())
+  ),
   description: joi.string().allow("").default(""),
   engines: (
     joi.object().optional()
@@ -229,17 +235,17 @@ var lookupApp = function(mount) {
 ////////////////////////////////////////////////////////////////////////////////
 
 var refillCaches = function(dbname) {
-  appCache[dbname] = {};
+  var cache = appCache[dbname] = {};
 
   var cursor = utils.getStorage().all();
-  var config, app;
   var routes = [];
 
   while (cursor.hasNext()) {
-    config = _.clone(cursor.next());
-    app = new ArangoApp(config);
-    appCache[dbname][app._mount] = app;
-    routes.push(app._mount);
+    var config = _.clone(cursor.next());
+    var app = new ArangoApp(config);
+    var mount = app._mount;
+    cache[mount] = app;
+    routes.push(mount);
   }
 
   return routes;
@@ -1287,11 +1293,18 @@ var upgrade = function(appInfo, mount, options) {
   var oldApp = lookupApp(mount);
   var oldConf = oldApp.getConfiguration(true);
   options.configuration = options.configuration || {};
-  for (var attr in oldConf) {
-    if (oldConf.hasOwnProperty(attr) && !options.configuration.hasOwnProperty(attr)) {
+  Object.keys(oldConf).forEach(function (attr) {
+    if (!options.configuration.hasOwnProperty(attr)) {
       options.configuration[attr] = oldConf[attr];
     }
-  }
+  });
+  var oldDeps = oldApp._options.dependencies || {};
+  options.dependencies = options.dependencies || {};
+  Object.keys(oldDeps).forEach(function (key) {
+    if (!options.dependencies.hasOwnProperty(attr)) {
+      options.dependencies[key] = oldDeps[key];
+    }
+  });
   _uninstall(mount, {teardown: false,
     __clusterDistribution: options.__clusterDistribution || false,
     force: !options.__clusterDistribution
@@ -1307,9 +1320,12 @@ var upgrade = function(appInfo, mount, options) {
 
 var initializeFoxx = function(options) {
   var dbname = arangodb.db._name();
-  syncWithFolder(options);
+  var mounts = syncWithFolder(options);
   refillCaches(dbname);
   checkMountedSystemApps(dbname);
+  mounts.forEach(function (mount) {
+    executeAppScript("setup", lookupApp(mount));
+  });
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1419,22 +1435,20 @@ var syncWithFolder = function(options) {
   appCache = appCache || {};
   appCache[dbname] = {};
   var folders = fs.listTree(module.appPath()).filter(filterAppRoots);
-  var i, l = folders.length;
-  var mount;
   var collection = utils.getStorage();
-  var transAction = function() {
-    mount = transformPathToMount(folders[i]);
-    _scanFoxx(mount, options);
-  };
-  for (i = 0; i < l; ++i) {
+  return folders.map(function (folder) {
+    var mount;
     db._executeTransaction({
       collections: {
         write: collection.name()
       },
-      action: transAction
+      action: function () {
+        mount = transformPathToMount(folder);
+        _scanFoxx(mount, options);
+      }
     });
-    executeAppScript("setup", lookupApp(mount));
-  }
+    return mount;
+  });
 };
 
 // -----------------------------------------------------------------------------

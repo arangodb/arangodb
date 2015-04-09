@@ -84,6 +84,7 @@
     this.collectionPrefix = app._collectionPrefix;
     this.options = app._options;
     this.configuration = app._options.configuration;
+    this.dependencies = app._dependencies;
     this.basePath = prefix;
     this.baseUrl = '/_db/' + encodeURIComponent(db._name()) + app._mount;
     this.isDevelopment = app._isDevelopment;
@@ -178,11 +179,26 @@ var computeRootAppPath = function(mount, isValidation) {
     this._isDevelopment = config.isDevelopment || false;
     this._exports = {};
     this._collectionPrefix = this._mount.substr(1).replace(/-/g, "_").replace(/\//g, "_") + "_";
+
     // Apply the default configuration and ignore all missing options
-    
     var cfg = config.options.configuration;
     this._options.configuration = applyDefaultConfig(this._manifest.configuration);
     this.configure(cfg);
+
+    var depsLookup = {};
+    var deps = config.options.dependencies;
+    this._options.dependencies = deps;
+    this._dependencies = depsLookup;
+    _.each(deps, function (mount, name) {
+      Object.defineProperty(depsLookup, name, {
+        configurable: true,
+        enumerable: true,
+        get: function () {
+          return require('org/arangodb/foxx').requireApp(mount);
+        }
+      });
+    }, this);
+
     this._context = new AppContext(this);
     this._context.appPackage = module.createAppPackage(this);
     this._context.appModule = this._context.appPackage.createAppModule(this);
