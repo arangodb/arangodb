@@ -16,6 +16,7 @@
     "joi": "6.0.8",
     "jshint": "2.6.3",
     "marked": "0.3.3",
+    "minimatch": "2.0.4",
     "mocha": "^2.2.1",
     "moment": "2.9.0",
     "numeral": "1.5.3",
