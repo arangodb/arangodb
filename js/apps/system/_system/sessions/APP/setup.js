@@ -1,16 +1,14 @@
 /*global applicationContext */
-(function () {
-  'use strict';
-  var db = require('org/arangodb').db,
-      sessionsName;
+'use strict';
+var db = require('org/arangodb').db;
+var collectionName = 'sessions';
 
-  if (applicationContext.mount.indexOf('/_system/') === 0) {
-    sessionsName = '_sessions';
-  } else {
-    sessionsName = applicationContext.collectionName('sessions');
-  }
+if (applicationContext.mount.indexOf('/_system/') === 0) {
+  collectionName = '_' + collectionName;
+} else {
+  collectionName = applicationContext.collectionName(collectionName);
+}
 
-  if (db._collection(sessionsName) === null) {
-    db._create(sessionsName, {isSystem: true});
-  }
-}());
+if (db._collection(collectionName) === null) {
+  db._create(collectionName, {isSystem: true});
+}
