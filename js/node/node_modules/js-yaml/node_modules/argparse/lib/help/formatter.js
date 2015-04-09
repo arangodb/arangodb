@@ -13,8 +13,8 @@
  **/
 'use strict';
 
-var _ = require('underscore');
-_.str = require('underscore.string');
+var _ = require('lodash');
+var sprintf = require('sprintf-js').sprintf;
 
 // Constants
 var $$ = require('../const');
@@ -80,7 +80,7 @@ Section.prototype.formatHelp = function (formatter) {
   heading = '';
   if (!!this._heading && this._heading !== $$.SUPPRESS) {
     var currentIndent = formatter.currentIndent;
-    heading = _.str.repeat(' ', currentIndent) + this._heading + ':' + $$.EOL;
+    heading = _.repeat(' ', currentIndent) + this._heading + ':' + $$.EOL;
   }
 
   // join the section-initialize newline, the heading and the help
@@ -299,7 +299,7 @@ HelpFormatter.prototype.formatHelp = function () {
   var help = this._rootSection.formatHelp(this);
   if (help) {
     help = help.replace(this._longBreakMatcher, $$.EOL + $$.EOL);
-    help = _.str.strip(help, $$.EOL) + $$.EOL;
+    help = _.trim(help, $$.EOL) + $$.EOL;
   }
   return help;
 };
@@ -321,7 +321,7 @@ HelpFormatter.prototype._formatUsage = function (usage, actions, groups, prefix)
 
   // if usage is specified, use that
   if (usage) {
-    usage = _.str.sprintf(usage, {prog: this._prog});
+    usage = sprintf(usage, {prog: this._prog});
 
     // if no optionals or positionals are available, usage is just prog
   } else if (!usage && actions.length === 0) {
@@ -397,7 +397,7 @@ HelpFormatter.prototype._formatUsage = function (usage, actions, groups, prefix)
       var lines, indent, parts;
       // if prog is short, follow it with optionals or positionals
       if (prefix.length + prog.length <= 0.75 * textWidth) {
-        indent = _.str.repeat(' ', (prefix.length + prog.length + 1));
+        indent = _.repeat(' ', (prefix.length + prog.length + 1));
         if (optionalParts) {
           lines = [].concat(
             _getLines([prog].concat(optionalParts), indent, prefix),
@@ -411,7 +411,7 @@ HelpFormatter.prototype._formatUsage = function (usage, actions, groups, prefix)
 
         // if prog is long, put it on its own line
       } else {
-        indent = _.str.repeat(' ', prefix.length);
+        indent = _.repeat(' ', prefix.length);
         parts = optionalParts + positionalParts;
         lines = _getLines(parts, indent);
         if (lines.length > 1) {
@@ -549,16 +549,16 @@ HelpFormatter.prototype._formatActionsUsage = function (actions, groups) {
   text = text.replace(/\( *\)/g, '');
   text = text.replace(/\(([^|]*)\)/g, '$1'); // remove () from single action groups
 
-  text = _.str.strip(text);
+  text = _.trim(text);
 
   // return the text
   return text;
 };
 
 HelpFormatter.prototype._formatText = function (text) {
-  text = _.str.sprintf(text, {prog: this._prog});
+  text = sprintf(text, {prog: this._prog});
   var textWidth = this._width - this._currentIndent;
-  var indentIncriment = _.str.repeat(' ', this._currentIndent);
+  var indentIncriment = _.repeat(' ', this._currentIndent);
   return this._fillText(text, textWidth, indentIncriment) + $$.EOL + $$.EOL;
 };
 
@@ -578,19 +578,19 @@ HelpFormatter.prototype._formatAction = function (action) {
 
   // no help; start on same line and add a final newline
   if (!action.help) {
-    actionHeader = _.str.repeat(' ', this._currentIndent) + actionHeader + $$.EOL;
+    actionHeader = _.repeat(' ', this._currentIndent) + actionHeader + $$.EOL;
 
   // short action name; start on the same line and pad two spaces
   } else if (actionHeader.length <= actionWidth) {
-    actionHeader = _.str.repeat(' ', this._currentIndent) +
+    actionHeader = _.repeat(' ', this._currentIndent) +
         actionHeader +
         '  ' +
-        _.str.repeat(' ', actionWidth - actionHeader.length);
+        _.repeat(' ', actionWidth - actionHeader.length);
     indentFirst = 0;
 
   // long action name; start on the next line
   } else {
-    actionHeader = _.str.repeat(' ', this._currentIndent) + actionHeader + $$.EOL;
+    actionHeader = _.repeat(' ', this._currentIndent) + actionHeader + $$.EOL;
     indentFirst = helpPosition;
   }
 
@@ -601,9 +601,9 @@ HelpFormatter.prototype._formatAction = function (action) {
   if (!!action.help) {
     helpText = this._expandHelp(action);
     helpLines = this._splitLines(helpText, helpWidth);
-    parts.push(_.str.repeat(' ', indentFirst) + helpLines[0] + $$.EOL);
+    parts.push(_.repeat(' ', indentFirst) + helpLines[0] + $$.EOL);
     helpLines.slice(1).forEach(function (line) {
-      parts.push(_.str.repeat(' ', helpPosition) + line + $$.EOL);
+      parts.push(_.repeat(' ', helpPosition) + line + $$.EOL);
     });
 
   // or add a newline if the description doesn't end with one
@@ -744,7 +744,7 @@ HelpFormatter.prototype._expandHelp = function (action) {
     }
   }
 
-  return _.str.sprintf(this._getHelpString(action), params);
+  return sprintf(this._getHelpString(action), params);
 };
 
 HelpFormatter.prototype._splitLines = function (text, width) {
@@ -754,7 +754,7 @@ HelpFormatter.prototype._splitLines = function (text, width) {
 
   text = text.replace(/[\n\|\t]/g, ' ');
 
-  text = _.str.strip(text);
+  text = _.trim(text);
   text = text.replace(this._whitespaceMatcher, ' ');
 
   // Wraps the single paragraph in text (a string) so every line

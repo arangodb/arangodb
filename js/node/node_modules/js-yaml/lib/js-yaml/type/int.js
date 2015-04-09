@@ -18,6 +18,10 @@ function isDecCode(c) {
 }
 
 function resolveYamlInteger(data) {
+  if (null === data) {
+    return false;
+  }
+
   var max = data.length,
       index = 0,
       hasDigits = false,

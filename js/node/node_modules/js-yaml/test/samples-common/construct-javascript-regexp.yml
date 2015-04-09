@@ -1,5 +1,0 @@
-- !!js/regexp /fo{2,}/
-- !!js/regexp /[wv]orlds?/g
-- !!js/regexp /^spec/im
-- !!js/regexp '/ba+r/'
-- !!js/regexp '/ba.z*/gim'

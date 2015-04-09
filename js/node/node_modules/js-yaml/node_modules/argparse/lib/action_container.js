@@ -7,9 +7,7 @@
 'use strict';
 
 var format = require('util').format;
-var _      = require('underscore');
-
-_.str = require('underscore.string');
+var _      = require('lodash');
 
 // Constants
 var $$ = require('./const');
@@ -393,7 +391,7 @@ ActionContainer.prototype._getOptional = function (args, options) {
 
   if (!dest) {
     var optionStringDest = optionStringsLong.length ? optionStringsLong[0] :optionStrings[0];
-    dest = _.str.strip(optionStringDest, this.prefixChars);
+    dest = _.trim(optionStringDest, this.prefixChars);
 
     if (dest.length === 0) {
       throw new Error(
@@ -422,7 +420,7 @@ ActionContainer.prototype._popActionClass = function (options, defaultValue) {
 
 ActionContainer.prototype._getHandler = function () {
   var handlerString = this.conflictHandler;
-  var handlerFuncName = "_handleConflict" + _.str.capitalize(handlerString);
+  var handlerFuncName = "_handleConflict" + _.capitalize(handlerString);
   var func = this[handlerFuncName];
   if (typeof func === 'undefined') {
     var msg = "invalid conflict resolution value: " + handlerString;

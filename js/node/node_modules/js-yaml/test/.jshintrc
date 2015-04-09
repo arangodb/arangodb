@@ -1,4 +1,0 @@
-{
-  "extends" : "../.jshintrc",
-  "predef"  : [ "suite", "test" ]
-}

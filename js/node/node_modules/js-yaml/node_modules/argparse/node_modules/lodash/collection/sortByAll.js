@@ -1,0 +1,48 @@
+var baseFlatten = require('../internal/baseFlatten'),
+    baseSortByOrder = require('../internal/baseSortByOrder'),
+    isIterateeCall = require('../internal/isIterateeCall');
+
+/**
+ * This method is like `_.sortBy` except that it sorts by property names
+ * instead of an iteratee function.
+ *
+ * @static
+ * @memberOf _
+ * @category Collection
+ * @param {Array|Object|string} collection The collection to iterate over.
+ * @param {...(string|string[])} props The property names to sort by,
+ *  specified as individual property names or arrays of property names.
+ * @returns {Array} Returns the new sorted array.
+ * @example
+ *
+ * var users = [
+ *   { 'user': 'barney', 'age': 36 },
+ *   { 'user': 'fred',   'age': 40 },
+ *   { 'user': 'barney', 'age': 26 },
+ *   { 'user': 'fred',   'age': 30 }
+ * ];
+ *
+ * _.map(_.sortByAll(users, ['user', 'age']), _.values);
+ * // => [['barney', 26], ['barney', 36], ['fred', 30], ['fred', 40]]
+ */
+function sortByAll() {
+  var args = arguments,
+      collection = args[0],
+      guard = args[3],
+      index = 0,
+      length = args.length - 1;
+
+  if (collection == null) {
+    return [];
+  }
+  var props = Array(length);
+  while (index < length) {
+    props[index] = args[++index];
+  }
+  if (guard && isIterateeCall(args[1], args[2], guard)) {
+    props = args[1];
+  }
+  return baseSortByOrder(collection, baseFlatten(props), []);
+}
+
+module.exports = sortByAll;
