@@ -35,12 +35,14 @@ A more complete example for a Manifest file:
   "name": "my_website",
   "version": "1.2.1",
   "description": "My Website with a blog and a shop",
-  "thumnail": "images/website-logo.png",
+  "thumbnail": "images/website-logo.png",
 
   "controllers": {
     "/blog": "apps/blog.js",
     "/shop": "apps/shop.js"
   },
+
+  "exports": "index.js",
 
   "lib": "lib",
 
@@ -59,7 +61,8 @@ A more complete example for a Manifest file:
 
   "scripts": {
     "setup": "scripts/setup.js",
-    "teardown": "scripts/teardown.js"
+    "teardown": "scripts/teardown.js",
+    "some-maintenance-script": "scripts/prune-comments.js"
   }
 }
 ```
