@@ -1,8 +1,8 @@
 'use strict';
 
 var util    = require('util');
-var _ = require('underscore');
-_.str = require('underscore.string');
+var _       = require('lodash');
+
 
 // Constants
 var $$ = require('../const');
@@ -59,7 +59,7 @@ util.inherits(RawDescriptionHelpFormatter, HelpFormatter);
 RawDescriptionHelpFormatter.prototype._fillText = function (text, width, indent) {
   var lines = text.split('\n');
   lines = lines.map(function (line) {
-      return _.str.rtrim(indent + line);
+      return _.trimRight(indent + line);
     });
   return lines.join('\n');
 };

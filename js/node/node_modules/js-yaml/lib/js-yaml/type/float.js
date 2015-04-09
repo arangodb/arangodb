@@ -11,6 +11,10 @@ var YAML_FLOAT_PATTERN = new RegExp(
   '|\\.(?:nan|NaN|NAN))$');
 
 function resolveYamlFloat(data) {
+  if (null === data) {
+    return false;
+  }
+
   var value, sign, base, digits;
 
   if (!YAML_FLOAT_PATTERN.test(data)) {

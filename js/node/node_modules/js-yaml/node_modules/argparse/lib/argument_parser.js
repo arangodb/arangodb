@@ -11,8 +11,8 @@ var util    = require('util');
 var format  = require('util').format;
 var Path    = require('path');
 
-var _ = require('underscore');
-_.str = require('underscore.string');
+var _       = require('lodash');
+var sprintf = require('sprintf-js').sprintf;
 
 // Constants
 var $$ = require('./const');
@@ -181,7 +181,7 @@ ArgumentParser.prototype.addSubparsers = function (options) {
     var positionals = this._getPositionalActions();
     var groups = this._mutuallyExclusiveGroups;
     formatter.addUsage(this.usage, positionals, groups, '');
-    options.prog = _.str.strip(formatter.formatHelp());
+    options.prog = _.trim(formatter.formatHelp());
   }
 
   // create the parsers action and add it to the positionals list
@@ -446,7 +446,7 @@ ArgumentParser.prototype._parseKnownArgs = function (argStrings, namespace) {
         // explicit argument
         else {
           var message = 'ignored explicit argument %r';
-          throw argumentErrorHelper(action, _.str.sprintf(message, explicitArg));
+          throw argumentErrorHelper(action, sprintf(message, explicitArg));
         }
       }
       // if there is no explicit argument, try to match the
@@ -567,7 +567,7 @@ ArgumentParser.prototype._parseKnownArgs = function (argStrings, namespace) {
   var stopIndex = consumePositionals(startIndex);
 
   // if we didn't consume all the argument strings, there were extras
-  extras = extras.concat(_.rest(argStrings, stopIndex));
+  extras = extras.concat(argStrings.slice(stopIndex));
 
   // if we didn't use all the Positional objects, there were too few
   // arg strings supplied.
@@ -872,7 +872,7 @@ ArgumentParser.prototype._getNargsPattern = function (action) {
     break;
   // all others should be integers
   default:
-    regexpNargs = '(-*' + _.str.repeat('-*A', action.nargs) + '-*)';
+    regexpNargs = '(-*' + _.repeat('-*A', action.nargs) + '-*)';
   }
 
   // if this is an optional action, -- is not allowed

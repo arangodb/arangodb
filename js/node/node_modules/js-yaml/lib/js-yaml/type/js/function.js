@@ -19,6 +19,10 @@ try {
 var Type = require('../../type');
 
 function resolveJavascriptFunction(data) {
+  if (null === data) {
+    return false;
+  }
+
   try {
     var source = '(' + data + ')',
         ast    = esprima.parse(source, { range: true }),

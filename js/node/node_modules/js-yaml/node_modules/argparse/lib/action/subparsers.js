@@ -9,7 +9,7 @@
 
 var util    = require('util');
 var format  = require('util').format;
-var _       = require('underscore');
+var _       = require('lodash');
 
 
 var Action = require('../action');

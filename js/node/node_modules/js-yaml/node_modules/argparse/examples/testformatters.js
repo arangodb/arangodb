@@ -3,8 +3,8 @@
 var a, group, parser, helptext;
 
 var assert = require('assert');
-var _ = require('underscore');
-_.str = require('underscore.string');
+
+
 var print = function () {
     return console.log.apply(console, arguments);
   };

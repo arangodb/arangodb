@@ -3,6 +3,10 @@
 var Type = require('../type');
 
 function resolveYamlBoolean(data) {
+  if (null === data) {
+    return false;
+  }
+
   var max = data.length;
 
   return (max === 4 && (data === 'true' || data === 'True' || data === 'TRUE')) ||
