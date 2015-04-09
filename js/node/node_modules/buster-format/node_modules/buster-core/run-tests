@@ -1,4 +1,0 @@
-#!/usr/bin/env node
-
-require("./test/buster-core-test.js");
-require("./test/buster-event-emitter-test.js");
