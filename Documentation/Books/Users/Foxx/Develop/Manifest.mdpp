@@ -8,10 +8,10 @@ attributes are required though):
 * **author**: The author name
 * **contributors**: An array containing objects, each represents a contributor (with **name** and optional **email**)
 * **controllers**: Map routes to FoxxControllers
-* **exports**: Map names to Foxx exports
 * **defaultDocument**: The default document when the application's root (`/`) is called (defaults to `"index.html"`)
 * **description**: A short description of the application (Meta information)
 * **engines**: Should be an object with **arangodb** set to the ArangoDB version your Foxx app is compatible with
+* **exports**: Map names to Foxx exports
 * **files**: Deliver files
 * **isSystem**: Mark an application as a system application
 * **keywords**: An array of keywords to help people find your Foxx app
@@ -20,7 +20,6 @@ attributes are required though):
 * **name**: Name of the application (Meta information)
 * **repository**: An object with information about where you can find the repository: **type** and **url**
 * **scripts**: An object with script names mapped to filenames, e.g. your app's **setup** and **teardown** scripts
-* **teardown**: Path to a teardown script
 * **thumbnail**: Path to a thumbnail that represents the application (Meta information)
 * **version**: Current version of the application (Meta information)
 
@@ -82,7 +81,9 @@ practice to drop any collections in the teardown script that the application use
 exclusively, but this is not enforced. Maybe there are reasons to keep application
 data even after removing an application. It's up to you to decide what to do.
 
-!SUBSECTION controllers is an object that matches routes to files
+!SUBSECTION Defining controllers
+
+Controllers can be defined as an object mapping routes to file names:
 
 * The **key** is the route you want to mount at
 
