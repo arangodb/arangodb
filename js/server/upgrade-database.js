@@ -41,6 +41,7 @@
   var console = require("console");
   var userManager = require("org/arangodb/users");
   require("org/arangodb/cluster"); // TODO Is this unused or magic?
+  var FoxxQueues = require("org/arangodb/foxx/queues");
   var currentVersion = require("org/arangodb/database-version").CURRENT_VERSION;
   var sprintf = internal.sprintf;
   var db = internal.db;
@@ -1257,6 +1258,25 @@
 
       task: function () {
         return createSystemCollection("_queues");
+      }
+    });
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief setupDefaultQueue
+///
+/// set up the default queue
+////////////////////////////////////////////////////////////////////////////////
+
+    addTask({
+      name:        "setupDefaultQueue",
+      description: "setup default queue",
+
+      mode:        [ MODE_PRODUCTION, MODE_DEVELOPMENT ],
+      cluster:     [ CLUSTER_NONE, CLUSTER_COORDINATOR_GLOBAL ],
+      database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
+
+      task: function () {
+        return FoxxQueues.create("default");
       }
     });
 
