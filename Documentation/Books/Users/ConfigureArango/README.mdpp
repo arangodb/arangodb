@@ -109,8 +109,3 @@ console.
 Note that the server cannot be started in this mode if it is 
 already running in this or another mode. 
 
-!SECTION Command-Line Options for Development
-
-<!-- arangod/RestServer/ArangoServer.h -->
-
-@startDocuBlock developmentMode
