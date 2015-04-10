@@ -39,7 +39,6 @@
   var internal = require("internal");
   var db = internal.db;
   var _= require("underscore");
-  var Foxx = require("org/arangodb/foxx");
   var utils = require("org/arangodb/foxx/manager-utils");
   var console = require("console");
   var arangodb = require("org/arangodb");
@@ -195,7 +194,7 @@ var computeRootAppPath = function(mount, isValidation) {
         configurable: true,
         enumerable: true,
         get: function () {
-          return Foxx.requireApp(mount);
+          return require("org/arangodb/foxx").requireApp(mount);
         }
       });
     }, this);
