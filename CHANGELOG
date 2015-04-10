@@ -20,6 +20,20 @@ v2.5.2 (XXXX-XX-XX)
 
 * added `Foxx.Repository#exists`
 
+* parallelise initialization of V8 context in multiple threads
+
+* fixed a possible crash when the debug-level was TRACE
+
+* cluster: do not initialize statistics collection on each
+  coordinator, this fixes a race condition at startup
+
+* cluster: fix a startup race w.r.t. the _configuration collection
+
+* search for db:// JavaScript modules only after all local files have been
+  considered, this speeds up the require command in a cluster considerably
+
+* general cluster speedup in certain areas
+
 
 v2.5.1 (2015-03-19)
 -------------------
