@@ -276,6 +276,8 @@ _.extend(Queue.prototype, {
   }
 });
 
+queues.create('default');
+
 module.exports = queues;
 
 // -----------------------------------------------------------------------------
