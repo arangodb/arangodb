@@ -51,10 +51,6 @@ The function returns the combination of the path and filename, e.g. fs.join(Hell
 @startDocuBlock JS_MakeDirectory
 
 
-<!-- lib/V8/v8-utils.cpp  -->
-
-@startDocuBlock JS_Move
-
 
 `fs.pathSeparator`
 
