@@ -1,6 +1,8 @@
 v2.5.2 (XXXX-XX-XX)
 -------------------
 
+* modules stored in _modules are automatically flushed when changed
+
 * added missing query-id parameter in documentation of HTTP DELETE `/_api/query` endpoint
 
 * added iterator for edge index in AQL queries
