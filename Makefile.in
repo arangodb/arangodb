@@ -628,7 +628,6 @@ am_lib_libarango_fe_a_OBJECTS =  \
 	lib/HttpServer/HttpHandler.$(OBJEXT) \
 	lib/HttpServer/HttpHandlerFactory.$(OBJEXT) \
 	lib/HttpServer/PathHandler.$(OBJEXT) \
-	lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT) \
 	lib/Scheduler/ApplicationScheduler.$(OBJEXT) \
 	lib/Scheduler/AsyncTask.$(OBJEXT) \
 	lib/Scheduler/ListenTask.$(OBJEXT) \
@@ -1414,7 +1413,6 @@ lib_libarango_fe_a_SOURCES = \
 	lib/HttpServer/HttpHandler.cpp \
 	lib/HttpServer/HttpHandlerFactory.cpp \
 	lib/HttpServer/PathHandler.cpp \
-	lib/HttpServer/ServiceUnavailableHandler.cpp \
 	lib/Scheduler/ApplicationScheduler.cpp \
 	lib/Scheduler/AsyncTask.cpp \
 	lib/Scheduler/ListenTask.cpp \
@@ -3068,9 +3066,6 @@ lib/HttpServer/HttpHandlerFactory.$(OBJEXT):  \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/HttpServer/PathHandler.$(OBJEXT): lib/HttpServer/$(am__dirstamp) \
 	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
-lib/HttpServer/ServiceUnavailableHandler.$(OBJEXT):  \
-	lib/HttpServer/$(am__dirstamp) \
-	lib/HttpServer/$(DEPDIR)/$(am__dirstamp)
 lib/Scheduler/$(am__dirstamp):
 	@$(MKDIR_P) lib/Scheduler
 	@: > lib/Scheduler/$(am__dirstamp)
@@ -3819,7 +3814,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/HttpHandlerFactory.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/PathHandler.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@lib/HttpServer/$(DEPDIR)/ServiceUnavailableHandler.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/JsonParser/$(DEPDIR)/lib_libarango_a-json-parser.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/MRLineEditor.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@lib/MRuby/$(DEPDIR)/MRLoader.Po@am__quote@

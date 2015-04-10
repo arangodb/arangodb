@@ -3,9 +3,9 @@ arangosh> var graph = examples.loadGraph("routeplanner");
 arangosh> graph._eccentricity({weight : 'distance'});
 [ 
   { 
-    "germanCity/Berlin" : 0.7083333333333335, 
     "germanCity/Hamburg" : 0.7083333333333335, 
     "germanCity/Cologne" : 1, 
+    "germanCity/Berlin" : 0.7083333333333335, 
     "frenchCity/Paris" : 0.7083333333333335, 
     "frenchCity/Lyon" : 0.7083333333333335 
   } 

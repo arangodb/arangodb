@@ -108,6 +108,7 @@ add_executable(
     RestHandler/RestPleaseUpgradeHandler.cpp
     RestHandler/RestReplicationHandler.cpp
     RestHandler/RestUploadHandler.cpp
+    RestHandler/RestQueryHandler.cpp
     RestHandler/RestVocbaseBaseHandler.cpp
     RestServer/ArangoServer.cpp
     RestServer/ConsoleThread.cpp

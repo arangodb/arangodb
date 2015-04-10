@@ -6,7 +6,7 @@ content-type: application/json; charset=utf-8
 
 { 
   "error" : true, 
+  "errorMessage" : "syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33", 
   "code" : 400, 
-  "errorNum" : 1501, 
-  "errorMessage" : "syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33" 
+  "errorNum" : 1501 
 }
