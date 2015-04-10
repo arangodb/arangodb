@@ -42,7 +42,6 @@ var joi = require("joi");
 var utils = require("org/arangodb/foxx/manager-utils");
 var store = require("org/arangodb/foxx/store");
 var console = require("console");
-var Foxx = require("org/arangodb/foxx");
 var ArangoApp = require("org/arangodb/foxx/arangoApp").ArangoApp;
 var TemplateEngine = require("org/arangodb/foxx/templateEngine").Engine;
 var routeApp = require("org/arangodb/foxx/routing").routeApp;
@@ -1293,15 +1292,15 @@ var upgrade = function(appInfo, mount, options) {
   var oldApp = lookupApp(mount);
   var oldConf = oldApp.getConfiguration(true);
   options.configuration = options.configuration || {};
-  Object.keys(oldConf).forEach(function (attr) {
-    if (!options.configuration.hasOwnProperty(attr)) {
-      options.configuration[attr] = oldConf[attr];
+  Object.keys(oldConf).forEach(function (key) {
+    if (!options.configuration.hasOwnProperty(key)) {
+      options.configuration[key] = oldConf[key];
     }
   });
   var oldDeps = oldApp._options.dependencies || {};
   options.dependencies = options.dependencies || {};
   Object.keys(oldDeps).forEach(function (key) {
-    if (!options.dependencies.hasOwnProperty(attr)) {
+    if (!options.dependencies.hasOwnProperty(key)) {
       options.dependencies[key] = oldDeps[key];
     }
   });
