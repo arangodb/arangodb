@@ -5,11 +5,14 @@ HTTP/1.1 200 OK
 content-type: application/json; charset=utf-8
 
 { 
-  "bindVars" : [ 
-    "name" 
-  ], 
+  "error" : false, 
+  "code" : 200, 
+  "parsed" : true, 
   "collections" : [ 
     "products" 
+  ], 
+  "bindVars" : [ 
+    "name" 
   ], 
   "ast" : [ 
     { 
@@ -86,6 +89,5 @@ content-type: application/json; charset=utf-8
       ] 
     } 
   ], 
-  "error" : false, 
-  "code" : 200 
+  "warnings" : [ ] 
 }

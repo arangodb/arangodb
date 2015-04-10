@@ -10,7 +10,7 @@ content-type: application/json; charset=utf-8
     "lastProcessedContinuousTick" : null, 
     "lastAvailableContinuousTick" : null, 
     "progress" : { 
-      "time" : "2015-03-19T22:31:18Z", 
+      "time" : "2015-04-10T12:01:45Z", 
       "message" : "fetching master state information", 
       "failedConnects" : 1 
     }, 
@@ -21,11 +21,11 @@ content-type: application/json; charset=utf-8
     "lastError" : { 
       "errorNum" : 0 
     }, 
-    "time" : "2015-03-19T22:31:18Z" 
+    "time" : "2015-04-10T12:01:45Z" 
   }, 
   "server" : { 
-    "version" : "2.5.1", 
-    "serverId" : "39687642421189" 
+    "version" : "2.5.2", 
+    "serverId" : "267396928395596" 
   }, 
   "endpoint" : "tcp://127.0.0.1:8529", 
   "database" : "_system" 

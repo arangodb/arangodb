@@ -1,4 +1,4 @@
-v2.5.2 (XXXX-XX-XX)
+v2.5.2 (2015-04-11)
 -------------------
 
 * modules stored in _modules are automatically flushed when changed

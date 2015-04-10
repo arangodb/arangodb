@@ -1,11 +1,11 @@
 arangosh> col = db.example;
-[ArangoCollection 30286181, "example" (type document, status loaded)]
+[ArangoCollection 24319824, "example" (type document, status loaded)]
 arangosh> col.save({ "Hello" : "World" });
 { 
   "error" : false, 
-  "_id" : "example/30613861", 
-  "_rev" : "30613861", 
-  "_key" : "30613861" 
+  "_id" : "example/24647504", 
+  "_rev" : "24647504", 
+  "_key" : "24647504" 
 }
 arangosh> col.count();
 1

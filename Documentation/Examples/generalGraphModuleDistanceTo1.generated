@@ -10,7 +10,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "634986853", 
+        "_rev" : "629675856", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -21,7 +21,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "635183461", 
+        "_rev" : "629872464", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -32,7 +32,7 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "635183461", 
+        "_rev" : "629872464", 
         "isCapital" : true, 
         "population" : 4000000 
       } 
@@ -43,7 +43,18 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Lyon", 
         "_key" : "Lyon", 
-        "_rev" : "634986853", 
+        "_rev" : "629675856", 
+        "isCapital" : false, 
+        "population" : 80000 
+      } 
+    }, 
+    { 
+      "startVertex" : "germanCity/Hamburg", 
+      "distance" : 1200, 
+      "vertex" : { 
+        "_id" : "frenchCity/Lyon", 
+        "_key" : "Lyon", 
+        "_rev" : "629675856", 
         "isCapital" : false, 
         "population" : 80000 
       } 
@@ -54,20 +65,9 @@ arangosh> g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestric
       "vertex" : { 
         "_id" : "frenchCity/Paris", 
         "_key" : "Paris", 
-        "_rev" : "635183461", 
+        "_rev" : "629872464", 
         "isCapital" : true, 
         "population" : 4000000 
-      } 
-    }, 
-    { 
-      "startVertex" : "germanCity/Hamburg", 
-      "distance" : 1200, 
-      "vertex" : { 
-        "_id" : "frenchCity/Lyon", 
-        "_key" : "Lyon", 
-        "_rev" : "634986853", 
-        "isCapital" : false, 
-        "population" : 80000 
       } 
     } 
   ] 

@@ -1,8 +1,8 @@
 arangosh> db.demo.figures()
 { 
   "alive" : { 
-    "count" : 0, 
-    "size" : 0 
+    "count" : 1, 
+    "size" : 256 
   }, 
   "dead" : { 
     "count" : 0, 
@@ -26,17 +26,17 @@ arangosh> db.demo.figures()
     "fileSize" : 0 
   }, 
   "shapes" : { 
-    "count" : 0, 
-    "size" : 0 
+    "count" : 2, 
+    "size" : 272 
   }, 
   "attributes" : { 
-    "count" : 0, 
-    "size" : 0 
+    "count" : 6, 
+    "size" : 304 
   }, 
   "indexes" : { 
     "count" : 1, 
     "size" : 2008 
   }, 
-  "lastTick" : "25764197", 
-  "uncollectedLogfileEntries" : 1 
+  "lastTick" : "20125520", 
+  "uncollectedLogfileEntries" : 0 
 }

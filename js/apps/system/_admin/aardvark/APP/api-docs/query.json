@@ -18,6 +18,29 @@
                     ],
                     "parameters": [],
                     "notes": "",
+                    "summary": " Returns the properties for the AQL query tracking",
+                    "httpMethod": "GET",
+                    "examples": "",
+                    "nickname": "ReturnsThePropertiesForTheAqlQueryTracking"
+                }
+            ],
+            "path": "/_api/query/properties"
+        },
+        {
+            "operations": [
+                {
+                    "errorResponses": [
+                        {
+                            "reason": "Is returned when the list of queries can be retrieved successfully. <br><br>",
+                            "code": "200"
+                        },
+                        {
+                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, <br><br> <br><br>",
+                            "code": "400"
+                        }
+                    ],
+                    "parameters": [],
+                    "notes": "",
                     "summary": " Returns the currently running AQL queries",
                     "httpMethod": "GET",
                     "examples": "",
@@ -48,29 +71,6 @@
                 }
             ],
             "path": "/_api/query/slow"
-        },
-        {
-            "operations": [
-                {
-                    "errorResponses": [
-                        {
-                            "reason": "Is returned when the list of queries can be retrieved successfully. <br><br>",
-                            "code": "200"
-                        },
-                        {
-                            "reason": "The server will respond with <em>HTTP 400</em> in case of a malformed request, <br><br> <br><br>",
-                            "code": "400"
-                        }
-                    ],
-                    "parameters": [],
-                    "notes": "",
-                    "summary": " Returns the properties for the AQL query tracking",
-                    "httpMethod": "GET",
-                    "examples": "",
-                    "nickname": "ReturnsThePropertiesForTheAqlQueryTracking"
-                }
-            ],
-            "path": "/_api/query/properties"
         },
         {
             "operations": [
@@ -112,7 +112,15 @@
                             "code": "404"
                         }
                     ],
-                    "parameters": [],
+                    "parameters": [
+                        {
+                            "dataType": "String",
+                            "paramType": "path",
+                            "required": true,
+                            "name": "query-id",
+                            "description": "The id of the query. <br><br> Kills a running query. The query will be terminated at the next cancellation point. <br><br>"
+                        }
+                    ],
                     "notes": "",
                     "summary": " Kills a running AQL query",
                     "httpMethod": "DELETE",
@@ -178,7 +186,7 @@
                     "notes": "",
                     "summary": " Parse an AQL query",
                     "httpMethod": "POST",
-                    "examples": "<br><br> Valid query: <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query\n{ \"query\" : \"FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"bindVars\" : [ \n    \"name\" \n  ], \n  \"collections\" : [ \n    \"products\" \n  ], \n  \"ast\" : [ \n    { \n      \"type\" : \"root\", \n      \"subNodes\" : [ \n        { \n          \"type\" : \"for\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"variable\", \n              \"name\" : \"p\", \n              \"id\" : 0 \n            }, \n            { \n              \"type\" : \"collection\", \n              \"name\" : \"products\" \n            } \n          ] \n        }, \n        { \n          \"type\" : \"filter\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"compare ==\", \n              \"subNodes\" : [ \n                { \n                  \"type\" : \"attribute access\", \n                  \"name\" : \"name\", \n                  \"subNodes\" : [ \n                    { \n                      \"type\" : \"reference\", \n                      \"name\" : \"p\", \n                      \"id\" : 0 \n                    } \n                  ] \n                }, \n                { \n                  \"type\" : \"parameter\", \n                  \"name\" : \"name\" \n                } \n              ] \n            } \n          ] \n        }, \n        { \n          \"type\" : \"limit\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"value\", \n              \"value\" : 0 \n            }, \n            { \n              \"type\" : \"value\", \n              \"value\" : 2 \n            } \n          ] \n        }, \n        { \n          \"type\" : \"return\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"attribute access\", \n              \"name\" : \"n\", \n              \"subNodes\" : [ \n                { \n                  \"type\" : \"reference\", \n                  \"name\" : \"p\", \n                  \"id\" : 0 \n                } \n              ] \n            } \n          ] \n        } \n      ] \n    } \n  ], \n  \"error\" : false, \n  \"code\" : 200 \n}\n</code></pre><br><br><br> Invalid query: <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query\n{ \"query\" : \"FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"code\" : 400, \n  \"errorNum\" : 1501, \n  \"errorMessage\" : \"syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33\" \n}\n</code></pre><br><br><br>",
+                    "examples": "<br><br> Valid query: <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query\n{ \"query\" : \"FOR p IN products FILTER p.name == @name LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 200 OK\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : false, \n  \"code\" : 200, \n  \"parsed\" : true, \n  \"collections\" : [ \n    \"products\" \n  ], \n  \"bindVars\" : [ \n    \"name\" \n  ], \n  \"ast\" : [ \n    { \n      \"type\" : \"root\", \n      \"subNodes\" : [ \n        { \n          \"type\" : \"for\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"variable\", \n              \"name\" : \"p\", \n              \"id\" : 0 \n            }, \n            { \n              \"type\" : \"collection\", \n              \"name\" : \"products\" \n            } \n          ] \n        }, \n        { \n          \"type\" : \"filter\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"compare ==\", \n              \"subNodes\" : [ \n                { \n                  \"type\" : \"attribute access\", \n                  \"name\" : \"name\", \n                  \"subNodes\" : [ \n                    { \n                      \"type\" : \"reference\", \n                      \"name\" : \"p\", \n                      \"id\" : 0 \n                    } \n                  ] \n                }, \n                { \n                  \"type\" : \"parameter\", \n                  \"name\" : \"name\" \n                } \n              ] \n            } \n          ] \n        }, \n        { \n          \"type\" : \"limit\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"value\", \n              \"value\" : 0 \n            }, \n            { \n              \"type\" : \"value\", \n              \"value\" : 2 \n            } \n          ] \n        }, \n        { \n          \"type\" : \"return\", \n          \"subNodes\" : [ \n            { \n              \"type\" : \"attribute access\", \n              \"name\" : \"n\", \n              \"subNodes\" : [ \n                { \n                  \"type\" : \"reference\", \n                  \"name\" : \"p\", \n                  \"id\" : 0 \n                } \n              ] \n            } \n          ] \n        } \n      ] \n    } \n  ], \n  \"warnings\" : [ ] \n}\n</code></pre><br><br><br> Invalid query: <br><br><br><br><pre><code class=\"json\">shell> curl -X POST --data-binary @- --dump - http://localhost:8529/_api/query\n{ \"query\" : \"FOR p IN products FILTER p.name = @name LIMIT 2 RETURN p.n\" }\n\nHTTP/1.1 400 Bad Request\ncontent-type: application/json; charset=utf-8\n\n{ \n  \"error\" : true, \n  \"errorMessage\" : \"syntax error, unexpected assignment near '= @name LIMIT 2 RETURN p.n' at position 1:33\", \n  \"code\" : 400, \n  \"errorNum\" : 1501 \n}\n</code></pre><br><br><br>",
                     "nickname": "ParseAnAqlQuery"
                 }
             ],
