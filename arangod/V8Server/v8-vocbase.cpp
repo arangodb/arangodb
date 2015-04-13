@@ -1916,7 +1916,7 @@ static void ListDatabasesCoordinator (const v8::FunctionCallbackInfo<v8::Value>&
     // We have to ask a DBServer, any will do:
     int tries = 0;
     vector<ServerID> DBServers;
-    while (++tries <= 2) {
+    while (true) {
       DBServers = ci->getCurrentDBServers();
 
       if (! DBServers.empty()) {
@@ -1954,6 +1954,9 @@ static void ListDatabasesCoordinator (const v8::FunctionCallbackInfo<v8::Value>&
         else {
           delete res;
         }
+      }
+      if (++tries >= 2) {
+        break;
       }
       ci->loadCurrentDBServers();   // just in case some new have arrived
     }
