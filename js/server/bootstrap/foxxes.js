@@ -56,6 +56,9 @@
         db._useDatabase("_system");
         throw e;
       }
+        
+      // return to _system database so the caller does not need to know we changed the db
+      db._useDatabase("_system");
     }
   };
 }());
