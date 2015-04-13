@@ -34,6 +34,23 @@ Runtime
  * Cheapen startup for valgrind: --no-server --javascript.gc-frequency 1000000 --javascript.gc-interval 65536 --scheduler.threads=1 --javascript.v8-contexts=1
  * to have backtraces output set this on the prompt: ENABLE_NATIVE_BACKTRACES(true)
 
+Startup
+-------
+We now have a startup rc file: ~/.arangod.rc . Its evaled as javascript.
+A sample version to help working with the arangod rescue console may look like that:
+
+    ENABLE_NATIVE_BACKTRACES(true);
+    internal = require("internal");
+    fs = require("fs");
+    db = internal.db;
+    time = internal.time;
+    timed = function (cb) {
+      var s  = time();
+      cb();
+      return time() - s;
+    };
+    print = internal.print;
+
 Documentation
 -------------
 -------------
