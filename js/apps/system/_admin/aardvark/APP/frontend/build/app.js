@@ -96737,13 +96737,14 @@ if (typeof internal.arango !== 'undefined') {
 });
 
 /*jshint maxlen: 240 */
+/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  'use strict';
+  "use strict";
   var internal = require("internal");
 
   internal.errors = {
@@ -106457,6 +106458,11 @@ window.ArangoUsers = Backbone.Collection.extend({
         break;
       default:
     }
+    
+    if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
+      // trigger the validation so the "ok" button has the correct state
+      button.prop("disabled", true);
+    }
   };
 
   var installFoxxFromStore = function(e) {
@@ -106479,7 +106485,13 @@ window.ArangoUsers = Backbone.Collection.extend({
   };
 
   var installFoxxFromZip = function(files, data) {
-    if (window.modalView.modalTestAll()) {
+    if (data === undefined) {
+      data = this._uploadData;
+    }
+    else {
+      this._uploadData = data;
+    }
+    if (data && window.modalView.modalTestAll()) {
       var mount, flag;
       if (this._upgrade) {
         mount = this.mount;
@@ -106568,6 +106580,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         installFoxxFromGithub.apply(this);
         break;
       case "zip":
+        installFoxxFromZip.apply(this);
         break;
       default:
     }
@@ -106599,6 +106612,7 @@ window.ArangoUsers = Backbone.Collection.extend({
     $("#upload-foxx-zip").uploadFile({
       url: "/_api/upload?multipart=true",
       allowedTypes: "zip",
+      multiple: false,
       onSuccess: installFoxxFromZip.bind(scope)
     });
     $.get("foxxes/fishbowl", function(list) {
@@ -106615,6 +106629,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   FoxxInstallView.prototype.install = function(callback) {
     this.reload = callback;
     this._upgrade = false;
+    this._uploadData = undefined;
     delete this.mount;
     render(this, false);
     window.modalView.clearValidators();
@@ -106626,6 +106641,7 @@ window.ArangoUsers = Backbone.Collection.extend({
   FoxxInstallView.prototype.upgrade = function(mount, callback) {
     this.reload = callback;
     this._upgrade = true;
+    this._uploadData = undefined;
     this.mount = mount;
     render(this, true);
     window.modalView.clearValidators();
