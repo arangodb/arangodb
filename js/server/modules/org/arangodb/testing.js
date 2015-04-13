@@ -437,7 +437,7 @@ function readImportantLogLines(logPath) {
       var maxBuffer = buf.length;
       for (j = 0; j < maxBuffer; j++) {
         if (buf[j] === 10) { // \n
-          var line = buf.asciiSlice(lineStart, j - 1);
+          var line = buf.asciiSlice(lineStart, j);
           // filter out regular INFO lines, and test related messages
           if ((line.search(" INFO ") < 0) &&
             (line.search("WARNING about to execute:") < 0) &&
@@ -465,6 +465,9 @@ function copy (src, dst) {
 function checkInstanceAlive(instanceInfo, options) {
   var storeArangodPath;
   if (options.cluster === false) {
+    if (instanceInfo.hasOwnProperty('exitStatus')) {
+      return false;
+    }
     var res = statusExternal(instanceInfo.pid, false);
     var ret = res.status === "RUNNING";
     if (! ret) {
