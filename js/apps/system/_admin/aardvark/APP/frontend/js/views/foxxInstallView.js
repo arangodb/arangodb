@@ -153,6 +153,11 @@
         break;
       default:
     }
+    
+    if (! button.prop("disabled") && ! window.modalView.modalTestAll()) {
+      // trigger the validation so the "ok" button has the correct state
+      button.prop("disabled", true);
+    }
   };
 
   var installFoxxFromStore = function(e) {
@@ -175,7 +180,13 @@
   };
 
   var installFoxxFromZip = function(files, data) {
-    if (window.modalView.modalTestAll()) {
+    if (data === undefined) {
+      data = this._uploadData;
+    }
+    else {
+      this._uploadData = data;
+    }
+    if (data && window.modalView.modalTestAll()) {
       var mount, flag;
       if (this._upgrade) {
         mount = this.mount;
@@ -264,6 +275,7 @@
         installFoxxFromGithub.apply(this);
         break;
       case "zip":
+        installFoxxFromZip.apply(this);
         break;
       default:
     }
@@ -295,6 +307,7 @@
     $("#upload-foxx-zip").uploadFile({
       url: "/_api/upload?multipart=true",
       allowedTypes: "zip",
+      multiple: false,
       onSuccess: installFoxxFromZip.bind(scope)
     });
     $.get("foxxes/fishbowl", function(list) {
@@ -311,6 +324,7 @@
   FoxxInstallView.prototype.install = function(callback) {
     this.reload = callback;
     this._upgrade = false;
+    this._uploadData = undefined;
     delete this.mount;
     render(this, false);
     window.modalView.clearValidators();
@@ -322,6 +336,7 @@
   FoxxInstallView.prototype.upgrade = function(mount, callback) {
     this.reload = callback;
     this._upgrade = true;
+    this._uploadData = undefined;
     this.mount = mount;
     render(this, true);
     window.modalView.clearValidators();
