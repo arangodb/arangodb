@@ -1287,8 +1287,17 @@ int main (int argc, char* argv[]) {
   // .............................................................................
 
   bool isDirectory = false;
+  bool isEmptyDirectory = false;
+
   if (! OutputDirectory.empty()) {
     isDirectory = TRI_IsDirectory(OutputDirectory.c_str());
+    
+    if (isDirectory) {  
+      TRI_vector_string_t files = TRI_FullTreeDirectory(OutputDirectory.c_str());
+      // we don't care if the target directory is empty
+      isEmptyDirectory = (files._length == 0);
+      TRI_DestroyVectorString(&files); 
+    }
   }
 
   if (OutputDirectory.empty() ||
@@ -1297,8 +1306,8 @@ int main (int argc, char* argv[]) {
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
-  if (isDirectory && ! Overwrite) {
-    cerr << "output directory '" << OutputDirectory << "' already exists. use --overwrite to overwrite data in in it" << endl;
+  if (isDirectory && ! isEmptyDirectory && ! Overwrite) {
+    cerr << "output directory '" << OutputDirectory << "' already exists. use \"--overwrite true\" to overwrite data in it" << endl;
     TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
   }
 
@@ -1453,9 +1462,7 @@ int main (int argc, char* argv[]) {
     ret = EXIT_FAILURE;
   }
 
-  if (Client != nullptr) {
-    delete Client;
-  }
+  delete Client;
 
   TRIAGENS_REST_SHUTDOWN;
 
