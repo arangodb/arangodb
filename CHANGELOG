@@ -1,3 +1,9 @@
+v2.5.3 (XXXX-XX-XX)
+-------------------
+
+* issue #1300: Make arangodump not fail if directory exists but is empty
+
+
 v2.5.2 (2015-04-11)
 -------------------
 
