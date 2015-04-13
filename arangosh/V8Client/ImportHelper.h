@@ -99,6 +99,14 @@ namespace triagens {
       bool importJson (std::string const& collectionName, std::string const& fileName);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the action to carry out on duplicate _key
+////////////////////////////////////////////////////////////////////////////////
+
+      void setOnDuplicateAction (std::string const& action) {
+        _onDuplicateAction = action;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the quote character
 ///
 /// this is a string because the quote might also be empty if not used
@@ -233,6 +241,7 @@ namespace triagens {
       size_t _rowsRead;
       size_t _rowOffset;
 
+      std::string _onDuplicateAction;
       std::string _collectionName;
       triagens::basics::StringBuffer _lineBuffer;
       triagens::basics::StringBuffer _outputBuffer;

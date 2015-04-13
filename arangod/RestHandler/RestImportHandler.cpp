@@ -51,7 +51,8 @@ using namespace triagens::arango;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestImportHandler::RestImportHandler (HttpRequest* request)
-  : RestVocbaseBaseHandler(request) {
+  : RestVocbaseBaseHandler(request),
+    _onDuplicateAction(DUPLICATE_ERROR) {
 }
 
 // -----------------------------------------------------------------------------
@@ -69,14 +70,32 @@ HttpHandler::status_t RestImportHandler::execute () {
                   "'/_api/import' is not yet supported in a cluster");
     return status_t(HANDLER_DONE);
   }
+  
+  // set default value for onDuplicate
+  _onDuplicateAction = DUPLICATE_ERROR;
+      
+  bool found;
 
+  string const duplicateType = _request->value("onDuplicate", found);
+
+  if (found) {
+    if (duplicateType == "update") {
+      _onDuplicateAction = DUPLICATE_UPDATE;
+    }
+    else if (duplicateType == "replace") {
+      _onDuplicateAction = DUPLICATE_REPLACE;
+    }
+    else if (duplicateType == "ignore") {
+      _onDuplicateAction = DUPLICATE_IGNORE;
+    }
+  }
+    
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
   switch (type) {
     case HttpRequest::HTTP_REQUEST_POST: {
       // extract the import type
-      bool found;
       string const documentType = _request->value("type", found);
 
       if (found &&
@@ -234,7 +253,8 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
     int res1 = parseDocumentId(trx.resolver(), from, edge._fromCid, edge._fromKey);
     int res2 = parseDocumentId(trx.resolver(), to, edge._toCid, edge._toKey);
 
-    if (res1 == TRI_ERROR_NO_ERROR && res2 == TRI_ERROR_NO_ERROR) {
+    if (res1 == TRI_ERROR_NO_ERROR && 
+        res2 == TRI_ERROR_NO_ERROR) {
       res = trx.createEdge(&document, json, waitForSync, &edge);
     }
     else {
@@ -250,8 +270,56 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
   }
   else {
     // do not acquire an extra lock
+      
     res = trx.createDocument(&document, json, waitForSync);
   }
+
+
+  // special behavior in case of unique constraint violation . . .
+  if (res == TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED &&
+      _onDuplicateAction != DUPLICATE_ERROR) {
+
+    auto keyJson = TRI_LookupObjectJson(json, TRI_VOC_ATTRIBUTE_KEY);
+
+    if (TRI_IsStringJson(keyJson)) {
+      // insert failed. now try an update/replace
+
+      if (_onDuplicateAction == DUPLICATE_UPDATE) {
+        // update: first read existing document
+        TRI_doc_mptr_copy_t previous;
+        int res2 = trx.read(&previous, keyJson->_value._string.data);
+
+        if (res2 == TRI_ERROR_NO_ERROR) {
+          TRI_shaper_t* shaper = trx.documentCollection()->getShaper();  // PROTECTED by trx here
+
+          TRI_shaped_json_t shapedJson;
+          TRI_EXTRACT_SHAPED_JSON_MARKER(shapedJson, previous.getDataPtr()); // PROTECTED by trx here
+          std::unique_ptr<TRI_json_t> old(TRI_JsonShapedJson(shaper, &shapedJson));
+
+          // default value
+          res = TRI_ERROR_OUT_OF_MEMORY;
+
+          if (old != nullptr) {
+            std::unique_ptr<TRI_json_t> patchedJson(TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, old.get(), json, false, true));
+
+            if (patchedJson != nullptr) {
+              res = trx.updateDocument(keyJson->_value._string.data, &document, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
+            }
+          }
+        }
+      }
+      else if (_onDuplicateAction == DUPLICATE_REPLACE) {
+        // replace
+        res = trx.updateDocument(keyJson->_value._string.data, &document, json, TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
+      }
+      else {
+        // simply ignore unique key violations silently
+        TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE); 
+        res = TRI_ERROR_NO_ERROR;
+      }
+    }
+  }
+
 
   if (res != TRI_ERROR_NO_ERROR) {
     string part = JsonHelper::toString(json);
@@ -305,6 +373,27 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until documents have been synced to disk before returning.
+///
+/// @RESTQUERYPARAM{onDuplicate,string,optional}
+/// Controls what action is carried out in case of a unique key constraint
+/// violation. Possible values are:
+///
+/// - *error*: this will not import the current document because of the unique
+///   key constraint violation. This is the default setting.
+///
+/// - *update*: this will update an existing document in the database with the 
+///   data specified in the request. Attributes of the existing document that
+///   are not present in the request will be preseved.
+///
+/// - *replace*: this will replace an existing document in the database with the
+///   data specified in the request. 
+///
+/// - *ignore*: this will not update an existing document and simply ignore the
+///   error caused by the unique key constraint violation.
+///
+/// Note that that *update*, *replace* and *ignore* will only work when the
+/// import document in the request contains the *_key* attribute. *update* and
+/// *replace* may also fail because of secondary unique key constraint violations.
 ///
 /// @RESTQUERYPARAM{complete,boolean,optional}
 /// If set to `true` or `yes`, it will make the whole import fail if any error
@@ -839,6 +928,27 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 /// @RESTQUERYPARAM{waitForSync,boolean,optional}
 /// Wait until documents have been synced to disk before returning.
+///
+/// @RESTQUERYPARAM{onDuplicate,string,optional}
+/// Controls what action is carried out in case of a unique key constraint
+/// violation. Possible values are:
+///
+/// - *error*: this will not import the current document because of the unique
+///   key constraint violation. This is the default setting.
+///
+/// - *update*: this will update an existing document in the database with the 
+///   data specified in the request. Attributes of the existing document that
+///   are not present in the request will be preseved.
+///
+/// - *replace*: this will replace an existing document in the database with the
+///   data specified in the request. 
+///
+/// - *ignore*: this will not update an existing document and simply ignore the
+///   error caused by the unique key constraint violation.
+///
+/// Note that *update*, *replace* and *ignore* will only work when the
+/// import document in the request contains the *_key* attribute. *update* and
+/// *replace* may also fail because of secondary unique key constraint violations.
 ///
 /// @RESTQUERYPARAM{complete,boolean,optional}
 /// If set to `true` or `yes`, it will make the whole import fail if any error
