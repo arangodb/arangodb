@@ -357,7 +357,7 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
     ++tries;
   }
 
-  while (++tries <= 2) {
+  while (true) {
     {
       READ_LOCKER(_lock);
       const size_t expectedSize = _DBServers.size();
@@ -376,6 +376,10 @@ bool ClusterInfo::doesDatabaseExist (DatabaseID const& databaseID,
           return ((*it2).second.size() >= expectedSize);
         }
       }
+    }
+
+    if (++tries >= 2) {
+      break;
     }
 
     loadPlannedDatabases();
@@ -892,7 +896,7 @@ shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
     ++tries;
   }
 
-  while (++tries <= 2) {
+  while (true) {
     {
       READ_LOCKER(_lock);
       // look up database by id
@@ -906,6 +910,10 @@ shared_ptr<CollectionInfoCurrent> ClusterInfo::getCollectionCurrent
           return (*it2).second;
         }
       }
+    }
+    
+    if (++tries >= 2) {
+      break;
     }
 
     // must load collections outside the lock
@@ -1896,7 +1904,7 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
     tries++;
   }
 
-  while (++tries <= 2) {
+  while (true) {
     {
       READ_LOCKER(_lock);
       std::map<ServerID, string>::const_iterator it = _servers.find(serverID);
@@ -1904,6 +1912,10 @@ std::string ClusterInfo::getServerEndpoint (ServerID const& serverID) {
       if (it != _servers.end()) {
         return (*it).second;
       }
+    }
+
+    if (++tries >= 2) {
+      break;
     }
 
     // must call loadServers outside the lock
@@ -1927,7 +1939,7 @@ std::string ClusterInfo::getServerName (std::string const& endpoint) {
     tries++;
   }
 
-  while (++tries <= 2) {
+  while (true) {
     {
       READ_LOCKER(_lock);
       for (auto const& it : _servers) {
@@ -1935,6 +1947,10 @@ std::string ClusterInfo::getServerName (std::string const& endpoint) {
           return it.first;
         }
       }
+    }
+
+    if (++tries >= 2) {
+      break;
     }
 
     // must call loadServers outside the lock
@@ -2037,7 +2053,7 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
   std::vector<ServerID> result;
 
   int tries = 0;
-  while (++tries <= 2) {
+  while (true) {
     {
       // return a consistent state of servers
       READ_LOCKER(_lock);
@@ -2051,6 +2067,10 @@ std::vector<ServerID> ClusterInfo::getCurrentDBServers () {
 
         return result;
       }
+    }
+
+    if (++tries >= 2) {
+      break;
     }
 
     // loadCurrentDBServers needs the write lock
@@ -2110,7 +2130,7 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
     tries++;
   }
 
-  while (++tries <= 2) {
+  while (true) {
     {
       READ_LOCKER(_lock);
       std::map<ShardID, ServerID>::const_iterator it = _shardIds.find(shardID);
@@ -2118,6 +2138,10 @@ ServerID ClusterInfo::getResponsibleServer (ShardID const& shardID) {
       if (it != _shardIds.end()) {
         return (*it).second;
       }
+    }
+
+    if (++tries >= 2) {
+      break;
     }
 
     // must load collections outside the lock
@@ -2163,7 +2187,7 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
   shared_ptr<vector<ShardID> > shards;
   bool found = false;
 
-  while (++tries <= 2) {
+  while (true) {
     {
       // Get the sharding keys and the number of shards:
       READ_LOCKER(_lock);
@@ -2189,6 +2213,9 @@ int ClusterInfo::getResponsibleShard (CollectionID const& collectionID,
           }
         }
       }
+    }
+    if (++tries >= 2) {
+      break;
     }
     loadPlannedCollections();
   }
@@ -2221,7 +2248,7 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators () {
   std::vector<ServerID> result;
   
   int tries = 0;
-  while (++tries <= 2) {
+  while (true) {
     {
       // return a consistent state of servers
       READ_LOCKER(_lock);
@@ -2235,6 +2262,10 @@ std::vector<ServerID> ClusterInfo::getCurrentCoordinators () {
 
         return result;
       }
+    }
+
+    if (++tries >= 2) {
+      break;
     }
 
     // loadCurrentCoordinators needs the write lock
