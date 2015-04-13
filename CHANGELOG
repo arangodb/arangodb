@@ -143,8 +143,16 @@ v2.6.0 (XXXX-XX-XX)
 * added Foxx model lifecycle events to repositories. See #1257.
 
 
-v2.5.2 (XXXX-XX-XX)
+v2.5.3 (XXXX-XX-XX)
 -------------------
+
+* issue #1300: Make arangodump not fail if directory exists but is empty
+
+
+v2.5.2 (2015-04-11)
+-------------------
+
+* modules stored in _modules are automatically flushed when changed
 
 * added missing query-id parameter in documentation of HTTP DELETE `/_api/query` endpoint
 
