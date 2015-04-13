@@ -58,15 +58,7 @@ function ModelSpec () {
       instance.set("a", 1);
       assertEqual(instance.get("a"), 1);
     },
-
-    testFromDB: function () {
-      var doc = require("org/arangodb").db._users.any();
-      assertEqual(typeof doc._PRINT, 'function');
-      instance = new FoxxModel(doc);
-      assertEqual(instance.attributes._PRINT, undefined);
-      assertFalse(instance.has('_PRINT'));
-    },
-
+    
     testSettingMultipleAttributes: function () {
       instance = new FoxxModel({
         a: 1,
@@ -286,6 +278,54 @@ function ModelSpec () {
   };
 }
 
+function ModelDBSpec () {
+  "use strict";
+  var FoxxModel, instance, cn;
+  var internal = require("internal");
+  var db = require("org/arangodb").db;
+
+  return {
+    setUp: function () {
+      FoxxModel = require('org/arangodb/foxx/model').Model;
+
+      cn = "UnitTestsFoxxModel";
+      db._drop(cn);
+      db._create(cn);
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    testFromShaped: function () {
+      internal.wal.flush(true, true);
+      db._collection(cn).insert({ _key: "test" });
+      internal.wal.flush(true, true);
+      internal.wait(3);
+        
+      // doc should be shaped by now, at least on a single server
+      var doc = db._document(cn + "/test");
+
+      assertTrue(typeof doc._PRINT === 'function' || typeof doc._PRINT === 'undefined');
+      instance = new FoxxModel(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    },
+    
+    testFromWal: function () {
+      internal.wal.flush(true, true);
+      db._collection(cn).insert({ _key: "test" });
+      
+      // doc should still be in the WAL, at least on a single server
+      var doc = db._document(cn + "/test");
+      instance = new FoxxModel(doc);
+      assertEqual(instance.attributes._PRINT, undefined);
+      assertFalse(instance.has('_PRINT'));
+    }
+
+  };
+}
+
 function ModelAnnotationSpec () {
   "use strict";
   var FoxxModel, toJSONSchema, jsonSchema, instance;
@@ -340,6 +380,7 @@ function ModelAnnotationSpec () {
 }
 
 jsunity.run(ModelSpec);
+jsunity.run(ModelDBSpec);
 jsunity.run(ModelAnnotationSpec);
 
 return jsunity.done();
