@@ -311,7 +311,7 @@ void Collection::fillIndexesDBServer () const {
           break;
         }
         else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-                  localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+                 localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
         }
       }
 

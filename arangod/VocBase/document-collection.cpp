@@ -2113,7 +2113,11 @@ static bool InitDocumentCollection (TRI_document_collection_t* document,
 
   // create edges index
   if (document->_info._type == TRI_COL_TYPE_EDGE) {
-    TRI_index_t* edgesIndex = TRI_CreateEdgeIndex(document, document->_info._cid);
+    TRI_idx_iid_t iid = document->_info._cid;
+    if (document->_info._planId > 0) {
+      iid = document->_info._planId;
+    }
+    TRI_index_t* edgesIndex = TRI_CreateEdgeIndex(document, iid);
 
     if (edgesIndex == nullptr) {
       TRI_FreeIndex(primaryIndex);
