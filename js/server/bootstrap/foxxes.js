@@ -43,6 +43,8 @@
       require("org/arangodb/foxx/manager").initializeFoxx();
     },
     foxxes: function () {
+      var dbName = db._name();
+
       try {
         db._useDatabase("_system");
         var databases = db._listDatabases();
@@ -53,12 +55,12 @@
         }
       }
       catch (e) {
-        db._useDatabase("_system");
+        db._useDatabase(dbName);
         throw e;
       }
         
       // return to _system database so the caller does not need to know we changed the db
-      db._useDatabase("_system");
+      db._useDatabase(dbName);
     }
   };
 }());
