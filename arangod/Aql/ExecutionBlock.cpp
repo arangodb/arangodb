@@ -4588,6 +4588,7 @@ GatherBlock::~GatherBlock () {
 
 int GatherBlock::initialize () {
   ENTER_BLOCK
+  _atDep = 0;
   auto res = ExecutionBlock::initialize();
   
   if (res != TRI_ERROR_NO_ERROR) {
@@ -4640,6 +4641,8 @@ int GatherBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
+  
+  _atDep = 0;
  
   if (! _isSimple) {
     for (std::deque<AqlItemBlock*>& x : _gatherBlockBuffer) {
