@@ -126,6 +126,12 @@ static bool CreateCollection = false;
 static bool Overwrite = false;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief type of action to perform on duplicate _key
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string OnDuplicateAction = "error";
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief progress
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -159,6 +165,7 @@ static void ParseProgramOptions (int argc, char* argv[]) {
     ("quote", &Quote, "quote character(s), used for csv")
     ("separator", &Separator, "field separator, used for csv")
     ("progress", &Progress, "show progress")
+    ("on-duplicate", &OnDuplicateAction, "action to perform when a unique key constraint violation occurs. Possible values: 'error', 'update', 'replace', 'ignore')")
     (deprecatedOptions, true)
   ;
 
@@ -253,7 +260,6 @@ static void arangoimpExitFunction(int exitCode, void* data) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int main (int argc, char* argv[]) {
-
   int ret = EXIT_SUCCESS;
 
   arangoimpEntryFunction();
@@ -379,6 +385,16 @@ int main (int argc, char* argv[]) {
   if (Progress) {
     ih.setProgress(true);
   }
+
+  if (OnDuplicateAction != "error" &&
+      OnDuplicateAction != "update" &&
+      OnDuplicateAction != "replace" &&
+      OnDuplicateAction != "ignore") {
+    cerr << "Invalid value for '--on-duplicate'. Possible values: 'error', 'update', 'replace', 'ignore'." << endl;
+    TRI_EXIT_FUNCTION(EXIT_FAILURE, nullptr);
+  }
+
+  ih.setOnDuplicateAction(OnDuplicateAction);
 
   try {
     bool ok = false;

@@ -226,7 +226,7 @@ namespace triagens {
 
         int updateDocument (std::string const& key,
                             TRI_doc_mptr_copy_t* mptr,
-                            TRI_json_t* const json,
+                            TRI_json_t const* json,
                             TRI_doc_update_policy_e policy,
                             bool forceSync,
                             TRI_voc_rid_t expectedRevision,

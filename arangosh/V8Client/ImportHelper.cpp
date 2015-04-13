@@ -156,6 +156,11 @@ namespace triagens {
       _overwrite(false),
       _progress(false),
       _firstChunk(true),
+      _numberLines(0),
+      _numberOk(0),
+      _numberError(0),
+      _onDuplicateAction("error"),
+      _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
       _outputBuffer(TRI_UNKNOWN_MEM_ZONE) {
 
@@ -642,10 +647,10 @@ namespace triagens {
       }
 
       map<string, string> headerFields;
-      string url("/_api/import?" + getCollectionUrlPart() + "&line=" + StringUtils::itoa(_rowOffset) + "&details=true");
-      SimpleHttpResult* result = _client->request(HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(), _outputBuffer.length(), headerFields);
+      string url("/_api/import?" + getCollectionUrlPart() + "&line=" + StringUtils::itoa(_rowOffset) + "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction));
+      std::unique_ptr<SimpleHttpResult> result(_client->request(HttpRequest::HTTP_REQUEST_POST, url, _outputBuffer.c_str(), _outputBuffer.length(), headerFields));
 
-      handleResult(result);
+      handleResult(result.get());
 
       _outputBuffer.reset();
       _rowOffset = _rowsRead;
@@ -656,17 +661,19 @@ namespace triagens {
         return;
       }
 
-      map<string, string> headerFields;
-      SimpleHttpResult* result;
-
+      // build target url
+      std::string url("/_api/import?" + getCollectionUrlPart() + "&details=true&onDuplicate=" + StringUtils::urlEncode(_onDuplicateAction));
       if (isObject) {
-        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=array&" + getCollectionUrlPart() + "&details=true", str, len, headerFields);
+        url += "&type=array";
       }
       else {
-        result = _client->request(HttpRequest::HTTP_REQUEST_POST, "/_api/import?type=documents&" + getCollectionUrlPart() + "&details=true", str, len, headerFields);
+        url += "&type=documents";
       }
 
-      handleResult(result);
+      map<string, string> headerFields;
+      std::unique_ptr<SimpleHttpResult> result(_client->request(HttpRequest::HTTP_REQUEST_POST, url, str, len, headerFields));
+
+      handleResult(result.get());
     }
 
     void ImportHelper::handleResult (SimpleHttpResult* result) {
@@ -674,59 +681,55 @@ namespace triagens {
         return;
       }
 
-      TRI_json_t* json = TRI_JsonString(TRI_UNKNOWN_MEM_ZONE,
-                                        result->getBody().c_str());
+      std::unique_ptr<TRI_json_t> json(TRI_JsonString(TRI_UNKNOWN_MEM_ZONE, result->getBody().c_str()));
 
-      if (json != nullptr) {
-        // error details
-        TRI_json_t const* details = TRI_LookupObjectJson(json, "details");
-
-        if (TRI_IsArrayJson(details)) {
-          size_t const n = details->_value._objects._length;
-
-          for (size_t i = 0; i < n; ++i) {
-            TRI_json_t const* detail = static_cast<TRI_json_t const*>(TRI_AtVector(&details->_value._objects, i));
-
-            if (TRI_IsStringJson(detail)) {
-              LOG_WARNING("%s", detail->_value._string.data);
-            }
-          }
-        }
-
-        // get the "error" flag. This returns a pointer, not a copy
-        TRI_json_t const* error = TRI_LookupObjectJson(json, "error");
-
-        if (TRI_IsBooleanJson(error) &&
-            error->_value._boolean) {
-          _hasError = true;
-
-          // get the error message. This returns a pointer, not a copy
-          TRI_json_t const* errorMessage = TRI_LookupObjectJson(json, "errorMessage");
-
-          if (TRI_IsStringJson(errorMessage)) {
-            _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length - 1);
-          }
-        }
-
-        // look up the "created" flag. This returns a pointer, not a copy
-        TRI_json_t const* importResult = TRI_LookupObjectJson(json, "created");
-
-        if (TRI_IsNumberJson(importResult)) {
-          _numberOk += (size_t) importResult->_value._number;
-        }
-
-        // look up the "errors" flag. This returns a pointer, not a copy
-        importResult = TRI_LookupObjectJson(json, "errors");
-
-        if (TRI_IsNumberJson(importResult)) {
-          _numberError += (size_t) importResult->_value._number;
-        }
-
-        // this will free the json struct will a sub-elements
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
+      if (json == nullptr) {
+        return;
       }
 
-      delete result;
+      // error details
+      TRI_json_t const* details = TRI_LookupObjectJson(json.get(), "details");
+
+      if (TRI_IsArrayJson(details)) {
+        size_t const n = details->_value._objects._length;
+
+        for (size_t i = 0; i < n; ++i) {
+          TRI_json_t const* detail = static_cast<TRI_json_t const*>(TRI_AtVector(&details->_value._objects, i));
+
+          if (TRI_IsStringJson(detail)) {
+            LOG_WARNING("%s", detail->_value._string.data);
+          }
+        }
+      }
+
+      // get the "error" flag. This returns a pointer, not a copy
+      TRI_json_t const* error = TRI_LookupObjectJson(json.get(), "error");
+
+      if (TRI_IsBooleanJson(error) &&
+          error->_value._boolean) {
+        _hasError = true;
+
+        // get the error message. This returns a pointer, not a copy
+        TRI_json_t const* errorMessage = TRI_LookupObjectJson(json.get(), "errorMessage");
+
+        if (TRI_IsStringJson(errorMessage)) {
+          _errorMessage = string(errorMessage->_value._string.data, errorMessage->_value._string.length - 1);
+        }
+      }
+
+      // look up the "created" flag. This returns a pointer, not a copy
+      TRI_json_t const* importResult = TRI_LookupObjectJson(json.get(), "created");
+
+      if (TRI_IsNumberJson(importResult)) {
+        _numberOk += (size_t) importResult->_value._number;
+      }
+
+      // look up the "errors" flag. This returns a pointer, not a copy
+      importResult = TRI_LookupObjectJson(json.get(), "errors");
+
+      if (TRI_IsNumberJson(importResult)) {
+        _numberError += (size_t) importResult->_value._number;
+      }
     }
 
   }
