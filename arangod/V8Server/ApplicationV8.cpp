@@ -1400,15 +1400,15 @@ void ApplicationV8::prepareV8Server (const string& name, const size_t i, const s
 
     // load server startup file
     switch (_startupLoader.loadScript(isolate, localContext, startupFile)) {
-    case JSLoader::eSuccess:
-      LOG_TRACE("loaded JavaScript file '%s'", startupFile.c_str());
-      break;
-    case JSLoader::eFailLoad:
-      LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", startupFile.c_str());
-      break;
-    case JSLoader::eFailExecute:
-      LOG_FATAL_AND_EXIT("error during execution of JavaScript utilities from file '%s'", startupFile.c_str());
-      break;
+      case JSLoader::eSuccess:
+        LOG_TRACE("loaded JavaScript file '%s'", startupFile.c_str());
+        break;
+      case JSLoader::eFailLoad:
+        LOG_FATAL_AND_EXIT("cannot load JavaScript utilities from file '%s'", startupFile.c_str());
+        break;
+      case JSLoader::eFailExecute:
+        LOG_FATAL_AND_EXIT("error during execution of JavaScript utilities from file '%s'", startupFile.c_str());
+        break;
     }
 
     // and return from the context

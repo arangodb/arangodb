@@ -59,6 +59,9 @@
           console.info("trying to autoload new database %s, ignored", name);
         }
       }
+   
+      // return to _system database so the caller does not need to know we changed the db
+      db._useDatabase("_system");
 
       return true;
     }
