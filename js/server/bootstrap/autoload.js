@@ -42,6 +42,8 @@
 
   return {
     startup: function () {
+      var dbName = db._name();
+
       db._useDatabase("_system");
       var databases = db._listDatabases();
 
@@ -57,7 +59,7 @@
       }
    
       // return to _system database so the caller does not need to know we changed the db
-      db._useDatabase("_system");
+      db._useDatabase(dbName);
 
       return true;
     }
