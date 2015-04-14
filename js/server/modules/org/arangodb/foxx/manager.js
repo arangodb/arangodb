@@ -144,16 +144,23 @@ var manifestSchema = {
     })
   ),
   scripts: (
-    joi.object()
+    joi.object().optional()
     .pattern(RE_EMPTY, joi.forbidden())
     .pattern(RE_NOT_EMPTY, joi.string().required())
-    .default(function () {return {};}, 'empty scripts object')
+    .default(Object, 'empty scripts object')
   ),
   setup: joi.string().optional(), // TODO remove in 2.8
   teardown: joi.string().optional(), // TODO remove in 2.8
   tests: (
-    joi.array().optional()
-    .items(joi.string().required())
+    joi.alternatives()
+    .try(
+      joi.string().required(),
+      (
+        joi.array().optional()
+        .items(joi.string().required())
+        .default(Array, 'empty test files array')
+      )
+    )
   ),
   thumbnail: joi.string().optional(),
   version: joi.string().required(),
@@ -351,6 +358,14 @@ var checkManifest = function(filename, manifest) {
       );
     }
   });
+
+  if (typeof manifest.controllers === 'string') {
+    manifest.controllers = {'/': manifest.controllers};
+  }
+
+  if (typeof manifest.tests === 'string') {
+    manifest.tests = [manifest.tests];
+  }
 
   if (!valid) {
     throw new ArangoError({
