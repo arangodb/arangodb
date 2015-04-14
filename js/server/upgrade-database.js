@@ -1338,7 +1338,7 @@ function updateGlobals() {
         var devPath = module.devAppPath();
         var mapDevAppZip = {};
         var i;
-        if (devPath !== "") {
+        if (devPath !== undefined) {
           appsToZip = fs.list(devPath);
           for (i = 0; i < appsToZip.length; ++i) {
             path = fs.join(devPath, appsToZip[i]);
