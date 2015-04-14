@@ -6176,8 +6176,6 @@ input.gv-radio-button {
   color: #802; }
 .tests-result-stats .pass, .tests-result-stats .fail, .tests-result-stats .pending {
   padding: 0 2px; }
-.tests-result-spec .stack {
-  margin-left: 20px; }
 .tests-result-spec-suites .tests-result-spec-suites {
   margin-left: 20px; }
 .tests-result-spec-suites dd {
