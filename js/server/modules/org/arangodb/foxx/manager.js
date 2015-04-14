@@ -762,15 +762,16 @@ var runScript = function (scriptName, mount) {
 /// -
 ////////////////////////////////////////////////////////////////////////////////
 
-var runTests = function (mount) {
+var runTests = function (mount, options) {
   checkParameter(
-    "runTests(<mount>)",
+    "runTests(<mount>, [<options>])",
     [ [ "Mount path", "string" ] ],
     [ mount ]
   );
 
   var app = lookupApp(mount);
-  return require('org/arangodb/foxx/mocha').run(app);
+  var reporter = options ? options.reporter : null;
+  return require('org/arangodb/foxx/mocha').run(app, reporter);
 };
 
 ////////////////////////////////////////////////////////////////////////////////

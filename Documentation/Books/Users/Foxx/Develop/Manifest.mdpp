@@ -20,6 +20,7 @@ attributes are required though):
 * **name**: Name of the application (Meta information)
 * **repository**: An object with information about where you can find the repository: **type** and **url**
 * **scripts**: An object with script names mapped to filenames, e.g. your app's **setup** and **teardown** scripts
+* **tests**: An array of names of files containing mocha tests for the Foxx app.
 * **thumbnail**: Path to a thumbnail that represents the application (Meta information)
 * **version**: Current version of the application (Meta information)
 
@@ -63,7 +64,12 @@ A more complete example for a Manifest file:
     "setup": "scripts/setup.js",
     "teardown": "scripts/teardown.js",
     "some-maintenance-script": "scripts/prune-comments.js"
-  }
+  },
+
+  "tests": [
+    "test/**",
+    "test-*.js"
+  ]
 }
 ```
 
@@ -84,6 +90,22 @@ It is good practice to drop any collections in the teardown script
 that the application used exclusively, but this is not enforced.
 Maybe there are reasons to keep application data even after removing an application.
 It's up to you to decide what to do.
+
+!SUBSECTION Mocha tests
+
+You can provide test cases for your Foxx app using the [mocha test framework](http://mochajs.org/)
+and an assertion library like [expect.js](https://github.com/Automattic/expect.js)
+or [chai](http://chaijs.com) (or even the built-in assert module).
+
+The **tests** array lists the relative paths of all mocha tests of your Foxx app.
+In addition to regular paths, the array can also contain any patterns supported by
+the [minimatch module](https://github.com/isaacs/minimatch), for example:
+
+* glob matching: `./tests/*.js` will match all JS files in the folder "tests"
+* globstar matching: `./tests/**` will match all files and subfolders of the folder "tests"
+* brace expansion: `./tests/{a,b,c}.js` will match the files "a.js", "b.js" and "c.js"
+
+ For more information on the supported patterns see the minimatch documentation.
 
 !SUBSECTION Defining controllers
 
