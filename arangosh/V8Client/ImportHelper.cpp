@@ -157,8 +157,10 @@ namespace triagens {
       _progress(false),
       _firstChunk(true),
       _numberLines(0),
-      _numberOk(0),
-      _numberError(0),
+      _numberCreated(0),
+      _numberErrors(0),
+      _numberUpdated(0),
+      _numberIgnored(0),
       _onDuplicateAction("error"),
       _collectionName(),
       _lineBuffer(TRI_UNKNOWN_MEM_ZONE),
@@ -179,9 +181,6 @@ namespace triagens {
                                         DelimitedImportType typeImport) {
       _collectionName = collectionName;
       _firstLine = "";
-      _numberLines = 0;
-      _numberOk = 0;
-      _numberError = 0;
       _outputBuffer.clear();
       _lineBuffer.clear();
       _errorMessage = "";
@@ -289,9 +288,6 @@ namespace triagens {
     bool ImportHelper::importJson (const string& collectionName, const string& fileName) {
       _collectionName = collectionName;
       _firstLine = "";
-      _numberLines = 0;
-      _numberOk = 0;
-      _numberError = 0;
       _outputBuffer.clear();
       _errorMessage = "";
       _hasError = false;
@@ -397,11 +393,12 @@ namespace triagens {
         sendJsonBuffer(_outputBuffer.c_str(), _outputBuffer.length(), isObject);
       }
 
-      _numberLines = _numberError + _numberOk;
-
       if (fd != STDIN_FILENO) {
         TRI_CLOSE(fd);
       }
+
+      // this is an approximation only. _numberLines is more meaningful for CSV imports
+      _numberLines = _numberErrors + _numberCreated + _numberIgnored + _numberUpdated;
 
       _outputBuffer.clear();
       return ! _hasError;
@@ -472,7 +469,7 @@ namespace triagens {
     void ImportHelper::beginLine (size_t row) {
       if (_lineBuffer.length() > 0) {
         // error
-        ++_numberError;
+        ++_numberErrors;
         _lineBuffer.clear();
       }
 
@@ -619,7 +616,7 @@ namespace triagens {
       }
       else if (row > 0 && _firstLine.empty()) {
         // error
-        ++_numberError;
+        ++_numberErrors;
         _lineBuffer.reset();
         return;
       }
@@ -631,7 +628,7 @@ namespace triagens {
         _lineBuffer.reset();
       }
       else {
-        ++_numberError;
+        ++_numberErrors;
       }
 
       if (_outputBuffer.length() > _maxUploadSize) {
@@ -709,7 +706,7 @@ namespace triagens {
           error->_value._boolean) {
         _hasError = true;
 
-        // get the error message. This returns a pointer, not a copy
+        // get the error message
         TRI_json_t const* errorMessage = TRI_LookupObjectJson(json.get(), "errorMessage");
 
         if (TRI_IsStringJson(errorMessage)) {
@@ -717,18 +714,32 @@ namespace triagens {
         }
       }
 
-      // look up the "created" flag. This returns a pointer, not a copy
+      // look up the "created" flag
       TRI_json_t const* importResult = TRI_LookupObjectJson(json.get(), "created");
 
       if (TRI_IsNumberJson(importResult)) {
-        _numberOk += (size_t) importResult->_value._number;
+        _numberCreated += (size_t) importResult->_value._number;
       }
 
-      // look up the "errors" flag. This returns a pointer, not a copy
+      // look up the "errors" flag
       importResult = TRI_LookupObjectJson(json.get(), "errors");
 
       if (TRI_IsNumberJson(importResult)) {
-        _numberError += (size_t) importResult->_value._number;
+        _numberErrors += (size_t) importResult->_value._number;
+      }
+      
+      // look up the "updated" flag
+      importResult = TRI_LookupObjectJson(json.get(), "updated");
+
+      if (TRI_IsNumberJson(importResult)) {
+        _numberUpdated += (size_t) importResult->_value._number;
+      }
+      
+      // look up the "ignored" flag
+      importResult = TRI_LookupObjectJson(json.get(), "ignored");
+
+      if (TRI_IsNumberJson(importResult)) {
+        _numberIgnored += (size_t) importResult->_value._number;
       }
     }
 

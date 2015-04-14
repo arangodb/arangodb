@@ -426,9 +426,15 @@ int main (int argc, char* argv[]) {
 
     // give information about import
     if (ok) {
-      cout << "created:          " << ih.getImportedLines() << endl;
-      cout << "warnings/errors:  " << ih.getErrorLines() << endl;
-      cout << "total:            " << ih.getReadLines() << endl;
+      cout << "created:          " << ih.getNumberCreated() << endl;
+      cout << "warnings/errors:  " << ih.getNumberErrors() << endl;
+      cout << "updated/replaced: " << ih.getNumberUpdated() << endl;
+      cout << "ignored:          " << ih.getNumberIgnored() << endl;
+
+      if (TypeImport == "csv" || TypeImport == "csv") {
+        cout << "lines read:       " << ih.getReadLines() << endl;
+      }
+
     }
     else {
       cerr << "error message:    " << ih.getErrorMessage() << endl;
