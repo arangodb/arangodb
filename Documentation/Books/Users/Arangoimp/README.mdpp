@@ -261,15 +261,15 @@ arangoimp run will not import these documents and complain about unique key cons
 violations.
 
 However, arangoimp can be used to update or replace existing documents in case they
-already exist in the target collection. It provides the command-line option *--onDuplicate*
+already exist in the target collection. It provides the command-line option *--on-duplicate*
 to control the behavior in case a document is already present in the database.
 
-The default value of *--onDuplicate* is *error*. This means that when the import file
+The default value of *--on-duplicate* is *error*. This means that when the import file
 contains a document that is present in the target collection already, then trying to
 re-insert a document with the same *_key* value is considered an error, and the document in
 the database will not be modified.
 
-Other possible values for *--onDuplicate* are:
+Other possible values for *--on-duplicate* are:
 
 - *update*: each document present in the import file that is also present in the target
   collection already will be updated by arangoimp. *update* will perform a partial update
@@ -290,14 +290,14 @@ Other possible values for *--onDuplicate* are:
 - *ignore*: each document present in the import file that is also present in the target
   collection already will be ignored and not modified in the target collection. 
 
-When *--onDuplicate* is set to either *update* or *replace*, arangoimp will return the
+When *--on-duplicate* is set to either *update* or *replace*, arangoimp will return the
 number of documents updated/replaced in the *updated* return value. When set to another
-value, the value of *updated* will always be zero. When *--onDuplicate* is set to *ignore*,
+value, the value of *updated* will always be zero. When *--on-duplicate* is set to *ignore*,
 arangoimp will return the number of ignored documents in the *ignored* return value.
 When set to another value, *ignored* will always be zero.
 
 It is possible to perform a combination of inserts and updates/replaces with a single 
-arangoimp run. When *--onDuplicate* is set to *update* or *replace*, all documents present
+arangoimp run. When *--on-duplicate* is set to *update* or *replace*, all documents present
 in the import file will be inserted into the target collection provided they are valid
 and do not already exist with the specified *_key*. Documents that are already present
 in the target collection (identified by *_key* attribute) will instead be updated/replaced.
@@ -310,9 +310,9 @@ It will show the
 
 * number of documents created (*created*)
 * number of documents updated/replaced (*updated/replaced*, only non-zero if 
-  *--onDuplicate* was set to *update* or *replace*, see below) 
+  *--on-duplicate* was set to *update* or *replace*, see below) 
 * number of warnings or errors that occurred on the server side (*warnings/errors*)
-* number of ignored documents (only non-zero if *--onDuplicate* was set to *ignore*). 
+* number of ignored documents (only non-zero if *--on-duplicate* was set to *ignore*). 
 
 *Example*
 
