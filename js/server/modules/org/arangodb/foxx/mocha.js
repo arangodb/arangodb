@@ -176,8 +176,8 @@ function SuiteReporter(runner) {
   runner.on('end', function () {
     runner.testResults = {
       stats: self.stats,
-      suites: currentSuite.suites,
-      tests: currentSuite.tests
+      suites: currentSuite ? currentSuite.suites : [],
+      tests: currentSuite ? currentSuite.tests : []
     };
   });
 }

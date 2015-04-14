@@ -15,6 +15,7 @@
       'click #app-switch-mode': 'toggleDevelopment',
       "click #app-scripts": "toggleScripts",
       "click #app-scripts [data-script]": "runScript",
+      "click #app-tests": "runTests",
       "click #app-upgrade": "upgradeApp",
       "click #download-app": "downloadApp"
     },
@@ -64,8 +65,30 @@
     },
 
     runScript: function(event) {
+      event.preventDefault();
       this.model.runScript($(event.currentTarget).attr('data-script'), function() {
       });
+    },
+
+    runTests: function(event) {
+      event.preventDefault();
+      var warning = (
+        "WARNING: Running tests may result in destructive side-effects including data loss."
+        + " Please make sure not to run tests on a production database."
+        + (this.model.isDevelopment() ? (
+            "\n\nWARNING: This app is running in DEVELOPMENT MODE."
+            + " If any of the tests access the app's HTTP API they may become non-deterministic."
+          ) : "")
+        + "\n\nDo you really want to continue?"
+      );
+      if (!window.confirm(warning)) {
+        return;
+      }
+      this.model.runTests({reporter: 'suite'}, function (err, result) {
+        window.modalView.show(
+          "modalTestResults.ejs", "Test results", [], [err || result]
+        );
+      }.bind(this));
     },
 
     render: function() {
@@ -128,7 +151,7 @@
         if (val === "" && opt.hasOwnProperty("default")) {
           cfg[key] = opt.default;
           return;
-        } 
+        }
         if (opt.type === "number") {
           cfg[key] = parseFloat(val);
         } else if (opt.type === "integer") {

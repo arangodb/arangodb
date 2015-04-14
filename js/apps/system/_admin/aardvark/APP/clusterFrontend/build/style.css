@@ -2155,32 +2155,22 @@ a.headerButton, a.button-gui {
   -moz-box-shadow: none;
   box-shadow: none;
   margin-left: 5px;
-  margin-right: 5px;
-  padding-left: 9px;
-  padding-right: 9px; }
+  margin-right: 5px; }
 
 a.headerButton {
-  height: 17px;
   margin-top: 2px;
-  padding-top: 4px;
-  padding-bottom: 2px;
-  position: relative;
-  width: 9px; }
-  a.headerButton .icon_arangodb_filter {
-    top: 3px !important; }
-  a.headerButton .icon_arangodb_import {
-    top: 1px !important; }
-  a.headerButton .icon_arangodb_checklist {
-    right: 5px;
-    top: 3px !important; }
+  position: relative; }
+  a.headerButton .fa, a.headerButton [class^="icon_"], a.headerButton [class*=" icon_"] {
+    display: block;
+    position: static;
+    right: 0;
+    top: 0;
+    width: 27px;
+    text-align: center;
+    line-height: 23px;
+    height: 23px; }
   a.headerButton .icon_arangodb_arrowleft, a.headerButton .icon_arangodb_arrowright {
     font-weight: bold; }
-  a.headerButton .fa-file-code-o {
-    left: -2px;
-    position: relative;
-    top: -3px; }
-  a.headerButton .fa-download {
-    margin-left: -3px !important; }
   a.headerButton.activated {
     background-color: #788f3d;
     color: #fff; }
@@ -2189,11 +2179,6 @@ a.headerButton {
       color: #788f3d; }
   a.headerButton.disabled {
     cursor: not-allowed; }
-
-#importCollection i {
-  margin-left: -3px !important;
-  position: relative;
-  top: -1px; }
 
 div.toolbox {
   -moz-border-radius: 2px;
