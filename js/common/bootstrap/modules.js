@@ -1098,6 +1098,8 @@ function require (path) {
     this._package = pkg;             // the package to which the module belongs
 
     this._applicationContext = appContext;
+
+    this.paths = [this.appPath()];   // node compatibility
   };
 
 // -----------------------------------------------------------------------------
