@@ -75,6 +75,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(4)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "using different documents, type=auto" do
@@ -92,6 +94,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(4)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "using whitespace" do
@@ -104,6 +108,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "invalid documents" do
@@ -137,6 +143,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "no collection" do
@@ -191,6 +199,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(4)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "using different documents, type=auto" do
@@ -206,6 +216,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(4)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "using whitespace" do
@@ -218,6 +230,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(7)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "invalid documents" do
@@ -230,6 +244,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(2)
         doc.parsed_response['empty'].should eq(1)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "empty body" do
@@ -242,6 +258,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "no documents" do
@@ -254,6 +272,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(2)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "no collection" do
@@ -336,6 +356,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "using whitespace" do
@@ -350,6 +372,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(4)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "invalid documents" do
@@ -367,6 +391,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(3)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "missing header" do
@@ -410,6 +436,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(1)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
       
       it "no collection" do
@@ -438,10 +466,10 @@ describe ArangoDB do
     end
 
 ################################################################################
-## import documents into an edge collection, using a JSON list
+## import documents into an edge collection, using a JSON array
 ################################################################################
 
-    context "import into an edge collection, using a JSON list:" do
+    context "import into an edge collection, using a JSON array:" do
       before do
         @vn = "UnitTestsImportVertex"
         @en = "UnitTestsImportEdge"
@@ -474,6 +502,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "no _to" do
@@ -486,6 +516,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "with _from and _to" do
@@ -498,6 +530,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(1)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "multiple docs, with _from and _to" do
@@ -514,6 +548,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
     end
@@ -555,6 +591,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "no _to" do
@@ -567,6 +605,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "with _from and _to" do
@@ -579,6 +619,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(1)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "multiple documents, with _from and _to" do
@@ -593,6 +635,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
     end
@@ -635,6 +679,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "no _to" do
@@ -648,6 +694,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(0)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "with _from and _to" do
@@ -661,6 +709,8 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(1)
         doc.parsed_response['errors'].should eq(0)
         doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
       it "multiple documents, with _from and _to" do
@@ -677,8 +727,319 @@ describe ArangoDB do
         doc.parsed_response['created'].should eq(2)
         doc.parsed_response['errors'].should eq(1)
         doc.parsed_response['empty'].should eq(1)
+        doc.parsed_response['updated'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
       end
 
+    end
+
+################################################################################
+## import with update
+################################################################################
+
+    context "import with update:" do
+      before do
+        @cn = "UnitTestsImport"
+        ArangoDB.drop_collection(@cn)
+        @cid = ArangoDB.create_collection(@cn, false)
+        
+        cmd = api + "?collection=#{@cn}&type=documents"
+        body =  "{ \"_key\" : \"test1\", \"value1\" : 1, \"value2\" : \"test\" }\n"
+        body += "{ \"_key\" : \"test2\", \"value1\" : \"abc\", \"value2\" : 3 }\n"
+        doc = ArangoDB.post(cmd, :body => body)
+      end
+
+      after do
+        ArangoDB.drop_collection(@cn)
+      end
+      
+      it "using onDuplicate=error" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=error"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ \"_key\" : \"test2\" }\n"
+        body += "{ \"_key\" : \"test3\", \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(2)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1')
+        doc.parsed_response['value1'].should eq(1)
+        doc.parsed_response['value2'].should eq('test')
+        doc.parsed_response.should_not have_key('value3')
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test2")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test2')
+        doc.parsed_response['value1'].should eq('abc') 
+        doc.parsed_response['value2'].should eq(3)
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test3")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test3')
+        doc.parsed_response['foo'].should eq('bar')
+      end
+      
+      it "using onDuplicate=error, without _key" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=error"
+        body =  "{ \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(3)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+      end
+      
+      it "using onDuplicate=error, mixed _keys" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=error"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(1)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1')
+        doc.parsed_response['value1'].should eq(1)
+        doc.parsed_response['value2'].should eq('test')
+        doc.parsed_response.should_not have_key('value3')
+      end
+
+      it "using onDuplicate=update" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=update"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ \"_key\" : \"test2\" }\n"
+        body += "{ \"_key\" : \"test3\", \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(2)
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1')
+        doc.parsed_response['value1'].should eq(1)
+        doc.parsed_response['value2'].should eq('test-updated')
+        doc.parsed_response['value3'].should eq(3)
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test2")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test2')
+        doc.parsed_response['value1'].should eq('abc') 
+        doc.parsed_response['value2'].should eq(3)
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test3")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test3')
+        doc.parsed_response['foo'].should eq('bar')
+      end
+      
+      it "using onDuplicate=update, without _key" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=update"
+        body =  "{ \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(3)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+      end
+      
+      it "using onDuplicate=update, mixed _keys" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=update"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(1)
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1')
+        doc.parsed_response['value1'].should eq(1)
+        doc.parsed_response['value2'].should eq('test-updated')
+        doc.parsed_response['value3'].should eq(3)
+      end
+      
+      it "using onDuplicate=replace" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=replace"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ \"_key\" : \"test2\" }\n"
+        body += "{ \"_key\" : \"test3\", \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(2)
+
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1') 
+        doc.parsed_response.should_not have_key('value1')
+        doc.parsed_response['value2'].should eq('test-updated')
+        doc.parsed_response['value3'].should eq(3) 
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test2")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test2') 
+        doc.parsed_response.should_not have_key('value1')
+        doc.parsed_response.should_not have_key('value2')
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test3")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test3')
+        doc.parsed_response['foo'].should eq('bar')
+      end
+      
+      it "using onDuplicate=replace, without _key" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=replace"
+        body =  "{ \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(3)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+      end
+      
+      it "using onDuplicate=replace, mixed _keys" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=replace"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test-updated\" }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(1)
+
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1') 
+        doc.parsed_response.should_not have_key('value1')
+        doc.parsed_response['value2'].should eq('test-updated')
+        doc.parsed_response['value3'].should eq(3) 
+      end
+
+      it "using onDuplicate=ignore" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=ignore"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test\" }\n"
+        body += "{ \"_key\" : \"test2\" }\n"
+        body += "{ \"_key\" : \"test3\", \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(2)
+        doc.parsed_response['updated'].should eq(0)
+
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1')
+        doc.parsed_response['value1'].should eq(1)
+        doc.parsed_response['value2'].should eq('test')
+        doc.parsed_response.should_not have_key('value3')
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test2")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test2')
+        doc.parsed_response['value1'].should eq('abc') 
+        doc.parsed_response['value2'].should eq(3)
+        
+        doc = ArangoDB.get("/_api/document/#{@cn}/test3")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test3')
+        doc.parsed_response['foo'].should eq('bar')
+      end
+      
+      it "using onDuplicate=ignore, without _key" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=ignore"
+        body =  "{ \"value3\" : 3, \"value2\" : \"test\" }\n"
+        body += "{ }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(3)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(0)
+        doc.parsed_response['updated'].should eq(0)
+      end
+      
+      it "using onDuplicate=ignore, mixed _keys" do
+        cmd = api + "?collection=#{@cn}&type=documents&onDuplicate=ignore"
+        body =  "{ \"_key\" : \"test1\", \"value3\" : 3, \"value2\" : \"test\" }\n"
+        body += "{ \"foo\" : \"bar\" }\n"
+        doc = ArangoDB.log_post("#{prefix}-update", cmd, :body => body)
+
+        doc.code.should eq(201)
+        doc.parsed_response['error'].should eq(false)
+        doc.parsed_response['created'].should eq(1)
+        doc.parsed_response['errors'].should eq(0)
+        doc.parsed_response['empty'].should eq(0)
+        doc.parsed_response['ignored'].should eq(1)
+        doc.parsed_response['updated'].should eq(0)
+
+        doc = ArangoDB.get("/_api/document/#{@cn}/test1")
+        doc.code.should eq(200)
+        doc.parsed_response['_key'].should eq('test1')
+        doc.parsed_response['value1'].should eq(1)
+        doc.parsed_response['value2'].should eq('test')
+        doc.parsed_response.should_not have_key('value3')
+      end
     end
 
   end

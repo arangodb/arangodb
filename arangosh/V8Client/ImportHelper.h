@@ -67,8 +67,8 @@ namespace triagens {
       };
 
     private:
-      ImportHelper (ImportHelper const&);
-      ImportHelper& operator= (ImportHelper const&);
+      ImportHelper (ImportHelper const&) = delete;
+      ImportHelper& operator= (ImportHelper const&) = delete;
 
     public:
 ////////////////////////////////////////////////////////////////////////////////
@@ -97,6 +97,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
       bool importJson (std::string const& collectionName, std::string const& fileName);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief sets the action to carry out on duplicate _key
+////////////////////////////////////////////////////////////////////////////////
+
+      void setOnDuplicateAction (std::string const& action) {
+        _onDuplicateAction = action;
+      }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sets the quote character
@@ -149,11 +157,9 @@ namespace triagens {
       void setProgress (bool value) {
         _progress = value;
       }
-
+    
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of read lines
-///
-/// @return size_t       number of read lines
+/// @brief get the number of lines read (meaningful for CSV only)
 ////////////////////////////////////////////////////////////////////////////////
 
       size_t getReadLines () {
@@ -161,23 +167,35 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of imported lines
-///
-/// @return size_t       number of imported lines
+/// @brief get the number of documents imported
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t getImportedLines () {
-        return _numberOk;
+      size_t getNumberCreated () {
+        return _numberCreated;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the number of error lines
-///
-/// @return size_t       number of error lines
+/// @brief get the number of errors
 ////////////////////////////////////////////////////////////////////////////////
 
-      size_t getErrorLines () {
-        return _numberError;
+      size_t getNumberErrors () {
+        return _numberErrors;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of updated documents
+////////////////////////////////////////////////////////////////////////////////
+
+      size_t getNumberUpdated () {
+        return _numberUpdated;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the number of ignored documents
+////////////////////////////////////////////////////////////////////////////////
+
+      size_t getNumberIgnored () {
+        return _numberIgnored;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -227,12 +245,15 @@ namespace triagens {
       bool _firstChunk;
 
       size_t _numberLines;
-      size_t _numberOk;
-      size_t _numberError;
+      size_t _numberCreated;
+      size_t _numberErrors;
+      size_t _numberUpdated;
+      size_t _numberIgnored;
 
       size_t _rowsRead;
       size_t _rowOffset;
 
+      std::string _onDuplicateAction;
       std::string _collectionName;
       triagens::basics::StringBuffer _lineBuffer;
       triagens::basics::StringBuffer _outputBuffer;

@@ -596,7 +596,7 @@ namespace triagens {
                     std::string const& key,
                     TRI_voc_rid_t rid,
                     TRI_doc_mptr_copy_t* mptr,
-                    TRI_json_t* const json,
+                    TRI_json_t const* json,
                     TRI_doc_update_policy_e policy,
                     TRI_voc_rid_t expectedRevision,
                     TRI_voc_rid_t* actualRevision,

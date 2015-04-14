@@ -55,6 +55,8 @@ namespace triagens {
           _numErrors(0),
           _numEmpty(0),
           _numCreated(0),
+          _numIgnored(0),
+          _numUpdated(0),
           _errors() {
         }
 
@@ -63,6 +65,8 @@ namespace triagens {
         size_t _numErrors;
         size_t _numEmpty;
         size_t _numCreated;
+        size_t _numIgnored;
+        size_t _numUpdated;
 
         std::vector<std::string> _errors;
     };
@@ -101,105 +105,128 @@ namespace triagens {
 // --SECTION--                                                   private methods
 // -----------------------------------------------------------------------------
 
-    private:
+      private:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the "overwrite" value
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool extractOverwrite () const;
+        bool extractOverwrite () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extracts the "complete" value
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool extractComplete () const;
+        bool extractComplete () const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create a position string
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string positionise (size_t) const;
+        std::string positionise (size_t) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register an error
 ////////////////////////////////////////////////////////////////////////////////
 
-      void registerError (RestImportResult&,
-                          std::string const&);
+        void registerError (RestImportResult&,
+                            std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief construct an error message
 ////////////////////////////////////////////////////////////////////////////////
 
-      std::string buildParseError (size_t,
-                                   char const*);
+        std::string buildParseError (size_t,
+                                     char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief process a single JSON document
 ////////////////////////////////////////////////////////////////////////////////
 
-      int handleSingleDocument (RestImportTransaction&,
-                                char const*,
-                                TRI_json_t const*,
-                                std::string&,
-                                bool,
-                                bool,
-                                size_t);
+        int handleSingleDocument (RestImportTransaction&,
+                                  RestImportResult&, 
+                                  char const*,
+                                  TRI_json_t const*,
+                                  bool,
+                                  bool,
+                                  size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents by JSON objects
 /// each line of the input stream contains an individual JSON object
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool createFromJson (std::string const&);
+        bool createFromJson (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates documents by JSON objects
 /// the input stream is one big JSON array containing all documents
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool createByDocumentsList ();
+        bool createByDocumentsList ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates a documents from key/value lists
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool createFromKeyValueList ();
+        bool createFromKeyValueList ();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief creates the result
 ////////////////////////////////////////////////////////////////////////////////
 
-      void generateDocumentsCreated (RestImportResult const&);
+        void generateDocumentsCreated (RestImportResult const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_json_t* parseJsonLine (std::string const&);
+        TRI_json_t* parseJsonLine (std::string const&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief parses a string
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_json_t* parseJsonLine (char const*,
-                                 char const*);
+        TRI_json_t* parseJsonLine (char const*,
+                                   char const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief builds a TRI_json_t object from a key and value list
 ////////////////////////////////////////////////////////////////////////////////
 
-      TRI_json_t* createJsonObject (TRI_json_t const*,
-                                    TRI_json_t const*,
-                                    std::string&,
-                                    size_t);
+        TRI_json_t* createJsonObject (TRI_json_t const*,
+                                      TRI_json_t const*,
+                                      std::string&,
+                                      size_t);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief checks the keys, returns true if all values in the list are strings.
 ////////////////////////////////////////////////////////////////////////////////
 
-      bool checkKeys (TRI_json_t const*) const;
+        bool checkKeys (TRI_json_t const*) const;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private variables
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief enumeration for unique constraint handling
+////////////////////////////////////////////////////////////////////////////////
+
+        enum OnDuplicateActionType {
+          DUPLICATE_ERROR,       // fail on unique constraint violation
+          DUPLICATE_UPDATE,      // try updating existing document on unique constraint violation
+          DUPLICATE_REPLACE,     // try replacing existing document on unique constraint violation
+          DUPLICATE_IGNORE       // ignore document on unique constraint violation
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief unique constraint handling
+////////////////////////////////////////////////////////////////////////////////
+
+        OnDuplicateActionType _onDuplicateAction;
 
     };
   }
