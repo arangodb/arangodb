@@ -845,10 +845,14 @@ ExecutionNode::RegisterPlan::RegisterPlan (RegisterPlan const& v,
     depth(newdepth + 1),
     totalNrRegs(v.nrRegs[newdepth]),
     me(nullptr) {
+
   nrRegs.resize(depth);
   nrRegsHere.resize(depth);
   nrRegsHere.emplace_back(0);
-  nrRegs.emplace_back(nrRegs.back());
+  // create a copy of the last value here
+  // this is requried because back returns a reference and emplace/push_back may invalidate all references
+  RegisterId registerId = nrRegs.back();
+  nrRegs.emplace_back(registerId);
 }
 
 void ExecutionNode::RegisterPlan::clear () {
@@ -882,7 +886,11 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::INDEX_RANGE: {
       depth++;
       nrRegsHere.emplace_back(1);
-      nrRegs.emplace_back(1 + nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = 1 + nrRegs.back();
+      nrRegs.emplace_back(registerId);
+
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(make_pair(ep->_outVariable->id,
@@ -893,7 +901,11 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::ENUMERATE_LIST: {
       depth++;
       nrRegsHere.emplace_back(1);
-      nrRegs.emplace_back(1 + nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = 1 + nrRegs.back();
+      nrRegs.emplace_back(registerId);
+
       auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(make_pair(ep->_outVariable->id,
@@ -927,7 +939,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::AGGREGATE: {
       depth++;
       nrRegsHere.emplace_back(0);
-      nrRegs.emplace_back(nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = nrRegs.back();
+      nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<AggregateNode const*>(en);
       for (auto p : ep->_aggregateVariables) {
@@ -964,7 +979,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::REMOVE: {
       depth++;
       nrRegsHere.emplace_back(0);
-      nrRegs.emplace_back(nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = nrRegs.back();
+      nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<RemoveNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
@@ -980,7 +998,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::INSERT: {
       depth++;
       nrRegsHere.emplace_back(0);
-      nrRegs.emplace_back(nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = nrRegs.back();
+      nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<InsertNode const*>(en);
       if (ep->getOutVariableNew() != nullptr) {
@@ -996,7 +1017,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::UPDATE: {
       depth++;
       nrRegsHere.emplace_back(0);
-      nrRegs.emplace_back(nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = nrRegs.back();
+      nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<UpdateNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
@@ -1019,7 +1043,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::REPLACE: {
       depth++;
       nrRegsHere.emplace_back(0);
-      nrRegs.emplace_back(nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = nrRegs.back();
+      nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<ReplaceNode const*>(en);
       if (ep->getOutVariableOld() != nullptr) {
@@ -1042,7 +1069,10 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::UPSERT: {
       depth++;
       nrRegsHere.emplace_back(0);
-      nrRegs.emplace_back(nrRegs.back());
+      // create a copy of the last value here
+      // this is requried because back returns a reference and emplace/push_back may invalidate all references
+      RegisterId registerId = nrRegs.back();
+      nrRegs.emplace_back(registerId);
 
       auto ep = static_cast<UpsertNode const*>(en);
       if (ep->getOutVariableNew() != nullptr) {
