@@ -315,7 +315,7 @@ else {
 
     return normalize(paths.filter(function(p) {
       if (typeof p !== 'string') {
-        throw new TypeError('Arguments to path.join must be strings');
+        throw new TypeError('Arguments to path.join must be strings - have ' + JSON.stringify(p));
       }
 
       return p;
@@ -396,7 +396,7 @@ if (global.FS_MTIME) {
 /// @brief copy recursive
 ////////////////////////////////////////////////////////////////////////////////
 
-if (typeof global.FS_COPY_RECURSIVE) {
+if (global.FS_COPY_RECURSIVE) {
   exports.copyRecursive = global.FS_COPY_RECURSIVE;
   delete global.FS_COPY_RECURSIVE;
 }
@@ -405,37 +405,46 @@ if (typeof global.FS_COPY_RECURSIVE) {
 /// @brief move
 ////////////////////////////////////////////////////////////////////////////////
 
-if (typeof global.FS_MOVE) {
+if (global.FS_MOVE) {
   var move = global.FS_MOVE;
-  var fs = exports;
   // File system moving directories fallback function
   exports.move = function(source, target) {
-    if (fs.isDirectory(source) && !fs.exists(target)) {
-      // File systems cannot move directories correctly
-      var tempFile = fs.getTempFile("zip", false);
-      var tree = fs.listTree(source);
-      var files = [];
-      var i;
-      var filename;
-      for (i = 0;  i < tree.length;  ++i) {
-        filename = fs.join(source, tree[i]);
-        if (fs.isFile(filename)) {
-          files.push(tree[i]);
+    try {
+      return move(source, target);
+    }
+    catch (x) {
+
+      if (x.hasOwnProperty('errorNum') && 
+          (x.errorNum === 2 /* errors.ERROR_SYS_ERROR.code */ )) { 
+        try {
+          exports.copyRecursive(source, target);
+          // yes, this only works from the temporary dir
+          try {
+            exports.removeDirectoryRecursive(source);
+          }
+          catch(z){
+            require("console").log("failed to remove source directory: " + z);
+          }
+
+        }
+        catch (y) {
+          try {
+            // try to cleanup the mess we created... 
+            // if it doesn't work out... oh well...
+            exports.removeDirectoryRecursive(target);
+          }
+          catch(v){
+            require("console").log("failed to clean up target directory: " + v);
+          }
+          throw(y);
         }
       }
-      var res;
-      if (files.length === 0) {
-        res = fs.makeDirectory(target);
-        fs.removeDirectoryRecursive(source, true);
-      } else {
-        fs.zipFile(tempFile, source, files);
-        res = fs.unzipFile(tempFile, target, false, true);
-        fs.remove(tempFile);
-        fs.removeDirectoryRecursive(source, true);
+      else {
+
+        throw(x);
       }
-      return res;
     }
-    return move(source, target);
+    return true;
   };
   delete global.FS_MOVE;
 }
