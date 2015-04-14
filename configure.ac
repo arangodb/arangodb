@@ -150,6 +150,8 @@ m4_include([m4/configure.documentation])
 m4_include([m4/configure.coverage])
 m4_include([m4/configure.maintainer])
 
+AC_CHECK_FUNCS([futimes])
+
 dnl ============================================================================
 dnl --SECTION--                                               EXTERNAL LIBRARIES
 dnl ============================================================================
@@ -386,6 +388,37 @@ LIB_INFO="$LIB_INFO|ZLIB VERSION: ${ZLIB_VERSION}"
 LIB_INFO="$LIB_INFO|ZLIB_CPPFLAGS: ${ZLIB_CPPFLAGS}"
 LIB_INFO="$LIB_INFO|ZLIB_LDFLAGS:  ${ZLIB_LDFLAGS}"
 LIB_INFO="$LIB_INFO|ZLIB_LIBS:     ${ZLIB_LIBS}"
+
+dnl ----------------------------------------------------------------------------
+dnl SPLICE
+dnl ----------------------------------------------------------------------------
+
+AC_MSG_CHECKING([whether your system knows about splice()]) 
+AC_TRY_COMPILE([
+#define _GNU_SOURCE
+#include <unistd.h>
+#include <fcntl.h>
+],
+[
+  ssize_t sent, pipesize;
+  int fd, SplicePipe[2];
+  pipesize = splice(fd, NULL, 
+                    SplicePipe[1], NULL, 
+                    1, 
+                    SPLICE_F_MORE | SPLICE_F_MOVE|SPLICE_F_NONBLOCK);
+],
+[
+  ok_splice=yes
+  AC_DEFINE_UNQUOTED(TRI_LINUX_SPLICE, 1, [true if we have the linux splice api])
+  AC_MSG_RESULT([yes])
+  AC_SUBST(TRI_LINUX_SPLICE)
+],
+[ 
+  ok_splice=no
+  AC_MSG_RESULT([no])
+]
+)
+
 
 dnl ============================================================================
 dnl --SECTION--                                                   GENERATE FILES

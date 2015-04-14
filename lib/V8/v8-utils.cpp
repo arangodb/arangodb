@@ -1962,6 +1962,76 @@ static void JS_MoveFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief copies a directory structure
+/// @startDocuBlock JS_CopyDirectoryRecursive
+/// `fs.xcopy(source, destination)`
+///
+/// Copies *source* to destination. Failure to copy the file, or
+/// specifying a directory for destination when source is a file will throw an
+/// exception. Likewise, specifying a directory as source and destination will
+/// fail.
+/// @endDocuBlock
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_CopyRecursive (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  v8::Isolate* isolate = args.GetIsolate();
+  v8::HandleScope scope(isolate);
+
+  // extract two arguments
+  if (args.Length() != 2) {
+    TRI_V8_THROW_EXCEPTION_USAGE("xcopy(<source>, <destination>)");
+  }
+
+  string source = TRI_ObjectToString(args[0]);
+  string destination = TRI_ObjectToString(args[1]);
+
+  bool const sourceIsDirectory = TRI_IsDirectory(source.c_str());
+  bool const destinationIsDirectory = TRI_IsDirectory(destination.c_str());
+
+  if (sourceIsDirectory && destinationIsDirectory) {
+    // source is a directory, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot copy source directory into destination directory");
+  }
+
+  if (TRI_IsRegularFile(source.c_str()) &&
+      destinationIsDirectory) {
+    // source is a file, destination is a directory. this is unsupported
+    TRI_V8_THROW_EXCEPTION_PARAMETER("cannot copy source file into destination directory");
+  }
+  std::string systemErrorStr;
+  long errorNo;
+
+  int res = TRI_CreateRecursiveDirectory(destination.c_str(), errorNo, systemErrorStr);
+  if (res != TRI_ERROR_NO_ERROR) {
+    std::string errMsg = "cannot copy file [" +
+      source +
+      "] to [" +
+      destination +
+      " ] : " + 
+      std::to_string(errorNo) + 
+      " - Unable to create target directory: " + 
+      systemErrorStr;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(res, errMsg);
+  }
+
+  if (!FileUtils::copyRecursive(source, destination, systemErrorStr)) {
+    std::string errMsg = "cannot copy directory [" +
+      source +
+      "] to [" +
+      destination +
+      " ] : " + 
+      std::to_string(errorNo) + 
+      ": " + 
+      systemErrorStr;
+    TRI_V8_THROW_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, errMsg);
+  }
+
+  TRI_V8_RETURN_UNDEFINED();
+}
+
+
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief outputs the arguments
 ///
 /// @FUN{internal.output(@FA{string1}, @FA{string2}, @FA{string3}, ...)}
@@ -4158,6 +4228,8 @@ void TRI_InitV8Utils (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_LIST_TREE"), JS_ListTree);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MAKE_DIRECTORY"), JS_MakeDirectory);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MOVE"), JS_MoveFile);
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_COPY_RECURSIVE"), JS_CopyRecursive);
+
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_MTIME"), JS_MTime);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE"), JS_Remove);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("FS_REMOVE_DIRECTORY"), JS_RemoveDirectory);

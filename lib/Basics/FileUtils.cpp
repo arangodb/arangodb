@@ -313,6 +313,111 @@ namespace triagens {
         return (result != 0) ? false : true;
       }
 
+      bool copyRecursive (std::string const& source, std::string const & target, std::string &error)
+      {
+        if (isDirectory(source)) {
+          return copyDirectoryRecursive (source, target, error);
+        }
+        else {
+          return TRI_CopyFile(source, target, error);
+        }
+      }
+
+      bool copyDirectoryRecursive (std::string const& source, std::string const & target, std::string &error)
+      {
+        bool rc = true;
+#ifdef TRI_HAVE_WIN32_LIST_FILES
+
+        struct _finddata_t oneItem;
+        intptr_t handle;
+
+        string filter = source + "\\*";
+        handle = _findfirst(filter.c_str(), &oneItem);
+
+        if (handle == -1) {
+          error = "directory " + source + "not found";
+          return false;
+        }
+
+        do {
+#else
+        struct dirent *oneItem;
+	struct dirent *d = (struct dirent *)malloc(offsetof(struct dirent, d_name) + PATH_MAX + 1);
+	if (d == NULL) {
+          error = "directory " + source + " OOM";
+          return false;
+	}
+
+        //fprintf(stderr, "opening: %s\n", source.c_str());
+	DIR *filedir = opendir(source.c_str());
+
+        if (filedir == nullptr) {
+          free(d);
+          error = "directory " + source + "not found";
+          return false;
+        }
+
+	while ((readdir_r(filedir, d, &oneItem) == 0) &&
+	       (oneItem != NULL)) {
+
+#endif
+          // fprintf(stderr, "working on:  %s\n", TRI_DIR_FN(oneItem));
+          // Now iterate over the items.
+          // check its not the pointer to the upper directory:
+          if (!strcmp(TRI_DIR_FN(oneItem), ".") ||
+              !strcmp(TRI_DIR_FN(oneItem), "..")) {
+            // fprintf(stderr, "skipping dots\n");
+            continue;
+          }
+          std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
+          std::string src = source + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
+            
+          // Handle subdirectories:
+          if (TRI_DIR_IS_SUB_DIRECTORY(oneItem)) {
+            long systemError;
+            int rc = TRI_CreateDirectory(dst.c_str(), systemError, error);
+            if (rc != TRI_ERROR_NO_ERROR) {
+              break;
+            }
+            if (!copyDirectoryRecursive(src, dst, error)) {
+              // fprintf(stderr, "broxon 1done with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
+              break;
+            }
+            if (!TRI_CopyAttributes(src, dst, error)) {
+              // fprintf(stderr, "broxon 1done copying attributes  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
+              break;
+            }
+          }
+          else if (TRI_DIR_IS_SYMLINK(oneItem)) {
+            if (!TRI_CopySymlink(src, dst, error)){
+              // fprintf(stderr, "broxon symlink with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
+              break;
+            }
+          }
+          else {
+            if (!TRI_CopyFile(src, dst, error)) {
+              // fprintf(stderr, "broxon 2done with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
+              break;
+            }
+            /// TODO TRI_DIR_SETATTRIBUTES(oneItem, dst, error);
+            
+            // fprintf(stderr, "done with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
+          }
+#ifdef TRI_HAVE_WIN32_LIST_FILES
+        } 
+        while(_findnext(handle, &oneItem) != -1);
+
+        _findclose(handle);
+
+#else
+        }
+        free(d);
+        /// fprintf(stderr, "closing  %s\n", source.c_str());
+        closedir(filedir);
+
+#endif
+        return rc;
+      }
 
 
       vector<string> listFiles (string const& directory) {

@@ -6,11 +6,14 @@
 /* Define to 1 if you have the `backtrace' function. */
 #undef HAVE_BACKTRACE
 
+/* do we have clock_gettime? */
+#undef HAVE_CLOCK_GETTIME
+
+/* do we have clock_get_time? */
+#undef HAVE_CLOCK_GET_TIME
+
 /* define if the compiler supports basic C++11 syntax */
 #undef HAVE_CXX11
-
-/* Define to 1 if you have the <ev.h> header file. */
-#undef HAVE_EV_H
 
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
@@ -117,6 +120,9 @@
 
 /* true if readline is used */
 #undef TRI_HAVE_READLINE
+
+/* true if we have the linux splice api */
+#undef TRI_LINUX_SPLICE
 
 /* "" */
 #undef TRI_REPOSITORY_VERSION
