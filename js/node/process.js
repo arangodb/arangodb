@@ -9,6 +9,9 @@ exports.stdout = {
     require('console').infoLines(text);
   }
 };
+exports.cwd = function () {
+  return global.module.appPath();
+};
 exports.nextTick = function (fn) {
   fn();
 };
