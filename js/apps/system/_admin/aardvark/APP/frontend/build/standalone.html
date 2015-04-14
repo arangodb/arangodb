@@ -54,7 +54,7 @@
             <a class="headerButton <%= app.get('scripts').length ? '' : 'disabled' %>" title="Scripts">
               <i class="fa fa-cogs"></i>
             </a>
-            <ul class="script-dropdown-menu" id="scripts_dropdown">
+            <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
             <% app.get('scripts').forEach(function (script) { %>
               <li class="dropdown-item">
                 <a class="tab" data-script="<%= script.name %>"><%= script.title %></a>
@@ -2774,7 +2774,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1429030424080"></script>
+<script src="app.js?version=1429031909934"></script>
 
   </body>
 </html>
