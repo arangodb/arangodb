@@ -343,8 +343,10 @@ static void JS_ImportCsvFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (ih.importDelimited(collectionName, fileName, ImportHelper::CSV)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     result->Set(TRI_V8_ASCII_STRING("lines"),   v8::Integer::New(isolate, (int32_t) ih.getReadLines()));
-    result->Set(TRI_V8_ASCII_STRING("created"), v8::Integer::New(isolate, (int32_t) ih.getImportedLines()));
-    result->Set(TRI_V8_ASCII_STRING("errors"),  v8::Integer::New(isolate, (int32_t) ih.getErrorLines()));
+    result->Set(TRI_V8_ASCII_STRING("created"), v8::Integer::New(isolate, (int32_t) ih.getNumberCreated()));
+    result->Set(TRI_V8_ASCII_STRING("errors"),  v8::Integer::New(isolate, (int32_t) ih.getNumberErrors()));
+    result->Set(TRI_V8_ASCII_STRING("updated"), v8::Integer::New(isolate, (int32_t) ih.getNumberUpdated()));
+    result->Set(TRI_V8_ASCII_STRING("ignored"), v8::Integer::New(isolate, (int32_t) ih.getNumberIgnored()));
     TRI_V8_RETURN(result);
   }
 
@@ -391,8 +393,10 @@ static void JS_ImportJsonFile (const v8::FunctionCallbackInfo<v8::Value>& args) 
   if (ih.importJson(collectionName, fileName)) {
     v8::Handle<v8::Object> result = v8::Object::New(isolate);
     result->Set(TRI_V8_ASCII_STRING("lines"),   v8::Integer::New(isolate, (int32_t) ih.getReadLines()));
-    result->Set(TRI_V8_ASCII_STRING("created"), v8::Integer::New(isolate, (int32_t) ih.getImportedLines()));
-    result->Set(TRI_V8_ASCII_STRING("errors"),  v8::Integer::New(isolate, (int32_t) ih.getErrorLines()));
+    result->Set(TRI_V8_ASCII_STRING("created"), v8::Integer::New(isolate, (int32_t) ih.getNumberCreated()));
+    result->Set(TRI_V8_ASCII_STRING("errors"),  v8::Integer::New(isolate, (int32_t) ih.getNumberErrors()));
+    result->Set(TRI_V8_ASCII_STRING("updated"), v8::Integer::New(isolate, (int32_t) ih.getNumberUpdated()));
+    result->Set(TRI_V8_ASCII_STRING("ignored"), v8::Integer::New(isolate, (int32_t) ih.getNumberIgnored()));
     TRI_V8_RETURN(result);
   }
 

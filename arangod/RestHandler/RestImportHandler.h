@@ -55,6 +55,8 @@ namespace triagens {
           _numErrors(0),
           _numEmpty(0),
           _numCreated(0),
+          _numIgnored(0),
+          _numUpdated(0),
           _errors() {
         }
 
@@ -63,6 +65,8 @@ namespace triagens {
         size_t _numErrors;
         size_t _numEmpty;
         size_t _numCreated;
+        size_t _numIgnored;
+        size_t _numUpdated;
 
         std::vector<std::string> _errors;
     };
@@ -140,9 +144,9 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         int handleSingleDocument (RestImportTransaction&,
+                                  RestImportResult&, 
                                   char const*,
                                   TRI_json_t const*,
-                                  std::string&,
                                   bool,
                                   bool,
                                   size_t);

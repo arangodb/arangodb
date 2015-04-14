@@ -198,13 +198,16 @@ std::string RestImportHandler::buildParseError (size_t i,
 ////////////////////////////////////////////////////////////////////////////////
 
 int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
+                                             RestImportResult& result,
                                              char const* lineStart,
                                              TRI_json_t const* json,
-                                             string& errorMsg,
                                              bool isEdgeCollection,
                                              bool waitForSync,
                                              size_t i) {
+
   if (! TRI_IsObjectJson(json)) {
+    std::string errorMsg;
+
     if (json != nullptr) {
       string part = JsonHelper::toString(json);
       if (part.size() > 255) {
@@ -218,6 +221,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
       errorMsg = buildParseError(i, lineStart);
     }
 
+    registerError(result, errorMsg);
     return TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID;
   }
 
@@ -236,8 +240,9 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
         part = part.substr(0, 255) + "...";
       }
     
-      errorMsg = positionise(i) + "missing '_from' or '_to' attribute, offending document: " + part;
+      std::string errorMsg = positionise(i) + "missing '_from' or '_to' attribute, offending document: " + part;
 
+      registerError(result, errorMsg);
       return TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE;
     }
 
@@ -273,6 +278,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
       
     res = trx.createDocument(&document, json, waitForSync);
   }
+   
+        
+  if (res == TRI_ERROR_NO_ERROR) {
+    ++result._numCreated;
+  }
 
 
   // special behavior in case of unique constraint violation . . .
@@ -306,16 +316,25 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
               res = trx.updateDocument(keyJson->_value._string.data, &document, patchedJson.get(), TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
             }
           }
+
+          if (res == TRI_ERROR_NO_ERROR) {
+            ++result._numUpdated;
+          }
         }
       }
       else if (_onDuplicateAction == DUPLICATE_REPLACE) {
         // replace
         res = trx.updateDocument(keyJson->_value._string.data, &document, json, TRI_DOC_UPDATE_LAST_WRITE, waitForSync, 0, nullptr);
+          
+        if (res == TRI_ERROR_NO_ERROR) {
+          ++result._numUpdated;
+        }
       }
       else {
         // simply ignore unique key violations silently
         TRI_ASSERT(_onDuplicateAction == DUPLICATE_IGNORE); 
         res = TRI_ERROR_NO_ERROR;
+        ++result._numIgnored;
       }
     }
   }
@@ -328,9 +347,11 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
       part = part.substr(0, 255) + "...";
     }
 
-    errorMsg = positionise(i) +
-               "creating document failed with error '" + TRI_errno_string(res) +
-               "', offending document: " + part;
+    std::string errorMsg = positionise(i) +
+                           "creating document failed with error '" + TRI_errno_string(res) +
+                           "', offending document: " + part;
+      
+    registerError(result, errorMsg);
   }
 
   return res;
@@ -389,7 +410,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///   data specified in the request. 
 ///
 /// - *ignore*: this will not update an existing document and simply ignore the
-///   error caused by the unique key constraint violation.
+///   error caused by a unique key constraint violation.
 ///
 /// Note that that *update*, *replace* and *ignore* will only work when the
 /// import document in the request contains the *_key* attribute. *update* and
@@ -419,6 +440,12 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 /// - `empty`: number of empty lines found in the input (will only contain a
 ///   value greater zero for types `documents` or `auto`).
+///
+/// - `updated`: number of updated/replaced documents (in case `onDuplicate`
+///   was set to either `update` or `replace`).
+///
+/// - `ignored`: number of failed but ignored insert operations (in case
+///   `onDuplicate` was set to `ignore`).
 ///
 /// - `details`: if URL parameter `details` is set to true, the result will
 ///   contain a `details` attribute which is an array with more detailed
@@ -771,7 +798,6 @@ bool RestImportHandler::createFromJson (string const& type) {
     char const* ptr = _request->body();
     char const* end = ptr + _request->bodySize();
     size_t i = 0;
-    string errorMsg;
 
     while (ptr < end) {
       // read line until done
@@ -818,23 +844,18 @@ bool RestImportHandler::createFromJson (string const& type) {
         ptr = end;
       }
 
-      res = handleSingleDocument(trx, oldPtr, json, errorMsg, isEdgeCollection, waitForSync, i);
+      res = handleSingleDocument(trx, result, oldPtr, json, isEdgeCollection, waitForSync, i);
 
       if (json != nullptr) {
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        ++result._numCreated;
-      }
-      else {
-        registerError(result, errorMsg);
-
+      
+      if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
           // only perform a full import: abort
           break;
         }
-        // perform partial import: continue
+
         res = TRI_ERROR_NO_ERROR;
       }
     }
@@ -855,25 +876,19 @@ bool RestImportHandler::createFromJson (string const& type) {
       return false;
     }
 
-    string errorMsg;
     size_t const n = documents->_value._objects._length;
 
     for (size_t i = 0; i < n; ++i) {
       TRI_json_t const* json = static_cast<TRI_json_t const*>(TRI_AtVector(&documents->_value._objects, i));
 
-      res = handleSingleDocument(trx, nullptr, json, errorMsg, isEdgeCollection, waitForSync, i + 1);
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        ++result._numCreated;
-      }
-      else {
-        registerError(result, errorMsg);
-
+      res = handleSingleDocument(trx, result, nullptr, json, isEdgeCollection, waitForSync, i + 1);
+      
+      if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
           // only perform a full import: abort
           break;
         }
-        // perform partial import: continue
+
         res = TRI_ERROR_NO_ERROR;
       }
     }
@@ -975,6 +990,12 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///
 /// - `empty`: number of empty lines found in the input (will only contain a
 ///   value greater zero for types `documents` or `auto`).
+///
+/// - `updated`: number of updated/replaced documents (in case `onDuplicate`
+///   was set to either `update` or `replace`).
+///
+/// - `ignored`: number of failed but ignored insert operations (in case
+///   `onDuplicate` was set to `ignore`).
 ///
 /// - `details`: if URL parameter `details` is set to true, the result will
 ///   contain a `details` attribute which is an array with more detailed
@@ -1317,26 +1338,21 @@ bool RestImportHandler::createFromKeyValueList () {
       TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, values);
 
       if (json != nullptr) {
-        res = handleSingleDocument(trx, lineStart, json, errorMsg, isEdgeCollection, waitForSync, i);
+        res = handleSingleDocument(trx, result, lineStart, json, isEdgeCollection, waitForSync, i);
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
       }
       else {
         // raise any error
         res = TRI_ERROR_INTERNAL;
+        ++result._numErrors;
       }
-
-      if (res == TRI_ERROR_NO_ERROR) {
-        ++result._numCreated;
-      }
-      else {
-        registerError(result, errorMsg);
-
+      
+      if (res != TRI_ERROR_NO_ERROR) {
         if (complete) {
           // only perform a full import: abort
           break;
         }
 
-        // perform partial import: continue
         res = TRI_ERROR_NO_ERROR;
       }
     }
@@ -1376,28 +1392,30 @@ void RestImportHandler::generateDocumentsCreated (RestImportResult const& result
 
   TRI_json_t json;
 
-  TRI_InitObjectJson(TRI_CORE_MEM_ZONE, &json);
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_CORE_MEM_ZONE, false));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numCreated));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numErrors));
-  TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_CORE_MEM_ZONE, (double) result._numEmpty));
+  TRI_InitObjectJson(TRI_UNKNOWN_MEM_ZONE, &json);
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "error", TRI_CreateBooleanJson(TRI_UNKNOWN_MEM_ZONE, false));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "created", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numCreated));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "errors", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numErrors));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "empty", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numEmpty));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "updated", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numUpdated));
+  TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "ignored", TRI_CreateNumberJson(TRI_UNKNOWN_MEM_ZONE, (double) result._numIgnored));
 
   bool found;
   char const* detailsStr = _request->value("details", found);
 
   // include failure details?
   if (found && StringUtils::boolean(detailsStr)) {
-    TRI_json_t* messages = TRI_CreateArrayJson(TRI_CORE_MEM_ZONE);
+    TRI_json_t* messages = TRI_CreateArrayJson(TRI_UNKNOWN_MEM_ZONE);
 
     for (size_t i = 0, n = result._errors.size(); i < n; ++i) {
       string const& msg = result._errors[i];
-      TRI_PushBack3ArrayJson(TRI_CORE_MEM_ZONE, messages, TRI_CreateStringCopyJson(TRI_CORE_MEM_ZONE, msg.c_str(), msg.size()));
+      TRI_PushBack3ArrayJson(TRI_UNKNOWN_MEM_ZONE, messages, TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, msg.c_str(), msg.size()));
     }
-    TRI_Insert3ObjectJson(TRI_CORE_MEM_ZONE, &json, "details", messages);
+    TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &json, "details", messages);
   }
 
   generateResult(HttpResponse::CREATED, &json);
-  TRI_DestroyJson(TRI_CORE_MEM_ZONE, &json);
+  TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, &json);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1414,14 +1432,7 @@ TRI_json_t* RestImportHandler::parseJsonLine (string const& line) {
 
 TRI_json_t* RestImportHandler::parseJsonLine (char const* start,
                                               char const* end) {
-  char* errmsg = nullptr;
-  TRI_json_t* json = TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, start, &errmsg);
-
-  if (errmsg != nullptr) {
-    // must free this error message, otherwise we'll have a memleak
-    TRI_FreeString(TRI_CORE_MEM_ZONE, errmsg);
-  }
-  return json;
+  return TRI_Json2String(TRI_UNKNOWN_MEM_ZONE, start, nullptr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

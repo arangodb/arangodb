@@ -1,6 +1,44 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1298: Bulk import if data already exists (#1298)
+
+  This change extends the HTTP REST API for bulk imports as follows:
+
+  When documents are imported and the `_key` attribute is specified for them, the import can be
+  used for inserting and updating/replacing documents. Previously, the import could be used for
+  inserting new documents only, and re-inserting a document with an existing would have failed
+  with a *unique key constraint violated* error.
+
+  The above behavior is still the default. However, the API now allows controlling the behavior
+  in case of a unique key constraint error via the optional URL parameter `onDuplicate`. 
+  
+  This parameter can have one of the following values:
+    
+  - `error`: when a unique key constraint error occurs, do not import or update the document but
+    report an error. This is the default.
+    
+  - `update`: when a unique key constraint error occurs, try to (partially) update the existing
+    document with the data specified in the import. This may still fail if the document would
+    violate secondary unique indexes. Only the attributes present in the import data will be
+    updated and other attributes already present will be preserved. The number of updated documents
+    will be reported in the `updated` attribute of the HTTP API result.
+
+  - `replace`: when a unique key constraint error occurs, try to fully replace the existing
+    document with the data specified in the import. This may still fail if the document would
+    violate secondary unique indexes. The number of replaced documents will be reported in the 
+    `updated` attribute of the HTTP API result.
+
+  - `ignore`: when a unique key constraint error occurs, ignore this error. There will be no
+    insert, update or replace for the particular document. Ignored documents will be reported
+    separately in the `ignored` attribute of the HTTP API result.
+
+  The result of the HTTP import API will now contain the attributes `ignored` and `updated`, which
+  contain the number of ignored and updated documents respectively. These attributes will contain a
+  value of zero unless the `onDuplicate` URL parameter is set to either `update` or `replace`
+  (in this case the `updated` attribute may contain non-zero values) or `ignore` (in this case the
+  `ignored` attribute may contain a non-zero value).
+
 * changed behavior of `db._query()` in the ArangoShell:
 
   if the command's result is printed in the shell, the first 10 results will be printed. Previously
