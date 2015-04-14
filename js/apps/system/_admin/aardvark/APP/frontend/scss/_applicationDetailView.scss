@@ -97,12 +97,15 @@
     }
   }
   &-spec {
+    margin-bottom: 0;
+
     &-suites {
       & & {
         margin-left: 20px;
       }
       dd {
         margin-left: 0;
+        margin-bottom: 20px;
       }
     }
     &-tests {
