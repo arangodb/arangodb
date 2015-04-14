@@ -12,8 +12,9 @@ attribute. When importing into an [edge collection](../Glossary/README.html#edge
 imported documents have the *_from* and *_to* attributes, and that they contain
 valid references.
 
-Let's assume for the following examples you want to import user records into an 
+Let's assume for the following examples you want to import user data into an 
 existing collection named "users" on the server.
+
 
 !SECTION Importing Data into an ArangoDB Database
 
@@ -31,7 +32,7 @@ example user records to import:
 To import these records, all you need to do is to put them into a file (with one
 line for each record to import) and run the following command:
 
-    unix> arangoimp --file "data.json" --type json --collection "users"
+    > arangoimp --file "data.json" --type json --collection "users"
 
 This will transfer the data to the server, import the records, and print a
 status summary. To show the intermediate progress during the import process, the
@@ -39,13 +40,13 @@ option *--progress* can be added. This option will show the percentage of the
 input file that has been sent to the server. This will only be useful for big
 import files. 
 
-    unix> arangoimp --file "data.json" --type json --collection users --progress true
+    > arangoimp --file "data.json" --type json --collection users --progress true
 
 It is also possible to use the output of another command as an input for arangoimp.
 For example, the following shell command can be used to pipe data from the `cat`
 process to arangoimp:
 
-    unix> cat data.json | arangoimp --file - --type json --collection users
+    > cat data.json | arangoimp --file - --type json --collection users
 
 Note that you have to use `--file -` if you want to use another command as input 
 for arangoimp. No progress can be reported for such imports as the size of the input
@@ -57,7 +58,7 @@ probably want to specify a database user and password as well.  You can do so by
 using the options *--server.username* and *--server.password*.  If you do not
 specify a password, you will be prompted for one.
 
-    unix> arangoimp --server.endpoint tcp://127.0.0.1:8529 --server.username root --file "data.json" --type json --collection "users"
+    > arangoimp --server.endpoint tcp://127.0.0.1:8529 --server.username root --file "data.json" --type json --collection "users"
 
 Note that the collection (*users* in this case) must already exist or the import
 will fail. If you want to create a new collection with the import data, you need
@@ -65,7 +66,7 @@ to specify the *--create-collection* option. Note that it is only possible to
 create a document collection using the *--create-collection* flag, and no edge
 collections.
 
-    unix> arangoimp --file "data.json" --type json --collection "users" --create-collection true
+    > arangoimp --file "data.json" --type json --collection "users" --create-collection true
 
 When importing data into an existing collection it is often convenient to first
 remove all data from the collection and then start the import. This can be achieved
@@ -74,7 +75,7 @@ any existing data in the collection will be removed prior to the import. Note
 that any existing index definitions for the collection will be preserved even if 
 *--overwrite* is set to true.
     
-    unix> arangoimp --file "data.json" --type json --collection "users" --overwrite true
+    > arangoimp --file "data.json" --type json --collection "users" --overwrite true
 
 As the import file already contains the data in JSON format, attribute names and
 data types are fully preserved. As can be seen in the example data, there is no
@@ -85,23 +86,12 @@ Please note that by default, _arangoimp_ will import data into the specified
 collection in the default database (*_system*). To specify a different database, 
 use the *--server.database* option when invoking _arangoimp_. 
 
-An _arangoimp_ import run will print out the final results on the command line.
-By default, it shows the number of documents created, the number of warnings or errors that
-occurred on the server side, and the total number of input file lines/documents
-that it processed. Additionally, _arangoimp_ will print out details about warnings and errors 
-that happened on the server-side (if any).
 
-*Examples*
-
-```js
-created:          2
-warnings/errors:  0
-total:            2
-```
+!SUBSECTION JSON input file formats
 
 **Note**: *arangoimp* supports two formats when importing JSON data from 
-a file. The first format requires the input file to contain one JSON document
-in each line, e.g.
+a file. The first format (also used above) requires the input file to contain one 
+complete JSON document in each line, e.g.
 
 ```js
 { "_key": "one", "value": 1 }
@@ -135,7 +125,7 @@ to increase the maximum file size by specifying the command-line option
 *--batch-size*. For example, to set the batch size to 32 MB, use the following
 command:
 
-    unix> arangoimp --file "data.json" --type json --collection "users" --batch-size 33554432
+    > arangoimp --file "data.json" --type json --collection "users" --batch-size 33554432
 
 Please also note that you may need to increase the value of *--batch-size* if
 a single document inside the input file is bigger than the value of *--batch-size*.
@@ -173,7 +163,7 @@ Wayne,Brewer,,false,
 
 The command line to execute the import is:
 
-    unix> arangoimp --file "data.csv" --type csv --collection "users"
+    > arangoimp --file "data.csv" --type csv --collection "users"
 
 The above data will be imported into 5 documents which will look as follows:
 
@@ -240,7 +230,8 @@ with the *--separator* argument.
 
 An example command line to execute the TSV import is:
 
-    unix> arangoimp --file "data.tsv" --type tsv --collection "users" 
+    > arangoimp --file "data.tsv" --type tsv --collection "users" 
+
 
 !SUBSECTION Importing into an Edge Collection
 
@@ -259,6 +250,85 @@ valid document ids in existing collections.
 **Note**: The edge collection must already exist when the import is started. Using 
 the *--create-collection* flag will not work because arangoimp will always try to 
 create a regular document collection if the target collection does not exist.
+
+
+!SUBSECTION Updating existing documents
+
+By default, arangoimp will try to insert all documents from the import file into the
+specified collection. In case the import file contains documents that are already present
+in the target collection (matching is done via the *_key* attributes), then a default
+arangoimp run will not import these documents and complain about unique key constraint
+violations.
+
+However, arangoimp can be used to update or replace existing documents in case they
+already exist in the target collection. It provides the command-line option *--onDuplicate*
+to control the behavior in case a document is already present in the database.
+
+The default value of *--onDuplicate* is *error*. This means that when the import file
+contains a document that is present in the target collection already, then trying to
+re-insert a document with the same *_key* value is considered an error, and the document in
+the database will not be modified.
+
+Other possible values for *--onDuplicate* are:
+
+- *update*: each document present in the import file that is also present in the target
+  collection already will be updated by arangoimp. *update* will perform a partial update
+  of the existing document, modifying only the attributes that are present in the import 
+  file and leaving all other attributes untouched.
+  
+  The values of system attributes *_id*, *_key*, *_rev*, *_from* and *_to* cannot be
+  updated or replaced in existing documents. 
+
+- *replace*: each document present in the import file that is also present in the target
+  collection already will be replace by arangoimp. *replace* will replace the existing
+  document entirely, resulting in a document with only the attributes specified in the import
+  file. 
+  
+  The values of system attributes *_id*, *_key*, *_rev*, *_from* and *_to* cannot be
+  updated or replaced in existing documents. 
+
+- *ignore*: each document present in the import file that is also present in the target
+  collection already will be ignored and not modified in the target collection. 
+
+When *--onDuplicate* is set to either *update* or *replace*, arangoimp will return the
+number of documents updated/replaced in the *updated* return value. When set to another
+value, the value of *updated* will always be zero. When *--onDuplicate* is set to *ignore*,
+arangoimp will return the number of ignored documents in the *ignored* return value.
+When set to another value, *ignored* will always be zero.
+
+It is possible to perform a combination of inserts and updates/replaces with a single 
+arangoimp run. When *--onDuplicate* is set to *update* or *replace*, all documents present
+in the import file will be inserted into the target collection provided they are valid
+and do not already exist with the specified *_key*. Documents that are already present
+in the target collection (identified by *_key* attribute) will instead be updated/replaced.
+
+
+!SUBSECTION Arangoimp result output
+
+An _arangoimp_ import run will print out the final results on the command line.
+It will show the
+
+* number of documents created (*created*)
+* number of documents updated/replaced (*updated/replaced*, only non-zero if 
+  *--onDuplicate* was set to *update* or *replace*, see below) 
+* number of warnings or errors that occurred on the server side (*warnings/errors*)
+* number of ignored documents (only non-zero if *--onDuplicate* was set to *ignore*). 
+
+*Example*
+
+```js
+created:          2
+warnings/errors:  0
+updated/replaced: 0
+ignored:          0
+```
+
+For CSV and TSV imports, the total number of input file lines read will also be printed
+(*lines read*).
+
+_arangoimp_ will also print out details about warnings and errors that happened on the 
+server-side (if any).
+
 
 !SUBSECTION Attribute Naming and Special Attributes
 
