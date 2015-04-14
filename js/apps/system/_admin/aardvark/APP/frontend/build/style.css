@@ -6176,22 +6176,25 @@ input.gv-radio-button {
   color: #802; }
 .tests-result-stats .pass, .tests-result-stats .fail, .tests-result-stats .pending {
   padding: 0 2px; }
-.tests-result-spec-suites .tests-result-spec-suites {
-  margin-left: 20px; }
-.tests-result-spec-suites dd {
-  margin-left: 0; }
-.tests-result-spec-tests {
-  margin-left: 20px; }
-.tests-result-spec-test-title {
-  padding-left: 20px; }
-  .tests-result-spec-test-title .fa {
-    position: absolute;
-    margin-left: -20px;
-    margin-top: 2px;
-    line-height: 18px; }
-  .tests-result-spec-test-title .fa-circle {
-    font-size: 50%;
-    margin-left: -16px; }
+.tests-result-spec {
+  margin-bottom: 0; }
+  .tests-result-spec-suites .tests-result-spec-suites {
+    margin-left: 20px; }
+  .tests-result-spec-suites dd {
+    margin-left: 0;
+    margin-bottom: 20px; }
+  .tests-result-spec-tests {
+    margin-left: 20px; }
+  .tests-result-spec-test-title {
+    padding-left: 20px; }
+    .tests-result-spec-test-title .fa {
+      position: absolute;
+      margin-left: -20px;
+      margin-top: 2px;
+      line-height: 18px; }
+    .tests-result-spec-test-title .fa-circle {
+      font-size: 50%;
+      margin-left: -16px; }
 .tests-result .pass {
   color: #4c0; }
 .tests-result .fail {

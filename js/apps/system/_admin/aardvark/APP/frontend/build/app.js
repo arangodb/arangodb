@@ -102444,11 +102444,12 @@ window.ArangoUsers = Backbone.Collection.extend({
       'click .delete': 'deleteApp',
       'click #configure-app': 'showConfigureDialog',
       'click #app-switch-mode': 'toggleDevelopment',
-      "click #app-scripts": "toggleScripts",
       "click #app-scripts [data-script]": "runScript",
       "click #app-tests": "runTests",
       "click #app-upgrade": "upgradeApp",
-      "click #download-app": "downloadApp"
+      "click #download-app": "downloadApp",
+      "mouseenter #app-scripts": "showDropdown",
+      "mouseleave #app-scripts": "hideDropdown"
     },
 
     downloadApp: function() {
@@ -102462,12 +102463,6 @@ window.ArangoUsers = Backbone.Collection.extend({
       window.foxxInstallView.upgrade(mount, function() {
         window.App.applicationDetail(encodeURIComponent(mount));
       });
-    },
-
-    toggleScripts: function() {
-      if (this.model.get('scripts').length) {
-        $("#scripts_dropdown").toggle(200);
-      }
     },
 
     updateConfig: function() {
@@ -102676,6 +102671,16 @@ window.ArangoUsers = Backbone.Collection.extend({
         "modalTable.ejs", "Configure application", buttons, tableContent
       );
 
+    },
+
+    showDropdown: function () {
+      if (this.model.get('scripts').length) {
+        $("#scripts_dropdown").show(200);
+      }
+    },
+
+    hideDropdown: function () {
+      $("#scripts_dropdown").hide();
     }
 
   });
