@@ -529,7 +529,7 @@ int TRI_CreateRecursiveDirectory (char const* path,
       if ((p - s > 0)
 #ifdef _WIN32
           && // Don't try to create the drive letter as directory:
-          (s - copy == 2) &&
+          (p - copy == 2) &&
           (s[1] == ':')
 #endif
           ) {
@@ -1883,13 +1883,25 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
   times[0].tv_sec = statbuf.st_atim.tv_sec;
   times[1].tv_sec = statbuf.st_mtim.tv_sec;
 
-  fchown(dstFD, -1 /*statbuf.st_uid*/, statbuf.st_gid);
-  fchmod(dstFD, statbuf.st_mode);
+  if (fchown(dstFD, -1 /*statbuf.st_uid*/, statbuf.st_gid) != 0) {
+    error = std::string("failed to chown ") + dst + ": " + strerror(errno);
+    //rc = false;  no, this is not fatal...
+  }
+  if (fchmod(dstFD, statbuf.st_mode) != 0) {
+    error = std::string("failed to chmod ") + dst + ": " + strerror(errno);
+    rc = false;
+  }
 
 #ifdef HAVE_FUTIMES
-  futimes(dstFD, times);
+  if (futimes(dstFD, times) != 0) {
+    error = std::string("failed to adjust age: ") + dst + ": " + strerror(errno);
+    rc = false;
+  }
 #else
-  utimes(dst.c_str(), times);
+  if (utimes(dst.c_str(), times) != 0) {
+    error = std::string("failed to adjust age: ") + dst + ": " + strerror(errno);
+    rc = false;
+  }
 #endif
   close(srcFD);
   close(dstFD);
@@ -1924,7 +1936,7 @@ bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &e
 
 
   if (  utimes(dstItem.c_str(), times) != 0) {
-    error = std::string("failed to adjust age utimes ") + dstItem + ": " + strerror(errno);
+    error = std::string("failed to adjust age: ") + dstItem + ": " + strerror(errno);
     return false;
   }
   
