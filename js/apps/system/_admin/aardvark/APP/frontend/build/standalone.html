@@ -45,9 +45,14 @@
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
+          <li>
+            <a id="app-dependencies" class="headerButton disabled">
+              <span class="fa fa-cubes" title="Dependencies"></span>
+            </a>
+          </li>
           <li id="app-scripts" class="dropdown">
-            <a class="headerButton <%= app.get('scripts').length?'':'disabled' %>">
-              <i class="fa fa-file-code-o"></i>
+            <a class="headerButton <%= app.get('scripts').length ? '' : 'disabled' %>" title="Scripts">
+              <i class="fa fa-cogs"></i>
             </a>
             <ul class="script-dropdown-menu" id="scripts_dropdown">
             <% app.get('scripts').forEach(function (script) { %>
@@ -58,7 +63,12 @@
             </ul>
           </li>
           <li>
-            <a id="download-app" class="headerButton <%= app.isSystem()?'disabled':'' %>">
+            <a id="app-tests" class="headerButton">
+              <span class="fa fa-flask" title="Tests"></span>
+            </a>
+          </li>
+          <li>
+            <a id="download-app" class="headerButton <%= app.isSystem() ? 'disabled' : '' %>">
               <span class="fa fa-download" title="Download"></span>
             </a>
           </li>
@@ -2133,6 +2143,85 @@ if (list.length > 0) {
     %>
 </script>
 
+<script id="modalTestResults.ejs" type="text/template">
+<%
+  var results = content[0];
+  function createSuite(suite) {
+    %>
+    <dt class="tests-result-spec-suite-title">
+      <%= suite.title %>
+    </dt>
+    <dd>
+      <% if (suite.tests.length) { %>
+        <ul class="tests-result-spec-tests">
+          <% _.each(suite.tests, createTest) %>
+        </ul>
+      <% } %>
+      <% if (suite.suites.length) { %>
+        <dl class="tests-result-spec-suites">
+          <% _.each(suite.suites, createSuite) %>
+        </dl>
+      <% } %>
+    </dd>
+    <%
+  }
+  function createTest(test) {
+    var slow = test.duration > 75;
+    %>
+    <li class="tests-result-spec-test <%= test.result %><%= slow ? ' slow': '' %>">
+      <span class="tests-result-spec-test-title">
+        <% switch (test.result) {
+          case 'pass': %>
+          <span class="fa fa-check"></span>
+          <% break;
+          case 'fail': %>
+          <span class="fa fa-times"></span>
+          <% break;
+          case 'pending': %>
+          <span class="fa fa-circle"></span>
+        <% } %>
+        <%= test.title %>
+        <%= slow ? '(' + test.duration + 'ms)' : '' %>
+      </span>
+      <% if (!_.isEmpty(test.err)) { %>
+        <pre class="stack"><%= test.err.stack %></pre>
+      <% } %>
+    </li>
+  <%
+  } %>
+  <div class="tests-result">
+    <% if (results.stack) { %>
+      <div class="tests-result-stats fail">
+        Test runner failed with an error.
+      </div>
+      <pre class="stack"><%= results.stack %></pre>
+    <% } else { %>
+      <div class="tests-result-stats">
+        Completed <b><%= results.stats.tests %></b> tests in <b><%= results.stats.duration %>ms</b>
+        (<span class="pass" title="passes"><%= results.stats.passes
+        %></span>/<span class="fail" title="failures"><%= results.stats.failures
+        %></span>/<span class="pending" title="pending"><%= results.stats.pending
+        %></span>)
+      </div>
+      <div class="tests-result-spec">
+        <% if (results.tests.length) { %>
+          <ul class="tests-result-spec-tests">
+            <% _.each(results.tests, createTest) %>
+          </ul>
+        <% } %>
+        <% if (results.suites.length) { %>
+          <dl class="tests-result-spec-suites">
+            <% _.each(results.suites, createSuite) %>
+          </dl>
+        <% } %>
+        <% if (!results.tests.length && !results.suites.length) { %>
+          <div class="tests-result-spec-empty">No tests found.</div>
+        <% } %>
+      </div>
+    <% } %>
+  </div>
+</script>
+
 <script id="navigationView.ejs" type="text/template">
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <li id="dbSelect" class="dropdown databases-menu"></li>
@@ -2685,7 +2774,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1428531624890"></script>
+<script src="app.js?version=1429028711168"></script>
 
   </body>
 </html>

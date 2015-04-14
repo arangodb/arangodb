@@ -96737,14 +96737,13 @@ if (typeof internal.arango !== 'undefined') {
 });
 
 /*jshint maxlen: 240 */
-/*global require */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief auto-generated file generated from errors.dat
 ////////////////////////////////////////////////////////////////////////////////
 
 (function () {
-  "use strict";
+  'use strict';
   var internal = require("internal");
 
   internal.errors = {
@@ -100529,6 +100528,21 @@ window.Users = Backbone.Model.extend({
       sendRequest(this, callback, "POST", "scripts/" + name);
     },
 
+    runTests: function (options, callback) {
+      $.ajax({
+        type: "POST",
+        url: "/_admin/aardvark/foxxes/tests?mount=" + this.encodedMount(),
+        data: JSON.stringify(options),
+        contentType: "application/json",
+        success: function(data) {
+          callback(null, data);
+        },
+        error: function(xhr) {
+          callback(xhr.responseJSON);
+        }
+      });
+    },
+
     isSystem: function() {
       return this.get("system");
     },
@@ -102408,6 +102422,7 @@ window.ArangoUsers = Backbone.Collection.extend({
       'click #app-switch-mode': 'toggleDevelopment',
       "click #app-scripts": "toggleScripts",
       "click #app-scripts [data-script]": "runScript",
+      "click #app-tests": "runTests",
       "click #app-upgrade": "upgradeApp",
       "click #download-app": "downloadApp"
     },
@@ -102459,6 +102474,24 @@ window.ArangoUsers = Backbone.Collection.extend({
     runScript: function(event) {
       this.model.runScript($(event.currentTarget).attr('data-script'), function() {
       });
+    },
+
+    runTests: function(event) {
+      var warning = (
+        "WARNING: Running tests may result in destructive side-effects including data loss."
+        + " Please make sure not to run tests on a production database."
+        + (this.model.isDevelopment() ? (
+            "\n\nWARNING: This app is running in DEVELOPMENT MODE."
+            + " If any of the tests access the app's HTTP API they may become non-deterministic."
+          ) : "")
+        + "\n\nDo you really want to continue?"
+      );
+      if (!confirm(warning)) {
+        return;
+      }
+      this.model.runTests({reporter: 'suite'}, function (err, result) {
+        this.showTestResults(err || result);
+      }.bind(this));
     },
 
     render: function() {
@@ -102521,7 +102554,7 @@ window.ArangoUsers = Backbone.Collection.extend({
         if (val === "" && opt.hasOwnProperty("default")) {
           cfg[key] = opt.default;
           return;
-        } 
+        }
         if (opt.type === "number") {
           cfg[key] = parseFloat(val);
         } else if (opt.type === "integer") {
@@ -102535,6 +102568,12 @@ window.ArangoUsers = Backbone.Collection.extend({
         window.modalView.hide();
         this.updateConfig();
       }.bind(this));
+    },
+
+    showTestResults: function(results) {
+      window.modalView.show(
+        "modalTestResults.ejs", "Test results", [], [results]
+      );
     },
 
     showConfigureDialog: function(e) {

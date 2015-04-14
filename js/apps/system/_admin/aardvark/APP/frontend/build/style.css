@@ -2145,32 +2145,22 @@ a.headerButton, a.button-gui {
   -moz-box-shadow: none;
   box-shadow: none;
   margin-left: 5px;
-  margin-right: 5px;
-  padding-left: 9px;
-  padding-right: 9px; }
+  margin-right: 5px; }
 
 a.headerButton {
-  height: 17px;
   margin-top: 2px;
-  padding-top: 4px;
-  padding-bottom: 2px;
-  position: relative;
-  width: 9px; }
-  a.headerButton .icon_arangodb_filter {
-    top: 3px !important; }
-  a.headerButton .icon_arangodb_import {
-    top: 1px !important; }
-  a.headerButton .icon_arangodb_checklist {
-    right: 5px;
-    top: 3px !important; }
+  position: relative; }
+  a.headerButton .fa, a.headerButton [class^="icon_"], a.headerButton [class*=" icon_"] {
+    display: block;
+    position: static;
+    right: 0;
+    top: 0;
+    width: 27px;
+    text-align: center;
+    line-height: 23px;
+    height: 23px; }
   a.headerButton .icon_arangodb_arrowleft, a.headerButton .icon_arangodb_arrowright {
     font-weight: bold; }
-  a.headerButton .fa-file-code-o {
-    left: -2px;
-    position: relative;
-    top: -3px; }
-  a.headerButton .fa-download {
-    margin-left: -3px !important; }
   a.headerButton.activated {
     background-color: #788f3d;
     color: #fff; }
@@ -2179,11 +2169,6 @@ a.headerButton {
       color: #788f3d; }
   a.headerButton.disabled {
     cursor: not-allowed; }
-
-#importCollection i {
-  margin-left: -3px !important;
-  position: relative;
-  top: -1px; }
 
 div.toolbox {
   -moz-border-radius: 2px;
@@ -6182,6 +6167,39 @@ input.gv-radio-button {
   clear: right;
   float: left;
   width: 200px; }
+
+.tests-result .stack {
+  border-color: #f04;
+  margin: 5px 0;
+  line-height: 1.5;
+  font-size: 12px;
+  color: #802; }
+.tests-result-stats .pass, .tests-result-stats .fail, .tests-result-stats .pending {
+  padding: 0 2px; }
+.tests-result-spec .stack {
+  margin-left: 20px; }
+.tests-result-spec-suites .tests-result-spec-suites {
+  margin-left: 20px; }
+.tests-result-spec-suites dd {
+  margin-left: 0; }
+.tests-result-spec-tests {
+  margin-left: 20px; }
+.tests-result-spec-test-title {
+  padding-left: 20px; }
+  .tests-result-spec-test-title .fa {
+    position: absolute;
+    margin-left: -20px;
+    margin-top: 2px;
+    line-height: 18px; }
+  .tests-result-spec-test-title .fa-circle {
+    font-size: 50%;
+    margin-left: -16px; }
+.tests-result .pass {
+  color: #4c0; }
+.tests-result .fail {
+  color: #f04; }
+.tests-result .pending {
+  color: #888; }
 
 .hotkeysList .hotkeysLabel {
   clear: both;

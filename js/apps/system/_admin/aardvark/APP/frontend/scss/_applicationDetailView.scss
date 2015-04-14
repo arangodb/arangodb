@@ -79,3 +79,63 @@
     width: 200px;
   }
 }
+
+
+.tests-result {
+  .stack {
+    border-color: #f04;
+    margin: 5px 0;
+    line-height: 1.5;
+    font-size: 12px;
+    color: #802;
+  }
+  &-stats {
+    .pass,
+    .fail,
+    .pending {
+      padding: 0 2px;
+    }
+  }
+  &-spec {
+    .stack {
+      margin-left: 20px;
+    }
+    &-suites {
+      & & {
+        margin-left: 20px;
+      }
+      dd {
+        margin-left: 0;
+      }
+    }
+    &-tests {
+      margin-left: 20px;
+    }
+    &-test {
+      &-title {
+        padding-left: 20px;
+
+        .fa {
+          position: absolute;
+          margin-left: -20px;
+          margin-top: 2px;
+          line-height: 18px;
+
+        }
+        .fa-circle {
+          font-size: 50%;
+          margin-left: -16px;
+        }
+      }
+    }
+  }
+  .pass {
+    color: #4c0;
+  }
+  .fail {
+    color: #f04;
+  }
+  .pending {
+    color: #888;
+  }
+}
