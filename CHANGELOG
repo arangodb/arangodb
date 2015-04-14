@@ -39,6 +39,9 @@ v2.6.0 (XXXX-XX-XX)
   (in this case the `updated` attribute may contain non-zero values) or `ignore` (in this case the
   `ignored` attribute may contain a non-zero value).
 
+  To support the feature, arangoimp also has a new command line option `--on-duplicate` which can
+  have one of the values `error`, `update`, `replace`, `ignore`. The default value is `error`.
+
 * changed behavior of `db._query()` in the ArangoShell:
 
   if the command's result is printed in the shell, the first 10 results will be printed. Previously
