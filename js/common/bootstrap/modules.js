@@ -1099,7 +1099,9 @@ function require (path) {
 
     this._applicationContext = appContext;
 
-    this.paths = [this.appPath()];   // node compatibility
+    this.paths = [
+      this.appPath ? this.appPath() :'/'
+    ];   // node compatibility
   };
 
 // -----------------------------------------------------------------------------

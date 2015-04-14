@@ -2,7 +2,7 @@
   "name": "sessions",
   "description": "Session storage for Foxx.",
   "author": "ArangoDB GmbH",
-  "version": "0.1",
+  "version": "1.0.0",
   "license": "Apache License, Version 2.0",
   "isSystem": true,
 
@@ -33,7 +33,7 @@
   "setup": "setup.js",
 
   "tests": [
-    "./test/errors.js"
+    "test/**"
   ],
 
   "configuration": {

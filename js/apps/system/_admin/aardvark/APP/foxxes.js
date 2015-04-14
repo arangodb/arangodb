@@ -222,8 +222,9 @@
    * Used to run the tests of an app
    */
   controller.post("/tests", function (req, res) {
+    var options = req.body();
     var mount = validateMount(req);
-    res.json(FoxxManager.runTests(mount));
+    res.json(FoxxManager.runTests(mount, options));
   }).queryParam("mount", mountPoint);
 
   /** Run a script for an app
