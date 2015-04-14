@@ -845,7 +845,9 @@ ExecutionNode::RegisterPlan::RegisterPlan (RegisterPlan const& v,
   nrRegs.resize(depth);
   nrRegsHere.resize(depth);
   nrRegsHere.push_back(0);
-  nrRegs.push_back(nrRegs.back());
+
+  RegisterId registerId = nrRegs.back();
+  nrRegs.push_back(registerId);
 }
 
 void ExecutionNode::RegisterPlan::clear () {
@@ -879,7 +881,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::INDEX_RANGE: {
       depth++;
       nrRegsHere.push_back(1);
-      nrRegs.push_back(1 + nrRegs.back());
+      RegisterId registerId = 1 + nrRegs.back();
+      nrRegs.push_back(registerId);
       auto ep = static_cast<EnumerateCollectionNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(make_pair(ep->_outVariable->id,
@@ -890,7 +893,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::ENUMERATE_LIST: {
       depth++;
       nrRegsHere.push_back(1);
-      nrRegs.push_back(1 + nrRegs.back());
+      RegisterId registerId = 1 + nrRegs.back();
+      nrRegs.push_back(registerId);
       auto ep = static_cast<EnumerateListNode const*>(en);
       TRI_ASSERT(ep != nullptr);
       varInfo.emplace(make_pair(ep->_outVariable->id,
@@ -924,7 +928,8 @@ void ExecutionNode::RegisterPlan::after (ExecutionNode *en) {
     case ExecutionNode::AGGREGATE: {
       depth++;
       nrRegsHere.push_back(0);
-      nrRegs.push_back(nrRegs.back());
+      RegisterId registerId = nrRegs.back();
+      nrRegs.push_back(registerId);
 
       auto ep = static_cast<AggregateNode const*>(en);
       for (auto p : ep->_aggregateVariables) {
