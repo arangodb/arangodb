@@ -1427,7 +1427,6 @@ exports.printRecursive = printRecursive = function (value, context) {
 ////////////////////////////////////////////////////////////////////////////////
 
 function bufferOutput () {
-
   var i;
 
   for (i = 0;  i < arguments.length;  ++i) {
@@ -1652,20 +1651,29 @@ exports.printObject = printObject;
 ////////////////////////////////////////////////////////////////////////////////
 
 exports.startCaptureMode = function () {
+  var old = exports.output;
+
   exports.outputBuffer = "";
   exports.output = bufferOutput;
+
+  return old;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stopCaptureMode
 ////////////////////////////////////////////////////////////////////////////////
 
-exports.stopCaptureMode = function () {
+exports.stopCaptureMode = function (old) {
   var buffer = exports.outputBuffer;
 
   exports.outputBuffer = "";
-  exports.output = exports.stdOutput;
-
+  if (old !== undefined) {
+    exports.output = old;
+  }
+  else {
+    exports.output = exports.stdOutput;
+  }
+  
   return buffer;
 };
 
