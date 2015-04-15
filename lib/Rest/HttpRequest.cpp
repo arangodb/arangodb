@@ -89,7 +89,8 @@ HttpRequest::HttpRequest (ConnectionInfo const& info,
     _requestContext(nullptr),
     _defaultApiCompatibility(defaultApiCompatibility),
     _isRequestContextOwner(false),
-    _allowMethodOverride(allowMethodOverride) {
+    _allowMethodOverride(allowMethodOverride),
+    _clientTaskId(0) {
 
   // copy request - we will destroy/rearrange the content to compute the
   // headers and values in-place
@@ -704,7 +705,7 @@ void HttpRequest::setRequestPath (char const* path) {
 /// @brief gets the client task id
 ////////////////////////////////////////////////////////////////////////////////
 
-uint64_t HttpRequest::clientTaskId () {
+uint64_t HttpRequest::clientTaskId () const {
   return _clientTaskId;
 }
 
