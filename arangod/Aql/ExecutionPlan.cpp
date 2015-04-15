@@ -611,8 +611,6 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST COLLECT node
-/// note that also a sort plan node will be added in front of the collect plan
-/// node
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
@@ -626,8 +624,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
   
-  std::vector<std::pair<Variable const*, bool>> sortElements;
-
   std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
   aggregateVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
@@ -649,7 +645,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
       aggregateVariables.push_back(std::make_pair(v, e));
-      sortElements.push_back(std::make_pair(e, true));
     }
     else {
       // operand is some misc expression
@@ -659,15 +654,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
       previous = calc;
 
       aggregateVariables.emplace_back(std::make_pair(v, calc->outVariable()));
-      sortElements.emplace_back(std::make_pair(calc->outVariable(), true));
     }
   }
-
-  // inject a sort node for all expressions / variables that we just picked up...
-  // note that this sort is stable
-  auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
-  sort->addDependency(previous);
-  previous = sort;
 
   // handle out variable
   Variable* outVariable = nullptr;
@@ -691,16 +679,21 @@ ExecutionNode* ExecutionPlan::fromNodeCollect (ExecutionNode* previous,
     }
   }
 
-  auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, nullptr, 
-                  outVariable, keepVariables, _ast->variables()->variables(false), false));
+  auto en = registerNode(new AggregateNode(this, 
+                                           nextId(), 
+                                           aggregateVariables, 
+                                           nullptr, 
+                                           outVariable, 
+                                           keepVariables, 
+                                           _ast->variables()->variables(false), 
+                                           AggregateNode::AGGREGATION_UNDEFINED,
+                                           false));
 
   return addDependency(previous, en);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an execution plan element from an AST COLLECT node
-/// note that also a sort plan node will be added in front of the collect plan
-/// node
 ////////////////////////////////////////////////////////////////////////////////
 
 ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous,
@@ -712,8 +705,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
   
-  std::vector<std::pair<Variable const*, bool>> sortElements;
-
   std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
   aggregateVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
@@ -735,7 +726,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
       aggregateVariables.push_back(std::make_pair(v, e));
-      sortElements.push_back(std::make_pair(e, true));
     }
     else {
       // operand is some misc expression
@@ -745,7 +735,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
       previous = calc;
 
       aggregateVariables.emplace_back(std::make_pair(v, calc->outVariable()));
-      sortElements.emplace_back(std::make_pair(calc->outVariable(), true));
     }
   }
 
@@ -766,20 +755,21 @@ ExecutionNode* ExecutionPlan::fromNodeCollectExpression (ExecutionNode* previous
     expressionVariable = calc->outVariable();
   }
 
-  // inject a sort node for all expressions / variables that we just picked up...
-  // note that this sort is stable
-  auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
-  sort->addDependency(previous);
-  previous = sort;
-
   // output variable
   auto v = node->getMember(1);
   Variable* outVariable = static_cast<Variable*>(v->getData());
         
   std::unordered_map<VariableId, std::string const> variableMap;
         
-  auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, 
-              expressionVariable, outVariable, std::vector<Variable const*>(), variableMap, false));
+  auto en = registerNode(new AggregateNode(this, 
+                                           nextId(), 
+                                           aggregateVariables, 
+                                           expressionVariable, 
+                                           outVariable, 
+                                           std::vector<Variable const*>(), 
+                                           variableMap, 
+                                           AggregateNode::AGGREGATION_UNDEFINED,
+                                           false));
 
   return addDependency(previous, en);
 }
@@ -799,8 +789,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
   auto list = node->getMember(0);
   size_t const numVars = list->numMembers();
   
-  std::vector<std::pair<Variable const*, bool>> sortElements;
-
   std::vector<std::pair<Variable const*, Variable const*>> aggregateVariables;
   aggregateVariables.reserve(numVars);
   for (size_t i = 0; i < numVars; ++i) {
@@ -822,7 +810,6 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
       // operand is a variable
       auto e = static_cast<Variable*>(expression->getData());
       aggregateVariables.emplace_back(std::make_pair(v, e));
-      sortElements.emplace_back(std::make_pair(e, true));
     }
     else {
       // operand is some misc expression
@@ -832,19 +819,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
       previous = calc;
 
       aggregateVariables.push_back(std::make_pair(v, calc->outVariable()));
-      sortElements.push_back(std::make_pair(calc->outVariable(), true));
     }
-  }
-
-  // inject a sort node for all expressions / variables that we just picked up...
-  // note that this sort is stable
-  if (numVars > 0) {
-    // a SortNode is only required if we have grouping criteria.
-    // for example, COLLECT x = ... WITH COUNT INTO g has grouping criteria x = ...
-    // but the following statement doesn't have any: COLLECT WITH COUNT INTO g
-    auto sort = registerNode(new SortNode(this, nextId(), sortElements, true));
-    sort->addDependency(previous);
-    previous = sort;
   }
 
   // output variable
@@ -852,8 +827,17 @@ ExecutionNode* ExecutionPlan::fromNodeCollectCount (ExecutionNode* previous,
   // handle out variable
   Variable* outVariable = static_cast<Variable*>(v->getData());
 
-  auto en = registerNode(new AggregateNode(this, nextId(), aggregateVariables, nullptr, 
-                  outVariable, std::vector<Variable const*>(), _ast->variables()->variables(false), true));
+  TRI_ASSERT(outVariable != nullptr);
+
+  auto en = registerNode(new AggregateNode(this, 
+                                           nextId(), 
+                                           aggregateVariables, 
+                                           nullptr, 
+                                           outVariable, 
+                                           std::vector<Variable const*>(), 
+                                           _ast->variables()->variables(false), 
+                                           AggregateNode::AGGREGATION_UNDEFINED,
+                                           true));
 
   return addDependency(previous, en);
 }

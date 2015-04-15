@@ -616,6 +616,15 @@ namespace triagens {
           return _regsToClear;
         }
 
+         
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check if a variable will be used later
+////////////////////////////////////////////////////////////////////////////////
+
+        bool isVarUsedLater (Variable const* variable) const {
+          return (_varsUsedLater.find(variable) != _varsUsedLater.end());
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                               protected functions
 // -----------------------------------------------------------------------------
@@ -1972,8 +1981,17 @@ namespace triagens {
       
       friend class ExecutionNode;
       friend class ExecutionBlock;
-      friend class AggregateBlock;
+      friend class SortedAggregateBlock;
+      friend class HashedAggregateBlock;
       friend class RedundantCalculationsReplacer;
+
+      public:
+       
+        enum AggregationMethod {
+          AGGREGATION_UNDEFINED,
+          AGGREGATION_HASH,
+          AGGREGATION_SORTED
+        };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
@@ -1988,15 +2006,21 @@ namespace triagens {
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
-                       bool countOnly)
+                       AggregationMethod aggregationMethod,
+                       bool count)
           : ExecutionNode(plan, id), 
             _aggregateVariables(aggregateVariables), 
             _expressionVariable(expressionVariable),
             _outVariable(outVariable),
             _keepVariables(keepVariables),
             _variableMap(variableMap),
-            _countOnly(countOnly) {
-          // outVariable can be a nullptr
+            _aggregationMethod(aggregationMethod),
+            _count(count) {
+
+          // outVariable can be a nullptr, but only if _count is not set
+          if (_count) {
+            TRI_ASSERT(_outVariable != nullptr);
+          }
         }
         
         AggregateNode (ExecutionPlan*,
@@ -2006,7 +2030,8 @@ namespace triagens {
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
                        std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                       bool countOnly);
+                       AggregationMethod aggregationMethod,
+                       bool count);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the type of the node
@@ -2014,6 +2039,52 @@ namespace triagens {
 
         NodeType getType () const override final {
           return AGGREGATE;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the aggregation method
+////////////////////////////////////////////////////////////////////////////////
+
+        AggregationMethod aggregationMethod () const {
+          return _aggregationMethod;
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief set the aggregation method
+////////////////////////////////////////////////////////////////////////////////
+
+        void aggregationMethod (AggregationMethod method) {
+          TRI_ASSERT(_aggregationMethod == AGGREGATION_UNDEFINED);
+          _aggregationMethod = method;
+        } 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get the aggregation method from a string
+////////////////////////////////////////////////////////////////////////////////
+          
+        static AggregationMethod aggregationMethod (std::string const& method) {
+          if (method == "hash") {
+            return AggregateNode::AGGREGATION_HASH;
+          }
+          if (method == "sorted") {
+            return AggregateNode::AGGREGATION_SORTED;
+          }
+
+          return AggregateNode::AGGREGATION_UNDEFINED;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief stringify the aggregation method
+////////////////////////////////////////////////////////////////////////////////
+          
+        std::string aggregationMethodString () const {
+          if (_aggregationMethod == AggregateNode::AGGREGATION_HASH) {
+            return "hash";
+          }
+          if (_aggregationMethod == AggregateNode::AGGREGATION_SORTED) {
+            return "sorted";
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot stringify unknown aggregation method");
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2039,11 +2110,11 @@ namespace triagens {
         double estimateCost (size_t&) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the countOnly flag is set
+/// @brief whether or not the count flag is set
 ////////////////////////////////////////////////////////////////////////////////
 
-        inline bool countOnly () const {
-          return _countOnly;
+        inline bool count () const {
+          return _count;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2069,8 +2140,9 @@ namespace triagens {
         void clearOutVariable () {
           TRI_ASSERT(_outVariable != nullptr);
           _outVariable = nullptr;
+          _count = false;
         }
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not the node has an expression variable (i.e. INTO ...
 /// = expr)
@@ -2095,6 +2167,14 @@ namespace triagens {
 
         std::unordered_map<VariableId, std::string const> const& variableMap () const {
           return _variableMap;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get all aggregate variables (out, in)
+////////////////////////////////////////////////////////////////////////////////
+        
+        std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables () const {
+          return _aggregateVariables;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2158,10 +2238,16 @@ namespace triagens {
         std::unordered_map<VariableId, std::string const> const _variableMap;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief COUNT node?
+/// @brief aggregation method (hashed vs. sorted)
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool const _countOnly;
+        AggregationMethod _aggregationMethod;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief COUNTing node?
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _count;
     };
 
 // -----------------------------------------------------------------------------

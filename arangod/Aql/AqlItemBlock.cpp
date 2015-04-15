@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionNode.h"
 
 using namespace triagens::aql;
 
@@ -51,13 +52,17 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
   TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
 
   if (nrRegs > 0) {
+    // check that the nrRegs value is somewhat sensible
+    // this compare value is arbitrary, but having so many registers in a single query seems unlikely
+    TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId); 
+
     _data.reserve(nrItems * nrRegs);
     for (size_t i = 0; i < nrItems * nrRegs; ++i) {
       _data.emplace_back();
     }
     _docColls.reserve(nrRegs);
     for (size_t i = 0; i < nrRegs; ++i) {
-      _docColls.push_back(nullptr);
+      _docColls.emplace_back(nullptr);
     }
   }
 }

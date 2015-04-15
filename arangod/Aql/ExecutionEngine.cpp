@@ -77,7 +77,15 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
       return new SortBlock(engine, static_cast<SortNode const*>(en));
     }
     case ExecutionNode::AGGREGATE: {
-      return new AggregateBlock(engine, static_cast<AggregateNode const*>(en));
+      auto aggregationMethod = static_cast<AggregateNode const*>(en)->aggregationMethod();
+      if (aggregationMethod == AggregateNode::AGGREGATION_HASH) {
+        return new HashedAggregateBlock(engine, static_cast<AggregateNode const*>(en));
+      }
+      else if (aggregationMethod == AggregateNode::AGGREGATION_SORTED) {
+        return new SortedAggregateBlock(engine, static_cast<AggregateNode const*>(en));
+      }
+
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot instanciate AggregateBlock with undetermined aggregation method");
     }
     case ExecutionNode::SUBQUERY: {
       auto es = static_cast<SubqueryNode const*>(en);
