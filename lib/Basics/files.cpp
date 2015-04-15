@@ -526,13 +526,15 @@ int TRI_CreateRecursiveDirectory (char const* path,
 
   while (*p != '\0') {
     if (*p == TRI_DIR_SEPARATOR_CHAR) {
-      if ((p - s > 0)
+      if (p - s > 0) {
 #ifdef _WIN32
-          && // Don't try to create the drive letter as directory:
-          (p - copy == 2) &&
-          (s[1] == ':')
+         // Don't try to create the drive letter as directory:
+        if ((p - copy == 2) &&
+          (s[1] == ':')) {
+          s = p + 1;
+          continue;
+        }
 #endif
-          ) {
         *p = '\0';
         res = TRI_CreateDirectory(copy, systemError, systemErrorStr);
         if ((res == TRI_ERROR_FILE_EXISTS) ||
