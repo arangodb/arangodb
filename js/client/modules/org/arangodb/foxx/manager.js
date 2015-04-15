@@ -518,7 +518,7 @@
       [ mount ]
     );
 
-    var res = arango.POST("/_admin/aardvark/foxxes/tests?mount=" + encodeURIComponent(mount), JSON.stringify(options))
+    var res = arango.POST("/_admin/aardvark/foxxes/tests?mount=" + encodeURIComponent(mount), JSON.stringify(options));
     arangosh.checkRequestResult(res);
     return res;
   };
