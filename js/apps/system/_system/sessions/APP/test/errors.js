@@ -10,10 +10,8 @@ describe('errors', function () {
       it('is a constructor', function () {
         expect(new SessionError()).to.be.a(SessionError);
       });
-      describe('wot', function () {
-        it('creates an Error', function () {
-          expect(new SessionError()).to.be.an(Error);
-        });
+      it('creates an Error', function () {
+        expect(new SessionError()).to.be.an(Error);
       });
       it('uses its argument in its message', function () {
         var err = new SessionError('potato');

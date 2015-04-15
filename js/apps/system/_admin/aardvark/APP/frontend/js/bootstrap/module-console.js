@@ -384,10 +384,17 @@ exports.timeEnd = function(label) {
 
 exports.trace = function () {
   var err = new Error();
-  err.name = 'trace';
+  err.name = 'Trace';
   err.message = sprintf.apply(sprintf, prepareArgs(arguments));
   Error.captureStackTrace(err, exports.trace);
-  logGroup("info", err.stack);
+  var a = err.stack.split("\n");
+  while (!a[a.length - 1]) {
+    a.pop();
+  }
+  var i;
+  for (i = 0;  i < a.length;  ++i) {
+    logGroup("info", a[i]);
+  }
 };
 
 ////////////////////////////////////////////////////////////////////////////////

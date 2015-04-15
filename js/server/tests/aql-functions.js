@@ -558,9 +558,15 @@ function ahuacatlFunctionsTestSuite () {
     testLengthInvalid : function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LENGTH()"); 
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN LENGTH([ ], [ ])"); 
-      assertEqual([ 4 ], getQueryResults("RETURN LENGTH(null)")); 
-      assertEqual([ 4 ], getQueryResults("RETURN LENGTH(true)")); 
+      assertEqual([ 0 ], getQueryResults("RETURN LENGTH(null)")); 
+      assertEqual([ 1 ], getQueryResults("RETURN LENGTH(true)")); 
+      assertEqual([ 0 ], getQueryResults("RETURN LENGTH(false)")); 
       assertEqual([ 1 ], getQueryResults("RETURN LENGTH(4)")); 
+      assertEqual([ 2 ], getQueryResults("RETURN LENGTH(-4)")); 
+      assertEqual([ 4 ], getQueryResults("RETURN LENGTH(-1.5)")); 
+      assertEqual([ 1 ], getQueryResults("RETURN LENGTH('4')")); 
+      assertEqual([ 0 ], getQueryResults("RETURN LENGTH('')")); 
+      assertEqual([ 1 ], getQueryResults("RETURN LENGTH(' ')")); 
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -1,6 +1,21 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* issue #1231: bug xor feature in AQL: LENGTH(null) == 4 
+
+  This changes the behavior of the AQL `LENGTH` function as follows:
+
+  - if the single argument to `LENGTH()` is `null`, then the result will now be `0`. In previous
+    versions of ArangoDB, the result of `LENGTH(null)` was `4`.
+
+  - if the single argument to `LENGTH()` is `true`, then the result will now be `1`. In previous
+    versions of ArangoDB, the result of `LENGTH(true)` was `4`.
+
+  - if the single argument to `LENGTH()` is `false`, then the result will now be `0`. In previous
+    versions of ArangoDB, the result of `LENGTH(false)` was `5`.
+
+  The results of `LENGTH()` with string, numeric, array object argument values do not change.
+
 * issue #1298: Bulk import if data already exists (#1298)
 
   This change extends the HTTP REST API for bulk imports as follows:

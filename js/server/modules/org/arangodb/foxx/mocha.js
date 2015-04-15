@@ -82,14 +82,13 @@ exports.run = function runMochaTests(app, reporterName) {
   }
 
   return runner.testResults || reporter.stats;
-}
+};
 
 function isNotPattern(pattern) {
   return pattern.indexOf('*') === -1;
 }
 
 function findTestFiles(app) {
-  var files = [];
   var patterns = app._manifest.tests || [];
   if (patterns.every(isNotPattern)) {
     return patterns.slice();
@@ -177,8 +176,8 @@ function SuiteReporter(runner) {
   runner.on('end', function () {
     runner.testResults = {
       stats: self.stats,
-      suites: currentSuite.suites,
-      tests: currentSuite.tests
+      suites: currentSuite ? currentSuite.suites : [],
+      tests: currentSuite ? currentSuite.tests : []
     };
   });
 }
@@ -202,7 +201,7 @@ function clean(test) {
     fullTitle: test.fullTitle(),
     duration: test.duration,
     err: errorJSON(test.err || {})
-  }
+  };
 }
 
 /**

@@ -126,50 +126,28 @@ button.shutdown {
     left: 5px;
     right: 5px;
   }
-  padding: {
-    left: 9px;
-    right: 9px;
-  }
 }
 
 a.headerButton {
   @extend %header-button;
 
-  height: 17px;
-  margin-top: 2px; 
-  padding: {
-    top: 4px;
-    bottom: 2px;
-  }
+  margin-top: 2px;
   position: relative;
-  width: 9px;
 
-  .icon_arangodb_filter {
-    top: 3px !important;
-  }
-
-  .icon_arangodb_import {
-    top: 1px !important;
-  }
-
-  .icon_arangodb_checklist {
-    right: 5px;
-    top: 3px !important;
+  .fa, [class^="icon_"], [class*=" icon_"] {
+    display: block;
+    position: static; // TODO fix cascading
+    right: 0; // TODO fix cascading
+    top: 0; // TODO fix cascading
+    width: 27px;
+    text-align: center;
+    line-height: 23px;
+    height: 23px;
   }
 
   .icon_arangodb_arrowleft,
   .icon_arangodb_arrowright {
     font-weight: bold;
-  }
-
-  .fa-file-code-o {
-    left: -2px;
-    position: relative;
-    top: -3px;
-  }
-
-  .fa-download {
-    margin-left: -3px !important;
   }
 
   &.activated {
@@ -186,14 +164,6 @@ a.headerButton {
     @extend %icon-inactive;
 
     cursor: not-allowed;
-  }
-}
-
-#importCollection {
-  i {
-    margin-left: -3px !important;
-    position: relative;
-    top: -1px;
   }
 }
 
