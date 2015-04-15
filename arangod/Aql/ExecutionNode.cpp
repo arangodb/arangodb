@@ -2301,6 +2301,7 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
 void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
                                   TRI_memory_zone_t* zone,
                                   bool verbose) const {
+
   triagens::basics::Json json(ExecutionNode::toJsonHelperGeneric(nodes, zone, verbose));  // call base class method
 
   if (json.isEmpty()) {

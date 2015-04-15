@@ -87,8 +87,7 @@ function optimizerRuleTestSuite () {
       var queries = [ 
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a RETURN i",
         "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a + FAIL() SORT i.b RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT RAND() RETURN i",
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] COLLECT x = i.a SORT x RETURN x"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a SORT RAND() RETURN i"
       ];
 
       queries.forEach(function(query) {
@@ -113,7 +112,8 @@ function optimizerRuleTestSuite () {
         "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a SORT i.a, i.b RETURN i", 
         "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b SORT i.a RETURN i", 
         "FOR i IN [ { a: 1, b: 1 }, { a: 1, b: 2 }, { a: 2, b: 1 }, { a: 2, b: 2 }, { a: 3, b: 1 }, { a: 3, b: 2 } ] SORT i.a, i.b SORT i.a SORT i.a, i.b RETURN i", 
-        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i"
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] SORT i.a ASC SORT i.a DESC RETURN i",
+        "FOR i IN [ { a: 1 }, { a: 2 }, { a: 3 } ] COLLECT x = i.a SORT x RETURN x"
       ];
 
       queries.forEach(function(query) {
