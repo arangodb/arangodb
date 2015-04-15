@@ -113,7 +113,7 @@
         repositoryName = collectionStart.toUpperCase() + repositoryBase;
         repositoryInstance = collectionStart.toLowerCase() + repositoryBase;
         repositoryPath = 'repositories/' + collectionName;
-        modelPath = 'models/' + modelName;
+        modelPath = 'models/' + modelName.toLowerCase();
 
         this.collectionNames.push(collectionName);
         this.controllers.push({
