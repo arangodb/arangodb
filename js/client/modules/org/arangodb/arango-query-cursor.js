@@ -98,9 +98,10 @@ ArangoQueryCursor.prototype.toString = function () {
   result += "]";
 
   if (rows.length > 0) {
-    internal.startCaptureMode();
+    var old = internal.startCaptureMode();
     internal.print(rows);
-    result += "\n\n" + internal.stopCaptureMode();
+    result += "\n\n" + internal.stopCaptureMode(old);
+
     if (this.hasNext()) {
       result += "\ntype 'more' to show more documents\n";
       more = this; // assign cursor to global variable more!
