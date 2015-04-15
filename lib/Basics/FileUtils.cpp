@@ -348,7 +348,6 @@ namespace triagens {
           return false;
 	}
 
-        //fprintf(stderr, "opening: %s\n", source.c_str());
 	DIR *filedir = opendir(source.c_str());
 
         if (filedir == nullptr) {
@@ -361,12 +360,10 @@ namespace triagens {
 	       (oneItem != NULL)) {
 
 #endif
-          // fprintf(stderr, "working on:  %s\n", TRI_DIR_FN(oneItem));
           // Now iterate over the items.
           // check its not the pointer to the upper directory:
           if (!strcmp(TRI_DIR_FN(oneItem), ".") ||
               !strcmp(TRI_DIR_FN(oneItem), "..")) {
-            // fprintf(stderr, "skipping dots\n");
             continue;
           }
           std::string dst = target + TRI_DIR_SEPARATOR_STR + TRI_DIR_FN(oneItem);
@@ -380,28 +377,21 @@ namespace triagens {
               break;
             }
             if (!copyDirectoryRecursive(src, dst, error)) {
-              // fprintf(stderr, "broxon 1done with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
               break;
             }
             if (!TRI_CopyAttributes(src, dst, error)) {
-              // fprintf(stderr, "broxon 1done copying attributes  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
               break;
             }
           }
           else if (TRI_DIR_IS_SYMLINK(oneItem)) {
             if (!TRI_CopySymlink(src, dst, error)){
-              // fprintf(stderr, "broxon symlink with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
               break;
             }
           }
           else {
             if (!TRI_CopyFile(src, dst, error)) {
-              // fprintf(stderr, "broxon 2done with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
               break;
             }
-            /// TODO TRI_DIR_SETATTRIBUTES(oneItem, dst, error);
-            
-            // fprintf(stderr, "done with  %s in %s\n", TRI_DIR_FN(oneItem), source.c_str());
           }
 #ifdef TRI_HAVE_WIN32_LIST_FILES
         } 
@@ -412,7 +402,6 @@ namespace triagens {
 #else
         }
         free(d);
-        /// fprintf(stderr, "closing  %s\n", source.c_str());
         closedir(filedir);
 
 #endif

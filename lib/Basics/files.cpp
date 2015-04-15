@@ -1810,8 +1810,8 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
      // 128k:
 #define C128 131072
     char *buf;
-    long  nRead;
-    long  chunkRemain = fileSize;
+    TRI_write_t nRead;
+    TRI_read_t  chunkRemain = fileSize;
     buf = static_cast <char*>( TRI_Allocate (TRI_UNKNOWN_MEM_ZONE, C128, false));
 
     if (buf == nullptr) {
@@ -1819,18 +1819,20 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
       rc = false;
     }
     while (rc && (chunkRemain > 0)) {
-      size_t readChunk;
-      if (chunkRemain > C128)
+      TRI_read_t readChunk;
+      if (chunkRemain > C128) {
         readChunk = C128;
-      else
+      }
+      else {
         readChunk = chunkRemain;
-      nRead = read (srcFD, buf, readChunk);
+      }
+      nRead = TRI_READ (srcFD, buf, readChunk);
       if (nRead < 1) {
         error = std::string("failed to read a chunk: ") + strerror(errno);
         break;
       }
 
-      if (write (dstFD, buf, nRead) != nRead) {
+      if ((TRI_read_t) TRI_WRITE (dstFD, buf, nRead) != nRead) {
         rc = false;
         break;
       }
@@ -1850,7 +1852,7 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
 bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &error)
 {
 #ifdef _WIN32
-  bool rc = CopyFile(src, dst, FALSE);
+  bool rc = CopyFile(src.c_str(), dst.c_str(), false) != 0;
   if (!rc) {
     error = "failed to copy " + src + " to " + dst + " : "; /// TODO error
   }
