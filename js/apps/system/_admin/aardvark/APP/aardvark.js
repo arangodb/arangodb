@@ -39,11 +39,13 @@ var FoxxController = require("org/arangodb/foxx").Controller,
   db = require("internal").db;
 
 controller.get("/index.html", function(req, res) {
+  var prefix = '/_db/' + encodeURIComponent(req.database) + applicationContext.mount;
+
   res.status(301);
   if (cluster.dispatcherDisabled()) {
-    res.set("Location", "standalone.html");
+    res.set("Location", prefix + "/standalone.html");
   } else {
-    res.set("Location", "cluster.html");
+    res.set("Location", prefix + "/cluster.html");
   }
 });
 
