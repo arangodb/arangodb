@@ -94,8 +94,12 @@ bool Optimizer::addPlan (ExecutionPlan* plan,
   }
 
   if (wasModified) {
-    // register which rules modified / created the plan
-    plan->addAppliedRule(_currentRule);
+    if (! rule->isHidden) {
+      // register which rules modified / created the plan
+      // hidden rules are excluded here
+      plan->addAppliedRule(static_cast<int>(rule->level));
+    }
+
     plan->invalidateCost();
   }
     
@@ -178,19 +182,21 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         */
 
         level = (*it).first;
+        auto& rule = (*it).second;
+
         if ((runOnlyRequiredRules || disabledIds.find(level) != disabledIds.end()) &&
-            (*it).second.canBeDisabled) {
+            rule.canBeDisabled) {
           // we picked a disabled rule or we have reached the max number of plans
           // and just skip this rule
-          level = it->first;
 
           _newPlans.push_back(p, level);  // nothing to do, just keep it
-          ++_stats.rulesSkipped;
+
+          if (! rule.isHidden) {
+            ++_stats.rulesSkipped;
+          }
           // now try next
           continue;
         }
-
-        _currentRule = level;
 
         int res;
         try {
@@ -204,8 +210,11 @@ int Optimizer::createPlans (ExecutionPlan* plan,
           // - if the rule throws, then the original plan will be deleted by the optimizer.
           //   thus the rule must not have deleted the plan itself or add it back to the
           //   optimizer
-          res = (*it).second.func(this, p, &(it->second));
-          ++_stats.rulesExecuted;
+          res = rule.func(this, p, &rule);
+
+          if (! rule.isHidden) {
+            ++_stats.rulesExecuted;
+          }
         }
         catch (...) {
           if (! _newPlans.isContained(p)) {
@@ -239,7 +248,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
         _plans.size() >= _maxNumberOfPlans) {
       // must still iterate over all REQUIRED remaining transformation rules 
       // because there are some rules which are required to make the query
-      // work in cluster mode
+      // work in cluster mode etc
       runOnlyRequiredRules = true;
     }
   }
@@ -382,10 +391,10 @@ void Optimizer::setupRules () {
   // determine the "right" type of AggregateNode and 
   // add a sort node for each COLLECT (may be removed later) 
   // this rule cannot be turned off (otherwise, the query result might be wrong!)
-  registerRule("specialize-collect",
-               specializeCollectRule,
-               specializeCollectRule_pass1,
-               false);
+  registerHiddenRule("specialize-collect",
+                     specializeCollectRule,
+                     specializeCollectRule_pass1,
+                     false);
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)

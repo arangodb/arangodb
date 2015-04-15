@@ -2079,11 +2079,12 @@ namespace triagens {
           
         std::string aggregationMethodString () const {
           if (_aggregationMethod == AggregateNode::AGGREGATION_HASH) {
-            return "hash";
+            return std::string("hash");
           }
           if (_aggregationMethod == AggregateNode::AGGREGATION_SORTED) {
-            return "sorted";
+            return std::string("sorted");
           }
+
           THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot stringify unknown aggregation method");
         }
 

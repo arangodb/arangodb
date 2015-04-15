@@ -85,7 +85,7 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 FILTER i == 1 RETURN i",
         "FOR i IN 1..10 LET a = 25 + i RETURN i",
         "LET values = 1..10 FOR i IN values LET a = i + 1 FOR j IN values LET b = j + 2 RETURN i",
-        "FOR i IN 1..10 FILTER i == 7 COLLECT x = i LET y = x RETURN y"
+        "FOR i IN 1..10 FILTER i == 7 COLLECT x = i RETURN x"
       ];
 
       queries.forEach(function(query) {

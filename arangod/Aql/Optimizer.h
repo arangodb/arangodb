@@ -250,17 +250,20 @@ namespace triagens {
           RuleFunction func;
           RuleLevel const level;
           bool const canBeDisabled;
+          bool const isHidden;
 
           Rule () = delete;
 
           Rule (std::string const& name, 
                 RuleFunction func, 
                 RuleLevel level,
-                bool canBeDisabled)
+                bool canBeDisabled,
+                bool isHidden)
             : name(name), 
               func(func), 
               level(level),
-              canBeDisabled(canBeDisabled) {
+              canBeDisabled(canBeDisabled),
+              isHidden(isHidden) {
           }
         };
 
@@ -570,13 +573,14 @@ namespace triagens {
         std::unordered_set<int> getDisabledRuleIds (std::vector<std::string> const&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief registerRule
+/// @brief register a rule
 ////////////////////////////////////////////////////////////////////////////////
 
         static void registerRule (std::string const& name, 
                                   RuleFunction func, 
                                   RuleLevel level,
-                                  bool canBeDisabled) {
+                                  bool canBeDisabled,
+                                  bool isHidden = false) {
           if (_ruleLookup.find(name) != _ruleLookup.end()) {
             // duplicate rule names are not allowed
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule name");
@@ -588,7 +592,18 @@ namespace triagens {
             THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "duplicate optimizer rule level");
           }
 
-          _rules.emplace(std::make_pair(level, Rule(name, func, level, canBeDisabled)));
+          _rules.emplace(std::make_pair(level, Rule(name, func, level, canBeDisabled, isHidden)));
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register a hidden rule
+////////////////////////////////////////////////////////////////////////////////
+
+        static void registerHiddenRule (std::string const& name,
+                                        RuleFunction func, 
+                                        RuleLevel level,
+                                        bool canBeDisabled) {
+          registerRule(name, func, level, canBeDisabled, true);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -644,12 +659,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         PlanList _newPlans;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief currently active rule (during optimization)
-////////////////////////////////////////////////////////////////////////////////
-
-        int _currentRule;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief maximal number of plans to produce
