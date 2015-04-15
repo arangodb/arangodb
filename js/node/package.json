@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "aqb": "1.9.0",
+    "chai": "2.2.0",
     "coffee-script": "1.9.1",
     "error-stack-parser": "1.2.0",
     "expect.js": "0.3.1",
