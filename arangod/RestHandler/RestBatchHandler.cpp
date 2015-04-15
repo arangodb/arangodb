@@ -276,6 +276,9 @@ Handler::status_t RestBatchHandler::execute () {
       return status_t(Handler::HANDLER_FAILED);
     }
 
+    // we do not have a client task id here
+    request->setClientTaskId(0);
+
     // inject the request context from the framing (batch) request
     // the "false" means the context is not responsible for resource handling
     request->setRequestContext(_request->getRequestContext(), false);
