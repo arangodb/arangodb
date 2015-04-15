@@ -3363,7 +3363,7 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
         try {
           // emit last buffered group
           if (! skipping) {
-            TRI_IF_FAILURE("AggregateBlock::getOrSkipSome") {
+            TRI_IF_FAILURE("SortedAggregateBlock::getOrSkipSome") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
 
@@ -3649,7 +3649,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
         try {
           // emit last buffered group
           if (! skipping) {
-            TRI_IF_FAILURE("HashAggregateBlock::getOrSkipSome") {
+            TRI_IF_FAILURE("HashedAggregateBlock::getOrSkipSome") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
           }
