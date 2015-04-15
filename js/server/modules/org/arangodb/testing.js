@@ -271,26 +271,15 @@ function startInstance (protocol, options, addArgs, testname) {
   appDir =  fs.join(tmpDataDir, "apps");
   fs.makeDirectoryRecursive(tmpDataDir);
   instanceInfo.tmpDataDir = tmpDataDir;
-  var optionsExtraArgs = [];
+  var optionsExtraArgs = {};
   if (typeof(options.extraargs) === 'object') {
-    if (_.isArray(options.extraargs)) {
-      optionsExtraArgs = options.extraargs;
-    }
-    else {
-      optionsExtraArgs = optionsExtraArgs.concat(toArgv(options.extraargs));
-    }
+    optionsExtraArgs = options.extraargs;
   }
-
   var endpoint;
   var pos;
   var valgrindopts = {};
   if (typeof(options.valgrindargs) === 'object') {
-    if (_.isArray(options.valgrindargs)) {
-      valgrindopts = options.valgrindargs;
-    }
-    else {
-      valgrindopts = _.extend(valgrindopts, options.valgrindargs);
-    }
+    valgrindopts = options.valgrindargs;
   }
 
   var dispatcher;
@@ -377,7 +366,7 @@ function startInstance (protocol, options, addArgs, testname) {
         testfn += '_' ;
       }
       testfn += testname;
-        
+
       valgrindopts["xml-file"] = testfn + '.%p.xml';
       valgrindopts["log-file"] = testfn + '.%p.valgrind.log';
       // Sequence: Valgrind arguments; binary to run; options to binary:
