@@ -2549,13 +2549,19 @@ function AQL_SQRT (value) {
 function AQL_LENGTH (value) {
   'use strict';
 
-  var result, typeWeight = TYPEWEIGHT(value);
+  var typeWeight = TYPEWEIGHT(value);
 
   if (typeWeight === TYPEWEIGHT_ARRAY) {
     return value.length;
   }
   else if (typeWeight === TYPEWEIGHT_OBJECT) {
     return KEYS(value, false).length;
+  }
+  else if (typeWeight === TYPEWEIGHT_NULL) {
+    return 0;
+  }
+  else if (typeWeight === TYPEWEIGHT_BOOL) {
+    return value ? 1 : 0;
   }
 
   return AQL_TO_STRING(value).length;

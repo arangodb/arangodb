@@ -167,12 +167,12 @@ AqlValue Functions::Length (triagens::arango::AqlTransaction* trx,
     switch (json->_type) {
       case TRI_JSON_UNUSED:
       case TRI_JSON_NULL: {
-        length = strlen("null"); 
+        length = 0;
         break;
       }
 
       case TRI_JSON_BOOLEAN: {
-        length = (json->_value._boolean ? strlen("true") : strlen("false"));
+        length = (json->_value._boolean ? 1 : 0);
         break;
       }
 

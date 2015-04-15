@@ -82,6 +82,21 @@
       sendRequest(this, callback, "POST", "scripts/" + name);
     },
 
+    runTests: function (options, callback) {
+      $.ajax({
+        type: "POST",
+        url: "/_admin/aardvark/foxxes/tests?mount=" + this.encodedMount(),
+        data: JSON.stringify(options),
+        contentType: "application/json",
+        success: function(data) {
+          callback(null, data);
+        },
+        error: function(xhr) {
+          callback(xhr.responseJSON);
+        }
+      });
+    },
+
     isSystem: function() {
       return this.get("system");
     },

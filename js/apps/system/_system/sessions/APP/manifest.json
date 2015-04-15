@@ -32,9 +32,7 @@
 
   "setup": "setup.js",
 
-  "tests": [
-    "test/**"
-  ],
+  "tests": "test/**",
 
   "configuration": {
     "timeToLive": {

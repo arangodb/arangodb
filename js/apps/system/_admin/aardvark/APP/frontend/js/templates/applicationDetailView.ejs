@@ -8,11 +8,16 @@
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
-          <li id="app-scripts" class="dropdown">
-            <a class="headerButton <%= app.get('scripts').length?'':'disabled' %>">
-              <i class="fa fa-file-code-o"></i>
+          <li>
+            <a id="app-dependencies" class="headerButton disabled">
+              <span class="fa fa-cubes" title="Dependencies"></span>
             </a>
-            <ul class="script-dropdown-menu" id="scripts_dropdown">
+          </li>
+          <li id="app-scripts" class="dropdown">
+            <a class="headerButton <%= app.get('scripts').length ? '' : 'disabled' %>" title="Scripts">
+              <i class="fa fa-cogs"></i>
+            </a>
+            <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
             <% app.get('scripts').forEach(function (script) { %>
               <li class="dropdown-item">
                 <a class="tab" data-script="<%= script.name %>"><%= script.title %></a>
@@ -21,7 +26,12 @@
             </ul>
           </li>
           <li>
-            <a id="download-app" class="headerButton <%= app.isSystem()?'disabled':'' %>">
+            <a id="app-tests" class="headerButton">
+              <span class="fa fa-flask" title="Tests"></span>
+            </a>
+          </li>
+          <li>
+            <a id="download-app" class="headerButton <%= app.isSystem() ? 'disabled' : '' %>">
               <span class="fa fa-download" title="Download"></span>
             </a>
           </li>
