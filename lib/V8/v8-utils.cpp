@@ -526,6 +526,27 @@ static void JS_ParseFile (const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief helper function for internal.download()
+////////////////////////////////////////////////////////////////////////////////
+
+static std::string GetEndpointFromUrl (std::string const& url) {
+  char const* p = url.c_str();
+  char const* e = p + url.size();
+  size_t slashes = 0;
+
+  while (p < e) {
+    if (*p == '/') {
+      if (++slashes == 3) {
+        return url.substr(0, p - url.c_str());
+      }
+    }
+    ++p;
+  }
+
+  return url;
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief downloads data from a URL
 ///
 /// @FUN{internal.download(@FA{url}, @FA{body}, @FA{options}, @FA{outfile})}
@@ -592,7 +613,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
           if (TRI_IsStringJson(ep)) {
             // prepend host and port to relative URL
-            url = std::string(ep->_value._string.data, ep->_value._string.length) + url;
+            url = std::string(ep->_value._string.data, ep->_value._string.length - 1) + url;
 
             // ipv4: replace 0.0.0.0 with 127.0.0.1
             auto pos = url.find("0.0.0.0");
@@ -621,6 +642,8 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       }
     }
   }
+
+  std::string lastEndpoint = GetEndpointFromUrl(url);
 
   std::string body;
   if (args.Length() > 1) {
@@ -743,8 +766,8 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
   int numRedirects = 0;
 
   while (numRedirects < maxRedirects) {
-    string endpoint;
-    string relative;
+    std::string endpoint;
+    std::string relative;
 
     if (url.substr(0, 7) == "http://") {
       size_t found = url.find('/', 7);
@@ -780,6 +803,18 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
       }
       endpoint = "ssl://" + endpoint;
     }
+    else if (! url.empty() && url[0] == '/') {
+      // relative URL. prefix it with last endpoint
+      relative = url;
+      url = lastEndpoint + url;
+      endpoint = lastEndpoint;
+      if (endpoint.substr(0, 5) == "http:") {
+        endpoint = "tcp:" + endpoint.substr(5);
+      }
+      else if (endpoint.substr(0, 6) == "https:") {
+        endpoint = "ssl:" + endpoint.substr(6);
+      }
+    }
     else {
       TRI_V8_THROW_SYNTAX_ERROR("unsupported URL specified");
     }
@@ -812,10 +847,10 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
     // send the actual request
     SimpleHttpResult* response = client->request(method,
-                                                relative,
-                                                (body.size() > 0 ? body.c_str() : nullptr),
-                                                body.size(),
-                                                headerFields);
+                                                 relative,
+                                                 (body.size() > 0 ? body.c_str() : nullptr),
+                                                 body.size(),
+                                                 headerFields);
 
     int returnCode = 500; // set a default
     string returnMessage;
@@ -853,6 +888,10 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
         }
 
         numRedirects++;
+
+        if (url.substr(0, 5) == "http:" || url.substr(0, 6) == "https:") {
+          lastEndpoint = GetEndpointFromUrl(url);
+        }
         continue;
       }
 
