@@ -343,13 +343,15 @@ static void JS_Options (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (args.Length() != 0) {
     TRI_V8_THROW_EXCEPTION_USAGE("options()");
   }
-      
+
   auto json = triagens::basics::ProgramOptions::getJson();
 
   if (json != nullptr) {
     auto result = TRI_ObjectJson(isolate, json);
 
+    // remove this variable
     result->ToObject()->ForceDelete(TRI_V8_STRING("server.password"));
+
     TRI_V8_RETURN(result);
   }
 
@@ -566,15 +568,61 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
   v8::Isolate* isolate = args.GetIsolate();
   v8::HandleScope scope(isolate);
 
-  const string signature = "download(<url>, <body>, <options>, <outfile>)";
+  std::string const signature = "download(<url>, <body>, <options>, <outfile>)";
 
   if (args.Length() < 1) {
     TRI_V8_THROW_EXCEPTION_USAGE(signature);
   }
 
-  string url = TRI_ObjectToString(args[0]);
+  std::string url = TRI_ObjectToString(args[0]);
 
-  string body;
+  if (! url.empty() && url[0] == '/') {
+    // a relative url. now make this an absolute URL if possible
+    auto json = triagens::basics::ProgramOptions::getJson();
+
+    if (json != nullptr) {
+      // check if there are endpoints defined in the server options
+      auto eps = TRI_LookupObjectJson(json, "server.endpoint");
+
+      // endpoints should be an array
+      if (TRI_IsArrayJson(eps)) {
+        // it is. now iterate over the list and pick the first one
+        for (size_t i = 0; i < eps->_value._objects._length; ++i) {
+          auto ep = static_cast<TRI_json_t const*>(TRI_AtVector(&eps->_value._objects, i));
+
+          if (TRI_IsStringJson(ep)) {
+            // prepend host and port to relative URL
+            url = std::string(ep->_value._string.data, ep->_value._string.length) + url;
+
+            // ipv4: replace 0.0.0.0 with 127.0.0.1
+            auto pos = url.find("0.0.0.0");
+            if (pos != std::string::npos) {
+              url.replace(pos, strlen("0.0.0.0"), "127.0.0.1");
+            }
+            // ipv6: replace [::] with [::1] 
+            pos = url.find("[::]");
+            if (pos != std::string::npos) {
+              url.replace(pos, strlen("[::]"), "[::1]");
+            }
+
+            if (url.substr(0, 4) == "tcp:") {
+              url = "http:" + url.substr(4);
+            }
+            else if (url.substr(0, 4) == "ssl:") {
+              url = "https:" + url.substr(4);
+            }
+            // note: there can be endpoints not starting with tcp:// or ssl://, e.g. unix://...
+            // for these endpoints, the generated URL will be invalid, and this will trigger an
+            // "unsupport URL error" below
+
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  std::string body;
   if (args.Length() > 1) {
     if (args[1]->IsString() || args[1]->IsStringObject()) {
       // supplied body is a string
@@ -596,7 +644,7 @@ static void JS_Download (const v8::FunctionCallbackInfo<v8::Value>& args) {
   // options
   // ------------------------------------------------------------------------
 
-  map<string, string> headerFields;
+  std::map<std::string, std::string> headerFields;
   double timeout = 10.0;
   bool returnBodyAsBuffer = false;
   bool followRedirects = true;
