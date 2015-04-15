@@ -1876,14 +1876,14 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
     return false;
   }
 
-  fstat(srcFD, &statbuf);
+  TRI_FSTAT(srcFD, &statbuf);
   dsize = statbuf.st_size;
 
   bool rc = TRI_CopyFileContents(srcFD, dstFD, dsize, error);
   timeval times[2];
   memset(times, 0, sizeof(times));
-  times[0].tv_sec = statbuf.st_atim.tv_sec;
-  times[1].tv_sec = statbuf.st_mtim.tv_sec;
+  times[0].tv_sec = TRI_STAT_ATIME_SEC(statbuf);
+  times[1].tv_sec = TRI_STAT_MTIME_SEC(statbuf);
 
   if (fchown(dstFD, -1 /*statbuf.st_uid*/, statbuf.st_gid) != 0) {
     error = std::string("failed to chown ") + dst + ": " + strerror(errno);
@@ -1919,7 +1919,7 @@ bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &e
 #ifndef _WIN32
   struct stat statbuf;
 
-  stat(srcItem.c_str(), &statbuf);
+  TRI_STAT(srcItem.c_str(), &statbuf);
 
   if (chown(dstItem.c_str(), -1/*statbuf.st_uid*/, statbuf.st_gid) != 0) {
     error = std::string("failed to chown ") + dstItem + ": " + strerror(errno);
@@ -1930,12 +1930,10 @@ bool TRI_CopyAttributes(std::string srcItem, std::string dstItem, std::string &e
     return false;
   }
 
-
   timeval times[2];
   memset(times, 0, sizeof(times));
-  times[0].tv_sec = statbuf.st_atim.tv_sec;
-  times[1].tv_sec = statbuf.st_mtim.tv_sec;
-
+  times[0].tv_sec = TRI_STAT_ATIME_SEC(statbuf);
+  times[1].tv_sec = TRI_STAT_MTIME_SEC(statbuf);
 
   if (  utimes(dstItem.c_str(), times) != 0) {
     error = std::string("failed to adjust age: ") + dstItem + ": " + strerror(errno);

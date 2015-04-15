@@ -180,11 +180,12 @@
 #define TRI_WRITE                       write
 #define TRI_STAT                        stat
 #define TRI_FSTAT                       fstat
+#define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtimespec.tv_sec
 
 #define TRI_DIR_FN(item)                item->d_name
 #define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
 #define TRI_DIR_IS_SYMLINK(item)        (item->d_type == DT_LNK)
-
 
 #define TRI_write_t                     size_t
 #define TRI_read_t                      size_t
@@ -339,6 +340,8 @@
 #define TRI_WRITE                       write
 #define TRI_STAT                        stat
 #define TRI_FSTAT                       fstat
+#define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atimespec.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtimespec.tv_sec
 
 #define TRI_DIR_FN(item)                item->d_name
 #define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
@@ -510,6 +513,8 @@
 #define TRI_WRITE                       write
 #define TRI_STAT                        stat
 #define TRI_FSTAT                       fstat
+#define TRI_STAT_ATIME_SEC(statbuf)     statbuf.st_atim.tv_sec
+#define TRI_STAT_MTIME_SEC(statbuf)     statbuf.st_mtim.tv_sec
 
 #define TRI_DIR_FN(item)                item->d_name
 #define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->d_type == DT_DIR)
