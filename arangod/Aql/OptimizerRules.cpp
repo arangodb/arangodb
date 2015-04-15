@@ -179,7 +179,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, ! toUnlink.empty());
+  opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -250,7 +250,7 @@ int triagens::aql::removeUnnecessaryFiltersRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -371,7 +371,7 @@ int triagens::aql::specializeCollectVariables (Optimizer* opt,
 
     if (! collectNode->hasOutVariable() ||
         collectNode->hasExpressionVariable() ||
-        collectNode->countOnly()) {
+        collectNode->count()) {
       // COLLECT without INTO or a COLLECT that already uses an 
       // expression variable or a COLLECT that only counts
       continue;
@@ -456,7 +456,7 @@ int triagens::aql::specializeCollectVariables (Optimizer* opt,
     plan->findVarUsage();
   }
  
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -498,7 +498,7 @@ int triagens::aql::removeCollectIntoRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -760,7 +760,7 @@ int triagens::aql::propagateConstantAttributesRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -898,7 +898,7 @@ int triagens::aql::removeSortRandRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -977,7 +977,7 @@ int triagens::aql::moveCalculationsUpRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1081,7 +1081,93 @@ int triagens::aql::moveCalculationsDownRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the "right" type of AggregateNode and 
+/// add a sort node for each COLLECT (note: the sort may be removed later) 
+/// this rule cannot be turned off (otherwise, the query result might be wrong!)
+////////////////////////////////////////////////////////////////////////////////
+ 
+int triagens::aql::specializeCollectRule (Optimizer* opt, 
+                                          ExecutionPlan* plan, 
+                                          Optimizer::Rule const* rule) {
+  std::vector<ExecutionNode*> nodes = plan->findNodesOfType(EN::AGGREGATE, true);
+  bool modified = false;
+  
+  for (auto n : nodes) {
+    auto collectNode = static_cast<AggregateNode*>(n);
+    auto const& aggregateVariables = collectNode->aggregateVariables();
+
+    // test if we can use an alternative version of COLLECT with a hash table
+    bool const canUseHashAggregation = (! aggregateVariables.empty() &&
+                                        (! collectNode->hasOutVariable() || collectNode->count()));
+  
+    if (canUseHashAggregation) {
+      // create a new plan with the adjusted COLLECT node
+      std::unique_ptr<ExecutionPlan> newPlan(plan->clone());
+   
+      // use the cloned COLLECT node 
+      auto newCollectNode = static_cast<AggregateNode*>(newPlan->getNodeById(collectNode->id()));
+      TRI_ASSERT(newCollectNode != nullptr);
+      
+      // specialize the AggregateNode so it will become a HashAggregateBlock later
+      // additionally, add a SortNode BEHIND the AggregateNode (to sort the final result)
+      newCollectNode->aggregationMethod(AggregateNode::AGGREGATION_HASH);
+
+      std::vector<std::pair<Variable const*, bool>> sortElements;
+      for (auto const& v : newCollectNode->aggregateVariables()) {
+        sortElements.emplace_back(std::make_pair(v.first, true));
+      }
+
+      auto sortNode = new SortNode(newPlan.get(), newPlan->nextId(), sortElements, false);
+      newPlan->registerNode(sortNode);
+        
+      auto const& parents = newCollectNode->getParents();
+      TRI_ASSERT(parents.size() == 1);
+
+      sortNode->addDependency(newCollectNode);
+      parents[0]->replaceDependency(newCollectNode, sortNode);
+
+      newPlan->findVarUsage();
+      
+      opt->addPlan(newPlan.release(), rule, true);
+    }
+    
+
+    // finally, adjust the original plan and create a sorted version of COLLECT    
+      
+    // specialize the AggregateNode so it will become a SortedAggregateBlock later
+    // insert a SortNode IN FRONT OF the AggregateNode
+    collectNode->aggregationMethod(AggregateNode::AGGREGATION_SORTED);
+
+    if (! aggregateVariables.empty()) {
+      std::vector<std::pair<Variable const*, bool>> sortElements;
+      for (auto const& v : aggregateVariables) {
+        sortElements.emplace_back(std::make_pair(v.second, true));
+      }
+
+      auto sortNode = new SortNode(plan, plan->nextId(), sortElements, true);
+      plan->registerNode(sortNode);
+      
+      auto const& deps = collectNode->getDependencies();
+      TRI_ASSERT(deps.size() == 1);
+
+      sortNode->addDependency(deps[0]);
+      collectNode->replaceDependency(deps[0], sortNode);
+
+      modified = true;
+    }
+  }
+  
+  if (modified) {
+    plan->findVarUsage();
+  }
+
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1158,7 +1244,7 @@ int triagens::aql::splitFiltersRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1250,7 +1336,7 @@ int triagens::aql::moveFiltersUpRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1461,11 +1547,11 @@ int triagens::aql::removeRedundantCalculationsRule (Optimizer* opt,
     plan->root()->walk(&finder);
     plan->findVarUsage();
 
-    opt->addPlan(plan, rule->level, true);
+    opt->addPlan(plan, rule, true);
   }
   else {
     // no changes
-    opt->addPlan(plan, rule->level, false);
+    opt->addPlan(plan, rule, false);
   }
 
 
@@ -1521,7 +1607,7 @@ int triagens::aql::removeUnnecessaryCalculationsRule (Optimizer* opt,
     plan->findVarUsage();
   }
 
-  opt->addPlan(plan, rule->level, ! toUnlink.empty());
+  opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -2377,7 +2463,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
   // Now see whether it is actually only one plan we make:
   if (possibilities == 1) {
     try {
-      opt->addPlan(plan, rule->level, modified);
+      opt->addPlan(plan, rule, modified);
       cleanupChanges();
     }
     catch (...) {
@@ -2441,7 +2527,7 @@ int triagens::aql::useIndexRangeRule (Optimizer* opt,
           newPlan->replaceNode(newPlan->getNodeById(changes[l].first), newNode);
         }
       }
-      opt->addPlan(newPlan.release(), rule->level, true);
+      opt->addPlan(newPlan.release(), rule, true);
     }
   }
   catch (...) {
@@ -2783,9 +2869,7 @@ int triagens::aql::useIndexForSortRule (Optimizer* opt,
     plan->findVarUsage();
   }
         
-  opt->addPlan(plan,
-               modified ? Optimizer::RuleLevel::pass5 : rule->level,
-               modified);
+  opt->addPlan(plan, rule, modified, modified ? Optimizer::RuleLevel::pass5 : 0);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3030,7 +3114,7 @@ int triagens::aql::removeFiltersCoveredByIndexRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, ! toUnlink.empty());
+  opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3127,7 +3211,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
   // plan, we need to compute all possible permutations of all of them,
   // independently. This is why we need to compute all permutation tuples.
 
-  opt->addPlan(plan, rule->level, false);
+  opt->addPlan(plan, rule, false);
 
   if (! starts.empty()) {
     nextPermutationTuple(permTuple, starts);  // will never return false
@@ -3171,7 +3255,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         }
 
         // OK, the new plan is ready, let's report it:
-        if (! opt->addPlan(newPlan, rule->level, true)) {
+        if (! opt->addPlan(newPlan, rule, true)) {
           // have enough plans. stop permutations
           ok = false;
           break;
@@ -3306,7 +3390,7 @@ int triagens::aql::scatterInClusterRule (Optimizer* opt,
     plan->findVarUsage();
   }
    
-  opt->addPlan(plan, rule->level, wasModified);
+  opt->addPlan(plan, rule, wasModified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3350,7 +3434,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
 
       if (deps.size() != 1) {
         // reached the end
-        opt->addPlan(plan, rule->level, wasModified);
+        opt->addPlan(plan, rule, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
 
@@ -3389,7 +3473,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
         nodeType == ExecutionNode::UPDATE) {
       if (! defaultSharding) {
         // We have to use a ScatterNode.
-        opt->addPlan(plan, rule->level, wasModified);
+        opt->addPlan(plan, rule, wasModified);
         return TRI_ERROR_NO_ERROR;
       }
     }
@@ -3506,7 +3590,7 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     plan->findVarUsage();
   }
    
-  opt->addPlan(plan, rule->level, wasModified);
+  opt->addPlan(plan, rule, wasModified);
   return TRI_ERROR_NO_ERROR;
 }
 
@@ -3597,7 +3681,7 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -3686,7 +3770,7 @@ int triagens::aql::distributeSortToClusterRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
   
   return TRI_ERROR_NO_ERROR;
 }
@@ -3755,7 +3839,7 @@ int triagens::aql::removeUnnecessaryRemoteScatterRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, ! toUnlink.empty());
+  opt->addPlan(plan, rule, ! toUnlink.empty());
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -3961,7 +4045,7 @@ int triagens::aql::undistributeRemoveAfterEnumCollRule (Optimizer* opt,
     modified = true;
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4200,7 +4284,7 @@ int triagens::aql::replaceOrWithInRule (Optimizer* opt,
   if (modified) {
     plan->findVarUsage();
   }
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4386,7 +4470,7 @@ int triagens::aql::removeRedundantOrRule (Optimizer* opt,
   if (modified) {
     plan->findVarUsage();
   }
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -4432,7 +4516,7 @@ int triagens::aql::removeDataModificationOutVariablesRule (Optimizer* opt,
     plan->findVarUsage();
   }
   
-  opt->addPlan(plan, rule->level, modified);
+  opt->addPlan(plan, rule, modified);
 
   return TRI_ERROR_NO_ERROR;
 }

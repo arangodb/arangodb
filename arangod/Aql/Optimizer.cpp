@@ -79,11 +79,19 @@ Optimizer::Optimizer (size_t maxNumberOfPlans)
 ////////////////////////////////////////////////////////////////////////////////
 
 bool Optimizer::addPlan (ExecutionPlan* plan,
-                         RuleLevel level,
-                         bool wasModified) {
+                         Rule const* rule,
+                         bool wasModified,
+                         int newLevel) {
   TRI_ASSERT(plan != nullptr);
-  
-  _newPlans.push_back(plan, level);
+ 
+  if (newLevel > 0) { 
+    // use user-specified new level
+    _newPlans.push_back(plan, newLevel);
+  }
+  else {
+    // use rule's level
+    _newPlans.push_back(plan, rule->level);
+  }
 
   if (wasModified) {
     // register which rules modified / created the plan
@@ -369,6 +377,15 @@ void Optimizer::setupRules () {
                splitFiltersRule_pass1, 
                true);
 #endif
+       
+   
+  // determine the "right" type of AggregateNode and 
+  // add a sort node for each COLLECT (may be removed later) 
+  // this rule cannot be turned off (otherwise, the query result might be wrong!)
+  registerRule("specialize-collect",
+               specializeCollectRule,
+               specializeCollectRule_pass1,
+               false);
 
   // move calculations up the dependency chain (to pull them out of
   // inner loops etc.)

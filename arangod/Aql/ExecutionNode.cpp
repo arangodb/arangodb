@@ -183,8 +183,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
         aggregateVariables.emplace_back(std::make_pair(outVar, inVar));
       }
 
-      triagens::basics::Json jsonCount = oneNode.get("count");
-      bool countOnly = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
+      bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
+      std::string method = JsonHelper::checkAndGetStringValue(oneNode.json(), "method");
 
       return new AggregateNode(plan,
                                oneNode,
@@ -193,7 +193,8 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
                                keepVariables,
                                plan->getAst()->variables()->variables(false),
                                aggregateVariables,  
-                               countOnly);
+                               AggregateNode::aggregationMethod(method),
+                               count);
     }
     case INSERT:
       return new InsertNode(plan, oneNode);
@@ -2280,14 +2281,16 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
                               std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
                               std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                              bool countOnly)
+                              AggregationMethod aggregationMethod,
+                              bool count)
   : ExecutionNode(plan, base),
     _aggregateVariables(aggregateVariables), 
     _expressionVariable(expressionVariable),
     _outVariable(outVariable),
     _keepVariables(keepVariables),
     _variableMap(variableMap),
-    _countOnly(countOnly) {
+    _aggregationMethod(aggregationMethod),
+    _count(count) {
 
 }
 
@@ -2334,7 +2337,9 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
     json("keepVariables", values);
   }
 
-  json("count", triagens::basics::Json(_countOnly));
+  json("method", triagens::basics::Json(aggregationMethodString()));
+
+  json("count", triagens::basics::Json(_count));
 
   // And add it:
   nodes(json);
@@ -2365,7 +2370,6 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
       auto out = plan->getAst()->variables()->createVariable(oneAggregate.second);
       aggregateVariables.emplace_back(std::make_pair(in, out));
     }
-
   }
 
   auto c = new AggregateNode(plan, 
@@ -2374,14 +2378,14 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
                              expressionVariable, 
                              outVariable, 
                              _keepVariables, 
-                             _variableMap, 
-                             _countOnly);
+                             _variableMap,
+                             _aggregationMethod, 
+                             _count);
 
   CloneHelper(c, plan, withDependencies, withProperties);
 
   return static_cast<ExecutionNode*>(c);
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief getVariablesUsedHere
@@ -2430,7 +2434,7 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
     v.insert(_expressionVariable);
   }
 
-  if (_outVariable != nullptr && ! _countOnly) {
+  if (_outVariable != nullptr && ! _count) {
     if (_keepVariables.empty()) {
       // Here we have to find all user defined variables in this query
       // amongst our dependencies:
@@ -2470,18 +2474,29 @@ std::vector<Variable const*> AggregateNode::getVariablesUsedHere () const {
         
 double AggregateNode::estimateCost (size_t& nrItems) const {
   double depCost = _dependencies.at(0)->getCost(nrItems);
+  
+  // As in the FilterNode case, we are pessimistic here by not reducing the
+  // nrItems much, since the worst case for COLLECT is to return as many items
+  // as there are input items. In any case, we have to look at all incoming
+  // items, and in particular in the COLLECT ... INTO ... case, we have
+  // to actually hand on all data anyway, albeit not as separate items.
+  // Nevertheless, the optimizer does not do much with AggregateNodes
+  // and thus this potential overestimation does not really matter.
 
-  if (_countOnly && _aggregateVariables.empty()) {
+
+  if (_count && _aggregateVariables.empty()) {
     // we are known to only produce a single output row
     nrItems = 1;
   }
+  else {
+    // we do not know how many rows the COLLECT with produce...
+    // the worst case is that there will be as many output rows as input rows
+    if (nrItems >= 10) {
+      // we assume that the collect will reduce the number of results at least somewhat
+      nrItems *= 0.80;
+    }
+  }
 
-  // As in the FilterNode case, we are pessimistic here by not reducing the
-  // nrItems, since this is the worst case. We have to look at all incoming
-  // items, and in particular in the COLLECT ... INTO ... case, we have
-  // to actually hand on all data anyway, albeit not as separate items.
-  // Nevertheless, the optimiser does not do much with AggregateNodes
-  // and thus this overestimation does not really matter.
   return depCost + nrItems;
 }
 

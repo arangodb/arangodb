@@ -73,7 +73,7 @@ namespace triagens {
       size_t lastRow;
       size_t groupLength;
       bool rowsAreValid;
-      bool const countOnly;
+      bool const count;
 
       explicit AggregatorGroup (bool);
 
@@ -473,9 +473,7 @@ namespace triagens {
 
         void initializeDocuments () {
           _scanner->reset();
-          if (! _atBeginning) {
-            _documents.clear();
-          }
+          _documents.clear();
           _posInDocuments = 0;
         }
 
@@ -542,16 +540,16 @@ namespace triagens {
         size_t _posInDocuments;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief current position in _documents
-////////////////////////////////////////////////////////////////////////////////
-
-        bool _atBeginning; // TODO: check if we can remove this
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief whether or not we're doing random iteration
 ////////////////////////////////////////////////////////////////////////////////
 
         bool const _random;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the enumerated documents need to be stored
+////////////////////////////////////////////////////////////////////////////////
+
+        bool _mustStoreResult;
     };
 
 // -----------------------------------------------------------------------------
@@ -1164,17 +1162,17 @@ namespace triagens {
     };
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                    AggregateBlock
+// --SECTION--                                              SortedAggregateBlock
 // -----------------------------------------------------------------------------
 
-    class AggregateBlock : public ExecutionBlock  {
+    class SortedAggregateBlock : public ExecutionBlock  {
 
       public:
 
-        AggregateBlock (ExecutionEngine*,
-                        AggregateNode const*);
+        SortedAggregateBlock (ExecutionEngine*,
+                              AggregateNode const*);
 
-        ~AggregateBlock ();
+        ~SortedAggregateBlock ();
 
         int initialize () override;
 
@@ -1217,7 +1215,8 @@ namespace triagens {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief the optional register that contains the values for each group
-/// if no values should be returned, then this has a value of 0
+/// if no values should be returned, then this has a value of MaxRegisterId
+/// this register is also used for counting in case WITH COUNT INTO var is used
 ////////////////////////////////////////////////////////////////////////////////
 
         RegisterId _groupRegister;
@@ -1228,6 +1227,82 @@ namespace triagens {
 
         std::vector<std::string> _variableNames;
 
+    };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                              HashedAggregateBlock
+// -----------------------------------------------------------------------------
+
+    class HashedAggregateBlock : public ExecutionBlock  {
+
+      public:
+
+        HashedAggregateBlock (ExecutionEngine*,
+                              AggregateNode const*);
+
+        ~HashedAggregateBlock ();
+
+        int initialize () override;
+
+      private:
+
+        int getOrSkipSome (size_t atLeast,
+                           size_t atMost,
+                           bool skipping,
+                           AqlItemBlock*& result,
+                           size_t& skipped);
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief pairs, consisting of out register and in register
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<std::pair<RegisterId, RegisterId>> _aggregateRegisters;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the optional register that contains the values for each group
+/// if no values should be returned, then this has a value of MaxRegisterId
+/// this register is also used for counting in case WITH COUNT INTO var is used
+////////////////////////////////////////////////////////////////////////////////
+
+        RegisterId _groupRegister;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief hasher for a vector of AQL values
+////////////////////////////////////////////////////////////////////////////////
+
+        struct GroupKeyHash {
+          GroupKeyHash (triagens::arango::AqlTransaction* trx,
+                        std::vector<TRI_document_collection_t const*>& colls)
+            : _trx(trx),
+              _colls(colls) {
+          }
+
+          size_t operator() (std::vector<AqlValue> const& value) const;
+          
+          triagens::arango::AqlTransaction* _trx;
+          std::vector<TRI_document_collection_t const*>& _colls;
+        };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief comparator for a vector of AQL values
+////////////////////////////////////////////////////////////////////////////////
+        
+        struct GroupKeyEqual {
+          GroupKeyEqual (triagens::arango::AqlTransaction* trx,
+                         std::vector<TRI_document_collection_t const*>& colls)
+            : _trx(trx),
+              _colls(colls) {
+          }
+
+          bool operator() (std::vector<AqlValue> const&,
+                           std::vector<AqlValue> const&) const;
+          
+          triagens::arango::AqlTransaction* _trx;
+          std::vector<TRI_document_collection_t const*>& _colls;
+        };
+        
     };
 
 // -----------------------------------------------------------------------------

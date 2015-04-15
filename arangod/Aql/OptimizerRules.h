@@ -99,6 +99,14 @@ namespace triagens {
     int moveCalculationsDownRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*);
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief determine the "right" type of AggregateNode and 
+/// add a sort node for each COLLECT (may be removed later) 
+/// this rule cannot be turned off (otherwise, the query result might be wrong!)
+////////////////////////////////////////////////////////////////////////////////
+ 
+    int specializeCollectRule (Optimizer*, ExecutionPlan*, Optimizer::Rule const*); 
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief split and-combined filters and break them into smaller parts
 ////////////////////////////////////////////////////////////////////////////////
 
