@@ -36,6 +36,18 @@ var MochaRunner = require('mocha/lib/runner');
 var BaseReporter = require('mocha/lib/reporters/base');
 var DefaultReporter = require('mocha/lib/reporters/json');
 
+function notIn(arr) {
+  return function (item) {
+    return arr.indexOf(item) === -1;
+  };
+}
+
+function deleteFrom(obj) {
+  return function (key) {
+    delete obj[key];
+  };
+}
+
 var reporters = {
   stream: StreamReporter,
   suite: SuiteReporter,
@@ -60,24 +72,34 @@ exports.run = function runMochaTests(app, reporterName) {
   var mocha = {options: options};
   var files = findTestFiles(app);
 
-  files.forEach(function (file) {
-    var context = {};
-    suite.emit('pre-require', context, file, mocha);
-    suite.emit('require', app.loadAppScript(file, {context: context}), file, mocha);
-    suite.emit('post-require', global, file, mocha);
-  });
-
-  var Reporter = reporterName ? reporters[reporterName] : reporters.default;
-  var runner = new MochaRunner(suite, false);
-  var reporter;
-
+  // Clean up after chai.should(), etc
+  var globals = Object.getOwnPropertyNames(global);
+  var objectProps = Object.getOwnPropertyNames(Object.prototype);
   // Monkeypatch process.stdout.write for mocha's JSON reporter
   var _stdoutWrite = global.process.stdout.write;
   global.process.stdout.write = function () {};
+
+  var Reporter = reporterName ? reporters[reporterName] : reporters.default;
+  var reporter, runner;
+
   try {
+    files.forEach(function (file) {
+      var context = {};
+      suite.emit('pre-require', context, file, mocha);
+      suite.emit('require', app.loadAppScript(file, {context: context}), file, mocha);
+      suite.emit('post-require', global, file, mocha);
+    });
+
+    runner = new MochaRunner(suite, false);
     reporter = new Reporter(runner, options);
     runner.run();
   } finally {
+    Object.getOwnPropertyNames(global)
+    .filter(notIn(globals))
+    .forEach(deleteFrom(global));
+    Object.getOwnPropertyNames(Object.prototype)
+    .filter(notIn(objectProps))
+    .forEach(deleteFrom(Object.prototype));
     global.process.stdout.write = _stdoutWrite;
   }
 
