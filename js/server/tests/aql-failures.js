@@ -78,7 +78,7 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAggregateBlock1 : function () {
+    testSortedAggregateBlock1 : function () {
       internal.debugSetFailAt("AggregatorGroup::addValues");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
@@ -88,11 +88,22 @@ function ahuacatlFailureSuite () {
 /// @brief test failure
 ////////////////////////////////////////////////////////////////////////////////
 
-    testAggregateBlock2 : function () {
-      internal.debugSetFailAt("AggregateBlock::getOrSkipSome");
+    testSortedAggregateBlock2 : function () {
+      internal.debugSetFailAt("SortedAggregateBlock::getOrSkipSome");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 INTO g RETURN [ key, g ]");
       assertFailingQuery("FOR i IN 1..10000 COLLECT key = i INTO g RETURN [ key, g ]");
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test failure
+////////////////////////////////////////////////////////////////////////////////
+
+    testHashedAggregateBlock : function () {
+      internal.debugSetFailAt("HashedAggregateBlock::getOrSkipSome");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value RETURN key");
+      assertFailingQuery("FOR i IN " + c.name() + " COLLECT key = i.value2 RETURN key");
+      assertFailingQuery("FOR i IN 1..10000 COLLECT key = i RETURN key");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
