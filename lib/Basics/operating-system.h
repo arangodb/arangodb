@@ -736,8 +736,8 @@ typedef unsigned char bool;
 #define TRI_STAT                        _stat64
 #define TRI_FSTAT                       _fstat64
 
-#define TRI_DIR_FN(item)                item->d_name
-#define TRI_DIR_IS_SUB_DIRECTORY(item)  (item->attributes & _A_SUBDIR != 0)
+#define TRI_DIR_FN(item)                item.name
+#define TRI_DIR_IS_SUB_DIRECTORY(item)  ((item.attrib & _A_SUBDIR) != 0)
 #define TRI_DIR_IS_SYMLINK(item)        (false)
 
 #define TRI_write_t                     unsigned int
