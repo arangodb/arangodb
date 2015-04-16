@@ -3359,6 +3359,10 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
 
     TRI_ASSERT(node != nullptr);
     
+    if (node == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+    }
+    
     ExecutionNode* originalParent = nullptr;
     {
       auto parents = node->getParents();
@@ -3469,7 +3473,10 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     }
     else {
       TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
+
+    TRI_ASSERT(distNode != nullptr);
 
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);
