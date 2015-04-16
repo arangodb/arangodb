@@ -31,6 +31,7 @@
 #include "Basics/JsonHelper.h"
 #include "Utils/CollectionGuard.h"
 #include "Utils/CollectionReadLocker.h"
+#include "Utils/transactions.h"
 #include "VocBase/barrier.h"
 #include "VocBase/compactor.h"
 #include "VocBase/vocbase.h"
@@ -46,15 +47,19 @@ using namespace triagens::arango;
 // -----------------------------------------------------------------------------
 
 CollectionExport::CollectionExport (TRI_vocbase_t* vocbase,
-                                    std::string const& name)
+                                    std::string const& name,
+                                    Restrictions const& restrictions)
   : _guard(nullptr),
     _document(nullptr),
     _barrier(nullptr),
+    _name(name),
     _resolver(vocbase),
+    _restrictions(restrictions),
     _documents(nullptr) {
 
+  // prevent the collection from being unloaded while the export is ongoing
   // this may throw
-  _guard = new triagens::arango::CollectionGuard(vocbase, name.c_str(), false);
+  _guard = new triagens::arango::CollectionGuard(vocbase, _name.c_str(), false);
   
   _document = _guard->collection()->_collection;
   TRI_ASSERT(_document != nullptr);
@@ -75,15 +80,13 @@ CollectionExport::~CollectionExport () {
 // -----------------------------------------------------------------------------
 
 void CollectionExport::run (uint64_t maxWaitTime) {
-  // create a fake transaction for iterating over the collection
-  TransactionBase trx(true);
-    
   // try to acquire the exclusive lock on the compaction
   while (! TRI_CheckAndLockCompactorVocBase(_document->_vocbase)) {
     // didn't get it. try again...
     usleep(5000);
   }
-  
+ 
+  // create a barrier under the compaction lock 
   _barrier = TRI_CreateBarrierElement(&_document->_barrierList);
   
   // release the lock
@@ -112,13 +115,18 @@ void CollectionExport::run (uint64_t maxWaitTime) {
     }
   }
 
-  // RAII read-lock
   {
-    triagens::arango::CollectionReadLocker lock(_document, true);
+    SingleCollectionReadOnlyTransaction trx(new StandaloneTransactionContext(), _document->_vocbase, _name);
+
+    int res = trx.begin();
+
+    if (res != TRI_ERROR_NO_ERROR) {
+      THROW_ARANGO_EXCEPTION(res);
+    }
 
     size_t const n = _document->_primaryIndex._nrAlloc;
   
-    _documents->reserve(n);
+    _documents->reserve(_document->_primaryIndex._nrUsed);
   
     for (size_t i = 0; i < n; ++i) {
       auto ptr = _document->_primaryIndex._table[i];
@@ -132,6 +140,8 @@ void CollectionExport::run (uint64_t maxWaitTime) {
         }
       }
     }
+
+    trx.finish(res);
   }
 }
 
