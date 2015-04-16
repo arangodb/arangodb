@@ -276,6 +276,7 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
   TRI_ASSERT(_ex != nullptr);
 
   TRI_shaper_t* shaper = _ex->_document->getShaper();
+  auto const restrictionType = _ex->_restrictions.type;
 
   buffer.appendText("\"result\":[");
 
@@ -303,6 +304,7 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
     std::string id(_ex->_resolver.getCollectionName(_ex->_document->_info._cid));
     id.push_back('/');
     id.append(key);
+
     json(TRI_VOC_ATTRIBUTE_ID, triagens::basics::Json(id));
     json(TRI_VOC_ATTRIBUTE_REV, triagens::basics::Json(std::to_string(TRI_EXTRACT_MARKER_RID(marker))));
     json(TRI_VOC_ATTRIBUTE_KEY, triagens::basics::Json(key));
@@ -321,6 +323,58 @@ void ExportCursor::dump (triagens::basics::StringBuffer& buffer) {
       json(TRI_VOC_ATTRIBUTE_TO, triagens::basics::Json(to));
     }
 
+    if (restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE ||
+        restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE) {
+      // only include the specified fields
+      // for this we'll modify the JSON that we already have, in place
+      // we'll scan through the JSON attributs from left to right and
+      // keep all those that we want to keep. we'll overwrite existing
+      // other values in the JSON 
+      TRI_json_t* obj = json.json();
+      TRI_ASSERT(TRI_IsObjectJson(obj));
+
+      size_t const n = obj->_value._objects._length;
+
+      size_t j = 0;
+      for (size_t i = 0; i < n; i += 2) {
+        auto key = static_cast<TRI_json_t const*>(TRI_AtVector(&obj->_value._objects, i));
+
+        if (! TRI_IsStringJson(key)) {
+          continue;
+        }
+
+        bool const keyContainedInRestrictions = (_ex->_restrictions.fields.find(key->_value._string.data) != _ex->_restrictions.fields.end());
+
+        if ((restrictionType == CollectionExport::Restrictions::RESTRICTION_INCLUDE && keyContainedInRestrictions) ||
+            (restrictionType == CollectionExport::Restrictions::RESTRICTION_EXCLUDE && ! keyContainedInRestrictions)) {
+          // include the field
+          if (i != j) {
+            // steal the key and the value
+            void* src = TRI_AddressVector(&obj->_value._objects, i);
+            void* dst = TRI_AddressVector(&obj->_value._objects, j);
+            memcpy(dst, src, 2 * sizeof(TRI_json_t));
+          }
+          j += 2;
+        }
+        else {
+          // do not include the field
+          // key
+          auto src = static_cast<TRI_json_t*>(TRI_AddressVector(&obj->_value._objects, i));
+          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, src);
+          // value
+          TRI_DestroyJson(TRI_UNKNOWN_MEM_ZONE, src + 1);
+        }
+      }
+
+      // finally adjust the length of the patched JSON so the NULL fields at
+      // the end will not be dumped 
+      obj->_value._objects._length = j;
+    }
+    else {
+      // no restrictions
+      TRI_ASSERT(restrictionType == CollectionExport::Restrictions::RESTRICTION_NONE);
+    }
+        
     int res = TRI_StringifyJson(buffer.stringBuffer(), json.json());
 
     if (res != TRI_ERROR_NO_ERROR) {

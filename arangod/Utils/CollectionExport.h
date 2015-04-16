@@ -53,11 +53,30 @@ namespace triagens {
 
       public:
 
+        struct Restrictions {
+          enum Type {
+            RESTRICTION_NONE,
+            RESTRICTION_INCLUDE,
+            RESTRICTION_EXCLUDE
+          };
+
+          Restrictions () 
+            : fields(),
+              type(RESTRICTION_NONE) {
+          }
+
+          std::unordered_set<std::string> fields;
+          Type type;
+        };
+
+      public:
+
         CollectionExport (CollectionExport const&) = delete;
         CollectionExport& operator= (CollectionExport const&) = delete;
 
         CollectionExport (TRI_vocbase_s*, 
-                          std::string const&);
+                          std::string const&,
+                          Restrictions const&);
 
         ~CollectionExport ();
 
@@ -78,7 +97,9 @@ namespace triagens {
         triagens::arango::CollectionGuard*           _guard;
         struct TRI_document_collection_t*            _document;
         struct TRI_barrier_s*                        _barrier;
+        std::string const                            _name;
         triagens::arango::CollectionNameResolver     _resolver;
+        Restrictions                                 _restrictions;
         std::vector<void const*>*                    _documents;
     };
 

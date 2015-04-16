@@ -48,7 +48,8 @@ using namespace triagens::rest;
 ////////////////////////////////////////////////////////////////////////////////
 
 RestExportHandler::RestExportHandler (HttpRequest* request) 
-  : RestVocbaseBaseHandler(request) {
+  : RestVocbaseBaseHandler(request),
+    _restrictions() {
 
 }
 
@@ -61,6 +62,13 @@ RestExportHandler::RestExportHandler (HttpRequest* request)
 ////////////////////////////////////////////////////////////////////////////////
 
 HttpHandler::status_t RestExportHandler::execute () {
+  if (ServerState::instance()->isCoordinator()) {
+    generateError(HttpResponse::NOT_IMPLEMENTED,
+                  TRI_ERROR_CLUSTER_UNSUPPORTED,
+                  "'/_api/export' is not yet supported in a cluster");
+    return status_t(HANDLER_DONE);
+  }
+
   // extract the sub-request type
   HttpRequest::HttpRequestType type = _request->requestType();
 
@@ -105,7 +113,7 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
   options.set("batchSize", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 1000.0));
 
   if (TRI_IsNumberJson(attribute) && static_cast<size_t>(attribute->_value._number) == 0) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for <batchSize>");
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting non-zero value for 'batchSize'");
   }
   
   attribute = getAttribute("flush");
@@ -114,6 +122,49 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
   if (! options.has("ttl")) {
     attribute = getAttribute("ttl");
     options.set("ttl", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 30.0));
+  }
+    
+  attribute = getAttribute("flushWait");
+  options.set("flushWait", triagens::basics::Json(TRI_IsNumberJson(attribute) ? attribute->_value._number : 10.0));
+
+  // handle "restrict" parameter
+  attribute = getAttribute("restrict");
+  if (attribute != nullptr) {
+    if (! TRI_IsObjectJson(attribute)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TYPE_ERROR, "expecting object for 'restrict'");
+    }
+
+    // "restrict"."type"
+    auto type = TRI_LookupObjectJson(attribute, "type");
+    if (! TRI_IsStringJson(type)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting string for 'restrict.type'");
+    }
+
+    std::string typeString = std::string(type->_value._string.data, type->_value._string.length - 1);
+    if (typeString == "include") {
+      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_INCLUDE;
+    }
+    else if (typeString == "exclude") {
+      _restrictions.type = CollectionExport::Restrictions::RESTRICTION_EXCLUDE;
+    }
+    else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting either 'include' or 'exclude' for 'restrict.type'");
+    }
+
+    // "restrict"."fields"
+    auto fields = TRI_LookupObjectJson(attribute, "fields");
+    if (! TRI_IsArrayJson(fields)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER, "expecting array for 'restrict.fields'");
+    }
+
+    size_t const n = TRI_LengthArrayJson(fields);
+    for (size_t i = 0; i < n; ++i) {
+      auto name = TRI_LookupArrayJson(fields, i);
+
+      if (TRI_IsStringJson(name)) {
+        _restrictions.fields.emplace(std::string(name->_value._string.data, name->_value._string.length - 1));
+      }
+    }
   }
 
   return options;
@@ -146,23 +197,30 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 /// object's *hasMore* attribute will be set to *true*, and the *id* attribute
 /// of the result will contain a cursor id.
 ///
-/// By default, only those documents from the collection will be returned that are
-/// stored in the collection's datafiles. Documents that are present in the write-ahead
-/// log (WAL) only will not be exported. To force an export of these documents, too, 
-/// there is a *flush* option. This will trigger a WAL flush so documents get copied
-/// from the WAL to the collection datafiles.
-/// 
 /// The order in which the documents are returned is not specified.
 ///
-/// The following attributes can be used inside the JSON request object:
+/// By default, only those documents from the collection will be returned that are
+/// stored in the collection's datafiles. Documents that are present in the write-ahead
+/// log (WAL) at the time the export is run will not be exported.
+/// 
+/// To export these documents as well, the caller can issue a WAL flush request
+/// before calling the export API or set the *flush* attribute. Setting the *flush*
+/// option will trigger a WAL flush before the export so documents get copied from 
+/// the WAL to the collection datafiles.
+/// 
+/// The following attributes can be used inside the JSON request object to control
+/// the export behavior:
 ///
 /// - *flush*: if set to *true*, a WAL flush operation will be executed prior to the
-///   export. The flush operation will ensure all documents have been copied from the
-///   WAL to the collection's datafiles. There will be an additional wait time of up
-///   to 10 seconds after the flush to allow the WAL collector to change adjust
-///   document meta-data to point to the datafiles, too. 
+///   export. The flush operation will start copying documents from the WAL to the
+///   collection's datafiles. There will be an additional wait time of up
+///   to *flushWait* seconds after the flush to allow the WAL collector to change 
+///   the adjusted document meta-data to point into the datafiles, too. 
 ///   The default value is *false* (i.e. no flush) so most recently inserted or updated
 ///   documents from the collection might be missing in the export.
+///
+/// - *flushWait*: maximum wait time in seconds after a flush operation. The default
+///   value is 10. This option only has an effect when *flush* is set to *true*.
 ///
 /// - *count*: boolean flag that indicates whether the number of documents
 ///   in the result set should be returned in the "count" attribute of the result (optional).
@@ -178,6 +236,16 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 ///   removed on the server automatically after the specified amount of time. This
 ///   is useful to ensure garbage collection of cursors that are not fully fetched
 ///   by clients. If not set, a server-defined value will be used.
+///
+/// - *restrict*: an optional object containing an array of attribute names that will be 
+///   included or excluded when returning result documents. If specified, *fields* must
+///   be an object and contain a *type* attribute which must be set to either *include*
+///   or *exclude*. It must also contain a *fields* attribute containing an array of
+///   attribute names to include or exclude. Matching of attribute names for inclusion
+///   or exclusion will be done on the top level only. Specifying names of nested attributes
+///   is not supported at the moment.
+///
+///   Not specifying *restrict* will by default return all attributes of each document.
 ///
 /// If the result set can be created by the server, the server will respond with
 /// *HTTP 201*. The body of the response will contain a JSON object with the
@@ -214,11 +282,13 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 ///
 /// - *errorMessage*: a descriptive error message
 ///
-/// Note: clients should always delete a cursor result as early as possible because a
-/// lingering export cursor will prevent the underlying collection from being being
+/// Clients should always delete an export cursor result as early as possible because a
+/// lingering export cursor will prevent the underlying collection from being
 /// compacted or unloaded. By default, unused cursors will be deleted automatically 
 /// after a server-defined idle time, and clients can adjust this idle time by setting
 /// the *ttl* value.
+///
+/// Note: this API is currently not supported on cluster coordinators.
 ///
 /// @RESTRETURNCODES
 ///
@@ -235,6 +305,10 @@ triagens::basics::Json RestExportHandler::buildOptions (TRI_json_t const* json) 
 ///
 /// @RESTRETURNCODE{405}
 /// The server will respond with *HTTP 405* if an unsupported HTTP method is used.
+///
+/// @RESTRETURNCODE{501}
+/// The server will respond with *HTTP 501* if this API is called on a cluster
+/// coordinator.
 ///
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////
@@ -262,6 +336,10 @@ void RestExportHandler::createCursor () {
 
   try { 
     std::unique_ptr<TRI_json_t> json(parseJsonBody());
+    
+    if (json.get() == nullptr) {
+      return;
+    }
  
     triagens::basics::Json options;
 
@@ -289,11 +367,13 @@ void RestExportHandler::createCursor () {
         THROW_ARANGO_EXCEPTION(res);
       }
 
-      waitTime = 10 * 1000 * 1000; // wait at most 10 seconds for full logfile collection
+      double flushWait = triagens::basics::JsonHelper::getNumericValue<double>(options.json(), "flushWait", 10.0);
+
+      waitTime = static_cast<uint64_t>(flushWait * 1000 * 1000); // flushWait is specified in s, but we need ns
     }
 
     // this may throw!
-    std::unique_ptr<CollectionExport> collectionExport(new CollectionExport(_vocbase, name));
+    std::unique_ptr<CollectionExport> collectionExport(new CollectionExport(_vocbase, name, _restrictions));
     collectionExport->run(waitTime);
 
     { 

@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Basics/Mutex.h"
+#include "Utils/CollectionExport.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 // -----------------------------------------------------------------------------
@@ -41,7 +42,6 @@
 namespace triagens {
 
   namespace arango {
-    class Cursor;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief document request handler
@@ -108,6 +108,12 @@ namespace triagens {
 // -----------------------------------------------------------------------------
 
       private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief restrictions for export
+////////////////////////////////////////////////////////////////////////////////
+
+        CollectionExport::Restrictions _restrictions; 
 
     };
   }

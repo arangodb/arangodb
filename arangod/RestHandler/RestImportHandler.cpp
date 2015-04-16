@@ -364,7 +364,7 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///
 /// @RESTBODYPARAM{documents,string,required}
 /// The body must either be a JSON-encoded array of objects or a string with
-/// multiple JSON object separated by newlines.
+/// multiple JSON objects separated by newlines.
 ///
 /// @RESTQUERYPARAMETERS
 ///
@@ -451,6 +451,8 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 ///   contain a `details` attribute which is an array with more detailed
 ///   information about which documents could not be inserted.
 ///
+/// Note: this API is currently not supported on cluster coordinators.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
@@ -472,6 +474,10 @@ int RestImportHandler::handleSingleDocument (RestImportTransaction& trx,
 /// @RESTRETURNCODE{500}
 /// is returned if the server cannot auto-generate a document key (out of keys
 /// error) for a document with no user-defined key.
+///
+/// @RESTRETURNCODE{501}
+/// The server will respond with *HTTP 501* if this API is called on a cluster
+/// coordinator.
 ///
 /// @EXAMPLES
 ///
@@ -1001,6 +1007,8 @@ bool RestImportHandler::createFromJson (string const& type) {
 ///   contain a `details` attribute which is an array with more detailed
 ///   information about which documents could not be inserted.
 ///
+/// Note: this API is currently not supported on cluster coordinators.
+///
 /// @RESTRETURNCODES
 ///
 /// @RESTRETURNCODE{201}
@@ -1022,6 +1030,10 @@ bool RestImportHandler::createFromJson (string const& type) {
 /// @RESTRETURNCODE{500}
 /// is returned if the server cannot auto-generate a document key (out of keys
 /// error) for a document with no user-defined key.
+///
+/// @RESTRETURNCODE{501}
+/// The server will respond with *HTTP 501* if this API is called on a cluster
+/// coordinator.
 ///
 /// @EXAMPLES
 ///
