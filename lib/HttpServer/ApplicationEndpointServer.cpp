@@ -103,7 +103,7 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _keepAliveTimeout(300.0),
     _defaultApiCompatibility(0),
     _allowMethodOverride(false),
-    _backlogSize(10),
+    _backlogSize(64),
     _httpsKeyfile(),
     _cafile(),
     _sslProtocol(TLS_V1),
@@ -112,6 +112,11 @@ ApplicationEndpointServer::ApplicationEndpointServer (ApplicationServer* applica
     _sslCipherList(""),
     _sslContext(nullptr),
     _rctx() {
+
+  // if our default value is too high, we'll use half of the max value provided by the system
+  if (_backlogSize > SOMAXCONN) {
+    _backlogSize = SOMAXCONN / 2;
+  }
 
   _defaultApiCompatibility = Version::getNumericServerVersion();
 }
