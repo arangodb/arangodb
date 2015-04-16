@@ -85,7 +85,7 @@ namespace triagens {
                   const std::vector<std::string>&,
                   int,
                   bool,
-                  Endpoint** = 0);
+                  Endpoint** = nullptr);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief remove a specific endpoint
