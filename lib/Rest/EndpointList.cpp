@@ -92,21 +92,21 @@ bool EndpointList::add (const std::string& specification,
   if (it != _endpoints.end()) {
     // already in list, just update
    (*it).second.second = dbNames;
-   if (dst != 0) {
-     *dst = 0;
+   if (dst != nullptr) {
+     *dst = nullptr;
    }
     return true;
   }
 
   Endpoint* ep = Endpoint::serverFactory(key, backLogSize, reuseAddress);
 
-  if (ep == 0) {
+  if (ep == nullptr) {
     return false;
   }
 
   _endpoints[key] = pair<Endpoint*, vector<string> >(ep, dbNames);
 
-  if (dst != 0) {
+  if (dst != nullptr) {
     *dst = ep;
   }
 
