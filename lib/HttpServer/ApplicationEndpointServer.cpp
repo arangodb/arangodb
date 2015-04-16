@@ -234,8 +234,12 @@ bool ApplicationEndpointServer::parsePhase2 (ProgramOptions& options) {
     return false;
   }
 
-  if (_backlogSize <= 0 || _backlogSize > SOMAXCONN) {
-    LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. maximum allowed value is %d", (int) SOMAXCONN);
+  if (_backlogSize <= 0) {
+    LOG_FATAL_AND_EXIT("invalid value for --server.backlog-size. expecting a positive value");
+  }
+  
+  if (_backlogSize > SOMAXCONN) {
+    LOG_WARNING("value for --server.backlog-size exceeds default system header SOMAXCONN value %d. trying to use %d anyway", (int) SOMAXCONN, (int) SOMAXCONN);
   }
 
   if (! _httpPort.empty()) {
