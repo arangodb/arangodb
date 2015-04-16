@@ -2284,7 +2284,10 @@ class BufferAllocator : public v8::ArrayBuffer::Allocator {
  public:
   virtual void* Allocate(size_t length) {
     void* data = AllocateUninitialized(length);
-    return data == nullptr ? data : memset(data, 0, length);
+    if (data != nullptr) {
+      memset(data, 0, length);
+    }
+    return data;
   }
   virtual void* AllocateUninitialized(size_t length) { return malloc(length); }
   virtual void Free(void* data, size_t) { free(data); }

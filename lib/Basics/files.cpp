@@ -1758,29 +1758,26 @@ string TRI_LocateBinaryPath (char const* argv0) {
   return result;
 }
 
-bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &error)
-{
+bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string& error) {
   bool rc = true;
 #if TRI_LINUX_SPLICE
-  bool EnableSplice = true;
-  ssize_t sent;
-  if (EnableSplice) {
-    sent = 0;
+  bool enableSplice = true;
+  if (enableSplice) {
     int splicePipe[2];
     ssize_t pipeSize = 0;
     long chunkSendRemain = fileSize;
     loff_t totalSentAlready = 0;
 
     if (pipe(splicePipe) != 0) {
-          error = std::string("splice failed to create pipes: ") + strerror(errno);
-          return false;
+      error = std::string("splice failed to create pipes: ") + strerror(errno);
+      return false;
     }
     while (chunkSendRemain > 0) {
       if (pipeSize == 0) {
         pipeSize = splice(srcFD,
                           &totalSentAlready,
                           splicePipe[1],
-                          NULL,
+                          nullptr,
                           chunkSendRemain,
                           SPLICE_F_MOVE);
         if (pipeSize == -1) {
@@ -1789,12 +1786,12 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
           break;
         }
       }
-      sent =  splice(splicePipe[0],
-                     NULL,
-                     dstFD,
-                     NULL,
-                     pipeSize,
-                     SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
+      ssize_t sent = splice(splicePipe[0],
+                            nullptr,
+                            dstFD,
+                            nullptr,
+                            pipeSize,
+                            SPLICE_F_MORE | SPLICE_F_MOVE | SPLICE_F_NONBLOCK);
       if (sent == -1) {
         error = std::string("splice read failed: ") + strerror(errno);
         rc = false;
@@ -1811,10 +1808,9 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
   {
      // 128k:
 #define C128 131072
-    char *buf;
     TRI_write_t nRead;
     TRI_read_t  chunkRemain = fileSize;
-    buf = static_cast <char*>( TRI_Allocate (TRI_UNKNOWN_MEM_ZONE, C128, false));
+    char* buf = static_cast<char*>(TRI_Allocate (TRI_UNKNOWN_MEM_ZONE, C128, false));
 
     if (buf == nullptr) {
       error = "failed to allocate temporary buffer";
@@ -1828,13 +1824,14 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
       else {
         readChunk = chunkRemain;
       }
-      nRead = TRI_READ (srcFD, buf, readChunk);
+
+      nRead = TRI_READ(srcFD, buf, readChunk);
       if (nRead < 1) {
         error = std::string("failed to read a chunk: ") + strerror(errno);
         break;
       }
 
-      if ((TRI_read_t) TRI_WRITE (dstFD, buf, nRead) != nRead) {
+      if ((TRI_read_t) TRI_WRITE(dstFD, buf, nRead) != nRead) {
         rc = false;
         break;
       }
@@ -1851,11 +1848,10 @@ bool TRI_CopyFileContents(int srcFD, int dstFD, ssize_t fileSize, std::string &e
 /// @brief copies the contents of a file
 ////////////////////////////////////////////////////////////////////////////////
 
-bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &error)
-{
+bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &error) {
 #ifdef _WIN32
   bool rc = CopyFile(src.c_str(), dst.c_str(), false) != 0;
-  if (!rc) {
+  if (! rc) {
     error = "failed to copy " + src + " to " + dst + " : "; /// TODO error
   }
   return rc;
@@ -1870,8 +1866,8 @@ bool TRI_CopyFile (std::string const& src, std::string const& dst, std::string &
     return false;
   }
   dstFD = open(dst.c_str(),
-               O_EXCL|O_CREAT|O_NONBLOCK|O_WRONLY,
-               S_IRUSR|S_IWUSR);
+               O_EXCL | O_CREAT | O_NONBLOCK | O_WRONLY,
+               S_IRUSR | S_IWUSR);
   if (dstFD < 0) {
     close(srcFD);
         error = "failed to open destination file " + dst + ": " + strerror(errno);

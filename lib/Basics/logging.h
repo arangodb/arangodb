@@ -302,21 +302,34 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_FATAL_AND_EXIT(...)                                                                            \
-  do {                                                                                                     \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                    \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                      \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
-  } while (0)
+#define LOG_FATAL_AND_EXIT(...)                                         \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                 \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_FATAL,                                      \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              __VA_ARGS__);                                             \
+      std::string bt;                                                   \
+      TRI_GetBacktrace(bt);                                             \
+      if (! bt.empty()) {                                               \
+        TRI_Log(__FUNCTION__, __FILE__, __LINE__,                       \
+                TRI_LOG_LEVEL_ERROR,                                    \
+                TRI_LOG_SEVERITY_HUMAN,                                 \
+                "%s", bt.c_str());                                      \
+      }                                                                 \
+    }                                                                   \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                          \
+  } while (0);                                                          \
+  exit(EXIT_FAILURE)                                                    
 
 #else
 
-#define LOG_FATAL_AND_EXIT(...)                                                                            \
-  do {                                                                                                     \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
-  } while (0)
+#define LOG_FATAL_AND_EXIT(...)                                         \
+  do {                                                                  \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                          \
+  } while (0);                                                          \
+  exit(EXIT_FAILURE)                                                    
 
 #endif
 

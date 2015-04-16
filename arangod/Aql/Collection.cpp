@@ -305,13 +305,16 @@ void Collection::fillIndexesDBServer () const {
       // now check if we can find the local index and map it
       for (size_t j = 0; j < document->_allIndexes._length; ++j) {
         auto localIndex = static_cast<TRI_index_t*>(document->_allIndexes._buffer[j]);
-        if (localIndex != nullptr && localIndex->_iid == iid) {
-          // found
-          data = localIndex;
-          break;
-        }
-        else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
-                 localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+
+        if (localIndex != nullptr) {
+          if (localIndex->_iid == iid) {
+            // found
+            data = localIndex;
+            break;
+          }
+          else if (localIndex->_type == TRI_IDX_TYPE_PRIMARY_INDEX || 
+                   localIndex->_type == TRI_IDX_TYPE_EDGE_INDEX) {
+          }
         }
       }
 

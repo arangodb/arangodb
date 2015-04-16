@@ -323,6 +323,9 @@ int fpconv_dtoa(double d, char dest[24])
         return str_len + spec;
     }
 
+    // initialize digits[0] to satisfy scan_build
+    digits[0] = '\0';
+
     int K = 0;
     int ndigits = grisu2(d, digits, &K);
 

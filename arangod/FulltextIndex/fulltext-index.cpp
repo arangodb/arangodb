@@ -180,7 +180,7 @@ void DumpNode (const node_t* const node, uint32_t level) {
   uint32_t i;
 
   numFollowers = NodeNumFollowers(node);
-  if (node->_handles != NULL) {
+  if (node->_handles != nullptr) {
     numHandles = TRI_NumEntriesListFulltextIndex(node->_handles);
   }
   else {
@@ -263,13 +263,13 @@ static inline void* ReallocateMemory (index_t* const idx,
   void* data;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(old != NULL);
+  TRI_ASSERT(old != nullptr);
   TRI_ASSERT(newSize > 0);
   TRI_ASSERT(oldSize > 0);
 #endif
 
   data = TRI_Reallocate(TRI_UNKNOWN_MEM_ZONE, old, newSize);
-  if (data != NULL) {
+  if (data != nullptr) {
     idx->_memoryAllocated += newSize;
     idx->_memoryAllocated -= oldSize;
   }
@@ -288,7 +288,7 @@ static inline void* AllocateMemory (index_t* const idx, const size_t size) {
 #endif
 
   data = TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, size, false);
-  if (data != NULL) {
+  if (data != nullptr) {
     idx->_memoryAllocated += size;
   }
   return data;
@@ -319,8 +319,8 @@ static inline void SetNodeNumFollowers (index_t* const idx,
                                         node_t* const node,
                                         uint32_t value) {
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
-  TRI_ASSERT(node->_followers != NULL);
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->_followers != nullptr);
   TRI_ASSERT(value <= 255);
 #endif
 
@@ -333,7 +333,7 @@ static inline void SetNodeNumFollowers (index_t* const idx,
     idx->_memoryFollowers -= MemorySubNodeList(numAllocated);
 #endif
     FreeMemory(idx, node->_followers, MemorySubNodeList(numAllocated));
-    node->_followers = NULL;
+    node->_followers = nullptr;
   }
   else {
     // value is not 0, now write the new value
@@ -346,18 +346,16 @@ static inline void SetNodeNumFollowers (index_t* const idx,
 /// @brief get the number of used sub-nodes in a sub node list
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline uint32_t NodeNumFollowers (const node_t* const node) {
-  uint8_t* head;
-
+static inline uint32_t NodeNumFollowers (node_t const* node) {
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
-  if (node->_followers == NULL) {
+  if (node == nullptr || node->_followers == nullptr) {
     return 0;
   }
 
-  head = (uint8_t*) node->_followers;
+  uint8_t* head = (uint8_t*) node->_followers;
   return (uint32_t) *(++head);
 }
 
@@ -370,10 +368,10 @@ static uint32_t NodeNumAllocated (const node_t* const node) {
   uint8_t* head;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
-  if (node->_followers == NULL) {
+  if (node->_followers == nullptr) {
     return 0;
   }
 
@@ -403,7 +401,7 @@ static inline node_char_t* FollowersKeys (void* data) {
   uint8_t* head = (uint8_t*) data;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(data != NULL);
+  TRI_ASSERT(data != nullptr);
 #endif
 
   return (node_char_t*) (head + 2); // numAllocated + numEntries
@@ -416,7 +414,7 @@ static inline node_char_t* FollowersKeys (void* data) {
 
 static inline node_char_t* NodeFollowersKeys (const node_t* const node) {
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node->_followers != NULL);
+  TRI_ASSERT(node->_followers != nullptr);
 #endif
 
   return FollowersKeys(node->_followers);
@@ -442,8 +440,8 @@ static inline node_t** FollowersNodes (void* data) {
 
 static inline node_t** NodeFollowersNodes (const node_t* const node) {
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
-  TRI_ASSERT(node->_followers != NULL);
+  TRI_ASSERT(node != nullptr);
+  TRI_ASSERT(node->_followers != nullptr);
 #endif
 
   return FollowersNodes(node->_followers);
@@ -486,7 +484,7 @@ static bool ExtendSubNodeList (index_t* const idx,
   uint32_t nextAllocated;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   // current list has reached its limit, we must increase it
@@ -494,10 +492,10 @@ static bool ExtendSubNodeList (index_t* const idx,
   nextAllocated = numAllocated + idx->_nodeChunkSize;
   nextSize = MemorySubNodeList(nextAllocated);
 
-  if (node->_followers == NULL) {
+  if (node->_followers == nullptr) {
     // allocate a new list
     node->_followers = AllocateMemory(idx, nextSize);
-    if (node->_followers == NULL) {
+    if (node->_followers == nullptr) {
       // out of memory
       return false;
     }
@@ -517,7 +515,7 @@ static bool ExtendSubNodeList (index_t* const idx,
     oldSize = MemorySubNodeList(numAllocated);
 
     followers = ReallocateMemory(idx, node->_followers, nextSize, oldSize);
-    if (followers == NULL) {
+    if (followers == nullptr) {
       // out of memory
       return false;
     }
@@ -548,12 +546,12 @@ static bool ExtendSubNodeList (index_t* const idx,
 static node_t* CreateNode (index_t* const idx) {
   node_t* node = static_cast<node_t*>(AllocateMemory(idx, sizeof(node_t)));
 
-  if (node == NULL) {
-    return NULL;
+  if (node == nullptr) {
+    return nullptr;
   }
 
-  node->_followers = NULL;
-  node->_handles   = NULL;
+  node->_followers = nullptr;
+  node->_handles   = nullptr;
 
 #if TRI_FULLTEXT_DEBUG
   idx->_nodesAllocated++;
@@ -572,10 +570,10 @@ static void FreeFollowers (index_t* const idx, node_t* node) {
   uint32_t numAllocated;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
-  if (node->_followers == NULL) {
+  if (node->_followers == nullptr) {
     return;
   }
 
@@ -597,7 +595,7 @@ static void FreeFollowers (index_t* const idx, node_t* node) {
 #endif
   FreeMemory(idx, node->_followers, MemorySubNodeList(numAllocated));
 
-  node->_followers = NULL;
+  node->_followers = nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -605,18 +603,18 @@ static void FreeFollowers (index_t* const idx, node_t* node) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static void FreeNode (index_t* const idx, node_t* node) {
-  if (node == NULL) {
+  if (node == nullptr) {
     return;
   }
 
-  if (node->_handles != NULL) {
+  if (node->_handles != nullptr) {
     // free handles
     idx->_memoryAllocated -= TRI_MemoryListFulltextIndex(node->_handles);
     TRI_FreeListFulltextIndex(node->_handles);
   }
 
   // free followers
-  if (node->_followers != NULL) {
+  if (node->_followers != nullptr) {
     FreeFollowers(idx, node);
   }
 
@@ -644,10 +642,10 @@ static bool CleanupNodes (index_t* idx,
   isActive = false;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
-  if (node->_followers != NULL) {
+  if (node->_followers != nullptr) {
     // recurse into sub-nodes
     node_char_t* followerKeys = NodeFollowersKeys(node);
     node_t** followerNodes    = NodeFollowersNodes(node);
@@ -666,7 +664,7 @@ static bool CleanupNodes (index_t* idx,
 
       follower = followerNodes[i];
 #if TRI_FULLTEXT_DEBUG
-      TRI_ASSERT(follower != NULL);
+      TRI_ASSERT(follower != nullptr);
 #endif
 
       // recursively clean up sub-nodes
@@ -701,7 +699,7 @@ static bool CleanupNodes (index_t* idx,
   }
 
   // rewrite the node's handle list if present
-  if (node->_handles != NULL) {
+  if (node->_handles != nullptr) {
     uint32_t remain;
 
     remain = TRI_RewriteListFulltextIndex(node->_handles, map);
@@ -714,7 +712,7 @@ static bool CleanupNodes (index_t* idx,
       // no handles left, we can delete the node's handle list
       idx->_memoryAllocated -= TRI_MemoryListFulltextIndex(node->_handles);
       TRI_FreeListFulltextIndex(node->_handles);
-      node->_handles = NULL;
+      node->_handles = nullptr;
 
     }
   }
@@ -732,7 +730,7 @@ static inline node_t* FindDirectSubNodeSingle (const node_t* const node,
   node_char_t* followerKeys;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
   TRI_ASSERT(NodeNumFollowers(node) == 1);
 #endif
 
@@ -744,7 +742,7 @@ static inline node_t* FindDirectSubNodeSingle (const node_t* const node,
     return followerNodes[0];
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -762,7 +760,7 @@ static inline node_t* FindDirectSubNodeLinear (const node_t* const node,
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   numFollowers = NodeNumFollowers(node);
@@ -786,7 +784,7 @@ static inline node_t* FindDirectSubNodeLinear (const node_t* const node,
     }
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -802,7 +800,7 @@ static node_t* FindDirectSubNodeBinary (const node_t* const node,
   uint32_t l, r;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   numFollowers = NodeNumFollowers(node);
@@ -832,7 +830,7 @@ static node_t* FindDirectSubNodeBinary (const node_t* const node,
       if (m == 0) {
         // we must abort because the following subtraction would
         // make the uin32_t underflow to UINT32_MAX!
-        return NULL;
+        return nullptr;
       }
       // this is safe
       r = m - 1;
@@ -842,7 +840,7 @@ static node_t* FindDirectSubNodeBinary (const node_t* const node,
     }
 
     if (r < l) {
-      return NULL;
+      return nullptr;
     }
   }
 }
@@ -856,7 +854,7 @@ static inline node_t* FindDirectSubNode (const node_t* const node,
   uint32_t numFollowers;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   numFollowers = NodeNumFollowers(node);
@@ -871,7 +869,7 @@ static inline node_t* FindDirectSubNode (const node_t* const node,
     return FindDirectSubNodeSingle(node, c);
   }
 
-  return NULL;
+  return nullptr;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -887,14 +885,14 @@ static node_t* FindNode (const index_t* idx,
 
   node = (node_t*) idx->_root;
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
   p = (node_char_t*) key;
 
   for (i = 0; i < keyLength; ++i) {
     node = FindDirectSubNode(node, *(p++));
-    if (node == NULL) {
-      return NULL;
+    if (node == nullptr) {
+      return nullptr;
     }
   }
 
@@ -920,7 +918,7 @@ static TRI_fulltext_list_t* MergeSubNodeHandles (const node_t* const node,
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   numFollowers = NodeNumFollowers(node);
@@ -935,20 +933,20 @@ static TRI_fulltext_list_t* MergeSubNodeHandles (const node_t* const node,
 
     follower = followerNodes[i];
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(follower != NULL);
+  TRI_ASSERT(follower != nullptr);
 #endif
-    if (follower->_handles != NULL) {
+    if (follower->_handles != nullptr) {
       // OR-merge the follower node's documents with what we already have found
       list = TRI_UnioniseListFulltextIndex(list, GetDirectNodeHandles(follower));
-      if (list == NULL) {
-        return NULL;
+      if (list == nullptr) {
+        return nullptr;
       }
     }
 
     // recurse into sub-nodes
     list = MergeSubNodeHandles(follower, list);
-    if (list == NULL) {
-      return NULL;
+    if (list == nullptr) {
+      return nullptr;
     }
   }
 
@@ -984,14 +982,14 @@ static node_t* InsertSubNode (index_t* const idx,
   uint32_t moveCount;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   // create the sub-node
   subNode = CreateNode(idx);
-  if (subNode == NULL) {
+  if (subNode == nullptr) {
     // out of memory
-    return NULL;
+    return nullptr;
   }
 
   numFollowers  = NodeNumFollowers(node);
@@ -1032,7 +1030,7 @@ static node_t* EnsureSubNode (index_t* const idx,
   uint32_t i;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   // search the node and find the correct insert position if it does not exist
@@ -1085,12 +1083,12 @@ static node_t* EnsureSubNode (index_t* const idx,
   if (numFollowers >= numAllocated) {
     if (! ExtendSubNodeList(idx, node, numFollowers, numAllocated)) {
       // out of memory
-      return NULL;
+      return nullptr;
     }
   }
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node->_followers != NULL);
+  TRI_ASSERT(node->_followers != nullptr);
 #endif
 
   return InsertSubNode(idx, node, i, c);
@@ -1108,19 +1106,19 @@ static bool InsertHandle (index_t* const idx,
   size_t oldAlloc;
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
-  if (node->_handles == NULL) {
+  if (node->_handles == nullptr) {
     // node does not yet have any handles. now allocate a new chunk of handles
     node->_handles = TRI_CreateListFulltextIndex(idx->_initialNodeHandles);
 
-    if (node->_handles != NULL) {
+    if (node->_handles != nullptr) {
       idx->_memoryAllocated += TRI_MemoryListFulltextIndex(node->_handles);
     }
   }
 
-  if (node->_handles == NULL) {
+  if (node->_handles == nullptr) {
     // out of memory
     return false;
   }
@@ -1130,7 +1128,7 @@ static bool InsertHandle (index_t* const idx,
 
   // adding to the list might change the list pointer!
   list = TRI_InsertListFulltextIndex(node->_handles, handle);
-  if (list == NULL) {
+  if (list == nullptr) {
     // out of memory
     return false;
   }
@@ -1157,17 +1155,17 @@ static TRI_fulltext_result_t* MakeListResult (index_t* const idx,
   uint32_t numResults;
   uint32_t i, pos;
 
-  if (list == NULL) {
-    return NULL;
+  if (list == nullptr) {
+    return nullptr;
   }
 
   // we have a list of handles
   // now turn the handles into documents and exclude deleted ones on the fly
   numResults = TRI_NumEntriesListFulltextIndex(list);
   result = TRI_CreateResultFulltextIndex(numResults);
-  if (result == NULL) {
+  if (result == nullptr) {
     TRI_FreeListFulltextIndex(list);
-    return NULL;
+    return nullptr;
   }
 
   pos = 0;
@@ -1208,7 +1206,7 @@ TRI_fulltext_result_t* FindDocuments (index_t* const idx,
   TRI_fulltext_list_t* list;
 
   node = FindNode(idx, key, keyLength);
-  if (node == NULL) {
+  if (node == nullptr) {
     // not found, create empty result
     return TRI_CreateResultFulltextIndex(0);
   }
@@ -1257,8 +1255,8 @@ TRI_fts_index_t* TRI_CreateFtsIndex (uint32_t handleChunkSize,
                                      uint32_t initialNodeHandles) {
   index_t* idx = static_cast<index_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(index_t), false));
 
-  if (idx == NULL) {
-    return NULL;
+  if (idx == nullptr) {
+    return nullptr;
   }
 
   idx->_memoryAllocated    = sizeof(index_t);
@@ -1275,19 +1273,19 @@ TRI_fts_index_t* TRI_CreateFtsIndex (uint32_t handleChunkSize,
 
   // create the root node
   idx->_root               = CreateNode(idx);
-  if (idx->_root == NULL) {
+  if (idx->_root == nullptr) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
-    return NULL;
+    return nullptr;
   }
 
   // create an instance for managing document handles
   idx->_handles = TRI_CreateHandlesFulltextIndex(handleChunkSize);
-  if (idx->_handles == NULL) {
+  if (idx->_handles == nullptr) {
     // out of memory
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx->_root);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, idx);
-    return NULL;
+    return nullptr;
   }
 
   idx->_memoryAllocated += sizeof(TRI_fulltext_handles_t);
@@ -1312,7 +1310,7 @@ void TRI_FreeFtsIndex (TRI_fts_index_t* ftx) {
 
   // free handles
   TRI_FreeHandlesFulltextIndex(idx->_handles);
-  idx->_handles = NULL;
+  idx->_handles = nullptr;
   idx->_memoryAllocated -= sizeof(TRI_fulltext_handles_t);
 
 #if TRI_FULLTEXT_DEBUG
@@ -1376,7 +1374,7 @@ bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const ftx,
 
   node = idx->_root;
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   p = (char*) key;
@@ -1390,14 +1388,14 @@ bool TRI_InsertWordFulltextIndex (TRI_fts_index_t* const ftx,
     node_char_t c = (node_char_t) *(p++);
 
     node = EnsureSubNode(idx, node, c);
-    if (node == NULL) {
+    if (node == nullptr) {
       TRI_WriteUnlockReadWriteLock(&idx->_lock);
       return false;
     }
   }
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
   result = InsertHandle(idx, node, handle);
@@ -1430,6 +1428,10 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
   if (wordlist->_numWords == 0) {
     return true;
   }
+
+  // initialize to satisfy scan-build
+  paths[0] = nullptr;
+  paths[MAX_WORD_BYTES] = nullptr;
 
   // the words must be sorted so we can avoid duplicate words and use an optimisation
   // for words with common prefixes (which will be adjacent in the sorted list of words)
@@ -1486,7 +1488,7 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
     // do not need to traverse the tree from the root again
     node = paths[start];
 #if TRI_FULLTEXT_DEBUG
-    TRI_ASSERT(node != NULL);
+    TRI_ASSERT(node != nullptr);
 #endif
 
     // now insert into the tree, starting at the next character after the common prefix
@@ -1496,17 +1498,17 @@ bool TRI_InsertWordsFulltextIndex (TRI_fts_index_t* const ftx,
       node_char_t c = (node_char_t) *(p++);
 
 #if TRI_FULLTEXT_DEBUG
-      TRI_ASSERT(node != NULL);
+      TRI_ASSERT(node != nullptr);
 #endif
 
       node = EnsureSubNode(idx, node, c);
-      if (node == NULL) {
+      if (node == nullptr) {
         TRI_WriteUnlockReadWriteLock(&idx->_lock);
         return false;
       }
 
 #if TRI_FULLTEXT_DEBUG
-  TRI_ASSERT(node != NULL);
+  TRI_ASSERT(node != nullptr);
 #endif
 
       paths[i + 1] = node;
@@ -1564,8 +1566,8 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
   TRI_fulltext_list_t* result;
   size_t i;
 
-  if (query == NULL) {
-    return NULL;
+  if (query == nullptr) {
+    return nullptr;
   }
 
   if (query->_numWords == 0) {
@@ -1579,7 +1581,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
   TRI_ReadLockReadWriteLock(&idx->_lock);
 
   // initial result is empty
-  result = NULL;
+  result = nullptr;
 
   // iterate over all words in query
   for (i = 0; i < query->_numWords; ++i) {
@@ -1590,7 +1592,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
     node_t* node;
 
     word      = query->_words[i];
-    if (word == NULL) {
+    if (word == nullptr) {
       break;
     }
 
@@ -1605,9 +1607,9 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
       continue;
     }
 
-    list = NULL;
+    list = nullptr;
     node = FindNode(idx, word, strlen(word));
-    if (node != NULL) {
+    if (node != nullptr) {
       if (match == TRI_FULLTEXT_COMPLETE) {
         // complete matching
         list = GetDirectNodeHandles(node);
@@ -1638,7 +1640,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
       result = TRI_ExcludeListFulltextIndex(result, list);
     }
 
-    if (result == NULL) {
+    if (result == nullptr) {
       // out of memory
       break;
     }
@@ -1648,7 +1650,7 @@ TRI_fulltext_result_t* TRI_QueryFulltextIndex (TRI_fts_index_t* const ftx,
 
   TRI_FreeQueryFulltextIndex(query);
 
-  if (result == NULL) {
+  if (result == nullptr) {
     // if we haven't found anything...
     return TRI_CreateResultFulltextIndex(0);
   }
@@ -1695,7 +1697,7 @@ void TRI_DumpStatsFtsIndex (const TRI_fts_index_t* const ftx) {
   printf("numNodes        %llu\n", (unsigned long long) stats._numNodes);
 #endif
 
-  if (idx->_handles != NULL) {
+  if (idx->_handles != nullptr) {
     printf("memoryHandles   %llu\n", (unsigned long long) stats._memoryHandles);
     printf("numDocuments    %llu\n", (unsigned long long) stats._numDocuments);
     printf("numDeleted      %llu\n", (unsigned long long) stats._numDeleted);
@@ -1727,7 +1729,7 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex (const TRI_fts_index_t* const ftx) {
   stats._numNodes            = idx->_nodesAllocated;
 #endif
 
-  if (idx->_handles != NULL) {
+  if (idx->_handles != nullptr) {
     stats._memoryHandles       = TRI_MemoryHandleFulltextIndex(idx->_handles);
     stats._numDocuments        = TRI_NumHandlesHandleFulltextIndex(idx->_handles);
     stats._numDeleted          = TRI_NumDeletedHandleFulltextIndex(idx->_handles);
@@ -1754,7 +1756,7 @@ TRI_fulltext_stats_t TRI_StatsFulltextIndex (const TRI_fts_index_t* const ftx) {
 size_t TRI_MemoryFulltextIndex (const TRI_fts_index_t* const ftx) {
   index_t* idx = (index_t*) ftx;
 
-  if (idx->_handles != NULL) {
+  if (idx->_handles != nullptr) {
     return idx->_memoryAllocated + TRI_MemoryHandleFulltextIndex(idx->_handles);
   }
 
@@ -1789,7 +1791,7 @@ bool TRI_CompactFulltextIndex (TRI_fts_index_t* const ftx) {
   // this will also populate the _map property, which can be used to clean up
   // handles of existing nodes
   clone = TRI_CompactHandleFulltextIndex(idx->_handles);
-  if (clone == NULL) {
+  if (clone == nullptr) {
     TRI_WriteUnlockReadWriteLock(&idx->_lock);
     return false;
   }
@@ -1801,7 +1803,7 @@ bool TRI_CompactFulltextIndex (TRI_fts_index_t* const ftx) {
 
   // free the rewrite map
   TRI_Free(TRI_UNKNOWN_MEM_ZONE, clone->_map);
-  clone->_map = NULL;
+  clone->_map = nullptr;
 
   // cleanup finished, now switch over
   idx->_handles = clone;
