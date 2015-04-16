@@ -1046,7 +1046,7 @@ namespace triagens {
                               bool withProperties) const override final;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief the cost of an enumerate list node is . . . FIXME
+/// @brief the cost of an enumerate list node
 ////////////////////////////////////////////////////////////////////////////////
         
         double estimateCost (size_t&) const override final;
@@ -1524,7 +1524,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual std::vector<Variable const*> getVariablesSetHere () const {
+        virtual std::vector<Variable const*> getVariablesSetHere () const override final {
           std::vector<Variable const*> v{ _outVariable };
           return v;
         }
@@ -2188,7 +2188,7 @@ namespace triagens {
 /// @brief getVariablesSetHere
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::vector<Variable const*> getVariablesSetHere () const {
+        std::vector<Variable const*> getVariablesSetHere () const override final {
           std::vector<Variable const*> v;
           size_t const n = _aggregateVariables.size() + (_outVariable == nullptr ? 0 : 1);
           v.reserve(n);

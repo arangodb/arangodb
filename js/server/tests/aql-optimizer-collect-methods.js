@@ -53,6 +53,60 @@ function optimizerCollectMethodsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief number of plans
+////////////////////////////////////////////////////////////////////////////////
+
+    testHashedNumberOfPlans : function () {
+      var queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
+        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]"
+      ];
+
+      queries.forEach(function(query) {
+        var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+
+        assertEqual(2, plans.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of plans
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortedNumberOfPlans : function () {
+      c.ensureIndex({ type: "skiplist", fields: [ "value" ] }); 
+      var queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
+        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]"
+      ];
+      
+      queries.forEach(function(query) {
+        var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+
+        assertEqual(2, plans.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief number of plans
+////////////////////////////////////////////////////////////////////////////////
+
+    testNumberOfPlansWithInto : function () {
+      var queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j._key RETURN g",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]",
+        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g"
+      ];
+      
+      queries.forEach(function(query) {
+        var plans = AQL_EXPLAIN(query, null, { allPlans: true, optimizer: { rules: [ "-all" ] } }).plans;
+
+        assertEqual(1, plans.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief expect hash COLLECT
 ////////////////////////////////////////////////////////////////////////////////
 

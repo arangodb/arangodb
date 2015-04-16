@@ -3631,7 +3631,6 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
       switch (inspectNode->getType()) {
         case EN::ENUMERATE_LIST:
         case EN::SINGLETON:
-        case EN::AGGREGATE:
         case EN::INSERT:
         case EN::REMOVE:
         case EN::REPLACE:
@@ -3639,6 +3638,8 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::UPSERT:
           parents = inspectNode->getParents();
           continue;
+
+        case EN::AGGREGATE:
         case EN::SUBQUERY:
         case EN::RETURN:
         case EN::NORESULTS:
@@ -3646,14 +3647,15 @@ int triagens::aql::distributeFilternCalcToClusterRule (Optimizer* opt,
         case EN::DISTRIBUTE:
         case EN::GATHER:
         case EN::ILLEGAL:
-          //do break
         case EN::REMOTE:
         case EN::LIMIT:
         case EN::SORT:
         case EN::INDEX_RANGE:
         case EN::ENUMERATE_COLLECTION:
+          //do break
           stopSearching = true;
           break;
+
         case EN::CALCULATION: {
           auto calc = static_cast<CalculationNode const*>(inspectNode);
           // check if the expression can be executed on a DB server safely
