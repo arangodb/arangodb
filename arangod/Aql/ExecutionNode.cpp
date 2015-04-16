@@ -2360,10 +2360,13 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
       outVariable = plan->getAst()->variables()->createVariable(outVariable);
     }
 
-    for (auto oneAggregate: _aggregateVariables) {
-      auto in  = plan->getAst()->variables()->createVariable(oneAggregate.first);
-      auto out = plan->getAst()->variables()->createVariable(oneAggregate.second);
-      aggregateVariables.emplace_back(std::make_pair(in, out));
+    // need to re-create all variables
+    aggregateVariables.clear();
+
+    for (auto it : _aggregateVariables) {
+      auto out = plan->getAst()->variables()->createVariable(it.first);
+      auto in  = plan->getAst()->variables()->createVariable(it.second);
+      aggregateVariables.emplace_back(std::make_pair(out, in));
     }
   }
 

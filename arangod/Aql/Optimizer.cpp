@@ -287,7 +287,7 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief translate a list of rule ids into rule name
+/// @brief translate a list of rule ids into rule names
 ////////////////////////////////////////////////////////////////////////////////
 
 std::vector<std::string> Optimizer::translateRules (std::vector<int> const& rules) {
