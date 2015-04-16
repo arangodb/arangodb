@@ -123,7 +123,14 @@ int Optimizer::createPlans (ExecutionPlan* plan,
     // the plan is so simple that any further optimizations would probably cost
     // more than simply executing the plan
     _plans.clear();
-    _plans.push_back(plan, 0);
+    try {
+      _plans.push_back(plan, 0);
+    }
+    catch (...) {
+      delete plan;
+      throw;
+    }
+
     estimatePlans();
 
     return TRI_ERROR_NO_ERROR;
@@ -141,7 +148,13 @@ int Optimizer::createPlans (ExecutionPlan* plan,
 
   // _plans contains the previous optimisation result
   _plans.clear();
-  _plans.push_back(plan, 0);
+  try {
+    _plans.push_back(plan, 0);
+  }
+  catch (...) {
+    delete plan;
+    throw;
+  }
 
   _newPlans.clear();
 
