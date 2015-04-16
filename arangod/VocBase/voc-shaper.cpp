@@ -1205,6 +1205,7 @@ int TRI_CompareShapeTypes (char const* leftDocument,
   if (leftShape == nullptr || rightShape == nullptr) {
     LOG_ERROR("shape not found");
     TRI_ASSERT(false);
+    return -1;
   }
 
   TRI_shape_type_t leftType   = leftShape->_type;

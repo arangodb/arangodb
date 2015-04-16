@@ -777,6 +777,7 @@ static int WriteInitialHeaderMarker (TRI_datafile_t* datafile,
   int res = TRI_ReserveElementDatafile(datafile, header.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT_EXPENSIVE(position != nullptr);
     res = TRI_WriteCrcElementDatafile(datafile, position, &header.base, false);
   }
 
@@ -1301,7 +1302,7 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
                                 TRI_voc_size_t size,
                                 TRI_df_marker_t** position,
                                 TRI_voc_size_t maximalJournalSize) {
-  *position = 0;
+  *position = nullptr;
   size = TRI_DF_ALIGN_BLOCK(size);
 
   if (datafile->_state != TRI_DF_STATE_WRITE) {
@@ -1349,6 +1350,8 @@ int TRI_ReserveElementDatafile (TRI_datafile_t* datafile,
 
   *position = (TRI_df_marker_t*) datafile->_next;
 
+  TRI_ASSERT_EXPENSIVE(*position != nullptr);
+
   datafile->_next += size;
   datafile->_currentSize += size;
 
@@ -1378,9 +1381,12 @@ int TRI_WriteElementDatafile (TRI_datafile_t* datafile,
 
     return TRI_set_errno(TRI_ERROR_ARANGO_ILLEGAL_STATE);
   }
+    
+  TRI_ASSERT_EXPENSIVE(position != nullptr);
 
   // out of bounds check for writing into a datafile
-  if (position < (void*) datafile->_data ||
+  if (position == nullptr ||
+      position < (void*) datafile->_data ||
       position >= (void*) (datafile->_data + datafile->_maximalSize)) {
 
     LOG_ERROR("logic error. writing out of bounds of datafile '%s'", datafile->getName(datafile));
@@ -1753,6 +1759,7 @@ int TRI_SealDatafile (TRI_datafile_t* datafile) {
   int res = TRI_ReserveElementDatafile(datafile, footer.base._size, &position, 0);
 
   if (res == TRI_ERROR_NO_ERROR) {
+    TRI_ASSERT_EXPENSIVE(position != nullptr);
     res = TRI_WriteCrcElementDatafile(datafile, position, &footer.base, false);
   }
 

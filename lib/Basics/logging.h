@@ -274,20 +274,24 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
               __VA_ARGS__);                                             \
       std::string bt;                                                   \
       TRI_GetBacktrace(bt);                                             \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
-              TRI_LOG_LEVEL_ERROR,                                      \
-              TRI_LOG_SEVERITY_HUMAN,                                   \
-              "%s", bt.c_str());                                        \
+      if (! bt.empty()) {                                               \
+        TRI_Log(__FUNCTION__, __FILE__, __LINE__,                       \
+                TRI_LOG_LEVEL_ERROR,                                    \
+                TRI_LOG_SEVERITY_HUMAN,                                 \
+                "%s", bt.c_str());                                      \
+      }                                                                 \
     }                                                                   \
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                          \
-  } while (0)
+  } while (0);                                                          \
+  exit(EXIT_FAILURE)                                                    
 
 #else
 
 #define LOG_FATAL_AND_EXIT(...)                                         \
   do {                                                                  \
     CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                          \
-  } while (0)
+  } while (0);                                                          \
+  exit(EXIT_FAILURE)                                                    
 
 #endif
 
