@@ -607,20 +607,10 @@ static void JS_Debug (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (console != nullptr) {
     MUTEX_LOCKER(triagens::arango::serverConsoleMutex);
     if (serverConsole.load() != nullptr) {   
-      // Check again if console was withdrawn
-      bool userAborted = false;
-      while (! userAborted) {
+      while (true) {
         char* input = console->prompt("debug> ");
 
-        if (userAborted) {
-          if (input != nullptr) {
-            TRI_FreeString(TRI_UNKNOWN_MEM_ZONE, input);
-          }
-          break;
-        }
-
         if (input == nullptr) {
-          userAborted = true;
           break;
         }
 

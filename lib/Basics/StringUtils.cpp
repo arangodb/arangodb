@@ -1356,7 +1356,6 @@ namespace triagens {
       string replace (string const& sourceStr, string const& fromStr, string const& toStr) {
         size_t fromLength   = fromStr.length();
         size_t toLength     = toStr.length();
-        size_t maxLength    = max(fromLength,toLength);
         size_t sourceLength = sourceStr.length();
 
         // cannot perform a replace if the sourceStr = "" or fromStr = ""
@@ -1371,7 +1370,7 @@ namespace triagens {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
         }
 
-        maxLength = (((sourceLength / fromLength) + 1) * mt) + toLength;
+        size_t maxLength = (((sourceLength / fromLength) + 1) * mt) + toLength;
 
         // the min amount of memory we have to allocate for the "replace" (new) string is length of sourceStr
         maxLength = max(maxLength, sourceLength) + 1;

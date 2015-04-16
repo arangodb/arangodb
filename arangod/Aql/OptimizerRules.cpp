@@ -3215,7 +3215,6 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
 
   if (! starts.empty()) {
     nextPermutationTuple(permTuple, starts);  // will never return false
-    bool ok = true;
 
     do {
       // Clone the plan:
@@ -3257,7 +3256,6 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         // OK, the new plan is ready, let's report it:
         if (! opt->addPlan(newPlan, rule, true)) {
           // have enough plans. stop permutations
-          ok = false;
           break;
         }
       }
@@ -3267,7 +3265,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
       }
 
     } 
-    while (ok && nextPermutationTuple(permTuple, starts));
+    while (nextPermutationTuple(permTuple, starts));
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -3443,6 +3441,10 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
 
     TRI_ASSERT(node != nullptr);
     
+    if (node == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
+    }
+    
     ExecutionNode* originalParent = nullptr;
     {
       auto parents = node->getParents();
@@ -3553,7 +3555,10 @@ int triagens::aql::distributeInClusterRule (Optimizer* opt,
     }
     else {
       TRI_ASSERT(false);
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "logic error");
     }
+
+    TRI_ASSERT(distNode != nullptr);
 
     plan->registerNode(distNode);
     distNode->addDependency(deps[0]);

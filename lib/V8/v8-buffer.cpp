@@ -1277,7 +1277,7 @@ static void JS_HexWrite (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // overflow + bounds check.
   if (end < start || end > parent->_length) {
-    end = (uint32_t) parent->_length;
+    // dead assignment: end = (uint32_t) parent->_length;
     size = (uint32_t) (parent->_length - start);
   }
 

@@ -150,6 +150,7 @@
     var commands = {
       "setup"        : "executes the setup script",
       "install"      : "installs a foxx application identified by the given information to the given mountpoint",
+      "tests"        : "runs the tests of a foxx application mounted at the given mountpoint",
       "replace"      : ["replaces an installed Foxx application",
                            "WARNING: this action will remove application data if the application implements teardown!" ],
       "upgrade"      : ["upgrades an installed Foxx application",
@@ -501,6 +502,28 @@
   };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief run a Foxx application's tests
+///
+/// Input:
+/// * mount: the mount path starting with a "/"
+///
+/// Output:
+/// -
+////////////////////////////////////////////////////////////////////////////////
+
+  var runTests = function (mount, options) {
+    checkParameter(
+      "runTests(<mount>, [<options>])",
+      [ [ "Mount path", "string" ] ],
+      [ mount ]
+    );
+
+    var res = arango.POST("/_admin/aardvark/foxxes/tests?mount=" + encodeURIComponent(mount), JSON.stringify(options));
+    arangosh.checkRequestResult(res);
+    return res;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief command line dispatcher
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -524,6 +547,11 @@
           break;
         case "teardown":
           teardown(args[1]);
+          break;
+        case "tests":
+          options = extractOptions(args);
+          res = runTests(args[1], options);
+          printf(JSON.stringify(res, null, 2) + "\n");
           break;
         case "install":
           options = extractOptions(args);

@@ -29,6 +29,7 @@
 
 #include "Utils/CursorRepository.h"
 #include "Basics/json.h"
+#include "Basics/logging.h"
 #include "Basics/MutexLocker.h"
 #include "Utils/CollectionExport.h"
 #include "VocBase/server.h"
@@ -63,12 +64,40 @@ CursorRepository::CursorRepository (TRI_vocbase_t* vocbase)
 ////////////////////////////////////////////////////////////////////////////////
 
 CursorRepository::~CursorRepository () {
-  MUTEX_LOCKER(_lock);
-
-  for (auto it : _cursors) {
-    delete it.second;
+  try {
+    garbageCollect(true);
   }
-  _cursors.clear();
+  catch (...) {
+  }
+
+  // wait until all used cursors have vanished
+  int tries = 0;
+
+  while (true) {
+    if (! containsUsedCursor()) {
+      break;
+    }
+
+    if (tries == 0) {
+      LOG_INFO("waiting for used cursors to become unused");
+    }
+    else if (tries == 120) {
+      LOG_WARNING("giving up waiting for unused cursors");
+    }
+
+    usleep(500000);
+    ++tries;
+  }
+
+  {
+    MUTEX_LOCKER(_lock);
+
+    for (auto it : _cursors) {
+      delete it.second;
+    }
+
+    _cursors.clear();
+  }
 }
 
 // -----------------------------------------------------------------------------
@@ -240,6 +269,22 @@ void CursorRepository::release (Cursor* cursor) {
 
   // and free the cursor
   delete cursor;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the repository contains a used cursor
+////////////////////////////////////////////////////////////////////////////////
+
+bool CursorRepository::containsUsedCursor () {
+  MUTEX_LOCKER(_lock);
+    
+  for (auto it : _cursors) {
+    if (it.second->isUsed()) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

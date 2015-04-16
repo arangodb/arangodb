@@ -763,6 +763,7 @@ TRI_replication_applier_t* TRI_CreateReplicationApplier (TRI_server_t* server,
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyReplicationApplier (TRI_replication_applier_t* applier) {
+  TRI_ASSERT(applier != nullptr);
   TRI_StopReplicationApplier(applier, true);
 
   TRI_DestroyStateReplicationApplier(&applier->_state);
@@ -1161,6 +1162,8 @@ void TRI_InitStateReplicationApplier (TRI_replication_applier_state_t* state) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void TRI_DestroyStateReplicationApplier (TRI_replication_applier_state_t* state) {
+  TRI_ASSERT(state != nullptr);
+
   if (state->_progressMsg != nullptr) {
     TRI_FreeString(TRI_CORE_MEM_ZONE, state->_progressMsg);
   }

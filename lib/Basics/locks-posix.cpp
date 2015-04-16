@@ -347,7 +347,7 @@ void TRI_InitCondition (TRI_condition_t* cond) {
 
   cond->_mutex = static_cast<pthread_mutex_t*>(TRI_Allocate(TRI_CORE_MEM_ZONE, sizeof(pthread_mutex_t), false));
 
-  if (cond->_mutex == NULL) {
+  if (cond->_mutex == nullptr) {
     LOG_FATAL_AND_EXIT("could not allocate memory for condition variable mutex");
   }
 
@@ -437,7 +437,7 @@ bool TRI_TimedWaitCondition (TRI_condition_t* cond, uint64_t delay) {
   struct timeval tp;
   uint64_t x, y;
 
-  if (gettimeofday(&tp, NULL) != 0) {
+  if (gettimeofday(&tp, nullptr) != 0) {
     LOG_FATAL_AND_EXIT("could not get time of day");
   }
 

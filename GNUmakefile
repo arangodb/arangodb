@@ -131,6 +131,37 @@ pack-dmg-cmake:
 		-D "CPACK_INSTALL_PREFIX=${DMG_NAME}/Contents/MacOS/opt/arangodb"
 
 ################################################################################
+### @brief MacOSXcode
+################################################################################
+
+.PHONY: pack-macosxcode pack-macosxcode-cmake
+
+PACK_DESTDIR ?= .
+
+pack-macosxcode:
+	rm -rf Build && mkdir Build
+
+	./configure \
+		--prefix=/opt/arangodb
+
+	${MAKE} -f GNUMakefile pack-macosxcode-cmake
+
+pack-macosxcode-cmake:
+	cd Build && cmake \
+		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "V8_VERSION=${V8_VERSION}" \
+		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
+		-G Xcode \
+		..
+
+################################################################################
 ### @brief MacOSX
 ################################################################################
 
@@ -171,6 +202,21 @@ pack-macosx-cmake:
 
 	cd Build && ${MAKE}
 	cd Build && ${MAKE} install DESTDIR=${PACK_DESTDIR}
+
+pack-macosx-cmake:
+	cd Build && cmake \
+		-D "ARANGODB_VERSION=${VERSION}" \
+		-D "BUILD_PACKAGE=dmg-cli" \
+		-D "CMAKE_INSTALL_PREFIX=${prefix}" \
+		-D "CPACK_PACKAGE_VERSION_MAJOR=${VERSION_MAJOR}" \
+		-D "CPACK_PACKAGE_VERSION_MINOR=${VERSION_MINOR}" \
+		-D "CPACK_PACKAGE_VERSION_PATCH=${VERSION_PATCH}" \
+		-D "LIBEV_VERSION=${LIBEV_VERSION}" \
+		-D "READLINE_VERSION=${READLINE_VERSION}" \
+		-D "V8_VERSION=${V8_VERSION}" \
+		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
+		-G Xcode
+		..
 
 ################################################################################
 ### @brief debian arm package

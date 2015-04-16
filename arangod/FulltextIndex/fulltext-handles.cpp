@@ -66,7 +66,7 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
     return true;
   }
 
-  TRI_fulltext_handle_slot_t* slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
+  auto slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
 
   if (slot == nullptr) {
     return false;
@@ -306,7 +306,8 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
 
   handle = handles->_next;
 
-  if (handle == UINT32_MAX - 1) {
+  if (handles == nullptr ||
+      handle == UINT32_MAX - 1) {
     // out of handles
     return 0;
   }
