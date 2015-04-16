@@ -315,10 +315,6 @@ collect_variable_list:
 
 collect_statement: 
     T_COLLECT count_into {
-      if ($2 == nullptr) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'COUNT' without 'INTO'", yylloc.first_line, yylloc.first_column);
-      }
-
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -385,7 +381,8 @@ collect_statement:
         }
       }
 
-      if ($2 == nullptr && $3 != nullptr) {
+      if ($2 == nullptr && 
+          $3 != nullptr) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
       } 
 
