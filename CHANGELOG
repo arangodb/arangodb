@@ -1,7 +1,17 @@
 v2.5.3 (XXXX-XX-XX)
 -------------------
 
-* issue #1300: Make arangodump not fail if directory exists but is empty
+* issue #1300: Make arangodump not fail if target directory exists but is empty
+
+* allow specifying higher values than SOMAXCONN for `--server.backlog-size`
+
+  Previously, arangod would not start when a `--server.backlog-size` value was 
+  specified that was higher than the platform's SOMAXCONN header value.
+
+  Now, arangod will use the user-provided value for `--server.backlog-size` and
+  pass it to the listen system call even if the value is higher than SOMAXCONN. 
+  If the user-provided value is higher than SOMAXCONN, arangod will log a warning 
+  on startup.
 
 
 v2.5.2 (2015-04-11)
