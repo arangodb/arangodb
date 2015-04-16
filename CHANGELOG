@@ -1,6 +1,8 @@
 v2.6.0 (XXXX-XX-XX)
 -------------------
 
+* adjusted default configuration value for `--server.backlog-size` from 10 to 64.
+
 * issue #1231: bug xor feature in AQL: LENGTH(null) == 4 
 
   This changes the behavior of the AQL `LENGTH` function as follows:
