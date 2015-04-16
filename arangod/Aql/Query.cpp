@@ -818,7 +818,6 @@ QueryResult Query::explain () {
   enterState(PARSING);
 
   try {
-    ExecutionPlan* plan = nullptr;
     Parser parser(this);
 
     parser.parse(true);
@@ -842,7 +841,8 @@ QueryResult Query::explain () {
     }
 
     enterState(PLAN_INSTANCIATION);
-    plan = ExecutionPlan::instanciateFromAst(parser.ast());
+    ExecutionPlan* plan = ExecutionPlan::instanciateFromAst(parser.ast());
+
     if (plan == nullptr) {
       // oops
       return QueryResult(TRI_ERROR_INTERNAL);
@@ -875,12 +875,12 @@ QueryResult Query::explain () {
     }
     else {
       // Now plan and all derived plans belong to the optimizer
-      plan = opt.stealBest(); // Now we own the best one again
-      TRI_ASSERT(plan != nullptr);
-      plan->findVarUsage();
-      plan->planRegisters();
-      result.json = plan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
-      delete plan;
+      std::unique_ptr<ExecutionPlan> bestPlan(opt.stealBest()); // Now we own the best one again
+      TRI_ASSERT(bestPlan != nullptr);
+
+      bestPlan->findVarUsage();
+      bestPlan->planRegisters();
+      result.json = bestPlan->toJson(parser.ast(), TRI_UNKNOWN_MEM_ZONE, verbosePlans()).steal(); 
     }
 
     _trx->commit();

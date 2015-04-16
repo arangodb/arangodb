@@ -350,17 +350,11 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
 
 triagens::basics::Json ExecutionNode::toJson (TRI_memory_zone_t* zone,
                                               bool verbose) const {
-  triagens::basics::Json json;
-  triagens::basics::Json nodes;
-  try {
-    nodes = triagens::basics::Json(triagens::basics::Json::Array, 10);
-    toJsonHelper(nodes, zone, verbose);
-    json = triagens::basics::Json(triagens::basics::Json::Object, 1)
-             ("nodes", nodes);
-  }
-  catch (std::exception&) {
-    return triagens::basics::Json();
-  }
+  triagens::basics::Json nodes = triagens::basics::Json(triagens::basics::Json::Array, 10);
+  toJsonHelper(nodes, zone, verbose);
+
+  triagens::basics::Json json = triagens::basics::Json(triagens::basics::Json::Object, 1)
+    ("nodes", nodes);
 
   return json;
 }
