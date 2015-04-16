@@ -3131,7 +3131,6 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
 
   if (! starts.empty()) {
     nextPermutationTuple(permTuple, starts);  // will never return false
-    bool ok = true;
 
     do {
       // Clone the plan:
@@ -3173,7 +3172,6 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
         // OK, the new plan is ready, let's report it:
         if (! opt->addPlan(newPlan, rule->level, true)) {
           // have enough plans. stop permutations
-          ok = false;
           break;
         }
       }
@@ -3183,7 +3181,7 @@ int triagens::aql::interchangeAdjacentEnumerationsRule (Optimizer* opt,
       }
 
     } 
-    while (ok && nextPermutationTuple(permTuple, starts));
+    while (nextPermutationTuple(permTuple, starts));
   }
 
   return TRI_ERROR_NO_ERROR;

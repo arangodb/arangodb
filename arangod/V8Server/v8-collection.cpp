@@ -1687,7 +1687,7 @@ static TRI_doc_collection_info_t* GetFigures (TRI_vocbase_col_t* collection) {
   TRI_document_collection_t* document = collection->_collection;
   TRI_doc_collection_info_t* info = document->figures(document);
 
-  res = trx.finish(res);
+  trx.finish(res);
   // READ-LOCK end
 
   return info;

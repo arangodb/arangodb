@@ -60,11 +60,15 @@ static void FreeSlot (TRI_fulltext_handle_slot_t* slot) {
 
 static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
                           const uint32_t slotNumber) {
+  if (handles == nullptr) {
+    return false;
+  }
+
   if (handles->_slots[slotNumber] != nullptr) {
     return true;
   }
 
-  TRI_fulltext_handle_slot_t* slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
+  auto slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
 
   if (slot == nullptr) {
     return false;
