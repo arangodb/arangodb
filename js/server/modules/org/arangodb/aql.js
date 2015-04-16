@@ -1100,23 +1100,16 @@ function AQL_DOCUMENT (collection, id) {
 /// @brief get all documents from the specified collection
 ////////////////////////////////////////////////////////////////////////////////
 
-function GET_DOCUMENTS (collection, offset, limit) {
+function GET_DOCUMENTS (collection) {
   'use strict';
 
-  if (offset === undefined) {
-    offset = 0;
-  }
-  if (limit === undefined) {
-    limit = null;
-  }
-      
   WARN(null, INTERNAL.errors.ERROR_QUERY_COLLECTION_USED_IN_EXPRESSION, AQL_TO_STRING(collection));
 
   if (isCoordinator) {
-    return COLLECTION(collection).all().skip(offset).limit(limit).toArray();
+    return COLLECTION(collection).all().toArray();
   }
 
-  return COLLECTION(collection).ALL(offset, limit).documents;
+  return COLLECTION(collection).ALL(0, null).documents;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
