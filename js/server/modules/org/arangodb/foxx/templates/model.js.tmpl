@@ -1,15 +1,10 @@
-(function () {
-  'use strict';
-  var Foxx = require('org/arangodb/foxx'),
-    Joi = require('joi'),
-    Model;
+'use strict';
+var Foxx = require('org/arangodb/foxx'),
+  joi = require('joi');
 
-  Model = Foxx.Model.extend({
-    schema: {
-      // Describe the attributes with Joi here
-      '_key': Joi.string(),
-    }
-  });
-
-  exports.Model = Model;
-}());
+module.exports = Foxx.Model.extend({
+  schema: {
+    // Describe the attributes with joi here
+    _key: joi.string()
+  }
+});

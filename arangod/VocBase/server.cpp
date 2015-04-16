@@ -47,6 +47,8 @@
 #include "Basics/tri-strings.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/Exceptions.h"
+#include "Cluster/ServerState.h"
+#include "Utils/CursorRepository.h"
 #include "VocBase/auth.h"
 #include "VocBase/replication-applier.h"
 #include "VocBase/vocbase.h"
@@ -1555,6 +1557,7 @@ static int WriteDropMarker (TRI_voc_tick_t id) {
 
 static void DatabaseManager (void* data) {
   TRI_server_t* server = static_cast<TRI_server_t*>(data);
+  int cleanupCycles = 0;
 
   while (true) {
     TRI_LockMutex(&server->_createLock);
@@ -1565,7 +1568,7 @@ static void DatabaseManager (void* data) {
     TRI_vocbase_t* database = nullptr;
 
     {
-      DatabaseReadLocker locker(&server->_databasesLock);
+      DatabaseWriteLocker locker(&server->_databasesLock);
 
       size_t const n = server->_droppedDatabases._length;
 
@@ -1644,6 +1647,31 @@ static void DatabaseManager (void* data) {
                                       (server->_queryRegistry);
       if (queryRegistry != nullptr) {
         queryRegistry->expireQueries();
+      }
+  
+      // on a coordinator, we have no cleanup threads for the databases
+      // so we have to do cursor cleanup here 
+      if (triagens::arango::ServerState::instance()->isCoordinator() && 
+          ++cleanupCycles == 10) { 
+        cleanupCycles = 0;
+
+        DatabaseReadLocker locker(&server->_databasesLock);
+
+        size_t const n = server->_coordinatorDatabases._nrAlloc;
+
+        for (size_t i = 0; i < n; ++i) {
+          TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(server->_coordinatorDatabases._table[i]);
+
+          if (vocbase != nullptr) {
+            auto cursorRepository = static_cast<triagens::arango::CursorRepository*>(vocbase->_cursorRepository);
+
+            try {
+              cursorRepository->garbageCollect(false);
+            }
+            catch (...) {
+            }
+          }
+        }
       }
     }
 

@@ -155,7 +155,7 @@ HttpHandler::status_t RestVersionHandler::execute () {
     
     if (ArangoInstance != nullptr) {
       std::string mode = ArangoInstance->modeString();
-      TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &details, "mode", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, mode.c_str(), mode.size()));
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, &details, "mode", TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, mode.c_str(), mode.size()));
     }
 
     TRI_Insert2ObjectJson(TRI_UNKNOWN_MEM_ZONE, &result, "details", &details);

@@ -31,19 +31,27 @@ case $target in
 
   armv7l-*-linux-gnueabihf)
     tr_ARM="yes"
-    CFLAGS="$CFLAGS -marm"
-    CXXFLAGS="$CXXFLAGS -marm"
-    CPPFLAGS="$CPPFLAGS -marm"
+    tr_ARM7="yes"
+    CFLAGS="$CFLAGS"
+    CXXFLAGS="$CXXFLAGS"
+    CPPFLAGS="$CPPFLAGS"
     ;;
 
   armv6l-*-linux-gnueabihf)
+    dnl ----------------------------------------------------------------------------
+    dnl special flags for Arm V6 (pi)
+    dnl ----------------------------------------------------------------------------
+    CPPFLAGS="${CPPFLAGS} -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
     tr_ARM="yes"
+    tr_ARM6="yes"
     ;;
 esac
 
 AM_CONDITIONAL(ENABLE_DARWIN, test "x$tr_DARWIN" = xyes)
 AM_CONDITIONAL(ENABLE_FREEBSD, test "x$tr_FREEBSD" = xyes)
 AM_CONDITIONAL(ENABLE_ARM, test "x$tr_ARM" = xyes)
+AM_CONDITIONAL(ENABLE_ARMV6, test "x$tr_ARM6" = xyes)
+AM_CONDITIONAL(ENABLE_ARMV7, test "x$tr_ARM7" = xyes)
 
 dnl ----------------------------------------------------------------------------
 dnl bits
@@ -65,14 +73,6 @@ TRI_BITS="$tr_BITS"
 AC_SUBST(TRI_BITS)
 
 CPPFLAGS="${CPPFLAGS} -DTRI_BITS=${TRI_BITS}"
-
-dnl ----------------------------------------------------------------------------
-dnl special flags
-dnl ----------------------------------------------------------------------------
-
-if test x$tr_ARM == xyes;  then
-  CPPFLAGS="${CPPFLAGS} -DUSE_EABI_HARDFLOAT -march=armv6 -mfloat-abi=hard"
-fi
 
 dnl ----------------------------------------------------------------------------
 dnl use automake to generate Makfile.in
