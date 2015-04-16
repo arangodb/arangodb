@@ -249,10 +249,10 @@ void TRI_FreeBufferLogging (TRI_vector_t* buffer);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_ARG_CHECK(...)                                                                                 \
-  if (false) {                                                                                             \
-    printf(__VA_ARGS__);                                                                                   \
-  }                                                                                                        \
+#define LOG_ARG_CHECK(...)                                              \
+  if (false) {                                                          \
+    printf(__VA_ARGS__);                                                \
+  }                                                                     \
 
 #endif
 
@@ -264,20 +264,29 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_FATAL_AND_EXIT(...)                                                                            \
-  do {                                                                                                     \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                                                    \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_FATAL, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                      \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
+#define LOG_FATAL_AND_EXIT(...)                                         \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsHumanLogging() && TRI_IsFatalLogging()) {                 \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_FATAL,                                      \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              __VA_ARGS__);                                             \
+      std::string bt;                                                   \
+      TRI_GetBacktrace(bt);                                             \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_ERROR,                                      \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              "%s", bt.c_str());                                        \
+    }                                                                   \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                          \
   } while (0)
 
 #else
 
-#define LOG_FATAL_AND_EXIT(...)                                                                            \
-  do {                                                                                                     \
-    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                                                             \
+#define LOG_FATAL_AND_EXIT(...)                                         \
+  do {                                                                  \
+    CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR();                          \
   } while (0)
 
 #endif
@@ -288,12 +297,14 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_ERROR(...)                                                                                     \
-  do {                                                                                                     \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                                                    \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_ERROR, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                      \
+#define LOG_ERROR(...)                                                  \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsHumanLogging() && TRI_IsErrorLogging()) {                 \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_ERROR,                                      \
+              TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__);                     \
+    }                                                                   \
   } while (0)
 
 #else
@@ -310,12 +321,15 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_WARNING(...)                                                                                     \
-  do {                                                                                                       \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {                                                    \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_WARNING, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                        \
+#define LOG_WARNING(...)                                                \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__)                                          \
+      if (TRI_IsHumanLogging() && TRI_IsWarningLogging()) {             \
+        TRI_Log(__FUNCTION__, __FILE__, __LINE__,                       \
+                TRI_LOG_LEVEL_WARNING,                                  \
+                TRI_LOG_SEVERITY_HUMAN,                                 \
+                __VA_ARGS__);                                           \
+      }                                                                 \
   } while (0)
 
 #else
@@ -332,12 +346,15 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_INFO(...)                                                                                     \
-  do {                                                                                                    \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                                                    \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                     \
+#define LOG_INFO(...)                                                   \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsHumanLogging() && TRI_IsInfoLogging()) {                  \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_INFO,                                       \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              __VA_ARGS__);                                             \
+    }                                                                   \
   } while (0)
 
 #else
@@ -354,12 +371,15 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_DEBUG(...)                                                                                     \
-  do {                                                                                                     \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_DEBUG, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                      \
+#define LOG_DEBUG(...)                                                  \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsHumanLogging() && TRI_IsDebugLogging(__FILE__)) {         \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_DEBUG,                                      \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+                __VA_ARGS__);                                           \
+    }                                                                   \
   } while (0)
 
 #else
@@ -374,12 +394,15 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_TRACE(...)                                                                                     \
-  do {                                                                                                     \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                             \
-    if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {                                            \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_TRACE, TRI_LOG_SEVERITY_HUMAN, __VA_ARGS__); \
-    }                                                                                                      \
+#define LOG_TRACE(...)                                                  \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsHumanLogging() && TRI_IsTraceLogging(__FILE__)) {         \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_TRACE,                                      \
+              TRI_LOG_SEVERITY_HUMAN,                                   \
+              __VA_ARGS__);                                             \
+    }                                                                   \
   } while (0)
 
 #else
@@ -396,12 +419,15 @@ void CLEANUP_LOGGING_AND_EXIT_ON_FATAL_ERROR (void);
 
 #ifdef TRI_ENABLE_LOGGER
 
-#define LOG_USAGE(...)                                                                                    \
-  do {                                                                                                    \
-    LOG_ARG_CHECK(__VA_ARGS__)                                                                            \
-    if (TRI_IsUsageLogging()) {                                                                           \
-      TRI_Log(__FUNCTION__, __FILE__, __LINE__, TRI_LOG_LEVEL_INFO, TRI_LOG_SEVERITY_USAGE, __VA_ARGS__); \
-    }                                                                                                     \
+#define LOG_USAGE(...)                                                  \
+  do {                                                                  \
+    LOG_ARG_CHECK(__VA_ARGS__);                                         \
+    if (TRI_IsUsageLogging()) {                                         \
+      TRI_Log(__FUNCTION__, __FILE__, __LINE__,                         \
+              TRI_LOG_LEVEL_INFO,                                       \
+              TRI_LOG_SEVERITY_USAGE,                                   \
+              __VA_ARGS__);                                             \
+    }                                                                   \
   } while (0)
 
 #else
