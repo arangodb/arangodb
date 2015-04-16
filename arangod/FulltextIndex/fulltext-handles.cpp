@@ -59,21 +59,23 @@ static void FreeSlot (TRI_fulltext_handle_slot_t* slot) {
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
-                          const uint32_t slotNumber) {
-  if (handles->_slots[slotNumber] != NULL) {
+                          uint32_t slotNumber) {
+  TRI_ASSERT(handles->_slots != nullptr);
+
+  if (handles->_slots[slotNumber] != nullptr) {
     return true;
   }
 
   TRI_fulltext_handle_slot_t* slot = static_cast<TRI_fulltext_handle_slot_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t), false));
 
-  if (slot == NULL) {
+  if (slot == nullptr) {
     return false;
   }
 
   // allocate and clear
   slot->_documents = static_cast<TRI_fulltext_doc_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_doc_t) * handles->_slotSize, true));
 
-  if (slot->_documents == NULL) {
+  if (slot->_documents == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
     return false;
   }
@@ -81,7 +83,7 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
   // allocate and clear deleted flags
   slot->_deleted = static_cast<uint8_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(uint8_t) * handles->_slotSize, true));
 
-  if (slot->_deleted == NULL) {
+  if (slot->_deleted == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot->_documents);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, slot);
     return false;
@@ -108,36 +110,38 @@ static bool AllocateSlot (TRI_fulltext_handles_t* const handles,
 ////////////////////////////////////////////////////////////////////////////////
 
 static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
-                              const uint32_t targetNumber) {
-  TRI_fulltext_handle_slot_t** slots;
-  uint32_t currentNumber;
+                              uint32_t targetNumber) {
+  if (targetNumber == 0) {
+    // error!
+    return false;
+  }
 
-  currentNumber = handles->_numSlots;
-
-  if (targetNumber <= handles->_numSlots || targetNumber == 0) {
+  if (targetNumber <= handles->_numSlots) {
     // nothing to do
     return true;
   }
 
-  slots = static_cast<TRI_fulltext_handle_slot_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true));
+  TRI_fulltext_handle_slot_t** slots = static_cast<TRI_fulltext_handle_slot_t**>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_slot_t*) * targetNumber, true));
 
-  if (slots == NULL) {
+  if (slots == nullptr) {
     // out of memory
     return false;
   }
+
+  uint32_t currentNumber = handles->_numSlots;
 
   if (currentNumber > 0) {
     // copy old slot pointers
     memcpy(slots, handles->_slots, sizeof(TRI_fulltext_handle_slot_t*) * currentNumber);
   }
 
-  if (handles->_slots != NULL) {
+  if (handles->_slots != nullptr) {
     // free old list pointer
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles->_slots);
   }
 
   // new slot is empty
-  slots[targetNumber - 1] = NULL;
+  slots[targetNumber - 1] = nullptr;
 
   handles->_slots    = slots;
   handles->_numSlots = targetNumber;
@@ -156,8 +160,8 @@ static bool AllocateSlotList (TRI_fulltext_handles_t* const handles,
 TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize) {
   TRI_fulltext_handles_t* handles = static_cast<TRI_fulltext_handles_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handles_t), false));
 
-  if (handles == NULL) {
-    return NULL;
+  if (handles == nullptr) {
+    return nullptr;
   }
 
   handles->_numDeleted = 0;
@@ -165,8 +169,8 @@ TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize)
 
   handles->_slotSize   = slotSize;
   handles->_numSlots   = 0;
-  handles->_slots      = NULL;
-  handles->_map        = NULL;
+  handles->_slots      = nullptr;
+  handles->_map        = nullptr;
 
   return handles;
 }
@@ -177,11 +181,11 @@ TRI_fulltext_handles_t* TRI_CreateHandlesFulltextIndex (const uint32_t slotSize)
 
 void TRI_FreeHandlesFulltextIndex (TRI_fulltext_handles_t* handles) {
 
-  if (handles->_slots != NULL) {
+  if (handles->_slots != nullptr) {
     uint32_t i;
 
     for (i = 0; i < handles->_numSlots; ++i) {
-      if (handles->_slots[i] != NULL) {
+      if (handles->_slots[i] != nullptr) {
         FreeSlot(handles->_slots[i]);
       }
     }
@@ -189,7 +193,7 @@ void TRI_FreeHandlesFulltextIndex (TRI_fulltext_handles_t* handles) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles->_slots);
   }
 
-  if (handles->_map != NULL) {
+  if (handles->_map != nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, handles->_map);
   }
 
@@ -244,15 +248,15 @@ TRI_fulltext_handles_t* TRI_CompactHandleFulltextIndex (TRI_fulltext_handles_t* 
 
   TRI_fulltext_handle_t* map = static_cast<TRI_fulltext_handle_t*>(TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_fulltext_handle_t) * original->_next, false));
 
-  if (map == NULL) {
-    return NULL;
+  if (map == nullptr) {
+    return nullptr;
   }
 
   clone = TRI_CreateHandlesFulltextIndex(original->_slotSize);
 
-  if (clone == NULL) {
+  if (clone == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, map);
-    return NULL;
+    return nullptr;
   }
 
   originalHandle = 1;
@@ -314,6 +318,8 @@ TRI_fulltext_handle_t TRI_InsertHandleFulltextIndex (TRI_fulltext_handles_t* con
     // out of memory
     return 0;
   }
+
+  TRI_ASSERT(handles->_slots != nullptr);
 
   if (! AllocateSlot(handles, slotNumber)) {
     // out of memory

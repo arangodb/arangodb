@@ -569,7 +569,7 @@ TRI_json_t* ProgramOptionsDescription::getDefault (std::string const& option) co
   switch (type) {
     case OPTION_TYPE_STRING: {
       auto v = static_cast<std::string*>(value);
-      if (v != nullptr && v->empty()) {
+      if (v == nullptr || v->empty()) {
         json = TRI_CreateStringCopyJson(TRI_UNKNOWN_MEM_ZONE, "", 0);
       }
       else {
