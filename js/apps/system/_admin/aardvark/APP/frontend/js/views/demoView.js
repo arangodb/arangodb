@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, arangoHelper, $, window, templateEngine*/
+/*global Backbone, arangoHelper, $, window, templateEngine, AmCharts*/
 
 (function () {
   "use strict";
@@ -50,8 +50,8 @@
           });
         });
         var preparedData = this.prepareData(airports);
-        //TODO: this.renderMap(preparedData);
-        this.renderDummy();
+        this.renderMap(preparedData);
+        // this.renderDummy();
 
       }.bind(this);
 
@@ -86,6 +86,7 @@
       _.each(data, function(airport) {
         if (counter > 0) {
           imageData.push({
+            id: airport._key,
             latitude: airport.Latitude,
             longitude: airport.Longitude,
             type: "circle", // CIRCLE INSTEAD OF ICON
@@ -114,7 +115,10 @@
         dataProvider: {
           map: "worldLow",
           images: imageData,
-          getAreasFromMap: true
+          getAreasFromMap: true,
+          zoomLevel: 3,
+          zoomLatitude: 48.22,
+          zoomLongitude: -100.00
         },
         areaSettings: {
           autoZoom: true,
