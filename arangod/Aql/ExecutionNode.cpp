@@ -2491,7 +2491,7 @@ double AggregateNode::estimateCost (size_t& nrItems) const {
     // the worst case is that there will be as many output rows as input rows
     if (nrItems >= 10) {
       // we assume that the collect will reduce the number of results at least somewhat
-      nrItems *= 0.80;
+      nrItems = static_cast<size_t>(nrItems * 0.80);
     }
   }
 
