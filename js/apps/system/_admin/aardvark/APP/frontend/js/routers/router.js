@@ -25,7 +25,18 @@
       "graph": "graphManagement",
       "userManagement": "userManagement",
       "userProfile": "userProfile",
-      "logs": "logs"
+      "logs": "logs",
+      "demo": "demo"
+    },
+
+    demo: function () {
+
+      if (!this.demoView) {
+        this.demoView = new window.DemoView({});
+      }
+
+      this.demoView.render();
+      this.naviView.selectMenuItem('demo-menu');
     },
 
     logs: function () {

@@ -1,0 +1,116 @@
+<html>
+    <head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+		<!-- AmCharts includes -->
+		<script src="http://www.amcharts.com/lib/3/amcharts.js"></script>
+		<script src="http://www.amcharts.com/lib/3/serial.js"></script>
+
+		<!-- Export plugin includes and styles -->
+		<script src="../export.js"></script>
+		<link  type="text/css" href="../export.css" rel="stylesheet">
+
+		<style>
+			body, html {
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				overflow: hidden;
+				font-size: 11px;
+				font-family: Verdana;
+			}
+			#chartdiv {
+				width: 100%;
+				height: 100%;
+			}
+		</style>
+
+		<script type="text/javascript">
+			var chartData = [];
+			generateChartData();
+
+			var chart = AmCharts.makeChart( "chartdiv", {
+				"type": "serial",
+				"pathToImages": "http://www.amcharts.com/lib/3/images/",
+				"marginTop": 30,
+				"dataProvider": chartData,
+				"categoryField": "date",
+				"categoryAxis": {
+					"parseDates": true,
+					"gridAlpha": 0.15,
+					"minorGridEnabled": true,
+					"axisColor": "#DADADA"
+				},
+				"valueAxes": [ {
+					"axisAlpha": 0.2,
+					"id": "v1"
+				} ],
+				"graphs": [ {
+					"title": "red line",
+					"id": "g1",
+					"valueAxis": "v1",
+					"valueField": "visits",
+					"bullet": "round",
+					"bulletBorderColor": "#FFFFFF",
+					"bulletBorderAlpha": 1,
+					"lineThickness": 2,
+					"lineColor": "#b5030d",
+					"negativeLineColor": "#0352b5",
+					"balloonText": "[[category]]<br><b><span style='font-size:14px;'>value: [[value]]</span></b>"
+				} ],
+				"chartCursor": {
+					"fullWidth": true,
+					"cursorAlpha": 0.1
+				},
+				"chartScrollbar": {
+					"scrollbarHeight": 40,
+					"color": "#FFFFFF",
+					"autoGridCount": true,
+					"graph": "g1"
+				},
+				"mouseWheelZoomEnabled": true,
+				"export": {
+					"enabled": true,
+					"libs": {
+						"path": "../libs/"
+					}
+				}
+			} );
+
+			chart.addListener( "dataUpdated", zoomChart );
+
+
+			// generate some random data, quite different range
+			function generateChartData() {
+				var firstDate = new Date();
+				firstDate.setDate( firstDate.getDate() - 500 );
+
+				for ( var i = 0; i < 500; i++ ) {
+					// we create date objects here. In your data, you can have date strings
+					// and then set format of your dates using chart.dataDateFormat property,
+					// however when possible, use date objects, as this will speed up chart rendering.
+					var newDate = new Date( firstDate );
+					newDate.setDate( newDate.getDate() + i );
+
+					var visits = Math.round( Math.random() * 40 ) - 20;
+
+					chartData.push( {
+						date: newDate,
+						visits: visits
+					} );
+				}
+			}
+
+			// this method is called when chart is first inited as we listen for "dataUpdated" event
+			function zoomChart() {
+				// different zoom methods can be used - zoomToIndexes, zoomToDates, zoomToCategoryValues
+				chart.zoomToIndexes( chartData.length - 40, chartData.length - 1 );
+			}
+		</script>
+	</head>
+	<body>
+		<div id="chartdiv"></div>
+	</body>
+</html>

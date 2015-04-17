@@ -1,0 +1,96 @@
+<html>
+    <head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+		<!-- AmCharts includes -->
+		<script src="http://www.amcharts.com/lib/3/amcharts.js"></script>
+		<script src="http://www.amcharts.com/lib/3/radar.js"></script>
+
+		<!-- Export plugin includes and styles -->
+		<script src="../export.js"></script>
+		<link  type="text/css" href="../export.css" rel="stylesheet">
+
+		<style>
+		body, html {
+			height: 100%;
+			padding: 0;
+			margin: 0;
+			overflow: hidden;
+			font-size: 11px;
+			font-family: Verdana;
+		}
+		#chartdiv {
+			width: 100%;
+			height: 100%;
+		}
+		</style>
+
+		<script type="text/javascript">
+			var chart = AmCharts.makeChart( "chartdiv", {
+				"type": "radar",
+				"pathToImages": "http://www.amcharts.com/lib/3/images/",
+				"dataProvider": [ {
+					"country": "Czech Republic",
+					"litres": 156.9,
+					"litres2": 182.1
+				}, {
+					"country": "Ireland",
+					"litres": 131.1,
+					"litres2": 129.2
+				}, {
+					"country": "Germany",
+					"litres": 115.8,
+					"litres2": 170.9
+				}, {
+					"country": "Australia",
+					"litres": 109.9,
+					"litres2": 120.1
+				}, {
+					"country": "Austria",
+					"litres": 108.3,
+					"litres2": 93.8
+				}, {
+					"country": "UK",
+					"litres": 99,
+					"litres2": 102
+				} ],
+				"categoryField": "country",
+				"startDuration": 2,
+				"valueAxes": [ {
+					"axisAlpha": 0.15,
+					"minimum": 0,
+					"dashLength": 3,
+					"axisTitleOffset": 20,
+					"gridCount": 5
+				} ],
+				"graphs": [ {
+					"valueField": "litres",
+					"title": "Litres (20114)",
+					"bullet": "round",
+					"lineThickness": 2,
+					"balloonText": "[[value]] litres of beer per year"
+				}, {
+					"valueField": "litres2",
+					"title": "Litres (2015)",
+					"bullet": "round",
+					"lineThickness": 2,
+					"balloonText": "[[value]] litres of beer per year"
+				} ],
+				"legend": {
+					"align": "center"
+				},
+				"export": {
+					"enabled": true,
+					"libs": {
+						"path": "../libs/"
+					}
+				}
+			} );
+		</script>
+	</head>
+	<body>
+		<div id="chartdiv"></div>
+	</body>
+</html>

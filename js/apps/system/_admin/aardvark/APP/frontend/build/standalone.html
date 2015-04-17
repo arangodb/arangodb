@@ -629,6 +629,22 @@ if (list.length > 0) {
 </ul>
 </script>
 
+<script id="demoView.ejs" type="text/template">
+  <div class="headerBar">
+    <a class="arangoHeader">Demo</a>
+    <div class="styled-select">
+      <select id="flightQuerySelect" class="query-select">
+        <option>Please select your query</option>
+        <optgroup label="Example queries"></optgroup>
+      </select>
+    </div>
+  </div>
+
+  <div id="demoContent" class="innerContent">
+    <div id="demo-mapdiv" style="width: 100%; height: 500px;"></div>
+  </div>
+</script>
+
 <script id="documentView.ejs" type="text/template">
   <div id="transparentHeader" class="headerBar">
 
@@ -2226,6 +2242,7 @@ if (list.length > 0) {
   <ul class="navlist arango-collection-ul" id="arangoCollectionUl">
     <li id="dbSelect" class="dropdown databases-menu"></li>
     <li class="collections-menu"><a id="collections" class="tab" href="#collections">Collections</a></li>
+    <li class="demo-menu"><a id="demo" class="tab" href="#demo">Demo</a></li>
     <li class="graphviewer-menu"><a id="graph" class="tab" href="#graph">Graphs</a></li>
     <li class="applications-menu">
       <a id="applications" class="tab" href="#applications">Applications</a>
@@ -2296,6 +2313,7 @@ if (list.length > 0) {
       <% } %>
 
     <option value="#collections">Collections</option>
+    <option value="#demo">Demo</option>
     <option value="#applications">Applications</option>
     <option value="#graph">Graph</option>
     <option value="#query">AQL Editor</option>
@@ -2774,7 +2792,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1429031909934"></script>
+<script src="app.js?version=1429284030613"></script>
 
   </body>
 </html>

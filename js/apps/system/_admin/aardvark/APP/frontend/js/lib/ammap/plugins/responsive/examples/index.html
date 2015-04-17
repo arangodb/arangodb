@@ -1,0 +1,111 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+
+  <head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>amCharts Responsive Example</title>
+    <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/start/jquery-ui.css"rel="stylesheet" />
+    <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.4/jquery.min.js"></script>
+    <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
+    <style>
+    .ui-resizable-helper {
+        border: 1px dotted gray;
+    }
+    .resizable {
+        display: block;
+        width: 800px;
+        height: 500px;
+        padding: 0;
+        border: 2px solid #ddd;
+        overflow: hidden;
+        position: relative;
+    }
+    iframe {
+        width: 100%;
+        height: 100%;
+    }
+    #controls {
+        background: #ccc;
+        opacity: 0.5;
+        padding: 5px 8px;
+        font-size: 14px;
+        font-weight: bold;
+        font-family: Verdana;
+        margin-bottom: 10px;
+    }
+    #dims {
+        background: #ddd;
+        color: #555;
+        padding: 5px 8px;
+        font-size: 14px;
+        font-family: Verdana;
+        width: 100px;
+        text-align: center;
+    }
+    .ui-resizable-se {
+        display: none!important;
+    }
+    </style>
+
+    <script type="text/javascript">
+    $(function () {
+        $(".resizable").resizable({
+            animate: true,
+            animateEasing: 'swing',
+            animateDuration: 250,
+            resize: function( event, ui ) {
+                $('#dims').html(ui.size.width+'x'+ui.size.height+'px');
+            }
+        });
+    });
+
+    function setType (type) {
+        $('#iframe').attr('src', type);
+    }
+
+    function reload() {
+        setType($('#type').val());
+    }
+
+    function resize( dim, dir) {
+        var container = $('.resizable');
+        if ( 'w' == dim )
+            container.css({ 'width': container.width() + dir});
+        else
+            container.css({ 'height': container.height() + dir});
+        $('#dims').html(container.width()+'x'+container.height()+'px');
+    }
+    </script>
+
+  </head>
+
+  <body>
+    <div id="controls">
+      <input type="button" value="w-" onclick="resize('w', -50);" />
+      <input type="button" value="w+" onclick="resize('w', 50);" />
+      <input type="button" value="h-" onclick="resize('h', -50);" />
+      <input type="button" value="h+" onclick="resize('h', 50);" />
+      <select id="type" onchange="setType(this.options[this.selectedIndex].value);">
+        <option value="pie1.html" selected="selected">Pie #1 (Simple w/ legend)</option>
+        <option value="pie2.html"/>Pie #2 (3D w/ legend)</option>
+        <option value="serial1.html">Serial #1 (Area)</option>
+        <option value="serial2.html">Serial #2 (Bar &amp; Line)</option>
+        <option value="serial3.html">Serial #3 (Line w/ zoom)</option>
+        <option value="xy.html">XY</option>
+        <option value="radar.html">Radar</option>
+        <option value="gauge.html">Gauge</option>
+        <option value="funnel.html">Funnel</option>
+        <option value="gantt.html">GANTT</option>
+        <option value="stock.html">Stock</option>
+        <option value="map.html">Map</option>
+      </select>
+      <input type="button" value="reload" onclick="reload();" />
+    </div>
+
+    <div id="dims">800x500px</div>
+    <div class="resizable">
+      <iframe id="iframe" src="pie1.html" sytle="border: none; width: 100%; height: 100%;" frameborder="0"></iframe>
+    </div>
+  </body>
+
+</html>

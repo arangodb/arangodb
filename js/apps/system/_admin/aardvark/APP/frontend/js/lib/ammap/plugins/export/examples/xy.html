@@ -1,0 +1,143 @@
+<html>
+    <head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+		<!-- AmCharts includes -->
+		<script src="http://www.amcharts.com/lib/3/amcharts.js"></script>
+		<script src="http://www.amcharts.com/lib/3/xy.js"></script>
+
+		<!-- Export plugin includes and styles -->
+		<script src="../export.js"></script>
+		<link  type="text/css" href="../export.css" rel="stylesheet">
+
+		<style>
+			body, html {
+				height: 100%;
+				padding: 0;
+				margin: 0;
+				overflow: hidden;
+				font-size: 11px;
+				font-family: Verdana;
+			}
+			#chartdiv {
+				width: 100%;
+				height: 100%;
+			}
+		</style>
+
+		<script type="text/javascript">
+			var chart = AmCharts.makeChart( "chartdiv", {
+				"type": "xy",
+				"pathToImages": "http://www.amcharts.com/lib/3/images/",
+				"marginTop": 25,
+				"startDuration": 1.5,
+				"trendLines": [],
+				"graphs": [ {
+					"title": "Diamonds",
+					"balloonText": "x:<b>[[x]]</b> y:<b>[[y]]</b><br>value:<b>[[value]]</b>",
+					"bullet": "diamond",
+					"id": "AmGraph-1",
+					"lineAlpha": 0,
+					"lineColor": "#b0de09",
+					"valueField": "value",
+					"xField": "x",
+					"yField": "y"
+				}, {
+					"title": "Balls",
+					"balloonText": "x:<b>[[x]]</b> y:<b>[[y]]</b><br>value:<b>[[value]]</b>",
+					"bullet": "round",
+					"id": "AmGraph-2",
+					"lineAlpha": 0,
+					"lineColor": "#fcd202",
+					"valueField": "value2",
+					"xField": "x2",
+					"yField": "y2"
+				} ],
+				"guides": [ {
+					"fillAlpha": 0.3,
+					"fillColor": "#ff8000",
+					"id": "Guide-1",
+					"toValue": -2,
+					"value": -8,
+					"valueAxis": "ValueAxis-2"
+				} ],
+				"valueAxes": [ {
+					"id": "ValueAxis-1",
+					"axisAlpha": 0
+				}, {
+					"id": "ValueAxis-2",
+					"axisAlpha": 0,
+					"position": "bottom"
+				} ],
+				"allLabels": [],
+				"balloon": {},
+				"titles": [],
+				"dataProvider": [ {
+					"y": 10,
+					"x": 14,
+					"value": 59,
+					"y2": -5,
+					"x2": -3,
+					"value2": 44
+				}, {
+					"y": 5,
+					"x": 3,
+					"value": 50,
+					"y2": -15,
+					"x2": -8,
+					"value2": 12
+				}, {
+					"y": -10,
+					"x": -3,
+					"value": 19,
+					"y2": -4,
+					"x2": 6,
+					"value2": 35
+				}, {
+					"y": -6,
+					"x": 5,
+					"value": 65,
+					"y2": -5,
+					"x2": -6,
+					"value2": 168
+				}, {
+					"y": 15,
+					"x": -4,
+					"value": 92,
+					"y2": -10,
+					"x2": -8,
+					"value2": 102
+				}, {
+					"y": 13,
+					"x": 1,
+					"value": 8,
+					"y2": -2,
+					"x2": -3,
+					"value2": 41
+				}, {
+					"y": 1,
+					"x": 6,
+					"value": 35,
+					"y2": 0,
+					"x2": -3,
+					"value2": 16
+				} ],
+				"chartCursor": {},
+				"legend": {
+					"position": "bottom"
+				},
+				"export": {
+					"enabled": true,
+					"libs": {
+						"path": "../libs/"
+					}
+				}
+			} );
+		</script>
+	</head>
+	<body>
+		<div id="chartdiv"></div>
+	</body>
+</html>

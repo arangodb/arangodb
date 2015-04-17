@@ -47,6 +47,9 @@
             "frontend/js/lib/highlight.7.3.pack.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.js",
+            "frontend/js/lib/ammap/ammap.js",
+            "frontend/js/lib/ammap/maps/js/worldLow.js",
+            "frontend/js/lib/ammap/themes/light.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
             "frontend/src/mode-json.js",
@@ -294,6 +297,7 @@
         html: {
           files: [
             'frontend/html/*',
+            'frontend/js/templates/*.ejs',
             'clusterFrontend/html/*'
           ],
           tasks: [
