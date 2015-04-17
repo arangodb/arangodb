@@ -24,15 +24,7 @@
     el: '#content',
 
     initialize: function () {
-      this.renderMap([]);
-
-      var callback = function() {
-        this.renderMap([]);
-        console.log("airports loaded");
-      }.bind(this);
-
       this.airportCollection = new window.Airports();
-      this.airportCollection.getAirports(callback);
     },
 
     events: {
@@ -43,7 +35,26 @@
 
     render: function () {
       $(this.el).html(this.template.render({}));
+      this.renderMap([]);
       this.renderAvailableQueries();
+
+      var callback = function() {
+
+        var airport, airports = [];
+
+        this.airportCollection.each(function(model) {
+          airport = model.toJSON();
+          airports.push({
+            Latitude: airport.Latitude,
+            Longitude: airport.Longitude
+          });
+        });
+        var preparedData = this.prepareData(airports);
+        this.renderMap(preparedData);
+
+      }.bind(this);
+
+      this.airportCollection.getAirports(callback);
 
       return this;
     },
@@ -62,13 +73,6 @@
       var currentQueryPos = $( "#flightQuerySelect option:selected" ).attr('position');
       var currentQuery = this.queries[parseInt(currentQueryPos)].value;
 
-      console.log(currentQuery);
-    },
-
-    readCSV: function() {
-    },
-
-    parseToJSON: function() {
     },
 
     prepareData: function (data) {
@@ -78,7 +82,7 @@
       //TODO: COUNTER EINGEBAUT DA BEI ALLEN EINTRÄGEN DER BROWSER EXPLODIERT
       var counter = 0;
 
-      _.each(data.data, function(airport) {
+      _.each(data, function(airport) {
         if (counter > 0) {
           imageData.push({
             latitude: airport.Latitude,
@@ -88,16 +92,13 @@
             color: self.MAPcolor,
             scale: 0.2, //ICON SCALE
             //TODO: LABEL TEMP. DISABLED BECAUSE OF READABILITY
-            //label: airport._key,
+            label: airport._key,
             labelShiftY:2
           });
         }
-
         counter++;
       });
-
-      //render map when data parsing is complete
-      this.renderMap(imageData);
+      return imageData;
     },
 
     renderMap: function(imageData) {
