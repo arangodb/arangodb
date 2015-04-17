@@ -160,6 +160,7 @@
     "/api-docs": "api-docs",
     "/fonts": "frontend/fonts",
     "/img" : "frontend/img",
+    "/data" : "frontend/data",
     "/js/arango/aqltemplates.json" : "frontend/aqltemplates.json",
     "/worker-json.js" : "frontend/src/worker-json.js"
   },
