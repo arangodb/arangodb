@@ -102,6 +102,13 @@
           lat: airport.Latitude
         };
       });
+      imageData.push({
+        color: "#FF0000",
+        lines: [{
+          latitudes: [ 51.5002, 50.4422 ],
+          longitudes: [ -0.1262, 30.5367 ]
+        }]
+      });
       return imageData;
     },
 
@@ -140,8 +147,18 @@
         areaSettings: {
           autoZoom: true,
           selectedColor: self.MAPcolor
-        }
+        },
+        linesSettings: {
+          color: "#FF0000",
+          alpha: 1
+        },
+        linesAboveImages: true
       });
+    },
+
+    addFlightLine: function(from, to) {
+      this.lines.push(this.createFlightEntry(from, to));
+      this.map.validateData();
     },
 
     renderDummy: function() {
