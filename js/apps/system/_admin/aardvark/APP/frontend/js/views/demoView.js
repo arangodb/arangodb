@@ -140,7 +140,7 @@
           lines: self.lines,
           images: imageData,
           getAreasFromMap: true,
-          zoomLevel: 3,
+          zoomLevel: 2.25,
           zoomLatitude: 48.22,
           zoomLongitude: -100.00
         },
