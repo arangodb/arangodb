@@ -13,6 +13,8 @@
     //ICON FROM http://raphaeljs.com/icons/#plane
     MAPcolor: "black",
 
+    keyToLongLat: {},
+
     //QUERIES SECTION
     queries: [
       {
@@ -25,6 +27,7 @@
 
     initialize: function () {
       this.airportCollection = new window.Airports();
+      window.HASS = this;
     },
 
     events: {
@@ -45,6 +48,7 @@
         this.airportCollection.each(function(model) {
           airport = model.toJSON();
           airports.push({
+            _key: airport._key,
             Latitude: airport.Latitude,
             Longitude: airport.Longitude
           });
@@ -80,32 +84,44 @@
 
       var self = this, imageData = [];
 
-      //TODO: COUNTER EINGEBAUT DA BEI ALLEN EINTRÄGEN DER BROWSER EXPLODIERT
-      var counter = 0;
-
       _.each(data, function(airport) {
-        if (counter > 0) {
-          imageData.push({
-            id: airport._key,
-            latitude: airport.Latitude,
-            longitude: airport.Longitude,
-            type: "circle", // CIRCLE INSTEAD OF ICON
-            //svgPath: self.MAPplaneicon, //ICON if wanted
-            color: self.MAPcolor,
-            scale: 0.2, //ICON SCALE
-            //TODO: LABEL TEMP. DISABLED BECAUSE OF READABILITY
-            label: airport._key,
-            labelShiftY:2
-          });
-        }
-        counter++;
+        imageData.push({
+          id: airport._key,
+          latitude: airport.Latitude,
+          longitude: airport.Longitude,
+          type: "circle", // CIRCLE INSTEAD OF ICON
+          //svgPath: self.MAPplaneicon, //ICON if wanted
+          color: self.MAPcolor,
+          scale: 0.2, //ICON SCALE
+          //TODO: LABEL TEMP. DISABLED BECAUSE OF READABILITY
+          label: airport._key,
+          labelShiftY: 2
+        });
+        self.keyToLongLat[airport._key] = {
+          lon: airport.Longitude,
+          lat: airport.Latitude
+        };
       });
       return imageData;
+    },
+
+    createFlightEntry: function(from, to, weight) {
+      return {
+        longitudes: [
+          this.keyToLongLat[from].lon,
+          this.keyToLongLat[to].lon,
+        ],
+        latitudes: [
+          this.keyToLongLat[from].lat,
+          this.keyToLongLat[to].lat
+        ]
+      };
     },
 
     renderMap: function(imageData) {
 
       var self = this;
+      self.lines = [];
 
       AmCharts.theme = AmCharts.themes.light;
       self.map = AmCharts.makeChart("demo-mapdiv", {
@@ -114,6 +130,7 @@
         pathToImages: "img/ammap/",
         dataProvider: {
           map: "worldLow",
+          lines: self.lines,
           images: imageData,
           getAreasFromMap: true,
           zoomLevel: 3,
@@ -129,7 +146,6 @@
 
     renderDummy: function() {
 
- console.log("rendering dummy");
       // svg path for target icon
       var targetSVG = "M9,0C4.029,0,0,4.029,0,9s4.029,9,9,9s9-4.029,9-9S13.971,0,9,0z M9,15.93 c-3.83,0-6.93-3.1-6.93-6.93S5.17,2.07,9,2.07s6.93,3.1,6.93,6.93S12.83,15.93,9,15.93 M12.5,9c0,1.933-1.567,3.5-3.5,3.5S5.5,10.933,5.5,9S7.067,5.5,9,5.5 S12.5,7.067,12.5,9z";
       // svg path for plane icon

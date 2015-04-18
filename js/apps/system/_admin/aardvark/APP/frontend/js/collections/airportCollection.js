@@ -17,25 +17,13 @@
         type: "POST",
         url: "/_api/cursor",
         data: JSON.stringify({
-          query: "for a in airports return a"
+          query: "for a in airports return {Latitude: a.Latitude, Longitude: a.Longitude, _key: a._key}"
         }),
         contentType: "application/json",
         processData: false,
         success: function (data) {
           _.each(data.result, function(airport) {
-            self.add({
-              "Airport ID": airport["Airport ID"],
-              Latitude: airport.Latitude,
-              Longitude: airport.Longitude,
-              Altitude: airport.Altitude,
-              Timezone: airport.Timezon,
-              Name: airport.Name,
-              City: airport.City,
-              Country: airport.Country,
-              ICAO: airport.ICAO,
-              DST: airport.DST,
-              "Tz time zone": airport["Tz time zone"]
-            });
+            self.add(airport);
           });
           if (callback) {
             callback();
