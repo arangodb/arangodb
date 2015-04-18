@@ -223,7 +223,17 @@ Creates a range expression from the given values.
 
 `qb.range(value1, value2)` => `value1..value2`
 
+OR:
+
+`aqlValue.range(value2)` => `value1..value2`
+
 If the values are not already AQL values, they will be converted automatically.
+
+*Alias:* `qb.to(value1, value2)`
+
+**Examples**
+
+`qb(2).to(5)` => `2..5`
 
 ### Property Access
 
@@ -231,7 +241,15 @@ Creates a property access expression from the given values.
 
 `qb.get(obj, key)` => `obj[key]`
 
+OR:
+
+`aqlObj.get(key)` => `obj[key]`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').get('y') => `x[y]`
 
 ### Raw Expression
 
@@ -251,13 +269,17 @@ Creates an "and" operation from the given values.
 
 `qb.and(a, b)` => `(a && b)`
 
+OR:
+
+`aqlValue.and(b)` => `(a && b)`
+
 If the values are not already AQL values, they will be converted automatically.
 
 This function can take any number of arguments.
 
 **Examples**
 
-`qb.and(a, b, c, d, e, f)` => `(a && b && c && d && e && f)`
+`qb.ref('x').and('y')` => `(x && y)`
 
 ### Boolean Or
 
@@ -265,19 +287,27 @@ Creates an "or" operation from the given values.
 
 `qb.or(a, b)` => `(a || b)`
 
+OR:
+
+`aqlValue.or(b)` => `(a || b)`
+
 If the values are not already AQL values, they will be converted automatically.
 
 This function can take any number of arguments.
 
 **Examples**
 
-`qb.or(a, b, c, d, e, f)` => `(a || b || c || d || e || f)`
+`qb.ref('x').or('y')` => `(x || y)`
 
 ### Addition
 
 Creates an addition operation from the given values.
 
 `qb.add(a, b)` => `(a + b)`
+
+OR:
+
+`aqlValue.add(b)` => `(a + b)`
 
 If the values are not already AQL values, they will be converted automatically.
 
@@ -287,13 +317,17 @@ This function can take any number of arguments.
 
 **Examples**
 
-`qb.add(a, b, c, d, e, f)` => `(a + b + c + d + e + f)`
+`qb.ref('x').plus('y')` => `(x + y)`
 
 ### Subtraction
 
 Creates a subtraction operation from the given values.
 
 `qb.sub(a, b)` => `(a - b)`
+
+OR:
+
+`aqlValue.sub(b)` => `(a - b)`
 
 If the values are not already AQL values, they will be converted automatically.
 
@@ -303,13 +337,17 @@ This function can take any number of arguments.
 
 **Examples**
 
-`qb.sub(a, b, c, d, e, f)` => `(a - b - c - d - e - f)`
+`qb.ref('x').minus('y')` => `(x - y)`
 
 ### Multiplication
 
 Creates a multiplication operation from the given values.
 
 `qb.mul(a, b)` => `(a * b)`
+
+OR:
+
+`aqlValue.mul(b)` => `(a * b)`
 
 If the values are not already AQL values, they will be converted automatically.
 
@@ -319,7 +357,7 @@ This function can take any number of arguments.
 
 **Examples**
 
-`qb.mul(a, b, c, d, e, f)` => `(a * b * c * d * e * f)`
+`qb.ref('x').times('y')` => `(x * y)`
 
 ### Division
 
@@ -327,13 +365,17 @@ Creates a division operation from the given values.
 
 `qb.div(a, b)` => `(a / b)`
 
+OR:
+
+`aqlValue.div(b)` => `(a / b)`
+
 If the values are not already AQL values, they will be converted automatically.
 
 This function can take any number of arguments.
 
 **Examples**
 
-`qb.div(a, b, c, d, e, f)` => `(a / b / c / d / e / f)`
+`qb.ref('x').div('y')` => `(x / y)`
 
 ### Modulus
 
@@ -341,13 +383,17 @@ Creates a modulus operation from the given values.
 
 `qb.mod(a, b)` => `(a % b)`
 
+OR:
+
+`aqlValue.mod(b)` => `(a % b)`
+
 If the values are not already AQL values, they will be converted automatically.
 
 This function can take any number of arguments.
 
 **Examples**
 
-`qb.mod(a, b, c, d, e, f)` => `(a % b % c % d % e % f)`
+`qb.ref('x').mod('y')` => `(x % y)`
 
 ### Equality
 
@@ -355,7 +401,15 @@ Creates an equality comparison from the given values.
 
 `qb.eq(a, b)` => `(a == b)`
 
+OR:
+
+`qbValue.eq(b)` => `(a == b)`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').eq('y')` => `(x == y)`
 
 ### Inequality
 
@@ -363,7 +417,15 @@ Creates an inequality comparison from the given values.
 
 `qb.neq(a, b)` => `(a != b)`
 
+OR:
+
+`qbValue.neq(b)` => `(a != b)`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').neq('y')` => `(x != y)`
 
 ### Greater Than
 
@@ -371,7 +433,15 @@ Creates a greater-than comparison from the given values.
 
 `qb.gt(a, b)` => `(a > b)`
 
+OR
+
+`qbValue.gt(b)` => `(a > b)`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').gt('y')` => `(x > y)`
 
 ### Greater Than Or Equal To
 
@@ -379,7 +449,15 @@ Creates a greater-than-or-equal-to comparison from the given values.
 
 `qb.gte(a, b)` => `(a >= b)`
 
+OR
+
+`qbValue.gte(b)` => `(a >= b)`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').gte('y')` => `(x >= y)`
 
 ### Less Than
 
@@ -387,7 +465,15 @@ Creates a less-than comparison from the given values.
 
 `qb.lt(a, b)` => `(a < b)`
 
+OR
+
+`qbValue.lt(b)` => `(a < b)`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').lt('y')` => `(x < y)`
 
 ### Less Than Or Equal To
 
@@ -395,7 +481,15 @@ Creates a less-than-or-equal-to comparison from the given values.
 
 `qb.lte(a, b)` => `(a <= b)`
 
+OR
+
+`qbValue.lte(b)` => `(a <= b)`
+
 If the values are not already AQL values, they will be converted automatically.
+
+**Examples**
+
+`qb.ref('x').lte('y')` => `(x <= y)`
 
 ### Contains
 
@@ -403,9 +497,17 @@ Creates an "in" comparison from the given values.
 
 `qb.in(a, b)` => `(a in b)`
 
+OR:
+
+`qbValue.in(b)` => `(a in b)`
+
 If the values are not already AQL values, they will be converted automatically.
 
 *Aliases:* `qb.in_(a, b)`
+
+**Examples**
+
+`qb.ref('x').in('y')` => `(x in y)`
 
 ### Negation
 
@@ -413,7 +515,15 @@ Creates a negation from the given value.
 
 `qb.not(a)` => `!(a)`
 
+OR:
+
+`qbValue.not()` => `!(a)`
+
 If the value is not already an AQL value, it will be converted automatically.
+
+**Examples**
+
+`qb.not('x')` => `!(x)`
 
 ### Negative Value
 
@@ -421,17 +531,37 @@ Creates a negative value expression from the given value.
 
 `qb.neg(a)` => `-(a)`
 
+OR:
+
+`qbValue.neg()` => `-(a)`
+
 If the value is not already an AQL value, it will be converted automatically.
+
+**Examples**
+
+`qb.neg('x')` => `-(x)`
 
 ### Ternary (if / else)
 
 Creates a ternary expression from the given values.
 
-`qb.if(condition, then, otherwise)` => `(condition ? then : otherwise)`
+`qb.if(condition, thenDo, elseDo)` => `(condition ? thenDo : elseDo)`
+
+OR:
+
+`qbValue.then(thenDo).else(elseDo)` => `(condition ? thenDo : elseDo)`
 
 If the values are not already AQL values, they will be converted automatically.
 
-*Aliases:* `qb.if_(condition, then, otherwise)`
+*Aliases:*
+
+* `qb.if_(condition, thenDo, elseDo)`
+* `qbValue.then(thenDo).else_(elseDo)
+* `qbValue.then(thenDo).otherwise(elseDo)`
+
+**Examples**
+
+`qb.ref('x').then('y').else('z')` => `(x ? y : z)`
 
 ### Function Call
 
