@@ -99,7 +99,7 @@
     renderAvailableQueries: function() {
       var position = 0;
       _.each(this.queries, function(query) {
-        $('#flightQuerySelect').append('<option position="' + position + '">' + query.name + '<option>');
+        $('#flightQuerySelect').append('<option position="' + position + '">' + query.name + '</option>');
         position++;
       });
     },
