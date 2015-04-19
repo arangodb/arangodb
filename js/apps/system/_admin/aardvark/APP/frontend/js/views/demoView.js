@@ -75,7 +75,7 @@
 
     initialize: function () {
       this.airportCollection = new window.Airports();
-      window.HASS = this;
+      window.HASS = this; // <--- BITTE ?!? ;)
     },
 
     events: {
@@ -274,7 +274,7 @@
       //TODO: lines = array, values: from, to, count, lineColor, lineWidth
 
       if (shouldRemove) {
-        this.removeFlightLines(true);
+        this.removeFlightLines(false);
       }
 
       _.each(lines, function(line) {
