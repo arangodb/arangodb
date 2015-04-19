@@ -41,13 +41,13 @@
         type: "POST",
         url: "/_api/cursor",
         data: JSON.stringify({
-          query: "for f in flights1 filter f.Origin == @airport COLLECT dest = f.Dest RETURN dest",
+          query: "for f in flights2 filter f.Origin == @airport COLLECT dest = f.Dest RETURN dest",
           bindVars: {"airport": airport}
         }),
         contentType: "application/json",
         processData: false,
         success: function (data) {
-          callback(data);
+          callback(data.result);
         },
         error: function (data) {
         }
