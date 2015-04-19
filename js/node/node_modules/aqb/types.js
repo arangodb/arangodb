@@ -3,6 +3,12 @@
 var AqlError = require('./errors').AqlError;
 var keywords = require('./assumptions').keywords;
 
+function toArray(self, args) {
+  var arr = Array.prototype.slice.call(args);
+  arr.unshift(self);
+  return arr;
+}
+
 function isQuotedString(str) {
   return (
     str.length >= 2 &&
@@ -76,7 +82,7 @@ function autoCastToken(token) {
     return token;
   }
   var type = typeof token;
-  if (Object.keys(autoCastToken).indexOf(type) === -1) {
+  if (!autoCastToken.hasOwnProperty(type)) {
     throw new AqlError('Invalid AQL value: (' + type + ') ' + token);
   }
   return autoCastToken[type](token);
@@ -87,6 +93,69 @@ autoCastToken.string = castString;
 autoCastToken.object = castObject;
 
 function Expression() {}
+Expression.prototype.range = Expression.prototype.to = function (max) {
+  return new RangeExpression(this, max);
+};
+Expression.prototype.get = function (key) {
+  return new PropertyAccess(this, key);
+};
+Expression.prototype.and = function (/* x, y... */) {
+  return new NAryOperation('&&', toArray(this, arguments));
+};
+Expression.prototype.or = function (/* x, y... */) {
+  return new NAryOperation('||', toArray(this, arguments));
+};
+Expression.prototype.add = Expression.prototype.plus = function (/* x, y... */) {
+  return new NAryOperation('+', toArray(this, arguments));
+};
+Expression.prototype.sub = Expression.prototype.minus = function (/* x, y... */) {
+  return new NAryOperation('-', toArray(this, arguments));
+};
+Expression.prototype.mul = Expression.prototype.times = function (/* x, y... */) {
+  return new NAryOperation('*', toArray(this, arguments));
+};
+Expression.prototype.div = function (/* x, y... */) {
+  return new NAryOperation('/', toArray(this, arguments));
+};
+Expression.prototype.mod = function (/* x, y... */) {
+  return new NAryOperation('%', toArray(this, arguments));
+};
+Expression.prototype.eq = function (x) {
+  return new BinaryOperation('==', this, x);
+};
+Expression.prototype.gt = function (x) {
+  return new BinaryOperation('>', this, x);
+};
+Expression.prototype.gte = function (x) {
+  return new BinaryOperation('>=', this, x);
+};
+Expression.prototype.lt = function (x) {
+  return new BinaryOperation('<', this, x);
+};
+Expression.prototype.lte = function (x) {
+  return new BinaryOperation('<=', this, x);
+};
+Expression.prototype.neq = function (x) {
+  return new BinaryOperation('!=', this, x);
+};
+Expression.prototype.not = function () {
+  return new UnaryOperation('!', this);
+};
+Expression.prototype.neg = function () {
+  return new UnaryOperation('-', this);
+};
+Expression.prototype.in_ = Expression.prototype.in = function (x) {
+  return new BinaryOperation('in', this, x);
+};
+Expression.prototype.then = function (x) {
+  var self = this;
+  var elseFn = function (y) {
+    return new TernaryOperation('?', ':', self, x, y);
+  };
+  return {else: elseFn, else_: elseFn, otherwise: elseFn};
+};
+
+
 function Operation() {}
 Operation.prototype = new Expression();
 Operation.prototype.constructor = Operation;
