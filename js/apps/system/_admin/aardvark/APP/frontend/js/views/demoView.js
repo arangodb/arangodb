@@ -8,6 +8,13 @@
   window.DemoView = Backbone.View.extend({
 
     //MAP SPECIFIC VARIABLES
+    // svg path for target icon
+    MAPtarget: (
+      "M9,0C4.029,0,0,4.029,0,9s4.029,9,9,9s9-4.029,9-9S13.971,0,9,0z M9,"
+      + "15.93 c-3.83,0-6.93-3.1-6.93-6.93S5.17,2.07,9,2.07s6.93,3.1,6.93,"
+      + "6.93S12.83,15.93,9,15.93 M12.5,9c0,1.933-1.567,3.5-3.5,3.5S5.5,"
+      + "10.933,5.5,9S7.067,5.5,9,5.5 S12.5,7.067,12.5,9z"
+    ),
     MAPicon: (
       "M23.963,20.834L17.5,9.64c-0.825-1.429-2.175-1.429-3,0L8.037,20.834c-0.825,"
       + "1.429-0.15,2.598,1.5,2.598h12.926C24.113,23.432,24.788,22.263,23.963,20.834z"
@@ -26,9 +33,9 @@
     //ICON FROM http://raphaeljs.com/icons/#plane
     MAPcolor: "black",
 
-    keyToLongLat: {},
+    keyToLongLat: {}, 
 
-    //QUERIES SECTION
+    //QUERIES SECTION    
     queries: [
       {
         name: "i am just a dummy name",
@@ -60,11 +67,7 @@
 
         this.airportCollection.each(function(model) {
           airport = model.toJSON();
-          airports.push({
-            _key: airport._key,
-            Latitude: airport.Latitude,
-            Longitude: airport.Longitude
-          });
+          airports.push(airport);
         });
         var preparedData = this.prepareData(airports);
         this.renderMap(preparedData);
@@ -102,13 +105,12 @@
           id: airport._key,
           latitude: airport.Latitude,
           longitude: airport.Longitude,
-          type: "circle", // CIRCLE INSTEAD OF ICON
-          //svgPath: self.MAPplaneicon, //ICON if wanted
+          svgPath: self.MAPtarget,
           color: self.MAPcolor,
-          scale: 0.2, //ICON SCALE
-          //TODO: LABEL TEMP. DISABLED BECAUSE OF READABILITY
-          label: airport._key,
-          labelShiftY: 2
+          scale: 0.5,
+          selectedScale: 2.5, 
+          title: airport.City + "<br>" + airport.Name + "<br>" + airport._key,
+          rollOverColor: "#ff8f35",
         });
         self.keyToLongLat[airport._key] = {
           lon: airport.Longitude,
@@ -146,19 +148,56 @@
       AmCharts.theme = AmCharts.themes.light;
       self.map = AmCharts.makeChart("demo-mapdiv", {
         type: "map",
-        theme: "light",
+        dragMap: true,
+        creditsPosition: "bottom-left",
         pathToImages: "img/ammap/",
         dataProvider: {
-          map: "worldLow",
+          map: "usa2High",
           lines: self.lines,
           images: imageData,
           getAreasFromMap: true,
-          zoomLevel: 2.25,
-          zoomLatitude: 48.22,
-          zoomLongitude: -100.00
+          //zoomLevel: 2.25,
+          //zoomLatitude: 48.22,
+          //zoomLongitude: -100.00
         },
-        areaSettings: {
-          autoZoom: true,
+      	balloon: {
+          /* 
+          maxWidth, 
+          pointerWidth, 
+          pointerOrientation, 
+          follow, 
+          show, 
+          bulletSize, 
+          shadowColor, 
+          animationDuration,
+          fadeOutDuration,
+          fixedPosition,
+          offsetY,
+          offsetX,
+          textAlign,
+          chart, 
+          "l", "t", "r", "b", 
+          "balloonColor", 
+          "pShowBullet", 
+          "pointToX", "pointToY", "interval", "text", "deltaSignY", "deltaSignX", "previousX", "previousY", "set", "textDiv", "bg", "bottom", "yPos", "prevX", "prevY", "prevTX", "prevTY", "destroyTO", "fadeAnim1", "fadeAnim2"]
+          */
+          adjustBorderColor: true,
+          balloonColor: "#ffffff",
+      		color: "#000000",
+      		cornerRadius: 5,
+      		fillColor: "#ffffff",
+          fillAlpha: 0.8,
+          borderThickness: 2,
+          borderColor: "#88A049",
+          borderAlpha: 0.8,
+          shadowAlpha: 0,
+          fontSize: 10,
+          verticalPadding: 2,
+          horizontalPadding: 4,
+      	},
+        areasSettings: {
+          autoZoom: false,
+          balloonText: "",
           selectedColor: self.MAPcolor
         },
         linesSettings: {
@@ -174,7 +213,8 @@
       this.map.validateData();
     },
 
-    renderDummy: function() {
+/* 
+       renderDummy: function() {
 
       // svg path for target icon
       var targetSVG = (
@@ -200,7 +240,7 @@
       var map = AmCharts.makeChart( "demo-mapdiv", {
         type: "map",
         "theme": "light",
-        pathToImages: "http://www.amcharts.com/lib/3/images/",
+        // pathToImages: "http://www.amcharts.com/lib/3/images/",
 
         dataProvider: {
           map: "worldLow",
@@ -458,7 +498,7 @@
         }
       } );
           }
-
+*/
         });
       }());
 

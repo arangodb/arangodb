@@ -17,7 +17,7 @@
         type: "POST",
         url: "/_api/cursor",
         data: JSON.stringify({
-          query: "for a in airports return {Latitude: a.Latitude, Longitude: a.Longitude, _key: a._key}"
+          query: "for a in airports return {Latitude: a.Latitude, Longitude: a.Longitude, Name: a.Name, City: a.City, _key: a._key}"
         }),
         contentType: "application/json",
         processData: false,
