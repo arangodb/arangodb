@@ -144,8 +144,8 @@
             list[i].Dest,
             list[i].count,
             self.calculateFlightColor(list.length, i),
-            self.calculateFlightWidth(list.length, i),
-            false);
+            self.calculateFlightWidth(list.length, i)
+          );
         }
         self.map.validateData();
       });
@@ -226,6 +226,9 @@
           images: imageData, 
           getAreasFromMap: true
         },
+        clickMapObject: function(mapObject){
+          console.log(mapObject);
+        },
       	balloon: {
           adjustBorderColor: true,
           balloonColor: "#ffffff",
@@ -255,38 +258,23 @@
     },
 
     removeFlightLines: function(shouldRender) {
-
       this.lines.length = 0;
 
       if (shouldRender) {
         this.map.validateData();
       }
-
     },
 
-    addFlightLines: function(lines, shouldRemove, shouldRender) {
+    addFlightLines: function(lines) {
       //TODO: lines = array, values: from, to, count, lineColor, lineWidth
-
-      if (shouldRemove) {
-        this.removeFlightLines(false);
-      }
-
       _.each(lines, function(line) {
         addFlightLine(line.from, line.to, line.count, line.lineColor, line.lineWidth, false);
       });
-
-      if (shouldRender) {
-        this.map.validateData();
-      }
-
     },
 
     addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
       console.log("Adding", from, to, count, lineColor, lineWidth);
       this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
-      if (shouldRender) {
-        this.map.validateData();
-      }
     }
 
   });
