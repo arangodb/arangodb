@@ -48,7 +48,7 @@
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.js",
             "frontend/js/lib/ammap/ammap.js",
-            "frontend/js/lib/ammap/maps/js/worldLow.js",
+            "frontend/js/lib/ammap/maps/js/usa2High.js",
             "frontend/js/lib/ammap/themes/light.js",
             "frontend/src/ace.js",
             "frontend/src/theme-textmate.js",
@@ -321,7 +321,8 @@
       'concat_in_order:default',
       'concat_in_order:jsCluster',
       'concat_in_order:htmlCluster',
-      'concat_in_order:htmlStandalone'
+      'concat_in_order:htmlStandalone',
+      'watch'
     ]);
 
 
