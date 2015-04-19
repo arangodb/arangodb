@@ -109,7 +109,7 @@
           color: self.MAPcolor,
           scale: 0.5,
           selectedScale: 2.5, 
-          title: airport.City + "<br>" + airport.Name + "<br>" + airport._key,
+          title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
           rollOverColor: "#ff8f35",
         });
         self.keyToLongLat[airport._key] = {
@@ -186,14 +186,14 @@
       		color: "#000000",
       		cornerRadius: 5,
       		fillColor: "#ffffff",
-          fillAlpha: 0.8,
-          borderThickness: 2,
+          fillAlpha: 0.75,
+          borderThickness: 1.5,
           borderColor: "#88A049",
-          borderAlpha: 0.8,
+          borderAlpha: 0.4,
           shadowAlpha: 0,
           fontSize: 10,
-          verticalPadding: 2,
-          horizontalPadding: 4,
+          verticalPadding: 3,
+          horizontalPadding: 6,
       	},
         areasSettings: {
           autoZoom: false,
