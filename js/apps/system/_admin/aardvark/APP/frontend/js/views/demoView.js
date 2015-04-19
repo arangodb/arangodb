@@ -231,6 +231,9 @@
           images: imageData, 
           getAreasFromMap: true
         },
+        clickMapObject: function(mapObject){
+          console.log(mapObject);
+        },
       	balloon: {
           adjustBorderColor: true,
           balloonColor: "#ffffff",
