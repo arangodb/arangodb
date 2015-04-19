@@ -40,6 +40,22 @@
       {
         name: "All Flights from SFO",
         value: "here is the place of the actual query statement"
+      },
+      {
+        name: "All Flights from JFK",
+        value: "here is the place of the actual query statement"
+      },
+      {
+        name: "All Flights from DFW",
+        value: "here is the place of the actual query statement"
+      },
+      {
+        name: "All Flights from ATL",
+        value: "here is the place of the actual query statement"
+      },
+      {
+        name: "All Flights from CWA",
+        value: "here is the place of the actual query statement"
       }
     ],
 
@@ -95,6 +111,18 @@
       if (currentQueryPos === "0") {
         this.loadAirportData("SFO");
       }
+      if (currentQueryPos === "1") {
+        this.loadAirportData("JFK");
+      }
+      if (currentQueryPos === "2") {
+        this.loadAirportData("DFW");
+      }
+      if (currentQueryPos === "3") {
+        this.loadAirportData("ATL");
+      }
+      if (currentQueryPos === "4") {
+        this.loadAirportData("CWA");
+      }
     },
 
     loadAirportData: function(airport) {
@@ -103,13 +131,19 @@
         self.lines.length = 0;
         var i = 0;
         console.log(list);
+        console.log(list.length/21);
+        var colors = ['rgb(255,255,229)','rgb(255,247,188)','rgb(254,227,145)','rgb(254,196,79)','rgb(254,153,41)','rgb(236,112,20)','rgb(204,76,2)','rgb(153,52,4)','rgb(102,37,6)'];
+        var intervallColor = list.length/colors.length;
+        var intervallWidth = list.length/2;  
         for (i = 0; i < list.length; ++i) {
-          self.addFlightLine(airport, list[i], false);
+          console.log(Math.floor(i/intervallColor));
+          console.log(Math.floor(i/intervallWidth));
+          self.addFlightLine(airport, list[i].Dest, list[i].count, colors[Math.floor(i/intervallColor)], (Math.floor(i/intervallWidth) + 2), false);
         }
         self.map.validateData();
       });
     },
-
+   
     prepareData: function (data) {
 
       var self = this, imageData = [];
@@ -120,7 +154,7 @@
           latitude: airport.Latitude,
           longitude: airport.Longitude,
           svgPath: self.MAPtarget,
-          color: self.MAPcolor,
+          color: "#222222",
           scale: 0.5,
           selectedScale: 2.5, 
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
@@ -141,7 +175,7 @@
       return imageData;
     },
 
-    createFlightEntry: function(from, to, weight) {
+    createFlightEntry: function(from, to, weight, lineColor, lineWidth) {
       return {
         longitudes: [
           this.keyToLongLat[from].lon,
@@ -150,7 +184,10 @@
         latitudes: [
           this.keyToLongLat[from].lat,
           this.keyToLongLat[to].lat
-        ]
+        ],
+        title: from + " - " + to + "<br>" + weight,
+        color: lineColor,
+        thickness: lineWidth
       };
     },
 
@@ -168,33 +205,10 @@
         dataProvider: {
           map: "usa2High",
           lines: self.lines,
-          images: imageData,
-          getAreasFromMap: true,
-          //zoomLevel: 2.25,
-          //zoomLatitude: 48.22,
-          //zoomLongitude: -100.00
+          images: imageData, 
+          getAreasFromMap: true
         },
       	balloon: {
-          /* 
-          maxWidth, 
-          pointerWidth, 
-          pointerOrientation, 
-          follow, 
-          show, 
-          bulletSize, 
-          shadowColor, 
-          animationDuration,
-          fadeOutDuration,
-          fixedPosition,
-          offsetY,
-          offsetX,
-          textAlign,
-          chart, 
-          "l", "t", "r", "b", 
-          "balloonColor", 
-          "pShowBullet", 
-          "pointToX", "pointToY", "interval", "text", "deltaSignY", "deltaSignX", "previousX", "previousY", "set", "textDiv", "bg", "bottom", "yPos", "prevX", "prevY", "prevTX", "prevTY", "destroyTO", "fadeAnim1", "fadeAnim2"]
-          */
           adjustBorderColor: true,
           balloonColor: "#ffffff",
       		color: "#000000",
@@ -207,7 +221,7 @@
           shadowAlpha: 0,
           fontSize: 10,
           verticalPadding: 3,
-          horizontalPadding: 6,
+          horizontalPadding: 6
       	},
         areasSettings: {
           autoZoom: false,
@@ -215,16 +229,17 @@
           selectedColor: self.MAPcolor
         },
         linesSettings: {
-          color: "#FF0000",
-          alpha: 1
+          color: "#ff8f35", // 7629C4
+          alpha: 0.75,
+          thickness: 2
         },
         linesAboveImages: true
       });
     },
-
-    addFlightLine: function(from, to, shouldRender) {
-      console.log("Adding", from, to);
-      this.lines.push(this.createFlightEntry(from, to));
+  
+    addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
+      console.log("Adding", from, to, count);
+      this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
       if (shouldRender) {
         this.map.validateData();
       }

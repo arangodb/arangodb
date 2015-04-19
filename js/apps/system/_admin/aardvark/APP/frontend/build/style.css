@@ -6490,3 +6490,6 @@ table .sorting {
   text-align: left;
   vertical-align: middle;
   width: 506px; }
+
+.amcharts-balloon-div {
+  line-height: 1.1em; }
