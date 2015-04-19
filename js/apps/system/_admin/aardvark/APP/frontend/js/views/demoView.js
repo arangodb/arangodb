@@ -33,6 +33,18 @@
     //ICON FROM http://raphaeljs.com/icons/#plane
     MAPcolor: "black",
 
+    lineColors: [
+      'rgb(255,255,229)',
+      'rgb(255,247,188)',
+      'rgb(254,227,145)',
+      'rgb(254,196,79)',
+      'rgb(254,153,41)',
+      'rgb(236,112,20)',
+      'rgb(204,76,2)',
+      'rgb(153,52,4)',
+      'rgb(102,37,6)'
+    ],
+
     keyToLongLat: {}, 
 
     //QUERIES SECTION    
@@ -128,22 +140,33 @@
     loadAirportData: function(airport) {
       var self = this;
       this.airportCollection.getFlightsForAirport(airport, function(list) {
-        self.lines.length = 0;
+
+        self.removeFlightLines(false);
+
         var i = 0;
-        console.log(list);
-        console.log(list.length/21);
-        var colors = ['rgb(255,255,229)','rgb(255,247,188)','rgb(254,227,145)','rgb(254,196,79)','rgb(254,153,41)','rgb(236,112,20)','rgb(204,76,2)','rgb(153,52,4)','rgb(102,37,6)'];
-        var intervallColor = list.length/colors.length;
-        var intervallWidth = list.length/2;  
         for (i = 0; i < list.length; ++i) {
-          console.log(Math.floor(i/intervallColor));
-          console.log(Math.floor(i/intervallWidth));
-          self.addFlightLine(airport, list[i].Dest, list[i].count, colors[Math.floor(i/intervallColor)], (Math.floor(i/intervallWidth) + 2), false);
+          self.addFlightLine(
+            airport,
+            list[i].Dest,
+            list[i].count,
+            self.calculateFlightColor(list.length, i),
+            self.calculateFlightWidth(list.length, i),
+            false);
         }
         self.map.validateData();
       });
     },
-   
+
+    calculateFlightWidth: function(length, pos) {
+      var intervallWidth = length/2;
+      return Math.floor(pos/intervallWidth) + 2;
+    },
+
+    calculateFlightColor: function(length, pos) {
+      var intervallColor = length/this.lineColors.length;
+      return this.lineColors[Math.floor(pos/intervallColor)];
+    },
+
     prepareData: function (data) {
 
       var self = this, imageData = [];
@@ -236,7 +259,34 @@
         linesAboveImages: true
       });
     },
-  
+
+    removeFlightLines: function(shouldRender) {
+
+      this.lines.length = 0;
+
+      if (shouldRender) {
+        this.map.validateData();
+      }
+
+    },
+
+    addFlightLines: function(lines, shouldRemove, shouldRender) {
+      //TODO: lines = array, values: from, to, count, lineColor, lineWidth
+
+      if (shouldRemove) {
+        this.removeFlightLines(true);
+      }
+
+      _.each(lines, function(line) {
+        addFlightLine(line.from, line.to, line.count, line.lineColor, line.lineWidth, false);
+      });
+
+      if (shouldRender) {
+        this.map.validateData();
+      }
+
+    },
+
     addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
       console.log("Adding", from, to, count);
       this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
