@@ -58,6 +58,7 @@ AmCharts.themes.light = {
 	AmGraph: {
 		lineAlpha: 0.9
 	},
+  
 	GaugeArrow: {
 		color: "#000000",
 		alpha: 0.8,
@@ -87,15 +88,16 @@ AmCharts.themes.light = {
 
 	// ammap
 	AreasSettings: {
-		alpha: 0.8,
-		color: "#67b7dc",
-		colorSolid: "#003767",
+		alpha: 0.9,
+		color: "#8aa051",
+		colorSolid: "#ff0000",
+		// colorSolid: "#003767",
 		unlistedAreasAlpha: 0.4,
-		unlistedAreasColor: "#000000",
-		outlineColor: "#FFFFFF",
+		unlistedAreasColor: "#ff0000",
+    outlineColor: "#FFFFFF",
 		outlineAlpha: 0.5,
 		outlineThickness: 0.5,
-		rollOverColor: "#3c5bdc",
+		rollOverColor: "#8aa051",
 		rollOverOutlineColor: "#FFFFFF",
 		selectedOutlineColor: "#FFFFFF",
 		selectedColor: "#f15135",
@@ -116,17 +118,17 @@ AmCharts.themes.light = {
 	},
 
 	ZoomControl: {
-		buttonRollOverColor: "#3c5bdc",
-		buttonFillColor: "#3994e2",
+		buttonRollOverColor: "#6A873E",
+		buttonFillColor: "#88A049",
 		buttonBorderColor: "#3994e2",
-		buttonFillAlpha: 0.8,
+		buttonFillAlpha: 0.9,
 		gridBackgroundColor: "#FFFFFF",
 		buttonBorderAlpha:0,
 		buttonCornerRadius:2,
 		gridColor:"#FFFFFF",
 		gridBackgroundColor:"#000000",
 		buttonIconAlpha:0.6,
-		gridAlpha: 0.6,
+		gridAlpha: 0.8,
 		buttonSize:20
 	},
 
@@ -177,7 +179,6 @@ AmCharts.themes.light = {
 	},
 
 	DataSetSelector: {
-
 		color: "#000000",
 		selectedBackgroundColor: "#b9cdf5",
 		rollOverBackgroundColor: "#a8b0e4"
