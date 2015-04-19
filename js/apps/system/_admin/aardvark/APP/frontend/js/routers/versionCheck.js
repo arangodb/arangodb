@@ -60,7 +60,7 @@
       async: true,
       success: function(data) {
         var currentVersion =
-          window.versionHelper.fromString(data.version);
+        window.versionHelper.fromString(data.version);
         window.parseVersions = function (json) {
           if (_.isEmpty(json)) {
             return; // no new version.
@@ -74,6 +74,7 @@
           type: "GET",
           async: true,
           crossDomain: true,
+          timeout: 3000,
           dataType: "jsonp",
           url: "https://www.arangodb.com/repositories/versions.php" +
           "?jsonp=parseVersions&version=" + encodeURIComponent(currentVersion.toString())
