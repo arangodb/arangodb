@@ -31,7 +31,7 @@
     //QUERIES SECTION
     queries: [
       {
-        name: "i am just a dummy name",
+        name: "All Flights from SFO",
         value: "here is the place of the actual query statement"
       }
     ],
@@ -89,8 +89,22 @@
       //TODO: RUN SELECTED QUERY IF USER SELECTS QUERY
 
       var currentQueryPos = $( "#flightQuerySelect option:selected" ).attr('position');
-      var currentQuery = this.queries[parseInt(currentQueryPos)].value;
+      console.log(currentQueryPos);
+      if (currentQueryPos === 0) {
+        this.loadAirportData("SFO");
+      }
+    },
 
+    loadAirportData: function(airport) {
+      var self = this;
+      this.collection.getFlightsForAirport(airport, function(list) {
+        self.lines.length = 0;
+        var i = 0;
+        for (i = 0; i < list.length; ++i) {
+          self.addFlightLine(airport, list[i], false);
+        }
+        self.map.validateData();
+      });
     },
 
     prepareData: function (data) {
@@ -151,7 +165,7 @@
         dataProvider: {
           map: "worldLow",
           lines: self.lines,
-          images: imageData,
+          objects: imageData,
           getAreasFromMap: true,
           zoomLevel: 2.25,
           zoomLatitude: 48.22,
@@ -169,9 +183,11 @@
       });
     },
 
-    addFlightLine: function(from, to) {
+    addFlightLine: function(from, to, shouldRender) {
       this.lines.push(this.createFlightEntry(from, to));
-      this.map.validateData();
+      if (shouldRender) {
+        this.map.validateData();
+      }
     },
 
     renderDummy: function() {

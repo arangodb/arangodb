@@ -34,6 +34,26 @@
       });
     },
 
+    getFlightsForAirport: function(airport, callback) {
+      var self = this;
+
+      $.ajax({
+        type: "POST",
+        url: "/_api/cursor",
+        data: JSON.stringify({
+          query: "for f in flights1 filter f.Origin == @airport COLLECT dest = f.Dest RETURN dest",
+          bindVars: {"airport": airport}
+        }),
+        contentType: "application/json",
+        processData: false,
+        success: function (data) {
+          callback(data);
+        },
+        error: function (data) {
+        }
+      });
+    },
+
     model: window.Airport
 
   });
