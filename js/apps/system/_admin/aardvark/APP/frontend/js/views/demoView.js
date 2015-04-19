@@ -15,6 +15,7 @@
       + "6.93S12.83,15.93,9,15.93 M12.5,9c0,1.933-1.567,3.5-3.5,3.5S5.5,"
       + "10.933,5.5,9S7.067,5.5,9,5.5 S12.5,7.067,12.5,9z"
     ),
+    /*
     MAPicon: (
       "M23.963,20.834L17.5,9.64c-0.825-1.429-2.175-1.429-3,0L8.037,20.834c-0.825,"
       + "1.429-0.15,2.598,1.5,2.598h12.926C24.113,23.432,24.788,22.263,23.963,20.834z"
@@ -31,7 +32,7 @@
       + "4.512,20.618,7.163,19.671,8.11z"
     ),
     //ICON FROM http://raphaeljs.com/icons/#plane
-    MAPcolor: "black",
+    */
 
     lineColors: [
       'rgb(255,255,229)',
@@ -50,24 +51,19 @@
     //QUERIES SECTION    
     queries: [
       {
-        name: "All Flights from SFO",
-        value: "here is the place of the actual query statement"
+        name: "All Flights from SFO"
       },
       {
-        name: "All Flights from JFK",
-        value: "here is the place of the actual query statement"
+        name: "All Flights from JFK"
       },
       {
-        name: "All Flights from DFW",
-        value: "here is the place of the actual query statement"
+        name: "All Flights from DFW"
       },
       {
-        name: "All Flights from ATL",
-        value: "here is the place of the actual query statement"
+        name: "All Flights from ATL"
       },
       {
-        name: "All Flights from CWA",
-        value: "here is the place of the actual query statement"
+        name: "All Flights from CWA"
       }
     ],
 
@@ -75,7 +71,7 @@
 
     initialize: function () {
       this.airportCollection = new window.Airports();
-      window.HASS = this; // <--- BITTE ?!? ;)
+      window.HASS = this; // <--- BITTE ?!? ;) <-- zu viel Kontakt mit Jan
     },
 
     events: {
@@ -100,7 +96,6 @@
         var preparedData = this.prepareData(airports);
         this.renderMap(preparedData);
         // this.renderDummy();
-
       }.bind(this);
 
       this.airportCollection.getAirports(callback);
@@ -118,15 +113,14 @@
 
     runSelectedQuery: function() {
       //TODO: RUN SELECTED QUERY IF USER SELECTS QUERY
-
       var currentQueryPos = $( "#flightQuerySelect option:selected" ).attr('position');
       if (currentQueryPos === "0") {
         this.loadAirportData("SFO");
       }
-      if (currentQueryPos === "1") {
+      else if (currentQueryPos === "1") {
         this.loadAirportData("JFK");
       }
-      if (currentQueryPos === "2") {
+      else if (currentQueryPos === "2") {
         this.loadAirportData("DFW");
       }
       if (currentQueryPos === "3") {
@@ -159,7 +153,8 @@
 
     calculateFlightWidth: function(length, pos) {
       var intervallWidth = length/2;
-      return Math.floor(pos/intervallWidth) + 2;
+      // return Math.floor(pos/intervallWidth) + 2;
+      return 1;
     },
 
     calculateFlightColor: function(length, pos) {
@@ -248,15 +243,14 @@
       	},
         areasSettings: {
           autoZoom: false,
-          balloonText: "",
-          selectedColor: self.MAPcolor
+          balloonText: ""
         },
         linesSettings: {
           color: "#ff8f35", // 7629C4
           alpha: 0.75,
           thickness: 2
         },
-        linesAboveImages: true
+        linesAboveImages: true,
       });
     },
 
@@ -288,7 +282,7 @@
     },
 
     addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
-      console.log("Adding", from, to, count);
+      console.log("Adding", from, to, count, lineColor, lineWidth);
       this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
       if (shouldRender) {
         this.map.validateData();
