@@ -38,7 +38,7 @@ struct TRI_document_collection_t;
 
 namespace triagens {
   namespace aql {
-    class Variable;
+    struct Variable;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief AttributeAccessor
