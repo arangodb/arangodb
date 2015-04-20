@@ -100,7 +100,8 @@ namespace triagens {
       }
 
       AqlValue (int64_t low, int64_t high) 
-        : _type(RANGE) {
+        : _range(nullptr),
+          _type(RANGE) {
         _range = new Range(low, high);
       }
 
@@ -160,7 +161,7 @@ namespace triagens {
 /// is used when the AqlValue is stolen and stored in another object
 ////////////////////////////////////////////////////////////////////////////////
 
-      void erase () {
+      void erase () throw() {
         _type = EMPTY;
         _json = nullptr;
       }
@@ -377,9 +378,6 @@ namespace std {
       std::hash<void const*> ptrHash;
       size_t res = intHash(static_cast<uint32_t>(x._type));
       switch (x._type) {
-        case triagens::aql::AqlValue::EMPTY: {
-          return res;
-        }
         case triagens::aql::AqlValue::JSON: {
           return res ^ ptrHash(x._json);
         }
@@ -392,11 +390,13 @@ namespace std {
         case triagens::aql::AqlValue::RANGE: {
           return res ^ ptrHash(x._range);
         }
-        default: {
-          TRI_ASSERT(false);
-          return 0;
+        case triagens::aql::AqlValue::EMPTY: {
+          return res;
         }
       }
+
+      TRI_ASSERT(false);
+      return 0;
     }
   };
 

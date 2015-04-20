@@ -3563,7 +3563,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   }
 
   std::unordered_map<std::vector<AqlValue>, size_t, GroupKeyHash, GroupKeyEqual> allGroups(
-    256, 
+    1024, 
     GroupKeyHash(_trx, colls), 
     GroupKeyEqual(_trx, colls)
   );
@@ -3621,26 +3621,27 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   while (skipped < atMost) {
     groupValues.clear();
 
+    // for hashing simply re-use the aggregate registers, without cloning their contents
     for (size_t i = 0; i < n; ++i) {
       groupValues.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second));
     }
 
-
+    // now check if we already know this group
     auto it = allGroups.find(groupValues);
 
     if (it == allGroups.end()) {
       // new group
       group.clear();
-      
-      // copy the group values
+
+      // copy the group values before they get invalidated
       for (size_t i = 0; i < n; ++i) {
-        group.emplace_back(cur->getValue(_pos, _aggregateRegisters[i].second).clone());
+        group.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second).clone());
       }
 
       allGroups.emplace(group, 1);
     }
     else {
-      // existing group
+      // existing group. simply increase the counter
       (*it).second++;
     }
 
