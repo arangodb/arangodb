@@ -603,12 +603,12 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
         if (i > 0) {
           query += ",";
         }
-        query += "MERGE(@vertexExample_" + this.stack.length
+        query += "MERGE(NTH(@vertexExample_" + this.stack.length + "," + i + ")"
           + "," + mergeWith[i] + ")";
       }
       query += "]";
     } else {
-      query += "MERGE(@vertexExample_" + this.stack.length
+      query += "MERGE(@vertexExample_" + this.stack.length 
         + "," + mergeWith + ")";
     }
   } else {
@@ -1016,7 +1016,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Restriction of a query is only valid for collections known to the graph:
-//
+///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphFluentAQLRestrictedUnknown}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
