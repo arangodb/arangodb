@@ -5286,7 +5286,7 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
     example = [ { } ];
   }
   if (typeof example === "string") {
-    example = { _id : example };
+    example = [ { _id : example } ];
   }
   if (! Array.isArray(example)) {
     example = [ example ];
@@ -5296,7 +5296,7 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
     if (typeof e === "string") {
       tmp.push({ _id : e });
     } 
-    else {
+    else if (e !== null) {
       tmp.push(e);
     }
   });
