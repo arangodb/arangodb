@@ -128,7 +128,7 @@ namespace triagens {
             TRI_IF_FAILURE("AqlItemBlock::setValue") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
-            _valueCount.emplace(std::make_pair(value, 1));
+            _valueCount.emplace(value, 1);
           }
           else {
             TRI_ASSERT_EXPENSIVE(it->second > 0);
@@ -147,19 +147,24 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void destroyValue (size_t index, RegisterId varNr) {
-          if (! _data[index * _nrRegs + varNr].isEmpty()) {
-            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+          size_t const pos = index * _nrRegs + varNr;
+          auto& element = _data[pos];
+
+          if (! element.isEmpty()) {
+            auto it = _valueCount.find(element);
             if (it != _valueCount.end()) {
-              if (--it->second == 0) {
+              if (--(it->second) == 0) {
                 try {
                   _valueCount.erase(it);
-                  _data[index * _nrRegs + varNr].destroy();
+                  element.destroy();
+                  return; // no need for an extra element.erase() in this case
                 }
                 catch (...) {
                 }
               }
             }
-            _data[index * _nrRegs + varNr].erase();
+
+            element.erase();
           }
         }
 
@@ -169,10 +174,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void eraseValue (size_t index, RegisterId varNr) {
-          if (! _data[index * _nrRegs + varNr].isEmpty()) {
-            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+          size_t const pos = index * _nrRegs + varNr;
+          auto& element = _data[pos];
+
+          if (! element.isEmpty()) {
+            auto it = _valueCount.find(element);
             if (it != _valueCount.end()) {
-              if (--it->second == 0) {
+              if (--(it->second) == 0) {
                 try {
                   _valueCount.erase(it);
                 }
@@ -180,7 +188,8 @@ namespace triagens {
                 }
               }
             }
-            _data[index * _nrRegs + varNr].erase();
+
+            element.erase();
           }
         }
 
@@ -190,12 +199,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void eraseAll () {
-          size_t const n = _data.size();
-          for (size_t i = 0; i < n; ++i) {
-            if (! _data[i].isEmpty()) {
-              _data[i].erase();
+          for (auto& it : _data) {
+            if (! it.isEmpty()) {
+              it.erase();
             }
           }
+
           _valueCount.clear();
         }
 
@@ -204,14 +213,12 @@ namespace triagens {
 /// this is used if the value is stolen and later released from elsewhere
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t valueCount (AqlValue v) {
+        uint32_t valueCount (AqlValue const& v) const {
           auto it = _valueCount.find(v);
           if (it == _valueCount.end()) {
             return 0;
           }
-          else {
-            return it->second;
-          }
+          return it->second;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
