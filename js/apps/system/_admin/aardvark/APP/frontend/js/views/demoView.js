@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts*/
+/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts, lunr*/
 
 (function () {
   "use strict";
@@ -46,6 +46,13 @@
       'rgb(102,37,6)'
     ],
 
+    airportColor: "#222222",
+    airportHighlightColor: "#FF4E4E",
+    airportHoverColor: "#ff8f35",
+
+    airportScale: 0.5,
+    airportHighligthScale: 0.95,
+
     imageData: [],
 
     keyToLongLat: {}, 
@@ -83,6 +90,30 @@
 
     template: templateEngine.createTemplate("demoView.ejs"),
 
+    generateIndex: function () {
+      var airport, self = this;
+
+      self.index = lunr(function () {
+        this.field('Name', { boost: 10 });
+        this.field('City');
+        this.field('_key');
+      });
+
+      this.airportCollection.each(function(model) {
+        airport = model.toJSON();
+
+        console.log(airport);
+
+        self.index.add({
+          Name: airport.Name,
+          City: airport.City,
+          _key: airport._key,
+          id: airport._key
+        });
+      });
+
+    },
+
     render: function () {
       $(this.el).html(this.template.render({}));
       this.renderAvailableQueries();
@@ -97,6 +128,8 @@
         });
         this.imageData = this.prepareData(airports);
         this.renderMap();
+
+        this.generateIndex();
       }.bind(this);
 
       this.airportCollection.getAirports(callback);
@@ -112,8 +145,21 @@
       });
     },
 
-    searchInput: function(select) {
-      console.log(select);
+    searchInput: function(e) {
+
+      var self = this, airports = this.index.search($(e.currentTarget).val());
+
+      _.each(this.imageData, function(airport) {
+          airport.color = self.airportColor;
+          airport.scale = self.airportScale;
+      });
+
+      _.each(airports, function(airport) {
+        self.setAirportColor(airport.ref, self.airportHighlightColor, false);
+        self.setAirportSize(airport.ref, self.airportHighligthScale, false);
+      });
+
+      self.map.validateData();
     },
 
     runSelectedQuery: function() {
@@ -200,33 +246,29 @@
     },
 
     //Color = HEXCODE e.g. #FFFFFF
-    setAirportColor: function(id, color) {
-      var changedColor = false;
+    setAirportColor: function(id, color, shouldRender) {
 
       _.each(this.imageData, function(airport) {
         if (airport.id === id) {
-          changedColor = true;
           airport.color = color;
         }
       });
 
-      if (changedColor) {
+      if (shouldRender) {
         this.map.validateData();
       }
     },
 
     //size = numeric value e.g. 0.5 or 1.3
-    setAirportSize: function(id, size) {
-      var changedSize = false;
+    setAirportSize: function(id, size, shouldRender) {
 
       _.each(this.imageData, function(airport) {
         if (airport.id === id) {
-          changedSize = true;
           airport.scale = size;
         }
       });
 
-      if (changedSize) {
+      if (shouldRender) {
         this.map.validateData();
       }
     },
@@ -241,11 +283,11 @@
           latitude: airport.Latitude,
           longitude: airport.Longitude,
           svgPath: self.MAPtarget,
-          color: "#222222",
-          scale: 0.5,
+          color: self.airportColor,
+          scale: self.airportScale,
           selectedScale: 2.5,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
-          rollOverColor: "#ff8f35",
+          rollOverColor: self.airportHoverColor,
         });
         self.keyToLongLat[airport._key] = {
           lon: airport.Longitude,

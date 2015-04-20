@@ -47,6 +47,7 @@
             "frontend/js/lib/highlight.7.3.pack.js",
             "frontend/js/lib/joi.browser.js",
             "frontend/js/lib/md5.js",
+            "frontend/js/lib/lunr.min.js",
             "frontend/js/lib/ammap/ammap.js",
             "frontend/js/lib/ammap/maps/js/usa2High.js",
             "frontend/js/lib/ammap/themes/light.js",
