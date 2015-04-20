@@ -102,9 +102,12 @@
       this.airportCollection.each(function(model) {
         airport = model.toJSON();
 
+        console.log(airport);
+
         self.index.add({
           Name: airport.Name,
           City: airport.City,
+          _key: airport._key,
           id: airport._key
         });
       });
