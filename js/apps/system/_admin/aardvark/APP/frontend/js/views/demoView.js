@@ -94,15 +94,13 @@
       var airport, self = this;
 
       self.index = lunr(function () {
-        this.field('Name', { boost: 10 });
+        this.field('Name', { boost: 10 }); //strongest index field
         this.field('City');
         this.field('_key');
       });
 
       this.airportCollection.each(function(model) {
         airport = model.toJSON();
-
-        console.log(airport);
 
         self.index.add({
           Name: airport.Name,
@@ -128,6 +126,7 @@
         });
         this.imageData = this.prepareData(airports);
         this.renderMap();
+        this.renderMap();
 
         this.generateIndex();
       }.bind(this);
@@ -149,21 +148,29 @@
 
       var self = this, airports = this.index.search($(e.currentTarget).val());
 
-      _.each(this.imageData, function(airport) {
-          airport.color = self.airportColor;
-          airport.scale = self.airportScale;
-      });
+      self.resetDataHighlighting();
+      self.removeFlightLines(false);
 
       _.each(airports, function(airport) {
         self.setAirportColor(airport.ref, self.airportHighlightColor, false);
         self.setAirportSize(airport.ref, self.airportHighligthScale, false);
       });
 
+      if (airports.length === 1) {
+        //TODO: maybe zoom to airport if found?
+        //self.zoomToAirport(airports[0].ref);
+        self.showAirportBalloon(airports); // <-- only works with single map object, not multiple :(
+      }
+
+      //if (airports.length <= 10) {
+      //}
+
       self.map.validateData();
+
+
     },
 
     runSelectedQuery: function() {
-      //TODO: RUN SELECTED QUERY IF USER SELECTS QUERY
       var currentQueryPos = $( "#flightQuerySelect option:selected" ).attr('position');
       if (currentQueryPos === "0") {
         this.loadAirportData("SFO");
@@ -187,7 +194,6 @@
       var timer = new Date();
 
       var airportData = this.airportCollection.findWhere({_key: airport});
-      console.log(airportData);
       this.airportCollection.getFlightsForAirport(airport, function(list) {
 
         var timeTaken = new Date() - timer;
@@ -197,6 +203,9 @@
         var allFlights = 0;
 
         var i = 0;
+
+        self.resetDataHighlighting();
+
         for (i = 0; i < list.length; ++i) {
           self.addFlightLine(
             airport,
@@ -234,15 +243,39 @@
     },
 
     calculateFlightWidth: function(length, pos) {
-      var intervallWidth = length/2;
+      //var intervallWidth = length/2;
       // return Math.floor(pos/intervallWidth) + 2;
       //TODO: no custom width for lines wanted?
       return 1.5;
     },
-    
+
     calculateFlightColor: function(length, pos) {
       var intervallColor = length/this.lineColors.length;
       return this.lineColors[Math.floor(pos/intervallColor)];
+    },
+
+    zoomToAirport: function (id) {
+      this.map.zoomToSelectedObject(this.map.getObjectById(id));
+    },
+
+    showAirportBalloon: function (objects) {
+
+      var self = this, mapObject;
+
+      _.each(objects, function(object) {
+        mapObject = self.map.getObjectById(object.ref);
+        self.map.rollOverMapObject(mapObject);
+      });
+    },
+
+    hideAirportBalloon: function (objects) {
+
+      var self = this, mapObject;
+
+      _.each(objects, function(object) {
+        mapObject = self.map.getObjectById(object.ref);
+        self.map.rollOutMapObject(mapObject);
+      });
     },
 
     //Color = HEXCODE e.g. #FFFFFF
@@ -273,6 +306,16 @@
       }
     },
 
+    resetDataHighlighting: function() {
+
+      var self = this;
+
+      _.each(this.imageData, function(airport) {
+          airport.color = self.airportColor;
+          airport.scale = self.airportScale;
+      });
+    },
+
     prepareData: function (data) {
 
       var self = this, imageData = [];
@@ -288,6 +331,7 @@
           selectedScale: 2.5,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
           rollOverColor: self.airportHoverColor,
+          selectable: true
         });
         self.keyToLongLat[airport._key] = {
           lon: airport.Longitude,
@@ -328,25 +372,26 @@
       AmCharts.theme = AmCharts.themes.light;
       self.map = AmCharts.makeChart("demo-mapdiv", {
         type: "map",
+        showDescriptionOnHover: false,
         dragMap: true,
         creditsPosition: "bottom-left",
         pathToImages: "img/ammap/",
         dataProvider: {
           map: "usa2High",
           lines: self.lines,
-          images: self.imageData, 
+          images: self.imageData,
           getAreasFromMap: true
-        }, 
+        },
         clickMapObject: function(mapObject) {
           console.log(mapObject);
           self.loadAirportData(mapObject.id);
         },
-      	balloon: {
+        balloon: {
           adjustBorderColor: true,
           balloonColor: "#ffffff",
-      		color: "#000000",
-      		cornerRadius: 5,
-      		fillColor: "#ffffff",
+          color: "#000000",
+          cornerRadius: 5,
+          fillColor: "#ffffff",
           fillAlpha: 0.75,
           borderThickness: 1.5,
           borderColor: "#88A049",
@@ -355,7 +400,7 @@
           fontSize: 10,
           verticalPadding: 3,
           horizontalPadding: 6
-      	},
+        },
         areasSettings: {
           autoZoom: false,
           balloonText: ""
@@ -378,7 +423,6 @@
     },
 
     addFlightLines: function(lines) {
-      //TODO: lines = array, values: from, to, count, lineColor, lineWidth
       _.each(lines, function(line) {
         this.addFlightLine(line.from, line.to, line.count, line.lineColor, line.lineWidth, false);
       });
@@ -387,6 +431,12 @@
     addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
       console.log("Adding", from, to, count, lineColor, lineWidth);
       this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
+
+      this.setAirportColor(from, "#FFFFFF");
+      this.setAirportColor(to, this.airportHighlightColor);
+
+      this.setAirportSize(from, 1.5);
+      this.setAirportSize(to, this.airportHighligthScale);
     }
 
   });
