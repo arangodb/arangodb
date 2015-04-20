@@ -3,9 +3,6 @@
 <!-- js/actions/api-cursor.js -->
 @startDocuBlock JSF_post_api_cursor
 
-<!-- js/actions/api-query.js -->
-@startDocuBlock JSF_post_api_query
-
 <!-- js/actions/api-cursor.js -->
 @startDocuBlock JSF_post_api_cursor_identifier
 
