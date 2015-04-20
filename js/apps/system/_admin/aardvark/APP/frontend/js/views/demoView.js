@@ -46,6 +46,13 @@
       'rgb(102,37,6)'
     ],
 
+    airportColor: "#222222",
+    airportHighlightColor: "#FF4E4E",
+    airportHoverColor: "#ff8f35",
+
+    airportScale: 0.5,
+    airportHighligthScale: 0.95,
+
     imageData: [],
 
     keyToLongLat: {}, 
@@ -135,8 +142,21 @@
       });
     },
 
-    searchInput: function(select) {
-      console.log(select);
+    searchInput: function(e) {
+
+      var self = this, airports = this.index.search($(e.currentTarget).val());
+
+      _.each(this.imageData, function(airport) {
+          airport.color = self.airportColor;
+          airport.scale = self.airportScale;
+      });
+
+      _.each(airports, function(airport) {
+        self.setAirportColor(airport.ref, self.airportHighlightColor, false);
+        self.setAirportSize(airport.ref, self.airportHighligthScale, false);
+      });
+
+      self.map.validateData();
     },
 
     runSelectedQuery: function() {
@@ -223,33 +243,29 @@
     },
 
     //Color = HEXCODE e.g. #FFFFFF
-    setAirportColor: function(id, color) {
-      var changedColor = false;
+    setAirportColor: function(id, color, shouldRender) {
 
       _.each(this.imageData, function(airport) {
         if (airport.id === id) {
-          changedColor = true;
           airport.color = color;
         }
       });
 
-      if (changedColor) {
+      if (shouldRender) {
         this.map.validateData();
       }
     },
 
     //size = numeric value e.g. 0.5 or 1.3
-    setAirportSize: function(id, size) {
-      var changedSize = false;
+    setAirportSize: function(id, size, shouldRender) {
 
       _.each(this.imageData, function(airport) {
         if (airport.id === id) {
-          changedSize = true;
           airport.scale = size;
         }
       });
 
-      if (changedSize) {
+      if (shouldRender) {
         this.map.validateData();
       }
     },
@@ -264,11 +280,11 @@
           latitude: airport.Latitude,
           longitude: airport.Longitude,
           svgPath: self.MAPtarget,
-          color: "#222222",
-          scale: 0.5,
+          color: self.airportColor,
+          scale: self.airportScale,
           selectedScale: 2.5,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
-          rollOverColor: "#ff8f35",
+          rollOverColor: self.airportHoverColor,
         });
         self.keyToLongLat[airport._key] = {
           lon: airport.Longitude,
