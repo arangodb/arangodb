@@ -2590,7 +2590,7 @@ public:
           auto oneSortExpression = cn->expression();
           
           if (oneSortExpression->isAttributeAccess()) {
-            auto simpleExpression = oneSortExpression->getMultipleAttributes();
+            auto simpleExpression = oneSortExpression->getAttributeAccess();
             d->variableName = simpleExpression.first;
             d->attributevec = simpleExpression.second;
           }
