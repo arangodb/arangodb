@@ -46,6 +46,8 @@
       'rgb(102,37,6)'
     ],
 
+    imageData: [],
+
     keyToLongLat: {}, 
 
     //QUERIES SECTION    
@@ -93,8 +95,8 @@
           airport = model.toJSON();
           airports.push(airport);
         });
-        var preparedData = this.prepareData(airports);
-        this.renderMap(preparedData);
+        this.imageData = this.prepareData(airports);
+        this.renderMap();
         // this.renderDummy();
       }.bind(this);
 
@@ -185,12 +187,45 @@
     calculateFlightWidth: function(length, pos) {
       var intervallWidth = length/2;
       // return Math.floor(pos/intervallWidth) + 2;
+      //TODO: no custom width for lines wanted?
       return 1.5;
     },
     
     calculateFlightColor: function(length, pos) {
       var intervallColor = length/this.lineColors.length;
       return this.lineColors[Math.floor(pos/intervallColor)];
+    },
+
+    //Color = HEXCODE e.g. #FFFFFF
+    setAirportColor: function(id, color) {
+      var changedColor = false;
+
+      _.each(this.imageData, function(airport) {
+        if (airport.id === id) {
+          changedColor = true;
+          airport.color = color;
+        }
+      });
+
+      if (changedColor) {
+        this.map.validateData();
+      }
+    },
+
+    //size = numeric value e.g. 0.5 or 1.3
+    setAirportSize: function(id, size) {
+      var changedSize = false;
+
+      _.each(this.imageData, function(airport) {
+        if (airport.id === id) {
+          changedSize = true;
+          airport.scale = size;
+        }
+      });
+
+      if (changedSize) {
+        this.map.validateData();
+      }
     },
 
     prepareData: function (data) {
@@ -205,7 +240,7 @@
           svgPath: self.MAPtarget,
           color: "#222222",
           scale: 0.5,
-          selectedScale: 2.5, 
+          selectedScale: 2.5,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
           rollOverColor: "#ff8f35",
         });
@@ -240,7 +275,7 @@
       };
     },
 
-    renderMap: function(imageData) {
+    renderMap: function() {
 
       var self = this;
       self.lines = [];
@@ -254,7 +289,7 @@
         dataProvider: {
           map: "usa2High",
           lines: self.lines,
-          images: imageData, 
+          images: self.imageData, 
           getAreasFromMap: true
         }, 
         clickMapObject: function(mapObject) {
