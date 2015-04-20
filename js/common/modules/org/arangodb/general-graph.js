@@ -603,7 +603,7 @@ AQLGenerator.prototype._vertices = function(example, options, mergeWith) {
         if (i > 0) {
           query += ",";
         }
-        query += "MERGE(NTH(@vertexExample_" + this.stack.length + "," + i + ")"
+        query += "MERGE(@vertexExample_" + this.stack.length 
           + "," + mergeWith[i] + ")";
       }
       query += "]";
