@@ -192,6 +192,53 @@
       }
     },
 
+    calculateAirportSize: function(airport, airports) {
+      var minMax = this.getMinMax(airports);
+      var min = minMax.min;
+      var max = minMax.max;
+
+      var step = max / 10;
+      var size = 0;
+
+      var i = 0;
+      for (i=0; i<10; i++) {
+        if (airport.count < step * i) {
+          size = i;
+          break;
+        }
+      }
+
+      if (size === 0) {
+        size = 1;
+      }
+      return size;
+    },
+
+    getMinMax: function(array) {
+    var min = 0, max = 0;
+
+      _.each(array, function(object) {
+        if (min === 0) {
+          min = object.count;
+        }
+        if (max === 0) {
+          max = object.count;
+        }
+        if (object.count < min) {
+          min = object.count;
+        }
+        if (object.count > max) {
+          max = object.count;
+        }
+      });
+
+      return {
+        min: min,
+        max: max
+      };
+
+    },
+
     loadAirportData: function(airport) {
       var self = this;
       var timer = new Date();
@@ -219,11 +266,11 @@
           );
           allFlights += list[i].count;
         }
-        
+
         if ($("#demo-mapdiv-info").length === 0) {
           $("#demo-mapdiv").append("<div id='demo-mapdiv-info'></div>");
         }
-        
+
         var tempHTML = "";
         tempHTML = "<b>" + airportData.get("Name") + "</b> - " + airport + "<br>" + 
           "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
@@ -376,7 +423,7 @@
           getAreasFromMap: true
         },
         clickMapObject: function(mapObject) {
-          console.log(mapObject);
+          //console.log(mapObject);
           self.loadAirportData(mapObject.id);
         },
         balloon: {
@@ -422,14 +469,20 @@
     },
 
     addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
-      console.log("Adding", from, to, count, lineColor, lineWidth);
+      //console.log("Adding", from, to, count, lineColor, lineWidth);
+
       this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
 
       this.setAirportColor(from, "#FFFFFF");
       this.setAirportColor(to, this.airportHighlightColor);
-
       this.setAirportSize(from, 1.5);
-      this.setAirportSize(to, this.airportHighligthScale);
+
+      var toSize = count * 0.001;
+      if (toSize <= 0.25) {
+        toSize = 0.25;
+      }
+
+      this.setAirportSize(to, toSize);
     }
 
   });
