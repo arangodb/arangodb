@@ -133,9 +133,17 @@
 
     loadAirportData: function(airport) {
       var self = this;
+      var timer = new Date();
+      
+      var airportData = this.airportCollection.findWhere({_key: airport});
+      console.log(airportData);
       this.airportCollection.getFlightsForAirport(airport, function(list) {
 
+        var timeTaken = new Date() - timer;
+
         self.removeFlightLines(false);
+
+        var allFlights = 0;
 
         var i = 0;
         for (i = 0; i < list.length; ++i) {
@@ -146,7 +154,30 @@
             self.calculateFlightColor(list.length, i),
             self.calculateFlightWidth(list.length, i)
           );
+          allFlights += list[i].count;
         }
+        
+        if ($("#demo-mapdiv-info").length === 0) {
+          $("#demo-mapdiv").append("<div id='demo-mapdiv-info'></div>");
+        }
+        
+        var tempHTML = "";
+        tempHTML = "<b>" + airportData.get("Name") + "</b> - " + airport + "<br>" + 
+          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+          "Number destinations: <b>" + list.length + "</b><br>" + 
+          "Number flights: <b>" + allFlights + "</b><br>" +
+          "Top 5:<br>";
+
+        for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
+          airportData = self.airportCollection.findWhere({_key: list[i].Dest})
+          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
+          if (i > (list.length - 5)) {
+            tempHTML += "<br>";
+          }
+        }
+
+        $("#demo-mapdiv-info").html(tempHTML);
+
         self.map.validateData();
       });
     },
@@ -154,9 +185,9 @@
     calculateFlightWidth: function(length, pos) {
       var intervallWidth = length/2;
       // return Math.floor(pos/intervallWidth) + 2;
-      return 1;
+      return 1.5;
     },
-
+    
     calculateFlightColor: function(length, pos) {
       var intervallColor = length/this.lineColors.length;
       return this.lineColors[Math.floor(pos/intervallColor)];
@@ -225,9 +256,10 @@
           lines: self.lines,
           images: imageData, 
           getAreasFromMap: true
-        },
-        clickMapObject: function(mapObject){
+        }, 
+        clickMapObject: function(mapObject) {
           console.log(mapObject);
+          self.loadAirportData(mapObject.id);
         },
       	balloon: {
           adjustBorderColor: true,
@@ -253,7 +285,7 @@
           alpha: 0.75,
           thickness: 2
         },
-        linesAboveImages: true,
+        linesAboveImages: false,
       });
     },
 
