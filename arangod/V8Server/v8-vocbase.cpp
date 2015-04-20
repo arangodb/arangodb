@@ -52,6 +52,7 @@
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
+#include "VocBase/traversal.h"
 #include "v8.h"
 #include "V8/JSLoader.h"
 
@@ -1476,6 +1477,16 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
   TRI_V8_RETURN_FALSE();
 }
 
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Executes a shortest Path Traversal
+////////////////////////////////////////////////////////////////////////////////
+
+static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
+  TRI_RunDijkstraSearch(args);
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief sleeps and checks for query abortion in between
 ////////////////////////////////////////////////////////////////////////////////
@@ -2794,6 +2805,10 @@ void TRI_InitV8VocBridge (v8::Isolate* isolate,
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERIES_KILL"), JS_QueriesKillAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_SLEEP"), JS_QuerySleepAql, true);
   TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_QUERY_IS_KILLED"), JS_QueryIsKilledAql, true);
+
+  TRI_AddGlobalFunctionVocbase(isolate, context, TRI_V8_ASCII_STRING("AQL_SHORTEST_PATH"), JS_QueryShortestPath, true);
+
+
 
   TRI_InitV8replication(isolate, context, server, vocbase, loader, threadNumber, v8g);
 
