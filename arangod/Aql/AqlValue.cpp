@@ -831,36 +831,40 @@ Json AqlValue::extractObjectMember (triagens::arango::AqlTransaction* trx,
       TRI_ASSERT(_marker != nullptr);
 
       // look for the attribute name in the shape
-      if (*name == '_') {
-        if (strcmp(name, TRI_VOC_ATTRIBUTE_KEY) == 0) {
+      if (*name == '_' && name[1] != '\0') {
+        if (name[1] == 'k' && strcmp(name, TRI_VOC_ATTRIBUTE_KEY) == 0) {
           // _key value is copied into JSON
           return Json(TRI_UNKNOWN_MEM_ZONE, TRI_EXTRACT_MARKER_KEY(_marker));
         }
-        else if (strcmp(name, TRI_VOC_ATTRIBUTE_ID) == 0) {
+        if (name[1] == 'i' && strcmp(name, TRI_VOC_ATTRIBUTE_ID) == 0) {
+          // _id
           buffer.reset();
           trx->resolver()->getCollectionName(document->_info._cid, buffer);
           buffer.appendChar('/');
           buffer.appendText(TRI_EXTRACT_MARKER_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
         }
-        else if (strcmp(name, TRI_VOC_ATTRIBUTE_REV) == 0) {
+        if (name[1] == 'r' && strcmp(name, TRI_VOC_ATTRIBUTE_REV) == 0) {
+          // _rev
           TRI_voc_rid_t rid = TRI_EXTRACT_MARKER_RID(_marker);
           buffer.reset();
           buffer.appendInteger(rid);
           return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
         }
-        else if (strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0 &&
-                 (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-                  _marker->_type == TRI_WAL_MARKER_EDGE)) {
+        if (name[1] == 'f' && 
+            strcmp(name, TRI_VOC_ATTRIBUTE_FROM) == 0 &&
+            (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+             _marker->_type == TRI_WAL_MARKER_EDGE)) {
           buffer.reset();
           trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_FROM_CID(_marker), buffer);
           buffer.appendChar('/');
           buffer.appendText(TRI_EXTRACT_MARKER_FROM_KEY(_marker));
           return Json(TRI_UNKNOWN_MEM_ZONE, buffer.c_str(), buffer.length());
         }
-        else if (strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0 &&
-                 (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
-                  _marker->_type == TRI_WAL_MARKER_EDGE)) {
+        if (name[1] == 't' && 
+            strcmp(name, TRI_VOC_ATTRIBUTE_TO) == 0 &&
+            (_marker->_type == TRI_DOC_MARKER_KEY_EDGE ||
+            _marker->_type == TRI_WAL_MARKER_EDGE)) {
           buffer.reset();
           trx->resolver()->getCollectionNameCluster(TRI_EXTRACT_MARKER_TO_CID(_marker), buffer);
           buffer.appendChar('/');
