@@ -354,6 +354,7 @@ void Expression::analyzeExpression () {
         // specialize the simple expression into an attribute accessor
         _accessor = new AttributeAccessor(name, v);
         _type = ATTRIBUTE;
+        _built = true;
       }
     }
   }
@@ -808,8 +809,13 @@ bool Expression::isConstant () const {
 /// call isAttributeAccess in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<std::string, std::string> Expression::getMultipleAttributes() {
-  if (_type != SIMPLE && _type != ATTRIBUTE) {
+std::pair<std::string, std::string> Expression::getAttributeAccess () {
+  if (_type == UNPROCESSED) {
+    analyzeExpression();
+  }
+
+  if (_type != SIMPLE && 
+      _type != ATTRIBUTE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "getMultipleAttributes works only on simple expressions or attribute accesses!");
   }
@@ -819,11 +825,11 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() {
 
   if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getAccessNRef works only on simple expressions!");
+                                   "getMultipleAttributes works only on simple expressions or attribute accesses(2)!");
   }
 
   while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeVector.push_back(expNode->getStringValue());
+    attributeVector.emplace_back(expNode->getStringValue());
     expNode = expNode->getMember(0);
   }
   
@@ -832,14 +838,14 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() {
        oneAttr != attributeVector.rend();
        ++oneAttr) {
     if (! attributeVectorStr.empty()) {
-      attributeVectorStr += std::string(".");
+      attributeVectorStr.push_back('.');
     }
     attributeVectorStr += *oneAttr;
   }
 
   if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getAccessNRef works only on simple expressions!");
+                                   "getMultipleAttributes works only on simple expressions or attribute accesses(3)!");
   }
 
   auto variable = static_cast<Variable*>(expNode->getData());
