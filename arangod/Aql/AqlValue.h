@@ -100,7 +100,8 @@ namespace triagens {
       }
 
       AqlValue (int64_t low, int64_t high) 
-        : _type(RANGE) {
+        : _range(nullptr),
+          _type(RANGE) {
         _range = new Range(low, high);
       }
 
@@ -160,7 +161,7 @@ namespace triagens {
 /// is used when the AqlValue is stolen and stored in another object
 ////////////////////////////////////////////////////////////////////////////////
 
-      void erase () {
+      void erase () throw() {
         _type = EMPTY;
         _json = nullptr;
       }
