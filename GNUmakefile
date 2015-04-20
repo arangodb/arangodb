@@ -144,7 +144,7 @@ pack-macosxcode:
 	./configure \
 		--prefix=/opt/arangodb
 
-	${MAKE} -f GNUMakefile pack-macosxcode-cmake CMAKE_ARGS=$(CMAKE_ARGS)
+	${MAKE} -f GNUMakefile pack-macosxcode-cmake CMAKE_ARGS='$(CMAKE_ARGS)'
 
 pack-macosxcode-cmake:
 	cd Build && cmake \
