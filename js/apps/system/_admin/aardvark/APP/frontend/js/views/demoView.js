@@ -1,6 +1,6 @@
 /*jshint browser: true */
 /*jshint unused: false */
-/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts*/
+/*global Backbone, arangoHelper, $, _, window, templateEngine, AmCharts, lunr*/
 
 (function () {
   "use strict";
@@ -83,6 +83,27 @@
 
     template: templateEngine.createTemplate("demoView.ejs"),
 
+    generateIndex: function () {
+      var airport, self = this;
+
+      self.index = lunr(function () {
+        this.field('Name', { boost: 10 });
+        this.field('City');
+        this.field('_key');
+      });
+
+      this.airportCollection.each(function(model) {
+        airport = model.toJSON();
+
+        self.index.add({
+          Name: airport.Name,
+          City: airport.City,
+          id: airport._key
+        });
+      });
+
+    },
+
     render: function () {
       $(this.el).html(this.template.render({}));
       this.renderAvailableQueries();
@@ -97,6 +118,8 @@
         });
         this.imageData = this.prepareData(airports);
         this.renderMap();
+
+        this.generateIndex();
       }.bind(this);
 
       this.airportCollection.getAirports(callback);
