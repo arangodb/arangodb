@@ -113,6 +113,9 @@
     },
 
     render: function () {
+
+      var self = this;
+
       $(this.el).html(this.template.render({}));
       this.renderAvailableQueries();
 
@@ -126,9 +129,9 @@
         });
         this.imageData = this.prepareData(airports);
         this.renderMap();
-        this.renderMap();
 
         this.generateIndex();
+
       }.bind(this);
 
       this.airportCollection.getAirports(callback);
@@ -159,7 +162,7 @@
       if (airports.length === 1) {
         //TODO: maybe zoom to airport if found?
         //self.zoomToAirport(airports[0].ref);
-        self.showAirportBalloon(airports); // <-- only works with single map object, not multiple :(
+        self.showAirportBalloon(airports[0].ref); // <-- only works with single map object, not multiple :(
       }
 
       //if (airports.length <= 10) {
@@ -258,24 +261,14 @@
       this.map.zoomToSelectedObject(this.map.getObjectById(id));
     },
 
-    showAirportBalloon: function (objects) {
-
-      var self = this, mapObject;
-
-      _.each(objects, function(object) {
-        mapObject = self.map.getObjectById(object.ref);
-        self.map.rollOverMapObject(mapObject);
-      });
+    showAirportBalloon: function (id) {
+      var mapObject = this.map.getObjectById(id);
+      this.map.rollOverMapObject(mapObject);
     },
 
-    hideAirportBalloon: function (objects) {
-
-      var self = this, mapObject;
-
-      _.each(objects, function(object) {
-        mapObject = self.map.getObjectById(object.ref);
-        self.map.rollOutMapObject(mapObject);
-      });
+    hideAirportBalloon: function (id) {
+      var mapObject = this.map.getObjectById(id);
+      this.map.rollOutMapObject(mapObject);
     },
 
     //Color = HEXCODE e.g. #FFFFFF
