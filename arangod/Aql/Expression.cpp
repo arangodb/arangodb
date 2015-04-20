@@ -87,7 +87,9 @@ Expression::Expression (Ast* ast,
     _canRunOnDBServer(false),
     _isDeterministic(false),
     _hasDeterminedAttributes(false),
-    _built(false) {
+    _built(false),
+    _attributes(),
+    _buffer(TRI_UNKNOWN_MEM_ZONE) {
 
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
@@ -258,7 +260,7 @@ bool Expression::findInList (AqlValue const& left,
       auto listItem = right.extractArrayMember(trx, rightCollection, m, false);
       AqlValue listItemValue(&listItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr, false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -287,7 +289,7 @@ bool Expression::findInList (AqlValue const& left,
       auto listItem = right.extractArrayMember(trx, rightCollection, i, false);
       AqlValue listItemValue(&listItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr, false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -397,15 +399,15 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               std::vector<RegisterId> const& regs) {
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // object lookup, e.g. users.name
-    TRI_ASSERT(node->numMembers() == 1);
+    TRI_ASSERT_EXPENSIVE(node->numMembers() == 1);
 
-    auto member = node->getMember(0);
+    auto member = node->getMemberUnchecked(0);
     auto name = static_cast<char const*>(node->getData());
 
     TRI_document_collection_t const* myCollection = nullptr;
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
 
-    auto j = result.extractObjectMember(trx, myCollection, name, true);
+    auto j = result.extractObjectMember(trx, myCollection, name, true, _buffer);
     result.destroy();
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
@@ -458,7 +460,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
       if (indexResult.isNumber()) {
         auto&& indexString = std::to_string(indexResult.toInt64());
-        auto j = result.extractObjectMember(trx, myCollection, indexString.c_str(), true);
+        auto j = result.extractObjectMember(trx, myCollection, indexString.c_str(), true, _buffer);
         indexResult.destroy();
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
@@ -467,7 +469,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto&& value = indexResult.toString();
         indexResult.destroy();
 
-        auto j = result.extractObjectMember(trx, myCollection, value.c_str(), true);
+        auto j = result.extractObjectMember(trx, myCollection, value.c_str(), true, _buffer);
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
@@ -559,7 +561,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
 
   else if (node->type == NODE_TYPE_REFERENCE) {
-    auto v = static_cast<Variable*>(node->getData());
+    auto v = static_cast<Variable const*>(node->getData());
 
     size_t i = 0;
     for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
@@ -685,8 +687,12 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       return AqlValue(new triagens::basics::Json(result));
     }
 
-    // all other comparison operators
-    int compareResult = AqlValue::Compare(trx, left, leftCollection, right, rightCollection);
+    // all other comparison operators...
+
+    // for equality and non-equality we can use a binary comparison
+    bool compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_EQ && node->type != NODE_TYPE_OPERATOR_BINARY_NE);
+
+    int compareResult = AqlValue::Compare(trx, left, leftCollection, right, rightCollection, compareUtf8);
     left.destroy();
     right.destroy();
 
@@ -754,6 +760,14 @@ bool Expression::isAttributeAccess () const {
 
 bool Expression::isReference () const {
   return (_node->type == triagens::aql::NODE_TYPE_REFERENCE);
+}
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a constant node
+////////////////////////////////////////////////////////////////////////////////
+
+bool Expression::isConstant () const {
+  return _node->isConstant();
 }
 
 ////////////////////////////////////////////////////////////////////////////////

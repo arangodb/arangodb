@@ -1528,7 +1528,10 @@ int TRI_CompareShapeTypes (char const* leftDocument,
             attribute_entry_t const* l = static_cast<attribute_entry_t const*>(TRI_AtVector(&leftSorted, i));
             attribute_entry_t const* r = static_cast<attribute_entry_t const*>(TRI_AtVector(&rightSorted, i));
 
-            result = TRI_compare_utf8(l->_attribute, r->_attribute);
+            // a binary comparison is sufficient here as we're only interested in if the attribute names are
+            // identical. the attribute names are from ShapedJson, so they have been normalized already
+            result = strcmp(l->_attribute, r->_attribute);
+            // result = TRI_compare_utf8(l->_attribute, r->_attribute);
 
             if (result != 0) {
               break;

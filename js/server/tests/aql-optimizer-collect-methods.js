@@ -124,12 +124,19 @@ function optimizerCollectMethodsTestSuite () {
         var plan = AQL_EXPLAIN(query[0]).plan;
 
         var aggregateNodes = 0;
+        var sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
             assertEqual("hash", node.method);
           }
+          if (node.type === "SortNode") {
+            ++sortNodes;
+          }
         });
+        
+        assertEqual(1, aggregateNodes);
+        assertEqual(1, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
@@ -157,12 +164,19 @@ function optimizerCollectMethodsTestSuite () {
         var plan = AQL_EXPLAIN(query[0]).plan;
 
         var aggregateNodes = 0;
+        var sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
             assertEqual("hash", node.method);
           }
+          if (node.type === "SortNode") {
+            ++sortNodes;
+          }
         });
+        
+        assertEqual(1, aggregateNodes);
+        assertEqual(1, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
@@ -188,12 +202,56 @@ function optimizerCollectMethodsTestSuite () {
         var plan = AQL_EXPLAIN(query[0]).plan;
 
         var aggregateNodes = 0;
+        var sortNodes = 0;
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
             assertEqual("sorted", node.method);
           }
+          if (node.type === "SortNode") {
+            ++sortNodes;
+          }
         });
+        
+        assertEqual(1, aggregateNodes);
+        assertEqual(0, sortNodes);
+
+        var results = AQL_EXECUTE(query[0]);
+        assertEqual(query[1], results.json.length);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief expect hash COLLECT w/ sort node removed
+////////////////////////////////////////////////////////////////////////////////
+
+    testSortRemoval : function () {
+      var queries = [
+        [ "FOR j IN " + c.name() + " COLLECT value = j SORT null RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j._key SORT null RETURN value", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group SORT null RETURN value", 10 ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value SORT null RETURN [ value1, value2 ]", 1500 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l SORT null RETURN [ value, l ]", 10 ],
+        [ "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l SORT null RETURN [ value1, value2, l ]", 1500 ]
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query[0]).plan;
+
+        var aggregateNodes = 0;
+        var sortNodes = 0;
+        plan.nodes.map(function(node) {
+          if (node.type === "AggregateNode") {
+            ++aggregateNodes;
+            assertEqual("hash", node.method);
+          }
+          if (node.type === "SortNode") {
+            ++sortNodes;
+          }
+        });
+        
+        assertEqual(1, aggregateNodes);
+        assertEqual(0, sortNodes);
 
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
