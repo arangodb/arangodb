@@ -205,7 +205,7 @@ function matchError (req, res, doc, errorCode) {
 ///                                   url,
 ///                                   {_key : "graph", vertices : "vertices", edges : "edges"});
 ///
-///     assert(response.code === 201);
+///     assert(response.code === 201 || response.code === 202);
 ///
 ///     logJsonResponse(response);
 ///     db._drop("edges");
@@ -416,7 +416,7 @@ function get_graph_graph (req, res) {
 ///     var url = "/_api/graph/graph";
 ///     var response = logCurlRequest('DELETE', url);
 ///
-///     assert(response.code === 200);
+///     assert(response.code === 200 || response.code === 202);
 ///
 ///     logJsonResponse(response);
 /// @END_EXAMPLE_ARANGOSH_RUN
