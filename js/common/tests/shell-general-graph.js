@@ -1082,7 +1082,7 @@ function ChainedFluentAQLResultsSuite() {
           if (i > 0) {
             stmt += ",";
           }
-          stmt += "MERGE(@vertexExample_" + depth
+          stmt += "MERGE(@vertexExample_" + depth 
             + "," + mergeWith[i] + ")";
         }
         stmt += "]";
