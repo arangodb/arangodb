@@ -47,7 +47,8 @@ using JsonHelper = triagens::basics::JsonHelper;
 
 AqlItemBlock::AqlItemBlock (size_t nrItems, 
                             RegisterId nrRegs)
-  : _nrItems(nrItems), _nrRegs(nrRegs) {
+  : _nrItems(nrItems),  
+    _nrRegs(nrRegs) {
 
   TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
 
@@ -74,10 +75,12 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
   if (exhausted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "exhausted must be false");
   }
+
   _nrItems = JsonHelper::getNumericValue<size_t>(json.json(), "nrItems", 0);
   if (_nrItems == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+
   _nrRegs = JsonHelper::getNumericValue<RegisterId>(json.json(), "nrRegs", 0);
 
   // Initialize the data vector:
@@ -263,6 +266,7 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
             a.destroy();
             try {
               _valueCount.erase(it);
+              continue; // no need for an extra a.erase() here
             }
             catch (...) {
             }
@@ -374,7 +378,8 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* AqlItemBlock::steal (std::vector<size_t>& chosen, 
-                                   size_t from, size_t to) {
+                                   size_t from, 
+                                   size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));

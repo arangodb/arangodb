@@ -377,9 +377,6 @@ namespace std {
       std::hash<void const*> ptrHash;
       size_t res = intHash(static_cast<uint32_t>(x._type));
       switch (x._type) {
-        case triagens::aql::AqlValue::EMPTY: {
-          return res;
-        }
         case triagens::aql::AqlValue::JSON: {
           return res ^ ptrHash(x._json);
         }
@@ -392,11 +389,13 @@ namespace std {
         case triagens::aql::AqlValue::RANGE: {
           return res ^ ptrHash(x._range);
         }
-        default: {
-          TRI_ASSERT(false);
-          return 0;
+        case triagens::aql::AqlValue::EMPTY: {
+          return res;
         }
       }
+
+      TRI_ASSERT(false);
+      return 0;
     }
   };
 
