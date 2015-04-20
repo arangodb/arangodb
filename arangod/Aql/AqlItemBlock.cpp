@@ -56,10 +56,8 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
     // this compare value is arbitrary, but having so many registers in a single query seems unlikely
     TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId); 
 
-    _data.reserve(nrItems * nrRegs);
-    for (size_t i = 0; i < nrItems * nrRegs; ++i) {
-      _data.emplace_back();
-    }
+    _data.resize(nrItems * nrRegs);
+
     _docColls.reserve(nrRegs);
     for (size_t i = 0; i < nrRegs; ++i) {
       _docColls.emplace_back(nullptr);
@@ -84,10 +82,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
 
   // Initialize the data vector:
   if (_nrRegs > 0) {
-    _data.reserve(_nrItems * _nrRegs);
-    for (size_t i = 0; i < _nrItems * _nrRegs; ++i) {
-      _data.emplace_back();
-    }
+    _data.resize(_nrItems * _nrRegs);
     _docColls.reserve(_nrRegs);
     for (size_t i = 0; i < _nrRegs; ++i) {
       _docColls.emplace_back(nullptr);
@@ -178,17 +173,17 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AqlItemBlock::destroy () {
-  for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
-    if (! _data[i].isEmpty()) {
+  for (auto& it : _data) {
+    if (! it.isEmpty()) {
       try {   // can find() really throw???
-        auto it = _valueCount.find(_data[i]);
-        if (it != _valueCount.end()) { // if we know it, we are still responsible
-          TRI_ASSERT_EXPENSIVE(it->second > 0);
-
-          if (--(it->second) == 0) {
-            _data[i].destroy();
+        auto it2 = _valueCount.find(it);
+        if (it2 != _valueCount.end()) { // if we know it, we are still responsible
+          TRI_ASSERT_EXPENSIVE(it2->second > 0);
+          
+          if (--(it2->second) == 0) {
+            it.destroy();
             try {
-              _valueCount.erase(it);
+              _valueCount.erase(it2);
             }
             catch (...) {
             }
