@@ -1948,6 +1948,15 @@ namespace triagens {
 
         std::vector<std::pair<ExecutionNode*, bool>> getCalcNodePairs ();
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief simplifies the expressions of the sort node
+/// this will sort expressions if they are constant
+/// the method will return true if all sort expressions were removed after
+/// simplification, and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+        bool simplify (ExecutionPlan*);
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------

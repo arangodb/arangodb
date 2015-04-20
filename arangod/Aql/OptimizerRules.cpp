@@ -74,7 +74,6 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
 
     if (sortInfo.isValid && ! sortInfo.criteria.empty()) {
       // we found a sort that we can understand
-    
       std::vector<ExecutionNode*> stack;
       for (auto dep : sortNode->getDependencies()) {
         stack.push_back(dep);
@@ -155,7 +154,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
         }
         else {
           // abort at all other type of nodes. we cannot remove a sort beyond them
-          // this include COLLECT and LIMIT
+          // this includes COLLECT and LIMIT
           break;
         }
                  
@@ -171,9 +170,16 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
           stack.push_back(dep);
         }
       }
+
+      if (toUnlink.find(n) == toUnlink.end() &&
+          sortNode->simplify(plan)) {
+        // sort node had only constant expressions. it will make no difference if we execute it or not
+        // so we can remove it
+        toUnlink.insert(n);
+      }
     }
   }
-            
+
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();

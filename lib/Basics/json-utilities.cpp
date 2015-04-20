@@ -202,7 +202,7 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     return 1;
   }
 
-  TRI_ASSERT(lWeight == rWeight);
+  TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
 
   // lhs and rhs have equal weights
   if (lhs == nullptr) {
@@ -213,21 +213,23 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
 
   switch (lhs->_type) {
     case TRI_JSON_UNUSED:
-    case TRI_JSON_NULL:
+    case TRI_JSON_NULL: {
       return 0; // null == null;
+    }
 
-    case TRI_JSON_BOOLEAN:
+    case TRI_JSON_BOOLEAN: {
       if (lhs->_value._boolean == rhs->_value._boolean) {
         return 0;
       }
 
-      if (!lhs->_value._boolean && rhs->_value._boolean) {
+      if (! lhs->_value._boolean && rhs->_value._boolean) {
         return -1;
       }
 
       return 1;
+    }
 
-    case TRI_JSON_NUMBER:
+    case TRI_JSON_NUMBER: {
       if (lhs->_value._number == rhs->_value._number) {
         return 0;
       }
@@ -237,9 +239,10 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       }
 
       return 1;
+    }
 
     case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE:
+    case TRI_JSON_STRING_REFERENCE: {
       // same for STRING and STRING_REFERENCE
       int res;
       if (useUTF8) {
@@ -255,14 +258,13 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       else if (res > 0) {
         return 1;
       }
-      else {
-        return 0;
-      }
+      return 0;
+    }
 
     case TRI_JSON_ARRAY: {
       size_t nl = lhs->_value._objects._length;
       size_t nr = rhs->_value._objects._length;
-      size_t i, n;
+      size_t n;
 
       if (nl > nr) {
         n = nl;
@@ -271,14 +273,12 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
         n = nr;
       }
 
-      for (i = 0; i < n; ++i) {
-        TRI_json_t* lhsValue;
-        TRI_json_t* rhsValue;
-        int result;
+      for (size_t i = 0; i < n; ++i) {
+        auto lhsValue = (i >= nl) ? nullptr : static_cast<TRI_json_t const*>(TRI_AtVector(&lhs->_value._objects, i));
+        auto rhsValue = (i >= nr) ? nullptr : static_cast<TRI_json_t const*>(TRI_AtVector(&rhs->_value._objects, i));
+        
+        int result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
 
-        lhsValue = (i >= nl) ? nullptr : reinterpret_cast<TRI_json_t*>(TRI_AtVector(&lhs->_value._objects, i));
-        rhsValue = (i >= nr) ? nullptr : reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
-        result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
         if (result != 0) {
           return result;
         }
@@ -288,30 +288,21 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     }
 
     case TRI_JSON_OBJECT: {
-      TRI_json_t* keys;
-
       TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
       TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
-      keys = GetMergedKeyList(lhs, rhs);
+      TRI_json_t* keys = GetMergedKeyList(lhs, rhs);
 
       if (keys != nullptr) {
-        size_t i, n;
-
-        n = keys->_value._objects._length;
-        for (i = 0; i < n; ++i) {
-          TRI_json_t* keyElement;
-          TRI_json_t* lhsValue;
-          TRI_json_t* rhsValue;
-          int result;
-
-          keyElement = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&keys->_value._objects, i));
+        size_t const n = keys->_value._objects._length;
+        for (size_t i = 0; i < n; ++i) {
+          auto keyElement = static_cast<TRI_json_t const*>(TRI_AtVector(&keys->_value._objects, i));
           TRI_ASSERT(TRI_IsStringJson(keyElement));
 
-          lhsValue = TRI_LookupObjectJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
-          rhsValue = TRI_LookupObjectJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
+          TRI_json_t const* lhsValue = TRI_LookupObjectJson(lhs, keyElement->_value._string.data); // may be NULL
+          TRI_json_t const* rhsValue = TRI_LookupObjectJson(rhs, keyElement->_value._string.data); // may be NULL
 
-          result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
+          int result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
 
           if (result != 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
@@ -321,13 +312,12 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       }
-
-      return 0;
+      // fall-through to returning 0
     }
 
-    default:
-      return 0;
   }
+  
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////

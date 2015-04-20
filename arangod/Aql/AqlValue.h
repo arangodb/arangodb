@@ -32,6 +32,7 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
@@ -118,7 +119,7 @@ namespace triagens {
 /// @brief return the value type
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline AqlValueType type () const {
+      inline AqlValueType type () const throw() {
         return _type;
       }
 
@@ -126,7 +127,7 @@ namespace triagens {
 /// @brief a quick method to decide whether a value is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isEmpty () const {
+      inline bool isEmpty () const throw() {
         return _type == EMPTY;
       }
 
@@ -134,7 +135,7 @@ namespace triagens {
 /// @brief whether or not the AqlValue is a shape
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isShaped () const {
+      inline bool isShaped () const throw() {
         return _type == SHAPED;
       }
 
@@ -277,6 +278,13 @@ namespace triagens {
                                      TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hash value for the AqlValue
+////////////////////////////////////////////////////////////////////////////////
+      
+      uint64_t hash (triagens::arango::AqlTransaction*,
+                     TRI_document_collection_t const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an attribute value from the AqlValue 
 /// this will return null if the value is not an object
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,7 +292,8 @@ namespace triagens {
       triagens::basics::Json extractObjectMember (triagens::arango::AqlTransaction*,
                                                   TRI_document_collection_t const*,
                                                   char const*,
-                                                  bool) const;
+                                                  bool,
+                                                  triagens::basics::StringBuffer&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a value from an array AqlValue 
@@ -323,7 +332,8 @@ namespace triagens {
                           AqlValue const&,  
                           TRI_document_collection_t const*,
                           AqlValue const&, 
-                          TRI_document_collection_t const*);
+                          TRI_document_collection_t const*,
+                          bool compareUtf8);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables

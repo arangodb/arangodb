@@ -35,6 +35,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "Utils/AqlTransaction.h"
 
 struct TRI_json_t;
@@ -42,7 +43,6 @@ struct TRI_json_t;
 namespace triagens {
   namespace basics {
     class Json;
-    class StringBuffer;
   }
 
   namespace aql {
@@ -238,6 +238,12 @@ namespace triagens {
         bool isReference () const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a constant node
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool isConstant () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
 /// call isSimpleAccessReference in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,6 +392,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief buffer for temporary strings
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::StringBuffer _buffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static members

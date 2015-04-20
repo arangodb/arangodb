@@ -527,12 +527,6 @@ ExecutionNode* ExecutionPlan::fromNodeSort (ExecutionNode* previous,
       TRI_ASSERT(element->numMembers() == 2);
 
       auto expression = element->getMember(0);
-
-      if (expression->isConstant()) {
-        // expression is constant, so sorting with not provide any benefit 
-        continue;
-      }
-
       auto ascending = element->getMember(1);
 
       // get sort order

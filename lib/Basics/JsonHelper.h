@@ -517,12 +517,38 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a char const*
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit Json (char const* x, size_t length, autofree_e autofree = AUTOFREE) 
+          : _zone(TRI_UNKNOWN_MEM_ZONE), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateStringCopyJson(_zone, x, length);
+
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor for a memzone and a char const*
 ////////////////////////////////////////////////////////////////////////////////
 
         explicit Json (TRI_memory_zone_t* z, char const* x, autofree_e autofree = AUTOFREE) 
           : _zone(z), _json(nullptr), _autofree(autofree) {
           _json = TRI_CreateStringCopyJson(_zone, x, strlen(x));
+
+          if (_json == nullptr) {
+            throw JsonException("Json: out of memory");
+          }
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief constructor for a memzone and a char const*
+////////////////////////////////////////////////////////////////////////////////
+
+        explicit Json (TRI_memory_zone_t* z, char const* x, size_t length, autofree_e autofree = AUTOFREE) 
+          : _zone(z), _json(nullptr), _autofree(autofree) {
+          _json = TRI_CreateStringCopyJson(_zone, x, length);
 
           if (_json == nullptr) {
             throw JsonException("Json: out of memory");
