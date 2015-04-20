@@ -330,7 +330,9 @@ function byExample (data) {
   var skip       = data._skip;
   var limit      = data._limit;
 
-  if (typeof example !== "object" || Array.isArray(example)) {
+  if (example === null || 
+      typeof example !== "object" || 
+      Array.isArray(example)) {
     // invalid datatype for example
     var err1 = new ArangoError();
     err1.errorNum = internal.errors.ERROR_ARANGO_DOCUMENT_TYPE_INVALID.code;
