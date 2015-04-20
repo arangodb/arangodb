@@ -41,8 +41,7 @@
         type: "POST",
         url: "/_api/cursor",
         data: JSON.stringify({
-          query: "for f in flights2 filter f.Origin == @airport COLLECT dest = f.Dest WITH COUNT INTO n SORT n RETURN {Dest: dest, count: n}",
-          // query: "for f in flights2 filter f.Origin == @airport COLLECT dest = f.Dest RETURN dest",
+          query: "for f in flights12 filter f.Origin == @airport COLLECT dest = f.Dest WITH COUNT INTO n SORT n RETURN {Dest: dest, count: n}",
           bindVars: {"airport": airport}
         }),
         contentType: "application/json",
