@@ -527,7 +527,8 @@
       task: function () {
         return createSystemCollection("_users", { 
           waitForSync : false, 
-          shardKeys: [ "user" ] 
+          shardKeys: [ "user" ],
+          journalSize: 4 * 1024 * 1024
         });
       }
     });
@@ -953,7 +954,8 @@
       task: function () {
         return createSystemCollection("_aal", {
           waitForSync : false,
-          shardKeys: [ "name", "version" ]
+          shardKeys: [ "name", "version" ],
+          journalSize: 4 * 1024 * 1024
         });
       }
     });
@@ -1256,7 +1258,9 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        return createSystemCollection("_queues");
+        return createSystemCollection("_queues", {
+          journalSize: 4 * 1024 * 1024 
+        });
       }
     });
 
@@ -1275,7 +1279,9 @@
       database:    [ DATABASE_INIT, DATABASE_UPGRADE ],
 
       task: function () {
-        return createSystemCollection("_jobs");
+        return createSystemCollection("_jobs", {
+          journalSize: 4 * 1024 * 1024
+        });
       }
     });
 
