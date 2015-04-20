@@ -243,7 +243,7 @@ namespace triagens {
 /// call isAttributeAccess in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::pair<std::string, std::string> getMultipleAttributes();
+        std::pair<std::string, std::string> getAttributeAccess();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify an expression
