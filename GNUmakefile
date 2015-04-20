@@ -144,7 +144,7 @@ pack-macosxcode:
 	./configure \
 		--prefix=/opt/arangodb
 
-	${MAKE} -f GNUMakefile pack-macosxcode-cmake
+	${MAKE} -f GNUMakefile pack-macosxcode-cmake CMAKE_ARGS=$(CMAKE_ARGS)
 
 pack-macosxcode-cmake:
 	cd Build && cmake \
@@ -159,6 +159,7 @@ pack-macosxcode-cmake:
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
 		-G Xcode \
+		${CMAKE_ARGS) \
 		..
 
 ################################################################################
