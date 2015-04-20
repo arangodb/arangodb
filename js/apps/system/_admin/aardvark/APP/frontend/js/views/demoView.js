@@ -77,14 +77,14 @@
     },
 
     events: {
-      "change #flightQuerySelect" : "runSelectedQuery"
+      "change #flightQuerySelect" : "runSelectedQuery",
+      "keyup #demoSearchInput"   : "searchInput"
     },
 
     template: templateEngine.createTemplate("demoView.ejs"),
 
     render: function () {
       $(this.el).html(this.template.render({}));
-      //TODO: this.renderMap([]);
       this.renderAvailableQueries();
 
       var callback = function() {
@@ -97,7 +97,6 @@
         });
         this.imageData = this.prepareData(airports);
         this.renderMap();
-        // this.renderDummy();
       }.bind(this);
 
       this.airportCollection.getAirports(callback);
@@ -111,6 +110,10 @@
         $('#flightQuerySelect').append('<option position="' + position + '">' + query.name + '</option>');
         position++;
       });
+    },
+
+    searchInput: function(select) {
+      console.log(select);
     },
 
     runSelectedQuery: function() {
@@ -136,7 +139,7 @@
     loadAirportData: function(airport) {
       var self = this;
       var timer = new Date();
-      
+
       var airportData = this.airportCollection.findWhere({_key: airport});
       console.log(airportData);
       this.airportCollection.getFlightsForAirport(airport, function(list) {
@@ -171,7 +174,7 @@
           "Top 5:<br>";
 
         for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
-          airportData = self.airportCollection.findWhere({_key: list[i].Dest})
+          airportData = self.airportCollection.findWhere({_key: list[i].Dest});
           tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
           if (i > (list.length - 5)) {
             tempHTML += "<br>";
@@ -335,7 +338,7 @@
     addFlightLines: function(lines) {
       //TODO: lines = array, values: from, to, count, lineColor, lineWidth
       _.each(lines, function(line) {
-        addFlightLine(line.from, line.to, line.count, line.lineColor, line.lineWidth, false);
+        this.addFlightLine(line.from, line.to, line.count, line.lineColor, line.lineWidth, false);
       });
     },
 
