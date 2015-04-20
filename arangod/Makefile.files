@@ -19,6 +19,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Aql/AqlValue.cpp \
 	arangod/Aql/Ast.cpp \
 	arangod/Aql/AstNode.cpp \
+	arangod/Aql/AttributeAccessor.cpp \
 	arangod/Aql/BindParameters.cpp \
 	arangod/Aql/Collection.cpp \
 	arangod/Aql/CollectionScanner.cpp \

@@ -30,15 +30,16 @@
 #include "Aql/Expression.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
+#include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
-#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -112,15 +113,28 @@ Expression::Expression (Ast* ast,
 
 Expression::~Expression () {
   if (_built) {
-    if (_type == V8) {
-      delete _func;
-      _func = nullptr;
-    }
-    else if (_type == JSON) {
-      TRI_ASSERT(_data != nullptr);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
-      _data = nullptr;
-      // _json is freed automatically by AqlItemBlock
+    switch (_type) {
+      case JSON:
+        TRI_ASSERT(_data != nullptr);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+        break;
+
+      case ATTRIBUTE: {
+        TRI_ASSERT(_accessor != nullptr);
+        delete _accessor;
+        break;
+      }
+
+      case V8:
+        delete _func;
+        break;
+      
+      case SIMPLE: 
+      case UNPROCESSED: {
+        // nothing to do
+        break;
+      }
+      
     }
   }
 }
@@ -163,6 +177,15 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _data, Json::NOFREE));
     }
 
+    case SIMPLE: {
+      return executeSimpleExpression(_node, collection, trx, docColls, argv, startPos, vars, regs);
+    }
+
+    case ATTRIBUTE: {
+      TRI_ASSERT(_accessor != nullptr);
+      return _accessor->get(trx, docColls, argv, startPos, vars, regs);
+    }
+    
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
@@ -184,10 +207,6 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
       }
     }
 
-    case SIMPLE: {
-      return executeSimpleExpression(_node, collection, trx, docColls, argv, startPos, vars, regs);
-    }
- 
     case UNPROCESSED: {
       // fall-through to exception
     }
@@ -323,6 +342,20 @@ void Expression::analyzeExpression () {
     _canThrow         = _node->canThrow();
     _canRunOnDBServer = _node->canRunOnDBServer();
     _isDeterministic  = _node->isDeterministic();
+
+    if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      TRI_ASSERT_EXPENSIVE(_node->numMembers() == 1);
+      auto member = _node->getMemberUnchecked(0);
+
+      if (member->type == NODE_TYPE_REFERENCE) {
+        auto name = static_cast<char const*>(_node->getData());
+        auto v = static_cast<Variable const*>(member->getData());
+
+        // specialize the simple expression into an attribute accessor
+        _accessor = new AttributeAccessor(name, v);
+        _type = ATTRIBUTE;
+      }
+    }
   }
   else {
     // expression is a V8 expression
@@ -772,13 +805,13 @@ bool Expression::isConstant () const {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
-/// call isSimpleAccessReference in advance to ensure no exceptions.
+/// call isAttributeAccess in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
 std::pair<std::string, std::string> Expression::getMultipleAttributes() {
-  if (! isSimple()) {
+  if (_type != SIMPLE && _type != ATTRIBUTE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getAccessNRef works only on simple expressions!");
+                                   "getMultipleAttributes works only on simple expressions or attribute accesses!");
   }
 
   auto expNode = _node;
