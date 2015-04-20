@@ -1712,7 +1712,7 @@ var sortEdgeDefinition = function(edgeDefinition) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCreateGraph2}
 ///   var graph_module = require("org/arangodb/general-graph");
 /// | graph = graph_module._create("myGraph",
-///   [graph_module._relation("myRelation", ["male", "female"])], ["sessions"]);
+///   [graph_module._relation("myRelation", ["male", "female"], ["male", "female"])], ["sessions"]);
 /// ~ graph_module._drop("myGraph", true);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4639,7 +4639,7 @@ exports._listObjects = _listObjects;
 /// @EXAMPLE_ARANGOSH_OUTPUT{general_graph_create_graph_example2}
 ///   var graph_module = require("org/arangodb/general-graph");
 /// |  var edgeDefinitions = graph_module._edgeDefinitions(
-/// |  graph_module._relation("friend_of", ["Customer"]), graph_module._relation(
+/// |  graph_module._relation("friend_of", ["Customer"], ["Customer"]), graph_module._relation(
 ///    "has_bought", ["Customer", "Company"], ["Groceries", "Electronics"]));
 ///   graph_module._create("myStore", edgeDefinitions);
 /// ~ graph_module._drop("myStore");
