@@ -54,12 +54,14 @@ Utf8Helper Utf8Helper::DefaultUtf8Helper;
 // --SECTION--                                      constructors and destructors
 // -----------------------------------------------------------------------------
 
-Utf8Helper::Utf8Helper () : _coll(0) {
-  setCollatorLanguage("");
+Utf8Helper::Utf8Helper (std::string const& lang) : 
+  _coll(nullptr) {
+
+  setCollatorLanguage(lang);
 }
 
-Utf8Helper::Utf8Helper (std::string const& lang) : _coll(0) {
-  setCollatorLanguage(lang);
+Utf8Helper::Utf8Helper () : 
+  Utf8Helper("") {
 }
 
 Utf8Helper::~Utf8Helper () {
@@ -71,15 +73,15 @@ Utf8Helper::~Utf8Helper () {
   }
 }
 
-int Utf8Helper::compareUtf8 (const char* left, const char* right) {
-  if (!_coll) {
+int Utf8Helper::compareUtf8 (const char* left, const char* right) const {
+  if (! _coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
   }
 
   UErrorCode status = U_ZERO_ERROR;
   int result = _coll->compareUTF8(StringPiece(left), StringPiece(right), status);
-  if(U_FAILURE(status)) {
+  if (U_FAILURE(status)) {
     LOG_ERROR("error in Collator::compareUTF8(...): %s", u_errorName(status));
     return (strcmp(left, right));
   }
@@ -87,7 +89,7 @@ int Utf8Helper::compareUtf8 (const char* left, const char* right) {
   return result;
 }
 
-int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {
+int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) const {
   if (!_coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf16()!");
 
@@ -208,7 +210,7 @@ std::string Utf8Helper::getCollatorCountry () {
 std::string Utf8Helper::toLowerCase (std::string const& src) {
   int32_t utf8len = 0;
   char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
-  if (utf8 == 0) {
+  if (utf8 == nullptr) {
     return string("");
   }
 
@@ -224,9 +226,9 @@ std::string Utf8Helper::toLowerCase (std::string const& src) {
 char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength) {
   char* utf8_dest = 0;
 
-  if (src == 0 || srcLength == 0) {
+  if (src == nullptr || srcLength == 0) {
     utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
-    if (utf8_dest != 0) {
+    if (utf8_dest != nullptr) {
       utf8_dest[0] = '\0';
     }
     dstLength = 0;
@@ -244,8 +246,8 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
   else {
     utf8_dest = (char*) TRI_Allocate(zone, (srcLength + 1) * sizeof(char), false);
-    if (utf8_dest == 0) {
-      return 0;
+    if (utf8_dest == nullptr) {
+      return nullptr;
     }
 
     dstLength = ucasemap_utf8ToLower(csm.getAlias(),
@@ -259,8 +261,8 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
       status = U_ZERO_ERROR;
       TRI_Free(zone, utf8_dest);
       utf8_dest = (char*) TRI_Allocate(zone, (dstLength + 1) * sizeof(char), false);
-      if (utf8_dest == 0) {
-        return 0;
+      if (utf8_dest == nullptr) {
+        return nullptr;
       }
 
       dstLength = ucasemap_utf8ToLower(csm.getAlias(),
@@ -281,7 +283,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
 
   utf8_dest = TRI_LowerAsciiStringZ(zone, src);
-  if (utf8_dest != 0) {
+  if (utf8_dest != nullptr) {
     dstLength = (int32_t) strlen(utf8_dest);
   }
   return utf8_dest;
@@ -294,7 +296,7 @@ char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t src
 std::string Utf8Helper::toUpperCase (std::string const& src) {
   int32_t utf8len = 0;
   char* utf8 = toupper(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
-  if (utf8 == 0) {
+  if (utf8 == nullptr) {
     return string("");
   }
 
@@ -308,9 +310,9 @@ std::string Utf8Helper::toUpperCase (std::string const& src) {
 ////////////////////////////////////////////////////////////////////////////////
 
 char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength) {
-  char* utf8_dest = 0;
+  char* utf8_dest = nullptr;
 
-  if (src == 0 || srcLength == 0) {
+  if (src == nullptr || srcLength == 0) {
     utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
     if (utf8_dest != 0) {
       utf8_dest[0] = '\0';
@@ -330,8 +332,8 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
   else {
     utf8_dest = (char*) TRI_Allocate(zone, (srcLength+1) * sizeof(char), false);
-    if (utf8_dest == 0) {
-      return 0;
+    if (utf8_dest == nullptr) {
+      return nullptr;
     }
 
     dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
@@ -345,8 +347,8 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
       status = U_ZERO_ERROR;
       TRI_Free(zone, utf8_dest);
       utf8_dest = (char*) TRI_Allocate(zone, (dstLength + 1) * sizeof(char), false);
-      if (utf8_dest == 0) {
-        return 0;
+      if (utf8_dest == nullptr) {
+        return nullptr;
       }
 
       dstLength = ucasemap_utf8ToUpper(csm.getAlias(),
@@ -367,7 +369,7 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
   }
 
   utf8_dest = TRI_UpperAsciiStringZ(zone, src);
-  if (utf8_dest != NULL) {
+  if (utf8_dest != nullptr) {
     dstLength = (int32_t) strlen(utf8_dest);
   }
   return utf8_dest;
@@ -388,30 +390,30 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
 
   if (textLength == 0) {
     // input text is empty
-    return NULL;
+    return nullptr;
   }
 
   if (textLength < minimalLength) {
     // input text is shorter than required minimum length
-    return NULL;
+    return nullptr;
   }
 
   size_t textUtf16Length = 0;
-  UChar* textUtf16 = NULL;
+  UChar* textUtf16 = nullptr;
 
   if (lowerCase) {
     // lower case string
     int32_t lowerLength = 0;
     char* lower = tolower(TRI_UNKNOWN_MEM_ZONE, text, (int32_t) textLength, lowerLength);
 
-    if (lower == NULL) {
+    if (lower == nullptr) {
       // out of memory
-      return NULL;
+      return nullptr;
     }
 
     if (lowerLength == 0) {
       TRI_Free(TRI_UNKNOWN_MEM_ZONE, lower);
-      return NULL;
+      return nullptr;
     }
 
     textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, lower, lowerLength, &textUtf16Length);
@@ -421,8 +423,8 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
     textUtf16 = TRI_Utf8ToUChar(TRI_UNKNOWN_MEM_ZONE, text, (int32_t) textLength, &textUtf16Length);
   }
 
-  if (textUtf16 == NULL) {
-    return NULL;
+  if (textUtf16 == nullptr) {
+    return nullptr;
   }
 
   ULocDataLocaleType type = ULOC_VALID_LOCALE;
@@ -431,22 +433,22 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   if (U_FAILURE(status)) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
     LOG_ERROR("error in Collator::getLocale(...): %s", u_errorName(status));
-    return NULL;
+    return nullptr;
   }
 
   UChar* tempUtf16 = (UChar *) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, (textUtf16Length + 1) * sizeof(UChar), false);
 
-  if (tempUtf16 == NULL) {
+  if (tempUtf16 == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
-    return NULL;
+    return nullptr;
   }
 
   words = (TRI_vector_string_t*) TRI_Allocate(TRI_UNKNOWN_MEM_ZONE, sizeof(TRI_vector_string_t), false);
 
-  if (words == NULL) {
+  if (words == nullptr) {
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, textUtf16);
     TRI_Free(TRI_UNKNOWN_MEM_ZONE, tempUtf16);
-    return NULL;
+    return nullptr;
   }
 
   // estimate an initial vector size. this is not accurate, but setting the initial size to some
@@ -496,7 +498,7 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
   if (words->_length == 0) {
     // no words found
     TRI_FreeVectorString(TRI_UNKNOWN_MEM_ZONE, words);
-    return NULL;
+    return nullptr;
   }
 
   return words;

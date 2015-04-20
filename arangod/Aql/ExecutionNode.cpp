@@ -2202,6 +2202,39 @@ std::vector<std::pair<ExecutionNode*, bool>> SortNode::getCalcNodePairs () {
 }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief simplifies the expressions of the sort node
+/// this will sort expressions if they are constant
+/// the method will return true if all sort expressions were removed after
+/// simplification, and false otherwise
+////////////////////////////////////////////////////////////////////////////////
+
+bool SortNode::simplify (ExecutionPlan* plan) {
+  for (auto it = _elements.begin(); it != _elements.end(); /* no hoisting */) {
+    auto variable = (*it).first;
+    
+    TRI_ASSERT(variable != nullptr);
+    auto setter = _plan->getVarSetBy(variable->id);
+    
+    if (setter != nullptr) {
+      if (setter->getType() == ExecutionNode::CALCULATION) {
+        // variable introduced by a calculation
+        auto expression = static_cast<CalculationNode*>(setter)->expression();
+
+        if (expression->isConstant()) {
+          // constant expression, remove it!
+          it = _elements.erase(it);
+          continue;
+        }
+      }
+    }
+
+    ++it;
+  }
+
+  return _elements.empty();
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief returns all sort information 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2214,7 +2247,7 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
     auto variable = (*it).first;
     TRI_ASSERT(variable != nullptr);
     auto setter = _plan->getVarSetBy(variable->id);
-      
+     
     if (setter == nullptr) {
       result.isValid = false;
       break;
@@ -2233,7 +2266,8 @@ SortInformation SortNode::getSortInformation (ExecutionPlan* plan,
       }
 
       if (! expression->isAttributeAccess() &&
-          ! expression->isReference()) {
+          ! expression->isReference() &&
+          ! expression->isConstant()) {
         result.isComplex = true;
         break;
       }

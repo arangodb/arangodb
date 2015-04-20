@@ -117,7 +117,7 @@ namespace triagens {
 /// @brief setValue, set the current value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setValue (size_t index, RegisterId varNr, AqlValue value) {
+      void setValue (size_t index, RegisterId varNr, AqlValue const& value) {
         TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
         TRI_ASSERT_EXPENSIVE(_data.at(index * _nrRegs + varNr).isEmpty());
 
@@ -132,7 +132,7 @@ namespace triagens {
           }
           else {
             TRI_ASSERT_EXPENSIVE(it->second > 0);
-            it->second++;
+            ++(it->second);
           }
         }
 

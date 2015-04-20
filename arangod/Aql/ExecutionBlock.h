@@ -29,8 +29,6 @@
 #define ARANGODB_AQL_EXECUTION_BLOCK_H 1
 
 #include "Basics/JsonHelper.h"
-#include "ShapedJson/shaped-json.h"
-
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/CollectionScanner.h"
@@ -38,7 +36,9 @@
 #include "Aql/Range.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/ExecutionStats.h"
+#include "Basics/StringBuffer.h"
 #include "Cluster/ClusterComm.h"
+#include "ShapedJson/shaped-json.h"
 #include "Utils/AqlTransaction.h"
 #include "Utils/transactions.h"
 #include "Utils/V8TransactionContext.h"
@@ -499,7 +499,7 @@ namespace triagens {
 /// @brief getSome
 ////////////////////////////////////////////////////////////////////////////////
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override;
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 // skip between atLeast and atMost, returns the number actually skipped . . .
@@ -577,7 +577,7 @@ namespace triagens {
 
         int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override;
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 // skip between atLeast and atMost, returns the number actually skipped . . .
@@ -864,7 +864,7 @@ namespace triagens {
 
         int initializeCursor (AqlItemBlock* items, size_t pos) override;
 
-        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override;
+        AqlItemBlock* getSome (size_t atLeast, size_t atMost) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 // skip between atLeast and atMost returns the number actually skipped . . .
@@ -983,7 +983,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t atLeast,
-                               size_t atMost) override;
+                               size_t atMost) override final;
 
       private:
 
@@ -1054,7 +1054,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t atLeast,
-                               size_t atMost) override;
+                               size_t atMost) override final;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief shutdown, tell dependency and the subquery
@@ -1226,7 +1226,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::vector<std::string> _variableNames;
-
+        
     };
 
 // -----------------------------------------------------------------------------
@@ -1267,7 +1267,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         RegisterId _groupRegister;
-
+        
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief hasher for a vector of AQL values
 ////////////////////////////////////////////////////////////////////////////////
@@ -1276,13 +1276,15 @@ namespace triagens {
           GroupKeyHash (triagens::arango::AqlTransaction* trx,
                         std::vector<TRI_document_collection_t const*>& colls)
             : _trx(trx),
-              _colls(colls) {
+              _colls(colls),
+              _num(colls.size()) {
           }
 
           size_t operator() (std::vector<AqlValue> const& value) const;
           
           triagens::arango::AqlTransaction* _trx;
           std::vector<TRI_document_collection_t const*>& _colls;
+          size_t const _num;
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1463,7 +1465,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlItemBlock* getSome (size_t atLeast,
-                               size_t atMost) override;
+                               size_t atMost) override final;
 
     };
 
@@ -1513,7 +1515,7 @@ namespace triagens {
           
         int extractKey (AqlValue const&,
                         TRI_document_collection_t const*,
-                        std::string&) const;
+                        std::string&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructs a master pointer from the marker passed
@@ -1579,6 +1581,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         bool _usesDefaultSharding;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief temporary string buffer for extracting system attributes
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::StringBuffer _buffer;
 
     };
 
