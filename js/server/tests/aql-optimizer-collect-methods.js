@@ -256,6 +256,79 @@ function optimizerCollectMethodsTestSuite () {
         var results = AQL_EXECUTE(query[0]);
         assertEqual(query[1], results.json.length);
       });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test override of collect method
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverrideMethodWithHashIgnored : function () {
+      c.ensureIndex({ type: "skiplist", fields: [ "group" ] }); 
+      c.ensureIndex({ type: "skiplist", fields: [ "group", "value" ] }); 
+
+      // the expectation is that the optimizer will still use the 'sorted' method here as there are
+      // sorted indexes supporting it
+      var queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'hash' } RETURN [ value, g ]",
+        "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'hash' } RETURN value",
+        "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value OPTIONS { method: 'hash' } RETURN [ value1, value2 ]",
+        "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN [ value, l ]",
+        "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN [ value1, value2, l ]"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+
+        var aggregateNodes = 0;
+        var sortNodes = 0;
+        plan.nodes.map(function(node) {
+          if (node.type === "AggregateNode") {
+            ++aggregateNodes;
+            assertEqual("sorted", node.aggregationOptions.method);
+          }
+          if (node.type === "SortNode") {
+            ++sortNodes;
+          }
+        });
+        
+        assertEqual(1, aggregateNodes);
+        assertEqual(0, sortNodes);
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test override of collect method
+////////////////////////////////////////////////////////////////////////////////
+
+    testOverrideMethodSortedUsed : function () {
+      // the expectation is that the optimizer will use the 'sorted' method here because we
+      // explicitly ask for it
+      var queries = [
+        "FOR j IN " + c.name() + " COLLECT value = j.group INTO g OPTIONS { method: 'sorted' } RETURN [ value, g ]",
+        "FOR j IN " + c.name() + " COLLECT value = j.group OPTIONS { method: 'sorted' } RETURN value",
+        "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value OPTIONS { method: 'sorted' } RETURN [ value1, value2 ]",
+        "FOR j IN " + c.name() + " COLLECT value = j.group WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN [ value, l ]",
+        "FOR j IN " + c.name() + " COLLECT value1 = j.group, value2 = j.value WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN [ value1, value2, l ]"
+      ];
+
+      queries.forEach(function(query) {
+        var plan = AQL_EXPLAIN(query).plan;
+
+        var aggregateNodes = 0;
+        var sortNodes = 0;
+        plan.nodes.map(function(node) {
+          if (node.type === "AggregateNode") {
+            ++aggregateNodes;
+            assertEqual("sorted", node.aggregationOptions.method);
+          }
+          if (node.type === "SortNode") {
+            ++sortNodes;
+          }
+        });
+        
+        assertEqual(1, aggregateNodes);
+        assertEqual(1, sortNodes);
+      });
     }
 
   };

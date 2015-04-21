@@ -57,7 +57,7 @@ On the top level, AQL offers the following operations:
 - `UPDATE`: (partial) update of existing documents
 - `REPLACE`: replacement of existing documents
 - `REMOVE`: removal of existing documents
-- `UPSERT`: insertion or (partial) update of existing documents
+- `UPSERT`: insertion or update of existing documents
 
 Each of the above operations can be initiated in a query by using a keyword of
 the same name. An AQL query can (and typically does) consist of multiple of the
