@@ -1938,6 +1938,8 @@ static TRI_doc_collection_info_t* Figures (TRI_document_collection_t* document) 
 
 static int InitBaseDocumentCollection (TRI_document_collection_t* document,
                                        TRI_shaper_t* shaper) {
+  TRI_ASSERT(document != nullptr);
+
   document->setShaper(shaper);
   document->_capConstraint      = nullptr;
   document->_numberDocuments    = 0;
@@ -2021,6 +2023,8 @@ static void DestroyBaseDocumentCollection (TRI_document_collection_t* document) 
 
 static bool InitDocumentCollection (TRI_document_collection_t* document,
                                     TRI_shaper_t* shaper) {
+  TRI_ASSERT(document != nullptr);
+
   document->_cleanupIndexes   = false;
   document->_failedTransactions = nullptr;
 
@@ -2221,6 +2225,8 @@ TRI_document_collection_t* TRI_CreateDocumentCollection (TRI_vocbase_t* vocbase,
 
     return nullptr;
   }
+
+  TRI_ASSERT(document != nullptr);
 
   document->_keyGenerator = keyGenerator;
 

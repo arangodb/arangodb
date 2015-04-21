@@ -3640,7 +3640,7 @@ static void JS_CollectionVocbase (const v8::FunctionCallbackInfo<v8::Value>& arg
   }
 
   v8::Handle<v8::Value> val = args[0];
-  TRI_vocbase_col_t const* collection = 0;
+  TRI_vocbase_col_t const* collection = nullptr;
 
   if (ServerState::instance()->isCoordinator()) {
     string const name = TRI_ObjectToString(val);
