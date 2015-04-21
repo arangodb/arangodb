@@ -28,10 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/json-utilities.h"
-
-#include "Basics/utf8-helper.h"
-#include "Basics/string-buffer.h"
 #include "Basics/hashes.h"
+#include "Basics/string-buffer.h"
+#include "Basics/Utf8Helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -248,8 +247,10 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       // same for STRING and STRING_REFERENCE
       int res;
       if (useUTF8) {
-        res = TRI_compare_utf8(lhs->_value._string.data, 
-                               rhs->_value._string.data);
+        res = TRI_compare_utf8(lhs->_value._string.data,
+                               lhs->_value._string.length - 1, 
+                               rhs->_value._string.data,
+                               rhs->_value._string.length - 1);
       }
       else {
         res = strcmp(lhs->_value._string.data, rhs->_value._string.data);
