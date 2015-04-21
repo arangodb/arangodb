@@ -27,8 +27,8 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_VOC_BASE_TRAVERSAL_H
-#define ARANGODB_VOC_BASE_TRAVERSAL_H 1
+#ifndef ARANGODB_TRAVERSAL_H
+#define ARANGODB_TRAVERSAL_H 1
 
 #include "Basics/Common.h"
 
@@ -61,12 +61,30 @@ namespace triagens {
         std::vector<VertexId> vertices; 
         std::vector<EdgeId> edges; 
         EdgeWeight weight;
+
+        Path (
+          std::vector<VertexId> vertices,
+          std::vector<EdgeId> edges,
+          EdgeWeight weight
+        ) : vertices(vertices),
+            edges(edges),
+            weight(weight) {
+        };
       };
 
       struct Neighbor {
         VertexId neighbor;
         EdgeId edge;
         EdgeWeight weight;
+
+        Neighbor (
+          VertexId neighbor,
+          EdgeId edge,
+          EdgeWeight weight
+        ) : neighbor(neighbor),
+            edge(edge),
+            weight(weight) {
+        };
       };
 
       ////////////////////////////////////////////////////////////////////////////////
@@ -75,7 +93,7 @@ namespace triagens {
       typedef enum {FORWARD, BACKWARD} Direction;
 
       typedef std::function<void(VertexId source, Direction dir, std::vector<Neighbor>& result)>
-              NeighborFunction;
+              ExpanderFunction;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                      constructors and destructors
@@ -85,7 +103,7 @@ namespace triagens {
 /// @brief create the Traverser
 ////////////////////////////////////////////////////////////////////////////////
 
-        Traverser (NeighborFunction const& n) : _neighborFunction(n) {
+        Traverser (ExpanderFunction const& n) : _neighborFunction(n) {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,8 +127,7 @@ namespace triagens {
         // nullptr indicates there is no path
         Path* ShortestPath (
           VertexId const& start,
-          VertexId const& target,
-          Direction direction
+          VertexId const& target
         );
 
 // -----------------------------------------------------------------------------
@@ -155,11 +172,11 @@ namespace triagens {
               vertex(vertex) {
           };
 
-          bool operator< (QueueInfo const& a) {
-            if (weight == a.weight) {
-              return vertex < a.vertex;
+          friend bool operator< (QueueInfo const& a, QueueInfo const& b) {
+            if (a.weight == b.weight) {
+              return a.vertex < b.vertex;
             }
-            return weight < a.weight;
+            return a.weight < b.weight;
           };
 
         };
@@ -169,11 +186,21 @@ namespace triagens {
           std::unordered_map<VertexId, LookupInfo>& lookup;
           std::set<QueueInfo, std::less<QueueInfo>>& queue;
           std::mutex& mutex;
+
+          ThreadInfo (
+            std::unordered_map<VertexId, LookupInfo>& lookup,
+            std::set<QueueInfo, std::less<QueueInfo>>& queue,
+            std::mutex& mutex
+          ) : lookup(lookup),
+              queue(queue),
+              mutex(mutex) {
+          };
         };
 
 
-        NeighborFunction const& _neighborFunction;
+        ExpanderFunction const& _neighborFunction;
 
+        // Are they needed anyway??
         // ShortestPath will create these variables
         std::unordered_map<VertexId, LookupInfo> _forwardLookup;
         std::set<QueueInfo, std::less<QueueInfo>> _forwardQueue;
@@ -195,8 +222,8 @@ namespace triagens {
                           VertexId neighbor,
                           EdgeWeight weight
                         );
-        void searchFromVertex ( ThreadInfo& myInfo,
-                                ThreadInfo& peerInfo,
+        void searchFromVertex ( ThreadInfo myInfo,
+                                ThreadInfo peerInfo,
                                 VertexId start,
                                 Direction dir
                               );
