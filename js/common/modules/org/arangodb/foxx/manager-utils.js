@@ -82,7 +82,11 @@ function buildGithubUrl (repository, version) {
     version = "master";
   }
 
-  return 'https://github.com/' + repository + '/archive/' + version + '.zip';
+  var urlPrefix = require("process").env.FOXX_BASE_URL;
+  if (urlPrefix === undefined) {
+    urlPrefix = 'https://github.com/';
+  }
+  return  urlPrefix + repository + '/archive/' + version + '.zip';
 }
 
 ////////////////////////////////////////////////////////////////////////////////
