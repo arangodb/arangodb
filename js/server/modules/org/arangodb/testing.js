@@ -478,8 +478,8 @@ function checkInstanceAlive(instanceInfo, options) {
           storeArangodPath + 
           " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
         if (require("internal").platform.substr(0,3) === 'win') {
-          copy("bin/arangod.exe", instanceInfo.tmpDataDir);
-          copy("bin/arangod.pdb", instanceInfo.tmpDataDir);
+          copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+          copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
         }
