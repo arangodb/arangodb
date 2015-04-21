@@ -128,7 +128,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.method);
+            assertEqual("hash", node.aggregationOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -168,7 +168,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.method);
+            assertEqual("hash", node.aggregationOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -206,7 +206,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
-            assertEqual("sorted", node.method);
+            assertEqual("sorted", node.aggregationOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;
@@ -243,7 +243,7 @@ function optimizerCollectMethodsTestSuite () {
         plan.nodes.map(function(node) {
           if (node.type === "AggregateNode") {
             ++aggregateNodes;
-            assertEqual("hash", node.method);
+            assertEqual("hash", node.aggregationOptions.method);
           }
           if (node.type === "SortNode") {
             ++sortNodes;

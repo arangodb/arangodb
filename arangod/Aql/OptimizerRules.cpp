@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/OptimizerRules.h"
+#include "Aql/AggregationOptions.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -1110,7 +1111,8 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation = (! aggregateVariables.empty() &&
-                                        (! collectNode->hasOutVariable() || collectNode->count()));
+                                        (! collectNode->hasOutVariable() || collectNode->count()) &&
+                                        collectNode->getOptions().canUseHashMethod());
   
     if (canUseHashAggregation) {
       // create a new plan with the adjusted COLLECT node
@@ -1122,7 +1124,7 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
       
       // specialize the AggregateNode so it will become a HashAggregateBlock later
       // additionally, add a SortNode BEHIND the AggregateNode (to sort the final result)
-      newCollectNode->aggregationMethod(AggregateNode::AGGREGATION_HASH);
+      newCollectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
 
       std::vector<std::pair<Variable const*, bool>> sortElements;
       for (auto const& v : newCollectNode->aggregateVariables()) {
@@ -1148,7 +1150,7 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
       
     // specialize the AggregateNode so it will become a SortedAggregateBlock later
     // insert a SortNode IN FRONT OF the AggregateNode
-    collectNode->aggregationMethod(AggregateNode::AGGREGATION_SORTED);
+    collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED);
 
     if (! aggregateVariables.empty()) {
       std::vector<std::pair<Variable const*, bool>> sortElements;

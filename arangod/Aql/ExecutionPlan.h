@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Aql/ExecutionNode.h"
+#include "Aql/AggregationOptions.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Query.h"
 #include "Aql/types.h"
@@ -339,7 +340,13 @@ namespace triagens {
 /// @brief create modification options from an AST node
 ////////////////////////////////////////////////////////////////////////////////
 
-        ModificationOptions createOptions (AstNode const*);
+        ModificationOptions createModificationOptions (AstNode const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief create COLLECT options from an AST node
+////////////////////////////////////////////////////////////////////////////////
+
+        AggregationOptions createAggregationOptions (AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief adds "previous" as dependency to "plan", returns "plan"

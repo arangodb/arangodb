@@ -28,12 +28,8 @@
 #ifndef ARANGODB_AQL_EXECUTION_NODE_H
 #define ARANGODB_AQL_EXECUTION_NODE_H 1
 
-#include <Basics/Common.h>
-
-#include <Basics/JsonHelper.h>
-#include <VocBase/voc-types.h>
-#include <VocBase/vocbase.h>
-
+#include "Basics/Common.h"
+#include "Aql/AggregationOptions.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Expression.h"
@@ -45,8 +41,10 @@
 #include "Aql/types.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-
+#include "Basics/JsonHelper.h"
 #include "lib/Basics/json-utilities.h"
+#include "VocBase/voc-types.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace basics {
@@ -1996,12 +1994,6 @@ namespace triagens {
 
       public:
        
-        enum AggregationMethod {
-          AGGREGATION_UNDEFINED,
-          AGGREGATION_HASH,
-          AGGREGATION_SORTED
-        };
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief constructor
 ////////////////////////////////////////////////////////////////////////////////
@@ -2010,20 +2002,20 @@ namespace triagens {
 
         AggregateNode (ExecutionPlan* plan,
                        size_t id,
+                       AggregationOptions const& options,
                        std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
                        Variable const* expressionVariable,
                        Variable const* outVariable,
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
-                       AggregationMethod aggregationMethod,
                        bool count)
           : ExecutionNode(plan, id), 
+            _options(options),
             _aggregateVariables(aggregateVariables), 
             _expressionVariable(expressionVariable),
             _outVariable(outVariable),
             _keepVariables(keepVariables),
             _variableMap(variableMap),
-            _aggregationMethod(aggregationMethod),
             _count(count) {
 
           // outVariable can be a nullptr, but only if _count is not set
@@ -2039,7 +2031,6 @@ namespace triagens {
                        std::vector<Variable const*> const& keepVariables,
                        std::unordered_map<VariableId, std::string const> const& variableMap,
                        std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                       AggregationMethod aggregationMethod,
                        bool count);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2054,47 +2045,32 @@ namespace triagens {
 /// @brief return the aggregation method
 ////////////////////////////////////////////////////////////////////////////////
 
-        AggregationMethod aggregationMethod () const {
-          return _aggregationMethod;
+        AggregationOptions::AggregationMethod aggregationMethod () const {
+          return _options.method;
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief set the aggregation method
 ////////////////////////////////////////////////////////////////////////////////
 
-        void aggregationMethod (AggregationMethod method) {
-          TRI_ASSERT(_aggregationMethod == AGGREGATION_UNDEFINED);
-          _aggregationMethod = method;
+        void aggregationMethod (AggregationOptions::AggregationMethod method) {
+          _options.method = method;
         } 
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief get the aggregation method from a string
+/// @brief getOptions
 ////////////////////////////////////////////////////////////////////////////////
-          
-        static AggregationMethod aggregationMethod (std::string const& method) {
-          if (method == "hash") {
-            return AggregateNode::AGGREGATION_HASH;
-          }
-          if (method == "sorted") {
-            return AggregateNode::AGGREGATION_SORTED;
-          }
-
-          return AggregateNode::AGGREGATION_UNDEFINED;
+        
+        AggregationOptions const& getOptions () const {
+          return _options;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief stringify the aggregation method
+/// @brief getOptions
 ////////////////////////////////////////////////////////////////////////////////
-          
-        std::string aggregationMethodString () const {
-          if (_aggregationMethod == AggregateNode::AGGREGATION_HASH) {
-            return std::string("hash");
-          }
-          if (_aggregationMethod == AggregateNode::AGGREGATION_SORTED) {
-            return std::string("sorted");
-          }
-
-          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "cannot stringify unknown aggregation method");
+        
+        AggregationOptions& getOptions () {
+          return _options;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2218,6 +2194,12 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief options for the aggregation
+////////////////////////////////////////////////////////////////////////////////
+
+        AggregationOptions _options;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief input/output variables for the aggregation (out, in)
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -2246,12 +2228,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
                        
         std::unordered_map<VariableId, std::string const> const _variableMap;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief aggregation method (hashed vs. sorted)
-////////////////////////////////////////////////////////////////////////////////
-
-        AggregationMethod _aggregationMethod;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief COUNTing node?
