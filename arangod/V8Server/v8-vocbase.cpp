@@ -52,7 +52,6 @@
 #include "Wal/LogfileManager.h"
 
 #include "VocBase/auth.h"
-#include "VocBase/traversal.h"
 #include "v8.h"
 #include "V8/JSLoader.h"
 
@@ -1483,7 +1482,7 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
-  TRI_RunDijkstraSearch(args);
+//   TRI_RunDijkstraSearch(args);
 }
 
 
