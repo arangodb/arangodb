@@ -27,8 +27,9 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "traversal.h"
+#include "Traverser.h"
 
+/*
 #include "v8.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
@@ -39,8 +40,97 @@
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 
-using namespace std;
 using namespace triagens::arango;
+*/
+
+using namespace std;
+using namespace triagens::basics;
+
+void Traverser::insertNeighbor (ThreadInfo& info,
+                            VertexId neighbor,
+                            VertexId predecessor,
+                            EdgeId edge,
+                            EdgeWeight weight
+                           ) {
+  std::lock_guard<std::mutex> guard(info.mutex);
+  auto it = info.lookup.find(neighbor);
+
+  // Not found insert it
+  if (it == info.lookup.end()) {
+    info.lookup.emplace(
+      neighbor,
+      LookupInfo(weight, edge, predecessor)
+    );
+    return;
+  }
+  if (it->second.done) {
+    return;
+  }
+  if (it->second.weight > weight) {
+    QueueInfo q(neighbor, it->second.weight);
+    info.queue.erase(q);
+    q.weight = weight;
+    info.queue.insert(q);
+    it->second.weight = weight;
+  }
+};
+
+void Traverser::lookupPeer (ThreadInfo& info,
+                            VertexId neighbor,
+                            EdgeWeight weight) {
+  std::lock_guard<std::mutex> guard(info.mutex);
+  auto it = info.lookup.find(neighbor);
+  if (it == info.lookup.end()) {
+    return;
+  }
+  EdgeWeight total = it->second.weight + weight;
+  if (total < highscore) {
+    highscore = total;
+  }
+  if (it->second.done && total <= highscore) {
+    std::lock_guard<std::mutex> guard(resultMutex);
+    intermediate = neighbor;
+    bingo = true;
+  }
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Search graph starting at Start following edges of the given
+///        direction only
+////////////////////////////////////////////////////////////////////////////////
+
+void Traverser::searchFromVertex (
+    ThreadInfo& myInfo,
+    ThreadInfo& peerInfo,
+    VertexId start,
+    Direction dir
+    ) {
+  insertNeighbor(myInfo, start, nullptr, nullptr, 0);
+  auto nextVertex = myInfo.queue.begin();
+  // Iterate while no bingo found and
+  // there still is a vertex on the stack.
+  while (!bingo && nextVertex != myInfo.queue.end()) {
+    myInfo.queue.erase(nextVertex);
+
+    nextVertex = myInfo.queue.begin();
+  }
+
+};
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return the shortest path between the start and target vertex.
+////////////////////////////////////////////////////////////////////////////////
+
+Traverser::Path* Traverser::ShortestPath (VertexId const& start,
+                    VertexId const& target,
+                    Direction direction) {
+
+  return nullptr;
+};
+
+/*
+
+
 
 struct LocalCollectionGuard {
   LocalCollectionGuard (TRI_vocbase_col_t* collection)
@@ -74,6 +164,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   vector<string> writeCollections;
   TRI_voc_cid_t vertexCollectionCId;
   TRI_voc_cid_t edgeCollectionCId;
+  TRI_voc_rid_t rid;
 
   double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
   bool embed = false;
@@ -83,7 +174,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (! args[0]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <vertexcollection>");
   }
-  string const vertexCollectionName = TRI_ObjectToString(args[0]);
+  string vertexCollectionName = TRI_ObjectToString(args[0]);
 
   // get the edge collection
   if (! args[1]->IsString()) {
@@ -101,15 +192,21 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   readCollections.push_back(vertexCollectionName);
   readCollections.push_back(edgeCollectionName);
   
-  if (! ExtractDocumentHandle(isolate, val, collectionName, key, rid)) {
-    return TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD;
+  if (! args[2]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <startVertex>");
+  }
+
+
+  std::string vertexColName;
+
+  if (! ExtractDocumentHandle(isolate, args[2], vertexColName, key, rid)) {
+    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
   if (key.get() == nullptr) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
   }
 
-  TRI_ASSERT(col != nullptr);
   TRI_ASSERT(key.get() != nullptr);
 
   // IHHF isCoordinator
@@ -160,63 +257,69 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   // Edges TRI_EDGE_OUT is hardcoded
   TRI_document_collection_t * ecol = trx.trxCollection(edgeCollectionCId)->_collection->_collection;
-  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(ecol, TRI_EDGE_OUT, edgeCollectionCId, key.get());
+  std::cout << key.get() << "\n";
+  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(ecol, TRI_EDGE_OUT, vertexCollectionCId, key.get());
 
   // Add Dijkstra here
 
   // Now build up the result use Subtransactions for each used collection
   if (res == TRI_ERROR_NO_ERROR) {
-    // Collect all vertices
-    SingleCollectionReadOnlyTransaction subtrx(new V8TransactionContext(true), vocbase, vertexCollectionCId);
+    {
+      // Collect all vertices
+      SingleCollectionReadOnlyTransaction subtrx(new V8TransactionContext(true), vocbase, vertexCollectionCId);
 
-    res = subtrx.begin();
+      res = subtrx.begin();
 
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    result = TRI_WrapShapedJson(isolate, subtrx, vertexCollectionCId, document.getDataPtr());
-
-    if (document.getDataPtr() == nullptr) {
-      res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    res = subtrx.finish(res);
-
-    // Collect all edges
-    SingleCollectionReadOnlyTransaction subtrx2(new V8TransactionContext(true), vocbase, edgeCollectionCId);
-
-    res = subtrx2.begin();
-
-    if (res != TRI_ERROR_NO_ERROR) {
-      TRI_V8_THROW_EXCEPTION(res);
-    }
-
-    bool error = false;
-
-    uint32_t const n = static_cast<uint32_t>(edges.size());
-    documents = v8::Array::New(isolate, static_cast<int>(n));
-    for (size_t j = 0;  j < n;  ++j) {
-      v8::Handle<v8::Value> doc = TRI_WrapShapedJson(isolate, subtrx2, edgeCollectionCId, edges[j].getDataPtr());
-
-      if (doc.IsEmpty()) {
-        error = true;
-        break;
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_V8_THROW_EXCEPTION(res);
       }
-      else {
-        documents->Set(static_cast<uint32_t>(j), doc);
+
+      result = TRI_WrapShapedJson(isolate, subtrx, vertexCollectionCId, document.getDataPtr());
+
+      if (document.getDataPtr() == nullptr) {
+        res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
+        TRI_V8_THROW_EXCEPTION(res);
       }
-    }
-    if (error) {
-      TRI_V8_THROW_EXCEPTION_MEMORY();
+
+      res = subtrx.finish(res);
     }
 
-    res = subtrx2.finish(res);
+    {
+      // Collect all edges
+      SingleCollectionReadOnlyTransaction subtrx2(new V8TransactionContext(true), vocbase, edgeCollectionCId);
+
+      res = subtrx2.begin();
+
+      if (res != TRI_ERROR_NO_ERROR) {
+        TRI_V8_THROW_EXCEPTION(res);
+      }
+
+      bool error = false;
+
+      uint32_t const n = static_cast<uint32_t>(edges.size());
+      documents = v8::Array::New(isolate, static_cast<int>(n));
+      for (size_t j = 0;  j < n;  ++j) {
+        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(isolate, subtrx2, edgeCollectionCId, edges[j].getDataPtr());
+
+        if (doc.IsEmpty()) {
+          error = true;
+          break;
+        }
+        else {
+          documents->Set(static_cast<uint32_t>(j), doc);
+        }
+      }
+      if (error) {
+        TRI_V8_THROW_EXCEPTION_MEMORY();
+      }
+
+      res = subtrx2.finish(res);
+    }
   } 
   res = trx.finish(res);
 
   // Not yet correct. Needs to build an object first.
-  TRI_V8_RETURN(result);
-  // TRI_V8_RETURN(documents);
+  // TRI_V8_RETURN(result);
+  TRI_V8_RETURN(documents);
 }
+*/
