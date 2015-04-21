@@ -191,18 +191,20 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
                            TRI_json_t const* rhs,
                            bool useUTF8) {
   // note: both lhs and rhs may be NULL!
-  int lWeight = TypeWeight(lhs);
-  int rWeight = TypeWeight(rhs);
+  {
+    int lWeight = TypeWeight(lhs);
+    int rWeight = TypeWeight(rhs);
 
-  if (lWeight < rWeight) {
-    return -1;
+    if (lWeight < rWeight) {
+      return -1;
+    }
+
+    if (lWeight > rWeight) {
+      return 1;
+    }
+
+    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
   }
-
-  if (lWeight > rWeight) {
-    return 1;
-  }
-
-  TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
 
   // lhs and rhs have equal weights
   if (lhs == nullptr) {
@@ -262,8 +264,8 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     }
 
     case TRI_JSON_ARRAY: {
-      size_t nl = lhs->_value._objects._length;
-      size_t nr = rhs->_value._objects._length;
+      size_t const nl = lhs->_value._objects._length;
+      size_t const nr = rhs->_value._objects._length;
       size_t n;
 
       if (nl > nr) {
@@ -295,6 +297,7 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
 
       if (keys != nullptr) {
         size_t const n = keys->_value._objects._length;
+
         for (size_t i = 0; i < n; ++i) {
           auto keyElement = static_cast<TRI_json_t const*>(TRI_AtVector(&keys->_value._objects, i));
           TRI_ASSERT(TRI_IsStringJson(keyElement));
