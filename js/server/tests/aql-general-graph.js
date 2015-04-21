@@ -1860,7 +1860,7 @@ assertEqual(actual,
 
 },
 
-testGRAPH_SHORTEST_PATH_WITH_DIJSKTRA: function () {
+testGRAPH_SHORTEST_PATH_WITH_DIJKSTRA: function () {
   var actual;
 
   actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', 'UnitTests_Hamburger/Caesar', " +
@@ -2203,7 +2203,7 @@ testGRAPH_CLOSENESS_WITH_DIJKSTRA_WEIGHT: function () {
 },
 
 
-testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJSKTRA: function () {
+testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJKSTRA: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'outbound'})");
 
@@ -2216,7 +2216,7 @@ testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJSKTRA: function () {
   assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.1666).toFixed(2));
 },
 
-testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJSKTRA_WEIGHT: function () {
+testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJKSTRA_WEIGHT: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80, direction : 'outbound'})");
 
@@ -2230,7 +2230,7 @@ testGRAPH_CLOSENESS_OUTBOUND_WITH_DIJSKTRA_WEIGHT: function () {
 },
 
 
-testGRAPH_CLOSENESS_INBOUND_WITH_DIJSKTRA: function () {
+testGRAPH_CLOSENESS_INBOUND_WITH_DIJKSTRA: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
 
@@ -2243,7 +2243,7 @@ testGRAPH_CLOSENESS_INBOUND_WITH_DIJSKTRA: function () {
   assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (0.3333).toFixed(2));
 },
 
-testGRAPH_CLOSENESS_INBOUND_WITH_DIJSKTRA_WEIGHT: function () {
+testGRAPH_CLOSENESS_INBOUND_WITH_DIJKSTRA_WEIGHT: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_CLOSENESS('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80, direction : 'inbound'})");
 
@@ -2258,7 +2258,7 @@ testGRAPH_CLOSENESS_INBOUND_WITH_DIJSKTRA_WEIGHT: function () {
 },
 
 
-testGRAPH_ECCENTRICITY_WITH_DIJSKTRA: function () {
+testGRAPH_ECCENTRICITY_WITH_DIJKSTRA: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra'})");
 
@@ -2272,7 +2272,7 @@ testGRAPH_ECCENTRICITY_WITH_DIJSKTRA: function () {
 },
 
 
-testGRAPH_ECCENTRICITY_WITH_DIJSKTRA_inbound: function () {
+testGRAPH_ECCENTRICITY_WITH_DIJKSTRA_inbound: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', direction : 'inbound'})");
 
@@ -2285,7 +2285,7 @@ testGRAPH_ECCENTRICITY_WITH_DIJSKTRA_inbound: function () {
   assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(1), (0.5).toFixed(1));
 },
 
-testGRAPH_ECCENTRICITY_WITH_DIJSKTRA_weight: function () {
+testGRAPH_ECCENTRICITY_WITH_DIJKSTRA_weight: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_ECCENTRICITY('werKenntWen', {algorithm : 'dijkstra', weight : 'entfernung', defaultWeight : 80})");
 
@@ -2298,7 +2298,7 @@ testGRAPH_ECCENTRICITY_WITH_DIJSKTRA_weight: function () {
   assertEqual(actual[0]["UnitTests_Leipziger/Gerda"].toFixed(2), (1).toFixed(2));
 },
 
-testGRAPH_DIAMETER_AND_RADIUS_WITH_DIJSKTRA: function () {
+testGRAPH_DIAMETER_AND_RADIUS_WITH_DIJKSTRA: function () {
   var actual;
   actual = getQueryResults("RETURN GRAPH_RADIUS('werKenntWen', {algorithm : 'dijkstra'})");
   assertEqual(actual[0], 3);
@@ -2313,7 +2313,7 @@ testGRAPH_DIAMETER_AND_RADIUS_WITH_DIJSKTRA: function () {
   assertEqual(actual[0].toFixed(1), 830.3);
 },
 
-testGRAPH_SHORTEST_PATHWithExamples_WITH_DIJSKTRA: function () {
+testGRAPH_SHORTEST_PATHWithExamples_WITH_DIJKSTRA: function () {
   var actual;
 
   actual = getQueryResults("FOR e IN GRAPH_SHORTEST_PATH('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
@@ -2338,7 +2338,7 @@ testGRAPH_SHORTEST_PATHWithExamples_WITH_DIJSKTRA: function () {
   ]);
 },
 
-testGRAPH_DISTANCE_TO_WithExamples_WITH_DIJSKTRA: function () {
+testGRAPH_DISTANCE_TO_WithExamples_WITH_DIJKSTRA: function () {
   var actual;
   actual = getQueryResults("FOR e IN GRAPH_DISTANCE_TO('werKenntWen', {gender : 'female'},  {gender : 'male', age : 30}, " +
     "{direction : 'any'}) SORT e.startVertex, e.vertex SORT e.startVertex, e.vertex RETURN [e.startVertex, e.vertex, e.distance]");
