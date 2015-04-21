@@ -176,7 +176,7 @@ pack-macosx:
 	./configure \
 		--prefix=/opt/arangodb
 
-	${MAKE} pack-macosx-cmake
+	${MAKE} pack-macosx-cmake MOREOPTS='$(MOREOPTS)'
 
 pack-macosx-cmake:
 	cd Build && cmake \
@@ -190,6 +190,7 @@ pack-macosx-cmake:
 		-D "READLINE_VERSION=${READLINE_VERSION}" \
 		-D "V8_VERSION=${V8_VERSION}" \
 		-D "ZLIB_VERSION=${ZLIB_VERSION}" \
+		$(MOREOPTS) \
 		..
 
 	${MAKE} .libev-build-64
