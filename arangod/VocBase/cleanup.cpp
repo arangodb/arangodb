@@ -75,6 +75,9 @@ static void CleanupDocumentCollection (TRI_vocbase_col_t* collection,
   // but if we are in server shutdown, we can force unloading of collections
   bool isInShutdown = triagens::wal::LogfileManager::instance()->isInShutdown();
 
+  TRI_ASSERT(collection != nullptr);
+  TRI_ASSERT(document != nullptr);
+
   // loop until done
   while (true) {
     TRI_barrier_list_t* container = &document->_barrierList;
@@ -255,8 +258,8 @@ void TRI_CleanupVocBase (void* data) {
   TRI_vector_pointer_t collections;
   uint64_t iterations = 0;
 
-  TRI_vocbase_t* vocbase = static_cast<TRI_vocbase_t*>(data);
-  TRI_ASSERT(vocbase);
+  TRI_vocbase_t* const vocbase = static_cast<TRI_vocbase_t*>(data);
+  TRI_ASSERT(vocbase != nullptr);
   TRI_ASSERT(vocbase->_state == 1);
 
   TRI_InitVectorPointer(&collections, TRI_UNKNOWN_MEM_ZONE);
@@ -287,16 +290,21 @@ void TRI_CleanupVocBase (void* data) {
       for (size_t i = 0;  i < n;  ++i) {
         TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(collections._buffer[i]);
 
+        TRI_ASSERT(collection != nullptr);
+
         TRI_READ_LOCK_STATUS_VOCBASE_COL(collection);
 
         TRI_document_collection_t* document = collection->_collection;
 
         if (document == nullptr) {
+          // collection currently not loaded
           TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
           continue;
         }
 
         TRI_READ_UNLOCK_STATUS_VOCBASE_COL(collection);
+
+        TRI_ASSERT(document != nullptr);
 
         // we're the only ones that can unload the collection, so using
         // the collection pointer outside the lock is ok
