@@ -484,8 +484,16 @@ AstNode* Ast::createNodeUpsert (AstNodeType type,
 
 AstNode* Ast::createNodeCollect (AstNode const* list,
                                  char const* name,
-                                 AstNode const* keepVariables) {
+                                 AstNode const* keepVariables,
+                                 AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+  node->addMember(options);
+
   node->addMember(list);
 
   // INTO
@@ -511,8 +519,16 @@ AstNode* Ast::createNodeCollect (AstNode const* list,
 
 AstNode* Ast::createNodeCollectExpression (AstNode const* list,
                                            char const* name,
-                                           AstNode const* expression) {
+                                           AstNode const* expression,
+                                           AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT_EXPRESSION);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+  node->addMember(options);
+
   node->addMember(list);
 
   AstNode* variable = createNodeVariable(name, true);
@@ -528,8 +544,16 @@ AstNode* Ast::createNodeCollectExpression (AstNode const* list,
 ////////////////////////////////////////////////////////////////////////////////
 
 AstNode* Ast::createNodeCollectCount (AstNode const* list,
-                                      char const* name) {
+                                      char const* name,
+                                      AstNode const* options) {
   AstNode* node = createNode(NODE_TYPE_COLLECT_COUNT);
+  
+  if (options == nullptr) {
+    // no options given. now use default options
+    options = &NopNode;
+  }
+  node->addMember(options);
+
   node->addMember(list);
 
   AstNode* variable = createNodeVariable(name, true);

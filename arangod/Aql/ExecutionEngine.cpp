@@ -28,14 +28,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/ExecutionEngine.h"
+#include "Aql/AggregationOptions.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/WalkerWorker.h"
-#include "Cluster/ClusterComm.h"
 #include "Basics/Exceptions.h"
 #include "Basics/logging.h"
+#include "Cluster/ClusterComm.h"
 
 using namespace triagens::aql;
 using namespace triagens::arango;
@@ -78,10 +79,11 @@ static ExecutionBlock* createBlock (ExecutionEngine* engine,
     }
     case ExecutionNode::AGGREGATE: {
       auto aggregationMethod = static_cast<AggregateNode const*>(en)->aggregationMethod();
-      if (aggregationMethod == AggregateNode::AGGREGATION_HASH) {
+
+      if (aggregationMethod == AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH) {
         return new HashedAggregateBlock(engine, static_cast<AggregateNode const*>(en));
       }
-      else if (aggregationMethod == AggregateNode::AGGREGATION_SORTED) {
+      else if (aggregationMethod == AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED) {
         return new SortedAggregateBlock(engine, static_cast<AggregateNode const*>(en));
       }
 

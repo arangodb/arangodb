@@ -42,6 +42,7 @@ add_executable(
     ${ARANGO_MSVC}
     Actions/actions.cpp
     Actions/RestActionHandler.cpp
+    Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
     Aql/AqlValue.cpp
     Aql/Ast.cpp

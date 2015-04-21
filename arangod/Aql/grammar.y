@@ -159,7 +159,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> collect_list;
 %type <node> collect_element;
 %type <node> collect_variable_list;
-%type <node> optional_keep;
+%type <node> keep;
 %type <strval> optional_into;
 %type <strval> count_into;
 %type <node> expression;
@@ -176,7 +176,7 @@ void Aqlerror (YYLTYPE* locp,
 %type <node> optional_array_elements;
 %type <node> array_elements_list;
 %type <node> object;
-%type <node> query_options;
+%type <node> options;
 %type <node> optional_object_elements;
 %type <node> object_elements_list;
 %type <node> object_element;
@@ -314,7 +314,7 @@ collect_variable_list:
   ;
 
 collect_statement: 
-    T_COLLECT count_into {
+    T_COLLECT count_into options {
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -327,10 +327,10 @@ collect_statement:
         scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
       }
 
-      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2);
+      auto node = parser->ast()->createNodeCollectCount(parser->ast()->createNodeArray(), $2, $3);
       parser->ast()->addOperation(node);
     }
-  | collect_variable_list count_into {
+  | collect_variable_list count_into options {
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -354,10 +354,37 @@ collect_statement:
         }
       }
 
-      auto node = parser->ast()->createNodeCollectCount($1, $2);
+      auto node = parser->ast()->createNodeCollectCount($1, $2, $3);
       parser->ast()->addOperation(node);
     }
-  | collect_variable_list optional_into optional_keep {
+  | collect_variable_list optional_into options {
+      auto scopes = parser->ast()->scopes();
+
+      // check if we are in the main scope
+      bool reRegisterVariables = (scopes->type() != triagens::aql::AQL_SCOPE_MAIN); 
+
+      if (reRegisterVariables) {
+        // end the active scopes
+        scopes->endNested();
+        // start a new scope
+        scopes->start(triagens::aql::AQL_SCOPE_COLLECT);
+
+        size_t const n = $1->numMembers();
+        for (size_t i = 0; i < n; ++i) {
+          auto member = $1->getMember(i);
+
+          if (member != nullptr) {
+            TRI_ASSERT(member->type == NODE_TYPE_ASSIGN);
+            auto v = static_cast<Variable*>(member->getMember(0)->getData());
+            scopes->addVariable(v);
+          }
+        }
+      }
+
+      auto node = parser->ast()->createNodeCollect($1, $2, nullptr, $3);
+      parser->ast()->addOperation(node);
+    }
+  | collect_variable_list optional_into keep options {
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -386,10 +413,10 @@ collect_statement:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "use of 'KEEP' without 'INTO'", yylloc.first_line, yylloc.first_column);
       } 
 
-      auto node = parser->ast()->createNodeCollect($1, $2, $3);
+      auto node = parser->ast()->createNodeCollect($1, $2, $3, $4);
       parser->ast()->addOperation(node);
     }
-  | collect_variable_list T_INTO variable_name T_ASSIGN expression {
+  | collect_variable_list T_INTO variable_name T_ASSIGN expression options {
       auto scopes = parser->ast()->scopes();
 
       // check if we are in the main scope
@@ -413,7 +440,7 @@ collect_statement:
         }
       }
 
-      auto node = parser->ast()->createNodeCollectExpression($1, $3, $5);
+      auto node = parser->ast()->createNodeCollectExpression($1, $3, $5, $6);
       parser->ast()->addOperation(node);
     }
   ;
@@ -472,11 +499,8 @@ variable_list:
     }
   ;
 
-optional_keep: 
-    /* empty */ {
-      $$ = nullptr;
-    }
-  | T_STRING {
+keep: 
+    T_STRING {
       if (! TRI_CaseEqualString($1, "KEEP")) {
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'KEEP'", $1, yylloc.first_line, yylloc.first_column);
       }
@@ -560,7 +584,7 @@ in_or_into_collection:
    ;
 
 remove_statement:
-    T_REMOVE expression in_or_into_collection query_options {
+    T_REMOVE expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_REMOVE, $3, $4)) {
         YYABORT;
       }
@@ -571,7 +595,7 @@ remove_statement:
   ;
 
 insert_statement:
-    T_INSERT expression in_or_into_collection query_options {
+    T_INSERT expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_INSERT, $3, $4)) {
         YYABORT;
       }
@@ -582,7 +606,7 @@ insert_statement:
   ;
 
 update_parameters:
-    expression in_or_into_collection query_options {
+    expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $2, $3)) {
         YYABORT;
       }
@@ -591,7 +615,7 @@ update_parameters:
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }
-  | expression T_WITH expression in_or_into_collection query_options {
+  | expression T_WITH expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPDATE, $4, $5)) {
         YYABORT;
       }
@@ -608,7 +632,7 @@ update_statement:
   ;
 
 replace_parameters:
-    expression in_or_into_collection query_options {
+    expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $2, $3)) {
         YYABORT;
       }
@@ -617,7 +641,7 @@ replace_parameters:
       parser->ast()->addOperation(node);
       parser->setWriteNode(node);
     }
-  | expression T_WITH expression in_or_into_collection query_options {
+  | expression T_WITH expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_REPLACE, $4, $5)) {
         YYABORT;
       }
@@ -647,7 +671,7 @@ upsert_statement:
       // reserve a variable named "$OLD", we might need it in the update expression
       // and in a later return thing
       parser->pushStack(parser->ast()->createNodeVariable("$OLD", true));
-    } expression T_INSERT expression update_or_replace expression in_or_into_collection query_options {
+    } expression T_INSERT expression update_or_replace expression in_or_into_collection options {
       if (! parser->configureWriteQuery(AQL_QUERY_UPSERT, $8, $9)) {
         YYABORT;
       }
@@ -915,7 +939,7 @@ array_elements_list:
     }
   ;
 
-query_options:
+options:
     /* empty */ {
       $$ = nullptr;
     }

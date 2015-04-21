@@ -315,6 +315,7 @@ namespace triagens {
 
         AstNode* createNodeCollect (AstNode const*,
                                     char const*,
+                                    AstNode const*,
                                     AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -323,6 +324,7 @@ namespace triagens {
 
         AstNode* createNodeCollectExpression (AstNode const*,
                                               char const*,
+                                              AstNode const*,
                                               AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -330,7 +332,8 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AstNode* createNodeCollectCount (AstNode const*,
-                                         char const*);
+                                         char const*,
+                                         AstNode const*);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief create an AST sort node

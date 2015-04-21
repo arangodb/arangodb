@@ -184,7 +184,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
       }
 
       bool count = JsonHelper::checkAndGetBooleanValue(oneNode.json(), "count");
-      std::string method = JsonHelper::checkAndGetStringValue(oneNode.json(), "method");
 
       return new AggregateNode(plan,
                                oneNode,
@@ -193,7 +192,6 @@ ExecutionNode* ExecutionNode::fromJsonFactory (ExecutionPlan* plan,
                                keepVariables,
                                plan->getAst()->variables()->variables(false),
                                aggregateVariables,  
-                               AggregateNode::aggregationMethod(method),
                                count);
     }
     case INSERT:
@@ -2309,15 +2307,14 @@ AggregateNode::AggregateNode (ExecutionPlan* plan,
                               std::vector<Variable const*> const& keepVariables,
                               std::unordered_map<VariableId, std::string const> const& variableMap,
                               std::vector<std::pair<Variable const*, Variable const*>> const& aggregateVariables,
-                              AggregationMethod aggregationMethod,
                               bool count)
   : ExecutionNode(plan, base),
+    _options(base),
     _aggregateVariables(aggregateVariables), 
     _expressionVariable(expressionVariable),
     _outVariable(outVariable),
     _keepVariables(keepVariables),
     _variableMap(variableMap),
-    _aggregationMethod(aggregationMethod),
     _count(count) {
 
 }
@@ -2366,9 +2363,9 @@ void AggregateNode::toJsonHelper (triagens::basics::Json& nodes,
     json("keepVariables", values);
   }
 
-  json("method", triagens::basics::Json(aggregationMethodString()));
-
   json("count", triagens::basics::Json(_count));
+  
+  _options.toJson(json, zone);
 
   // And add it:
   nodes(json);
@@ -2405,13 +2402,13 @@ ExecutionNode* AggregateNode::clone (ExecutionPlan* plan,
   }
 
   auto c = new AggregateNode(plan, 
-                             _id, 
+                             _id,
+                             _options, 
                              aggregateVariables, 
                              expressionVariable, 
                              outVariable, 
                              _keepVariables, 
                              _variableMap,
-                             _aggregationMethod, 
                              _count);
 
   CloneHelper(c, plan, withDependencies, withProperties);
@@ -2626,7 +2623,6 @@ void ModificationNode::toJsonHelper (triagens::basics::Json& json,
   if (_outVariableNew != nullptr) {
     json("outVariableNew", _outVariableNew->toJson());
   }
-
 
   _options.toJson(json, zone);
 }

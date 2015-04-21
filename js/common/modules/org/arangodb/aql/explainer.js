@@ -440,7 +440,7 @@ function processQuery (query, explain) {
                  (node.count ? " " + keyword("WITH COUNT") : "") + 
                  (node.outVariable ? " " + keyword("INTO") + " " + variableName(node.outVariable) : "") +
                  (node.keepVariables ? " " + keyword("KEEP") + " " + node.keepVariables.map(function(variable) { return variableName(variable); }).join(", ") : "") + 
-                 "   " + annotation("/* " + node.method + "*/");
+                 "   " + annotation("/* " + node.aggregationOptions.method + "*/");
       case "SortNode":
         return keyword("SORT") + " " + node.elements.map(function(node) {
           return variableName(node.inVariable) + " " + keyword(node.ascending ? "ASC" : "DESC"); 
