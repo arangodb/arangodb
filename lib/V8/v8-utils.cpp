@@ -50,7 +50,7 @@
 #include "Basics/string-buffer.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tri-zip.h"
-#include "Basics/utf8-helper.h"
+#include "Basics/Utf8Helper.h"
 #include "Rest/HttpRequest.h"
 #include "Rest/SslInterface.h"
 #include "SimpleHttpClient/GeneralClientConnection.h"
