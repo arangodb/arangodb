@@ -28,12 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "fulltext-query.h"
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Basics/utf8-helper.h"
-
-#include "fulltext-index.h"
+#include "Basics/Utf8Helper.h"
+#include "FulltextIndex/fulltext-index.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
