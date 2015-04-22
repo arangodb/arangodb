@@ -37,6 +37,7 @@
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/document-collection.h"
 #include "Traverser.h"
 #include "VocBase/key-generator.h"
 
@@ -50,9 +51,36 @@ class SimpleEdgeExpander {
     TRI_edge_direction_e forwardDirection;
     TRI_edge_direction_e backwardDirection;
     TRI_document_collection_t* edgeCollection;
+    string edgeIdPrefix;
     CollectionNameResolver const* resolver;
+    bool usesDist;
 
   public: 
+
+    Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t ptr) {
+      char const* key = TRI_EXTRACT_MARKER_FROM_KEY(ptr);
+      TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_FROM_CID(ptr);
+      string col = resolver->getCollectionName(cid);
+      col.append("/");
+      col.append(key);
+      return col;
+    };
+
+    Traverser::VertexId extractToId(TRI_doc_mptr_copy_t ptr) {
+      char const* key = TRI_EXTRACT_MARKER_TO_KEY(ptr);
+      TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_TO_CID(ptr);
+      string col = resolver->getCollectionName(cid);
+      col.append("/");
+      col.append(key);
+      return col;
+    };
+
+    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t ptr) {
+      char const* key = TRI_EXTRACT_MARKER_KEY(ptr);
+      // AppendAndCopy
+      return edgeIdPrefix.append(key);
+    };
+
     void operator() ( Traverser::VertexId source,
                       Traverser::Direction dir,
                       vector<Traverser::Neighbor>& result
@@ -65,13 +93,11 @@ class SimpleEdgeExpander {
         // TODO Error Handling
         return;
       }
-      std::unique_ptr<char> key;
       string collectionName = string(str, split);
-      auto const length = source.size() - split - 1;
+      auto const length = strlen(str) - split - 1;
       auto buffer = new char[length + 1];
       memcpy(buffer, str + split + 1, length);
       buffer[length] = '\0';
-      key.reset(buffer);
 
       auto col = resolver->getCollectionStruct(collectionName);
       if (col == nullptr) {
@@ -80,12 +106,56 @@ class SimpleEdgeExpander {
       }
       auto collectionCId = col->_cid;
       if (dir == Traverser::FORWARD) {
-        edges = TRI_LookupEdgesDocumentCollection(edgeCollection, forwardDirection, collectionCId, key.get());
+        edges = TRI_LookupEdgesDocumentCollection(edgeCollection, forwardDirection, collectionCId, buffer);
       } else {
-        edges = TRI_LookupEdgesDocumentCollection(edgeCollection, backwardDirection, collectionCId, key.get());
+        edges = TRI_LookupEdgesDocumentCollection(edgeCollection, backwardDirection, collectionCId, buffer);
       }
-
-      // TODO Build result
+      std::unordered_map<Traverser::VertexId, Traverser::Neighbor> candidates;
+      Traverser::VertexId from;
+      Traverser::VertexId to;
+      std::unordered_map<Traverser::VertexId, Traverser::Neighbor>::const_iterator cand;
+      if (usesDist) {
+        for (size_t j = 0;  j < edges.size();  ++j) {
+          from = extractFromId(edges[j]);
+          to = extractFromId(edges[j]);
+          if (from != source) {
+            candidates.find(from);
+            if (cand == candidates.end()) {
+              // Add weight
+              candidates.emplace(from, Traverser::Neighbor(from, edges[j]._id, 1));
+            } else {
+              // Compare weight
+            }
+          } else if (to != source) {
+            candidates.find(to);
+            if (cand == candidates.end()) {
+              // Add weight
+              candidates.emplace(to, Traverser::Neighbor(to, edges[j]._id, 1));
+            } else {
+              // Compare weight
+            }
+          }
+        }
+      } else {
+        for (size_t j = 0;  j < edges.size();  ++j) {
+          from = extractFromId(edges[j]);
+          to = extractFromId(edges[j]);
+          if (from != source) {
+            candidates.find(from);
+            if (cand == candidates.end()) {
+              candidates.emplace(from, Traverser::Neighbor(from, edges[j]._id, 1));
+            }
+          } else if (to != source) {
+            candidates.find(to);
+            if (cand == candidates.end()) {
+              candidates.emplace(to, Traverser::Neighbor(to, edges[j]._id, 1));
+            }
+          }
+        }
+      }
+      for (auto it = candidates.begin(); it != candidates.end(); ++it) {
+        result.push_back(it->second);
+      }
     }
     SimpleEdgeExpander(
       TRI_edge_direction_e edgeDirection,
@@ -95,6 +165,7 @@ class SimpleEdgeExpander {
       edgeCollection(edgeCollection),
       resolver(resolver)
     {
+      usesDist = false;
       if (edgeDirection == TRI_EDGE_OUT) {
         forwardDirection = TRI_EDGE_OUT;
         backwardDirection = TRI_EDGE_IN;
@@ -108,6 +179,27 @@ class SimpleEdgeExpander {
     };
 };
 
+static <v8::Handle<v8::Value> pathToV8(v8::Isolate* isolate, Traverser::Path p) {
+  v8::Handle<v8::Value> result;
+
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+
+  for (size_t j = 0;  j < vn;  ++j) {
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_ASCII_STRING(p.vertices[j]));
+  }
+  result->Set("vertices", vertices);
+
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+  v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
+
+  for (size_t j = 0;  j < en;  ++j) {
+    edges->Set(static_cast<uint32_t>(j), TRI_V8_ASCII_STRING(p.edges[j]));
+  }
+  result->Set("edges", edges);
+
+  return result;
+};
 
 struct LocalCollectionGuard {
   LocalCollectionGuard (TRI_vocbase_col_t* collection)
