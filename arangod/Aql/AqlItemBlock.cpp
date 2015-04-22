@@ -177,7 +177,7 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
 
 void AqlItemBlock::destroy () {
   for (auto& it : _data) {
-    if (! it.isEmpty()) {
+    if (it.requiresDestruction()) {
       try {   // can find() really throw???
         auto it2 = _valueCount.find(it);
         if (it2 != _valueCount.end()) { // if we know it, we are still responsible
@@ -196,6 +196,9 @@ void AqlItemBlock::destroy () {
       catch (...) {
       }
       // Note that if we do not know it the thing it has been stolen from us!
+    }
+    else {
+      it.erase();
     }
   }
 }
@@ -225,7 +228,7 @@ void AqlItemBlock::shrink (size_t nrItems) {
   for (size_t i = nrItems; i < _nrItems; ++i) {
     for (RegisterId j = 0; j < _nrRegs; ++j) {
       AqlValue& a(_data[_nrRegs * i + j]);
-      if (! a.isEmpty()) {
+      if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
         if (it != _valueCount.end()) {
           TRI_ASSERT_EXPENSIVE(it->second > 0);
@@ -239,8 +242,8 @@ void AqlItemBlock::shrink (size_t nrItems) {
             }
           }
         }
-        a.erase();
       }
+      a.erase();
     }
   }
 
@@ -257,7 +260,7 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
   for (auto reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
-      if (! a.isEmpty()) {
+      if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
         if (it != _valueCount.end()) {
           TRI_ASSERT_EXPENSIVE(it->second > 0);
@@ -272,8 +275,8 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
             }
           }
         }
-        a.erase();
       }
+      a.erase();
     }
   }
 }

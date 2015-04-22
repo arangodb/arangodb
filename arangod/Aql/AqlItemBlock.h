@@ -122,7 +122,7 @@ namespace triagens {
         TRI_ASSERT_EXPENSIVE(_data.at(index * _nrRegs + varNr).isEmpty());
 
         // First update the reference count, if this fails, the value is empty
-        if (! value.isEmpty()) {
+        if (value.requiresDestruction()) {
           auto it = _valueCount.find(value);
           if (it == _valueCount.end()) {
             TRI_IF_FAILURE("AqlItemBlock::setValue") {
@@ -150,7 +150,7 @@ namespace triagens {
           size_t const pos = index * _nrRegs + varNr;
           auto& element = _data[pos];
 
-          if (! element.isEmpty()) {
+          if (element.requiresDestruction()) {
             auto it = _valueCount.find(element);
             if (it != _valueCount.end()) {
               if (--(it->second) == 0) {
@@ -163,9 +163,9 @@ namespace triagens {
                 }
               }
             }
-
-            element.erase();
           }
+
+          element.erase();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -177,7 +177,7 @@ namespace triagens {
           size_t const pos = index * _nrRegs + varNr;
           auto& element = _data[pos];
 
-          if (! element.isEmpty()) {
+          if (element.requiresDestruction()) {
             auto it = _valueCount.find(element);
             if (it != _valueCount.end()) {
               if (--(it->second) == 0) {
@@ -188,9 +188,9 @@ namespace triagens {
                 }
               }
             }
-
-            element.erase();
           }
+          
+          element.erase();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -228,8 +228,8 @@ namespace triagens {
 /// might be deleted at any time!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void steal (AqlValue v) {
-          if (! v.isEmpty()) {
+        void steal (AqlValue const& v) {
+          if (v.requiresDestruction()) {
             auto it = _valueCount.find(v);
             if (it != _valueCount.end()) {
               _valueCount.erase(it);
