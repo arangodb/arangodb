@@ -407,6 +407,16 @@ function ahuacatlEscapingTestSuite () {
       var expected = [ 1 ];
       var actual = getQueryResults("RETURN // the quick fox\n1");
       assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test comments
+////////////////////////////////////////////////////////////////////////////////
+    
+    testComments7 : function () {
+      var expected = [ 1 ];
+      var actual = getQueryResults("RETURN // /* the quick fox */ * foo \n1");
+      assertEqual(expected, actual);
     }
   };
 }
