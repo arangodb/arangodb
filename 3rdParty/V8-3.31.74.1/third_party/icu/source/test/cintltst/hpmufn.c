@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2003-2013, International Business Machines Corporation and
+ * Copyright (c) 2003-2015, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*
@@ -129,10 +129,6 @@ static void TestHeapFunctions() {
      *  probably because some earlier test accidently left something open. */
     ctest_resetICU();
 
-    /* Can not set memory functions if ICU is already initialized */
-    u_setMemoryFunctions(&gContext, myMemAlloc, myMemRealloc, myMemFree, &status);
-    TEST_STATUS(status, U_INVALID_STATE_ERROR);
-
     /* Un-initialize ICU */
     u_cleanup();
 
@@ -155,13 +151,11 @@ static void TestHeapFunctions() {
     TEST_STATUS(status, U_ZERO_ERROR);
 
 
-    /* After reinitializing ICU, we should not be able to set the memory funcs again. */
+    /* After reinitializing ICU, we can not set the memory funcs again. */
     status = U_ZERO_ERROR;
     u_setDataDirectory(icuDataDir);
     u_init(&status);
     TEST_STATUS(status, U_ZERO_ERROR);
-    u_setMemoryFunctions(NULL, myMemAlloc, myMemRealloc, myMemFree, &status);
-    TEST_STATUS(status, U_INVALID_STATE_ERROR);
 
     /* Doing ICU operations should cause allocations to come through our test heap */
     gBlockCount = 0;

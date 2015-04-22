@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 2009-2010, Google, International Business Machines Corporation and *
+ * Copyright (C) 2009-2014, Google, International Business Machines Corporation and *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  */
@@ -77,20 +77,6 @@ public:
     TimeUnit& operator=(const TimeUnit& other);
 
     /**
-     * Equality operator. 
-     * @return true if 2 objects are the same.
-     * @stable ICU 4.2 
-     */
-    virtual UBool operator==(const UObject& other) const;
-
-    /**
-     * Non-Equality operator. 
-     * @return true if 2 objects are not the same.
-     * @stable ICU 4.2 
-     */
-    UBool operator!=(const UObject& other) const;
-
-    /**
      * Returns a unique class ID for this object POLYMORPHICALLY.
      * This method implements a simple form of RTTI used by ICU.
      * @return The class ID for this object. All objects of a given
@@ -132,12 +118,6 @@ private:
     TimeUnit(UTimeUnitFields timeUnitField);
 
 };
-
-
-inline UBool 
-TimeUnit::operator!=(const UObject& other) const {
-    return !operator==(other);
-}
 
 
 U_NAMESPACE_END

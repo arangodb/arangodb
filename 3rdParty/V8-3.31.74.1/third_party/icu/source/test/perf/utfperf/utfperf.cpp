@@ -1,6 +1,6 @@
 /*  
  **********************************************************************
- *   Copyright (C) 2002-2007, International Business Machines
+ *   Copyright (C) 2002-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *   file name:  utfperf.cpp
@@ -18,9 +18,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "unicode/uperf.h"
+#include "cmemory.h" // for UPRV_LENGTHOF
 #include "uoptions.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 /* definitions and text buffers */
 
@@ -67,7 +66,7 @@ static const char *const utfperf_usage =
 class  UtfPerformanceTest : public UPerfTest{
 public:
     UtfPerformanceTest(int32_t argc, const char *argv[], UErrorCode &status)
-            : UPerfTest(argc, argv, options, LENGTHOF(options), utfperf_usage, status) {
+            : UPerfTest(argc, argv, options, UPRV_LENGTHOF(options), utfperf_usage, status) {
         if (U_SUCCESS(status)) {
             charset = options[CHARSET].value;
 

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/teo.xml
@@ -13,67 +13,51 @@ teo{
     Currencies{
         AED{
             "AED",
-            "Ango'otol lok' Falme za Kiarabu",
+            "Ango’otol lok’ Falme za Kiarabu",
         }
         AOA{
             "AOA",
-            "Ango'otol lok' Angola",
+            "Ango’otol lok’ Angola",
         }
         AUD{
             "A$",
-            "Ango'otol lok' Australia",
+            "Ango’otol lok’ Australia",
         }
         BHD{
             "BHD",
-            "Ango'otol lok' Bahareni",
-        }
-        BIF{
-            "BIF",
-            "Ango'otol lok' Burundi",
+            "Ango’otol lok’ Bahareni",
         }
         BWP{
             "BWP",
-            "Ango'otol lok' Botswana",
+            "Ango’otol lok’ Botswana",
         }
         CAD{
             "CA$",
-            "Edola lok'Kanada",
+            "Edola lok’Kanada",
         }
         CDF{
             "CDF",
-            "Ango'otol lok' Kongo",
+            "Ango’otol lok’ Kongo",
         }
         CHF{
             "CHF",
-            "Ango'otol lok' Uswisi",
+            "Ango’otol lok’ Uswisi",
         }
         CNY{
             "CN¥",
-            "Ango'otol lok' China",
-        }
-        CVE{
-            "CVE",
-            "Ango'otol lok' Kepuvede",
-        }
-        DJF{
-            "DJF",
-            "Ango'otol lok' Jibuti",
+            "Ango’otol lok’ China",
         }
         DZD{
             "DZD",
-            "Ango'otol lok' Aljeria",
+            "Ango’otol lok’ Aljeria",
         }
         EGP{
             "EGP",
-            "Epaunt lok' Misri",
-        }
-        ERN{
-            "ERN",
-            "Ango'otol lok' Eritrea",
+            "Epaunt lok’ Misri",
         }
         ETB{
             "ETB",
-            "Ango'otol lok' Uhabeshi",
+            "Ango’otol lok’ Uhabeshi",
         }
         EUR{
             "€",
@@ -81,140 +65,100 @@ teo{
         }
         GBP{
             "£",
-            "Epaunt lok' Uingereza",
-        }
-        GMD{
-            "GMD",
-            "Dalasi ya Gambia",
-        }
-        GNS{
-            "GNS",
-            "Ango'otol lok' Gine",
+            "Epaunt lok’ Uingereza",
         }
         INR{
-            "₹",
-            "Ango'otol lok' India",
+            "Rs.",
+            "Ango’otol lok’ India",
         }
         JPY{
             "JP¥",
-            "Ango'otol lok' Kijapani",
+            "Ango’otol lok’ Kijapani",
         }
         KES{
             "KES",
-            "Ango'otol lok' Kenya",
-        }
-        KMF{
-            "KMF",
-            "Ango'otol lok' Komoro",
-        }
-        LRD{
-            "LRD",
-            "edola lok' Liberia",
-        }
-        LSL{
-            "LSL",
-            "Ango'otol lok' Lesoto",
+            "Ango’otol lok’ Kenya",
         }
         LYD{
             "LYD",
-            "Ango'otol lok' Libya",
+            "Ango’otol lok’ Libya",
         }
         MAD{
             "MAD",
-            "Ango'otol lok' Moroko",
+            "Ango’otol lok’ Moroko",
         }
         MGA{
             "MGA",
-            "Ango'otol lok' Bukini",
+            "Ango’otol lok’ Bukini",
         }
         MRO{
             "MRO",
-            "Ango'otol lok' Moritania",
+            "Ango’otol lok’ Moritania",
         }
         MUR{
             "MUR",
-            "Ango'otol lok' Morisi",
+            "Ango’otol lok’ Morisi",
         }
         MWK{
             "MWK",
-            "Ango'otol lok' Malawi",
+            "Ango’otol lok’ Malawi",
         }
         NAD{
             "NAD",
-            "Ango'otol lok' Namibia",
+            "Ango’otol lok’ Namibia",
         }
         NGN{
             "NGN",
-            "Ango'otol lok' Nijeria",
+            "Ango’otol lok’ Nijeria",
         }
         RWF{
             "RWF",
-            "Ango'otol lok' Rwanda",
+            "Ango’otol lok’ Rwanda",
         }
         SAR{
             "SAR",
-            "Ango'otol lok' Saudia",
-        }
-        SCR{
-            "SCR",
-            "Ango'otol lok' Shelisheli",
+            "Ango’otol lok’ Saudia",
         }
         SDG{
             "SDG",
-            "Epaunt Lok' Sudan",
-        }
-        SHP{
-            "SHP",
-            "Ango'otol lok' Santahelena",
+            "Epaunt Lok’ Sudan",
         }
         SLL{
             "SLL",
             "Leoni",
         }
-        SOS{
-            "SOS",
-            "Ango'otol lok' Somalia",
-        }
-        STD{
-            "STD",
-            "Ango'otol lok' Sao Tome na Principe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
-        }
         TND{
             "TND",
-            "Ango'otol lok' Tunisia",
+            "Ango’otol lok’ Tunisia",
         }
         TZS{
             "TZS",
-            "Ango'otol lok' Tanzania",
+            "Ango’otol lok’ Tanzania",
         }
         UGX{
             "USh",
-            "Ango'otol lok' Uganda",
+            "Ango’otol lok’ Uganda",
         }
         USD{
             "US$",
-            "edola lok' Amareka",
+            "edola lok’ Amareka",
         }
         XAF{
             "FCFA",
-            "Ango'otol lok' CFA BEAC",
+            "Ango’otol lok’ CFA BEAC",
         }
         XOF{
             "CFA",
-            "Ango'otol lok' CFA BCEAO",
+            "Ango’otol lok’ CFA BCEAO",
         }
         ZAR{
             "ZAR",
-            "Ango'otol lok' Afrika Kusini",
+            "Ango’otol lok’ Afrika Kusini",
         }
         ZMW{
             "ZMW",
-            "Ango'otol lok' Zambia",
+            "Ango’otol lok’ Zambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

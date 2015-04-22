@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/si.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/si.xml
  */
 si{
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"අබිජාන්"}
@@ -459,9 +459,6 @@ si{
         "America:Montevideo"{
             ec{"මොන්ටෙවිඩියෝ"}
         }
-        "America:Montreal"{
-            ec{"මොන්ට්‍රියල්"}
-        }
         "America:Montserrat"{
             ec{"මොන්ට්සේරාට්"}
         }
@@ -552,9 +549,6 @@ si{
         "America:Scoresbysund"{
             ec{"ඉටොකොර්ටෝමිට්"}
         }
-        "America:Shiprock"{
-            ec{"ශිප්රෝක්"}
-        }
         "America:Sitka"{
             ec{"සිට්කා"}
         }
@@ -619,7 +613,7 @@ si{
             ec{"ඩේවිස්"}
         }
         "Antarctica:DumontDUrville"{
-            ec{"ඩුමොන්ට් ඩු'ර්විල්"}
+            ec{"ඩුමොන්ට් ඩු‘ර්විල්"}
         }
         "Antarctica:Macquarie"{
             ec{"මක්කුවරි"}
@@ -636,11 +630,11 @@ si{
         "Antarctica:Rothera"{
             ec{"රොතෙරා"}
         }
-        "Antarctica:South_Pole"{
-            ec{"දක්ෂිණ ධ්‍රැවය"}
-        }
         "Antarctica:Syowa"{
             ec{"සියෝවා"}
+        }
+        "Antarctica:Troll"{
+            ec{"ට්‍රෝල්"}
         }
         "Antarctica:Vostok"{
             ec{"වොස්ටොක්"}
@@ -1318,6 +1312,11 @@ si{
             lg{"උතුරු ඇමරිකානු පැසිෆික් වේලාව"}
             ls{"උතුරු ඇමරිකානු පැසිෆික් සම්මත වේලාව"}
         }
+        "meta:Apia"{
+            ld{"අපියා දිවා වේලාව"}
+            lg{"අපියා වේලාව"}
+            ls{"අපියා සම්මත වේලාව"}
+        }
         "meta:Arabian"{
             ld{"අරාබි දහවල් වේලාව"}
             lg{"අරාබි වේලාව"}
@@ -1467,6 +1466,9 @@ si{
             ld{"නැගෙනහිර යුරෝපීය ග්‍රීෂ්ම වේලාව"}
             lg{"නැගෙනහිර යුරෝපීය වේලාව"}
             ls{"නැගෙනහිර යුරෝපීය සම්මත වේලාව"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"තවත්-නැගෙනහිර යුරෝපීය වේලාව"}
         }
         "meta:Europe_Western"{
             ld{"බටහිර යුරෝපීය ග්‍රීෂ්ම වේලාව"}
@@ -1635,6 +1637,16 @@ si{
         }
         "meta:Mawson"{
             ls{"මොව්සන් වේලාව"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"වයඹ මෙක්සිකෝ දිවාආලෝක වේලාව"}
+            lg{"වයඹ මෙක්සිකෝ වේලාව"}
+            ls{"වයඹ මෙක්සිකෝ සම්මත වේලාව"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"මෙක්සිකෝ පැසිෆික් දිවාආලෝක වේලාව"}
+            lg{"මෙක්සිකෝ පැසිෆික් වේලාව"}
+            ls{"මෙක්සිකෝ පැසිෆික් සම්මත වේලාව"}
         }
         "meta:Mongolia"{
             ld{"උලාන් බාටර් ග්‍රීෂ්ම වේලාව"}

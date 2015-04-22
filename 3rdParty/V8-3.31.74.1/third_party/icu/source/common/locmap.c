@@ -29,10 +29,6 @@
 #include "cstring.h"
 #include "cmemory.h"
 
-/**
- * Chromium has its own implementation to determine the default locale that uses
- * Windows locale API where available and falls back to the old API at run-time.
- */
 #if 0
 #if U_PLATFORM == U_PF_WINDOWS && defined(_MSC_VER) && (_MSC_VER >= 1500)
 /*
@@ -300,7 +296,7 @@ ILCID_POSIX_SUBTABLE(es) {
     {0x540a, "es_US"},
     {0x380a, "es_UY"},
     {0x200a, "es_VE"},
-    {0xe40a, "es_419"},
+    {0x580a, "es_419"},
     {0x040a, "es_ES@collation=traditional"},
     {0x040a, "es@collation=traditional"}
 };
@@ -468,7 +464,8 @@ ILCID_POSIX_SUBTABLE(mn) {
     {0x7c50, "mn_Mong"},
     {0x0850, "mn_Mong_CN"},
     {0x0850, "mn_CN"},
-    {0x7850, "mn_Cyrl"}
+    {0x7850, "mn_Cyrl"},
+    {0x0c50, "mn_Mong_MN"}
 };
 
 ILCID_POSIX_ELEMENT_ARRAY(0x0458, mni,mni_IN)

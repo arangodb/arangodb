@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/lag.xml
@@ -15,7 +15,7 @@ lag{
     LocaleScript{
         "Latn",
     }
-    Version{"2.0.92.75"}
+    Version{"2.1.6.69"}
     calendar{
         generic{
             DateTimePatterns{

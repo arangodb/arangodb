@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sbp.xml
@@ -27,10 +27,6 @@ sbp{
             "BHD",
             "Ihela ya Bahaleni",
         }
-        BIF{
-            "BIF",
-            "Ihela ya Bulundi",
-        }
         BWP{
             "BWP",
             "Ihela ya Botiswana",
@@ -51,14 +47,6 @@ sbp{
             "CN¥",
             "Ihela ya Shina",
         }
-        CVE{
-            "CVE",
-            "Ihela ya Kepuvede",
-        }
-        DJF{
-            "DJF",
-            "Ihela ya Jibuti",
-        }
         DZD{
             "DZD",
             "Ihela ya Alijeliya",
@@ -66,10 +54,6 @@ sbp{
         EGP{
             "EGP",
             "Ihela ya Misili",
-        }
-        ERN{
-            "ERN",
-            "Ihela ya Elitileya",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ sbp{
             "£",
             "Ihela ya Uwingelesa",
         }
-        GMD{
-            "GMD",
-            "Ihela ya Gambiya",
-        }
-        GNS{
-            "GNS",
-            "Ihela ya Gine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Ihela ya Indiya",
         }
         JPY{
@@ -102,18 +78,6 @@ sbp{
         KES{
             "KES",
             "Ihela ya Kenya",
-        }
-        KMF{
-            "KMF",
-            "Ihela ya Komolo",
-        }
-        LRD{
-            "LRD",
-            "Ihela ya Libeliya",
-        }
-        LSL{
-            "LSL",
-            "Ihela ya Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ sbp{
             "SAR",
             "Ihela ya Sawudiya",
         }
-        SCR{
-            "SCR",
-            "Ihela ya Shelisheli",
-        }
         SDG{
             "SDG",
             "Ihela ya Sudani",
         }
-        SHP{
-            "SHP",
-            "Ihela ya Santahelena",
-        }
         SLL{
             "SLL",
             "Ihela ya Siela Liyoni",
-        }
-        SOS{
-            "SOS",
-            "Ihela ya Somaliya",
-        }
-        STD{
-            "STD",
-            "Ihela ya Sao Tome ni Pilinsipe",
-        }
-        SZL{
-            "SZL",
-            "Ihela ya Uswasi",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ sbp{
             "Ihela ya Sambiya",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

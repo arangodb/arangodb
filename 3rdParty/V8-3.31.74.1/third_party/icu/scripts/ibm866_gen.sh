@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (c) 2014 The Chromium Authors. All rights reserved.
+# Copyright 2014 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
@@ -34,5 +34,7 @@ PREAMBLE
 
 
 awk 'BEGIN { for (i=0; i < 0x80; ++i) { printf("<U%04X> \\x%02X |0\n", i, i);}}
-!/^#/ && !/^$/ { printf ("<U%4s> \\x%02X |0\n", substr($2, 2), $1 + 0x80);}' \
+!/^#/ && !/^$/ { printf ("<U%4s> \\x%02X |0\n", substr($2, 3), $1 + 0x80);}' \
 index-ibm866.txt | sort
+echo 'END CHARMAP'
+

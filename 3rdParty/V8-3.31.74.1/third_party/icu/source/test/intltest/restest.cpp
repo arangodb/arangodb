@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2009, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -21,7 +21,6 @@
 
 static const UChar kErrorUChars[] = { 0x45, 0x52, 0x52, 0x4f, 0x52, 0 };
 static const int32_t kErrorLength = 5;
-static const int32_t kERROR_COUNT = -1234567;
 
 //***************************************************************************************
 
@@ -613,11 +612,12 @@ ResourceBundleTest::TestGetLocaleByType(void)
             status = U_ZERO_ERROR;
             continue;
         }
-        
+
         locale = res.getLocale(ULOC_REQUESTED_LOCALE, status);
-        if(locale != Locale::getDefault()) {
+        if(U_SUCCESS(status) && locale != Locale::getDefault()) {
             err("Expected requested locale to be %s. Got %s\n", test[i].requestedLocale, locale.getName());
         }
+        status = U_ZERO_ERROR;
         locale = res.getLocale(ULOC_VALID_LOCALE, status);
         if(strcmp(locale.getName(), test[i].validLocale) != 0) {
             err("Expected valid locale to be %s. Got %s\n", test[i].requestedLocale, locale.getName());
@@ -628,6 +628,3 @@ ResourceBundleTest::TestGetLocaleByType(void)
         }
     }
 }
-
-//eof
-

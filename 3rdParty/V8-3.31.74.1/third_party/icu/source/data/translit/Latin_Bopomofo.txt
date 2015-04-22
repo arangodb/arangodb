@@ -1,6 +1,6 @@
 ﻿# ***************************************************************************
 # *
-# *  Copyright (C) 2004-2013, International Business Machines
+# *  Copyright (C) 2004-2014, International Business Machines
 # *  Corporation; Unicode, Inc.; and others.  All Rights Reserved.
 # *
 # ***************************************************************************
@@ -10,7 +10,11 @@
 #--- forward filter, transforms ----
 # currently in reverse it only goes back to Latin with numeric tones (not sure why); ok but would rather have marks.
 #
-:: [[:Latin:][1-5]];		# forward filter: only modifies Latin and tone digits
+:: [[:Latin:][:Mn:][1-5]];		# forward filter: only modifies Latin and tone marks/digits
+#
+#--- remap v (alternate for ü) to ü, one way ----
+[ln] { v → ü;
+#
 :: Latin-NumericPinyin(NumericPinyin-Latin);	# tone marks in middle ↔ digits at end to use numeric below; this leaves the pinyin in NFC
 #
 #--- variables ----
@@ -426,8 +430,6 @@ nun }$pTone     ↔ ㄋㄨㄣ }$zTone;
 nüe }$pTone     ↔ ㄋㄩㄝ }$zTone;
  nüe            →  ㄋㄩㄝ˙;
  nüe1           ← ㄋㄩㄝ;
-nve }$pTone     → ㄋㄩㄝ;			# one-way, handle alternate spelling
- nve            →  ㄋㄩㄝ˙;
 nue }$pTone     → ㄋㄩㄝ;			# (not in han-latin) one-way, handle wrong u
  nue            →  ㄋㄩㄝ˙;
 na }$pTone      ↔ ㄋㄚ }$zTone;
@@ -445,8 +447,6 @@ nu }$pTone      ↔ ㄋㄨ }$zTone;
 nü }$pTone      ↔ ㄋㄩ }$zTone;
  nü             →  ㄋㄩ˙;
  nü1            ← ㄋㄩ;
-nv }$pTone      → ㄋㄩ;				# one-way, handle alternate spelling
- nv             →  ㄋㄩ˙;
 # n handled below
 #
 liang }$pTone   ↔ ㄌㄧㄤ }$zTone;
@@ -476,8 +476,6 @@ long }$pTone    ↔ ㄌㄨㄥ }$zTone;
 lüan }$pTone    ↔ ㄌㄩㄢ }$zTone;	# (not in han-latin)
  lüan           →  ㄌㄩㄢ˙;
  lüan1          ← ㄌㄩㄢ;
-lvan }$pTone    → ㄌㄩㄢ;			# (not in han-latin) one-way, handle v alternate for ü
- lvan           →  ㄌㄩㄢ˙;
 lai }$pTone     ↔ ㄌㄞ }$zTone;
  lai            →  ㄌㄞ˙;
  lai1           ← ㄌㄞ;
@@ -514,8 +512,6 @@ lun }$pTone     ↔ ㄌㄨㄣ }$zTone;
 lüe }$pTone     ↔ ㄌㄩㄝ }$zTone;
  lüe            →  ㄌㄩㄝ˙;
  lüe1           ← ㄌㄩㄝ;
-lve }$pTone     → ㄌㄩㄝ;			# one-way, handle v alternate for ü
- lve            →  ㄌㄩㄝ˙;
 lue }$pTone     → ㄌㄩㄝ;			# (not in han-latin) one-way, handle wrong u
  lue            →  ㄌㄩㄝ˙;
 la }$pTone      ↔ ㄌㄚ }$zTone;
@@ -536,8 +532,6 @@ lu }$pTone      ↔ ㄌㄨ }$zTone;
 lü }$pTone      ↔ ㄌㄩ }$zTone;
  lü             →  ㄌㄩ˙;
  lü1            ← ㄌㄩ;
-lv }$pTone      → ㄌㄩ;				# one-way, handle v alternate for ü
- lv             →  ㄌㄩ˙;
 #
 guang }$pTone   ↔ ㄍㄨㄤ }$zTone;
  guang          →  ㄍㄨㄤ˙;

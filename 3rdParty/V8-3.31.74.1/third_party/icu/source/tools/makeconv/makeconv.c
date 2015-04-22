@@ -1,7 +1,7 @@
 /*
  ********************************************************************************
  *
- *   Copyright (C) 1998-2012, International Business Machines
+ *   Copyright (C) 1998-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  ********************************************************************************
@@ -33,8 +33,6 @@
 #include "ucm.h"
 #include "makeconv.h"
 #include "genmbcs.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 #define DEBUG 0
 
@@ -213,7 +211,7 @@ int main(int argc, char* argv[])
 
     /* preset then read command line options */
     options[OPT_DESTDIR].value=u_getDataDirectory();
-    argc=u_parseArgs(argc, argv, LENGTHOF(options), options);
+    argc=u_parseArgs(argc, argv, UPRV_LENGTHOF(options), options);
 
     /* error handling, printing usage message */
     if(argc<0) {

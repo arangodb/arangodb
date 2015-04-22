@@ -1,0 +1,4 @@
+CODE_REVIEW_SERVER: https://codereview.chromium.org
+CC_LIST: chromium-reviews@chromium.org
+VIEW_VC: https://chromium.googlesource.com/chromium/deps/icu/+/
+TRY_ON_UPLOAD: False

@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -107,7 +107,7 @@
       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icuin52.dll</OutputFile>
+      <OutputFile>..\..\bin\icuin54.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib\icuin.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -151,7 +151,7 @@
       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icuin52d.dll</OutputFile>
+      <OutputFile>..\..\bin\icuin54d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib\icuind.pdb</ProgramDatabaseFile>
@@ -192,7 +192,7 @@
       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icuin52.dll</OutputFile>
+      <OutputFile>..\..\bin64\icuin54.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib64\icuin.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -234,7 +234,7 @@
       <AdditionalIncludeDirectories>../common;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icuin52d.dll</OutputFile>
+      <OutputFile>..\..\bin64\icuin54d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib64\icuind.pdb</ProgramDatabaseFile>
@@ -244,29 +244,46 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="filteredbrk.cpp" />
+    <ClCompile Include="region.cpp" />
+    <ClCompile Include="uregion.cpp" />
     <ClCompile Include="alphaindex.cpp" />
     <ClCompile Include="bocsu.cpp" />
     <ClCompile Include="coleitr.cpp" />
     <ClCompile Include="coll.cpp" />
-    <ClCompile Include="region.cpp" />
-    <ClCompile Include="uregion.cpp" />
+    <ClCompile Include="collation.cpp" />
+    <ClCompile Include="collationbasedatabuilder.cpp" />
+    <ClCompile Include="collationbuilder.cpp" />
+    <ClCompile Include="collationcompare.cpp" />
+    <ClCompile Include="collationdata.cpp" />
+    <ClCompile Include="collationdatabuilder.cpp" />
+    <ClCompile Include="collationdatareader.cpp" />
+    <ClCompile Include="collationdatawriter.cpp" />
+    <ClCompile Include="collationfastlatin.cpp" />
+    <ClCompile Include="collationfastlatinbuilder.cpp" />
+    <ClCompile Include="collationfcd.cpp" />
+    <ClCompile Include="collationiterator.cpp" />
+    <ClCompile Include="collationkeys.cpp" />
+    <ClCompile Include="collationroot.cpp" />
+    <ClCompile Include="collationrootelements.cpp" />
+    <ClCompile Include="collationruleparser.cpp" />
+    <ClCompile Include="collationsets.cpp" />
+    <ClCompile Include="collationsettings.cpp" />
+    <ClCompile Include="collationtailoring.cpp" />
+    <ClCompile Include="collationweights.cpp" />
+    <ClCompile Include="rulebasedcollator.cpp" />
     <ClCompile Include="search.cpp" />
     <ClCompile Include="sortkey.cpp" />
     <ClCompile Include="stsearch.cpp" />
-    <ClCompile Include="tblcoll.cpp" />
     <ClCompile Include="tzfmt.cpp" />
     <ClCompile Include="tzgnames.cpp" />
     <ClCompile Include="tznames.cpp" />
     <ClCompile Include="tznames_impl.cpp" />
     <ClCompile Include="ucol.cpp" />
-    <ClCompile Include="ucol_bld.cpp" />
-    <ClCompile Include="ucol_cnt.cpp" />
-    <ClCompile Include="ucol_elm.cpp" />
     <ClCompile Include="ucol_res.cpp" />
     <ClCompile Include="ucol_sit.cpp" />
-    <ClCompile Include="ucol_tok.cpp" />
-    <ClCompile Include="ucol_wgt.cpp" />
     <ClCompile Include="ucoleitr.cpp" />
+    <ClCompile Include="uitercollationiterator.cpp" />
     <ClCompile Include="usearch.cpp" />
     <ClCompile Include="astro.cpp" />
     <ClCompile Include="basictz.cpp" />
@@ -286,6 +303,7 @@
     <ClCompile Include="dcfmtsym.cpp" />
     <ClCompile Include="decContext.c" />
     <ClCompile Include="decfmtst.cpp" />
+    <ClCompile Include="decimalformatpattern.cpp" />
     <ClCompile Include="decimfmt.cpp" />
     <ClCompile Include="decNumber.c" />
     <ClCompile Include="digitlst.cpp" />
@@ -310,6 +328,7 @@
     <ClCompile Include="japancal.cpp" />
     <ClCompile Include="locdspnm.cpp" />
     <ClCompile Include="measfmt.cpp" />
+    <ClCompile Include="measunit.cpp" />
     <ClCompile Include="measure.cpp" />
     <ClCompile Include="msgfmt.cpp" />
     <ClCompile Include="nfrs.cpp" />
@@ -321,9 +340,15 @@
     <ClCompile Include="persncal.cpp" />
     <ClCompile Include="plurfmt.cpp" />
     <ClCompile Include="plurrule.cpp" />
+    <ClCompile Include="quantityformatter.cpp" />
     <ClCompile Include="rbnf.cpp" />
     <ClCompile Include="rbtz.cpp" />
+    <ClCompile Include="reldatefmt.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="reldtfmt.cpp" />
+    <ClCompile Include="scientificformathelper.cpp" />
+    <ClCompile Include="sharedbreakiterator.cpp" />
     <ClCompile Include="selfmt.cpp" />
     <ClCompile Include="simpletz.cpp" />
     <ClCompile Include="scriptset.cpp" />
@@ -346,6 +371,8 @@
     <ClCompile Include="unum.cpp" />
     <ClCompile Include="unumsys.cpp" />
     <ClCompile Include="upluralrules.cpp" />
+    <ClCompile Include="utf16collationiterator.cpp" />
+    <ClCompile Include="utf8collationiterator.cpp" />
     <ClCompile Include="utmscale.c" />
     <ClCompile Include="vtzone.cpp" />
     <ClCompile Include="vzone.cpp" />
@@ -370,11 +397,8 @@
     <ClCompile Include="zonemeta.cpp" />
     <ClCompile Include="zrule.cpp" />
     <ClCompile Include="ztrans.cpp" />
-    <ClCompile Include="ucln_in.c">
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableLanguageExtensions>
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DisableLanguageExtensions>
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DisableLanguageExtensions>
+    <ClCompile Include="ucln_in.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
     </ClCompile>
     <ClCompile Include="regexcmp.cpp" />
     <ClCompile Include="regeximp.cpp" />
@@ -541,18 +565,33 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="collation.h" />
+    <ClInclude Include="collationbasedatabuilder.h" />
+    <ClInclude Include="collationbuilder.h" />
+    <ClInclude Include="collationcompare.h" />
+    <ClInclude Include="collationdata.h" />
+    <ClInclude Include="collationdatabuilder.h" />
+    <ClInclude Include="collationdatareader.h" />
+    <ClInclude Include="collationdatawriter.h" />
+    <ClInclude Include="collationfastlatin.h" />
+    <ClInclude Include="collationfastlatinbuilder.h" />
+    <ClInclude Include="collationfcd.h" />
+    <ClInclude Include="collationiterator.h" />
+    <ClInclude Include="collationkeys.h" />
+    <ClInclude Include="collationroot.h" />
+    <ClInclude Include="collationrootelements.h" />
+    <ClInclude Include="collationruleparser.h" />
+    <ClInclude Include="collationsets.h" />
+    <ClInclude Include="collationsettings.h" />
+    <ClInclude Include="collationtailoring.h" />
+    <ClInclude Include="collationweights.h" />
     <ClInclude Include="dcfmtimp.h" />
     <ClInclude Include="numsys_impl.h" />
     <ClInclude Include="region_impl.h" />
     <ClInclude Include="selfmtimpl.h" />
     <ClInclude Include="tzgnames.h" />
     <ClInclude Include="tznames_impl.h" />
-    <ClInclude Include="ucol_bld.h" />
-    <ClInclude Include="ucol_cnt.h" />
-    <ClInclude Include="ucol_elm.h" />
     <ClInclude Include="ucol_imp.h" />
-    <ClInclude Include="ucol_tok.h" />
-    <ClInclude Include="ucol_wgt.h" />
     <CustomBuild Include="unicode\ucoleitr.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -601,6 +640,7 @@
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy "%(FullPath)" ..\..\include\unicode</Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="uitercollationiterator.h" />
     <CustomBuild Include="unicode\region.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -629,6 +669,7 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="unicode\filteredbrk.h" />
     <ClInclude Include="usrchimp.h" />
     <ClInclude Include="astro.h" />
     <CustomBuild Include="unicode\basictz.h">
@@ -765,6 +806,7 @@
     </CustomBuild>
     <ClInclude Include="decContext.h" />
     <ClInclude Include="decfmtst.h" />
+    <ClInclude Include="decimalformatpattern.h" />
     <CustomBuild Include="unicode\decimfmt.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -1107,6 +1149,10 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
     <ClInclude Include="plurrule_impl.h" />
+    <ClInclude Include="quantityformatter.h" />
+    <ClInclude Include="sharedbreakiterator.h" />
+    <ClInclude Include="sharednumberformat.h" />
+    <ClInclude Include="sharedpluralrules.h" />
     <CustomBuild Include="unicode\rbnf.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -1135,7 +1181,35 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <CustomBuild Include="unicode\reldatefmt.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+    </CustomBuild>
     <ClInclude Include="reldtfmt.h" />
+    <CustomBuild Include="unicode\scientificformathelper.h">
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">copy "%(FullPath)" ..\..\include\unicode
+</Command>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
+    </CustomBuild>
     <CustomBuild Include="unicode\selfmt.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -1462,6 +1536,8 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="utf16collationiterator.h" />
+    <ClInclude Include="utf8collationiterator.h" />
     <ClInclude Include="vzone.h" />
     <ClInclude Include="windtfmt.h" />
     <ClInclude Include="winnmfmt.h" />

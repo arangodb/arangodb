@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- *   Copyright (C) 1997-2009, International Business Machines
+ *   Copyright (C) 1997-2009,2014 International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *******************************************************************************
  *   Date        Name        Description
@@ -20,6 +20,7 @@
 #include "unicode/uniset.h"
 #include "unicode/ustring.h"
 #include "unicode/uenum.h"
+#include "unicode/uset.h"
 #include "uenumimp.h"
 #include "cpputils.h"
 #include "rbt.h"
@@ -490,6 +491,41 @@ utrans_transIncrementalUChars(const UTransliterator* trans,
     if(textLength != NULL) {
         *textLength = textLen;
     }
+}
+
+U_CAPI int32_t U_EXPORT2
+utrans_toRules(     const UTransliterator* trans,
+                    UBool escapeUnprintable,
+                    UChar* result, int32_t resultLength,
+                    UErrorCode* status) {
+    utrans_ENTRY(status) 0;
+    if ( (result==NULL)? resultLength!=0: resultLength<0 ) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return 0;
+    }
+
+    UnicodeString res;
+    res.setTo(result, 0, resultLength);
+    ((Transliterator*) trans)->toRules(res, escapeUnprintable);
+    return res.extract(result, resultLength, *status);
+}
+
+U_CAPI USet* U_EXPORT2
+utrans_getSourceSet(const UTransliterator* trans,
+                    UBool ignoreFilter,
+                    USet* fillIn,
+                    UErrorCode* status) {
+    utrans_ENTRY(status) fillIn;
+
+    if (fillIn == NULL) {
+        fillIn = uset_openEmpty();
+    }
+    if (ignoreFilter) {
+        ((Transliterator*) trans)->handleGetSourceSet(*((UnicodeSet*)fillIn));
+    } else {
+        ((Transliterator*) trans)->getSourceSet(*((UnicodeSet*)fillIn));
+    }
+    return fillIn;
 }
 
 #endif /* #if !UCONFIG_NO_TRANSLITERATION */

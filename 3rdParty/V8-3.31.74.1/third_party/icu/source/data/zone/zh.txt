@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/zh.xml
  */
 zh{
-    Version{"2.0.93.8"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比让"}
@@ -436,7 +436,7 @@ zh{
             ec{"门多萨"}
         }
         "America:Menominee"{
-            ec{"密诺米尼"}
+            ec{"梅诺米尼"}
         }
         "America:Merida"{
             ec{"梅里达"}
@@ -458,9 +458,6 @@ zh{
         }
         "America:Montevideo"{
             ec{"蒙得维的亚"}
-        }
-        "America:Montreal"{
-            ec{"蒙特利尔"}
         }
         "America:Montserrat"{
             ec{"蒙特塞拉特"}
@@ -552,9 +549,6 @@ zh{
         "America:Scoresbysund"{
             ec{"斯科列斯比桑德"}
         }
-        "America:Shiprock"{
-            ec{"希普罗克"}
-        }
         "America:Sitka"{
             ec{"锡特卡"}
         }
@@ -636,11 +630,11 @@ zh{
         "Antarctica:Rothera"{
             ec{"罗瑟拉"}
         }
-        "Antarctica:South_Pole"{
-            ec{"南极"}
-        }
         "Antarctica:Syowa"{
             ec{"昭和"}
+        }
+        "Antarctica:Troll"{
+            ec{"特罗尔"}
         }
         "Antarctica:Vostok"{
             ec{"沃斯托克"}
@@ -845,6 +839,12 @@ zh{
         }
         "Asia:Taipei"{
             ec{"台北"}
+            ld{"台北夏令时间"}
+            lg{"台北时间"}
+            ls{"台北标准时间"}
+            sd{"台北"}
+            sg{"台北"}
+            ss{"台北"}
         }
         "Asia:Tashkent"{
             ec{"塔什干"}
@@ -992,7 +992,7 @@ zh{
         }
         "Europe:Dublin"{
             ec{"都柏林"}
-            ld{"爱尔兰夏令时间"}
+            ld{"爱尔兰标准时间"}
         }
         "Europe:Gibraltar"{
             ec{"直布罗陀"}
@@ -1333,6 +1333,11 @@ zh{
             lg{"阿纳德尔时间"}
             ls{"阿纳德尔标准时间"}
         }
+        "meta:Apia"{
+            ld{"阿皮亚夏令时间"}
+            lg{"阿皮亚时间"}
+            ls{"阿皮亚标准时间"}
+        }
         "meta:Aqtau"{
             ld{"阿克套夏令时间"}
             lg{"阿克套时间"}
@@ -1496,6 +1501,9 @@ zh{
             lg{"东欧时间"}
             ls{"东欧标准时间"}
         }
+        "meta:Europe_Further_Eastern"{
+            ls{"远东标准时间"}
+        }
         "meta:Europe_Western"{
             ld{"西欧夏令时间"}
             lg{"西欧时间"}
@@ -1548,7 +1556,7 @@ zh{
             ls{"关岛时间"}
         }
         "meta:Gulf"{
-            ls{"海湾时间"}
+            ls{"海湾标准时间"}
         }
         "meta:Guyana"{
             ls{"圭亚那时间"}
@@ -1676,6 +1684,16 @@ zh{
         }
         "meta:Mawson"{
             ls{"莫森时间"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"墨西哥西北部夏令时间"}
+            lg{"墨西哥西北部时间"}
+            ls{"墨西哥西北部标准时间"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"墨西哥太平洋夏令时间"}
+            lg{"墨西哥太平洋时间"}
+            ls{"墨西哥太平洋标准时间"}
         }
         "meta:Mongolia"{
             ld{"乌兰巴托夏令时间"}
@@ -1805,7 +1823,7 @@ zh{
             ls{"塞舌尔时间"}
         }
         "meta:Singapore"{
-            ls{"新加坡时间"}
+            ls{"新加坡标准时间"}
         }
         "meta:Solomon"{
             ls{"所罗门群岛时间"}
@@ -1822,14 +1840,10 @@ zh{
         "meta:Tahiti"{
             ls{"塔希提岛时间"}
         }
-        // Chromium patch: Add short names
         "meta:Taipei"{
             ld{"台北夏令时间"}
             lg{"台北时间"}
             ls{"台北标准时间"}
-            sd{"台北"}
-            sg{"台北"}
-            ss{"台北"}
         }
         "meta:Tajikistan"{
             ls{"塔吉克斯坦时间"}

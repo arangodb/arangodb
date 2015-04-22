@@ -1,6 +1,6 @@
 /*
  * Default CSS style sheet for the ICU4C Open Source readme
- * Copyright (C) 2005-2011, International Business Machines
+ * Copyright (C) 2005-2014, International Business Machines
  * Corporation and others.  All Rights Reserved.
  */
 
@@ -8,7 +8,7 @@
 
 body,p,li,ol,ul,th,td {
 	font-size: 1em;
-	font-family: "Arial", "Helvetica", sans-serif;
+	font-family: "Helvetica Neue", Arial, Helvetica, Geneva, sans-serif;
 }
 
 body {
@@ -19,10 +19,33 @@ body.draft {
 	background-image: url(images/draftbg.png);
 }
 
+body .only-milestone,
+body .only-draft,
+body .only-rc {
+    display:  none;
+}
+
+body.milestone .only-milestone {
+    display:  inherit !important;
+}
+
+body.draft .only-draft {
+    display:  inherit !important;
+}
+
+body.rc .only-rc {
+    display:  inherit !important;
+}
+
+
 .mainbody {
 	padding: 1em;
 }
 
+
+h1,h2,h3,h4,h5 {    
+	font-family: Georgia, "Times New Roman", Times, serif;
+}
 /*
  * Customize the headers to have less space around them than usual
  */
@@ -34,25 +57,17 @@ h1 {
 	padding-top: .5em;
 	font-weight: 700;
 	font-size: 20pt;
-	font-family: Georgia, "Times New Roman", Times, serif;
-	border-width: 2px;
-	border-style: solid;
 	text-align: center;
-	width: 100%;
-	font-size: 200%;
+	font-size: 2em;
 	font-weight: bold;
 }
 
 h2 {
-	border-top: 2px solid #22d;
-	border-left: 2px solid #22d;
 	margin-bottom: 0.5em;
 	padding-left: 4px;
 	margin-top: 12pt;
 	font-weight: 700;
 	font-size: 2em;
-	font-family: Georgia, "Times New Roman", Times, serif;
-	background-color: #eee;
 	page-break-before: always;
 }
 
@@ -67,16 +82,12 @@ h2 a:hover {
 }
 
 h3 {
-	border-top: 1px solid gray;
-	color: #1e1c46;
 	margin-bottom: 0pt;
-	margin-top: 12pt;
 	padding-left: 0;
 	margin-left: 1em;
-	margin-top: 0.2em;
-	padding-bottom: 0.4em;
+	margin-top: 1em;
+	padding-bottom: 0.2em;
 	font-size: 1.5em;
-	font-family: Georgia, "Times New Roman", Times, serif;
 }
 
 h3 a {
@@ -95,7 +106,6 @@ h4 {
 	margin-top: 12pt;
 	font-size: 1.0em;
 	font-weight: bolder;
-	font-family: Georgia, "Times New Roman", Times, serif;
 }
 
 h4 a {
@@ -119,6 +129,18 @@ h5, h6 {
 
 p,pre,table,ul,ol,dl {
 	margin-left: 2em;
+}
+
+p {
+    margin-top:  0.5em;
+    margin-bottom:  0.5em;
+}
+
+/*
+ * Add a little bit of space above li's
+ */
+li {
+    margin-top:  0.25em;
 }
 
 /*
@@ -262,6 +284,18 @@ td.release-line,th.release-line {
 	font-style: italic;
 	font-size: small;
 	margin-left: 1em;
+}
+
+
+p.note::before {
+    content: 'Note:';
+    font-weight: bold;
+    margin-right:  1em;
+}
+p.note {
+    border:  1px solid gray;
+    padding:  0.5em;
+    background-color: #fdfdd9;
 }
 
 samp {
@@ -425,34 +459,39 @@ div.indent {
 }
 
 ul.TOC {
-	list-style-type: none;
-	padding-left: 1em;
-	font-size: larger;
+    font-size:  medium;
 }
 
-ul.TOC li a {
-	font-weight: bold;
+ul.TOC,
+ul.TOC li,
+ul.TOC li ul, 
+ul.TOC li ul li {
+    margin-left: 0.25em;
+    margin-top: 0.25em;
 }
 
-ul.TOC li ul li a {
-	font-weight: normal;
-	list-style-type: none;
-	font-size: small;
+ul.TOC li {
+    padding-left:  1em;
+    margin-left:  0.25em;
 }
-
-ul.TOC li ul {
-	margin-left: 0;
-	padding-left: 2em;
-	font-weight: normal;
-	list-style-type: none;
+ul.TOC li li {
+    padding-left:  1em;
+    margin-left:  0.25em;
 }
 
 pre.samp,samp {
+    margin-top:  0.5em;
+    margin-bottom:  0.5em;
 	margin-left: 1em;
 	border-style: groove;
 	padding: 1em;
 	display: block;
-	background-color: #EEEEEE
+	background-color: #f9fbfa;
+	font-family: "Source Code Pro", "Everson Mono", "Courier New", Courier, mono;
+	border-radius: 12px;
+	border-bottom-color: gray;
+	border-right-color: gray;
+	white-space: pre-wrap;
 }
 
 td.proto {

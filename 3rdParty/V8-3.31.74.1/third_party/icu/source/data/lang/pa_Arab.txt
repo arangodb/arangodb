@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/pa_Arab.xml
@@ -12,11 +12,11 @@
 pa_Arab{
     %%Parent{"root"}
     Languages{
-        pa{"پنجاب"}
+        pa{"پنجابی"}
     }
     Scripts{
-        Arab{"العربية"}
+        Arab{"عربی"}
         Guru{"گُرمُکھی"}
     }
-    Version{"2.0.92.75"}
+    Version{"2.1.6.69"}
 }

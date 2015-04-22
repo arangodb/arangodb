@@ -10,8 +10,8 @@ sbindir=$(bindir)
 ## Commands to generate dependency files
 GEN_DEPS.c=	:
 GEN_DEPS.cc=	:
-#GEN_DEPS.c=	$(COMPILE.c) /E
-#GEN_DEPS.cc=	$(COMPILE.cc) /E
+#GEN_DEPS.c=	$(COMPILE.c) -E
+#GEN_DEPS.cc=	$(COMPILE.cc) -E
 
 ## Flags to create/use a static library
 ifneq ($(ENABLE_SHARED),YES)
@@ -45,37 +45,37 @@ endif
 # /EHsc enables exception handling
 # /Zc:wchar_t makes wchar_t a native type. Required for C++ ABI compatibility.
 # -D_CRT_SECURE_NO_DEPRECATE is needed to quiet warnings about using standard C functions.
-CFLAGS+=/GF /nologo
-CXXFLAGS+=/GF /nologo /EHsc /Zc:wchar_t
+CFLAGS+=-GF -nologo
+CXXFLAGS+=-GF -nologo -EHsc -Zc:wchar_t
 CPPFLAGS+=-D_CRT_SECURE_NO_DEPRECATE
 DEFS+=-DWIN32 -DCYGWINMSVC
-LDFLAGS+=/nologo
+LDFLAGS+=-nologo
 
 # Commands to compile
-COMPILE.c=	$(CC) $(CPPFLAGS) $(DEFS) $(CFLAGS) /c
-COMPILE.cc=	$(CXX) $(CPPFLAGS) $(DEFS) $(CXXFLAGS) /c
+COMPILE.c=	$(CC) $(CPPFLAGS) $(DEFS) $(CFLAGS) -c
+COMPILE.cc=	$(CXX) $(CPPFLAGS) $(DEFS) $(CXXFLAGS) -c
 
 # Commands to link
-LINK.c=		LINK.EXE /subsystem:console $(LDFLAGS)
-LINK.cc=	LINK.EXE /subsystem:console $(LDFLAGS)
+LINK.c=		LINK.EXE -subsystem:console $(LDFLAGS)
+LINK.cc=	LINK.EXE -subsystem:console $(LDFLAGS)
 
 ## Commands to make a shared library
-SHLIB.c=	LINK.EXE /DLL $(LDFLAGS)
-SHLIB.cc=	LINK.EXE /DLL $(LDFLAGS)
+SHLIB.c=	LINK.EXE -DLL $(LDFLAGS)
+SHLIB.cc=	LINK.EXE -DLL $(LDFLAGS)
 
 ## Compiler switch to embed a runtime search path
 LD_RPATH=	
 LD_RPATH_PRE=
 
 ## Compiler switch to embed a library name
-LD_SONAME = /IMPLIB:$(SO_TARGET:.dll=.lib)
+LD_SONAME = -IMPLIB:$(SO_TARGET:.dll=.lib)
 
 ## Shared object suffix
 SO = dll
 ## Non-shared intermediate object suffix
 STATIC_O = ao
 # OUTOPT is for creating a specific output name
-OUTOPT = /out:
+OUTOPT = -out:
 
 # Static library prefix and file extension
 LIBSICU = $(STATIC_PREFIX)$(ICUPREFIX)
@@ -83,9 +83,9 @@ A = lib
 
 # Cygwin's ar can't handle Win64 right now. So we use Microsoft's tool instead.
 AR = LIB.EXE#M#
-ARFLAGS := /nologo $(ARFLAGS:r=)#M#
+ARFLAGS := -nologo $(ARFLAGS:r=)#M#
 RANLIB = ls -s#M#
-AR_OUTOPT = /OUT:#M#
+AR_OUTOPT = -OUT:#M#
 
 ## An import library is needed for z/OS, MSVC and Cygwin
 IMPORT_LIB_EXT = .lib
@@ -114,14 +114,14 @@ LIBCTESTFW=	$(top_builddir)/tools/ctestfw/$(LIBICU)$(CTESTFW_STUBNAME)$(ICULIBSU
 LIBICUTOOLUTIL=	$(LIBDIR)/$(LIBICU)$(TOOLUTIL_STUBNAME)$(ICULIBSUFFIX).lib
 
 ## These are the library specific LDFLAGS
-LDFLAGSICUDT+=	/base:"0x4ad00000" /NOENTRY# The NOENTRY option is required for creating a resource-only DLL.
-LDFLAGSICUUC=	/base:"0x4a800000"# in-uc = 1MB
-LDFLAGSICUI18N=	/base:"0x4a900000"# io-in = 2MB
-LDFLAGSICUIO=	/base:"0x4ab00000"# le-io = 1MB
-LDFLAGSICULE=	/base:"0x4ac00000"# lx-le = 512KB
-LDFLAGSICULX=	/base:"0x4ac80000"
+LDFLAGSICUDT+=	-base:"0x4ad00000" -NOENTRY# The NOENTRY option is required for creating a resource-only DLL.
+LDFLAGSICUUC=	-base:"0x4a800000"# in-uc = 1MB
+LDFLAGSICUI18N=	-base:"0x4a900000"# io-in = 2MB
+LDFLAGSICUIO=	-base:"0x4ab00000"# le-io = 1MB
+LDFLAGSICULE=	-base:"0x4ac00000"# lx-le = 512KB
+LDFLAGSICULX=	-base:"0x4ac80000"
 LDFLAGSCTESTFW=# Unused for now.
-LDFLAGSICUTOOLUTIL=	/base:"0x4ac00000"# Same as layout. Layout and tools probably won't mix.
+LDFLAGSICUTOOLUTIL=	-base:"0x4ac00000"# Same as layout. Layout and tools probably won't mix.
 
 # The #M# is used to delete lines for icu-config
 # Current full path directory.
@@ -137,14 +137,14 @@ endif
 
 ## Compilation rules
 %.$(STATIC_O): $(srcdir)/%.c
-	$(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS) /Fo$@ $(SOURCE_FILE)
+	$(COMPILE.c) $(STATICCPPFLAGS) $(STATICCFLAGS) -Fo$@ $(SOURCE_FILE)
 %.o: $(srcdir)/%.c
-	$(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS) /Fo$@ $(SOURCE_FILE)
+	$(COMPILE.c) $(DYNAMICCPPFLAGS) $(DYNAMICCFLAGS) -Fo$@ $(SOURCE_FILE)
 
 %.$(STATIC_O): $(srcdir)/%.cpp
-	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) /Fo$@ $(SOURCE_FILE)
+	$(COMPILE.cc) $(STATICCPPFLAGS) $(STATICCXXFLAGS) -Fo$@ $(SOURCE_FILE)
 %.o: $(srcdir)/%.cpp
-	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) /Fo$@ $(SOURCE_FILE)
+	$(COMPILE.cc) $(DYNAMICCPPFLAGS) $(DYNAMICCXXFLAGS) -Fo$@ $(SOURCE_FILE)
 
 
 ## Dependency rules
@@ -175,7 +175,7 @@ endif
 
 ## Compile a Windows resource file
 %.res : $(srcdir)/%.rc
-	rc.exe /fo$@ $(CPPFLAGS) $(SOURCE_FILE)
+	rc.exe -fo$@ $(CPPFLAGS) $(SOURCE_FILE)
 
 ## Versioned target for a shared library.
 FINAL_SO_TARGET= $(basename $(SO_TARGET))$(SO_TARGET_VERSION_MAJOR).$(SO)

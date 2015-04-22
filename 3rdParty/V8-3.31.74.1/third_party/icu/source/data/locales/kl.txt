@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kl.xml
@@ -10,6 +10,7 @@
  * ICU <specials> source: <path>/common/main/kl.xml
  */
 kl{
+    AuxExemplarCharacters{"[]"}
     ExemplarCharacters{
         "[a á â ã b c d e é ê f g h i í î ĩ j k l m n o ô p q ĸ r s t u ú û ũ v w x y"
         " z æ ø å]"
@@ -29,7 +30,7 @@ kl{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
     calendar{
         gregorian{
             dayNames{
@@ -237,9 +238,5 @@ kl{
                 }
             }
         }
-    }
-    unitsNarrow{
-    }
-    unitsShort{
     }
 }

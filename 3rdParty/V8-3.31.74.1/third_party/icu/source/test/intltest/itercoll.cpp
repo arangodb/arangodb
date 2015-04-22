@@ -1,6 +1,6 @@
 /********************************************************************
- * COPYRIGHT: 
- * Copyright (c) 1997-2009, International Business Machines Corporation and
+ * COPYRIGHT:
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -176,12 +176,12 @@ void CollationIteratorTest::TestOffset(/* char* par */)
     UErrorCode status = U_ZERO_ERROR;
     // testing boundaries
     iter->setOffset(0, status);
-    if (U_FAILURE(status) || iter->previous(status) != UCOL_NULLORDER) {
+    if (U_FAILURE(status) || iter->previous(status) != CollationElementIterator::NULLORDER) {
         errln("Error: After setting offset to 0, we should be at the end "
                 "of the backwards iteration");
     }
     iter->setOffset(test1.length(), status);
-    if (U_FAILURE(status) || iter->next(status) != UCOL_NULLORDER) {
+    if (U_FAILURE(status) || iter->next(status) != CollationElementIterator::NULLORDER) {
         errln("Error: After setting offset to end of the string, we should "
                 "be at the end of the backwards iteration");
     }
@@ -214,11 +214,66 @@ void CollationIteratorTest::TestOffset(/* char* par */)
         assertEqual(*iter, *pristine);
     }
 
-    // TODO: try iterating halfway through a messy string.
-
     delete pristine;
     delete[] orders;
     delete iter;
+
+    // setting offset in the middle of a contraction
+    UnicodeString contraction = "change";
+    status = U_ZERO_ERROR;
+    RuleBasedCollator tailored("& a < ch", status);
+    if (U_FAILURE(status)) {
+        errln("Error: in creation of Spanish collator - %s", u_errorName(status));
+        return;
+    }
+    iter = tailored.createCollationElementIterator(contraction);
+    Order *order = getOrders(*iter, orderLength);
+    iter->setOffset(1, status); // sets offset in the middle of ch
+    int32_t order2Length = 0;
+    Order *order2 = getOrders(*iter, order2Length);
+    if (orderLength != order2Length || uprv_memcmp(order, order2, orderLength * sizeof(Order)) != 0) {
+        errln("Error: setting offset in the middle of a contraction should be the same as setting it to the start of the contraction");
+    }
+    delete[] order;
+    delete[] order2;
+    delete iter;
+    contraction = "peache";
+    iter = tailored.createCollationElementIterator(contraction);
+    iter->setOffset(3, status);
+    order = getOrders(*iter, orderLength);
+    iter->setOffset(4, status); // sets offset in the middle of ch
+    order2 = getOrders(*iter, order2Length);
+    if (orderLength != order2Length || uprv_memcmp(order, order2, orderLength * sizeof(Order)) != 0) {
+        errln("Error: setting offset in the middle of a contraction should be the same as setting it to the start of the contraction");
+    }
+    delete[] order;
+    delete[] order2;
+    delete iter;
+    // setting offset in the middle of a surrogate pair
+    UnicodeString surrogate = UNICODE_STRING_SIMPLE("\\ud800\\udc00str").unescape();
+    iter = tailored.createCollationElementIterator(surrogate);
+    order = getOrders(*iter, orderLength);
+    iter->setOffset(1, status); // sets offset in the middle of surrogate
+    order2 = getOrders(*iter, order2Length);
+    if (orderLength != order2Length || uprv_memcmp(order, order2, orderLength * sizeof(Order)) != 0) {
+        errln("Error: setting offset in the middle of a surrogate pair should be the same as setting it to the start of the surrogate pair");
+    }
+    delete[] order;
+    delete[] order2;
+    delete iter;
+    surrogate = UNICODE_STRING_SIMPLE("simple\\ud800\\udc00str").unescape();
+    iter = tailored.createCollationElementIterator(surrogate);
+    iter->setOffset(6, status);
+    order = getOrders(*iter, orderLength);
+    iter->setOffset(7, status); // sets offset in the middle of surrogate
+    order2 = getOrders(*iter, order2Length);
+    if (orderLength != order2Length || uprv_memcmp(order, order2, orderLength * sizeof(Order)) != 0) {
+        errln("Error: setting offset in the middle of a surrogate pair should be the same as setting it to the start of the surrogate pair");
+    }
+    delete[] order;
+    delete[] order2;
+    delete iter;
+    // TODO: try iterating halfway through a messy string.
 }
 
 /**
@@ -274,13 +329,13 @@ void CollationIteratorTest::TestSetText(/* char* par */)
     UnicodeString empty("");
     iter1->setText(empty, status);
     if (U_FAILURE(status) 
-        || iter1->next(status) != (int32_t)UCOL_NULLORDER) {
+        || iter1->next(status) != (int32_t)CollationElementIterator::NULLORDER) {
         errln("Empty string should have no CEs.");
     }
     ((StringCharacterIterator *)chariter)->setText(empty);
     iter1->setText(*chariter, status);
     if (U_FAILURE(status) 
-        || iter1->next(status) != (int32_t)UCOL_NULLORDER) {
+        || iter1->next(status) != (int32_t)CollationElementIterator::NULLORDER) {
         errln("Empty string should have no CEs.");
     }
     delete chariter;
@@ -314,7 +369,7 @@ void CollationIteratorTest::TestMaxExpansion(/* char* par */)
             order = iter->previous(status);
 
         while (U_SUCCESS(status)
-            && iter->previous(status) != (int32_t)UCOL_NULLORDER)
+            && iter->previous(status) != (int32_t)CollationElementIterator::NULLORDER)
         {
             count ++; 
         }
@@ -521,10 +576,10 @@ void CollationIteratorTest::TestConstructors()
         || *iter2 != *iter1) {
         errln("CollationElementIterators constructed with the same string data should be the same at the start");
     } 
-    if (iter1->next(status) != (int32_t)UCOL_NULLORDER) {
+    if (iter1->next(status) != (int32_t)CollationElementIterator::NULLORDER) {
         errln("Empty string should have no CEs.");
     }
-    if (iter2->next(status) != (int32_t)UCOL_NULLORDER) {
+    if (iter2->next(status) != (int32_t)CollationElementIterator::NULLORDER) {
         errln("Empty string should have no CEs.");
     }
     delete iter1;

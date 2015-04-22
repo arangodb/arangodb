@@ -1,0 +1,179 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/it.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/it.xml
+ */
+it{
+    Version{"2.1.8.32"}
+    units{
+        compound{
+            per{"{0} al {1}"}
+        }
+        duration{
+            day{
+                dnam{"giorni"}
+                one{"{0} giorno"}
+                other{"{0} giorni"}
+            }
+            hour{
+                dnam{"ore"}
+                one{"{0} ora"}
+                other{"{0} ore"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"microsecondi"}
+                one{"{0} microsecondo"}
+                other{"{0} microsecondi"}
+            }
+            millisecond{
+                dnam{"millisecondi"}
+                one{"{0} millisecondo"}
+                other{"{0} millisecondi"}
+            }
+            minute{
+                dnam{"minuti"}
+                one{"{0} minuto"}
+                other{"{0} minuti"}
+            }
+            month{
+                dnam{"mesi"}
+                one{"{0} mese"}
+                other{"{0} mesi"}
+            }
+            nanosecond{
+                dnam{"nanosecondi"}
+                one{"{0} nanosecondo"}
+                other{"{0} nanosecondi"}
+            }
+            second{
+                dnam{"secondi"}
+                one{"{0} secondo"}
+                other{"{0} secondi"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"settimane"}
+                one{"{0} settimana"}
+                other{"{0} settimane"}
+            }
+            year{
+                dnam{"anni"}
+                one{"{0} anno"}
+                other{"{0} anni"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"giorno"}
+                one{"{0} gg"}
+                other{"{0} gg"}
+            }
+            hour{
+                dnam{"ora"}
+                one{"{0} h"}
+                other{"{0} h"}
+            }
+            millisecond{
+                dnam{"ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min"}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            month{
+                dnam{"mese"}
+                one{"{0} mesi"}
+                other{"{0} mesi"}
+            }
+            second{
+                dnam{"s"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                dnam{"sett."}
+                one{"{0} sett."}
+                other{"{0} sett."}
+            }
+            year{
+                dnam{"anno"}
+                one{"{0} anno"}
+                other{"{0} anni"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"giorni"}
+                one{"{0} giorno"}
+                other{"{0} giorni"}
+            }
+            hour{
+                dnam{"ore"}
+                one{"{0} h"}
+                other{"{0} h"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"μs"}
+                one{"{0} μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min"}
+                one{"{0} min"}
+                other{"{0} min"}
+            }
+            month{
+                dnam{"mesi"}
+                one{"{0} mese"}
+                other{"{0} mesi"}
+            }
+            nanosecond{
+                dnam{"ns"}
+                one{"{0} ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"sec"}
+                one{"{0} sec"}
+                other{"{0} sec"}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"settimane"}
+                one{"{0} settimana"}
+                other{"{0} settimane"}
+            }
+            year{
+                dnam{"anni"}
+                one{"{0} anno"}
+                other{"{0} anni"}
+            }
+        }
+    }
+}

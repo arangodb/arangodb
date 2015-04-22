@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/en_AU.xml
@@ -8,8 +8,16 @@
 // ***************************************************************************
 en_AU{
     %%Parent{"en_GB"}
-    Version{"2.0.92.87"}
+    Version{"2.1.8.19"}
     zoneStrings{
+        "Europe:Dublin"{
+            ld{"Irish Summer Time"}
+        }
+        "meta:Arabian"{
+            ld{"Arabian Summer Time"}
+            lg{"Arabian Time"}
+            ls{"Arabian Standard Time"}
+        }
         "meta:Australia_Central"{
             sd{"ACDT"}
             sg{"ACT"}
@@ -30,6 +38,11 @@ en_AU{
             sg{"AWT"}
             ss{"AWST"}
         }
+        "meta:China"{
+            ld{"China Summer Time"}
+            lg{"China Time"}
+            ls{"China Standard Time"}
+        }
         "meta:Europe_Central"{
             sd{"∅∅∅"}
             sg{"∅∅∅"}
@@ -45,6 +58,26 @@ en_AU{
             sg{"∅∅∅"}
             ss{"∅∅∅"}
         }
+        "meta:Iran"{
+            ld{"Iran Summer Time"}
+            lg{"Iran Time"}
+            ls{"Iran Standard Time"}
+        }
+        "meta:Israel"{
+            ld{"Israel Summer Time"}
+            lg{"Israel Time"}
+            ls{"Israel Standard Time"}
+        }
+        "meta:Japan"{
+            ld{"Japan Summer Time"}
+            lg{"Japan Time"}
+            ls{"Japan Standard Time"}
+        }
+        "meta:Korea"{
+            ld{"Korean Summer Time"}
+            lg{"Korean Time"}
+            ls{"Korean Standard Time"}
+        }
         "meta:Lord_Howe"{
             sd{"LHDT"}
             sg{"LHT"}
@@ -54,6 +87,11 @@ en_AU{
             sd{"NZDT"}
             sg{"NZT"}
             ss{"NZST"}
+        }
+        "meta:Taipei"{
+            ld{"Taipei Summer Time"}
+            lg{"Taipei Time"}
+            ls{"Taipei Standard Time"}
         }
     }
 }

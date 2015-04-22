@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/rbnf/root.xml
@@ -98,9 +98,27 @@ root{
             "8000: \u0553[>>];",
             "9000: \u0554[>>];",
             "10000: =#,##0=;",
+            "%%ethiopic-p:",
+            "1: =%ethiopic=;",
+            "10000: <<\u137C[>>];",
+            "100000000: <<\u137C>%%ethiopic-p1>;",
+            "1000000000000: <<\u137C>%%ethiopic-p2>;",
+            "10000000000000000: <<\u137C>%%ethiopic-p3>;",
+            "%%ethiopic-p1:",
+            "0: \u137C;",
+            "1: \u137C=%%ethiopic-p=;",
+            "10000: <%ethiopic<\u137C[>%ethiopic>];",
+            "%%ethiopic-p2:",
+            "0: \u137C\u137C;",
+            "1: \u137C\u137C=%%ethiopic-p=;",
+            "100000000: <%ethiopic<\u137C>%%ethiopic-p1>;",
+            "%%ethiopic-p3:",
+            "0: \u137C\u137C\u137C;",
+            "1: \u137C\u137C\u137C=%%ethiopic-p=;",
+            "1000000000000: <%ethiopic<\u137C>%%ethiopic-p2>;",
             "%ethiopic:",
             "-x: \u2212>>;",
-            "x.x: <<\u1361>>>;",
+            "x.x: <<\u1361>>;",
             "0: \u1263\u12F6;",
             "1: \u1369;",
             "2: \u136A;",
@@ -124,12 +142,12 @@ root{
             "200: <<\u137B[>>];",
             "10000: \u137C[>>];",
             "20000: <<\u137C[>>];",
-            "100000000: \u137C\u137C[>>];",
-            "200000000: <<\u137C\u137C[>>];",
-            "1000000000000: \u137C\u137C\u137C[>>];",
-            "2000000000000: <<\u137C\u137C\u137C[>>];",
-            "10000000000000000: \u137C\u137C\u137C\u137C[>>];",
-            "20000000000000000: <<\u137C\u137C\u137C\u137C[>>];",
+            "100000000: \u137C>%%ethiopic-p1>;",
+            "200000000: <<\u137C>%%ethiopic-p1>;",
+            "1000000000000: \u137C>%%ethiopic-p2>;",
+            "2000000000000: <<\u137C>%%ethiopic-p2>;",
+            "10000000000000000: \u137C>%%ethiopic-p3>;",
+            "20000000000000000: <<\u137C>%%ethiopic-p3>;",
             "1000000000000000000: =#,###0=;",
             "%georgian:",
             "-x: \u2212>>;",
@@ -402,9 +420,6 @@ root{
             "0: =%hebrew=;",
             "10: =%hebrew=[\u05F3];",
             "100: =%hebrew=[\u05F3];",
-            "200: =%hebrew=[\u05F3];",
-            "300: =%hebrew=[\u05F3];",
-            "400: =%hebrew=;",
             "401: =%hebrew=\u05F3;",
             "%roman-lower:",
             "-x: \u2212>>;",
@@ -540,5 +555,5 @@ root{
             "0: =#,##0.#=.;",
         }
     }
-    Version{"2.0.82.42"}
+    Version{"2.1.9.45"}
 }

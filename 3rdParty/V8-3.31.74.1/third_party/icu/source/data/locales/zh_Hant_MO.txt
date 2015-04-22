@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh_Hant_MO.xml
@@ -8,7 +8,7 @@
 // ***************************************************************************
 zh_Hant_MO{
     %%Parent{"zh_Hant_HK"}
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
     calendar{
         generic{
             DateTimePatterns{
@@ -20,14 +20,14 @@ zh_Hant_MO{
                 "Gy年MM月dd日",
                 "Gy年M月d日",
                 "Gy年M月d日",
-                "{1}{0}",
                 "{1} {0}",
                 "{1} {0}",
-                "{1}{0}",
-                "{1}{0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
             }
             availableFormats{
-                MEd{"M-d (E)"}
+                MEd{"M-d（E）"}
                 Md{"M-d"}
             }
         }
@@ -41,11 +41,11 @@ zh_Hant_MO{
                 "y年MM月dd日",
                 "y年M月d日",
                 "yy年M月d日",
-                "{1}{0}",
                 "{1} {0}",
                 "{1} {0}",
-                "{1}{0}",
-                "{1}{0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
             }
             availableFormats{
                 MEd{"E, M-d"}

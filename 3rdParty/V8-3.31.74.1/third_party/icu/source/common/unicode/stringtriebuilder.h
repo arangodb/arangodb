@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2010-2012, International Business Machines
+*   Copyright (C) 2010-2012,2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  stringtriebuilder.h
@@ -162,6 +162,7 @@ protected:
      * @internal
      */
     Node *registerFinalValue(int32_t value, UErrorCode &errorCode);
+#endif  /* U_HIDE_INTERNAL_API */
 
     /*
      * C++ note:
@@ -183,6 +184,7 @@ protected:
     /** @internal */
     UHashtable *nodes;
 
+#ifndef U_HIDE_INTERNAL_API
     /** @internal */
     class Node : public UObject {
     public:

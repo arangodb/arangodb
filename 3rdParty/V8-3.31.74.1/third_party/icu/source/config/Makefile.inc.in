@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 #******************************************************************************
-#   Copyright (C) 1999-2012, International Business Machines
+#   Copyright (C) 1999-2014, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #******************************************************************************
 # This Makefile.inc is designed to be included into projects which make use
@@ -115,7 +115,7 @@ ICULIBS_ICUIO = -l$(ICUPREFIX)io$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
 ICULIBS_OBSOLETE = -l$(ICUPREFIX)obsolete$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
 ICULIBS_LAYOUT = -l$(ICUPREFIX)le$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
 ICULIBS_LAYOUTEX = -l$(ICUPREFIX)lx$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)
-ICULIBS_BASE = $(LIBS) -L$(libdir)
+ICULIBS_BASE = -L$(libdir)
 
 # for icu-config to test with
 ICULIBS_COMMON_LIB_NAME = ${LIBICU}${COMMON_STUBNAME}${ICULIBSUFFIX}${ICULIBSUFFIX_VERSION}.${SO}
@@ -186,14 +186,13 @@ AR = @AR@
 	ARFLAGS := @ARFLAGS@ $(ARFLAGS)
 #SH#ARFLAGS="@ARFLAGS@ ${ARFLAGS}"
 CC = @CC@
-CFLAGS = @CFLAGS@ 
 CPP = @CPP@
-CPPFLAGS = @CPPFLAGS@ $(LIBCPPFLAGS) -I$(prefix)/include
+CFLAGS = @UCONFIG_CFLAGS@ 
+CPPFLAGS = @UCONFIG_CPPFLAGS@ -I$(prefix)/include
+CXXFLAGS = @UCONFIG_CXXFLAGS@
 CXX = @CXX@
-CXXFLAGS = @CXXFLAGS@ 
 DEFAULT_MODE = @DATA_PACKAGING_MODE@
 DEFS = @DEFS@ 
-FFLAGS = @FFLAGS@
 # use a consistent INSTALL 
 INSTALL  =  $(SHELL) $(pkgdatadir)/install-sh -c
 INSTALL_DATA  =  @INSTALL_DATA@
@@ -201,7 +200,7 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM  =  @INSTALL_PROGRAM@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
-LDFLAGS = @LDFLAGS@ $(RPATHLDFLAGS)
+LDFLAGS = $(RPATHLDFLAGS)
 LIBS = @LIBS@ 
 LIB_M = @LIB_M@
 LIB_VERSION = @LIB_VERSION@

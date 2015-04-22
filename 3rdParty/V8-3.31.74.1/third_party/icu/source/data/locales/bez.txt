@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bez.xml
@@ -23,7 +23,7 @@ bez{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -232,7 +232,7 @@ bez{
             dn{"Sihu"}
             relative{
                 "-1"{"Igolo"}
-                "0"{"Neng'u ni"}
+                "0"{"Neng’u ni"}
                 "1"{"Hilawu"}
             }
         }

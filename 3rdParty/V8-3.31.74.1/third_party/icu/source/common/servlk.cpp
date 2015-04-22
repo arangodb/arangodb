@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * Copyright (C) 2001-2004, International Business Machines Corporation and    *
+ * Copyright (C) 2001-2014, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  *
@@ -17,7 +17,6 @@
 #include "ustrfmt.h"
 #include "uhash.h"
 #include "charstr.h"
-#include "ucln_cmn.h"
 #include "uassert.h"
 
 #define UNDERSCORE_CHAR ((UChar)0x005f)

@@ -1,0 +1,13 @@
+diff --git a/source/common/uloc.cpp b/source/common/uloc.cpp
+index 88a221c..ae5cdde 100644
+--- a/source/common/uloc.cpp
++++ b/source/common/uloc.cpp
+@@ -694,7 +694,7 @@ _getKeywords(const char *localeID,
+             }
+ 
+             /* Premature end or zero-length value */
+-            if (!equalSign || equalSign == semicolon) {
++            if (!*equalSign || equalSign == semicolon) {
+                 *status = U_INVALID_FORMAT_ERROR;
+                 return 0;
+             }

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/is.xml
@@ -67,7 +67,7 @@ is{
         CR{"Kostaríka"}
         CU{"Kúba"}
         CV{"Grænhöfðaeyjar"}
-        CW{"Curaçao"}
+        CW{"Curacao"}
         CX{"Jólaey"}
         CY{"Kýpur"}
         CZ{"Tékkland"}
@@ -90,7 +90,7 @@ is{
         FI{"Finnland"}
         FJ{"Fídjieyjar"}
         FK{"Falklandseyjar"}
-        FM{"Míkrónesía (FM)"}
+        FM{"Míkrónesía"}
         FO{"Færeyjar"}
         FR{"Frakkland"}
         GA{"Gabon"}
@@ -112,7 +112,7 @@ is{
         GU{"Gvam"}
         GW{"Gínea-Bissá"}
         GY{"Gvæjana"}
-        HK{"Sjálfstjórnarsvæðið Hong Kong"}
+        HK{"Hong Kong"}
         HM{"Heard og McDonaldseyjar"}
         HN{"Hondúras"}
         HR{"Króatía"}
@@ -134,11 +134,11 @@ is{
         JO{"Jórdanía"}
         JP{"Japan"}
         KE{"Kenía"}
-        KG{"Kirgisistan"}
+        KG{"Kirgistan"}
         KH{"Kambódía"}
         KI{"Kíribatí"}
         KM{"Kómoreyjar"}
-        KN{"Sankti Kristófer og Nevis"}
+        KN{"Sankti Kitts og Nevis"}
         KP{"Norður-Kórea"}
         KR{"Suður-Kórea"}
         KW{"Kúveit"}
@@ -166,7 +166,7 @@ is{
         ML{"Malí"}
         MM{"Mjanmar (Búrma)"}
         MN{"Mongólía"}
-        MO{"Sjálfstjórnarsvæðið Makaó"}
+        MO{"Makaó"}
         MP{"Norður-Maríanaeyjar"}
         MQ{"Martiník"}
         MR{"Máritanía"}
@@ -201,7 +201,7 @@ is{
         PM{"Sankti Pierre og Miquelon"}
         PN{"Pitcairn-eyjar"}
         PR{"Púertó Ríkó"}
-        PS{"Heimastjórnarsvæði Palestínumanna"}
+        PS{"Palestína"}
         PT{"Portúgal"}
         PW{"Palá"}
         PY{"Paragvæ"}
@@ -256,7 +256,7 @@ is{
         US{"Bandaríkin"}
         UY{"Úrúgvæ"}
         UZ{"Úsbekistan"}
-        VA{"Páfastóll"}
+        VA{"Vatíkanið"}
         VC{"Sankti Vinsent og Grenadíneyjar"}
         VE{"Venesúela"}
         VG{"Bresku Jómfrúaeyjar"}
@@ -273,11 +273,16 @@ is{
         ZW{"Simbabve"}
         ZZ{"Óþekkt svæði"}
     }
+    Countries%variant{
+        CD{"Kongó (Lýðstjórnarlýðveldið)"}
+        CG{"Kongó (Lýðveldið)"}
+        FK{"Falklandseyjar (Malvinas)"}
+        MK{"Makedónía (Fyrrverandi lýðveldi Júgóslavíu)"}
+        TL{"Austur-Tímor"}
+    }
     CountriesShort{
-        HK{"Hong Kong"}
-        MO{"Makaó"}
-        PS{"Palestína"}
+        GB{"Bretland"}
         US{"BNA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

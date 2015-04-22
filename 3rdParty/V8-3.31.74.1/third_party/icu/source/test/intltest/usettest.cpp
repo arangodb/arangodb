@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 1999-2013 International Business Machines Corporation and
+*   Copyright (C) 1999-2014 International Business Machines Corporation and
 *   others. All Rights Reserved.
 ********************************************************************************
 *   Date        Name        Description
@@ -23,8 +23,6 @@
 #include "unicode/symtable.h"
 #include "unicode/uversion.h"
 #include "hash.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 #define TEST_ASSERT_SUCCESS(status) {if (U_FAILURE(status)) { \
     dataerrln("fail in file \"%s\", line %d: \"%s\"", __FILE__, __LINE__, \
@@ -1054,7 +1052,7 @@ void UnicodeSetTest::TestPropertySet() {
         // U+FDF2 has Script=Arabic and also Arab in its Script_Extensions,
         // so scx-sc is missing U+FDF2.
         "[[:Script_Extensions=Arabic:]-[:Arab:]]",
-        "\\u0640\\u064B\\u0650\\u0655\\uFDFD",
+        "\\u0640\\u064B\\u0650\\u0655",
         "\\uFDF2"
     };
 
@@ -2322,7 +2320,7 @@ public:
             const UnicodeString *s;
             char *s8=utf8;
             int32_t length8, utf8Count=0;
-            while(iter.nextRange() && stringsLength<LENGTHOF(strings)) {
+            while(iter.nextRange() && stringsLength<UPRV_LENGTHOF(strings)) {
                 if(iter.isString()) {
                     // Store the pointer to the set's string element
                     // which we happen to know is a stable pointer.
@@ -3076,7 +3074,7 @@ void UnicodeSetTest::testSpan(const UnicodeSetWithStrings *sets[4],
                                  s, length, isUTF16,
                                  whichSpans,
                                  type, typeName,
-                                 limits, LENGTHOF(limits), expectCount);
+                                 limits, UPRV_LENGTHOF(limits), expectCount);
             if(typeName[0]==0) {
                 break; // All types tried.
             }
@@ -3085,9 +3083,9 @@ void UnicodeSetTest::testSpan(const UnicodeSetWithStrings *sets[4],
             }
             if(expectCount<0) {
                 expectCount=limitsCount;
-                if(limitsCount>LENGTHOF(limits)) {
+                if(limitsCount>UPRV_LENGTHOF(limits)) {
                     errln("FAIL: %s[0x%lx].%s.%s span count=%ld > %ld capacity - too many spans",
-                          testName, (long)index, setNames[i], typeName, (long)limitsCount, (long)LENGTHOF(limits));
+                          testName, (long)index, setNames[i], typeName, (long)limitsCount, (long)UPRV_LENGTHOF(limits));
                     return;
                 }
                 memcpy(expectLimits, limits, limitsCount*4);
@@ -3280,7 +3278,7 @@ void UnicodeSetTest::testSpanContents(const UnicodeSetWithStrings *sets[4], uint
 
     UChar32 c, first;
     for(first=c=0;; c=nextCodePoint(c)) {
-        if(c>0x10ffff || length>(LENGTHOF(s)-U16_MAX_LENGTH)) {
+        if(c>0x10ffff || length>(UPRV_LENGTHOF(s)-U16_MAX_LENGTH)) {
             localWhichSpans=whichSpans;
             if(stringContainsUnpairedSurrogate(s, length) && inconsistentSurrogates) {
                 localWhichSpans&=~SPAN_UTF8;
@@ -3316,7 +3314,7 @@ void UnicodeSetTest::testSpanUTF16String(const UnicodeSetWithStrings *sets[4], u
         return;
     }
     testSpan(sets, s, -1, TRUE, (whichSpans&~SPAN_UTF8), testName, 0);
-    testSpan(sets, s, LENGTHOF(s)-1, TRUE, (whichSpans&~SPAN_UTF8), testName, 1);
+    testSpan(sets, s, UPRV_LENGTHOF(s)-1, TRUE, (whichSpans&~SPAN_UTF8), testName, 1);
 }
 
 void UnicodeSetTest::testSpanUTF8String(const UnicodeSetWithStrings *sets[4], uint32_t whichSpans, const char *testName) {
@@ -3413,7 +3411,7 @@ void UnicodeSetTest::testSpanUTF8String(const UnicodeSetWithStrings *sets[4], ui
         return;
     }
     testSpan(sets, s, -1, FALSE, (whichSpans&~SPAN_UTF16), testName, 0);
-    testSpan(sets, s, LENGTHOF(s)-1, FALSE, (whichSpans&~SPAN_UTF16), testName, 1);
+    testSpan(sets, s, UPRV_LENGTHOF(s)-1, FALSE, (whichSpans&~SPAN_UTF16), testName, 1);
 }
 
 // Take a set of span options and multiply them so that
@@ -3615,7 +3613,7 @@ void UnicodeSetTest::TestSpan() {
     char *testNameLimit=testName;
 
     int32_t i, j;
-    for(i=0; i<LENGTHOF(testdata); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(testdata); ++i) {
         const char *s=testdata[i];
         if(s[0]=='[') {
             // Create new test sets from this pattern.

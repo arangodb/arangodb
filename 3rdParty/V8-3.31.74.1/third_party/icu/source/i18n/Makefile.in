@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1998-2013, International Business Machines
+#   Copyright (C) 1998-2014, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -63,15 +63,22 @@ LDFLAGS += $(LDFLAGSICUI18N)
 LIBS = $(LIBICUUC) $(DEFAULT_LIBS)
 
 OBJECTS = ucln_in.o \
-fmtable.o format.o msgfmt.o umsg.o numfmt.o unum.o decimfmt.o dcfmtsym.o \
+fmtable.o format.o msgfmt.o umsg.o numfmt.o unum.o decimfmt.o decimalformatpattern.o dcfmtsym.o \
 ucurr.o digitlst.o fmtable_cnv.o \
 choicfmt.o datefmt.o smpdtfmt.o reldtfmt.o dtfmtsym.o udat.o dtptngen.o udatpg.o \
 nfrs.o nfrule.o nfsubs.o rbnf.o numsys.o unumsys.o ucsdet.o \
 ucal.o calendar.o gregocal.o timezone.o simpletz.o olsontz.o \
 astro.o taiwncal.o buddhcal.o persncal.o islamcal.o japancal.o gregoimp.o hebrwcal.o \
 indiancal.o chnsecal.o cecal.o coptccal.o dangical.o ethpccal.o \
-coleitr.o coll.o tblcoll.o sortkey.o bocsu.o ucoleitr.o \
-ucol.o ucol_res.o ucol_bld.o ucol_sit.o ucol_tok.o ucol_wgt.o ucol_cnt.o ucol_elm.o \
+coleitr.o coll.o sortkey.o bocsu.o ucoleitr.o \
+ucol.o ucol_res.o ucol_sit.o \
+collation.o collationsettings.o collationdata.o collationtailoring.o \
+collationdatareader.o collationdatawriter.o collationfcd.o \
+collationiterator.o utf16collationiterator.o utf8collationiterator.o uitercollationiterator.o \
+collationsets.o \
+collationcompare.o collationfastlatin.o collationkeys.o rulebasedcollator.o collationroot.o \
+collationrootelements.o collationdatabuilder.o collationbasedatabuilder.o \
+collationweights.o collationruleparser.o collationbuilder.o collationfastlatinbuilder.o \
 strmatch.o usearch.o search.o stsearch.o \
 translit.o utrans.o esctrn.o unesctrn.o funcrepl.o strrepl.o tridpars.o \
 cpdtrans.o rbt.o rbt_data.o rbt_pars.o rbt_rule.o rbt_set.o \
@@ -87,7 +94,7 @@ uspoof.o uspoof_impl.o uspoof_build.o uspoof_conf.o uspoof_wsconf.o decfmtst.o s
 ztrans.o zrule.o vzone.o fphdlimp.o fpositer.o locdspnm.o \
 decNumber.o decContext.o alphaindex.o tznames.o tznames_impl.o tzgnames.o \
 tzfmt.o compactdecimalformat.o gender.o region.o scriptset.o identifier_info.o \
-uregion.o
+uregion.o reldatefmt.o quantityformatter.o measunit.o filteredbrk.o scientificformathelper.o sharedbreakiterator.o
 
 ## Header files to install
 HEADERS = $(srcdir)/unicode/*.h

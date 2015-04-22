@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bm.xml
@@ -27,10 +27,6 @@ bm{
             "BHD",
             "bareyini Dinar",
         }
-        BIF{
-            "BIF",
-            "burundi Fraŋ",
-        }
         BWP{
             "BWP",
             "bɔtisiwana Pula",
@@ -51,14 +47,6 @@ bm{
             "CN¥",
             "siniwa Yuwan",
         }
-        CVE{
-            "CVE",
-            "capivɛrdi Esekudo",
-        }
-        DJF{
-            "DJF",
-            "jibuti Fraŋ",
-        }
         DZD{
             "DZD",
             "alizeri Dinar",
@@ -66,10 +54,6 @@ bm{
         EGP{
             "EGP",
             "eziputi Livri",
-        }
-        ERN{
-            "ERN",
-            "eritere Nafika",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ bm{
             "£",
             "angilɛ Livri Siterlingi",
         }
-        GMD{
-            "GMD",
-            "gambi Dalasi",
-        }
-        GNS{
-            "GNS",
-            "gine Fraŋ",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Ɛndu Rupi",
         }
         JPY{
@@ -102,18 +78,6 @@ bm{
         KES{
             "KES",
             "keniya Siling",
-        }
-        KMF{
-            "KMF",
-            "komɔri Fraŋ",
-        }
-        LRD{
-            "LRD",
-            "liberiya Dolar",
-        }
-        LSL{
-            "LSL",
-            "lesoto Loti",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ bm{
             "SAR",
             "sawudiya Riyal",
         }
-        SCR{
-            "SCR",
-            "sesɛli Rupi",
-        }
         SDG{
             "SDG",
             "sudani Dinar",
         }
-        SHP{
-            "SHP",
-            "Ɛlɛni-Senu Livri",
-        }
         SLL{
             "SLL",
             "siyeralewɔni Lewɔni",
-        }
-        SOS{
-            "SOS",
-            "somali Siling",
-        }
-        STD{
-            "STD",
-            "sawotome Dobra",
-        }
-        SZL{
-            "SZL",
-            "swazilandi Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ bm{
             "zambi Kwaca",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

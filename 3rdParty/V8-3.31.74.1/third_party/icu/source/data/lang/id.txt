@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/id.xml
@@ -22,7 +22,6 @@ id{
         be{"Belarusia"}
         bem{"Bemba"}
         bg{"Bulgar"}
-        bh{"Bihari"}
         bn{"Bengali"}
         br{"Breton"}
         bs{"Bosnia"}
@@ -85,6 +84,7 @@ id{
         km{"Khmer"}
         kn{"Kannada"}
         ko{"Korea"}
+        kri{"Krio"}
         ku{"Kurdi"}
         ky{"Kirgiz"}
         la{"Latin"}
@@ -101,7 +101,6 @@ id{
         mk{"Makedonia"}
         ml{"Malayalam"}
         mn{"Mongolia"}
-        mo{"Moldavia"}
         mr{"Marathi"}
         ms{"Melayu"}
         mt{"Malta"}
@@ -128,6 +127,7 @@ id{
         rm{"Reto-Roman"}
         rn{"Rundi"}
         ro{"Rumania"}
+        ro_MD{"Moldavia"}
         ru{"Rusia"}
         rw{"Kinyarwanda"}
         sd{"Sindhi"}
@@ -149,6 +149,7 @@ id{
         th{"Thai"}
         ti{"Tigrinya"}
         tk{"Turkmen"}
+        tl{"Tagalog"}
         tn{"Tswana"}
         to{"Tonga"}
         tr{"Turki"}
@@ -169,6 +170,10 @@ id{
         zh_Hant{"China (Aksara Tradisional)"}
         zu{"Zulu"}
     }
+    Languages%variant{
+        ps{"Pushto"}
+        ug{"Uighur"}
+    }
     LanguagesShort{
         az{"Azeri"}
         en_GB{"Inggris U.K."}
@@ -176,6 +181,7 @@ id{
     }
     Scripts{
         Afak{"Afaka"}
+        Aghb{"Albania Kaukasia"}
         Arab{"Arab"}
         Armi{"Aram Imperial"}
         Armn{"Armenia"}
@@ -261,6 +267,7 @@ id{
         Merc{"Kursif Meroitik"}
         Mero{"Meroitik"}
         Mlym{"Malayalam"}
+        Modi{"Modi"}
         Mong{"Mongolia"}
         Moon{"Moon"}
         Mroo{"Mro"}
@@ -269,7 +276,7 @@ id{
         Narb{"Arab Utara Kuno"}
         Nbat{"Nabataea"}
         Nkgb{"Naxi Geba"}
-        Nkoo{"N'Ko"}
+        Nkoo{"N’Ko"}
         Nshu{"Nushu"}
         Ogam{"Ogham"}
         Olck{"Chiki Lama"}
@@ -295,6 +302,7 @@ id{
         Sgnw{"Tulisan Isyarat"}
         Shaw{"Shavia"}
         Shrd{"Sharada"}
+        Sidd{"Siddham"}
         Sind{"Khudawadi"}
         Sinh{"Sinhala"}
         Sora{"Sora Sompeng"}
@@ -338,7 +346,10 @@ id{
         Hans{"Han Sederhana"}
         Hant{"Han Tradisional"}
     }
-    Version{"2.0.93.8"}
+    Scripts%variant{
+        Arab{"Arab Persia"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Bahasa: {0}"}
         script{"Skrip: {0}"}

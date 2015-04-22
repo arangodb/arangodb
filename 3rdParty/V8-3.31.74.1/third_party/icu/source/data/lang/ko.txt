@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ko.xml
@@ -12,7 +12,7 @@
 ko{
     Languages{
         ach{"아콜리어"}
-        af{"남아공 공용어"}
+        af{"아프리칸스어"}
         ak{"아칸어"}
         am{"암하라어"}
         ar{"아랍어"}
@@ -22,7 +22,6 @@ ko{
         be{"벨라루스어"}
         bem{"벰바어"}
         bg{"불가리아어"}
-        bh{"비하르어"}
         bn{"벵골어"}
         br{"브르타뉴어"}
         bs{"보스니아어"}
@@ -42,7 +41,6 @@ ko{
         en_AU{"영어(호주)"}
         en_CA{"영어 (캐나다)"}
         en_GB{"영어 (영국식)"}
-        en_US{"영어 (미국식)"}
         eo{"에스페란토어"}
         es{"스페인어"}
         es_419{"스페인어 (중남미)"}
@@ -93,12 +91,12 @@ ko{
         lt{"리투아니아어"}
         lua{"루바-룰루아어"}
         lv{"라트비아어"}
+        mfe{"모리스얀어"}
         mg{"말라가시어"}
         mi{"마오리어"}
         mk{"마케도니아어"}
         ml{"말라얄람어"}
         mn{"몽고어"}
-        mo{"몰도바어"}
         mr{"마라티어"}
         ms{"말레이어"}
         mt{"몰타어"}
@@ -125,6 +123,7 @@ ko{
         rm{"레토로만어"}
         rn{"룬디어"}
         ro{"루마니아어"}
+        ro_MD{"몰도바어"}
         ru{"러시아어"}
         rw{"르완다어"}
         sd{"신디어"}
@@ -142,10 +141,11 @@ ko{
         sw{"스와힐리어"}
         ta{"타밀어"}
         te{"텔루구어"}
-        tg{"타지키스탄어"}
+        tg{"타지크어"}
         th{"태국어"}
         ti{"티그리냐어"}
         tk{"투르크멘어"}
+        tl{"타갈로그어"}
         tn{"세츠와나어"}
         to{"통가어"}
         tr{"터키어"}
@@ -171,6 +171,7 @@ ko{
     }
     Scripts{
         Afak{"아파카 문자"}
+        Aghb{"코카시안 알바니아 문자"}
         Arab{"아랍 문자"}
         Armi{"아랍제국 문자"}
         Armn{"아르메니아 문자"}
@@ -202,6 +203,7 @@ ko{
         Egyd{"고대 이집트 민중문자"}
         Egyh{"고대 이집트 신관문자"}
         Egyp{"고대 이집트 신성문자"}
+        Elba{"엘바산 문자"}
         Ethi{"에티오피아 문자"}
         Geok{"그루지야 쿠츠리 문자"}
         Geor{"그루지야 문자"}
@@ -249,6 +251,7 @@ ko{
         Loma{"로마 문자"}
         Lyci{"리키아 문자"}
         Lydi{"리디아 문자"}
+        Mahj{"마하자니 문자"}
         Mand{"만다이아 문자"}
         Mani{"마니교 문자"}
         Maya{"마야 상형 문자"}
@@ -290,6 +293,7 @@ ko{
         Sgnw{"수화 문자"}
         Shaw{"샤비안 문자"}
         Shrd{"사라다 문자"}
+        Sidd{"실담자"}
         Sind{"쿠다와디 문자"}
         Sinh{"신할라 문자"}
         Sora{"소라 솜펭 문자"}
@@ -333,7 +337,10 @@ ko{
         Hans{"한자 간체"}
         Hant{"한자 번체"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"페르소-아라비아어"}
+    }
+    Version{"2.1.9.31"}
     codePatterns{
         language{"언어: {0}"}
         script{"스크립트: {0}"}

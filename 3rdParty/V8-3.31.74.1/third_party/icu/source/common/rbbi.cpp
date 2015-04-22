@@ -1,6 +1,6 @@
 /*
 ***************************************************************************
-*   Copyright (C) 1999-2013 International Business Machines Corporation
+*   Copyright (C) 1999-2014 International Business Machines Corporation
 *   and others. All rights reserved.
 ***************************************************************************
 */
@@ -518,8 +518,8 @@ RuleBasedBreakIterator &RuleBasedBreakIterator::refreshInputText(UText *input, U
 
 
 /**
- * Sets the current iteration position to the beginning of the text.
- * @return The offset of the beginning of the text.
+ * Sets the current iteration position to the beginning of the text, position zero.
+ * @return The new iterator position, which is zero.
  */
 int32_t RuleBasedBreakIterator::first(void) {
     reset();
@@ -592,6 +592,7 @@ int32_t RuleBasedBreakIterator::next(void) {
     }
 
     int32_t startPos = current();
+    fDictionaryCharCount = 0;
     int32_t result = handleNext(fData->fForwardTable);
     if (fDictionaryCharCount > 0) {
         result = checkDictionary(startPos, result, FALSE);
@@ -646,7 +647,6 @@ int32_t RuleBasedBreakIterator::previous(void) {
     // break position before the current position (we back our internal
     // iterator up one step to prevent handlePrevious() from returning
     // the current position), but not necessarily the last one before
-
     // where we started
 
     int32_t start = current();
@@ -679,11 +679,11 @@ int32_t RuleBasedBreakIterator::previous(void) {
     // the result position that we are to return (in lastResult.)  If
     // the backwards rules overshot and the above loop had to do two or more
     // next()s to move up to the desired return position, we will have a valid
-    // tag value. But, if handlePrevious() took us to exactly the correct result positon,
+    // tag value. But, if handlePrevious() took us to exactly the correct result position,
     // we wont have a tag value for that position, which is only set by handleNext().
 
-    // set the current iteration position to be the last break position
-    // before where we started, and then return that value
+    // Set the current iteration position to be the last break position
+    // before where we started, and then return that value.
     utext_setNativeIndex(fText, lastResult);
     fLastRuleStatusIndex  = lastTag;       // for use by getRuleStatus()
     fLastStatusIndexValid = breakTagValid;
@@ -701,6 +701,22 @@ int32_t RuleBasedBreakIterator::previous(void) {
  * @return The position of the first break after the current position.
  */
 int32_t RuleBasedBreakIterator::following(int32_t offset) {
+    // if the offset passed in is already past the end of the text,
+    // just return DONE; if it's before the beginning, return the
+    // text's starting offset
+    if (fText == NULL || offset >= utext_nativeLength(fText)) {
+        last();
+        return next();
+    }
+    else if (offset < 0) {
+        return first();
+    }
+
+    // Move requested offset to a code point start. It might be on a trail surrogate,
+    // or on a trail byte if the input is UTF-8.
+    utext_setNativeIndex(fText, offset);
+    offset = utext_getNativeIndex(fText);
+
     // if we have cached break positions and offset is in the range
     // covered by them, use them
     // TODO: could use binary search
@@ -722,20 +738,7 @@ int32_t RuleBasedBreakIterator::following(int32_t offset) {
         }
     }
 
-    // if the offset passed in is already past the end of the text,
-    // just return DONE; if it's before the beginning, return the
-    // text's starting offset
-    fLastRuleStatusIndex  = 0;
-    fLastStatusIndexValid = TRUE;
-    if (fText == NULL || offset >= utext_nativeLength(fText)) {
-        last();
-        return next();
-    }
-    else if (offset < 0) {
-        return first();
-    }
-
-    // otherwise, set our internal iteration position (temporarily)
+    // Set our internal iteration position (temporarily)
     // to the position passed in.  If this is the _beginning_ position,
     // then we can just use next() to get our return value
 
@@ -747,6 +750,7 @@ int32_t RuleBasedBreakIterator::following(int32_t offset) {
         // move forward one codepoint to prepare for moving back to a
         // safe point.
         // this handles offset being between a supplementary character
+        // TODO: is this still needed, with move to code point boundary handled above?
         (void)UTEXT_NEXT32(fText);
         // handlePrevious will move most of the time to < 1 boundary away
         handlePrevious(fData->fSafeRevTable);
@@ -809,6 +813,21 @@ int32_t RuleBasedBreakIterator::following(int32_t offset) {
  * @return The position of the last boundary before the starting position.
  */
 int32_t RuleBasedBreakIterator::preceding(int32_t offset) {
+    // if the offset passed in is already past the end of the text,
+    // just return DONE; if it's before the beginning, return the
+    // text's starting offset
+    if (fText == NULL || offset > utext_nativeLength(fText)) {
+        return last();
+    }
+    else if (offset < 0) {
+        return first();
+    }
+
+    // Move requested offset to a code point start. It might be on a trail surrogate,
+    // or on a trail byte if the input is UTF-8.
+    utext_setNativeIndex(fText, offset);
+    offset = utext_getNativeIndex(fText);
+
     // if we have cached break positions and offset is in the range
     // covered by them, use them
     if (fCachedBreakPositions != NULL) {
@@ -832,17 +851,6 @@ int32_t RuleBasedBreakIterator::preceding(int32_t offset) {
         else {
             reset();
         }
-    }
-
-    // if the offset passed in is already past the end of the text,
-    // just return DONE; if it's before the beginning, return the
-    // text's starting offset
-    if (fText == NULL || offset > utext_nativeLength(fText)) {
-        // return BreakIterator::DONE;
-        return last();
-    }
-    else if (offset < 0) {
-        return first();
     }
 
     // if we start by updating the current iteration position to the
@@ -1578,30 +1586,6 @@ int32_t RuleBasedBreakIterator::checkDictionary(int32_t startPos,
         return (reverse ? startPos : endPos);
     }
     
-    // Bug 5532.  The dictionary code will crash if the input text is UTF-8
-    //      because native indexes are different from UTF-16 indexes.
-    //      Temporary hack: skip dictionary lookup for UTF-8 encoded text.
-    //      It wont give the right breaks, but it's better than a crash.
-    //
-    //      Check the type of the UText by checking its pFuncs field, which
-    //      is UText's function dispatch table.  It will be the same for all
-    //      UTF-8 UTexts and different for any other UText type.
-    //
-    //      We have no other type of UText available with non-UTF-16 native indexing.
-    //      This whole check will go away once the dictionary code is fixed.
-    static const void *utext_utf8Funcs;
-    if (utext_utf8Funcs == NULL) {
-        // Cache the UTF-8 UText function pointer value.
-        UErrorCode status = U_ZERO_ERROR;
-        UText tempUText = UTEXT_INITIALIZER; 
-        utext_openUTF8(&tempUText, NULL, 0, &status);
-        utext_utf8Funcs = tempUText.pFuncs;
-        utext_close(&tempUText);
-    }
-    if (fText->pFuncs == utext_utf8Funcs) {
-        return (reverse ? startPos : endPos);
-    }
-
     // Starting from the starting point, scan towards the proposed result,
     // looking for the first dictionary character (which may be the one
     // we're on, if we're starting in the middle of a range).
@@ -1703,6 +1687,7 @@ int32_t RuleBasedBreakIterator::checkDictionary(int32_t startPos,
     // If we found breaks, build a new break cache. The first and last entries must
     // be the original starting and ending position.
     if (foundBreakCount > 0) {
+        U_ASSERT(foundBreakCount == breaks.size());
         int32_t totalBreaks = foundBreakCount;
         if (startPos < breaks.elementAti(0)) {
             totalBreaks += 1;
@@ -1741,8 +1726,6 @@ int32_t RuleBasedBreakIterator::checkDictionary(int32_t startPos,
     utext_setNativeIndex(fText, reverse ? startPos : endPos);
     return (reverse ? startPos : endPos);
 }
-
-// defined in ucln_cmn.h
 
 U_NAMESPACE_END
 

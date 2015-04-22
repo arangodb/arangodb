@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2015, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -180,59 +180,51 @@ LocaleTest::~LocaleTest()
 
 void LocaleTest::runIndexedTest( int32_t index, UBool exec, const char* &name, char* /*par*/ )
 {
-    switch (index) {
-        TESTCASE(0, TestBasicGetters);
-        TESTCASE(1, TestSimpleResourceInfo);
-        TESTCASE(2, TestDisplayNames);
-        TESTCASE(3, TestSimpleObjectStuff);
-        TESTCASE(4, TestPOSIXParsing);
-        TESTCASE(5, TestGetAvailableLocales);
-        TESTCASE(6, TestDataDirectory);
-        TESTCASE(7, TestISO3Fallback);
-        TESTCASE(8, TestGetLangsAndCountries);
-        TESTCASE(9, TestSimpleDisplayNames);
-        TESTCASE(10, TestUninstalledISO3Names);
-        TESTCASE(11, TestAtypicalLocales);
+    TESTCASE_AUTO_BEGIN;
+    TESTCASE_AUTO(TestBug11421);         // Must run early in list to trigger failure.
+    TESTCASE_AUTO(TestBasicGetters);
+    TESTCASE_AUTO(TestSimpleResourceInfo);
+    TESTCASE_AUTO(TestDisplayNames);
+    TESTCASE_AUTO(TestSimpleObjectStuff);
+    TESTCASE_AUTO(TestPOSIXParsing);
+    TESTCASE_AUTO(TestGetAvailableLocales);
+    TESTCASE_AUTO(TestDataDirectory);
+    TESTCASE_AUTO(TestISO3Fallback);
+    TESTCASE_AUTO(TestGetLangsAndCountries);
+    TESTCASE_AUTO(TestSimpleDisplayNames);
+    TESTCASE_AUTO(TestUninstalledISO3Names);
+    TESTCASE_AUTO(TestAtypicalLocales);
 #if !UCONFIG_NO_FORMATTING
-        TESTCASE(12, TestThaiCurrencyFormat);
-        TESTCASE(13, TestEuroSupport);
+    TESTCASE_AUTO(TestThaiCurrencyFormat);
+    TESTCASE_AUTO(TestEuroSupport);
 #endif
-        TESTCASE(14, TestToString);
+    TESTCASE_AUTO(TestToString);
 #if !UCONFIG_NO_FORMATTING
-        TESTCASE(15, Test4139940);
-        TESTCASE(16, Test4143951);
+    TESTCASE_AUTO(Test4139940);
+    TESTCASE_AUTO(Test4143951);
 #endif
-        TESTCASE(17, Test4147315);
-        TESTCASE(18, Test4147317);
-        TESTCASE(19, Test4147552);
-        TESTCASE(20, TestVariantParsing);
+    TESTCASE_AUTO(Test4147315);
+    TESTCASE_AUTO(Test4147317);
+    TESTCASE_AUTO(Test4147552);
+    TESTCASE_AUTO(TestVariantParsing);
 #if !UCONFIG_NO_FORMATTING
-        TESTCASE(21, Test4105828);
+    TESTCASE_AUTO(Test4105828);
 #endif
-        TESTCASE(22, TestSetIsBogus);
-        TESTCASE(23, TestParallelAPIValues);
-        TESTCASE(24, TestKeywordVariants);
-        TESTCASE(25, TestKeywordVariantParsing);
-        TESTCASE(26, TestSetKeywordValue);
-        TESTCASE(27, TestGetBaseName);
+    TESTCASE_AUTO(TestSetIsBogus);
+    TESTCASE_AUTO(TestParallelAPIValues);
+    TESTCASE_AUTO(TestKeywordVariants);
+    TESTCASE_AUTO(TestKeywordVariantParsing);
+    TESTCASE_AUTO(TestSetKeywordValue);
+    TESTCASE_AUTO(TestGetBaseName);
 #if !UCONFIG_NO_FILE_IO
-        TESTCASE(28, TestGetLocale);
+    TESTCASE_AUTO(TestGetLocale);
 #endif
-        TESTCASE(29, TestVariantWithOutCountry);
-        TESTCASE(30, TestCanonicalization);
-        TESTCASE(31, TestCurrencyByDate);
-	TESTCASE(32, TestGetVariantWithKeywords);
-
-        // keep the last index in sync with the condition in default:
-
-        default:
-            if (index <= 28) { // keep this in sync with the last index!
-                name = "(test omitted by !UCONFIG_NO_FORMATTING)";
-            } else {
-                name = "";
-            }
-            break; //needed to end loop
-    }
+    TESTCASE_AUTO(TestVariantWithOutCountry);
+    TESTCASE_AUTO(TestCanonicalization);
+    TESTCASE_AUTO(TestCurrencyByDate);
+    TESTCASE_AUTO(TestGetVariantWithKeywords);
+    TESTCASE_AUTO(TestIsRightToLeft);
+    TESTCASE_AUTO_END;
 }
 
 void LocaleTest::TestBasicGetters() {
@@ -1135,7 +1127,7 @@ LocaleTest::TestThaiCurrencyFormat()
     UErrorCode status = U_ZERO_ERROR;
     DecimalFormat *thaiCurrency = (DecimalFormat*)NumberFormat::createCurrencyInstance(
                     Locale("th", "TH"), status);
-    UChar posPrefix = 0x0e3f;
+    UnicodeString posPrefix("THB", 3, US_INV);  // per cldrbug 7618
     UnicodeString temp;
 
     if(U_FAILURE(status) || !thaiCurrency)
@@ -1143,8 +1135,8 @@ LocaleTest::TestThaiCurrencyFormat()
         dataerrln("Couldn't get th_TH currency -> " + UnicodeString(u_errorName(status)));
         return;
     }
-    if (thaiCurrency->getPositivePrefix(temp) != UnicodeString(&posPrefix, 1, 1))
-        errln("Thai currency prefix wrong: expected 0x0e3f, got \"" +
+    if (thaiCurrency->getPositivePrefix(temp) != posPrefix)
+        errln("Thai currency prefix wrong: expected THB, got \"" +
                         thaiCurrency->getPositivePrefix(temp) + "\"");
     if (thaiCurrency->getPositiveSuffix(temp) != "")
         errln("Thai currency suffix wrong: expected \"\", got \"" +
@@ -1765,18 +1757,33 @@ LocaleTest::TestGetBaseName(void) {
     } testCases[] = {
         { "de_DE@  C o ll A t i o n   = Phonebook   ", "de_DE" },
         { "de@currency = euro; CoLLaTion   = PHONEBOOk", "de" },
-        { "ja@calendar = buddhist", "ja" }
+        { "ja@calendar = buddhist", "ja" },
+        { "de-u-co-phonebk", "de"}
     };
 
     int32_t i = 0;
 
-    for(i = 0; i < (int32_t)(sizeof(testCases)/sizeof(testCases[0])); i++) {
+    for(i = 0; i < UPRV_LENGTHOF(testCases); i++) {
         Locale loc(testCases[i].localeID);
         if(strcmp(testCases[i].baseName, loc.getBaseName())) {
             errln("For locale \"%s\" expected baseName \"%s\", but got \"%s\"",
                 testCases[i].localeID, testCases[i].baseName, loc.getBaseName());
             return;
         }
+    }
+
+    // Verify that adding a keyword to an existing Locale doesn't change the base name.
+    UErrorCode status = U_ZERO_ERROR;
+    Locale loc2("en-US");
+    if (strcmp("en_US", loc2.getBaseName())) {
+        errln("%s:%d Expected \"en_US\", got \"%s\"", __FILE__, __LINE__, loc2.getBaseName());
+    }
+    loc2.setKeywordValue("key", "value", status);
+    if (strcmp("en_US@key=value", loc2.getName())) {
+        errln("%s:%d Expected \"en_US@key=value\", got \"%s\"", __FILE__, __LINE__, loc2.getName());
+    }
+    if (strcmp("en_US", loc2.getBaseName())) {
+        errln("%s:%d Expected \"en_US\", got \"%s\"", __FILE__, __LINE__, loc2.getBaseName());
     }
 }
 
@@ -2545,4 +2552,30 @@ void LocaleTest::TestGetVariantWithKeywords(void)
   int32_t len = l.getKeywordValue("foo", buffer, 50, status);
   buffer[len] = '\0';
   test_assert(strcmp("value", buffer) == 0);
+}
+
+void LocaleTest::TestIsRightToLeft() {
+    assertFalse("root LTR", Locale::getRoot().isRightToLeft());
+    assertFalse("zh LTR", Locale::getChinese().isRightToLeft());
+    assertTrue("ar RTL", Locale("ar").isRightToLeft());
+    assertTrue("und-EG RTL", Locale("und-EG").isRightToLeft(), FALSE, TRUE);
+    assertFalse("fa-Cyrl LTR", Locale("fa-Cyrl").isRightToLeft());
+    assertTrue("en-Hebr RTL", Locale("en-Hebr").isRightToLeft());
+    assertTrue("ckb RTL", Locale("ckb").isRightToLeft(), FALSE, TRUE);  // Sorani Kurdish
+    assertFalse("fil LTR", Locale("fil").isRightToLeft());
+    assertFalse("he-Zyxw LTR", Locale("he-Zyxw").isRightToLeft());
+}
+
+void LocaleTest::TestBug11421() {
+    Locale::getDefault().getBaseName();
+    int32_t numLocales;
+    const Locale *localeList = Locale::getAvailableLocales(numLocales);
+    for (int localeIndex = 0; localeIndex < numLocales; localeIndex++) {
+        const Locale &loc = localeList[localeIndex];
+        if (strncmp(loc.getName(), loc.getBaseName(), strlen(loc.getBaseName()))) {
+            errln("%s:%d loc.getName=\"%s\"; loc.getBaseName=\"%s\"",
+                __FILE__, __LINE__, loc.getName(), loc.getBaseName());
+            break;
+        }
+    }
 }

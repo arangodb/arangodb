@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
-// * Source File: <path>/xml/brkitr/root.xml
+// * Source File: <path>/common/segments/root.xml ../../xml/brkitr/root.xml
 // *
 // ***************************************************************************
 root{
-    Version{"1.1"}
+    Version{"2.0.92.92"}
     boundaries{
         grapheme:process(dependency){"char.brk"}
         line:process(dependency){"line.brk"}
@@ -21,6 +21,7 @@ root{
         Kata:process(dependency){"cjdict.dict"}
         Khmr:process(dependency){"khmerdict.dict"}
         Laoo:process(dependency){"laodict.dict"}
+        Mymr:process(dependency){"burmesedict.dict"}
         Thai:process(dependency){"thaidict.dict"}
     }
 }

@@ -50,6 +50,7 @@ public:
 
 };
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 class NGramParser_IBM420 : public NGramParser
 {
 private:
@@ -61,6 +62,7 @@ private:
 public:
     NGramParser_IBM420(const int32_t *theNgramList, const uint8_t *theCharMap);
 };
+#endif
 
 
 class CharsetRecog_sbcs : public CharsetRecognizer
@@ -229,6 +231,7 @@ public:
     virtual UBool match(InputText *det, CharsetMatch *results) const;
 };
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 class CharsetRecog_IBM424_he : public CharsetRecog_sbcs
 {
 public:
@@ -280,6 +283,7 @@ class CharsetRecog_IBM420_ar_ltr : public CharsetRecog_IBM420_ar {
     
     virtual UBool match(InputText *det, CharsetMatch *results) const;
 };
+#endif
 
 U_NAMESPACE_END
 

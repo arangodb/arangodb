@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mua.xml
@@ -27,10 +27,6 @@ mua{
             "BHD",
             "solai Barenya",
         }
-        BIF{
-            "BIF",
-            "solai Burundi",
-        }
         BWP{
             "BWP",
             "solai Botswana",
@@ -51,14 +47,6 @@ mua{
             "CN¥",
             "solai Syiŋ",
         }
-        CVE{
-            "CVE",
-            "solai Kapverdiya",
-        }
-        DJF{
-            "DJF",
-            "solai Djibouti",
-        }
         DZD{
             "DZD",
             "solai Algerya",
@@ -66,10 +54,6 @@ mua{
         EGP{
             "EGP",
             "solai Egypt",
-        }
-        ERN{
-            "ERN",
-            "solai Eritre",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ mua{
             "£",
             "solai Britaniya",
         }
-        GMD{
-            "GMD",
-            "solai Gambiya",
-        }
-        GNS{
-            "GNS",
-            "solai Guine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "solai India",
         }
         JPY{
@@ -102,18 +78,6 @@ mua{
         KES{
             "KES",
             "solai Kenia",
-        }
-        KMF{
-            "KMF",
-            "solai Komorya",
-        }
-        LRD{
-            "LRD",
-            "solai Liberiya",
-        }
-        LSL{
-            "LSL",
-            "solai Lesotho",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ mua{
             "SAR",
             "Solai Saudiya",
         }
-        SCR{
-            "SCR",
-            "Solai Saichel",
-        }
         SDG{
             "SDG",
             "Solai Sudaŋ ma dii ne dinar",
         }
-        SHP{
-            "SHP",
-            "Solai Helena",
-        }
         SLL{
             "SLL",
             "solai Sierra leonǝ",
-        }
-        SOS{
-            "SOS",
-            "Solai Somaliya",
-        }
-        STD{
-            "STD",
-            "Solai Sao Tome",
-        }
-        SZL{
-            "SZL",
-            "solai Swaziland",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ mua{
             "Solai Zambiya",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nl.xml
@@ -24,7 +24,7 @@ nl{
         AO{"Angola"}
         AQ{"Antarctica"}
         AR{"Argentinië"}
-        AS{"Amerikaans Samoa"}
+        AS{"Amerikaans-Samoa"}
         AT{"Oostenrijk"}
         AU{"Australië"}
         AW{"Aruba"}
@@ -39,7 +39,7 @@ nl{
         BH{"Bahrein"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Saint Barthélemy"}
+        BL{"Saint-Barthélemy"}
         BM{"Bermuda"}
         BN{"Brunei"}
         BO{"Bolivia"}
@@ -90,7 +90,7 @@ nl{
         FI{"Finland"}
         FJ{"Fiji"}
         FK{"Falklandeilanden"}
-        FM{"Micronesië"}
+        FM{"Micronesia"}
         FO{"Faeröer"}
         FR{"Frankrijk"}
         GA{"Gabon"}
@@ -112,8 +112,8 @@ nl{
         GU{"Guam"}
         GW{"Guinee-Bissau"}
         GY{"Guyana"}
-        HK{"Hongkong SAR van China"}
-        HM{"Heard- en McDonaldeilanden"}
+        HK{"Hongkong"}
+        HM{"Heard en McDonaldeilanden"}
         HN{"Honduras"}
         HR{"Kroatië"}
         HT{"Haïti"}
@@ -166,8 +166,8 @@ nl{
         ML{"Mali"}
         MM{"Myanmar (Birma)"}
         MN{"Mongolië"}
-        MO{"Macao SAR van China"}
-        MP{"Noordelijke Marianeneilanden"}
+        MO{"Macau"}
+        MP{"Noordelijke Marianen"}
         MQ{"Martinique"}
         MR{"Mauritanië"}
         MS{"Montserrat"}
@@ -181,7 +181,7 @@ nl{
         NA{"Namibië"}
         NC{"Nieuw-Caledonië"}
         NE{"Niger"}
-        NF{"Norfolkeiland"}
+        NF{"Norfolk"}
         NG{"Nigeria"}
         NI{"Nicaragua"}
         NL{"Nederland"}
@@ -201,12 +201,12 @@ nl{
         PM{"Saint-Pierre en Miquelon"}
         PN{"Pitcairneilanden"}
         PR{"Puerto Rico"}
-        PS{"Palestijnse gebieden"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
         QA{"Qatar"}
-        QO{"Overig Oceanië"}
+        QO{"overig Oceanië"}
         RE{"Réunion"}
         RO{"Roemenië"}
         RS{"Servië"}
@@ -271,14 +271,17 @@ nl{
         ZA{"Zuid-Afrika"}
         ZM{"Zambia"}
         ZW{"Zimbabwe"}
-        ZZ{"Onbekend gebied"}
+        ZZ{"onbekend gebied"}
+    }
+    Countries%variant{
+        CD{"Congo (DRC)"}
+        CG{"Congo (Republiek)"}
+        FK{"Falklandeilanden (Islas Malvinas)"}
+        MK{"Macedonië (FYROM)"}
     }
     CountriesShort{
         GB{"VK"}
-        HK{"Hongkong"}
-        MO{"Macao"}
-        PS{"Palestina"}
         US{"VS"}
     }
-    Version{"2.0.93.8"}
+    Version{"2.1.8.9"}
 }

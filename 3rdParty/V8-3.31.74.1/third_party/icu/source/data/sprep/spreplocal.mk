@@ -2,7 +2,7 @@
 # *   Corporation and others.  All Rights Reserved.
 # A list of txt's to build
 #
-#  * To add an additional locale to the list: 
+#  * To add an additional locale to the list:
 #    _____________________________________________________
 #    |  SPREP_SOURCE_LOCAL =   myStringPrep.txt ...
 #
@@ -19,7 +19,7 @@
 # we have to add back the corresponding prep files.
 # rfc3491 : stringprep profile for IDN 2003
 # rfc3530 : NFS
-# rfc3722 : String Profile for Internet Small Computer 
+# rfc3722 : String Profile for Internet Small Computer
 #           Systems Interface (iSCSI) Names
 # rfc3920 : XMPP (Extensible Messaging and Presence Protocol)
 # rfc4011 : Policy Based Management Information Base, SNMP

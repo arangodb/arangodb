@@ -30,6 +30,16 @@ function filter_display_language_names {
      }
      /^    Types\{$/,/^    \}$/d
      /^    Variants\{$/,/^    \}$/d' ${target}
+
+    # Delete an empty "Languages" block. Otherwise, getting the display
+    # name for all the language in a given locale (e.g. en_GB) would fail
+    # when the above filtering sed command results in an empty "Languages"
+    # block.
+    sed -r -i \
+    '/^    Languages\{$/ {
+       N
+       /^    Languages\{\n    \}/ d
+     }' ${target}
   done
 }
 
@@ -51,6 +61,8 @@ function abridge_locale_data_for_non_ui_languages {
     target=${localedatapath}/${lang}.txt
     [  -e ${target} ] || { echo "missing ${lang}"; continue; }
     echo Overwriting ${target} ...
+
+    # Do not include '%%Parent' line on purpose.
     sed -n -r -i \
       '1, /^'${lang}'\{$/p
        /^    "%%ALIAS"\{/p
@@ -69,8 +81,11 @@ function abridge_locale_data_for_non_ui_languages {
     target=${langdatapath}/${lang}.txt
     [  -e ${target} ] || { echo "missing ${lang}"; continue; }
     echo Overwriting ${target} ...
+
+    # Do not include '%%Parent' line on purpose.
     sed -n -r -i \
       '1, /^'${lang}'\{$/p
+       /^    "%%ALIAS"\{/p
        /^    Languages\{$/, /^    \}$/ {
          /^    Languages\{$/p
          /^        '${lang}'\{.*\}$/p
@@ -80,37 +95,58 @@ function abridge_locale_data_for_non_ui_languages {
   done
 }
 
-# Drop historic currencies.
+# Keep only the currencies used by the larget 150 economies in terms of GDP.
 # TODO(jshin): Use ucurr_isAvailable in ICU to drop more currencies.
 # See also http://en.wikipedia.org/wiki/List_of_circulating_currencies
 function filter_currency_data {
-  for currency in $(grep -v '^#' currencies_to_drop.list)
+  unset KEEPLIST
+  for currency in $(grep -v '^#' currencies.list)
   do
-    OP=${DROPLIST:+|}
-    DROPLIST=${DROPLIST}${OP}${currency}
+    OP=${KEEPLIST:+|}
+    KEEPLIST=${KEEPLIST}${OP}${currency}
   done
-  DROPLIST="(${DROPLIST})\{"
+  KEEPLIST="(${KEEPLIST})"
 
-  cd "${dataroot}/curr"
-  for i in *.txt
+  for i in ${dataroot}/curr/*.txt
   do
-    [ $i != 'supplementalData.txt' ] && \
-    sed -r -i '/^        '$DROPLIST'/, /^        }/ d' $i
+    locale=$(basename $i .txt)
+    [ $locale == 'supplementalData' ] && continue;
+    echo "Overwriting $i for $locale"
+    sed -n -r -i \
+      '1, /^'${locale}'\{$/ p
+       /^    "%%ALIAS"\{/p
+       /^    %%Parent\{/p
+       /^    Currencies\{$/, /^    \}$/ {
+         /^    Currencies\{$/ p
+         /^        '$KEEPLIST'\{$/, /^        \}$/ p
+         /^    \}$/ p
+       }
+       /^    Currencies%narrow\{$/, /^    \}$/ {
+         /^    Currencies%narrow\{$/ p
+         /^        '$KEEPLIST'\{".*\}$/ p
+         /^    \}$/ p
+       }
+       /^    CurrencyPlurals\{$/, /^    \}$/ {
+         /^    CurrencyPlurals\{$/ p
+         /^        '$KEEPLIST'\{$/, /^        \}$/ p
+         /^    \}$/ p
+       }
+       /^    [cC]urrency(Map|Meta|Spacing|UnitPatterns)\{$/, /^    \}$/ p
+       /^    Version\{.*\}$/p
+       /^\}$/p' $i
   done
 }
 
 # Remove the display names for numeric region codes other than
 # 419 (Latin America) because we don't use them.
 function filter_region_data {
-  cd "${dataroot}/region"
-  sed -i  '/[0-35-9][0-9][0-9]{/ d' *.txt
+  sed -i  '/[0-35-9][0-9][0-9]{/ d' ${dataroot}/region/*.txt
 }
 
 
 
 function remove_exemplar_cities {
-  cd "${dataroot}/zone"
-  for i in *.txt
+  for i in ${dataroot}/zone/*.txt
   do
     [ $i != 'root.txt' ] && \
     sed -i '/^    zoneStrings/, /^        "meta:/ {
@@ -122,8 +158,8 @@ function remove_exemplar_cities {
 }
 
 # Keep only duration and compound in units* sections.
-function filter_locale_data {
-  for i in ${dataroot}/locales/*.txt
+function filter_unit_data {
+  for i in ${dataroot}/unit/*.txt
   do
     echo Overwriting $i ...
     sed -r -i \
@@ -138,10 +174,10 @@ function filter_locale_data {
 
 # big5han and gb2312han collation do not make any sense and nobody uses them.
 function remove_legacy_chinese_codepoint_collation {
-  echo "Removing Big5 / GB2312 collation data from Chinese locale"
+  echo "Removing Big5 / GB2312 / UniHan collation data from Chinese locale"
   target="${dataroot}/coll/zh.txt"
   echo "Overwriting ${target}"
-  sed -r -i '/^        (big5|gb2312)han\{$/,/^        \}$/ d' ${target}
+  sed -r -i '/^        (uni|big5|gb2312)han\{$/,/^        \}$/ d' ${target}
 }
 
 dataroot="$(dirname $0)/../source/data"
@@ -155,7 +191,7 @@ abridge_locale_data_for_non_ui_languages
 filter_currency_data
 filter_region_data
 remove_legacy_chinese_codepoint_collation
-filter_locale_data
+filter_unit_data
 
 # Chromium OS needs exemplar cities for timezones, but not Chromium.
 # It'll save 400kB (uncompressed), but the size difference in

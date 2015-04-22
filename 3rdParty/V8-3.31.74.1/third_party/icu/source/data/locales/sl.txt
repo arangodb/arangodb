@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sl.xml
@@ -14,6 +14,14 @@ sl{
         "[á à ă â å ä ā æ ç ć đ é è ĕ ê ë ē í ì ĭ î ï ī ñ ó ò ŏ ô ö ø ō œ q ú ù ŭ û ü"
         " ū w x y ÿ]"
     }
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
+    }
     ExemplarCharacters{"[a b c č d e f g h i j k l m n o p r s š t u v z ž]"}
     ExemplarCharactersIndex{"[A B C Č Ć D Đ E F G H I J K L M N O P Q R S Š T U V W X Y Z Ž]"}
     LocaleScript{
@@ -21,14 +29,15 @@ sl{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"⩾{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
-                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
-                currencyFormat{"¤#,##0.00;(¤#,##0.00)"}
+                accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
+                currencyFormat{"#,##0.00 ¤"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
@@ -197,17 +206,20 @@ sl{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "HH.mm.ss zzzz",
+                "HH.mm.ss z",
+                "HH.mm.ss",
+                "HH.mm",
                 "EEEE, dd. MMMM y G",
                 "dd. MMMM y G",
                 "d. MMM y G",
@@ -226,8 +238,8 @@ sl{
                 GyMMMEd{"E, d. MMM y G"}
                 GyMMMd{"d. MMM y G"}
                 H{"HH"}
-                Hm{"HH:mm"}
-                Hms{"HH:mm:ss"}
+                Hm{"HH.mm"}
+                Hms{"HH.mm.ss"}
                 M{"L"}
                 MEd{"E, d. MM."}
                 MMM{"LLL"}
@@ -236,9 +248,9 @@ sl{
                 Md{"d. M."}
                 d{"d"}
                 h{"h a"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
-                ms{"mm:ss"}
+                hm{"h.mm a"}
+                hms{"h.mm.ss a"}
+                ms{"mm.ss"}
                 y{"y"}
                 yyyy{"y G"}
                 yyyyM{"M/y G"}
@@ -297,14 +309,14 @@ sl{
                     h{"h–h a"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    a{"h.mm a – h.mm a"}
+                    h{"h.mm–h.mm a"}
+                    m{"h.mm–h.mm a"}
                 }
                 hmv{
-                    a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
+                    a{"h.mm a – h.mm a v"}
+                    h{"h.mm–h.mm a v"}
+                    m{"h.mm–h.mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
@@ -352,11 +364,15 @@ sl{
                 "dop.",
                 "pop.",
             }
+            AmPmMarkersNarrow{
+                "d",
+                "p",
+            }
             DateTimePatterns{
-                "HH:mm:ss zzzz",
-                "HH:mm:ss z",
-                "HH:mm:ss",
-                "HH:mm",
+                "HH.mm.ss zzzz",
+                "HH.mm.ss z",
+                "HH.mm.ss",
+                "HH.mm",
                 "EEEE, dd. MMMM y",
                 "dd. MMMM y",
                 "d. MMM y",
@@ -367,10 +383,13 @@ sl{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"poldne"}
+            NoonMarkerNarrow{"n"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH.mm"}
                 EHms{"E HH.mm.ss"}
                 Ed{"E, d."}
@@ -382,8 +401,8 @@ sl{
                 GyMMMEd{"E, d. MMM y G"}
                 GyMMMd{"d. MMM y G"}
                 H{"HH"}
-                Hm{"HH:mm"}
-                Hms{"HH:mm:ss"}
+                Hm{"HH.mm"}
+                Hms{"HH.mm.ss"}
                 M{"L"}
                 MEd{"E, d. MM."}
                 MMM{"LLL"}
@@ -392,9 +411,9 @@ sl{
                 Md{"d. M."}
                 d{"d"}
                 h{"h a"}
-                hm{"h:mm a"}
-                hms{"h:mm:ss a"}
-                ms{"mm:ss"}
+                hm{"h.mm a"}
+                hms{"h.mm.ss a"}
+                ms{"mm.ss"}
                 y{"y"}
                 yM{"M/y"}
                 yMEd{"E, d. M. y"}
@@ -489,9 +508,17 @@ sl{
                     "pr. n. št.",
                     "po Kr.",
                 }
+                abbreviated%variant{
+                    "BCE",
+                    "po n. št.",
+                }
                 wide{
                     "pred našim štetjem",
                     "naše štetje",
+                }
+                wide%variant{
+                    "BCE",
+                    "po n. št.",
                 }
             }
             intervalFormats{
@@ -540,14 +567,14 @@ sl{
                     h{"h–h a"}
                 }
                 hm{
-                    a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    a{"h.mm a – h.mm a"}
+                    h{"h.mm–h.mm a"}
+                    m{"h.mm–h.mm a"}
                 }
                 hmv{
-                    a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
+                    a{"h.mm a – h.mm a v"}
+                    h{"h.mm–h.mm a v"}
+                    m{"h.mm–h.mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
@@ -738,24 +765,58 @@ sl{
         day{
             dn{"Dan"}
             relative{
-                "-1"{"Včeraj"}
-                "-2"{"Predvčerajšnjim"}
-                "0"{"Danes"}
-                "1"{"Jutri"}
-                "2"{"Pojutrišnjem"}
+                "-1"{"včeraj"}
+                "-2"{"predvčerajšnjim"}
+                "0"{"danes"}
+                "1"{"jutri"}
+                "2"{"pojutrišnjem"}
             }
             relativeTime{
                 future{
-                    few{"Čez {0} dni"}
-                    one{"Čez {0} dan"}
-                    other{"Čez {0} dni"}
-                    two{"Čez {0} dni"}
+                    few{"čez {0} dni"}
+                    one{"čez {0} dan"}
+                    other{"čez {0} dni"}
+                    two{"čez {0} dneva"}
                 }
                 past{
-                    few{"Pred {0} dnevi"}
-                    one{"Pred {0} dnevom"}
-                    other{"Pred {0} dnevi"}
-                    two{"Pred {0} dnevoma"}
+                    few{"pred {0} dnevi"}
+                    one{"pred {0} dnevom"}
+                    other{"pred {0} dnevi"}
+                    two{"pred {0} dnevoma"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"Dan"}
+            relativeTime{
+                future{
+                    few{"čez {0} d"}
+                    one{"čez {0} dan"}
+                    other{"čez {0} d"}
+                    two{"čez {0} d"}
+                }
+                past{
+                    few{"pred {0} d"}
+                    one{"pred {0} d"}
+                    other{"pred {0} d"}
+                    two{"pred {0} d"}
+                }
+            }
+        }
+        day-short{
+            dn{"Dan"}
+            relativeTime{
+                future{
+                    few{"čez {0} d"}
+                    one{"čez {0} d"}
+                    other{"čez {0} d"}
+                    two{"čez {0} d"}
+                }
+                past{
+                    few{"pred {0} d"}
+                    one{"pred {0} d"}
+                    other{"pred {0} d"}
+                    two{"pred {0} d"}
                 }
             }
         }
@@ -772,20 +833,68 @@ sl{
                 "1"{"Naslednji petek"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"Prejš. pet."}
+                "0"{"Ta pet."}
+                "1"{"Nasl. pet."}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"Prejšnji pet."}
+                "0"{"Ta pet."}
+                "1"{"Naslednji pet."}
+            }
+        }
         hour{
             dn{"Ura"}
             relativeTime{
                 future{
-                    few{"Čez {0} h"}
-                    one{"Čez {0} h"}
-                    other{"Čez {0} h"}
-                    two{"Čez {0} h"}
+                    few{"čez {0} h"}
+                    one{"čez {0} h"}
+                    other{"čez {0} h"}
+                    two{"čez {0} h"}
                 }
                 past{
-                    few{"Pred {0} h"}
-                    one{"Pred {0} h"}
-                    other{"Pred {0} h"}
-                    two{"Pred {0} h"}
+                    few{"pred {0} h"}
+                    one{"pred {0} h"}
+                    other{"pred {0} h"}
+                    two{"pred {0} h"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
+                    few{"čez {0} h"}
+                    one{"čez {0} h"}
+                    other{"čez {0} h"}
+                    two{"čez {0} h"}
+                }
+                past{
+                    few{"pred {0} h"}
+                    one{"pred {0} h"}
+                    other{"pred {0} h"}
+                    two{"pred {0} h"}
+                }
+            }
+        }
+        hour-short{
+            dn{"ura"}
+            relativeTime{
+                future{
+                    few{"čez {0} h"}
+                    one{"čez {0} h"}
+                    other{"čez {0} h"}
+                    two{"čez {0} h"}
+                }
+                past{
+                    few{"pred {0} h"}
+                    one{"pred {0} h"}
+                    other{"pred {0} h"}
+                    two{"pred {0} h"}
                 }
             }
         }
@@ -793,45 +902,178 @@ sl{
             dn{"Minuta"}
             relativeTime{
                 future{
-                    few{"Čez {0} min."}
-                    one{"Čez {0} min."}
-                    other{"Čez {0} min."}
-                    two{"Čez {0} min."}
+                    few{"čez {0} min."}
+                    one{"čez {0} min."}
+                    other{"čez {0} min."}
+                    two{"čez {0} min."}
                 }
                 past{
-                    few{"Pred {0} min."}
-                    one{"Pred {0} min."}
-                    other{"Pred {0} min."}
-                    two{"Pred {0} min."}
+                    few{"pred {0} min."}
+                    one{"pred {0} min."}
+                    other{"pred {0} min."}
+                    two{"pred {0} min."}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min."}
+            relativeTime{
+                future{
+                    few{"čez {0} min"}
+                    one{"čez {0} min"}
+                    other{"čez {0} min"}
+                    two{"čez {0} min"}
+                }
+                past{
+                    few{"pred {0} min"}
+                    one{"pred {0} min"}
+                    other{"pred {0} min"}
+                    two{"pred {0} min"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    few{"čez {0} min"}
+                    one{"čez {0} min"}
+                    other{"čez {0} min"}
+                    two{"čez {0} min"}
+                }
+                past{
+                    few{"pred {0} min"}
+                    one{"pred {0} min"}
+                    other{"pred {0} min"}
+                    two{"pred {0} min"}
                 }
             }
         }
         mon{
             relative{
-                "-1"{"Prejšnji ponedeljek"}
-                "0"{"Ta ponedeljek"}
-                "1"{"Naslednji ponedeljek"}
+                "-1"{"prejšnji ponedeljek"}
+                "0"{"ta ponedeljek"}
+                "1"{"naslednji ponedeljek"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"prejš. pon."}
+                "0"{"ta pon."}
+                "1"{"nasl. pon."}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"prejšnji pon."}
+                "0"{"ta pon."}
+                "1"{"naslednji pon."}
             }
         }
         month{
             dn{"Mesec"}
             relative{
-                "-1"{"Prejšnji mesec"}
-                "0"{"Ta mesec"}
-                "1"{"Naslednji mesec"}
+                "-1"{"prejšnji mesec"}
+                "0"{"ta mesec"}
+                "1"{"naslednji mesec"}
             }
             relativeTime{
                 future{
-                    few{"Čez {0} mesece"}
-                    one{"Čez {0} mesec"}
-                    other{"Čez {0} mesecev"}
-                    two{"Čez {0} meseca"}
+                    few{"čez {0} mesece"}
+                    one{"čez {0} mesec"}
+                    other{"čez {0} mesecev"}
+                    two{"čez {0} meseca"}
                 }
                 past{
-                    few{"Pred {0} meseci"}
-                    one{"Pred {0} mesecem"}
-                    other{"Pred {0} meseci"}
-                    two{"Pred {0} meseci"}
+                    few{"pred {0} meseci"}
+                    one{"pred {0} mesecem"}
+                    other{"pred {0} meseci"}
+                    two{"pred {0} mesecema"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"mes."}
+            relativeTime{
+                future{
+                    few{"čez {0} mes."}
+                    one{"čez {0} mes."}
+                    other{"čez {0} mes."}
+                    two{"čez {0} mes."}
+                }
+                past{
+                    few{"pred {0} mes."}
+                    one{"pred {0} mes."}
+                    other{"pred {0} mes."}
+                    two{"pred {0} mes."}
+                }
+            }
+        }
+        month-short{
+            dn{"mes."}
+            relativeTime{
+                future{
+                    few{"čez {0} mesece"}
+                    one{"čez {0} mesec"}
+                    other{"čez {0} mesece"}
+                    two{"čez {0} meseca"}
+                }
+                past{
+                    few{"pred {0} meseci"}
+                    one{"pred {0} mesecem"}
+                    other{"pred {0} meseci"}
+                    two{"pred {0} mesecema"}
+                }
+            }
+        }
+        quarter{
+            dn{"Četrtletje"}
+            relativeTime{
+                future{
+                    few{"čez {0} četrtletja"}
+                    one{"čez {0} četrtletje"}
+                    other{"čez {0} četrtletij"}
+                    two{"čez {0} četrtletji"}
+                }
+                past{
+                    few{"pred {0} četrtletji"}
+                    one{"pred {0} četrtletjem"}
+                    other{"pred {0} četrtletji"}
+                    two{"pred {0} četrtletjema"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"čet."}
+            relativeTime{
+                future{
+                    few{"čez {0} četrtletja"}
+                    one{"čez {0} četrtletje"}
+                    other{"čez {0} četrtletij"}
+                    two{"čez {0} četrtletji"}
+                }
+                past{
+                    few{"pred {0} četrtletji"}
+                    one{"pred {0} četrtletjem"}
+                    other{"pred {0} četrtletji"}
+                    two{"pred {0} četrtletjema"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"četrtl."}
+            relativeTime{
+                future{
+                    few{"čez {0} četrtletja"}
+                    one{"čez {0} četrtletje"}
+                    other{"čez {0} četrtletja"}
+                    two{"čez {0} četrtletji"}
+                }
+                past{
+                    few{"pred {0} četrtletji"}
+                    one{"pred {0} četrtletjem"}
+                    other{"pred {0} četrtletji"}
+                    two{"pred {0} četrtletjema"}
                 }
             }
         }
@@ -842,6 +1084,20 @@ sl{
                 "1"{"Naslednjo soboto"}
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"Prejš. sob."}
+                "0"{"To sob."}
+                "1"{"Nasl. sob."}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"Prejšnjo sob."}
+                "0"{"To sob."}
+                "1"{"Naslednjo sob."}
+            }
+        }
         second{
             dn{"Sekunda"}
             relative{
@@ -849,24 +1105,72 @@ sl{
             }
             relativeTime{
                 future{
-                    few{"Čez {0} sekunde"}
-                    one{"Čez {0} sekundo"}
-                    other{"Čez {0} sekundi"}
-                    two{"Čez {0} sekundi"}
+                    few{"čez {0} sekunde"}
+                    one{"čez {0} sekundo"}
+                    other{"čez {0} sekund"}
+                    two{"čez {0} sekundi"}
                 }
                 past{
-                    few{"Pred {0} sekundami"}
-                    one{"Pred {0} sekundo"}
-                    other{"Pred {0} sekundami"}
-                    two{"Pred {0} sekundama"}
+                    few{"pred {0} sekundami"}
+                    one{"pred {0} sekundo"}
+                    other{"pred {0} sekundami"}
+                    two{"pred {0} sekundama"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    few{"čez {0} s"}
+                    one{"čez {0} s"}
+                    other{"čez {0} s"}
+                    two{"čez {0} s"}
+                }
+                past{
+                    few{"pred {0} s"}
+                    one{"pred {0} s"}
+                    other{"pred {0} s"}
+                    two{"pred {0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"sek."}
+            relativeTime{
+                future{
+                    few{"čez {0} s"}
+                    one{"čez {0} s"}
+                    other{"čez {0} s"}
+                    two{"čez {0} s"}
+                }
+                past{
+                    few{"pred {0} s"}
+                    one{"pred {0} s"}
+                    other{"pred {0} s"}
+                    two{"pred {0} s"}
                 }
             }
         }
         sun{
             relative{
-                "-1"{"Prejšnjo nedeljo"}
-                "0"{"To nedeljo"}
-                "1"{"Naslednjo nedeljo"}
+                "-1"{"prejšnjo nedeljo"}
+                "0"{"to nedeljo"}
+                "1"{"naslednjo nedeljo"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"prejš. ned."}
+                "0"{"to ned."}
+                "1"{"nasl. ned."}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"prejšnjo ned."}
+                "0"{"to ned."}
+                "1"{"naslednjo ned."}
             }
         }
         thu{
@@ -876,11 +1180,39 @@ sl{
                 "1"{"Naslednji četrtek"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"Prejš. čet."}
+                "0"{"Ta čet."}
+                "1"{"Nasl. čet."}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"Prejšnji čet."}
+                "0"{"Ta čet."}
+                "1"{"Naslednji čet."}
+            }
+        }
         tue{
             relative{
                 "-1"{"Prejšnji torek"}
                 "0"{"Ta torek"}
                 "1"{"Naslednji torek"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"Prejš. tor."}
+                "0"{"Ta tor."}
+                "1"{"Nasl. tor."}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"Prejšnji tor."}
+                "0"{"Ta tor."}
+                "1"{"Naslednji tor."}
             }
         }
         wed{
@@ -890,25 +1222,73 @@ sl{
                 "1"{"Naslednjo sredo"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"Prejš. sr."}
+                "0"{"To sr."}
+                "1"{"Nasl. sr."}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"Prejšnjo sr."}
+                "0"{"To sr."}
+                "1"{"Naslednjo sr."}
+            }
+        }
         week{
             dn{"Teden"}
             relative{
-                "-1"{"Prejšnji teden"}
-                "0"{"Ta teden"}
-                "1"{"Naslednji teden"}
+                "-1"{"prejšnji teden"}
+                "0"{"ta teden"}
+                "1"{"naslednji teden"}
             }
             relativeTime{
                 future{
-                    few{"Čez {0} tedne"}
-                    one{"Čez {0} teden"}
-                    other{"Čez {0} tednov"}
-                    two{"Čez {0} tedna"}
+                    few{"čez {0} tedne"}
+                    one{"čez {0} teden"}
+                    other{"čez {0} tednov"}
+                    two{"čez {0} tedna"}
                 }
                 past{
-                    few{"Pred {0} tedni"}
-                    one{"Pred {0} tednom"}
-                    other{"Pred {0} tedni"}
-                    two{"Pred {0} tednoma"}
+                    few{"pred {0} tedni"}
+                    one{"pred {0} tednom"}
+                    other{"pred {0} tedni"}
+                    two{"pred {0} tednoma"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"ted."}
+            relativeTime{
+                future{
+                    few{"čez {0} tedne"}
+                    one{"čez {0} teden"}
+                    other{"čez {0} tednov"}
+                    two{"čez {0} tedna"}
+                }
+                past{
+                    few{"pred {0} tedni"}
+                    one{"pred {0} tednom"}
+                    other{"pred {0} tedni"}
+                    two{"pred {0} tednoma"}
+                }
+            }
+        }
+        week-short{
+            dn{"ted."}
+            relativeTime{
+                future{
+                    few{"čez {0} tedne"}
+                    one{"čez {0} teden"}
+                    other{"čez {0} tednov"}
+                    two{"čez {0} tedna"}
+                }
+                past{
+                    few{"pred {0} tedni"}
+                    one{"pred {0} tednom"}
+                    other{"pred {0} tedni"}
+                    two{"pred {0} tednoma"}
                 }
             }
         }
@@ -918,31 +1298,83 @@ sl{
         year{
             dn{"Leto"}
             relative{
-                "-1"{"Lani"}
-                "0"{"Letos"}
-                "1"{"Naslednje leto"}
+                "-1"{"lani"}
+                "0"{"letos"}
+                "1"{"naslednje leto"}
             }
             relativeTime{
                 future{
-                    few{"Čez {0} leta"}
-                    one{"Čez {0} leto"}
-                    other{"Čez {0} let"}
-                    two{"Čez {0} leti"}
+                    few{"čez {0} leta"}
+                    one{"čez {0} leto"}
+                    other{"čez {0} let"}
+                    two{"čez {0} leti"}
                 }
                 past{
-                    few{"Pred {0} leti"}
-                    one{"Pred {0} letom"}
-                    other{"Pred {0} leti"}
-                    two{"Pred {0} leti"}
+                    few{"pred {0} leti"}
+                    one{"pred {0} letom"}
+                    other{"pred {0} leti"}
+                    two{"pred {0} letoma"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"leto"}
+            relativeTime{
+                future{
+                    few{"čez {0} leta"}
+                    one{"čez {0} leto"}
+                    other{"čez {0} let"}
+                    two{"čez {0} leti"}
+                }
+                past{
+                    few{"pred {0} leti"}
+                    one{"pred {0} letom"}
+                    other{"pred {0} leti"}
+                    two{"pred {0} letoma"}
+                }
+            }
+        }
+        year-short{
+            dn{"leto"}
+            relativeTime{
+                future{
+                    few{"čez {0} leta"}
+                    one{"čez {0} leto"}
+                    other{"čez {0} let"}
+                    two{"čez {0} leti"}
+                }
+                past{
+                    few{"pred {0} leti"}
+                    one{"pred {0} letom"}
+                    other{"pred {0} leti"}
+                    two{"pred {0} letoma"}
                 }
             }
         }
         zone{
-            dn{"Območje"}
+            dn{"Časovni pas"}
         }
     }
     listPattern{
         standard{
+            2{"{0} in {1}"}
+            end{"{0} in {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit{
+            2{"{0} in {1}"}
+            end{"{0} in {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} in {1}"}
+            end{"{0} in {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
             2{"{0} in {1}"}
             end{"{0} in {1}"}
             middle{"{0}, {1}"}
@@ -965,170 +1397,5 @@ sl{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinjin"}
         x-Publishing{"Publishing"}
-    }
-    units{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} dnevi"}
-                one{"{0} dan"}
-                other{"{0} dni"}
-                two{"{0} dni"}
-            }
-            hour{
-                few{"{0} ure"}
-                one{"{0} ura"}
-                other{"{0} ur"}
-                two{"{0} uri"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-                two{"{0} ms"}
-            }
-            minute{
-                few{"{0} minute"}
-                one{"{0} minuta"}
-                other{"{0} minut"}
-                two{"{0} minuti"}
-            }
-            month{
-                few{"{0} meseci"}
-                one{"{0} mesec"}
-                other{"{0} mesecev"}
-                two{"{0} meseca"}
-            }
-            second{
-                few{"{0} sekunde"}
-                one{"{0} sekunda"}
-                other{"{0} sekund"}
-                two{"{0} sekundi"}
-            }
-            week{
-                few{"{0} tedni"}
-                one{"{0} teden"}
-                other{"{0} tednov"}
-                two{"{0} tedna"}
-            }
-            year{
-                few{"{0} leta"}
-                one{"{0} leto"}
-                other{"{0} let"}
-                two{"{0} leti"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} d"}
-                one{"{0} d"}
-                other{"{0} d"}
-                two{"{0} d"}
-            }
-            hour{
-                few{"{0} h"}
-                one{"{0} h"}
-                other{"{0} h"}
-                two{"{0} h"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-                two{"{0} ms"}
-            }
-            minute{
-                few{"{0} min"}
-                one{"{0} min"}
-                other{"{0} min"}
-                two{"{0} min"}
-            }
-            month{
-                few{"{0} m"}
-                one{"{0} m"}
-                other{"{0} m"}
-                two{"{0} m"}
-            }
-            second{
-                few{"{0} s"}
-                one{"{0} s"}
-                other{"{0} s"}
-                two{"{0} s"}
-            }
-            week{
-                few{"{0} t"}
-                one{"{0} t"}
-                other{"{0} t"}
-                two{"{0} t"}
-            }
-            year{
-                few{"{0} l"}
-                one{"{0} l"}
-                other{"{0} l"}
-                two{"{0} l"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} d"}
-                one{"{0} d"}
-                other{"{0} d"}
-                two{"{0} d"}
-            }
-            hour{
-                few{"{0} h"}
-                one{"{0} h"}
-                other{"{0} h"}
-                two{"{0} h"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-                two{"{0} ms"}
-            }
-            minute{
-                few{"{0} min"}
-                one{"{0} min"}
-                other{"{0} min"}
-                two{"{0} min"}
-            }
-            month{
-                few{"{0} m"}
-                one{"{0} m"}
-                other{"{0} m"}
-                two{"{0} m"}
-            }
-            second{
-                few{"{0} s"}
-                one{"{0} s"}
-                other{"{0} s"}
-                two{"{0} s"}
-            }
-            week{
-                few{"{0} t"}
-                one{"{0} t"}
-                other{"{0} t"}
-                two{"{0} t"}
-            }
-            year{
-                few{"{0} l"}
-                one{"{0} l"}
-                other{"{0} l"}
-                two{"{0} l"}
-            }
-        }
     }
 }

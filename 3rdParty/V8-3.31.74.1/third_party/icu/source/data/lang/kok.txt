@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kok.xml
@@ -22,7 +22,6 @@ kok{
         ba{"बष्किर"}
         be{"बैलोरुसियन्"}
         bg{"बल्गेरियन"}
-        bh{"बीहारी"}
         bi{"बिसलमा"}
         bn{"बंगाली"}
         bo{"तिबेतियन"}
@@ -86,7 +85,6 @@ kok{
         mk{"मसीडोनियन्"}
         ml{"मळियाळम"}
         mn{"मंगोलियन्"}
-        mo{"मोल्डावियन्"}
         mr{"मराठी"}
         ms{"मलय"}
         mt{"मालतीस्"}
@@ -106,6 +104,7 @@ kok{
         rm{"रहटो-रोमान्स्"}
         rn{"किरुन्दी"}
         ro{"रोमानियन्"}
+        ro_MD{"मोल्डावियन्"}
         ru{"रष्यन्"}
         rw{"किन्यार्वान्डा"}
         sa{"संस्कृत"}
@@ -152,5 +151,5 @@ kok{
         zh{"चीनीस्"}
         zu{"जुलू"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

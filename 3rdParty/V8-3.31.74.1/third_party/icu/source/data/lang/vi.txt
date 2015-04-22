@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/vi.xml
@@ -22,7 +22,6 @@ vi{
         be{"Tiếng Belarus"}
         bem{"Tiếng Bemba"}
         bg{"Tiếng Bulgaria"}
-        bh{"Tiếng Bihari"}
         bn{"Tiếng Bengali"}
         br{"Tiếng Breton"}
         bs{"Tiếng Nam Tư"}
@@ -30,7 +29,7 @@ vi{
         ceb{"Tiếng Cebuano"}
         chr{"Tiếng Cherokee"}
         ckb{"Tiếng Kurd Sorani"}
-        co{"Tiếng Corse"}
+        co{"Tiếng Corsica"}
         cs{"Tiếng Séc"}
         cy{"Tiếng Wales"}
         da{"Tiếng Đan Mạch"}
@@ -44,7 +43,6 @@ vi{
         eo{"Tiếng Quốc Tế Ngữ"}
         es{"Tiếng Tây Ban Nha"}
         es_419{"Tiếng Tây Ban Nha (Mỹ La tinh)"}
-        es_ES{"Tiếng Tây Ban Nha (I-bê-ri)"}
         et{"Tiếng Estonia"}
         eu{"Tiếng Basque"}
         fa{"Tiếng Ba Tư"}
@@ -74,10 +72,11 @@ vi{
         it{"Tiếng Ý"}
         ja{"Tiếng Nhật"}
         ka{"Tiếng Gruzia"}
+        kg{"Tiếng Kongo"}
         kk{"Tiếng Kazakh"}
-        km{"Tiếng Campuchia"}
+        km{"Tiếng Khơ-me"}
         kn{"Tiếng Kannada"}
-        ko{"Tiếng Hàn Quốc"}
+        ko{"Tiếng Hàn"}
         ku{"Tiếng Kurd"}
         ky{"Tiếng Kyrgyz"}
         la{"Tiếng La-tinh"}
@@ -94,7 +93,6 @@ vi{
         mk{"Tiếng Macedonia"}
         ml{"Tiếng Malayalam"}
         mn{"Tiếng Mông Cổ"}
-        mo{"Tiếng Moldova"}
         mr{"Tiếng Marathi"}
         ms{"Tiếng Malaysia"}
         mt{"Tiếng Malt"}
@@ -110,17 +108,17 @@ vi{
         nyn{"Tiếng Nyankole"}
         oc{"Tiếng Occitan"}
         om{"Tiếng Oromo"}
-        or{"Tiếng Ô-ri-a"}
+        or{"Tiếng Oriya"}
         pa{"Tiếng Punjab"}
         pl{"Tiếng Ba Lan"}
         ps{"Tiếng Pashto"}
         pt{"Tiếng Bồ Đào Nha"}
         pt_BR{"Tiếng Bồ Đào Nha (Braxin)"}
-        pt_PT{"Tiếng Bồ Đào Nha (I-bê-ri)"}
         qu{"Tiếng Quechua"}
         rm{"Tiếng Romansh"}
         rn{"Tiếng Rundi"}
-        ro{"Tiếng Romania"}
+        ro{"Tiếng Rumani"}
+        ro_MD{"Tiếng Moldova"}
         ru{"Tiếng Nga"}
         rw{"Tiếng Kinyarwanda"}
         sd{"Tiếng Sindhi"}
@@ -142,13 +140,14 @@ vi{
         th{"Tiếng Thái"}
         ti{"Tiếng Tigrigya"}
         tk{"Tiếng Turk"}
+        tl{"Tiếng Tagalog"}
         tn{"Tiếng Tswana"}
         to{"Tiếng Tonga"}
         tr{"Tiếng Thổ Nhĩ Kỳ"}
         tt{"Tiếng Tatar"}
         tum{"Tiếng Tumbuka"}
         tw{"Tiếng Twi"}
-        ug{"Tiếng Duy Ngô Nhĩ"}
+        ug{"Tiếng Uyghur"}
         uk{"Tiếng Ucraina"}
         ur{"Tiếng Uđu"}
         uz{"Tiếng Uzbek"}
@@ -158,9 +157,10 @@ vi{
         yi{"Tiếng Y-đit"}
         yo{"Tiếng Yoruba"}
         zh{"Tiếng Trung"}
-        zh_Hans{"Tiếng Trung (Giản thể)"}
-        zh_Hant{"Tiếng Trung (Phồn thể)"}
         zu{"Tiếng Zulu"}
+    }
+    Languages%variant{
+        ps{"Tiếng Pushto"}
     }
     LanguagesShort{
         az{"Tiếng Azeri"}
@@ -212,8 +212,8 @@ vi{
         Hang{"Chữ Hangul"}
         Hani{"Chữ Hán"}
         Hano{"Chữ Hanunoo"}
-        Hans{"Giản thể"}
-        Hant{"Phồn thể"}
+        Hans{"Giản thể"}
+        Hant{"Phồn thể"}
         Hebr{"Chữ Do Thái"}
         Hira{"Chữ Hiragana"}
         Hluw{"Chữ tượng hình Anatolia"}
@@ -325,13 +325,16 @@ vi{
         Zsym{"Ký hiệu"}
         Zxxx{"Chưa có chữ viết"}
         Zyyy{"Chung"}
-        Zzzz{"Chữ viết Không xác định"}
+        Zzzz{"Chữ viết không xác định"}
     }
     Scripts%stand-alone{
         Hans{"Chữ Hán giản thể"}
         Hant{"Chữ Hán phồn thể"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Chữ Ba Tư-Ả Rập"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Ngôn ngữ: {0}"}
         script{"Chữ viết: {0}"}

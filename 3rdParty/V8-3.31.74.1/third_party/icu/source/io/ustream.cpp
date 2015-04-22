@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *  FILE NAME : ustream.cpp
@@ -13,6 +13,9 @@
 */
 
 #include "unicode/utypes.h"
+
+#if !UCONFIG_NO_CONVERSION
+
 #include "unicode/uobject.h"
 #include "unicode/ustream.h"
 #include "unicode/ucnv.h"
@@ -164,4 +167,5 @@ STOP_READING:
 
 U_NAMESPACE_END
 
+#endif
 #endif

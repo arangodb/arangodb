@@ -97,7 +97,7 @@ sub compareLoop {
   my $datafile = shift;
   my $locAndData = "";
   if($locale) {
-    $locAndData .= " -L $locale";
+    $locAndData .= " -L \"$locale\"";
   }
   if($datafile) {
     $locAndData .= " -f $datafile";

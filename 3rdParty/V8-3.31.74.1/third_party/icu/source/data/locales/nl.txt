@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nl.xml
@@ -33,6 +33,7 @@ nl{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -161,10 +162,13 @@ nl{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.93.8"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -252,6 +256,7 @@ nl{
                 hms{"h:mm:ss a"}
                 ms{"mm:ss"}
                 y{"U"}
+                yMd{"y-MM-dd"}
                 yyyy{"U"}
                 yyyyM{"M-y"}
                 yyyyMEd{"E d-M-y"}
@@ -279,6 +284,36 @@ nl{
                             "you",
                             "xu",
                             "hai",
+                        }
+                    }
+                }
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "begin van de lente",
+                            "regenwater",
+                            "insecten ontwaken",
+                            "lentepunt",
+                            "licht en helder",
+                            "grain rain",
+                            "begin van de zomer",
+                            "grain full",
+                            "grain in ear",
+                            "zomerpunt",
+                            "warm",
+                            "heet",
+                            "begin van de herfst",
+                            "einde van de hitte",
+                            "witte dauw",
+                            "herfstpunt",
+                            "koude dauw",
+                            "eerste vorst",
+                            "begin van de winter",
+                            "lichte sneeuw",
+                            "zware sneeuw",
+                            "winterpunt",
+                            "minor cold",
+                            "major cold",
                         }
                     }
                 }
@@ -367,8 +402,84 @@ nl{
                     }
                 }
             }
+            intervalFormats{
+                M{
+                    M{"MM–MM"}
+                }
+                MEd{
+                    M{"MM-dd, E – MM-dd, E"}
+                    d{"MM-dd, E – MM-dd, E"}
+                }
+                MMM{
+                    M{"LLL–LLL"}
+                }
+                MMMEd{
+                    M{"MMM d, E – MMM d, E"}
+                    d{"MMM d, E – MMM d, E"}
+                }
+                MMMd{
+                    M{"MMM d – MMM d"}
+                    d{"MMM d–d"}
+                }
+                Md{
+                    M{"MM-dd – MM-dd"}
+                    d{"MM-dd – MM-dd"}
+                }
+                d{
+                    d{"d–d"}
+                }
+                y{
+                    y{"U–U"}
+                }
+                yM{
+                    M{"y-MM – y-MM"}
+                    y{"y-MM – y-MM"}
+                }
+                yMEd{
+                    M{"y-MM-dd, E – y-MM-dd, E"}
+                    d{"y-MM-dd, E – y-MM-dd, E"}
+                    y{"y-MM-dd, E – y-MM-dd, E"}
+                }
+                yMMM{
+                    M{"U MMM–MMM"}
+                    y{"U MMM – U MMM"}
+                }
+                yMMMEd{
+                    M{"U MMM d, E – MMM d, E"}
+                    d{"U MMM d, E – MMM d, E"}
+                    y{"U MMM d, E – U MMM d, E"}
+                }
+                yMMMM{
+                    M{"U MMMM–MMMM"}
+                    y{"U MMMM – U MMMM"}
+                }
+                yMMMd{
+                    M{"U MMM d – MMM d"}
+                    d{"U MMM d–d"}
+                    y{"U MMM d – U MMM d"}
+                }
+                yMd{
+                    M{"y-MM-dd – y-MM-dd"}
+                    d{"y-MM-dd – y-MM-dd"}
+                    y{"y-MM-dd – y-MM-dd"}
+                }
+            }
             monthNames{
                 format{
+                    abbreviated{
+                        "mnd 1",
+                        "mnd 2",
+                        "mnd 3",
+                        "mnd 4",
+                        "mnd 5",
+                        "mnd 6",
+                        "mnd 7",
+                        "mnd 8",
+                        "mnd 9",
+                        "mnd 10",
+                        "mnd 11",
+                        "mnd 12",
+                    }
                     narrow{
                         "1",
                         "2",
@@ -383,8 +494,36 @@ nl{
                         "11",
                         "12",
                     }
+                    wide{
+                        "maand 1",
+                        "maand 2",
+                        "maand 3",
+                        "maand 4",
+                        "maand 5",
+                        "maand 6",
+                        "maand 7",
+                        "maand 8",
+                        "maand 9",
+                        "maand 10",
+                        "maand 11",
+                        "maand 12",
+                    }
                 }
                 stand-alone{
+                    abbreviated{
+                        "Mnd 1",
+                        "Mnd 2",
+                        "Mnd 3",
+                        "Mnd 4",
+                        "Mnd 5",
+                        "Mnd 6",
+                        "Mnd 7",
+                        "Mnd 8",
+                        "Mnd 9",
+                        "Mnd 10",
+                        "Mnd 11",
+                        "Mnd 12",
+                    }
                     narrow{
                         "1",
                         "2",
@@ -398,6 +537,37 @@ nl{
                         "10",
                         "11",
                         "12",
+                    }
+                    wide{
+                        "Maand 1",
+                        "Maand 2",
+                        "Maand 3",
+                        "Maand 4",
+                        "Maand 5",
+                        "Maand 6",
+                        "Maand 7",
+                        "Maand 8",
+                        "Maand 9",
+                        "Maand 10",
+                        "Maand 11",
+                        "Maand 12",
+                    }
+                }
+            }
+            monthPatterns{
+                format{
+                    wide{
+                        leap{"{0}bis"}
+                    }
+                }
+                numeric{
+                    all{
+                        leap{"{0}bis"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        leap{"{0}b"}
                     }
                 }
             }
@@ -415,7 +585,7 @@ nl{
                         "Baramhat",
                         "Baramundah",
                         "Bashans",
-                        "Ba'unah",
+                        "Ba’unah",
                         "Abib",
                         "Misra",
                         "Nasi",
@@ -445,7 +615,7 @@ nl{
                         "Baramhat",
                         "Baramundah",
                         "Bashans",
-                        "Ba'unah",
+                        "Ba’unah",
                         "Abib",
                         "Misra",
                         "Nasi",
@@ -462,7 +632,7 @@ nl{
                         "Baramhat",
                         "Baramundah",
                         "Bashans",
-                        "Ba'unah",
+                        "Ba’unah",
                         "Abib",
                         "Misra",
                         "Nasi",
@@ -492,7 +662,7 @@ nl{
                         "Baramhat",
                         "Baramundah",
                         "Bashans",
-                        "Ba'unah",
+                        "Ba’unah",
                         "Abib",
                         "Misra",
                         "Nasi",
@@ -535,6 +705,36 @@ nl{
                         }
                     }
                 }
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "begin van de lente",
+                            "regenwater",
+                            "insecten ontwaken",
+                            "lentepunt",
+                            "licht en helder",
+                            "grain rain",
+                            "begin van de zomer",
+                            "grain full",
+                            "grain in ear",
+                            "zomerpunt",
+                            "warm",
+                            "heet",
+                            "begin van de herfst",
+                            "einde van de hitte",
+                            "witte dauw",
+                            "herfstpunt",
+                            "koude dauw",
+                            "eerste vorst",
+                            "begin van de winter",
+                            "lichte sneeuw",
+                            "zware sneeuw",
+                            "winterpunt",
+                            "minor cold",
+                            "major cold",
+                        }
+                    }
+                }
                 years{
                     format{
                         abbreviated{
@@ -622,6 +822,20 @@ nl{
             }
             monthNames{
                 format{
+                    abbreviated{
+                        "mnd 1",
+                        "mnd 2",
+                        "mnd 3",
+                        "mnd 4",
+                        "mnd 5",
+                        "mnd 6",
+                        "mnd 7",
+                        "mnd 8",
+                        "mnd 9",
+                        "mnd 10",
+                        "mnd 11",
+                        "mnd 12",
+                    }
                     narrow{
                         "1",
                         "2",
@@ -636,8 +850,36 @@ nl{
                         "11",
                         "12",
                     }
+                    wide{
+                        "maand 1",
+                        "maand 2",
+                        "maand 3",
+                        "maand 4",
+                        "maand 5",
+                        "maand 6",
+                        "maand 7",
+                        "maand 8",
+                        "maand 9",
+                        "maand 10",
+                        "maand 11",
+                        "maand 12",
+                    }
                 }
                 stand-alone{
+                    abbreviated{
+                        "Mnd 1",
+                        "Mnd 2",
+                        "Mnd 3",
+                        "Mnd 4",
+                        "Mnd 5",
+                        "Mnd 6",
+                        "Mnd 7",
+                        "Mnd 8",
+                        "Mnd 9",
+                        "Mnd 10",
+                        "Mnd 11",
+                        "Mnd 12",
+                    }
                     narrow{
                         "1",
                         "2",
@@ -651,11 +893,148 @@ nl{
                         "10",
                         "11",
                         "12",
+                    }
+                    wide{
+                        "Maand 1",
+                        "Maand 2",
+                        "Maand 3",
+                        "Maand 4",
+                        "Maand 5",
+                        "Maand 6",
+                        "Maand 7",
+                        "Maand 8",
+                        "Maand 9",
+                        "Maand 10",
+                        "Maand 11",
+                        "Maand 12",
+                    }
+                }
+            }
+            monthPatterns{
+                format{
+                    wide{
+                        leap{"{0}bis"}
+                    }
+                }
+                numeric{
+                    all{
+                        leap{"{0}bis"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        leap{"{0}b"}
                     }
                 }
             }
         }
         ethiopic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "dd-MM-yy GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E d MMM y G"}
+                GyMMMd{"d MMM y G"}
+                M{"L"}
+                MEd{"E d-M"}
+                MMM{"LLL"}
+                MMMEd{"E d MMM"}
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"d-M"}
+                d{"d"}
+                y{"y G"}
+                yyyy{"y G"}
+                yyyyM{"M-y GGGGG"}
+                yyyyMEd{"E d-M-y GGGGG"}
+                yyyyMMM{"MMM y G"}
+                yyyyMMMEd{"E d MMM y G"}
+                yyyyMMMM{"MMMM y G"}
+                yyyyMMMd{"d MMM y G"}
+                yyyyMd{"d-M-y GGGGG"}
+                yyyyQQQ{"QQQ y G"}
+                yyyyQQQQ{"QQQQ y G"}
+            }
+            intervalFormats{
+                M{
+                    M{"M-M"}
+                }
+                MEd{
+                    M{"E dd-MM - E dd-MM"}
+                    d{"E dd-MM - E dd-MM"}
+                }
+                MMM{
+                    M{"MMM-MMM"}
+                }
+                MMMEd{
+                    M{"E d MMM - E d MMM"}
+                    d{"E d - E d MMM"}
+                }
+                MMMM{
+                    M{"MMMM–MMMM"}
+                }
+                MMMd{
+                    M{"d MMM - d MMM"}
+                    d{"d-d MMM"}
+                }
+                Md{
+                    M{"dd-MM - dd-MM"}
+                    d{"dd-MM - dd-MM"}
+                }
+                d{
+                    d{"d-d"}
+                }
+                y{
+                    y{"y-y G"}
+                }
+                yM{
+                    M{"MM-y - MM-y G"}
+                    y{"MM-y - MM-y G"}
+                }
+                yMEd{
+                    M{"E dd-MM-y - E dd-MM-y G"}
+                    d{"E dd-MM-y - E dd-MM-y G"}
+                    y{"E dd-MM-y - E dd-MM-y G"}
+                }
+                yMMM{
+                    M{"MMM-MMM y G"}
+                    y{"MMM y - MMM y G"}
+                }
+                yMMMEd{
+                    M{"E d MMM - E d MMM y G"}
+                    d{"E d - E d MMM y G"}
+                    y{"E d MMM y - E d MMM y G"}
+                }
+                yMMMM{
+                    M{"MMMM-MMMM y G"}
+                    y{"MMMM y - MMMM y G"}
+                }
+                yMMMd{
+                    M{"d MMM - d MMM y G"}
+                    d{"d-d MMM y G"}
+                    y{"d MMM y - d MMM y G"}
+                }
+                yMd{
+                    M{"dd-MM-y - dd-MM-y G"}
+                    d{"dd-MM-y - dd-MM-y G"}
+                    y{"dd-MM-y - dd-MM-y G"}
+                }
+            }
             monthNames{
                 format{
                     abbreviated{
@@ -663,7 +1042,7 @@ nl{
                         "Teqemt",
                         "Hedar",
                         "Tahsas",
-                        "T'er",
+                        "T’er",
                         "Yäkatit",
                         "Mägabit",
                         "Miyazya",
@@ -693,7 +1072,7 @@ nl{
                         "Teqemt",
                         "Hedar",
                         "Tahsas",
-                        "T'er",
+                        "T’er",
                         "Yäkatit",
                         "Mägabit",
                         "Miyazya",
@@ -710,7 +1089,7 @@ nl{
                         "Teqemt",
                         "Hedar",
                         "Tahsas",
-                        "T'er",
+                        "T’er",
                         "Yäkatit",
                         "Mägabit",
                         "Miyazya",
@@ -740,7 +1119,7 @@ nl{
                         "Teqemt",
                         "Hedar",
                         "Tahsas",
-                        "T'er",
+                        "T’er",
                         "Yäkatit",
                         "Mägabit",
                         "Miyazya",
@@ -903,12 +1282,12 @@ nl{
         }
         gregorian{
             AmPmMarkers{
-                "AM",
-                "PM",
+                "a.m.",
+                "p.m.",
             }
             AmPmMarkersNarrow{
-                "AM",
-                "PM",
+                "a.m.",
+                "p.m.",
             }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
@@ -925,10 +1304,14 @@ nl{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"12 uur ‘s middags"}
+            NoonMarkerAbbr{"12 uur ‘s middags"}
+            NoonMarkerNarrow{"n"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d"}
@@ -1005,13 +1388,13 @@ nl{
                 }
                 stand-alone{
                     abbreviated{
-                        "zo",
-                        "ma",
-                        "di",
-                        "wo",
-                        "do",
-                        "vr",
-                        "za",
+                        "Zo",
+                        "Ma",
+                        "Di",
+                        "Wo",
+                        "Do",
+                        "Vr",
+                        "Za",
                     }
                     narrow{
                         "Z",
@@ -1032,13 +1415,13 @@ nl{
                         "za",
                     }
                     wide{
-                        "zondag",
-                        "maandag",
-                        "dinsdag",
-                        "woensdag",
-                        "donderdag",
-                        "vrijdag",
-                        "zaterdag",
+                        "Zondag",
+                        "Maandag",
+                        "Dinsdag",
+                        "Woensdag",
+                        "Donderdag",
+                        "Vrijdag",
+                        "Zaterdag",
                     }
                 }
             }
@@ -1047,13 +1430,25 @@ nl{
                     "v.Chr.",
                     "n.Chr.",
                 }
+                abbreviated%variant{
+                    "v.g.j.",
+                    "g.j.",
+                }
                 narrow{
                     "v.C.",
                     "n.C.",
                 }
+                narrow%variant{
+                    "vgj",
+                    "gj",
+                }
                 wide{
-                    "Voor Christus",
+                    "voor Christus",
                     "na Christus",
+                }
+                wide%variant{
+                    "vóór gewone jaartelling",
+                    "gewone jaartelling",
                 }
             }
             intervalFormats{
@@ -1201,18 +1596,18 @@ nl{
                 }
                 stand-alone{
                     abbreviated{
-                        "jan",
-                        "feb",
-                        "mrt",
-                        "apr",
-                        "mei",
-                        "jun",
-                        "jul",
-                        "aug",
-                        "sep",
-                        "okt",
-                        "nov",
-                        "dec",
+                        "Jan.",
+                        "Feb.",
+                        "Mrt.",
+                        "Apr.",
+                        "Mei",
+                        "Jun.",
+                        "Jul.",
+                        "Aug.",
+                        "Sep.",
+                        "Okt.",
+                        "Nov.",
+                        "Dec.",
                     }
                     narrow{
                         "J",
@@ -1229,18 +1624,18 @@ nl{
                         "D",
                     }
                     wide{
-                        "januari",
-                        "februari",
-                        "maart",
-                        "april",
-                        "mei",
-                        "juni",
-                        "juli",
-                        "augustus",
-                        "september",
-                        "oktober",
-                        "november",
-                        "december",
+                        "Januari",
+                        "Februari",
+                        "Maart",
+                        "April",
+                        "Mei",
+                        "Juni",
+                        "Juli",
+                        "Augustus",
+                        "September",
+                        "Oktober",
+                        "November",
+                        "December",
                     }
                 }
             }
@@ -1326,6 +1721,22 @@ nl{
                         "Elloel",
                         "Adar B",
                     }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                        "7",
+                    }
                     wide{
                         "Tisjrie",
                         "Chesjwan",
@@ -1359,6 +1770,22 @@ nl{
                         "Av",
                         "Elloel",
                         "Adar B",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                        "7",
                     }
                     wide{
                         "Tisjrie",
@@ -2061,6 +2488,10 @@ nl{
             1,
             1,
         }
+        relative:intvector{
+            1,
+            1,
+        }
     }
     delimiters{
         alternateQuotationEnd{"’"}
@@ -2085,8 +2516,8 @@ nl{
             }
             relativeTime{
                 future{
-                    one{"Over {0} dag"}
-                    other{"Over {0} dagen"}
+                    one{"over {0} dag"}
+                    other{"over {0} dagen"}
                 }
                 past{
                     one{"{0} dag geleden"}
@@ -2094,8 +2525,34 @@ nl{
                 }
             }
         }
+        day-narrow{
+            dn{"dag"}
+            relativeTime{
+                future{
+                    one{"over {0} dag"}
+                    other{"over {0} dgn"}
+                }
+                past{
+                    one{"{0} dag geleden"}
+                    other{"{0} dgn geleden"}
+                }
+            }
+        }
+        day-short{
+            dn{"dag"}
+            relativeTime{
+                future{
+                    one{"over {0} dag"}
+                    other{"over {0} dgn"}
+                }
+                past{
+                    one{"{0} dag geleden"}
+                    other{"{0} dgn geleden"}
+                }
+            }
+        }
         dayperiod{
-            dn{"AM/PM"}
+            dn{"a.m./p.m."}
         }
         era{
             dn{"Tijdperk"}
@@ -2107,12 +2564,52 @@ nl{
                 "1"{"volgende week vrijdag"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"afgelopen vr"}
+                "0"{"deze vr"}
+                "1"{"volgende week vr"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"afgelopen vrij."}
+                "0"{"deze vrij."}
+                "1"{"volgende week vrij."}
+            }
+        }
         hour{
             dn{"Uur"}
             relativeTime{
                 future{
-                    one{"Over {0} uur"}
-                    other{"Over {0} uur"}
+                    one{"over {0} uur"}
+                    other{"over {0} uur"}
+                }
+                past{
+                    one{"{0} uur geleden"}
+                    other{"{0} uur geleden"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"u"}
+            relativeTime{
+                future{
+                    one{"over {0} uur"}
+                    other{"over {0} uur"}
+                }
+                past{
+                    one{"{0} uur geleden"}
+                    other{"{0} uur geleden"}
+                }
+            }
+        }
+        hour-short{
+            dn{"uur"}
+            relativeTime{
+                future{
+                    one{"over {0} uur"}
+                    other{"over {0} uur"}
                 }
                 past{
                     one{"{0} uur geleden"}
@@ -2124,12 +2621,38 @@ nl{
             dn{"Minuut"}
             relativeTime{
                 future{
-                    one{"Over {0} minuut"}
-                    other{"Over {0} minuten"}
+                    one{"over {0} minuut"}
+                    other{"over {0} minuten"}
                 }
                 past{
                     one{"{0} minuut geleden"}
                     other{"{0} minuten geleden"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"m"}
+            relativeTime{
+                future{
+                    one{"over {0} min."}
+                    other{"over {0} min."}
+                }
+                past{
+                    one{"{0} min. geleden"}
+                    other{"{0} min. geleden"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    one{"over {0} min."}
+                    other{"over {0} min."}
+                }
+                past{
+                    one{"{0} min. geleden"}
+                    other{"{0} min. geleden"}
                 }
             }
         }
@@ -2138,6 +2661,20 @@ nl{
                 "-1"{"afgelopen maandag"}
                 "0"{"deze maandag"}
                 "1"{"volgende week maandag"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"afgelopen ma"}
+                "0"{"deze ma"}
+                "1"{"volgende week ma"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"afgelopen maan."}
+                "0"{"deze maan."}
+                "1"{"volgende week maan."}
             }
         }
         month{
@@ -2149,12 +2686,77 @@ nl{
             }
             relativeTime{
                 future{
-                    one{"Over {0} maand"}
-                    other{"Over {0} maanden"}
+                    one{"over {0} maand"}
+                    other{"over {0} maanden"}
                 }
                 past{
                     one{"{0} maand geleden"}
                     other{"{0} maanden geleden"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"mnd"}
+            relativeTime{
+                future{
+                    one{"over {0} maand"}
+                    other{"over {0} maanden"}
+                }
+                past{
+                    one{"{0} maand geleden"}
+                    other{"{0} maanden geleden"}
+                }
+            }
+        }
+        month-short{
+            dn{"mnd"}
+            relativeTime{
+                future{
+                    one{"over {0} maand"}
+                    other{"over {0} maanden"}
+                }
+                past{
+                    one{"{0} maand geleden"}
+                    other{"{0} maanden geleden"}
+                }
+            }
+        }
+        quarter{
+            dn{"Kwartaal"}
+            relativeTime{
+                future{
+                    one{"over {0} kwartaal"}
+                    other{"over {0} kwartalen"}
+                }
+                past{
+                    one{"{0} kwartaal geleden"}
+                    other{"{0} kwartalen geleden"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"kwartaal"}
+            relativeTime{
+                future{
+                    one{"over {0} kwartaal"}
+                    other{"over {0} kwartalen"}
+                }
+                past{
+                    one{"{0} kwartaal geleden"}
+                    other{"{0} kwartalen geleden"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"kwartaal"}
+            relativeTime{
+                future{
+                    one{"over {0} kwartaal"}
+                    other{"over {0} kwartalen"}
+                }
+                past{
+                    one{"{0} kwartaal geleden"}
+                    other{"{0} kwartalen geleden"}
                 }
             }
         }
@@ -2165,6 +2767,20 @@ nl{
                 "1"{"volgende week zaterdag"}
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"afgelopen za"}
+                "0"{"deze za"}
+                "1"{"volgende week za"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"afgelopen zater."}
+                "0"{"deze zater."}
+                "1"{"volgende week zater."}
+            }
+        }
         second{
             dn{"Seconde"}
             relative{
@@ -2172,12 +2788,38 @@ nl{
             }
             relativeTime{
                 future{
-                    one{"Over {0} seconde"}
-                    other{"Over {0} seconden"}
+                    one{"over {0} seconde"}
+                    other{"over {0} seconden"}
                 }
                 past{
                     one{"{0} seconde geleden"}
                     other{"{0} seconden geleden"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"over {0} sec."}
+                    other{"over {0} sec."}
+                }
+                past{
+                    one{"{0} sec. geleden"}
+                    other{"{0} sec. geleden"}
+                }
+            }
+        }
+        second-short{
+            dn{"sec."}
+            relativeTime{
+                future{
+                    one{"over {0} sec."}
+                    other{"over {0} sec."}
+                }
+                past{
+                    one{"{0} sec. geleden"}
+                    other{"{0} sec. geleden"}
                 }
             }
         }
@@ -2188,11 +2830,39 @@ nl{
                 "1"{"volgende week zondag"}
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"afgelopen zo"}
+                "0"{"deze zo"}
+                "1"{"volgende week zo"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"afgelopen zon."}
+                "0"{"deze zon."}
+                "1"{"volgende week zon."}
+            }
+        }
         thu{
             relative{
                 "-1"{"afgelopen donderdag"}
                 "0"{"deze donderdag"}
                 "1"{"volgende week donderdag"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"afgelopen do"}
+                "0"{"deze do"}
+                "1"{"volgende week do"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"afgelopen donder."}
+                "0"{"deze donder."}
+                "1"{"volgende week donder."}
             }
         }
         tue{
@@ -2202,11 +2872,39 @@ nl{
                 "1"{"volgende week dinsdag"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"afgelopen di"}
+                "0"{"deze di"}
+                "1"{"volgende week di"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"afgelopen dins."}
+                "0"{"deze dins."}
+                "1"{"volgende week dins."}
+            }
+        }
         wed{
             relative{
                 "-1"{"afgelopen woensdag"}
                 "0"{"deze woensdag"}
                 "1"{"volgende week woensdag"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"afgelopen wo"}
+                "0"{"deze wo"}
+                "1"{"volgende week wo"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"afgelopen woens."}
+                "0"{"deze woens."}
+                "1"{"volgende week woens."}
             }
         }
         week{
@@ -2218,8 +2916,34 @@ nl{
             }
             relativeTime{
                 future{
-                    one{"Over {0} week"}
-                    other{"Over {0} weken"}
+                    one{"over {0} week"}
+                    other{"over {0} weken"}
+                }
+                past{
+                    one{"{0} week geleden"}
+                    other{"{0} weken geleden"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"wk"}
+            relativeTime{
+                future{
+                    one{"over {0} week"}
+                    other{"over {0} weken"}
+                }
+                past{
+                    one{"{0} week geleden"}
+                    other{"{0} weken geleden"}
+                }
+            }
+        }
+        week-short{
+            dn{"wk"}
+            relativeTime{
+                future{
+                    one{"over {0} week"}
+                    other{"over {0} weken"}
                 }
                 past{
                     one{"{0} week geleden"}
@@ -2239,8 +2963,34 @@ nl{
             }
             relativeTime{
                 future{
-                    one{"Over {0} jaar"}
-                    other{"Over {0} jaar"}
+                    one{"over {0} jaar"}
+                    other{"over {0} jaar"}
+                }
+                past{
+                    one{"{0} jaar geleden"}
+                    other{"{0} jaar geleden"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"jr."}
+            relativeTime{
+                future{
+                    one{"over {0} jaar"}
+                    other{"over {0} jaar"}
+                }
+                past{
+                    one{"{0} jaar geleden"}
+                    other{"{0} jaar geleden"}
+                }
+            }
+        }
+        year-short{
+            dn{"jr."}
+            relativeTime{
+                future{
+                    one{"over {0} jaar"}
+                    other{"over {0} jaar"}
                 }
                 past{
                     one{"{0} jaar geleden"}
@@ -2281,7 +3031,7 @@ nl{
     measurementSystemNames{
         UK{"Brits"}
         US{"Amerikaans"}
-        metric{"Metriek"}
+        metric{"metriek"}
     }
     transformNames{
         BGN{"BGN"}
@@ -2294,122 +3044,5 @@ nl{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Publicatie"}
-    }
-    units{
-        compound{
-            per{"{0} per {1}"}
-        }
-        duration{
-            day{
-                one{"{0} dag"}
-                other{"{0} dagen"}
-            }
-            hour{
-                one{"{0} uur"}
-                other{"{0} uur"}
-            }
-            millisecond{
-                one{"{0} milliseconde"}
-                other{"{0} milliseconden"}
-            }
-            minute{
-                one{"{0} minuut"}
-                other{"{0} minuten"}
-            }
-            month{
-                one{"{0} maand"}
-                other{"{0} maanden"}
-            }
-            second{
-                one{"{0} seconde"}
-                other{"{0} seconden"}
-            }
-            week{
-                one{"{0} week"}
-                other{"{0} weken"}
-            }
-            year{
-                one{"{0} jaar"}
-                other{"{0} jaar"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} d"}
-                other{"{0} d"}
-            }
-            hour{
-                one{"{0} u"}
-                other{"{0} u"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} m"}
-                other{"{0} m"}
-            }
-            month{
-                one{"{0} m"}
-                other{"{0} m"}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} w"}
-                other{"{0} w"}
-            }
-            year{
-                one{"{0} jr"}
-                other{"{0} jr"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} dag"}
-                other{"{0} dagen"}
-            }
-            hour{
-                one{"{0} uur"}
-                other{"{0} uur"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} mnd"}
-                other{"{0} mnd"}
-            }
-            second{
-                one{"{0} sec."}
-                other{"{0} sec."}
-            }
-            week{
-                one{"{0} wk"}
-                other{"{0} wkn"}
-            }
-            year{
-                one{"{0} jr"}
-                other{"{0} jr"}
-            }
-        }
     }
 }

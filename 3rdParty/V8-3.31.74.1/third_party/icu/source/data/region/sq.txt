@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sq.xml
@@ -27,9 +27,9 @@ sq{
         AT{"Austri"}
         AU{"Australi"}
         AW{"Arubë"}
-        AX{"Ishujt Aland"}
+        AX{"Ishujt Alandë"}
         AZ{"Azerbajxhan"}
-        BA{"Bosnjë e Hercegovinë"}
+        BA{"Bosnjë-Hercegovinë"}
         BB{"Barbados"}
         BD{"Bangladesh"}
         BE{"Belgjikë"}
@@ -42,14 +42,14 @@ sq{
         BM{"Bermudë"}
         BN{"Brunej"}
         BO{"Bolivi"}
-        BQ{"Karaibet Holandeze"}
+        BQ{"Karaibet holandeze"}
         BR{"Brazil"}
         BS{"Bahamas"}
         BT{"Butan"}
         BV{"Ishujt Bove"}
         BW{"Botsvanë"}
         BY{"Bjellorusi"}
-        BZ{"Beliz"}
+        BZ{"Belizë"}
         CA{"Kanada"}
         CC{"Ishujt Kokos"}
         CD{"Kongo-Kinshasa"}
@@ -57,13 +57,13 @@ sq{
         CG{"Kongo-Brazavilë"}
         CH{"Zvicër"}
         CI{"Bregu i Fildishtë"}
-        CK{"Ishujt Kuk"}
+        CK{"Ishujt Kukë"}
         CL{"Kili"}
         CM{"Kamerun"}
         CN{"Kinë"}
         CO{"Kolumbi"}
         CP{"Ishulli Klipërton"}
-        CR{"Kosta Rika"}
+        CR{"Kosta Rikë"}
         CU{"Kubë"}
         CV{"Kepi i Gjelbër"}
         CW{"Kuraçao"}
@@ -88,7 +88,7 @@ sq{
         EU{"Bashkimi Europian"}
         FI{"Finlandë"}
         FJ{"Fixhi"}
-        FK{"Ishujt Folkland"}
+        FK{"Ishujt Folklandë"}
         FM{"Mikronezi"}
         FO{"Ishujt Faroe"}
         FR{"Francë"}
@@ -111,7 +111,7 @@ sq{
         GU{"Guam"}
         GW{"Guine-Bisau"}
         GY{"Guajanë"}
-        HK{"RVAK i Hong Kongut"}
+        HK{"Hong Kong"}
         HM{"Ishulli Hërd dhe Ishujt Mekdonald"}
         HN{"Honduras"}
         HR{"Kroaci"}
@@ -141,7 +141,7 @@ sq{
         KP{"Koreja e Veriut"}
         KR{"Koreja e Jugut"}
         KW{"Kuvajt"}
-        KY{"Ishujt Kajman"}
+        KY{"Ishujt Kajmanë"}
         KZ{"Kazakistan"}
         LA{"Laos"}
         LB{"Liban"}
@@ -160,16 +160,16 @@ sq{
         ME{"Mali i Zi"}
         MF{"Shën Martin"}
         MG{"Madagaskar"}
-        MH{"Ishujt Marshall"}
+        MH{"Ishujt Marshallë"}
         MK{"Maqedoni"}
         ML{"Mali"}
         MM{"Mianmar (Burma)"}
         MN{"Mongoli"}
-        MO{"RVAK i Makaos"}
+        MO{"Makao"}
         MP{"Ishujt e Marianës Veriore"}
-        MQ{"Ishulli i Martinikut"}
+        MQ{"Martinik"}
         MR{"Mauritani"}
-        MS{"Ishulli i Montseratit"}
+        MS{"Montserat"}
         MT{"Maltë"}
         MU{"Mauritius"}
         MV{"Maldive"}
@@ -180,7 +180,7 @@ sq{
         NA{"Namibi"}
         NC{"Kaledonia e Re"}
         NE{"Niger"}
-        NF{"Ishujt Norfolk"}
+        NF{"Ishujt Norfolkë"}
         NG{"Nigeri"}
         NI{"Nikaragua"}
         NL{"Holandë"}
@@ -198,9 +198,9 @@ sq{
         PK{"Pakistan"}
         PL{"Poloni"}
         PM{"Shën Peir dhe Mikuelon"}
-        PN{"Ishujt Pitkern"}
+        PN{"Ishujt Pitkernë"}
         PR{"Porto Riko"}
-        PS{"Territoret palestineze"}
+        PS{"Palestinë"}
         PT{"Portugali"}
         PW{"Palau"}
         PY{"Paraguai"}
@@ -211,8 +211,8 @@ sq{
         RS{"Serbi"}
         RU{"Rusi"}
         RW{"Ruandë"}
-        SA{"Arabi Saudite"}
-        SB{"Ishujt Solomon"}
+        SA{"Arabia Saudite"}
+        SB{"Ishujt Solomonë"}
         SC{"Sishel"}
         SD{"Sudan"}
         SE{"Suedi"}
@@ -270,14 +270,17 @@ sq{
         ZA{"Afrika e Jugut"}
         ZM{"Zambi"}
         ZW{"Zimbabve"}
-        ZZ{"Rajon i panjohur"}
+        ZZ{"I panjohur"}
+    }
+    Countries%variant{
+        CD{"Kongo (RDK)"}
+        CG{"Kongo (Republika)"}
+        FK{"Ishujt Folklandë (Ishujt Malvine)"}
+        MK{"Maqedoni (IRJM)"}
     }
     CountriesShort{
         GB{"Mbretëria e Bashkuar"}
-        HK{"Hong Kong"}
-        MO{"Makao"}
-        PS{"Palestinë"}
         US{"SHBA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

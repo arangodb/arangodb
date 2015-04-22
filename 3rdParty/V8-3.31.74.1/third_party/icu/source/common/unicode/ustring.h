@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1998-2012, International Business Machines
+*   Copyright (C) 1998-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -1311,7 +1311,6 @@ u_strFromUTF8(UChar *dest,
 
 /**
  * Convert a UTF-16 string to UTF-8.
- * If the input string is not well-formed, then the U_INVALID_CHAR_FOUND error code is set.
  *
  * Same as u_strToUTF8() except for the additional subchar which is output for
  * illegal input sequences, instead of stopping with the U_INVALID_CHAR_FOUND error code.
@@ -1356,7 +1355,6 @@ u_strToUTF8WithSub(char *dest,
 
 /**
  * Convert a UTF-8 string to UTF-16.
- * If the input string is not well-formed, then the U_INVALID_CHAR_FOUND error code is set.
  *
  * Same as u_strFromUTF8() except for the additional subchar which is output for
  * illegal input sequences, instead of stopping with the U_INVALID_CHAR_FOUND error code.
@@ -1521,7 +1519,6 @@ u_strFromUTF32(UChar   *dest,
 
 /**
  * Convert a UTF-16 string to UTF-32.
- * If the input string is not well-formed, then the U_INVALID_CHAR_FOUND error code is set.
  *
  * Same as u_strToUTF32() except for the additional subchar which is output for
  * illegal input sequences, instead of stopping with the U_INVALID_CHAR_FOUND error code.
@@ -1566,7 +1563,6 @@ u_strToUTF32WithSub(UChar32 *dest,
 
 /**
  * Convert a UTF-32 string to UTF-16.
- * If the input string is not well-formed, then the U_INVALID_CHAR_FOUND error code is set.
  *
  * Same as u_strFromUTF32() except for the additional subchar which is output for
  * illegal input sequences, instead of stopping with the U_INVALID_CHAR_FOUND error code.
@@ -1652,7 +1648,8 @@ u_strToJavaModifiedUTF8(
 
 /**
  * Convert a Java Modified UTF-8 string to a 16-bit Unicode string.
- * If the input string is not well-formed, then the U_INVALID_CHAR_FOUND error code is set.
+ * If the input string is not well-formed and no substitution char is specified, 
+ * then the U_INVALID_CHAR_FOUND error code is set.
  *
  * This function behaves according to the documentation for Java DataInput.readUTF()
  * except that it takes a length parameter rather than

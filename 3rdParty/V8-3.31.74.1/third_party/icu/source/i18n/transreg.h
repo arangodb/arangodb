@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (c) 2001-2008, International Business Machines
+*   Copyright (c) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -455,6 +455,8 @@ class TransliteratorRegistry : public UMemory {
 };
 
 U_NAMESPACE_END
+
+U_CFUNC UBool utrans_transliterator_cleanup(void);
 
 #endif /* #if !UCONFIG_NO_TRANSLITERATION */
 

@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2007-2013 International Business Machines
+﻿// Copyright (c) 2007-2014 International Business Machines
 // Corporation and others. All Rights Reserved.
 format:table(nofallback) {
     Info {
@@ -162,7 +162,7 @@ format:table(nofallback) {
                     "GMT",
                     "DATE=RELATIVE_LONG,TIME=MEDIUM",
                     "RELATIVE_ADD:DATE=-1,HOUR_OF_DAY=17,MINUTE=0,SECOND=0", // one day before now at specified time
-                    "17:00:00 Hôm qua"
+                    "17:00:00 hôm qua"
                },
                // el combines formats using hyphen
                {
@@ -552,7 +552,7 @@ format:table(nofallback) {
                     "",
                     "DATE=FULL,TIME=FULL",
                     "MILLIS=3076424179200000",
-                    "Friday, Heshvan 3, 103217 AM at 12:00:00 AM GMT-08:00"
+                    "Friday, 3 Heshvan 103217 at 12:00:00 AM GMT-08:00"
                },
             }    
         }

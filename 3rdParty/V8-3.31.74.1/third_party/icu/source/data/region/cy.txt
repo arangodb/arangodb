@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/cy.xml
@@ -112,7 +112,7 @@ cy{
         GU{"Guam"}
         GW{"Guiné-Bissau"}
         GY{"Guyana"}
-        HK{"Hong Kong RhGA Tsieina"}
+        HK{"Hong Kong"}
         HM{"Ynys Heard ac Ynysoedd McDonald"}
         HN{"Honduras"}
         HR{"Croatia"}
@@ -166,7 +166,7 @@ cy{
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
-        MO{"Macau RhGA Tsieina"}
+        MO{"Macau"}
         MP{"Ynysoedd Gogledd Mariana"}
         MQ{"Martinique"}
         MR{"Mauritania"}
@@ -201,7 +201,7 @@ cy{
         PM{"Saint-Pierre-et-Miquelon"}
         PN{"Ynysoedd Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Tiriogaethau Palesteinaidd"}
+        PS{"Palesteina"}
         PT{"Portiwgal"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -273,12 +273,16 @@ cy{
         ZW{"Zimbabwe"}
         ZZ{"Rhanbarth Anhysbys"}
     }
+    Countries%variant{
+        CD{"y Congo (G.Dd.C.)"}
+        CG{"Y Congo (Gweriniaeth)"}
+        FK{"Ynysoedd y Falkland (Ynysoedd y Malfinas)"}
+        MK{"Macedonia (CWIM)"}
+        TL{"Dwyrain Timor"}
+    }
     CountriesShort{
         GB{"DU"}
-        HK{"Hong Kong"}
-        MO{"Macau"}
-        PS{"Palesteina"}
         US{"UDA"}
     }
-    Version{"2.0.93.7"}
+    Version{"2.1.7.80"}
 }

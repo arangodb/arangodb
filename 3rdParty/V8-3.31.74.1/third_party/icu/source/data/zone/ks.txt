@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ks.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/ks.xml
  */
 ks{
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"عابِدجان"}
@@ -426,9 +426,6 @@ ks{
         "America:Montevideo"{
             ec{"مونٹیٚوِڈیو"}
         }
-        "America:Montreal"{
-            ec{"مونٛٹرِیَل"}
-        }
         "America:Montserrat"{
             ec{"مونژیرات"}
         }
@@ -507,9 +504,6 @@ ks{
         "America:Scoresbysund"{
             ec{"سکورٕسباےسَنٛڑ"}
         }
-        "America:Shiprock"{
-            ec{"شِپراک"}
-        }
         "America:St_Johns"{
             ec{"سٮ۪نٛٹ جونس"}
         }
@@ -578,9 +572,6 @@ ks{
         }
         "Antarctica:Rothera"{
             ec{"روتھیرا"}
-        }
-        "Antarctica:South_Pole"{
-            ec{"جنوٗبی پول"}
         }
         "Antarctica:Syowa"{
             ec{"سیٚووا"}

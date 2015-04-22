@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/naq.xml
@@ -27,10 +27,6 @@ naq{
             "BHD",
             "Bahrain Dinar",
         }
-        BIF{
-            "BIF",
-            "Burundi Franc",
-        }
         BWP{
             "BWP",
             "Botswanan Pulab",
@@ -51,14 +47,6 @@ naq{
             "CN¥",
             "Chinese Yuan Renminbi",
         }
-        CVE{
-            "CVE",
-            "Escudo Caboverdiano",
-        }
-        DJF{
-            "DJF",
-            "Djibouti Franc",
-        }
         DZD{
             "DZD",
             "Algerian Dinar",
@@ -66,10 +54,6 @@ naq{
         EGP{
             "EGP",
             "Egytian Ponds",
-        }
-        ERN{
-            "ERN",
-            "Eritreian Nakfa",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ naq{
             "£",
             "British Ponds",
         }
-        GMD{
-            "GMD",
-            "Gambia Dalasi",
-        }
-        GNS{
-            "GNS",
-            "Guinea Franc",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Indian Rupee",
         }
         JPY{
@@ -102,18 +78,6 @@ naq{
         KES{
             "KES",
             "Kenyan Shilling",
-        }
-        KMF{
-            "KMF",
-            "Comorian Franc",
-        }
-        LRD{
-            "LRD",
-            "Liberian Dollar",
-        }
-        LSL{
-            "LSL",
-            "Lesotho Loti",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ naq{
             "SAR",
             "Saudi Riyal",
         }
-        SCR{
-            "SCR",
-            "Seychelles Rupee",
-        }
         SDG{
             "SDG",
             "Sudanese Dinar",
         }
-        SHP{
-            "SHP",
-            "St Helena Ponds",
-        }
         SLL{
             "SLL",
             "Leone",
-        }
-        SOS{
-            "SOS",
-            "Somali Shillings",
-        }
-        STD{
-            "STD",
-            "Sao Tome and Principe Dobra",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ naq{
             "Zambian Kwachab",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

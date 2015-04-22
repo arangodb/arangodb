@@ -104,7 +104,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icuuc52.dll</OutputFile>
+      <OutputFile>..\..\bin\icuuc54.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib\icuuc.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -145,7 +145,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin\icuuc52d.dll</OutputFile>
+      <OutputFile>..\..\bin\icuuc54d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib\icuucd.pdb</ProgramDatabaseFile>
@@ -183,7 +183,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icuuc52.dll</OutputFile>
+      <OutputFile>..\..\bin64\icuuc54.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <ProgramDatabaseFile>.\..\..\lib64\icuuc.pdb</ProgramDatabaseFile>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
@@ -222,7 +222,7 @@
       <Culture>0x0409</Culture>
     </ResourceCompile>
     <Link>
-      <OutputFile>..\..\bin64\icuuc52d.dll</OutputFile>
+      <OutputFile>..\..\bin64\icuuc54d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>.\..\..\lib64\icuucd.pdb</ProgramDatabaseFile>
@@ -236,6 +236,7 @@
     <ClCompile Include="ubidi_props.c" />
     <ClCompile Include="ubidiln.c" />
     <ClCompile Include="ubidiwrt.c" />
+    <ClCompile Include="uloc_keytype.cpp" />
     <ClCompile Include="ushape.cpp" />
     <ClCompile Include="brkeng.cpp">
     </ClCompile>
@@ -328,16 +329,13 @@
     <ClCompile Include="ucnvhz.c" />
     <ClCompile Include="ucnvisci.c" />
     <ClCompile Include="ucnvlat1.c" />
-    <ClCompile Include="ucnvmbcs.c" />
+    <ClCompile Include="ucnvmbcs.cpp" />
     <ClCompile Include="ucnvscsu.c" />
     <ClCompile Include="ucnvsel.cpp">
     </ClCompile>
     <ClCompile Include="cmemory.c" />
-    <ClCompile Include="ucln_cmn.c">
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</DisableLanguageExtensions>
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</DisableLanguageExtensions>
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</DisableLanguageExtensions>
-      <DisableLanguageExtensions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</DisableLanguageExtensions>
+    <ClCompile Include="ucln_cmn.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
     </ClCompile>
     <ClCompile Include="ucmndata.c" />
     <ClCompile Include="udata.cpp" />
@@ -383,14 +381,12 @@
     <ClCompile Include="caniter.cpp">
     </ClCompile>
     <ClCompile Include="filterednormalizer2.cpp" />
-    <ClCompile Include="normalizer2.cpp">
-    </ClCompile>
-    <ClCompile Include="normalizer2impl.cpp">
-    </ClCompile>
+    <ClCompile Include="loadednormalizer2impl.cpp" />
+    <ClCompile Include="normalizer2.cpp" />
+    <ClCompile Include="normalizer2impl.cpp" />
     <ClCompile Include="normlzr.cpp">
     </ClCompile>
     <ClCompile Include="unorm.cpp" />
-    <ClCompile Include="unorm_it.c" />
     <ClCompile Include="unormcmp.cpp" />
     <ClCompile Include="bmpset.cpp" />
     <ClCompile Include="patternprops.cpp" />
@@ -401,6 +397,9 @@
     </ClCompile>
     <ClCompile Include="uchar.c" />
     <ClCompile Include="unames.cpp" />
+    <ClCompile Include="unifiedcache.cpp">
+    <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="unifilt.cpp" />
     <ClCompile Include="unifunct.cpp" />
     <ClCompile Include="uniset.cpp" />
@@ -414,7 +413,7 @@
     <ClCompile Include="uset.cpp" />
     <ClCompile Include="uset_props.cpp" />
     <ClCompile Include="usetiter.cpp" />
-    <ClCompile Include="icuplug.c" />
+    <ClCompile Include="icuplug.cpp" />
     <ClCompile Include="serv.cpp">
     </ClCompile>
     <ClCompile Include="servlk.cpp">
@@ -443,6 +442,7 @@
     <ClCompile Include="schriter.cpp" />
     <ClCompile Include="stringpiece.cpp" />
     <ClCompile Include="stringtriebuilder.cpp" />
+    <ClCompile Include="simplepatternformatter.cpp" />
     <ClCompile Include="ucasemap.cpp" />
     <ClCompile Include="ucasemap_titlecase_brkiter.cpp" />
     <ClCompile Include="ucharstrie.cpp" />
@@ -457,7 +457,7 @@
     <ClCompile Include="unistr_cnv.cpp" />
     <ClCompile Include="unistr_props.cpp" />
     <ClCompile Include="unistr_titlecase_brkiter.cpp" />
-    <ClCompile Include="ustr_cnv.c" />
+    <ClCompile Include="ustr_cnv.cpp" />
     <ClCompile Include="ustr_titlecase_brkiter.cpp" />
     <ClCompile Include="ustr_wcs.cpp" />
     <ClCompile Include="ustrcase.cpp" />
@@ -1080,6 +1080,9 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="sharedobject.h" />
+    <ClCompile Include="sharedobject.cpp" />
+    <ClInclude Include="simplepatternformatter.h" />
     <CustomBuild Include="unicode\ucat.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -1123,6 +1126,7 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="unifiedcache.h" />
     <ClInclude Include="uresdata.h" />
     <ClInclude Include="uresimp.h" />
     <ClInclude Include="ureslocs.h" />
@@ -1140,6 +1144,7 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
+    <ClInclude Include="norm2allmodes.h" />
     <CustomBuild Include="unicode\normalizer2.h">
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">copy "%(FullPath)" ..\..\include\unicode
 </Command>
@@ -1197,7 +1202,6 @@
 </Command>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">..\..\include\unicode\%(Filename)%(Extension);%(Outputs)</Outputs>
     </CustomBuild>
-    <ClInclude Include="unorm_it.h" />
     <ClInclude Include="unormimp.h" />
     <ClInclude Include="bmpset.h" />
     <ClInclude Include="messageimpl.h" />

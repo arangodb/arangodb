@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/tzm.xml
@@ -27,10 +27,6 @@ tzm{
             "BHD",
             "Ḍinar Ubaḥrayni",
         }
-        BIF{
-            "BIF",
-            "Frank Uburundi",
-        }
         BWP{
             "BWP",
             "Pula Ubutswani",
@@ -51,14 +47,6 @@ tzm{
             "CN¥",
             "Ywan Renminbi Ucinwi",
         }
-        CVE{
-            "CVE",
-            "Iskudu Ukabuvirdyani",
-        }
-        DJF{
-            "DJF",
-            "Frank Uğibuti",
-        }
         DZD{
             "DZD",
             "Ḍinar Udzayri",
@@ -66,10 +54,6 @@ tzm{
         EGP{
             "EGP",
             "Junih Umiṣṛi",
-        }
-        ERN{
-            "ERN",
-            "Nakfa Uyritri",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ tzm{
             "£",
             "Junih Usterlini Ubriṭani",
         }
-        GMD{
-            "GMD",
-            "Dalasi Agambi",
-        }
-        GNS{
-            "GNS",
-            "Frank Uɣini",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rupi Uḥindi",
         }
         JPY{
@@ -102,18 +78,6 @@ tzm{
         KES{
             "KES",
             "Cillin Ukini",
-        }
-        KMF{
-            "KMF",
-            "Frank Uqumuri",
-        }
-        LRD{
-            "LRD",
-            "Ḍular Ulibiri",
-        }
-        LSL{
-            "LSL",
-            "Luti Ulusuṭi",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ tzm{
             "SAR",
             "Ryal Usaεudi",
         }
-        SCR{
-            "SCR",
-            "Rupi Usicili",
-        }
         SDG{
             "SDG",
             "Junih Usudani",
         }
-        SHP{
-            "SHP",
-            "Junih Usantehilini",
-        }
         SLL{
             "SLL",
             "Lyun Usirralyuni",
-        }
-        SOS{
-            "SOS",
-            "Cilin Uṣumali",
-        }
-        STD{
-            "STD",
-            "Dubra Usawṭumi",
-        }
-        SZL{
-            "SZL",
-            "Lilanjini Uswazi",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ tzm{
             "Kwača Uzambi",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

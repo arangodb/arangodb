@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  *
@@ -786,16 +786,12 @@ MessageFormat::setFormat(const UnicodeString& formatName,
         (partIndex = nextTopLevelArgStart(partIndex)) >= 0 && U_SUCCESS(status);
     ) {
         if (argNameMatches(partIndex + 1, formatName, argNumber)) {
-            if (&newFormat == NULL) {
-                setCustomArgStartFormat(partIndex, NULL, status);
-            } else {
-                Format* new_format = newFormat.clone();
-                if (new_format == NULL) {
-                    status = U_MEMORY_ALLOCATION_ERROR;
-                    return;
-                }
-                setCustomArgStartFormat(partIndex, new_format, status);
+            Format* new_format = newFormat.clone();
+            if (new_format == NULL) {
+                status = U_MEMORY_ALLOCATION_ERROR;
+                return;
             }
+            setCustomArgStartFormat(partIndex, new_format, status);
         }
     }
 }

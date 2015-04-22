@@ -1,10 +1,12 @@
 /*
  *
- * (C) Copyright IBM Corp. 1998-2008 - All Rights Reserved
+ * (C) Copyright IBM Corp. 1998-2014 - All Rights Reserved
  *
  */
 
-#include "LETypes.h"
+#ifndef USING_ICULEHB /* C API not available under HB */
+
+#include "layout/LETypes.h"
 #include "loengine.h"
 #include "PortableFontInstance.h"
 #include "SimpleFontInstance.h"
@@ -67,3 +69,4 @@ le_uint32 le_getFontChecksum(le_font *font)
 }
 
 U_CDECL_END
+#endif

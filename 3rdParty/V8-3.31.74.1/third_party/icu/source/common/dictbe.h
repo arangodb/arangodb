@@ -1,6 +1,6 @@
 /**
  *******************************************************************************
- * Copyright (C) 2006,2012-2013, International Business Machines Corporation   *
+ * Copyright (C) 2006-2014, International Business Machines Corporation   *
  * and others. All Rights Reserved.                                            *
  *******************************************************************************
  */
@@ -17,6 +17,7 @@
 U_NAMESPACE_BEGIN
 
 class DictionaryMatcher;
+class Normalizer2;
 
 /*******************************************************************
  * DictionaryBreakEngine
@@ -243,6 +244,62 @@ class LaoBreakEngine : public DictionaryBreakEngine {
 };
 
 /******************************************************************* 
+ * BurmeseBreakEngine 
+ */ 
+ 
+/** 
+ * <p>BurmeseBreakEngine is a kind of DictionaryBreakEngine that uses a 
+ * DictionaryMatcher and heuristics to determine Burmese-specific breaks.</p> 
+ * 
+ * <p>After it is constructed a BurmeseBreakEngine may be shared between 
+ * threads without synchronization.</p> 
+ */ 
+class BurmeseBreakEngine : public DictionaryBreakEngine { 
+ private: 
+    /** 
+     * The set of characters handled by this engine 
+     * @internal 
+     */ 
+ 
+  UnicodeSet                fBurmeseWordSet; 
+  UnicodeSet                fEndWordSet; 
+  UnicodeSet                fBeginWordSet; 
+  UnicodeSet                fMarkSet; 
+  DictionaryMatcher  *fDictionary; 
+ 
+ public: 
+ 
+  /** 
+   * <p>Default constructor.</p> 
+   * 
+   * @param adoptDictionary A DictionaryMatcher to adopt. Deleted when the 
+   * engine is deleted. 
+   */ 
+  BurmeseBreakEngine(DictionaryMatcher *adoptDictionary, UErrorCode &status); 
+ 
+  /** 
+   * <p>Virtual destructor.</p> 
+   */ 
+  virtual ~BurmeseBreakEngine(); 
+ 
+ protected: 
+ /** 
+  * <p>Divide up a range of known dictionary characters.</p> 
+  * 
+  * @param text A UText representing the text 
+  * @param rangeStart The start of the range of dictionary characters 
+  * @param rangeEnd The end of the range of dictionary characters 
+  * @param foundBreaks Output of C array of int32_t break positions, or 0 
+  * @return The number of breaks found 
+  */ 
+  virtual int32_t divideUpDictionaryRange( UText *text, 
+                                           int32_t rangeStart, 
+                                           int32_t rangeEnd, 
+                                           UStack &foundBreaks ) const; 
+ 
+}; 
+ 
+/******************************************************************* 
  * KhmerBreakEngine 
  */ 
  
@@ -326,7 +383,8 @@ class CjkBreakEngine : public DictionaryBreakEngine {
   UnicodeSet                fKatakanaWordSet;
   UnicodeSet                fHiraganaWordSet;
 
-  DictionaryMatcher  *fDictionary;
+  DictionaryMatcher        *fDictionary;
+  const Normalizer2        *nfkcNorm2;
 
  public:
 

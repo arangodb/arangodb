@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/en_HK.xml
@@ -8,7 +8,7 @@
 // ***************************************************************************
 en_HK{
     %%Parent{"en_GB"}
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
     calendar{
         generic{
             DateTimePatterns{
@@ -75,21 +75,19 @@ en_HK{
                 "h:mm:ss a z",
                 "h:mm:ss a",
                 "h:mm a",
-                "EEEE, d MMMM, y",
-                "d MMMM, y",
-                "d MMM, y",
-                "d/M/yy",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "d/M/y",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
             }
             availableFormats{
                 MMMEd{"E, d MMM"}
                 MMMMEd{"E, d MMMM"}
-                yMMMEd{"E, d MMM, y"}
-                yMMMd{"d MMM, y"}
                 yMd{"d/M/y"}
             }
             intervalFormats{
@@ -109,16 +107,6 @@ en_HK{
                     M{"E, d/M/y – E, d/M/y"}
                     d{"E, d/M/y – E, d/M/y"}
                     y{"E, d/M/y – E, d/M/y"}
-                }
-                yMMMEd{
-                    M{"E, d MMM – E, d MMM, y"}
-                    d{"E, d MMM – E, d MMM, y"}
-                    y{"E, d MMM, y – E, d MMM, y"}
-                }
-                yMMMd{
-                    M{"d MMM – d MMM, y"}
-                    d{"d–d MMM, y"}
-                    y{"d MMM, y – d MMM, y"}
                 }
                 yMd{
                     M{"d/M/y – d/M/y"}
@@ -367,20 +355,6 @@ en_HK{
                     "Shōwa",
                     "Heisei",
                 }
-            }
-        }
-    }
-    fields{
-        week{
-            relative{
-                "1"{"Next Week"}
-            }
-        }
-        year{
-            relative{
-                "-1"{"Last Year"}
-                "0"{"This Year"}
-                "1"{"Next Year"}
             }
         }
     }

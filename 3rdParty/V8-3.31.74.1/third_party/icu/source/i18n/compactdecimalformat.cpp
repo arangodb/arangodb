@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 1997-2012, International Business Machines Corporation and    *
+* Copyright (C) 1997-2014, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 *
@@ -25,8 +25,6 @@
 #include "umutex.h"
 #include "unicode/ures.h"
 #include "uresimp.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array) / sizeof((array)[0]))
 
 // Maps locale name to CDFLocaleData struct.
 static UHashtable* gCompactDecimalData = NULL;
@@ -768,13 +766,13 @@ static int32_t populatePrefixSuffix(
   if (U_FAILURE(status)) {
     return 0;
   }
-  int32_t firstIdx = formatStr.indexOf(kZero, LENGTHOF(kZero), 0);
+  int32_t firstIdx = formatStr.indexOf(kZero, UPRV_LENGTHOF(kZero), 0);
   // We must have 0's in format string.
   if (firstIdx == -1) {
     status = U_INTERNAL_PROGRAM_ERROR;
     return 0;
   }
-  int32_t lastIdx = formatStr.lastIndexOf(kZero, LENGTHOF(kZero), firstIdx);
+  int32_t lastIdx = formatStr.lastIndexOf(kZero, UPRV_LENGTHOF(kZero), firstIdx);
   CDFUnit* unit = createCDFUnit(variant, log10Value, result, status);
   if (U_FAILURE(status)) {
     return 0;

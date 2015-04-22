@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1999-2011, International Business Machines
+#   Copyright (C) 1999-2014, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -47,14 +47,14 @@ CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n $(LIBCPPFLAGS)
 
 # from icuinfo
 CPPFLAGS+=  "-DU_BUILD=\"@build@\"" "-DU_HOST=\"@host@\"" "-DU_CC=\"@CC@\"" "-DU_CXX=\"@CXX@\""
-
+CPPFLAGS += -DUNISTR_FROM_CHAR_EXPLICIT=explicit -DUNISTR_FROM_STRING_EXPLICIT=explicit
 
 DEFS += -DU_TOOLUTIL_IMPLEMENTATION
 LDFLAGS += $(LDFLAGSICUTOOLUTIL)
 LIBS = $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS)
 
 OBJECTS = filestrm.o package.o pkgitems.o swapimpl.o toolutil.o unewdata.o \
-denseranges.o \
+collationinfo.o denseranges.o \
 ucm.o ucmstate.o uoptions.o uparse.o \
 ucbuf.o xmlparser.o writesrc.o \
 pkg_icu.o pkg_genc.o pkg_gencmn.o ppucd.o flagparser.o filetools.o \

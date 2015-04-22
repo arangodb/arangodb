@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2010, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -49,7 +49,6 @@
 #include "ccolltst.h"
 #include "callcoll.h"
 #include "unicode/ustring.h"
-
 
 const char* locales[8] = {
         "en_US",
@@ -136,36 +135,47 @@ void addRuleBasedCollTest(TestNode** root)
 
 static void TestG7Locales()
 {
-    UCollator *myCollation, *tblColl1;
+    UCollator *myCollation;
     UErrorCode status = U_ZERO_ERROR;
     const UChar *defRules;
     int32_t i, rlen, j, n;
     log_verbose("Testing  ucol_openRules for all the locales\n");
-    for (i = 0; i < 8; i++)
+    for (i = 0; i < UPRV_LENGTHOF(locales); i++)
     {
+        const char *locale = locales[i];
         status = U_ZERO_ERROR;
-        myCollation = ucol_open(locales[i], &status);
+        myCollation = ucol_open(locale, &status);
         ucol_setAttribute(myCollation, UCOL_STRENGTH, UCOL_QUATERNARY, &status);
         ucol_setAttribute(myCollation, UCOL_ALTERNATE_HANDLING, UCOL_SHIFTED, &status);
 
         if (U_FAILURE(status))
         {
-            log_err_status(status, "Error in creating collator in %s:  %s\n", locales[i], myErrorName(status));
+            log_err_status(status, "Error in creating collator in %s:  %s\n", locale, myErrorName(status));
+            ucol_close(myCollation);
             continue;
         }
 
         defRules = ucol_getRules(myCollation, &rlen);
-        status = U_ZERO_ERROR;
-        tblColl1 = ucol_openRules(defRules, rlen, UCOL_OFF,
-                   UCOL_DEFAULT_STRENGTH,NULL, &status);
-        if (U_FAILURE(status))
-        {
+        if (rlen == 0 && (strcmp(locale, "fr_CA") == 0 || strcmp(locale, "ja_JP") == 0)) {
+            log_data_err("%s UCollator missing rule string\n", locale);
+            if (log_knownIssue("10671", "TestG7Locales does not test ignore-punctuation")) {
+                ucol_close(myCollation);
+                continue;
+            }
+        } else {
+            UCollator *tblColl1;
+            status = U_ZERO_ERROR;
+            tblColl1 = ucol_openRules(defRules, rlen, UCOL_OFF,
+                    UCOL_DEFAULT_STRENGTH,NULL, &status);
             ucol_close(myCollation);
-            log_err_status(status, "Error in creating collator in %s:  %s\n", locales[i], myErrorName(status));
-            continue;
+            if (U_FAILURE(status))
+            {
+                log_err_status(status, "Error in creating collator in %s:  %s\n", locale, myErrorName(status));
+                continue;
+            }
+            myCollation = tblColl1;
         }
 
-        
         log_verbose("Locale  %s\n", locales[i]);
         log_verbose("  tests start...\n");
 
@@ -175,12 +185,11 @@ static void TestG7Locales()
         {
             for (n = j+1; n < FIXEDTESTSET; n++)
             {
-                doTest(tblColl1, testCases[results[i][j]], testCases[results[i][n]], UCOL_LESS);
+                doTest(myCollation, testCases[results[i][j]], testCases[results[i][n]], UCOL_LESS);
             }
         }
 
         ucol_close(myCollation);
-        ucol_close(tblColl1);
     }
 }
 

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fa.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/fa.xml
  */
 fa{
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"آبیجان"}
@@ -459,9 +459,6 @@ fa{
         "America:Montevideo"{
             ec{"مونته‌ویدئو"}
         }
-        "America:Montreal"{
-            ec{"مونترئال"}
-        }
         "America:Montserrat"{
             ec{"مونتسرات"}
         }
@@ -552,9 +549,6 @@ fa{
         "America:Scoresbysund"{
             ec{"اسکورسبیسوند"}
         }
-        "America:Shiprock"{
-            ec{"شیپراک"}
-        }
         "America:Sitka"{
             ec{"سیتکا"}
         }
@@ -636,11 +630,11 @@ fa{
         "Antarctica:Rothera"{
             ec{"روترا"}
         }
-        "Antarctica:South_Pole"{
-            ec{"قطب جنوب"}
-        }
         "Antarctica:Syowa"{
             ec{"شووا"}
+        }
+        "Antarctica:Troll"{
+            ec{"ترول"}
         }
         "Antarctica:Vostok"{
             ec{"ووستوک"}
@@ -992,7 +986,7 @@ fa{
         }
         "Europe:Dublin"{
             ec{"دوبلین"}
-            ld{"وقت تابستانی ایرلند"}
+            ld{"وقت عادی ایرلند"}
         }
         "Europe:Gibraltar"{
             ec{"جبل‌الطارق"}
@@ -1328,6 +1322,11 @@ fa{
             lg{"وقت آنادیر"}
             ls{"وقت عادی آنادیر"}
         }
+        "meta:Apia"{
+            ld{"وقت تابستانی آپیا"}
+            lg{"وقت آپیا"}
+            ls{"وقت عادی آپیا"}
+        }
         "meta:Arabian"{
             ld{"وقت تابستانی عربستان"}
             lg{"وقت عربستان"}
@@ -1478,6 +1477,9 @@ fa{
             lg{"وقت شرق اروپا"}
             ls{"وقت عادی شرق اروپا"}
         }
+        "meta:Europe_Further_Eastern"{
+            ls{"وقت تابستانی مکان‌های دیگر شرق اروپا"}
+        }
         "meta:Europe_Western"{
             ld{"وقت تابستانی غرب اروپا"}
             lg{"وقت غرب اروپا"}
@@ -1530,15 +1532,15 @@ fa{
             ls{"وقت عادی گوام"}
         }
         "meta:Gulf"{
-            ls{"وقت خلیج فارس"}
+            ls{"وقت عادی خلیج فارس"}
         }
         "meta:Guyana"{
             ls{"وقت گویان"}
         }
         "meta:Hawaii_Aleutian"{
-            ld{"وقت تابستانی هاوایی"}
-            lg{"وقت هاوایی"}
-            ls{"وقت عادی هاوایی"}
+            ld{"وقت تابستانی هاوایی‐الوشن"}
+            lg{"وقت هاوایی‐الوشن"}
+            ls{"وقت عادی هاوایی‐الوشن"}
         }
         "meta:Hong_Kong"{
             ld{"وقت تابستانی هنگ‌کنگ"}
@@ -1659,6 +1661,16 @@ fa{
         "meta:Mawson"{
             ls{"وقت ماوسون"}
         }
+        "meta:Mexico_Northwest"{
+            ld{"وقت تابستانی شمال غرب مکزیک"}
+            lg{"وقت شمال غرب مکزیک"}
+            ls{"وقت عادی شمال غرب مکزیک"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"وقت تابستانی شرق مکزیک"}
+            lg{"وقت شرق مکزیک"}
+            ls{"وقت عادی شرق مکزیک"}
+        }
         "meta:Mongolia"{
             ld{"وقت تابستانی اولان‌باتور"}
             lg{"وقت اولان‌باتور"}
@@ -1747,9 +1759,9 @@ fa{
             ls{"وقت جزایر فونیکس"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"وقت تابستانی سنت پیر و میکلون"}
-            lg{"وقت سنت پیر و میکلون"}
-            ls{"وقت عادی سنت پیر و میکلون"}
+            ld{"وقت تابستانی سنت‌پیر و میکلون"}
+            lg{"وقت سنت‌پیر و میکلون"}
+            ls{"وقت عادی سنت‌پیر و میکلون"}
         }
         "meta:Pitcairn"{
             ls{"وقت پیتکایرن"}

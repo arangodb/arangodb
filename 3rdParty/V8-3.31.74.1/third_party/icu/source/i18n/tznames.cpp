@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2011-2013, International Business Machines Corporation and    *
+* Copyright (C) 2011-2014, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 */
@@ -291,8 +291,29 @@ TimeZoneNames::~TimeZoneNames() {
 
 TimeZoneNames*
 TimeZoneNames::createInstance(const Locale& locale, UErrorCode& status) {
-    return new TimeZoneNamesDelegate(locale, status);
+    TimeZoneNames *instance = NULL;
+    if (U_SUCCESS(status)) {
+        instance = new TimeZoneNamesDelegate(locale, status);
+        if (instance == NULL && U_SUCCESS(status)) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+        }
+    }
+    return instance;
 }
+
+#ifndef U_HIDE_DRAFT_API
+TimeZoneNames*
+TimeZoneNames::createTZDBInstance(const Locale& locale, UErrorCode& status) {
+    TimeZoneNames *instance = NULL;
+    if (U_SUCCESS(status)) {
+        instance = new TZDBTimeZoneNames(locale);
+        if (instance == NULL && U_SUCCESS(status)) {
+            status = U_MEMORY_ALLOCATION_ERROR;
+        }
+    }
+    return instance;
+}
+#endif /* U_HIDE_DRAFT_API */
 
 UnicodeString&
 TimeZoneNames::getExemplarLocationName(const UnicodeString& tzID, UnicodeString& name) const {

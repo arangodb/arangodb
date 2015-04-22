@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 1997-2008, International Business Machines
+* Copyright (C) 1997-2014, International Business Machines
 * Corporation and others. All Rights Reserved.
 *******************************************************************************
 */
@@ -25,6 +25,7 @@ class NFRuleList;
 class NFRuleSet;
 class NFSubstitution;
 class ParsePosition;
+class PluralFormat;
 class RuleBasedNumberFormat;
 class UnicodeString;
 
@@ -61,8 +62,8 @@ public:
 
     double getDivisor() const { return uprv_pow(radix, exponent); }
 
-    void doFormat(int64_t number, UnicodeString& toAppendTo, int32_t pos) const;
-    void doFormat(double  number, UnicodeString& toAppendTo, int32_t pos) const;
+    void doFormat(int64_t number, UnicodeString& toAppendTo, int32_t pos, UErrorCode& status) const;
+    void doFormat(double  number, UnicodeString& toAppendTo, int32_t pos, UErrorCode& status) const;
 
     UBool doParse(const UnicodeString& text, 
                   ParsePosition& pos, 
@@ -74,10 +75,13 @@ public:
 
     void _appendRuleText(UnicodeString& result) const;
 
+    int32_t findTextLenient(const UnicodeString& str, const UnicodeString& key, 
+                     int32_t startingAt, int32_t* resultCount) const;
+
 private:
     void parseRuleDescriptor(UnicodeString& descriptor, UErrorCode& status);
-    void extractSubstitutions(const NFRuleSet* ruleSet, const NFRule* predecessor, const RuleBasedNumberFormat* rbnf, UErrorCode& status);
-    NFSubstitution* extractSubstitution(const NFRuleSet* ruleSet, const NFRule* predecessor, const RuleBasedNumberFormat* rbnf, UErrorCode& status);
+    void extractSubstitutions(const NFRuleSet* ruleSet, const UnicodeString &ruleText, const NFRule* predecessor, UErrorCode& status);
+    NFSubstitution* extractSubstitution(const NFRuleSet* ruleSet, const NFRule* predecessor, UErrorCode& status);
     
     int16_t expectedExponent() const;
     int32_t indexOfAny(const UChar* const strings[]) const;
@@ -99,6 +103,7 @@ private:
     NFSubstitution* sub1;
     NFSubstitution* sub2;
     const RuleBasedNumberFormat* formatter;
+    const PluralFormat* rulePatternFormat;
 
     NFRule(const NFRule &other); // forbid copying of this class
     NFRule &operator=(const NFRule &other); // forbid copying of this class

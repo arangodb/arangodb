@@ -240,7 +240,9 @@
   <ItemGroup>
     <ClCompile Include="errmsg.c" />
     <ClCompile Include="genrb.c" />
-    <ClCompile Include="parse.cpp" />
+    <ClCompile Include="parse.cpp">
+      <DisableLanguageExtensions>false</DisableLanguageExtensions>
+    </ClCompile>
     <ClCompile Include="prscmnts.cpp" />
     <ClCompile Include="rbutil.c" />
     <ClCompile Include="read.c" />

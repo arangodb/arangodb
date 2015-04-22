@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2012, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -1312,7 +1312,7 @@ void TestIDNA::TestChaining(){
 
 static const int loopCount = 100;
 static const int maxCharCount = 20;
-static const int maxCodePoint = 0x10ffff;
+
 static uint32_t
 randul()
 {

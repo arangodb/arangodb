@@ -55,6 +55,10 @@ initData(UErrorCode &status)
     ucln_common_registerCleanup(UCLN_COMMON_UINIT, uinit_cleanup);
 }
 
+U_NAMESPACE_END
+
+U_NAMESPACE_USE
+
 /*
  * ICU Initialization Function. Need not be called.
  */
@@ -64,5 +68,3 @@ u_init(UErrorCode *status) {
     umtx_initOnce(gICUInitOnce, &initData, *status);
     UTRACE_EXIT_STATUS(*status);
 }
-
-U_NAMESPACE_END

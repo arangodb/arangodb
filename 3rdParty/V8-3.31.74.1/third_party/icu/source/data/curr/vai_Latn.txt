@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/vai_Latn.xml
@@ -28,10 +28,6 @@ vai_Latn{
             "BHD",
             "Bharɛŋ Dina",
         }
-        BIF{
-            "BIF",
-            "Bhurundi Furaŋki",
-        }
         BWP{
             "BWP",
             "Bhosuwana Pula",
@@ -52,14 +48,6 @@ vai_Latn{
             "CN¥",
             "Chaníĩ Yuwaŋ Rɛŋmimbi",
         }
-        CVE{
-            "CVE",
-            "Ɛsikudo Cabovɛdiyano",
-        }
-        DJF{
-            "DJF",
-            "Jibhuti Furaŋki",
-        }
         DZD{
             "DZD",
             "Agiriya Dina",
@@ -67,10 +55,6 @@ vai_Latn{
         EGP{
             "EGP",
             "Míséla Pɔɔ̃",
-        }
-        ERN{
-            "ERN",
-            "Ɛritera Nakifa",
         }
         ETB{
             "ETB",
@@ -84,16 +68,8 @@ vai_Latn{
             "£",
             "Jengési Pɔɔ̃ Sitɛ́liŋ",
         }
-        GMD{
-            "GMD",
-            "Gambiya Dalasi",
-        }
-        GNS{
-            "GNS",
-            "Gini Furaŋki",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Índiya Rupi",
         }
         JPY{
@@ -103,18 +79,6 @@ vai_Latn{
         KES{
             "KES",
             "Kénya Siyeŋ",
-        }
-        KMF{
-            "KMF",
-            "Komoro Furaŋki",
-        }
-        LRD{
-            "$",
-            "Laibhiya Dala",
-        }
-        LSL{
-            "LSL",
-            "Lisóto Loti",
         }
         LYD{
             "LYD",
@@ -160,25 +124,9 @@ vai_Latn{
             "SDG",
             "Sudaniĩ Pɔɔ̃",
         }
-        SHP{
-            "SHP",
-            "Siŋ Hɛlina Pɔɔ̃",
-        }
         SLL{
             "SLL",
             "Liyɔɔ̀",
-        }
-        SOS{
-            "SOS",
-            "Somaliya Siyeŋ",
-        }
-        STD{
-            "STD",
-            "Sawo Tombe ɓɛ a Gbawo Dobura",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -213,5 +161,5 @@ vai_Latn{
             "Zambiya Kuwacha",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

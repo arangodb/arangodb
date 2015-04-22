@@ -529,6 +529,13 @@ int32_t HebrewCalendar::handleGetYearLength(int32_t eyear) const {
     return startOfYear(eyear+1, status) - startOfYear(eyear, status);
 }
 
+void HebrewCalendar::validateField(UCalendarDateFields field, UErrorCode &status) {
+    if (field == UCAL_MONTH && !isLeapYear(handleGetExtendedYear()) && internalGet(UCAL_MONTH) == ADAR_1) {
+        status = U_ILLEGAL_ARGUMENT_ERROR;
+        return;
+    }
+    Calendar::validateField(field, status);
+}
 //-------------------------------------------------------------------------
 // Functions for converting from milliseconds to field values
 //-------------------------------------------------------------------------

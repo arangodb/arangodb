@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sv_FI.xml
@@ -13,8 +13,6 @@ sv_FI{
     Languages{
         chm{"mari"}
         fj{"fiji"}
-        ha{"hausa"}
-        ig{"igbo"}
         km{"khmer"}
         ks{"kashmiri"}
         ky{"kirgiziska"}
@@ -34,6 +32,9 @@ sv_FI{
         Hrkt{"kana"}
         Mero{"meroitiska"}
     }
+    Scripts%variant{
+        Arab{"persisk-arabiska"}
+    }
     Types{
         calendar{
             buddhist{"buddhistisk kalender"}
@@ -42,5 +43,5 @@ sv_FI{
     Variants{
         1996{"1996 års stavning"}
     }
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
 }

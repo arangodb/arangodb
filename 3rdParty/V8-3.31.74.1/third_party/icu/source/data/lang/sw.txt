@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sw.xml
@@ -16,36 +16,28 @@ sw{
         ak{"Kiakani"}
         am{"Kiamhari"}
         ar{"Kiarabu"}
+        ar_001{"Kiarabu Sanifu cha Kisasa"}
         az{"Kiazabajani"}
         be{"Kibelarusi"}
         bem{"Kibemba"}
         bg{"Kibulgaria"}
-        bh{"Kibihari"}
-        bn{"Kibangla"}
+        bn{"Kibengali"}
         br{"Kibretoni"}
         bs{"Kibosnia"}
         ca{"Kikatalani"}
         chr{"Kicherokee"}
-        ckb{"Kisorani Kikurdi"}
+        ckb{"Kikurdi cha Sorani"}
         co{"Kikosikani"}
         cs{"Kicheki"}
         cy{"Kiwelisi"}
         da{"Kidenmaki"}
         de{"Kijerumani"}
-        de_AT{"Kijerumani cha Austria"}
-        de_CH{"Kijerumani cha Juu cha Uswisi"}
-        ee{"Kiwe"}
+        ee{"Kiewe"}
         el{"Kigiriki"}
         en{"Kiingereza"}
-        en_AU{"Kiingereza cha Australia"}
-        en_CA{"Kiingereza cha Kanada"}
-        en_GB{"Kiingereza cha Uingereza"}
-        en_US{"Kiingereza cha Marekani"}
         eo{"Kiesperanto"}
         es{"Kihispania"}
-        es_419{"Kihispania cha Amerika ya Kilatinini"}
         es_ES{"Kihispania cha Ulaya"}
-        es_MX{"Kihispania cha Meksiko"}
         et{"Kiestonia"}
         eu{"Kibasque"}
         fa{"Kiajemi"}
@@ -53,13 +45,11 @@ sw{
         fil{"Kifilipino"}
         fo{"Kifaroe"}
         fr{"Kifaransa"}
-        fr_CA{"Kifaransa cha Kanada"}
-        fr_CH{"Kifaransa cha Uswisi"}
         fy{"Kifrisia cha Magharibi"}
         ga{"Kiayalandi"}
         gaa{"Kiga"}
         gd{"Kigaeli cha Uskoti"}
-        gl{"Kigalisia"}
+        gl{"Kigalisi"}
         gn{"Kiguarani"}
         gu{"Kigujarati"}
         ha{"Kihausa"}
@@ -83,7 +73,7 @@ sw{
         kn{"Kikannada"}
         ko{"Kikorea"}
         ku{"Kikurdi"}
-        ky{"Kirigizi"}
+        ky{"Kikirigizi"}
         la{"Kilatini"}
         lg{"Kiganda"}
         ln{"Kilingala"}
@@ -97,7 +87,7 @@ sw{
         mi{"Kimaori"}
         mk{"Kimasedonia"}
         ml{"Kimalayalam"}
-        mn{"Mongolia"}
+        mn{"Kimongolia"}
         mr{"Kimarathi"}
         ms{"Kimalesia"}
         mt{"Kimalta"}
@@ -105,7 +95,6 @@ sw{
         nb{"Kibokmal cha Norwe"}
         ne{"Kinepali"}
         nl{"Kiholanzi"}
-        nl_BE{"Kiflemi"}
         nn{"Kinorwe Kipya"}
         nso{"Kisotho cha Kaskazini"}
         ny{"Kinyanja"}
@@ -117,8 +106,6 @@ sw{
         pl{"Kipolandi"}
         ps{"Kipashto"}
         pt{"Kireno"}
-        pt_BR{"Kireno cha Brazil"}
-        pt_PT{"Kireno cha Ulaya"}
         qu{"Kiquechua"}
         rm{"Kiromanshi"}
         rn{"Kirundi"}
@@ -139,12 +126,12 @@ sw{
         sw{"Kiswahili"}
         ta{"Kitamil"}
         te{"Kitelugu"}
-        tg{"Tajiki"}
+        tg{"Kitajiki"}
         th{"Kitailandi"}
         ti{"Kitigrinya"}
         tk{"Kiturukimeni"}
         tn{"Kitswana"}
-        to{"Tonga"}
+        to{"Kitonga"}
         tr{"Kituruki"}
         tt{"Kitatari"}
         tum{"Kitumbuka"}
@@ -158,9 +145,11 @@ sw{
         yi{"Kiyidi"}
         yo{"Kiyoruba"}
         zh{"Kichina"}
-        zh_Hans{"Kichina Rahisi"}
         zh_Hant{"Kichina cha Jadi"}
         zu{"Kizulu"}
+    }
+    Languages%variant{
+        ps{"Kipushto"}
     }
     LanguagesShort{
         az{"Kiazeri"}
@@ -202,7 +191,7 @@ sw{
         Thai{"Kitai"}
         Tibt{"Kitibeti"}
         Zsym{"Alama"}
-        Zxxx{"Haiandikwi"}
+        Zxxx{"Haijaandikwa"}
         Zyyy{"Kawaida"}
         Zzzz{"Hati isiyojulikana"}
     }
@@ -210,7 +199,10 @@ sw{
         Hans{"Kihan Rahisi"}
         Hant{"Kihan cha Jadi"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Kiajemi/Kiarabu"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"{0}"}
         script{"{0}"}

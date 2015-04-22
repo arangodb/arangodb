@@ -1,0 +1,182 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/fa.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/fa.xml
+ */
+fa{
+    Version{"2.1.8.9"}
+    units{
+        compound{
+            per{"{0} بر {1}"}
+        }
+        duration{
+            day{
+                dnam{"روز"}
+                one{"{0} روز"}
+                other{"{0} روز"}
+            }
+            hour{
+                dnam{"ساعت"}
+                one{"{0} ساعت"}
+                other{"{0} ساعت"}
+                per{"{0} در ساعت"}
+            }
+            microsecond{
+                dnam{"میکروثانیه"}
+                one{"{0} میکروثانیه"}
+                other{"{0} میکروثانیه"}
+            }
+            millisecond{
+                dnam{"میلی‌ثانیه"}
+                one{"{0} میلی‌ثانیه"}
+                other{"{0} میلی‌ثانیه"}
+            }
+            minute{
+                dnam{"دقیقه"}
+                one{"{0} دقیقه"}
+                other{"{0} دقیقه"}
+            }
+            month{
+                dnam{"ماه"}
+                one{"{0} ماه"}
+                other{"{0} ماه"}
+            }
+            nanosecond{
+                dnam{"نانوثانیه"}
+                one{"{0} نانوثانیه"}
+                other{"{0} نانوثانیه"}
+            }
+            second{
+                dnam{"ثانیه"}
+                one{"{0} ثانیه"}
+                other{"{0} ثانیه"}
+                per{"{0} در ثانیه"}
+            }
+            week{
+                dnam{"هفته"}
+                one{"{0} هفته"}
+                other{"{0} هفته"}
+            }
+            year{
+                dnam{"سال"}
+                one{"{0} سال"}
+                other{"{0} سال"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"روز"}
+                one{"{0} روز"}
+                other{"{0} روز"}
+            }
+            hour{
+                dnam{"ساعت"}
+                one{"{0} ساعت"}
+                other{"{0} ساعت"}
+            }
+            microsecond{
+                dnam{"میکروثانیه"}
+            }
+            millisecond{
+                dnam{"میلی‌ثانیه"}
+                one{"{0}ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                dnam{"دقیقه"}
+                one{"{0} دقیقه"}
+                other{"{0} دقیقه"}
+            }
+            month{
+                dnam{"ماه"}
+                one{"{0} ماه"}
+                other{"{0} ماه"}
+            }
+            second{
+                dnam{"ثانیه"}
+                one{"{0}ثانیه"}
+                other{"{0}ثانیه"}
+            }
+            week{
+                dnam{"هفته"}
+                one{"{0} هفته"}
+                other{"{0} هفته"}
+            }
+            year{
+                dnam{"سال"}
+                one{"{0} سال"}
+                other{"{0} سال"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"روز"}
+                one{"{0} روز"}
+                other{"{0} روز"}
+            }
+            hour{
+                dnam{"ساعت"}
+                one{"{0} ساعت"}
+                other{"{0} ساعت"}
+                per{"{0} در ساعت"}
+            }
+            microsecond{
+                dnam{"میکروثانیه"}
+                one{"{0} میکروثانیه"}
+                other{"{0} میکروثانیه"}
+            }
+            millisecond{
+                dnam{"میلی‌ثانیه"}
+                one{"{0} میلی‌ثانیه"}
+                other{"{0} میلی‌ثانیه"}
+            }
+            minute{
+                dnam{"دقیقه"}
+                one{"{0} دقیقه"}
+                other{"{0} دقیقه"}
+            }
+            month{
+                dnam{"ماه"}
+                one{"{0} ماه"}
+                other{"{0} ماه"}
+            }
+            nanosecond{
+                dnam{"نانوثانیه"}
+                one{"{0} نانوثانیه"}
+                other{"{0} نانوثانیه"}
+            }
+            second{
+                dnam{"ثانیه"}
+                one{"{0} ثانیه"}
+                other{"{0} ثانیه"}
+                per{"{0}در ثانیه"}
+            }
+            week{
+                dnam{"هفته"}
+                one{"{0} هفته"}
+                other{"{0} هفته"}
+            }
+            year{
+                dnam{"سال"}
+                one{"{0} سال"}
+                other{"{0} سال"}
+            }
+        }
+    }
+}

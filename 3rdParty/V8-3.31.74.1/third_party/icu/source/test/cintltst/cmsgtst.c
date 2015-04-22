@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  *
@@ -27,8 +27,7 @@
 #include "cintltst.h"
 #include "cmsgtst.h"
 #include "cformtst.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+#include "cmemory.h"
 
 static const char* const txt_testCasePatterns[] = {
    "Quotes '', '{', a {0,number,integer} '{'0}",
@@ -1128,7 +1127,7 @@ static void TestMessageWithUnusedArgNumber() {
 
     U_STRING_INIT(pattern, "abc {1} def", 11);
     U_STRING_INIT(expected, "abc y def", 9);
-    length = u_formatMessage("en", pattern, -1, result, LENGTHOF(result), &errorCode, x, y);
+    length = u_formatMessage("en", pattern, -1, result, UPRV_LENGTHOF(result), &errorCode, x, y);
     if (U_FAILURE(errorCode) || length != u_strlen(expected) || u_strcmp(result, expected) != 0) {
         log_err("u_formatMessage(pattern with only {1}, 2 args) failed: result length %d, UErrorCode %s \n",
                 (int)length, u_errorName(errorCode));

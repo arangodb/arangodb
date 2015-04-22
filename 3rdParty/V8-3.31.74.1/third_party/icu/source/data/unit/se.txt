@@ -1,0 +1,171 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/se.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/se.xml
+ */
+se{
+    Version{"2.1.7.53"}
+    units{
+        compound{
+            per{"{0} juohke {1}"}
+        }
+        duration{
+            day{
+                dnam{"jándora"}
+                one{"{0} jándor"}
+                other{"{0} jándora"}
+                two{"{0} jándora"}
+            }
+            hour{
+                dnam{"diibmur"}
+                one{"{0} diibmu"}
+                other{"{0} diibmur"}
+                two{"{0} diimmur"}
+            }
+            millisecond{
+                dnam{"millisekundda"}
+                one{"{0} millisekunda"}
+                other{"{0} millisekundda"}
+                two{"{0} millisekundda"}
+            }
+            minute{
+                dnam{"minuhtta"}
+                one{"{0} minuhta"}
+                other{"{0} minuhtta"}
+                two{"{0} minuhtta"}
+            }
+            month{
+                dnam{"mánotbadji"}
+                one{"{0} mánotbadji"}
+                other{"{0} mánotbadji"}
+                two{"{0} mánotbaji"}
+            }
+            second{
+                dnam{"sekundda"}
+                one{"{0} sekunda"}
+                other{"{0} sekundda"}
+                two{"{0} sekundda"}
+            }
+            week{
+                dnam{"váhkku"}
+                one{"{0} váhku"}
+                other{"{0} váhkku"}
+                two{"{0} váhkku"}
+            }
+            year{
+                dnam{"jahkki"}
+                one{"{0} jahki"}
+                other{"{0} jahkki"}
+                two{"{0} jahkki"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                one{"{0}d"}
+                other{"{0}d"}
+                two{"{0}d"}
+            }
+            hour{
+                one{"{0}h"}
+                other{"{0}h"}
+                two{"{0}h"}
+            }
+            millisecond{
+                one{"{0}ms"}
+                other{"{0}ms"}
+                two{"{0}ms"}
+            }
+            minute{
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            month{
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            second{
+                one{"{0}s"}
+                other{"{0}s"}
+                two{"{0}s"}
+            }
+            week{
+                one{"{0}v"}
+                other{"{0}v"}
+                two{"{0}v"}
+            }
+            year{
+                one{"{0}j"}
+                other{"{0}j"}
+                two{"{0}j"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                dnam{"jándora"}
+                one{"{0} d"}
+                other{"{0} d"}
+                two{"{0} d"}
+            }
+            hour{
+                dnam{"diibmur"}
+                one{"{0} h"}
+                other{"{0} h"}
+                two{"{0} h"}
+            }
+            millisecond{
+                dnam{"millisekundda"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+            }
+            minute{
+                dnam{"minuhtta"}
+                one{"{0} min"}
+                other{"{0} min"}
+                two{"{0} min"}
+            }
+            month{
+                dnam{"mánotbadji"}
+                one{"{0} mán"}
+                other{"{0} mán"}
+                two{"{0} mán"}
+            }
+            second{
+                dnam{"sekundda"}
+                one{"{0} s"}
+                other{"{0} s"}
+                two{"{0} s"}
+            }
+            week{
+                dnam{"váhkku"}
+                one{"{0} v"}
+                other{"{0} v"}
+                two{"{0} v"}
+            }
+            year{
+                dnam{"jahkki"}
+                one{"{0} jah"}
+                other{"{0} jah"}
+                two{"{0} jah"}
+            }
+        }
+    }
+}

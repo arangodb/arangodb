@@ -1,0 +1,34 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/yi.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/yi.xml
+ */
+yi{
+    Currencies{
+        CHF{
+            "CHF",
+            "שווייצער פֿראַנק",
+        }
+        EUR{
+            "€",
+            "איירא",
+        }
+        SEK{
+            "SEK",
+            "שוועדישע קראנע",
+        }
+    }
+    CurrencyPlurals{
+        EUR{
+            one{"איירא"}
+            other{"איירא"}
+        }
+    }
+    Version{"2.1.7.41"}
+}

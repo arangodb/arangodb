@@ -7,15 +7,18 @@ ICUROOT="$(dirname $0)/.."
 LINUX_SOURCE="${ICUROOT}/linux/icudtl_dat.S"
 MAC_SOURCE="${ICUROOT}/mac/icudtl_dat.S"
 
+# Linux uses 'icudt${MAJOR VERSION}_dat' while Mac has "_" prepended to it.
+ICUDATA_SYMBOL="_$(head -1 ${LINUX_SOURCE} | cut -d ' ' -f 2)"
+
 cat > ${MAC_SOURCE} <<PREAMBLE
-.globl _icudt52_dat
+.globl ${ICUDATA_SYMBOL}
 #ifdef U_HIDE_DATA_SYMBOL
-       .private_extern _icudt52_dat
+       .private_extern ${ICUDATA_SYMBOL}
 #endif
        .data
        .const
        .align 4
-_icudt52_dat:
+${ICUDATA_SYMBOL}:
 PREAMBLE
 
 PREAMBLE_LENGTH=$(($(egrep -n '^icudt' ${LINUX_SOURCE} | cut -d : -f 1) + 1))

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2005-2012, International Business Machines
+*   Copyright (C) 2005-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -66,8 +66,6 @@
 U_NAMESPACE_USE
 
 /* definitions */
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 /* Unicode property (value) aliases data swapping --------------------------- */
 
@@ -500,8 +498,10 @@ ubidi_swap(const UDataSwapper *ds,
         ds->swapArray32(ds, inBytes+offset, count, outBytes+offset, pErrorCode);
         offset+=count;
 
-        /* just skip the uint8_t jgArray[] */
+        /* just skip the uint8_t jgArray[] and jgArray2[] */
         count=indexes[UBIDI_IX_JG_LIMIT]-indexes[UBIDI_IX_JG_START];
+        offset+=count;
+        count=indexes[UBIDI_IX_JG_LIMIT2]-indexes[UBIDI_IX_JG_START2];
         offset+=count;
 
         U_ASSERT(offset==size);
@@ -790,7 +790,7 @@ udata_swap(const UDataSwapper *ds,
     }
 
     /* dispatch to the swap function for the dataFormat */
-    for(i=0; i<LENGTHOF(swapFns); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(swapFns); ++i) {
         if(0==memcmp(swapFns[i].dataFormat, pInfo->dataFormat, 4)) {
             swappedLength=swapFns[i].swapFn(ds, inData, length, outData, pErrorCode);
 

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -92,7 +92,7 @@ void Test4029195()
     udat_applyPattern(df, TRUE, temp, u_strlen(temp));
     
     todayS =myFormatit(df, today);
-    log_verbose("After teh pattern is applied\n today: %s\n", austrdup(todayS) );
+    log_verbose("After the pattern is applied\n today: %s\n", austrdup(todayS) );
     parsepos=0;
     d1=udat_parse(df, todayS, u_strlen(todayS), &parsepos, &status);
     if(U_FAILURE(status))
@@ -106,7 +106,7 @@ void Test4029195()
     log_verbose("round trip: %s\n", austrdup(rt) );
       
     if(u_strcmp(rt, todayS)!=0) {
-            log_err("Fail: Want  %s  Got  %s\n", austrdup(todayS), austrdup(rt) );
+        log_err("Fail: Want  %s  Got  %s\n", austrdup(todayS), austrdup(rt) );
     }
     else
         log_verbose("Pass: parse and format working fine\n");

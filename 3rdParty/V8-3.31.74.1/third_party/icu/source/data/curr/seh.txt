@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/seh.xml
@@ -27,10 +27,6 @@ seh{
             "BHD",
             "Dinar bareinita",
         }
-        BIF{
-            "BIF",
-            "Franco do Burundi",
-        }
         BWP{
             "BWP",
             "Pula botsuanesa",
@@ -51,14 +47,6 @@ seh{
             "CN¥",
             "Yuan Renminbi chinês",
         }
-        CVE{
-            "CVE",
-            "Escudo cabo-verdiano",
-        }
-        DJF{
-            "DJF",
-            "Franco do Djibuti",
-        }
         DZD{
             "DZD",
             "Dinar argelino",
@@ -66,10 +54,6 @@ seh{
         EGP{
             "EGP",
             "Libra egípcia",
-        }
-        ERN{
-            "ERN",
-            "Nakfa da Eritréia",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ seh{
             "£",
             "Libra esterlina britânica",
         }
-        GMD{
-            "GMD",
-            "Dalasi de Gâmbia",
-        }
-        GNS{
-            "GNS",
-            "Syli da Guiné",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rúpia indiana",
         }
         JPY{
@@ -102,18 +78,6 @@ seh{
         KES{
             "KES",
             "Xelim queniano",
-        }
-        KMF{
-            "KMF",
-            "Franco de Comores",
-        }
-        LRD{
-            "LRD",
-            "Dólar liberiano",
-        }
-        LSL{
-            "LSL",
-            "Loti do Lesoto",
         }
         LYD{
             "LYD",
@@ -159,33 +123,13 @@ seh{
             "SAR",
             "Rial saudita",
         }
-        SCR{
-            "SCR",
-            "Rupia das Seychelles",
-        }
         SDG{
             "SDG",
             "Dinar sudanês",
         }
-        SHP{
-            "SHP",
-            "Libra de Santa Helena",
-        }
         SLL{
             "SLL",
             "Leone de Serra Leoa",
-        }
-        SOS{
-            "SOS",
-            "Xelim somali",
-        }
-        STD{
-            "STD",
-            "Dobra de São Tomé e Príncipe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni da Suazilândia",
         }
         TND{
             "TND",
@@ -220,5 +164,5 @@ seh{
             "Cuacha zambiano",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

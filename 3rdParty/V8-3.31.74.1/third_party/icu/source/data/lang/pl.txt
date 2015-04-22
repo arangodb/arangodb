@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/pl.xml
@@ -22,14 +22,13 @@ pl{
         be{"białoruski"}
         bem{"bemba"}
         bg{"bułgarski"}
-        bh{"biharski"}
         bn{"bengalski"}
         br{"bretoński"}
         bs{"bośniacki"}
         ca{"kataloński"}
         ceb{"cebuano"}
         chr{"czirokeski"}
-        ckb{"sorani kurdyjski"}
+        ckb{"sorani"}
         co{"korsykański"}
         cs{"czeski"}
         cy{"walijski"}
@@ -85,6 +84,7 @@ pl{
         km{"khmerski"}
         kn{"kannada"}
         ko{"koreański"}
+        kri{"krio"}
         ku{"kurdyjski"}
         ky{"kirgiski"}
         la{"łaciński"}
@@ -101,7 +101,6 @@ pl{
         mk{"macedoński"}
         ml{"malajalam"}
         mn{"mongolski"}
-        mo{"mołdawski"}
         mr{"marathi"}
         ms{"malajski"}
         mt{"maltański"}
@@ -128,6 +127,7 @@ pl{
         rm{"retoromański"}
         rn{"rundi"}
         ro{"rumuński"}
+        ro_MD{"mołdawski"}
         ru{"rosyjski"}
         rw{"kinya-ruanda"}
         sd{"sindhi"}
@@ -149,6 +149,7 @@ pl{
         th{"tajski"}
         ti{"tigrinia"}
         tk{"turkmeński"}
+        tl{"tagalski"}
         tn{"setswana"}
         to{"tonga"}
         tr{"turecki"}
@@ -168,6 +169,9 @@ pl{
         zh_Hans{"chiński (uproszczony)"}
         zh_Hant{"chiński (tradycyjny)"}
         zu{"zulu"}
+    }
+    Languages%variant{
+        ps{"pasztuński"}
     }
     LanguagesShort{
         az{"azerski"}
@@ -249,10 +253,10 @@ pl{
         Mero{"meroickie"}
         Mlym{"malajalam"}
         Mong{"mongolskie"}
-        Moon{"Moon'a"}
+        Moon{"Moon’a"}
         Mtei{"meitei mayek"}
         Mymr{"birmańskie"}
-        Nkoo{"n'ko"}
+        Nkoo{"n’ko"}
         Ogam{"ogham"}
         Olck{"ol chiki"}
         Orkh{"orchońskie"}
@@ -264,7 +268,7 @@ pl{
         Phlp{"pahlawi psałterzowy"}
         Phlv{"pahlawi książkowy"}
         Phnx{"fenicki"}
-        Plrd{"fonetyczny Pollard'a"}
+        Plrd{"fonetyczny Pollard’a"}
         Prti{"partyjski inskrypcyjny"}
         Rjng{"rejang"}
         Roro{"rongorongo"}
@@ -310,7 +314,10 @@ pl{
         Hans{"uproszczone han"}
         Hant{"tradycyjne han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"perso-arabskie"}
+    }
+    Version{"2.1.8.95"}
     codePatterns{
         language{"Język: {0}"}
         script{"Pismo: {0}"}

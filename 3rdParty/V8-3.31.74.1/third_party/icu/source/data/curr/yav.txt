@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/yav.xml
@@ -23,10 +23,6 @@ yav{
             "BHD",
             "tináal wu paaléen",
         }
-        BIF{
-            "BIF",
-            "faláŋɛ u pulundí",
-        }
         BWP{
             "BWP",
             "pula pu posuána",
@@ -43,14 +39,6 @@ yav{
             "CN¥",
             "yuan ɛlɛnmimbí",
         }
-        CVE{
-            "CVE",
-            "ɛskúdo u kápfɛ́ɛl",
-        }
-        DJF{
-            "DJF",
-            "́faláŋɛ u síputí",
-        }
         DZD{
             "DZD",
             "tináal wu alselí",
@@ -58,10 +46,6 @@ yav{
         EGP{
             "EGP",
             "lífilɛ wu isípit",
-        }
-        ERN{
-            "ERN",
-            "náfka wu elitilée",
         }
         ETB{
             "ETB",
@@ -75,16 +59,8 @@ yav{
             "£",
             "lífilɛ sitelelíiŋ",
         }
-        GMD{
-            "GMD",
-            "talasí u kaambí",
-        }
-        GNS{
-            "GNS",
-            "silí u kiiné",
-        }
         INR{
-            "₹",
+            "Rs.",
             "ulupí",
         }
         JPY{
@@ -95,10 +71,6 @@ yav{
             "KES",
             "síliŋ u kénia",
         }
-        KMF{
-            "KMF",
-            "́faláŋɛ u kɔmɔ́ɔl",
-        }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

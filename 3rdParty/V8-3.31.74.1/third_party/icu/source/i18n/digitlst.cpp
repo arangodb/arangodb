@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -57,10 +57,6 @@
 //static const char LONG_MIN_REP[] = "2147483648";
 //static const char I64_MIN_REP[] = "9223372036854775808";
 
-
-static const uint8_t DIGIT_HAVE_NONE=0;
-static const uint8_t DIGIT_HAVE_DOUBLE=1;
-static const uint8_t DIGIT_HAVE_INT64=2;
 
 U_NAMESPACE_BEGIN
 
@@ -708,7 +704,7 @@ DigitList::set(int64_t source)
     U_ASSERT(uprv_strlen(str) < sizeof(str));
 
     uprv_decNumberFromString(fDecNumber, str, &fContext);
-    internalSetDouble(source);
+    internalSetDouble(static_cast<double>(source));
 }
 
 /**

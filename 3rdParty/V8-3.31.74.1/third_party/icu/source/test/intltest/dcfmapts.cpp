@@ -1,6 +1,6 @@
 /********************************************************************
- * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * COPYRIGHT:
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -22,8 +22,6 @@
 #include "plurrule_impl.h"
 #include <stdio.h>
 
-#define LENGTHOF(array) ((int32_t)(sizeof(array)/sizeof((array)[0])))
-
 // This is an API test, not a unit test.  It doesn't test very many cases, and doesn't
 // try to test the full functionality.  It just calls each function in the class and
 // verifies that it works on a basic level.
@@ -32,7 +30,7 @@ void IntlTestDecimalFormatAPI::runIndexedTest( int32_t index, UBool exec, const 
 {
     if (exec) logln((UnicodeString)"TestSuite DecimalFormatAPI");
     switch (index) {
-        case 0: name = "DecimalFormat API test"; 
+        case 0: name = "DecimalFormat API test";
                 if (exec) {
                     logln((UnicodeString)"DecimalFormat API test---"); logln((UnicodeString)"");
                     UErrorCode status = U_ZERO_ERROR;
@@ -75,6 +73,18 @@ void IntlTestDecimalFormatAPI::runIndexedTest( int32_t index, UBool exec, const 
                TestFixedDecimal();
             }
             break;
+         case 6: name = "TestBadFastpath";
+            if(exec) {
+               logln((UnicodeString)"TestBadFastpath ---");
+               TestBadFastpath();
+            }
+            break;
+         case 7: name = "TestRequiredDecimalPoint";
+            if(exec) {
+               logln((UnicodeString)"TestRequiredDecimalPoint ---");
+               TestRequiredDecimalPoint();
+            }
+            break;
        default: name = ""; break;
     }
 }
@@ -96,6 +106,14 @@ void IntlTestDecimalFormatAPI::testAPI(/*char *par*/)
         errcheckln(status, "ERROR: Could not create DecimalFormat (default) - %s", u_errorName(status));
         return;
     }
+
+    // bug 10864
+    status = U_ZERO_ERROR;
+    DecimalFormat noGrouping("###0.##", status);
+    if (noGrouping.getGroupingSize() != 0) {
+      errln("Grouping size should be 0 for no grouping.");
+    }
+    // end bug 10864
 
     status = U_ZERO_ERROR;
     const UnicodeString pattern("#,##0.# FF");
@@ -156,7 +174,7 @@ void IntlTestDecimalFormatAPI::testAPI(/*char *par*/)
 
     UnicodeString res1, res2, res3, res4;
     FieldPosition pos1(0), pos2(0), pos3(0), pos4(0);
-    
+
     res1 = def.format(d, res1, pos1);
     logln( (UnicodeString) "" + (int32_t) d + " formatted to " + res1);
 
@@ -287,7 +305,7 @@ void IntlTestDecimalFormatAPI::testAPI(/*char *par*/)
     if(sn != TRUE) {
         errln((UnicodeString)"ERROR: setScientificNotation() failed");
     }
-    
+
     // Added by Ken Liu testing set/getMinimumExponentDigits
     int8_t MinimumExponentDigits = 0;
     pat.setMinimumExponentDigits(2);
@@ -416,7 +434,7 @@ void IntlTestDecimalFormatAPI::TestCurrencyPluralInfo(){
     if(U_FAILURE(status)) {
         errln((UnicodeString)"ERROR: CurrencyPluralInfo::setLocale");
     }
-    
+
     cpi->setPluralRules("",status);
     if(U_FAILURE(status)) {
         errln((UnicodeString)"ERROR: CurrencyPluralInfo::setPluralRules");
@@ -448,7 +466,7 @@ void IntlTestDecimalFormatAPI::testRounding(/*char *par*/)
                         3.0,            -3.0,    //  kRoundUp       3,
                         3.0,            -3.0,    //  kRoundHalfEven 4,
                         3.0,            -3.0,    //  kRoundHalfDown 5,
-                        3.0,            -3.0     //  kRoundHalfUp   6 
+                        3.0,            -3.0     //  kRoundHalfUp   6
     };
     DecimalFormat pat(status);
     if(U_FAILURE(status)) {
@@ -515,11 +533,11 @@ void IntlTestDecimalFormatAPI::testRoundingInc(/*char *par*/)
       return;
     }
 
-    // With rounding now being handled by decNumber, we no longer 
+    // With rounding now being handled by decNumber, we no longer
     // set a rounding increment to enable non-default mode rounding,
     // checking of which was the original point of this test.
 
-    // set rounding mode with zero increment.  Rounding 
+    // set rounding mode with zero increment.  Rounding
     // increment should not be set by this operation
     pat.setRoundingMode((DecimalFormat::ERoundingMode)0);
     roundingInc = pat.getRoundingIncrement();
@@ -560,13 +578,13 @@ void IntlTestDecimalFormatAPI::TestScale()
     UnicodeString percentPattern("#,##0%");
     pat.setMaximumFractionDigits(4);
 
-    for(int32_t i=0; i < LENGTHOF(testData); i++) {
+    for(int32_t i=0; i < UPRV_LENGTHOF(testData); i++) {
         if ( i > 2 ) {
             pat.applyPattern(percentPattern,status);
         }
         pat.setAttribute(UNUM_SCALE,testData[i].inputScale,status);
         pat.format(testData[i].inputValue, resultStr);
-        message = UnicodeString("Unexpected output for ") + testData[i].inputValue + UnicodeString(" and scale ") + 
+        message = UnicodeString("Unexpected output for ") + testData[i].inputValue + UnicodeString(" and scale ") +
                   testData[i].inputScale + UnicodeString(". Got: ");
         exp = testData[i].expectedOutput;
         verifyString(message, resultStr, exp);
@@ -792,5 +810,71 @@ void IntlTestDecimalFormatAPI::TestFixedDecimal() {
     ASSERT_EQUAL(FALSE, fd.isNegative);
 
 }
-    
+
+void IntlTestDecimalFormatAPI::TestBadFastpath() {
+    UErrorCode status = U_ZERO_ERROR;
+
+    LocalPointer<DecimalFormat> df(new DecimalFormat("###", status));
+    if (U_FAILURE(status)) {
+        dataerrln("Error creating new DecimalFormat - %s", u_errorName(status));
+        return;
+    }
+
+    UnicodeString fmt;
+    fmt.remove();
+    assertEquals("Format 1234", "1234", df->format(1234, fmt));
+    df->setGroupingUsed(FALSE);
+    fmt.remove();
+    assertEquals("Format 1234", "1234", df->format(1234, fmt));
+    df->setGroupingUsed(TRUE);
+    fmt.remove();
+    assertEquals("Format 1234 w/ grouping", "1,234", df->format(1234, fmt));
+}
+
+void IntlTestDecimalFormatAPI::TestRequiredDecimalPoint() {
+    UErrorCode status = U_ZERO_ERROR;
+    UnicodeString text("99");
+    Formattable result1;
+    UnicodeString pat1("##.0000");
+    UnicodeString pat2("00.0");
+
+    LocalPointer<DecimalFormat> df(new DecimalFormat(pat1, status));
+    if (U_FAILURE(status)) {
+        dataerrln("Error creating new DecimalFormat - %s", u_errorName(status));
+        return;
+    }
+
+    status = U_ZERO_ERROR;
+    df->applyPattern(pat1, status);
+    if(U_FAILURE(status)) {
+        errln((UnicodeString)"ERROR: applyPattern() failed");
+    }
+    df->parse(text, result1, status);
+    if(U_FAILURE(status)) {
+        errln((UnicodeString)"ERROR: parse() failed");
+    }
+    df->setDecimalPatternMatchRequired(TRUE);
+    df->parse(text, result1, status);
+    if(U_SUCCESS(status)) {
+        errln((UnicodeString)"ERROR: unexpected parse()");
+    }
+
+
+    status = U_ZERO_ERROR;
+    df->applyPattern(pat2, status);
+    df->setDecimalPatternMatchRequired(FALSE);
+    if(U_FAILURE(status)) {
+        errln((UnicodeString)"ERROR: applyPattern(2) failed");
+    }
+    df->parse(text, result1, status);
+    if(U_FAILURE(status)) {
+        errln((UnicodeString)"ERROR: parse(2) failed - " + u_errorName(status));
+    }
+    df->setDecimalPatternMatchRequired(TRUE);
+    df->parse(text, result1, status);
+    if(U_SUCCESS(status)) {
+        errln((UnicodeString)"ERROR: unexpected parse(2)");
+    }
+}
+
 #endif /* #if !UCONFIG_NO_FORMATTING */

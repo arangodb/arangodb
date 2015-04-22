@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sl.xml
@@ -22,7 +22,6 @@ sl{
         be{"beloruščina"}
         bem{"bemba"}
         bg{"bolgarščina"}
-        bh{"biharščina"}
         bn{"bengalščina"}
         br{"bretonščina"}
         bs{"bosanščina"}
@@ -100,7 +99,6 @@ sl{
         mk{"makedonščina"}
         ml{"malajalamščina"}
         mn{"mongolščina"}
-        mo{"moldavščina"}
         mr{"maratščina"}
         ms{"malajščina"}
         mt{"malteščina"}
@@ -119,7 +117,7 @@ sl{
         or{"orijščina"}
         pa{"pandžabščina"}
         pl{"poljščina"}
-        ps{"paštu"}
+        ps{"paštunščina"}
         pt{"portugalščina"}
         pt_BR{"brazilska portugalščina"}
         pt_PT{"iberska portugalščina"}
@@ -127,6 +125,7 @@ sl{
         rm{"retoromanščina"}
         rn{"rundščina"}
         ro{"romunščina"}
+        ro_MD{"moldavščina"}
         ru{"ruščina"}
         rw{"ruandščina"}
         sd{"sindščina"}
@@ -148,6 +147,7 @@ sl{
         th{"tajščina"}
         ti{"tigrajščina"}
         tk{"turkmenščina"}
+        tl{"tagalogščina"}
         tn{"cvanščina"}
         to{"tongščina"}
         tr{"turščina"}
@@ -170,6 +170,7 @@ sl{
     }
     LanguagesShort{
         az{"azerščina"}
+        en_GB{"angleščina (ZK)"}
         en_US{"angleščina (ZDA)"}
     }
     Scripts{
@@ -295,10 +296,13 @@ sl{
         Zzzz{"neznan ali neveljaven zapis"}
     }
     Scripts%stand-alone{
-        Hans{"Poenostavljeni han"}
-        Hant{"Tradicionalni han"}
+        Hans{"poenostavljena pisava han"}
+        Hant{"tradicionalna pisava han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Perzijskoarabski"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Jezik: {0}"}
         script{"{0}"}

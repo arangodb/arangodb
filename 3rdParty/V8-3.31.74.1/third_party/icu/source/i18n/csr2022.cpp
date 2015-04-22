@@ -119,6 +119,7 @@ static const uint8_t escapeSequences_2022JP[][5] = {
     {0x1b, 0x2e, 0x46, 0x00, 0x00}    // ISO 8859-7
 };
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 static const uint8_t escapeSequences_2022KR[][5] = {
     {0x1b, 0x24, 0x29, 0x43, 0x00}   
 };
@@ -136,6 +137,7 @@ static const uint8_t escapeSequences_2022CN[][5] = {
     {0x1b, 0x4e, 0x00, 0x00, 0x00},   // SS2
     {0x1b, 0x4f, 0x00, 0x00, 0x00},   // SS3
 };
+#endif
 
 CharsetRecog_2022JP::~CharsetRecog_2022JP() {}
 
@@ -152,6 +154,7 @@ UBool CharsetRecog_2022JP::match(InputText *textIn, CharsetMatch *results) const
     return (confidence > 0);
 }
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 CharsetRecog_2022KR::~CharsetRecog_2022KR() {}
 
 const char *CharsetRecog_2022KR::getName() const {
@@ -181,6 +184,7 @@ UBool CharsetRecog_2022CN::match(InputText *textIn, CharsetMatch *results) const
     results->set(textIn, this, confidence);
     return (confidence > 0);
 }
+#endif
 
 CharsetRecog_2022::~CharsetRecog_2022() {
     // nothing to do

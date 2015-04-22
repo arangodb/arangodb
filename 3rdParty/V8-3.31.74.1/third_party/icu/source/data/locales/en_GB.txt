@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/en_GB.xml
@@ -18,13 +18,19 @@ en_GB{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 range{"{0}–{1}"}
             }
+            symbols{
+                timeSeparator{":"}
+            }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
     calendar{
         chinese{
             DateTimePatterns{
@@ -150,35 +156,7 @@ en_GB{
             }
             monthNames{
                 format{
-                    abbreviated{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
-                    wide{
                         "1",
                         "2",
                         "3",
@@ -194,35 +172,7 @@ en_GB{
                     }
                 }
                 stand-alone{
-                    abbreviated{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
                     narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "6",
-                        "7",
-                        "8",
-                        "9",
-                        "10",
-                        "11",
-                        "12",
-                    }
-                    wide{
                         "1",
                         "2",
                         "3",
@@ -375,17 +325,15 @@ en_GB{
                 "d MMMM y",
                 "d MMM y",
                 "dd/MM/y",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
             }
             availableFormats{
-                Ed{"E d"}
                 GyMMMEd{"E, d MMM y G"}
                 GyMMMd{"d MMM y G"}
-                M{"LL"}
                 MEd{"E dd/MM"}
                 MMMEd{"E d MMM"}
                 MMMMd{"d MMMM"}
@@ -443,6 +391,7 @@ en_GB{
                     h{"h–h a"}
                 }
                 hm{
+                    a{"h:mm a – h:mm a"}
                     h{"h:mm–h:mm a"}
                     m{"h:mm–h:mm a"}
                 }
@@ -586,6 +535,38 @@ en_GB{
             }
         }
         islamic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "dd/MM/y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                GyMMMEd{"E, d MMM y G"}
+                GyMMMd{"d MMM y G"}
+                M{"LL"}
+                MEd{"E dd/MM"}
+                MMMEd{"E d MMM"}
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"dd/MM"}
+                yyyyM{"MM/y GGGGG"}
+                yyyyMEd{"E, dd/MM/y GGGGG"}
+                yyyyMMMEd{"E, d MMM y G"}
+                yyyyMMMM{"MMMM y G"}
+                yyyyMMMd{"d MMM y G"}
+                yyyyMd{"dd/MM/y GGGGG"}
+            }
             monthNames{
                 format{
                     abbreviated{
@@ -701,34 +682,125 @@ en_GB{
         ms{"m:ss"}
     }
     fields{
+        day-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} day"}
+                    other{"+{0} days"}
+                }
+                past{
+                    one{"-{0} day"}
+                    other{"-{0} days"}
+                }
+            }
+        }
+        day-short{
+            relativeTime{
+                future{
+                    one{"in {0} day"}
+                    other{"in {0} days"}
+                }
+                past{
+                    one{"{0} day ago"}
+                    other{"{0} days ago"}
+                }
+            }
+        }
         dayperiod{
             dn{"am/pm"}
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
+                    one{"+{0} h"}
+                    other{"+{0} h"}
+                }
+                past{
+                    one{"-{0} h"}
+                    other{"-{0} h"}
+                }
+            }
+        }
+        minute-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} m"}
+                    other{"+{0} m"}
+                }
+                past{
+                    one{"-{0} m"}
+                    other{"-{0} m"}
+                }
+            }
+        }
+        month-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} mo."}
+                    other{"+{0} mo."}
+                }
+                past{
+                    one{"-{0} mo."}
+                    other{"-{0} mo."}
+                }
+            }
+        }
+        quarter-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} Q"}
+                    other{"+{0} Q"}
+                }
+                past{
+                    one{"-{0} Q"}
+                    other{"-{0} Q"}
+                }
+            }
+        }
+        second-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} s"}
+                    other{"+{0} s"}
+                }
+                past{
+                    one{"-{0} s ago"}
+                    other{"-{0} s ago"}
+                }
+            }
+        }
+        week-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} wk."}
+                    other{"+{0} wk."}
+                }
+                past{
+                    one{"-{0} wk."}
+                    other{"-{0} wk."}
+                }
+            }
+        }
+        year-narrow{
+            relativeTime{
+                future{
+                    one{"+{0} yr."}
+                    other{"+{0} yr."}
+                }
+                past{
+                    one{"-{0} yr."}
+                    other{"-{0} yr."}
+                }
+            }
         }
     }
     listPattern{
         standard{
-            2{"{0} and {1}"}
             end{"{0} and {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
         }
         unit{
-            2{"{0} and {1}"}
             end{"{0} and {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
         }
-    }
-    units{
-    }
-    unitsNarrow{
-        duration{
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-        }
-    }
-    unitsShort{
     }
 }

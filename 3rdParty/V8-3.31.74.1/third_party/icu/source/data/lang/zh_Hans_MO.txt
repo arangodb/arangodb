@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh_Hans_MO.xml
@@ -18,7 +18,6 @@ zh_Hans_MO{
         Knda{"卡纳塔克文"}
         Sinh{"辛哈拉文"}
         Thaa{"塔安娜文"}
-        Zxxx{"非书面文字"}
         Zzzz{"未知语系"}
     }
     Types{
@@ -35,7 +34,7 @@ zh_Hans_MO{
     Variants{
         WADEGILE{"韦氏拼音罗马字"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.19"}
     codePatterns{
         script{"语系：{0}"}
     }

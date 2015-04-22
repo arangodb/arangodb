@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1999-2013 International Business Machines Corporation and
+ * Copyright (c) 1999-2014 International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /************************************************************************
@@ -53,6 +53,7 @@ public:
       **/
     void TestIteration(void);
 
+    void TestFilteredBreakIteratorBuilder(void);
 
     /**
      * Tests creating RuleBasedBreakIterator from rules strings.

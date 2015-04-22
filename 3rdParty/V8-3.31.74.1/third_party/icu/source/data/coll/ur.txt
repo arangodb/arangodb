@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/collation/ur.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/xml/collation/ur.xml
  */
 ur{
-    Version{"2.0.89.0"}
+    Version{"2.0.96.14"}
     collations{
         standard{
             Sequence{
@@ -21,7 +21,7 @@ ur{
                 "<<\u0651<<\u0658<<\u0653"
                 "&[last tertiary ignorable]<<<\u0610<<<\u0611<<<\u0613<<<\u0612<<<\u0614"
             }
-            Version{"24"}
+            Version{"26"}
         }
     }
 }

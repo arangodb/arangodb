@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/dz.xml
@@ -112,7 +112,7 @@ dz{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
     calendar{
         generic{
             DateTimePatterns{
@@ -740,30 +740,5 @@ dz{
         UK{"བྲི་ཊིཤ་ བརྩི་ལུགས"}
         US{"ཨ་མི་རི་ཀཱན་ བརྩི་ལུགས"}
         metric{"མེ་ཊྲིཀ་བརྩི་ལུགས"}
-    }
-    units{
-        duration{
-            day{
-                other{"ཉིན་ཞག་ {0}"}
-            }
-            hour{
-                other{"ཆུ་ཚོད་ {0}"}
-            }
-            minute{
-                other{"སྐར་མ་ {0}"}
-            }
-            month{
-                other{"ཟླཝ་ {0}"}
-            }
-            second{
-                other{"སྐར་ཆ་ {0}"}
-            }
-            week{
-                other{"བངུན་ཕྲག་ {0}"}
-            }
-            year{
-                other{"ལོ་འཁོར་ {0}"}
-            }
-        }
     }
 }

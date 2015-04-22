@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1998-2013, International Business Machines
+#   Copyright (C) 1998-2014, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -29,7 +29,8 @@ subdir = .
 #AUTOCONF = @AUTOCONF@
 
 ## Optional directory setup
-@LAYOUT_TRUE@LAYOUT = layout layoutex
+@LAYOUT_TRUE@LAYOUT = layout
+@LAYOUTEX_TRUE@LAYOUTEX = layoutex
 @ICUIO_TRUE@ICUIO = io
 @EXTRAS_TRUE@EXTRA = extra
 @TESTS_TRUE@TEST = test
@@ -38,7 +39,8 @@ subdir = .
 
 ## pkgconfig setup. Always have uc and i18n. Others are optional.
 ALL_PKGCONFIG_SUFFIX=uc i18n
-@LAYOUT_TRUE@ALL_PKGCONFIG_SUFFIX+= le lx
+@LAYOUT_TRUE@ALL_PKGCONFIG_SUFFIX+= le
+@LAYOUTEX_TRUE@ALL_PKGCONFIG_SUFFIX+= lx
 @ICUIO_TRUE@ALL_PKGCONFIG_SUFFIX+= io
 
 DOXYGEN = @DOXYGEN@
@@ -56,7 +58,7 @@ INSTALLED_BUILT_FILES = $(top_builddir)/config/Makefile.inc $(top_builddir)/conf
 LOCAL_BUILT_FILES = icudefs.mk config/icucross.mk config/icucross.inc
 
 DOCDIRS = common i18n
-SUBDIRS =  stubdata common i18n $(LAYOUT) $(ICUIO) $(TOOLS) data $(EXTRA) $(SAMPLE) $(TEST)
+SUBDIRS =  stubdata common i18n $(LAYOUT) $(LAYOUTEX) $(ICUIO) $(TOOLS) data $(EXTRA) $(SAMPLE) $(TEST)
 
 SECTION = 1
 
@@ -162,6 +164,11 @@ ifndef VERBOSE
 	@echo "Note: rebuild with \"$(MAKE) VERBOSE=1 $(MAKECMDGOALS)\" to show all compiler parameters."
 endif
 install-local: install-icu install-manx
+
+# always installs. Used by layoutex.
+install-pkgconfig: $(ALL_PKGCONFIG_FILES)
+	@$(MKINSTALLDIRS) $(DESTDIR)$(libdir)/pkgconfig
+	$(INSTALL_DATA) $(ALL_PKGCONFIG_FILES) $(DESTDIR)$(libdir)/pkgconfig/
 
 install-icu: $(INSTALLED_BUILT_FILES)
 	@$(MKINSTALLDIRS) $(DESTDIR)$(pkgdatadir)/config
@@ -284,11 +291,22 @@ config/icu-le.pc: config/icu.pc Makefile icudefs.mk
 	@echo "Libs:" "${ICULIBS_LE}" >> $@
 	@echo $@ updated.
 
+ICULEHB_LIBS=@ICULEHB_LIBS@
+USING_HB=
+ifneq ($(ICULEHB_LIBS),)
+USING_HB=(Using HarfBuzz)
+endif
+
+
 config/icu-lx.pc: config/icu.pc Makefile icudefs.mk
 	@cat config/icu.pc > $@
-	@echo "Description: $(PACKAGE_ICU_DESCRIPTION): Paragraph Layout library" >> $@
+	@echo "Description: $(PACKAGE_ICU_DESCRIPTION): Paragraph Layout library $(USING_HB)" >> $@
 	@echo "Name: $(PACKAGE)-lx" >> $@
+ifneq ($(ICULEHB_LIBS),)
+	@echo "Requires: icu-le-hb icu-uc" >> $@
+else
 	@echo "Requires: icu-le" >> $@
+endif
 	@echo "Libs:" "${ICULIBS_LX}" >> $@
 	@echo $@ updated.
 

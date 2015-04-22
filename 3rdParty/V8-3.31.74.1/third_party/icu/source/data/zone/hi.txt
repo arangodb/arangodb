@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/hi.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/hi.xml
  */
 hi{
-    Version{"2.0.92.96"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"अबिदजान"}
@@ -445,7 +445,7 @@ hi{
             ec{"मेट्लेकाट्ला"}
         }
         "America:Mexico_City"{
-            ec{"मैक्सिको सिटी"}
+            ec{"मेक्सिको सिटी"}
         }
         "America:Miquelon"{
             ec{"मिकेलॉन"}
@@ -458,9 +458,6 @@ hi{
         }
         "America:Montevideo"{
             ec{"मोंटेवीडियो"}
-        }
-        "America:Montreal"{
-            ec{"मोंट्रियल"}
         }
         "America:Montserrat"{
             ec{"मोंटसेरात"}
@@ -552,9 +549,6 @@ hi{
         "America:Scoresbysund"{
             ec{"इटोकोर्टोरमियाट"}
         }
-        "America:Shiprock"{
-            ec{"शिपरॉक"}
-        }
         "America:Sitka"{
             ec{"सिट्का"}
         }
@@ -636,11 +630,11 @@ hi{
         "Antarctica:Rothera"{
             ec{"रोथेरा"}
         }
-        "Antarctica:South_Pole"{
-            ec{"दक्षिणी ध्रुव"}
-        }
         "Antarctica:Syowa"{
             ec{"स्योवा"}
+        }
+        "Antarctica:Troll"{
+            ec{"ट्रोल"}
         }
         "Antarctica:Vostok"{
             ec{"वोस्तोक"}
@@ -865,7 +859,7 @@ hi{
             ec{"उलानबातर"}
         }
         "Asia:Urumqi"{
-            ec{"उरम्ची"}
+            ec{"उरूम्की"}
         }
         "Asia:Ust-Nera"{
             ec{"यूस्ट–नेरा"}
@@ -992,7 +986,7 @@ hi{
         }
         "Europe:Dublin"{
             ec{"डबलिन"}
-            ld{"आइरिश ग्रीष्मकालीन समय"}
+            ld{"आइरिश मानक समय"}
         }
         "Europe:Gibraltar"{
             ec{"जिब्राल्टर"}
@@ -1110,7 +1104,7 @@ hi{
             ec{"विल्नियस"}
         }
         "Europe:Volgograd"{
-            ec{"वोल्गोग्राद"}
+            ec{"वोल्गोग्राड"}
         }
         "Europe:Warsaw"{
             ec{"वॉरसॉ"}
@@ -1119,7 +1113,7 @@ hi{
             ec{"ज़ाग्रेब"}
         }
         "Europe:Zaporozhye"{
-            ec{"ज़ैपोरोज़ाइ"}
+            ec{"ज़ैपोरोज़ाई"}
         }
         "Europe:Zurich"{
             ec{"ज़्यूरिख़"}
@@ -1323,6 +1317,11 @@ hi{
             lg{"एनाडीयर समय"}
             ls{"एनाडीयर मानक समय"}
         }
+        "meta:Apia"{
+            ld{"एपिआ डेलाइट समय"}
+            lg{"एपिआ समय"}
+            ls{"एपिआ मानक समय"}
+        }
         "meta:Arabian"{
             ld{"अरब डेलाइट समय"}
             lg{"अरब समय"}
@@ -1464,7 +1463,7 @@ hi{
             ls{"इक्वाडोर समय"}
         }
         "meta:Europe_Central"{
-            ld{"मध्‍य यूरोप ग्रीष्‍मकालीन समय"}
+            ld{"मध्‍य यूरोपीय ग्रीष्‍मकालीन समय"}
             lg{"मध्य यूरोपीय समय"}
             ls{"मध्य यूरोपीय मानक समय"}
         }
@@ -1472,6 +1471,9 @@ hi{
             ld{"पूर्वी यूरोपीय ग्रीष्मकालीन समय"}
             lg{"पूर्वी यूरोपीय समय"}
             ls{"पूर्वी यूरोपीय मानक समय"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"अग्र पूर्वी यूरोपीय समय"}
         }
         "meta:Europe_Western"{
             ld{"पश्चिमी यूरोपीय ग्रीष्‍मकालीन समय"}
@@ -1484,9 +1486,9 @@ hi{
             ls{"फ़ॉकलैंड द्वीपसमूह मानक समय"}
         }
         "meta:Fiji"{
-            ld{"फ़िजी का ग्रीष्मकालीन समय"}
-            lg{"फ़िजी का समय"}
-            ls{"फ़िजी का मानक समय"}
+            ld{"फ़िजी ग्रीष्मकालीन समय"}
+            lg{"फ़िजी समय"}
+            ls{"फ़िजी मानक समय"}
         }
         "meta:French_Guiana"{
             ls{"फ़्रेंच गुयाना समय"}
@@ -1543,7 +1545,7 @@ hi{
             ls{"होव्ड मानक समय"}
         }
         "meta:India"{
-            ls{"भारतीय समय"}
+            ls{"भारतीय मानक समय"}
             ss{"IST"}
         }
         "meta:Indian_Ocean"{
@@ -1631,7 +1633,7 @@ hi{
             ls{"मालदीव समय"}
         }
         "meta:Marquesas"{
-            ls{"मार्कोसिस समय"}
+            ls{"मार्केसस समय"}
         }
         "meta:Marshall_Islands"{
             ls{"मार्शल द्वीपसमूह समय"}
@@ -1643,6 +1645,16 @@ hi{
         }
         "meta:Mawson"{
             ls{"माव्सन समय"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"उत्तर पश्चिमी मेक्सिको डेलाइट समय"}
+            lg{"उत्तर पश्चिमी मेक्सिको समय"}
+            ls{"उत्तर पश्चिमी मेक्सिको मानक समय"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"मेक्सिकन प्रशांत डेलाइट समय"}
+            lg{"मेक्सिकन प्रशांत समय"}
+            ls{"मेक्सिकन प्रशांत मानक समय"}
         }
         "meta:Mongolia"{
             ld{"उलान बटोर ग्रीष्मकालीन समय"}
@@ -1729,9 +1741,9 @@ hi{
             ls{"फ़ीनिक्स द्वीपसमूह समय"}
         }
         "meta:Pierre_Miquelon"{
-            ld{"सेंट पियरे और मिकेलान डेलाइट टाइम"}
-            lg{"सेंट पियरे और मिकेलान टाइम"}
-            ls{"सेंट पियरे और मिकेलान मानक टाइम"}
+            ld{"सेंट पियरे और मिकेलान डेलाइट समय"}
+            lg{"सेंट पियरे और मिकेलान समय"}
+            ls{"सेंट पियरे और मिकेलान मानक समय"}
         }
         "meta:Pitcairn"{
             ls{"पिटकैर्न समय"}
@@ -1756,7 +1768,7 @@ hi{
             ls{"समारा मानक समय"}
         }
         "meta:Samoa"{
-            ld{"समोआ ग्रीष्मकालीन समय"}
+            ld{"समोआ डेलाइट समय"}
             lg{"समोआ समय"}
             ls{"समोआ मानक समय"}
         }

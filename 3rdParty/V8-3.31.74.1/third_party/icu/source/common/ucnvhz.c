@@ -1,6 +1,6 @@
 /*  
 **********************************************************************
-*   Copyright (C) 2000-2011, International Business Machines
+*   Copyright (C) 2000-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   file name:  ucnvhz.c
@@ -16,7 +16,7 @@
 
 #include "unicode/utypes.h"
 
-#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION
+#if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION
 
 #include "cmemory.h"
 #include "unicode/ucnv.h"
@@ -340,12 +340,11 @@ UConverter_fromUnicode_HZ_OFFSETS_LOGIC (UConverterFromUnicodeArgs * args,
     int32_t myTargetIndex = 0;
     int32_t targetLength = (int32_t)(args->targetLimit - myTarget);
     int32_t mySourceLength = (int32_t)(args->sourceLimit - args->source);
-    int32_t length=0;
     uint32_t targetUniChar = 0x0000;
     UChar32 mySourceChar = 0x0000;
     UConverterDataHZ *myConverterData=(UConverterDataHZ*)args->converter->extraInfo;
     UBool isTargetUCharDBCS = (UBool) myConverterData->isTargetUCharDBCS;
-    UBool oldIsTargetUCharDBCS = isTargetUCharDBCS;
+    UBool oldIsTargetUCharDBCS;
     int len =0;
     const char* escSeq=NULL;
     
@@ -373,10 +372,9 @@ UConverter_fromUnicode_HZ_OFFSETS_LOGIC (UConverterFromUnicodeArgs * args,
                 CONCAT_ESCAPE_MACRO(args, myTargetIndex, targetLength, escSeq,err,len,mySourceIndex);
                 continue;
             } else if(mySourceChar <= 0x7f) {
-                length = 1;
                 targetUniChar = mySourceChar;
             } else {
-                length= ucnv_MBCSFromUChar32(myConverterData->gbConverter->sharedData,
+                int32_t length= ucnv_MBCSFromUChar32(myConverterData->gbConverter->sharedData,
                     mySourceChar,&targetUniChar,args->converter->useFallback);
                 /* we can only use lead bytes 21..7D and trail bytes 21..7E */
                 if( length == 2 &&
@@ -637,4 +635,4 @@ const UConverterSharedData _HZData={
         0
 };
 
-#endif /* #if !UCONFIG_NO_LEGACY_CONVERSION */
+#endif /* #if !UCONFIG_NO_CONVERSION && !UCONFIG_NO_LEGACY_CONVERSION && !UCONFIG_NO_NON_HTML5_CONVERSION */

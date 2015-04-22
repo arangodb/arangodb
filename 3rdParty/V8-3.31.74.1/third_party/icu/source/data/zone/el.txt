@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/el.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/el.xml
  */
 el{
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Αμπιτζάν"}
@@ -409,7 +409,7 @@ el{
             ec{"Λούισβιλ"}
         }
         "America:Lower_Princes"{
-            ec{"[Lower Prince's Quarter]"}
+            ec{"Lower Prince’s Quarter (Άγιος Μαρτίνος Ολλανδίας)"}
         }
         "America:Maceio"{
             ec{"Μασέιο"}
@@ -458,9 +458,6 @@ el{
         }
         "America:Montevideo"{
             ec{"Μοντεβιδέο"}
-        }
-        "America:Montreal"{
-            ec{"Μόντρεαλ"}
         }
         "America:Montserrat"{
             ec{"Μονσεράτ"}
@@ -552,9 +549,6 @@ el{
         "America:Scoresbysund"{
             ec{"Σκορεσμπίσουντ"}
         }
-        "America:Shiprock"{
-            ec{"Σίπροκ"}
-        }
         "America:Sitka"{
             ec{"Σίτκα"}
         }
@@ -636,11 +630,11 @@ el{
         "Antarctica:Rothera"{
             ec{"Ροθέρα"}
         }
-        "Antarctica:South_Pole"{
-            ec{"Νότιος Πόλος"}
-        }
         "Antarctica:Syowa"{
             ec{"Σίοβα"}
+        }
+        "Antarctica:Troll"{
+            ec{"Τρολ"}
         }
         "Antarctica:Vostok"{
             ec{"Βόστοκ"}
@@ -1281,7 +1275,7 @@ el{
             ls{"Ώρα Ανατολικής Αφρικής"}
         }
         "meta:Africa_Southern"{
-            ls{"Ώρα Νότιας Αφρικής"}
+            ls{"Χειμερινή ώρα Νότιας Αφρικής"}
         }
         "meta:Africa_Western"{
             ld{"Θερινή ώρα Δυτικής Αφρικής"}
@@ -1322,6 +1316,11 @@ el{
             ld{"Θερινή ώρα Αναντίρ"}
             lg{"Ώρα Αναντίρ"}
             ls{"Χειμερινή ώρα Αναντίρ"}
+        }
+        "meta:Apia"{
+            ld{"Θερινή ώρα Απία"}
+            lg{"Ώρα Απία"}
+            ls{"Χειμερινή ώρα Απία"}
         }
         "meta:Arabian"{
             ld{"Αραβική θερινή ώρα"}
@@ -1478,6 +1477,9 @@ el{
             sd{"EEST"}
             sg{"EET"}
             ss{"EET"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"Ώρα περαιτέρω Ανατολικής Ευρώπης"}
         }
         "meta:Europe_Western"{
             ld{"Θερινή ώρα Δυτικής Ευρώπης"}
@@ -1659,6 +1661,16 @@ el{
         }
         "meta:Mawson"{
             ls{"Ώρα Μόσον"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"Θερινή ώρα Βορειοδυτικού Μεξικού"}
+            lg{"Ώρα Βορειοδυτικού Μεξικού"}
+            ls{"Χειμερινή ώρα Βορειοδυτικού Μεξικού"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Θερινή ώρα Ειρηνικού Μεξικού"}
+            lg{"Ώρα Ειρηνικού Μεξικού"}
+            ls{"Χειμερινή ώρα Ειρηνικού Μεξικού"}
         }
         "meta:Mongolia"{
             ld{"Θερινή ώρα Ουλάν Μπατόρ"}

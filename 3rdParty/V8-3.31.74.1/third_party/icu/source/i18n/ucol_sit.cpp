@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2004-2012, International Business Machines
+*   Copyright (C) 2004-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  ucol_sit.cpp
@@ -15,10 +15,9 @@
 
 #include "unicode/ustring.h"
 #include "unicode/udata.h"
-
+#include "unicode/utf16.h"
 #include "utracimp.h"
 #include "ucol_imp.h"
-#include "ucol_tok.h"
 #include "cmemory.h"
 #include "cstring.h"
 #include "uresimp.h"
@@ -29,6 +28,8 @@
 #endif
 
 #if !UCONFIG_NO_COLLATION
+
+#include "unicode/tblcoll.h"
 
 enum OptionsList {
     UCOL_SIT_LANGUAGE = 0,
@@ -125,21 +126,6 @@ static const AttributeConversion conversions[12] = {
     { 'X', UCOL_OFF }
 };
 
-
-static char
-ucol_sit_attributeValueToLetter(UColAttributeValue value, UErrorCode *status) {
-    uint32_t i = 0;
-    for(i = 0; i < sizeof(conversions)/sizeof(conversions[0]); i++) {
-        if(conversions[i].value == value) {
-            return conversions[i].letter;
-        }
-    }
-    *status = U_ILLEGAL_ARGUMENT_ERROR;
-#ifdef UCOL_TRACE_SIT
-    fprintf(stderr, "%s:%d: unknown UColAttributeValue %d: %s\n", __FILE__, __LINE__, value, u_errorName(*status));
-#endif    
-    return 0;
-}
 
 static UColAttributeValue
 ucol_sit_letterToAttributeValue(char letter, UErrorCode *status) {
@@ -571,23 +557,6 @@ ucol_openFromShortString( const char *definition,
 }
 
 
-static void appendShortStringElement(const char *src, int32_t len, char *result, int32_t *resultSize, int32_t capacity, char arg)
-{
-    if(len) {
-        if(*resultSize) {
-            if(*resultSize < capacity) {
-                uprv_strcat(result, "_");
-            }
-            (*resultSize)++;
-        }
-        *resultSize += len + 1;
-        if(*resultSize < capacity) {
-            uprv_strncat(result, &arg, 1);
-            uprv_strncat(result, src, len);
-        }
-    }
-}
-
 U_CAPI int32_t U_EXPORT2
 ucol_getShortDefinitionString(const UCollator *coll,
                               const char *locale,
@@ -596,59 +565,11 @@ ucol_getShortDefinitionString(const UCollator *coll,
                               UErrorCode *status)
 {
     if(U_FAILURE(*status)) return 0;
-    if(coll->delegate != NULL) {
-      return ((icu::Collator*)coll->delegate)->internalGetShortDefinitionString(locale,dst,capacity,*status);
+    if(coll == NULL) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return 0;
     }
-    char buffer[internalBufferSize];
-    uprv_memset(buffer, 0, internalBufferSize*sizeof(char));
-    int32_t resultSize = 0;
-    char tempbuff[internalBufferSize];
-    char locBuff[internalBufferSize];
-    uprv_memset(buffer, 0, internalBufferSize*sizeof(char));
-    int32_t elementSize = 0;
-    UBool isAvailable = 0;
-    CollatorSpec s;
-    ucol_sit_initCollatorSpecs(&s);
-
-    if(!locale) {
-        locale = ucol_getLocaleByType(coll, ULOC_VALID_LOCALE, status);
-    }
-    elementSize = ucol_getFunctionalEquivalent(locBuff, internalBufferSize, "collation", locale, &isAvailable, status);
-
-    if(elementSize) {
-        // we should probably canonicalize here...
-        elementSize = uloc_getLanguage(locBuff, tempbuff, internalBufferSize, status);
-        appendShortStringElement(tempbuff, elementSize, buffer, &resultSize, /*capacity*/internalBufferSize, languageArg);
-        elementSize = uloc_getCountry(locBuff, tempbuff, internalBufferSize, status);
-        appendShortStringElement(tempbuff, elementSize, buffer, &resultSize, /*capacity*/internalBufferSize, regionArg);
-        elementSize = uloc_getScript(locBuff, tempbuff, internalBufferSize, status);
-        appendShortStringElement(tempbuff, elementSize, buffer, &resultSize, /*capacity*/internalBufferSize, scriptArg);
-        elementSize = uloc_getVariant(locBuff, tempbuff, internalBufferSize, status);
-        appendShortStringElement(tempbuff, elementSize, buffer, &resultSize, /*capacity*/internalBufferSize, variantArg);
-        elementSize = uloc_getKeywordValue(locBuff, "collation", tempbuff, internalBufferSize, status);
-        appendShortStringElement(tempbuff, elementSize, buffer, &resultSize, /*capacity*/internalBufferSize, keywordArg);
-    }
-
-    int32_t i = 0;
-    UColAttributeValue attribute = UCOL_DEFAULT;
-    for(i = 0; i < UCOL_SIT_ITEMS_COUNT; i++) {
-        if(options[i].action == _processCollatorOption) {
-            attribute = ucol_getAttributeOrDefault(coll, (UColAttribute)options[i].attr, status);
-            if(attribute != UCOL_DEFAULT) {
-                char letter = ucol_sit_attributeValueToLetter(attribute, status);
-                appendShortStringElement(&letter, 1,
-                    buffer, &resultSize, /*capacity*/internalBufferSize, options[i].optionStart);
-            }
-        }
-    }
-    if(coll->variableTopValueisDefault == FALSE) {
-        //s.variableTopValue = ucol_getVariableTop(coll, status);
-        elementSize = T_CString_integerToString(tempbuff, coll->variableTopValue, 16);
-        appendShortStringElement(tempbuff, elementSize, buffer, &resultSize, capacity, variableTopValArg);
-    }
-
-    UParseError parseError;
-    return ucol_normalizeShortDefinitionString(buffer, dst, capacity, &parseError, status);
+    return ((icu::Collator*)coll)->internalGetShortDefinitionString(locale,dst,capacity,*status);
 }
 
 U_CAPI int32_t U_EXPORT2
@@ -678,164 +599,6 @@ ucol_normalizeShortDefinitionString(const char *definition,
     ucol_sit_readSpecs(&s, definition, parseError, status);
     return ucol_sit_dumpSpecs(&s, destination, capacity, status);
 }
-
-U_CAPI UColAttributeValue  U_EXPORT2
-ucol_getAttributeOrDefault(const UCollator *coll, UColAttribute attr, UErrorCode *status)
-{
-    if(U_FAILURE(*status) || coll == NULL) {
-      return UCOL_DEFAULT;
-    }
-    switch(attr) {
-    case UCOL_NUMERIC_COLLATION:
-        return coll->numericCollationisDefault?UCOL_DEFAULT:coll->numericCollation;
-    case UCOL_HIRAGANA_QUATERNARY_MODE:
-        return coll->hiraganaQisDefault?UCOL_DEFAULT:coll->hiraganaQ;
-    case UCOL_FRENCH_COLLATION: /* attribute for direction of secondary weights*/
-        return coll->frenchCollationisDefault?UCOL_DEFAULT:coll->frenchCollation;
-    case UCOL_ALTERNATE_HANDLING: /* attribute for handling variable elements*/
-        return coll->alternateHandlingisDefault?UCOL_DEFAULT:coll->alternateHandling;
-    case UCOL_CASE_FIRST: /* who goes first, lower case or uppercase */
-        return coll->caseFirstisDefault?UCOL_DEFAULT:coll->caseFirst;
-    case UCOL_CASE_LEVEL: /* do we have an extra case level */
-        return coll->caseLevelisDefault?UCOL_DEFAULT:coll->caseLevel;
-    case UCOL_NORMALIZATION_MODE: /* attribute for normalization */
-        return coll->normalizationModeisDefault?UCOL_DEFAULT:coll->normalizationMode;
-    case UCOL_STRENGTH:         /* attribute for strength */
-        return coll->strengthisDefault?UCOL_DEFAULT:coll->strength;
-    case UCOL_ATTRIBUTE_COUNT:
-    default:
-        *status = U_ILLEGAL_ARGUMENT_ERROR;
-#ifdef UCOL_TRACE_SIT
-        fprintf(stderr, "%s:%d: Unknown attr value '%d': %s\n", __FILE__, __LINE__, (int)attr, u_errorName(*status));
-#endif
-        break;
-    }
-    return UCOL_DEFAULT;
-}
-
-
-struct contContext {
-    const UCollator *coll;
-    USet            *conts;
-    USet            *expansions;
-    USet            *removedContractions;
-    UBool           addPrefixes;
-    UErrorCode      *status;
-};
-
-
-
-static void
-addSpecial(contContext *context, UChar *buffer, int32_t bufLen,
-               uint32_t CE, int32_t leftIndex, int32_t rightIndex, UErrorCode *status)
-{
-  const UCollator *coll = context->coll;
-  USet *contractions = context->conts;
-  USet *expansions = context->expansions;
-  UBool addPrefixes = context->addPrefixes;
-
-    const UChar *UCharOffset = (UChar *)coll->image+getContractOffset(CE);
-    uint32_t newCE = *(coll->contractionCEs + (UCharOffset - coll->contractionIndex));
-    // we might have a contraction that ends from previous level
-    if(newCE != UCOL_NOT_FOUND) {
-      if(isSpecial(CE) && getCETag(CE) == CONTRACTION_TAG && isSpecial(newCE) && getCETag(newCE) == SPEC_PROC_TAG && addPrefixes) {
-        addSpecial(context, buffer, bufLen, newCE, leftIndex, rightIndex, status);
-      }
-      if(contractions && rightIndex-leftIndex > 1) {
-            uset_addString(contractions, buffer+leftIndex, rightIndex-leftIndex);
-            if(expansions && isSpecial(CE) && getCETag(CE) == EXPANSION_TAG) {
-              uset_addString(expansions, buffer+leftIndex, rightIndex-leftIndex);
-            }
-      }
-    }
-
-    UCharOffset++;
-    // check whether we're doing contraction or prefix
-    if(getCETag(CE) == SPEC_PROC_TAG && addPrefixes) {
-      if(leftIndex == 0) {
-          *status = U_INTERNAL_PROGRAM_ERROR;
-          return;
-      }
-      --leftIndex;
-      while(*UCharOffset != 0xFFFF) {
-          newCE = *(coll->contractionCEs + (UCharOffset - coll->contractionIndex));
-          buffer[leftIndex] = *UCharOffset;
-          if(isSpecial(newCE) && (getCETag(newCE) == CONTRACTION_TAG || getCETag(newCE) == SPEC_PROC_TAG)) {
-              addSpecial(context, buffer, bufLen, newCE, leftIndex, rightIndex, status);
-          } else {
-            if(contractions) {
-                uset_addString(contractions, buffer+leftIndex, rightIndex-leftIndex);
-            }
-            if(expansions && isSpecial(newCE) && getCETag(newCE) == EXPANSION_TAG) {
-              uset_addString(expansions, buffer+leftIndex, rightIndex-leftIndex);
-            }
-          }
-          UCharOffset++;
-      }
-    } else if(getCETag(CE) == CONTRACTION_TAG) {
-      if(rightIndex == bufLen-1) {
-          *status = U_INTERNAL_PROGRAM_ERROR;
-          return;
-      }
-      while(*UCharOffset != 0xFFFF) {
-          newCE = *(coll->contractionCEs + (UCharOffset - coll->contractionIndex));
-          buffer[rightIndex] = *UCharOffset;
-          if(isSpecial(newCE) && (getCETag(newCE) == CONTRACTION_TAG || getCETag(newCE) == SPEC_PROC_TAG)) {
-              addSpecial(context, buffer, bufLen, newCE, leftIndex, rightIndex+1, status);
-          } else {
-            if(contractions) {
-              uset_addString(contractions, buffer+leftIndex, rightIndex+1-leftIndex);
-            }
-            if(expansions && isSpecial(newCE) && getCETag(newCE) == EXPANSION_TAG) {
-              uset_addString(expansions, buffer+leftIndex, rightIndex+1-leftIndex);
-            }
-          }
-          UCharOffset++;
-      }
-    }
-
-}
-
-U_CDECL_BEGIN
-static UBool U_CALLCONV
-_processSpecials(const void *context, UChar32 start, UChar32 limit, uint32_t CE)
-{
-    UErrorCode *status = ((contContext *)context)->status;
-    USet *expansions = ((contContext *)context)->expansions;
-    USet *removed = ((contContext *)context)->removedContractions;
-    UBool addPrefixes = ((contContext *)context)->addPrefixes;
-    UChar contraction[internalBufferSize];
-    if(isSpecial(CE)) {
-      if(((getCETag(CE) == SPEC_PROC_TAG && addPrefixes) || getCETag(CE) == CONTRACTION_TAG)) {
-        while(start < limit && U_SUCCESS(*status)) {
-            // if there are suppressed contractions, we don't
-            // want to add them.
-            if(removed && uset_contains(removed, start)) {
-                start++;
-                continue;
-            }
-            // we start our contraction from middle, since we don't know if it
-            // will grow toward right or left
-            contraction[internalBufferSize/2] = (UChar)start;
-            addSpecial(((contContext *)context), contraction, internalBufferSize, CE, internalBufferSize/2, internalBufferSize/2+1, status);
-            start++;
-        }
-      } else if(expansions && getCETag(CE) == EXPANSION_TAG) {
-        while(start < limit && U_SUCCESS(*status)) {
-          uset_add(expansions, start++);
-        }
-      }
-    }
-    if(U_FAILURE(*status)) {
-        return FALSE;
-    } else {
-        return TRUE;
-    }
-}
-
-U_CDECL_END
-
-
 
 /**
  * Get a set containing the contractions defined by the collator. The set includes
@@ -878,78 +641,14 @@ ucol_getContractionsAndExpansions( const UCollator *coll,
         *status = U_ILLEGAL_ARGUMENT_ERROR;
         return;
     }
-
-    if(contractions) {
-      uset_clear(contractions);
+    const icu::RuleBasedCollator *rbc = icu::RuleBasedCollator::rbcFromUCollator(coll);
+    if(rbc == NULL) {
+        *status = U_UNSUPPORTED_ERROR;
+        return;
     }
-    if(expansions) {
-      uset_clear(expansions);
-    }
-    int32_t rulesLen = 0;
-    const UChar* rules = ucol_getRules(coll, &rulesLen);
-    UColTokenParser src;
-    ucol_tok_initTokenList(&src, rules, rulesLen, coll->UCA,
-                           ucol_tok_getRulesFromBundle, NULL, status);
-
-    contContext c = { NULL, contractions, expansions, src.removeSet, addPrefixes, status };
-
-    // Add the UCA contractions
-    c.coll = coll->UCA;
-    utrie_enum(&coll->UCA->mapping, NULL, _processSpecials, &c);
-
-    // This is collator specific. Add contractions from a collator
-    c.coll = coll;
-    c.removedContractions =  NULL;
-    utrie_enum(&coll->mapping, NULL, _processSpecials, &c);
-    ucol_tok_closeTokenList(&src);
-}
-
-U_CAPI int32_t U_EXPORT2
-ucol_getUnsafeSet( const UCollator *coll,
-                  USet *unsafe,
-                  UErrorCode *status)
-{
-    UChar buffer[internalBufferSize];
-    int32_t len = 0;
-
-    uset_clear(unsafe);
-
-    // cccpattern = "[[:^tccc=0:][:^lccc=0:]]", unfortunately variant
-    static const UChar cccpattern[25] = { 0x5b, 0x5b, 0x3a, 0x5e, 0x74, 0x63, 0x63, 0x63, 0x3d, 0x30, 0x3a, 0x5d,
-                                    0x5b, 0x3a, 0x5e, 0x6c, 0x63, 0x63, 0x63, 0x3d, 0x30, 0x3a, 0x5d, 0x5d, 0x00 };
-
-    // add chars that fail the fcd check
-    uset_applyPattern(unsafe, cccpattern, 24, USET_IGNORE_SPACE, status);
-
-    // add Thai/Lao prevowels
-    uset_addRange(unsafe, 0xe40, 0xe44);
-    uset_addRange(unsafe, 0xec0, 0xec4);
-    // add lead/trail surrogates
-    uset_addRange(unsafe, 0xd800, 0xdfff);
-
-    USet *contractions = uset_open(0,0);
-
-    int32_t i = 0, j = 0;
-    int32_t contsSize = ucol_getContractions(coll, contractions, status);
-    UChar32 c = 0;
-    // Contraction set consists only of strings
-    // to get unsafe code points, we need to
-    // break the strings apart and add them to the unsafe set
-    for(i = 0; i < contsSize; i++) {
-        len = uset_getItem(contractions, i, NULL, NULL, buffer, internalBufferSize, status);
-        if(len > 0) {
-            j = 0;
-            while(j < len) {
-                U16_NEXT(buffer, j, len, c);
-                if(j < len) {
-                    uset_add(unsafe, c);
-                }
-            }
-        }
-    }
-
-    uset_close(contractions);
-
-    return uset_size(unsafe);
+    rbc->internalGetContractionsAndExpansions(
+            icu::UnicodeSet::fromUSet(contractions),
+            icu::UnicodeSet::fromUSet(expansions),
+            addPrefixes, *status);
 }
 #endif

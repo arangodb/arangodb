@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2002-2013, International Business Machines
+*   Copyright (C) 2002-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -25,8 +25,6 @@
 #include "unicode/ucasemap.h"
 #include "cmemory.h"
 #include "cintltst.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 /* test string case mapping functions --------------------------------------- */
 
@@ -891,9 +889,9 @@ TestUCaseMapToTitle(void) {
     }
 
     /* Use default UBreakIterator: Word breaks. */
-    length=ucasemap_toTitle(csm, buffer, LENGTHOF(buffer), beforeTitle, LENGTHOF(beforeTitle), &errorCode);
+    length=ucasemap_toTitle(csm, buffer, UPRV_LENGTHOF(buffer), beforeTitle, UPRV_LENGTHOF(beforeTitle), &errorCode);
     if( U_FAILURE(errorCode) ||
-        length!=LENGTHOF(titleWord) ||
+        length!=UPRV_LENGTHOF(titleWord) ||
         0!=u_memcmp(buffer, titleWord, length) ||
         buffer[length]!=0
     ) {
@@ -913,9 +911,9 @@ TestUCaseMapToTitle(void) {
         return;
     }
 
-    length=ucasemap_toTitle(csm, buffer, LENGTHOF(buffer), beforeTitle, LENGTHOF(beforeTitle), &errorCode);
+    length=ucasemap_toTitle(csm, buffer, UPRV_LENGTHOF(buffer), beforeTitle, UPRV_LENGTHOF(beforeTitle), &errorCode);
     if( U_FAILURE(errorCode) ||
-        length!=LENGTHOF(titleWordNoAdjust) ||
+        length!=UPRV_LENGTHOF(titleWordNoAdjust) ||
         0!=u_memcmp(buffer, titleWordNoAdjust, length) ||
         buffer[length]!=0
     ) {
@@ -949,18 +947,18 @@ TestUCaseMapToTitle(void) {
     }
 
     /* Use the sentence break iterator with the option. Preflight first. */
-    length=ucasemap_toTitle(csm, NULL, 0, beforeTitle, LENGTHOF(beforeTitle), &errorCode);
+    length=ucasemap_toTitle(csm, NULL, 0, beforeTitle, UPRV_LENGTHOF(beforeTitle), &errorCode);
     if( errorCode!=U_BUFFER_OVERFLOW_ERROR ||
-        length!=LENGTHOF(titleSentNoLower)
+        length!=UPRV_LENGTHOF(titleSentNoLower)
     ) {
         log_err("ucasemap_toTitle(preflight sentence break iterator, no lowercasing)=%ld failed - %s\n", (long)length, u_errorName(errorCode));
     }
 
     errorCode=U_ZERO_ERROR;
     buffer[0]=0;
-    length=ucasemap_toTitle(csm, buffer, LENGTHOF(buffer), beforeTitle, LENGTHOF(beforeTitle), &errorCode);
+    length=ucasemap_toTitle(csm, buffer, UPRV_LENGTHOF(buffer), beforeTitle, UPRV_LENGTHOF(beforeTitle), &errorCode);
     if( U_FAILURE(errorCode) ||
-        length!=LENGTHOF(titleSentNoLower) ||
+        length!=UPRV_LENGTHOF(titleSentNoLower) ||
         0!=u_memcmp(buffer, titleSentNoLower, length) ||
         buffer[length]!=0
     ) {
@@ -973,8 +971,8 @@ TestUCaseMapToTitle(void) {
         int32_t utf8BeforeTitleLength, utf8TitleSentNoLowerLength;
 
         errorCode=U_ZERO_ERROR;
-        u_strToUTF8(utf8BeforeTitle, (int32_t)sizeof(utf8BeforeTitle), &utf8BeforeTitleLength, beforeTitle, LENGTHOF(beforeTitle), &errorCode);
-        u_strToUTF8(utf8TitleSentNoLower, (int32_t)sizeof(utf8TitleSentNoLower), &utf8TitleSentNoLowerLength, titleSentNoLower, LENGTHOF(titleSentNoLower), &errorCode);
+        u_strToUTF8(utf8BeforeTitle, (int32_t)sizeof(utf8BeforeTitle), &utf8BeforeTitleLength, beforeTitle, UPRV_LENGTHOF(beforeTitle), &errorCode);
+        u_strToUTF8(utf8TitleSentNoLower, (int32_t)sizeof(utf8TitleSentNoLower), &utf8TitleSentNoLowerLength, titleSentNoLower, UPRV_LENGTHOF(titleSentNoLower), &errorCode);
 
         length=ucasemap_utf8ToTitle(csm, utf8, (int32_t)sizeof(utf8), utf8BeforeTitle, utf8BeforeTitleLength, &errorCode);
         if( U_FAILURE(errorCode) ||

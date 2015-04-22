@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/lt.xml
@@ -112,7 +112,7 @@ lt{
         GU{"Guamas"}
         GW{"Bisau Gvinėja"}
         GY{"Gajana"}
-        HK{"Ypatingasis Administracinis Kinijos Regionas Honkongas"}
+        HK{"Honkongas"}
         HM{"Herdo ir Makdonaldo Salos"}
         HN{"Hondūras"}
         HR{"Kroatija"}
@@ -166,7 +166,7 @@ lt{
         ML{"Malis"}
         MM{"Mianmaras (Birma)"}
         MN{"Mongolija"}
-        MO{"Ypatingasis Administracinis Kinijos Regionas Makao"}
+        MO{"Makao"}
         MP{"Marianos Šiaurinės Salos"}
         MQ{"Martinika"}
         MR{"Mauritanija"}
@@ -201,7 +201,7 @@ lt{
         PM{"Sen Pjeras ir Mikelonas"}
         PN{"Pitkernas"}
         PR{"Puerto Rikas"}
-        PS{"Palestinos teritorija"}
+        PS{"Palestina"}
         PT{"Portugalija"}
         PW{"Palau"}
         PY{"Paragvajus"}
@@ -273,12 +273,15 @@ lt{
         ZW{"Zimbabvė"}
         ZZ{"nežinoma sritis"}
     }
+    Countries%variant{
+        CD{"Kongo Demokratinė Respublika"}
+        CG{"Kongo Respublika"}
+        FK{"Folklando (Malvinų) Salos"}
+        MK{"Makedonijos Respublika"}
+    }
     CountriesShort{
         GB{"Didžioji Britanija"}
-        HK{"Honkongas"}
-        MO{"Makao"}
-        PS{"Palestina"}
         US{"JAV"}
     }
-    Version{"2.0.93.19"}
+    Version{"2.1.8.9"}
 }

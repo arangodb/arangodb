@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/uk.xml
@@ -18,6 +18,9 @@ uk{
         final{"{0}…"}
         initial{"…{0}"}
         medial{"{0}…{1}"}
+        word-final{"{0}…"}
+        word-initial{"…{0}"}
+        word-medial{"{0}…{1}"}
     }
     ExemplarCharacters{"[ʼ а б в г ґ д е є ж з и і ї й к л м н о п р с т у ф х ц ч ш щ ь ю я]"}
     ExemplarCharactersIndex{"[А Б В Г Ґ Д Е Є Ж З И І Ї Й К Л М Н О П Р С Т У Ф Х Ц Ч Ш Щ Ю Я]"}
@@ -27,12 +30,14 @@ uk{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
                 range{"{0}–{1}"}
             }
             patterns{
+                accountingFormat{"#,##0.00¤;(#,##0.00¤)"}
                 currencyFormat{"#,##0.00 ¤"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
@@ -202,10 +207,13 @@ uk{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         coptic{
             monthNames{
@@ -268,7 +276,7 @@ uk{
                 hm{"h:mm a"}
                 hms{"h:mm:ss a"}
                 ms{"mm:ss"}
-                y{"y"}
+                y{"y G"}
                 yyyy{"y G"}
                 yyyyM{"MM.y G"}
                 yyyyMEd{"E, dd.MM.y G"}
@@ -392,7 +400,7 @@ uk{
                 "HH:mm",
                 "EEEE, d MMMM y 'р'.",
                 "d MMMM y 'р'.",
-                "d MMM y",
+                "d MMM y 'р'.",
                 "dd.MM.yy",
                 "{1} {0}",
                 "{1} {0}",
@@ -400,10 +408,13 @@ uk{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"полудня"}
+            NoonMarkerNarrow{"п"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E, d"}
@@ -524,6 +535,14 @@ uk{
                 abbreviated{
                     "до н.е.",
                     "н.е.",
+                }
+                narrow{
+                    "до н.е.",
+                    "н.е.",
+                }
+                narrow%variant{
+                    "до н. е.",
+                    "н. е.",
                 }
                 wide{
                     "до нашої ери",
@@ -842,6 +861,10 @@ uk{
             1,
             1,
         }
+        relative:intvector{
+            1,
+            1,
+        }
     }
     delimiters{
         alternateQuotationEnd{"“"}
@@ -866,16 +889,50 @@ uk{
             }
             relativeTime{
                 future{
-                    few{"Через {0} дні"}
-                    many{"Через {0} днів"}
-                    one{"Через {0} день"}
-                    other{"Через {0} дня"}
+                    few{"через {0} дні"}
+                    many{"через {0} днів"}
+                    one{"через {0} день"}
+                    other{"через {0} дня"}
                 }
                 past{
                     few{"{0} дні тому"}
                     many{"{0} днів тому"}
                     one{"{0} день тому"}
                     other{"{0} дня тому"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"д."}
+            relativeTime{
+                future{
+                    few{"+{0} дн."}
+                    many{"+{0} дн."}
+                    one{"+{0} день"}
+                    other{"+{0} дн."}
+                }
+                past{
+                    few{"-{0} дн."}
+                    many{"-{0} дн."}
+                    one{"-{0} день"}
+                    other{"-{0} дн."}
+                }
+            }
+        }
+        day-short{
+            dn{"д."}
+            relativeTime{
+                future{
+                    few{"через {0} дн."}
+                    many{"через {0} дн."}
+                    one{"через {0} д."}
+                    other{"через {0} дн."}
+                }
+                past{
+                    few{"{0} дн. тому"}
+                    many{"{0} дн. тому"}
+                    one{"{0} д. тому"}
+                    other{"{0} дн. тому"}
                 }
             }
         }
@@ -892,14 +949,28 @@ uk{
                 "1"{"наступної п’ятниці"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"мин. пт"}
+                "0"{"цієї пт"}
+                "1"{"наст. пт"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"минулої пт"}
+                "0"{"цієї пт"}
+                "1"{"наступної пт"}
+            }
+        }
         hour{
             dn{"Година"}
             relativeTime{
                 future{
-                    few{"Через {0} години"}
-                    many{"Через {0} годин"}
-                    one{"Через {0} годину"}
-                    other{"Через {0} години"}
+                    few{"через {0} години"}
+                    many{"через {0} годин"}
+                    one{"через {0} годину"}
+                    other{"через {0} години"}
                 }
                 past{
                     few{"{0} години тому"}
@@ -909,14 +980,48 @@ uk{
                 }
             }
         }
+        hour-narrow{
+            dn{"год"}
+            relativeTime{
+                future{
+                    few{"+{0} год"}
+                    many{"+{0} год"}
+                    one{"+{0} год"}
+                    other{"+{0} год"}
+                }
+                past{
+                    few{"-{0} год"}
+                    many{"-{0} год"}
+                    one{"-{0} год"}
+                    other{"-{0} год"}
+                }
+            }
+        }
+        hour-short{
+            dn{"год"}
+            relativeTime{
+                future{
+                    few{"через {0} год"}
+                    many{"через {0} год"}
+                    one{"через {0} год"}
+                    other{"через {0} год"}
+                }
+                past{
+                    few{"{0} год тому"}
+                    many{"{0} год тому"}
+                    one{"{0} год тому"}
+                    other{"{0} год тому"}
+                }
+            }
+        }
         minute{
             dn{"Хвилина"}
             relativeTime{
                 future{
-                    few{"Через {0} хвилини"}
-                    many{"Через {0} хвилин"}
-                    one{"Через {0} хвилину"}
-                    other{"Через {0} хвилини"}
+                    few{"через {0} хвилини"}
+                    many{"через {0} хвилин"}
+                    one{"через {0} хвилину"}
+                    other{"через {0} хвилини"}
                 }
                 past{
                     few{"{0} хвилини тому"}
@@ -926,11 +1031,59 @@ uk{
                 }
             }
         }
+        minute-narrow{
+            dn{"хв"}
+            relativeTime{
+                future{
+                    few{"+{0} хв"}
+                    many{"+{0} хв"}
+                    one{"+{0} хв"}
+                    other{"+{0} хв"}
+                }
+                past{
+                    few{"-{0} хв"}
+                    many{"-{0} хв"}
+                    one{"-{0} хв"}
+                    other{"-{0} хв"}
+                }
+            }
+        }
+        minute-short{
+            dn{"хв"}
+            relativeTime{
+                future{
+                    few{"через {0} хв"}
+                    many{"через {0} хв"}
+                    one{"через {0} хв"}
+                    other{"через {0} хв"}
+                }
+                past{
+                    few{"{0} хв тому"}
+                    many{"{0} хв тому"}
+                    one{"{0} хв тому"}
+                    other{"{0} хв тому"}
+                }
+            }
+        }
         mon{
             relative{
                 "-1"{"минулого понеділка"}
                 "0"{"цього понеділка"}
                 "1"{"наступного понеділка"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"мин. пн"}
+                "0"{"цього пн"}
+                "1"{"наст. пн"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"минулого пн"}
+                "0"{"цього пн"}
+                "1"{"наступного пн"}
             }
         }
         month{
@@ -942,16 +1095,101 @@ uk{
             }
             relativeTime{
                 future{
-                    few{"Через {0} місяці"}
-                    many{"Через {0} місяців"}
-                    one{"Через {0} місяць"}
-                    other{"Через {0} місяця"}
+                    few{"через {0} місяці"}
+                    many{"через {0} місяців"}
+                    one{"через {0} місяць"}
+                    other{"через {0} місяця"}
                 }
                 past{
                     few{"{0} місяці тому"}
                     many{"{0} місяців тому"}
                     one{"{0} місяць тому"}
                     other{"{0} місяця тому"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"міс."}
+            relativeTime{
+                future{
+                    few{"+{0} міс."}
+                    many{"+{0} міс."}
+                    one{"+{0} міс."}
+                    other{"+{0} міс."}
+                }
+                past{
+                    few{"-{0} міс."}
+                    many{"-{0} міс."}
+                    one{"-{0} міс."}
+                    other{"-{0} міс."}
+                }
+            }
+        }
+        month-short{
+            dn{"міс."}
+            relativeTime{
+                future{
+                    few{"через {0} міс."}
+                    many{"через {0} міс."}
+                    one{"через {0} міс."}
+                    other{"через {0} міс."}
+                }
+                past{
+                    few{"{0} міс. тому"}
+                    many{"{0} міс. тому"}
+                    one{"{0} міс. тому"}
+                    other{"{0} міс. тому"}
+                }
+            }
+        }
+        quarter{
+            dn{"Квартал"}
+            relativeTime{
+                future{
+                    few{"через {0} квартали"}
+                    many{"через {0} кварталів"}
+                    one{"через {0} квартал"}
+                    other{"через {0} кварталу"}
+                }
+                past{
+                    few{"{0} квартали тому"}
+                    many{"{0} кварталів тому"}
+                    one{"{0} квартал тому"}
+                    other{"{0} кварталу тому"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"кв."}
+            relativeTime{
+                future{
+                    few{"+{0} кв."}
+                    many{"+{0} кв."}
+                    one{"+{0} кв."}
+                    other{"+{0} кв."}
+                }
+                past{
+                    few{"-{0} кв."}
+                    many{"-{0} кв."}
+                    one{"-{0} кв."}
+                    other{"-{0} кв."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"кв."}
+            relativeTime{
+                future{
+                    few{"через {0} кв."}
+                    many{"через {0} кв."}
+                    one{"через {0} кв."}
+                    other{"через {0} кв."}
+                }
+                past{
+                    few{"{0} кв. тому"}
+                    many{"{0} кв. тому"}
+                    one{"{0} кв. тому"}
+                    other{"{0} кв. тому"}
                 }
             }
         }
@@ -962,6 +1200,20 @@ uk{
                 "1"{"наступної суботи"}
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"мин. сб"}
+                "0"{"цієї сб"}
+                "1"{"наст. сб"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"минулої сб"}
+                "0"{"цієї сб"}
+                "1"{"наступної сб"}
+            }
+        }
         second{
             dn{"Секунда"}
             relative{
@@ -969,16 +1221,50 @@ uk{
             }
             relativeTime{
                 future{
-                    few{"Через {0} секунди"}
-                    many{"Через {0} секунд"}
-                    one{"Через {0} секунду"}
-                    other{"Через {0} секунди"}
+                    few{"через {0} секунди"}
+                    many{"через {0} секунд"}
+                    one{"через {0} секунду"}
+                    other{"через {0} секунди"}
                 }
                 past{
                     few{"{0} секунди тому"}
                     many{"{0} секунд тому"}
                     one{"{0} секунду тому"}
                     other{"{0} секунди тому"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"с"}
+            relativeTime{
+                future{
+                    few{"+{0} с"}
+                    many{"+{0} с"}
+                    one{"+{0} с"}
+                    other{"+{0} с"}
+                }
+                past{
+                    few{"-{0} с"}
+                    many{"-{0} с"}
+                    one{"-{0} с"}
+                    other{"-{0} с"}
+                }
+            }
+        }
+        second-short{
+            dn{"с"}
+            relativeTime{
+                future{
+                    few{"через {0} с"}
+                    many{"через {0} с"}
+                    one{"через {0} с"}
+                    other{"через {0} с"}
+                }
+                past{
+                    few{"{0} с тому"}
+                    many{"{0} с тому"}
+                    one{"{0} с тому"}
+                    other{"{0} с тому"}
                 }
             }
         }
@@ -989,11 +1275,39 @@ uk{
                 "1"{"наступної неділі"}
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"мин. нд"}
+                "0"{"цієї нд"}
+                "1"{"наст. нд"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"минулої нд"}
+                "0"{"цієї нд"}
+                "1"{"наступної нд"}
+            }
+        }
         thu{
             relative{
                 "-1"{"минулого четверга"}
                 "0"{"цього четверга"}
                 "1"{"наступного четверга"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"мин. чт"}
+                "0"{"цього чт"}
+                "1"{"наст. чт"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"минулого чт"}
+                "0"{"цього чт"}
+                "1"{"наступного чт"}
             }
         }
         tue{
@@ -1003,11 +1317,39 @@ uk{
                 "1"{"наступного вівторка"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"мин. вт"}
+                "0"{"цього вт"}
+                "1"{"наст. вт"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"минулого вт"}
+                "0"{"цього вт"}
+                "1"{"наступного вт"}
+            }
+        }
         wed{
             relative{
                 "-1"{"минулої середи"}
                 "0"{"цієї середи"}
                 "1"{"наступної середи"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"мин. ср"}
+                "0"{"цієї ср"}
+                "1"{"наст. ср"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"минулої ср"}
+                "0"{"цієї ср"}
+                "1"{"наступної ср"}
             }
         }
         week{
@@ -1019,10 +1361,10 @@ uk{
             }
             relativeTime{
                 future{
-                    few{"Через {0} тижні"}
-                    many{"Через {0} тижнів"}
-                    one{"Через {0} тиждень"}
-                    other{"Через {0} тижня"}
+                    few{"через {0} тижні"}
+                    many{"через {0} тижнів"}
+                    one{"через {0} тиждень"}
+                    other{"через {0} тижня"}
                 }
                 past{
                     few{"{0} тижні тому"}
@@ -1032,22 +1374,56 @@ uk{
                 }
             }
         }
+        week-narrow{
+            dn{"тиж."}
+            relativeTime{
+                future{
+                    few{"+{0} тиж."}
+                    many{"+{0} тиж."}
+                    one{"+{0} тиж."}
+                    other{"+{0} тиж."}
+                }
+                past{
+                    few{"-{0} тиж."}
+                    many{"-{0} тиж."}
+                    one{"-{0} тиж."}
+                    other{"-{0} тиж."}
+                }
+            }
+        }
+        week-short{
+            dn{"тиж."}
+            relativeTime{
+                future{
+                    few{"через {0} тиж."}
+                    many{"через {0} тиж."}
+                    one{"через {0} тиж."}
+                    other{"через {0} тиж."}
+                }
+                past{
+                    few{"{0} тиж. тому"}
+                    many{"{0} тиж. тому"}
+                    one{"{0} тиж. тому"}
+                    other{"{0} тиж. тому"}
+                }
+            }
+        }
         weekday{
             dn{"День тижня"}
         }
         year{
             dn{"Рік"}
             relative{
-                "-1"{"минулого року"}
+                "-1"{"торік"}
                 "0"{"цього року"}
                 "1"{"наступного року"}
             }
             relativeTime{
                 future{
-                    few{"Через {0} роки"}
-                    many{"Через {0} років"}
-                    one{"Через {0} рік"}
-                    other{"Через {0} року"}
+                    few{"через {0} роки"}
+                    many{"через {0} років"}
+                    one{"через {0} рік"}
+                    other{"через {0} року"}
                 }
                 past{
                     few{"{0} роки тому"}
@@ -1057,20 +1433,60 @@ uk{
                 }
             }
         }
+        year-narrow{
+            dn{"р."}
+            relativeTime{
+                future{
+                    few{"+{0} р."}
+                    many{"+{0} р."}
+                    one{"+{0} р."}
+                    other{"+{0} р."}
+                }
+                past{
+                    few{"-{0} р."}
+                    many{"-{0} р."}
+                    one{"-{0} р."}
+                    other{"-{0} р."}
+                }
+            }
+        }
+        year-short{
+            dn{"р."}
+            relativeTime{
+                future{
+                    few{"через {0} р."}
+                    many{"через {0} р."}
+                    one{"через {0} р."}
+                    other{"через {0} р."}
+                }
+                past{
+                    few{"{0} р. тому"}
+                    many{"{0} р. тому"}
+                    one{"{0} р. тому"}
+                    other{"{0} р. тому"}
+                }
+            }
+        }
         zone{
             dn{"Часовий пояс"}
         }
     }
     listPattern{
         standard{
-            2{"{0} та {1}"}
-            end{"{0} та {1}"}
+            2{"{0} і {1}"}
+            end{"{0} і {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
         unit{
             2{"{0} і {1}"}
             end{"{0} і {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
@@ -1097,170 +1513,5 @@ uk{
         x-Jamo{"Jamo"}
         x-Pinyin{"Піньїнь"}
         x-Publishing{"Публікація"}
-    }
-    units{
-        compound{
-            per{"{0} на {1}"}
-        }
-        duration{
-            day{
-                few{"{0} дні"}
-                many{"{0} днів"}
-                one{"{0} день"}
-                other{"{0} дня"}
-            }
-            hour{
-                few{"{0} години"}
-                many{"{0} годин"}
-                one{"{0} година"}
-                other{"{0} години"}
-            }
-            millisecond{
-                few{"{0} мілісекунди"}
-                many{"{0} мілісекунд"}
-                one{"{0} мілісекунда"}
-                other{"{0} мілісекунди"}
-            }
-            minute{
-                few{"{0} хвилини"}
-                many{"{0} хвилин"}
-                one{"{0} хвилина"}
-                other{"{0} хвилини"}
-            }
-            month{
-                few{"{0} місяці"}
-                many{"{0} місяців"}
-                one{"{0} місяць"}
-                other{"{0} місяця"}
-            }
-            second{
-                few{"{0} секунди"}
-                many{"{0} секунд"}
-                one{"{0} секунда"}
-                other{"{0} секунди"}
-            }
-            week{
-                few{"{0} тижні"}
-                many{"{0} тижнів"}
-                one{"{0} тиждень"}
-                other{"{0} тижня"}
-            }
-            year{
-                few{"{0} роки"}
-                many{"{0} років"}
-                one{"{0} рік"}
-                other{"{0} року"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} дн."}
-                many{"{0} дн."}
-                one{"{0} дн."}
-                other{"{0} дн."}
-            }
-            hour{
-                few{"{0} год"}
-                many{"{0} год"}
-                one{"{0} год"}
-                other{"{0} год"}
-            }
-            millisecond{
-                few{"{0} мс"}
-                many{"{0} мс"}
-                one{"{0} мс"}
-                other{"{0} мс"}
-            }
-            minute{
-                few{"{0} хв"}
-                many{"{0} хв"}
-                one{"{0} хв"}
-                other{"{0} хв"}
-            }
-            month{
-                few{"{0} міс."}
-                many{"{0} міс."}
-                one{"{0} міс."}
-                other{"{0} міс."}
-            }
-            second{
-                few{"{0} с"}
-                many{"{0} с"}
-                one{"{0} с"}
-                other{"{0} с"}
-            }
-            week{
-                few{"{0} тиж."}
-                many{"{0} тиж."}
-                one{"{0} тиж."}
-                other{"{0} тиж."}
-            }
-            year{
-                few{"{0} р."}
-                many{"{0} р."}
-                one{"{0} р."}
-                other{"{0} р."}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} дн."}
-                many{"{0} дн."}
-                one{"{0} дн."}
-                other{"{0} дн."}
-            }
-            hour{
-                few{"{0} год"}
-                many{"{0} год"}
-                one{"{0} год"}
-                other{"{0} год"}
-            }
-            millisecond{
-                few{"{0} мс"}
-                many{"{0} мс"}
-                one{"{0} мс"}
-                other{"{0} мс"}
-            }
-            minute{
-                few{"{0} хв"}
-                many{"{0} хв"}
-                one{"{0} хв"}
-                other{"{0} хв"}
-            }
-            month{
-                few{"{0} міс."}
-                many{"{0} міс."}
-                one{"{0} міс."}
-                other{"{0} міс."}
-            }
-            second{
-                few{"{0} с"}
-                many{"{0} с"}
-                one{"{0} с"}
-                other{"{0} с"}
-            }
-            week{
-                few{"{0} тиж."}
-                many{"{0} тиж."}
-                one{"{0} тиж."}
-                other{"{0} тиж."}
-            }
-            year{
-                few{"{0} р."}
-                many{"{0} р."}
-                one{"{0} р."}
-                other{"{0} р."}
-            }
-        }
     }
 }

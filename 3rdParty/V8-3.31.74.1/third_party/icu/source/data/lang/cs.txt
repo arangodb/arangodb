@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/cs.xml
@@ -22,7 +22,6 @@ cs{
         be{"běloruština"}
         bem{"bembština"}
         bg{"bulharština"}
-        bh{"bihárština"}
         bn{"bengálština"}
         br{"bretonština"}
         bs{"bosenština"}
@@ -77,6 +76,7 @@ cs{
         km{"khmérština"}
         kn{"kannadština"}
         ko{"korejština"}
+        kri{"krio"}
         ku{"kurdština"}
         ky{"kyrgyzština"}
         la{"latina"}
@@ -93,7 +93,6 @@ cs{
         mk{"makedonština"}
         ml{"malajálamština"}
         mn{"mongolština"}
-        mo{"moldavština"}
         mr{"maráthština"}
         ms{"malajština"}
         mt{"maltština"}
@@ -119,6 +118,7 @@ cs{
         rm{"rétorománština"}
         rn{"kirundština"}
         ro{"rumunština"}
+        ro_MD{"moldavština"}
         ru{"ruština"}
         rw{"kiňarwandština"}
         sd{"sindhština"}
@@ -131,7 +131,7 @@ cs{
         sq{"albánština"}
         sr{"srbština"}
         st{"sotština (jižní)"}
-        su{"sundanština"}
+        su{"sundština"}
         sv{"švédština"}
         sw{"svahilština"}
         ta{"tamilština"}
@@ -140,6 +140,7 @@ cs{
         th{"thajština"}
         ti{"tigrinijština"}
         tk{"turkmenština"}
+        tl{"tagalog"}
         tn{"setswanština"}
         to{"tongánština"}
         tr{"turečtina"}
@@ -166,6 +167,7 @@ cs{
     }
     Scripts{
         Afak{"afaka"}
+        Aghb{"kavkazskoalbánské"}
         Arab{"arabské"}
         Armi{"aramejské (imperiální)"}
         Armn{"arménské"}
@@ -175,10 +177,10 @@ cs{
         Bass{"bassa vah"}
         Batk{"batacké"}
         Beng{"bengálské"}
-        Blis{"blissovo písmo"}
+        Blis{"Blissovo písmo"}
         Bopo{"bopomofo"}
         Brah{"bráhmí"}
-        Brai{"braillovo písmo"}
+        Brai{"Braillovo písmo"}
         Bugi{"buginské"}
         Buhd{"buhidské"}
         Cakm{"čakma"}
@@ -197,6 +199,7 @@ cs{
         Egyd{"egyptské démotické"}
         Egyh{"egyptské hieratické"}
         Egyp{"egyptské hieroglyfy"}
+        Elba{"elbasanské"}
         Ethi{"etiopské"}
         Geok{"gruzínské chutsuri"}
         Geor{"gruzínské"}
@@ -226,8 +229,10 @@ cs{
         Kana{"katakana"}
         Khar{"kháróšthí"}
         Khmr{"khmerské"}
+        Khoj{"chodžiki"}
         Knda{"kannadské"}
         Kore{"korejské"}
+        Kpel{"kpelle"}
         Kthi{"kaithi"}
         Lana{"lanna"}
         Laoo{"laoské"}
@@ -242,6 +247,7 @@ cs{
         Loma{"loma"}
         Lyci{"lýkijské"}
         Lydi{"lýdské"}
+        Mahj{"mahádžaní"}
         Mand{"mandejské"}
         Mani{"manichejské"}
         Maya{"mayské hieroglyfy"}
@@ -249,6 +255,7 @@ cs{
         Merc{"meroitické psací"}
         Mero{"meroitické"}
         Mlym{"malajlámské"}
+        Modi{"modí"}
         Mong{"mongolské"}
         Moon{"Moonovo"}
         Mroo{"mro"}
@@ -256,32 +263,39 @@ cs{
         Mymr{"myanmarské"}
         Narb{"staroseveroarabské"}
         Nbat{"nabatejské"}
+        Nkgb{"naxi geba"}
         Nkoo{"n’ko"}
+        Nshu{"nü-šu"}
         Ogam{"ogamské"}
         Olck{"santálské (ol chiki)"}
         Orkh{"orchonské"}
-        Orya{"uríské"}
+        Orya{"urijské"}
         Osma{"osmanské"}
         Palm{"palmýrské"}
+        Pauc{"pau cin hau"}
         Perm{"staropermské"}
         Phag{"phags-pa"}
         Phli{"pahlavské klínové"}
         Phlp{"pahlavské žalmové"}
         Phlv{"pahlavské knižní"}
         Phnx{"fénické"}
-        Plrd{"pollardova fonetická abeceda"}
+        Plrd{"Pollardova fonetická abeceda"}
         Prti{"parthské klínové"}
         Rjng{"redžanské"}
         Roro{"rongorongo"}
         Runr{"runové"}
         Samr{"samařské"}
+        Sara{"sarati"}
         Sarb{"starojihoarabské"}
         Saur{"saurášterské"}
+        Sgnw{"SignWriting"}
         Shaw{"Shawova abeceda"}
         Shrd{"šáradá"}
+        Sidd{"siddham"}
+        Sind{"chudábádí"}
         Sinh{"sinhálské"}
         Sora{"sora sompeng"}
-        Sund{"sundánské"}
+        Sund{"sundské"}
         Sylo{"sylhetské"}
         Syrc{"syrské"}
         Syre{"syrské - estrangelo"}
@@ -301,9 +315,12 @@ cs{
         Thaa{"thaana"}
         Thai{"thajské"}
         Tibt{"tibetské"}
+        Tirh{"tirhuta"}
         Ugar{"ugaritské klínové"}
         Vaii{"vai"}
         Visp{"viditelná řeč"}
+        Wara{"varang kšiti"}
+        Wole{"karolínské (woleai)"}
         Xpeo{"staroperské klínové písmo"}
         Xsux{"sumero-akkadské klínové písmo"}
         Yiii{"yi"}
@@ -314,10 +331,13 @@ cs{
         Zzzz{"neznámé písmo"}
     }
     Scripts%stand-alone{
-        Hans{"han - zjednodušené"}
-        Hant{"han - tradiční"}
+        Hans{"han (zjednodušené)"}
+        Hant{"han (tradiční)"}
     }
-    Version{"2.0.92.98"}
+    Scripts%variant{
+        Arab{"persko-arabské"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Jazyk: {0}"}
         script{"Písmo: {0}"}

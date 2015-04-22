@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- *   Copyright (C) 1997-2009, International Business Machines
+ *   Copyright (C) 1997-2009,2014 International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *******************************************************************************
  *   Date        Name        Description
@@ -16,6 +16,7 @@
 #include <string.h>
 #include "unicode/utrans.h"
 #include "unicode/ustring.h"
+#include "unicode/uset.h"
 #include "cintltst.h"
 
 #define TEST(x) addTest(root, &x, "utrans/" # x)
@@ -28,6 +29,7 @@ static void TestClone(void);
 static void TestRegisterUnregister(void);
 static void TestExtractBetween(void);
 static void TestUnicodeIDs(void);
+static void TestGetRulesAndSourceSet(void);
 
 static void _expectRules(const char*, const char*, const char*);
 static void _expect(const UTransliterator* trans, const char* cfrom, const char* cto);
@@ -45,6 +47,7 @@ addUTransTest(TestNode** root) {
     TEST(TestRegisterUnregister);
     TEST(TestExtractBetween);
     TEST(TestUnicodeIDs);
+    TEST(TestGetRulesAndSourceSet);
 }
 
 /*------------------------------------------------------------------
@@ -567,6 +570,71 @@ static void TestExtractBetween() {
         utrans_close(trans);
     }
 }
+
+/**
+ * Test utrans_toRules, utrans_getSourceSet
+ */
+
+/* A simple transform with a small filter & source set: rules 50-100 chars unescaped, 100-200 chars escaped,
+   filter & source set 4-20 chars */
+static const UChar transSimpleID[] = { 0x79,0x6F,0x2D,0x79,0x6F,0x5F,0x42,0x4A,0 }; /* "yo-yo_BJ" */
+static const char* transSimpleCName = "yo-yo_BJ";
+
+enum { kUBufMax = 256 };
+static void TestGetRulesAndSourceSet() {
+    UErrorCode status = U_ZERO_ERROR;
+    UTransliterator *utrans = utrans_openU(transSimpleID, -1, UTRANS_FORWARD, NULL, 0, NULL, &status);
+    if ( U_SUCCESS(status) ) {
+        USet* uset;
+        UChar ubuf[kUBufMax];
+        int32_t ulen;
+
+        status = U_ZERO_ERROR;
+        ulen = utrans_toRules(utrans, FALSE, ubuf, kUBufMax, &status);
+        if ( U_FAILURE(status) || ulen <= 50 || ulen >= 100) {
+            log_err("FAIL: utrans_toRules unescaped, expected noErr and len 50-100, got error=%s and len=%d\n",
+                    u_errorName(status), ulen);
+        }
+
+        status = U_ZERO_ERROR;
+        ulen = utrans_toRules(utrans, FALSE, NULL, 0, &status);
+        if ( status != U_BUFFER_OVERFLOW_ERROR || ulen <= 50 || ulen >= 100) {
+            log_err("FAIL: utrans_toRules unescaped, expected U_BUFFER_OVERFLOW_ERROR and len 50-100, got error=%s and len=%d\n",
+                    u_errorName(status), ulen);
+        }
+
+        status = U_ZERO_ERROR;
+        ulen = utrans_toRules(utrans, TRUE, ubuf, kUBufMax, &status);
+        if ( U_FAILURE(status) || ulen <= 100 || ulen >= 200) {
+            log_err("FAIL: utrans_toRules escaped, expected noErr and len 100-200, got error=%s and len=%d\n",
+                    u_errorName(status), ulen);
+        }
+
+        status = U_ZERO_ERROR;
+        uset = utrans_getSourceSet(utrans, FALSE, NULL, &status);
+        ulen = uset_toPattern(uset, ubuf, kUBufMax, FALSE, &status);
+        uset_close(uset);
+        if ( U_FAILURE(status) || ulen <= 4 || ulen >= 20) {
+            log_err("FAIL: utrans_getSourceSet useFilter, expected noErr and len 4-20, got error=%s and len=%d\n",
+                    u_errorName(status), ulen);
+        }
+
+        status = U_ZERO_ERROR;
+        uset = utrans_getSourceSet(utrans, TRUE, NULL, &status);
+        ulen = uset_toPattern(uset, ubuf, kUBufMax, FALSE, &status);
+        uset_close(uset);
+        if ( U_FAILURE(status) || ulen <= 4 || ulen >= 20) {
+            log_err("FAIL: utrans_getSourceSet ignoreFilter, expected noErr and len 4-20, got error=%s and len=%d\n",
+                    u_errorName(status), ulen);
+        }
+
+        utrans_close(utrans);
+    } else {
+        log_data_err("FAIL: utrans_openRules(%s) failed, error=%s (Are you missing data?)\n",
+                transSimpleCName, u_errorName(status));
+    }
+}
+
 
 static void _expectRules(const char* crules,
                   const char* cfrom,

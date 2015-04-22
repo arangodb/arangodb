@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kde.xml
@@ -27,10 +27,6 @@ kde{
             "BHD",
             "Dinari ya Bahareni",
         }
-        BIF{
-            "BIF",
-            "Faranga ya Burundi",
-        }
         BWP{
             "BWP",
             "Pula ya Botswana",
@@ -51,14 +47,6 @@ kde{
             "CN¥",
             "Yuan Renminbi ya China",
         }
-        CVE{
-            "CVE",
-            "Eskudo ya Kepuvede",
-        }
-        DJF{
-            "DJF",
-            "Faranga ya Jibuti",
-        }
         DZD{
             "DZD",
             "Dinari ya Aljeria",
@@ -66,10 +54,6 @@ kde{
         EGP{
             "EGP",
             "Pauni ya Misri",
-        }
-        ERN{
-            "ERN",
-            "Nakfa ya Eritrea",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ kde{
             "£",
             "Pauni ya Uingereza",
         }
-        GMD{
-            "GMD",
-            "Dalasi ya Gambia",
-        }
-        GNS{
-            "GNS",
-            "Faranga ya Gine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rupia ya India",
         }
         JPY{
@@ -102,18 +78,6 @@ kde{
         KES{
             "KES",
             "Shilingi ya Kenya",
-        }
-        KMF{
-            "KMF",
-            "Faranga ya Komoro",
-        }
-        LRD{
-            "LRD",
-            "Dola ya Liberia",
-        }
-        LSL{
-            "LSL",
-            "Loti ya Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ kde{
             "SAR",
             "Riyal ya Saudia",
         }
-        SCR{
-            "SCR",
-            "Rupia ya Shelisheli",
-        }
         SDG{
             "SDG",
             "Dinari ya Sudani",
         }
-        SHP{
-            "SHP",
-            "Pauni ya Santahelena",
-        }
         SLL{
             "SLL",
             "Leoni",
-        }
-        SOS{
-            "SOS",
-            "Shilingi ya Somalia",
-        }
-        STD{
-            "STD",
-            "Dobra ya Sao Tome na Principe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ kde{
             "Kwacha ya Zambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

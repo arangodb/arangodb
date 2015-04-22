@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2004-2010, International Business Machines
+* Copyright (c) 2004-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 * Author: Alan Liu
@@ -51,11 +51,6 @@ class CurrencyFormat : public MeasureFormat {
      * Destructor.
      */
     virtual ~CurrencyFormat();
-
-    /**
-     * Override Format API.
-     */
-    virtual UBool operator==(const Format& other) const;
 
     /**
      * Override Format API.

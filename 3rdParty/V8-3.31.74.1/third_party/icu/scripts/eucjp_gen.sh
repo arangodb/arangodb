@@ -1,18 +1,18 @@
 #!/bin/sh
-# Copyright (c) 2014 The Chromium Authors. All rights reserved.
+# Copyright 2014 The Chromium Authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
 # References:
-#   http://encoding.spec.whatwg.org/#euc-jp
-#   http://legacy-encoding.sourceforge.jp/wiki/index.php?cp51932
-#   http://www.iana.org/assignments/charset-reg/CP51932
+#   https://encoding.spec.whatwg.org/#euc-jp
+#   https://legacy-encoding.sourceforge.jp/wiki/index.php?cp51932
+#   https://www.iana.org/assignments/charset-reg/CP51932
 #   Table 3-64 in CJKV Information Processing 2/e.
 
 # Download the following two files, run it in source/data/mappings directory
 # and save the result to euc-jp-html5.ucm
-#   http://encoding.spec.whatwg.org/index-jis0208.txt
-#   http://encoding.spec.whatwg.org/index-jis0212.txt
+#   https://encoding.spec.whatwg.org/index-jis0208.txt
+#   https://encoding.spec.whatwg.org/index-jis0212.txt
 
 function preamble {
 cat <<PREAMBLE
@@ -22,21 +22,20 @@ cat <<PREAMBLE
 # *   Corporation and others.  All Rights Reserved.
 # *
 # *   Generated per the algorithm for EUC-JP
-# *   described at http://encoding.spec.whatwg.org/#euc-jp.
+# *   described at https://encoding.spec.whatwg.org/#euc-jp.
 # *
 # ***************************************************************************
-<code_set_name>               "euc-jp-html5"
+<code_set_name>               "euc-jp-html"
 <char_name_mask>              "AXXXX"
 <mb_cur_max>                  3
 <mb_cur_min>                  1
 <uconv_class>                 "MBCS"
-<subchar>                     \xF4\xFE
-<subchar1>                    \x1A
+<subchar>                     \x3F
 <icu:charsetFamily>           "ASCII"
 
 <icu:state>                   0-7f, 8e:2, 8f:3, a1-fe:1
 <icu:state>                   a1-fe
-<icu:state>                   a1-e2
+<icu:state>                   a1-df
 <icu:state>                   a1-fe:1, a1:4, a3-a5:4, a8:4, ac-af:4, ee-f2:4, f4-fe:4
 <icu:state>                   a1-fe.u
 
@@ -98,11 +97,12 @@ function unsorted_table {
   half_width_kana
   jis208
   jis212
-  decode_only_extra
   echo '<U00A5> \x5C |1'
   echo '<U203E> \x7E |1'
 }
 
+wget -N -r -nd https://encoding.spec.whatwg.org/index-jis0208.txt
+wget -N -r -nd https://encoding.spec.whatwg.org/index-jis0212.txt
 preamble
 unsorted_table | sort  | uniq
 echo 'END CHARMAP'
