@@ -41,7 +41,7 @@ endif
 CLEANUP_3RD += clean-etcd
 
 clean-etcd:
-	cd @top_srcdir@/3rdParty/etcd && ./clean
+	cd @top_srcdir@/3rdParty/etcd && go clean
 	rm -f @top_srcdir@/bin/etcd-arango
 
 ## -----------------------------------------------------------------------------
