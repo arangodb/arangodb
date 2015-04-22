@@ -44,6 +44,7 @@ using Json = triagens::basics::Json;
 VariableGenerator::VariableGenerator () 
   : _variables(),
     _id(0) {
+
   _variables.reserve(8);
 }
 
@@ -53,8 +54,8 @@ VariableGenerator::VariableGenerator ()
 
 VariableGenerator::~VariableGenerator () {
   // free all variables
-  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
-    delete (*it).second;
+  for (auto it : _variables) {
+    delete it.second;
   }
 }
 
@@ -69,13 +70,13 @@ VariableGenerator::~VariableGenerator () {
 std::unordered_map<VariableId, std::string const> VariableGenerator::variables (bool includeTemporaries) const {
   std::unordered_map<VariableId, std::string const> result;
 
-  for (auto it = _variables.begin(); it != _variables.end(); ++it) {
+  for (auto const& it : _variables) {
     // check if we should include this variable...
-    if (! includeTemporaries && ! (*it).second->isUserDefined()) {
+    if (! includeTemporaries && ! it.second->isUserDefined()) {
       continue;
     }
 
-    result.emplace(std::make_pair((*it).first, (*it).second->name));
+    result.emplace(it.first, it.second->name);
   }
 
   return result;
@@ -199,10 +200,10 @@ Variable* VariableGenerator::getVariable (VariableId id) const {
 /// @brief return the next temporary variable name
 ////////////////////////////////////////////////////////////////////////////////
   
-std::string VariableGenerator::nextName () const {
+std::string VariableGenerator::nextName () {
   // note: if the naming scheme is adjusted, it may be necessary to adjust
   // Variable::isUserDefined, too!
-  return std::to_string(_id); // to_string: c++11
+  return std::to_string(nextId()); // to_string: c++11
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,9 +212,11 @@ std::string VariableGenerator::nextName () const {
 
 triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const {
   Json jsonAllVariablesList(Json::Array, _variables.size());
+
   for (auto oneVariable: _variables) {
     jsonAllVariablesList(oneVariable.second->toJson());
   }
+
   return jsonAllVariablesList;
 }
 
@@ -223,12 +226,14 @@ triagens::basics::Json VariableGenerator::toJson (TRI_memory_zone_t* zone) const
 
 void VariableGenerator::fromJson (Json const& query) {
   Json jsonAllVariablesList = query.get("variables");
+
   if (! jsonAllVariablesList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variables needs to be an array");
   }
   
   auto len = jsonAllVariablesList.size();
   _variables.reserve(len);
+
   for (size_t i = 0; i < len; i++) {
     createVariable(jsonAllVariablesList.at(i));
   }
