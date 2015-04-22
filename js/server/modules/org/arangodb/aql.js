@@ -4126,11 +4126,11 @@ function AQL_UNSET (value) {
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
   // copy over all that is left
 
-  Object.keys(value).forEach(function(k) {
-    if (keys[k] !== true) {
+  for (var k in value) {
+    if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
-  });
+  }
 
   return result;
 }
@@ -4150,11 +4150,11 @@ function AQL_KEEP (value) {
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
 
   // copy over all that is left
-  Object.keys(keys).forEach(function(k) {
-    if (value.hasOwnProperty(k)) {
+  for (var k in value) {
+    if (value.hasOwnProperty(k) && keys.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
-  });
+  }
 
   return result;
 }

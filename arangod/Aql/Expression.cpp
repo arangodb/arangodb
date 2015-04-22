@@ -622,7 +622,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
         
-    auto res2 = func->implementation(trx, myCollection, result);
+    auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
     result.destroy();
     return res2;
   }
