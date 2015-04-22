@@ -1,5 +1,5 @@
 ######################################################################
-# Copyright (C) 2007-2010, International Business Machines
+# Copyright (C) 2007-2014, International Business Machines
 # Corporation and others.  All Rights Reserved.
 ######################################################################
 # This is an ICU-specific file with the same format as regular
@@ -45,7 +45,7 @@ Link Africa/Cairo ART
 Link America/Anchorage AST
 Link America/Sao_Paulo BET
 Link Asia/Dhaka BST
-Link Africa/Harare CAT
+Link Africa/Maputo CAT
 Link America/St_Johns CNT
 Link America/Chicago CST
 Link Asia/Shanghai CTT

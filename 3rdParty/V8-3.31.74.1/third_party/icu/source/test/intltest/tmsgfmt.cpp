@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************
  * File TMSGFMT.CPP
@@ -18,6 +18,7 @@
 #if !UCONFIG_NO_FORMATTING
 
 #include "tmsgfmt.h"
+#include "cmemory.h"
 
 #include "unicode/format.h"
 #include "unicode/decimfmt.h"
@@ -30,8 +31,6 @@
 #include "unicode/selfmt.h"
 #include "unicode/gregocal.h"
 #include <stdio.h>
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 void
 TestMessageFormat::runIndexedTest(int32_t index, UBool exec,
@@ -1606,7 +1605,7 @@ void TestMessageFormat::TestApostropheMode() {
         "I don't know", "I don't know", "I don''t know",
         "I don't know", "I don''t know", "I don''t know"
     };
-    int32_t tuples_count = LENGTHOF(tuples);
+    int32_t tuples_count = UPRV_LENGTHOF(tuples);
 
     for (int i = 0; i < tuples_count; i += 3) {
       UnicodeString& desired = tuples[i];

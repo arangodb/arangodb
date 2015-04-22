@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2003-2010, International Business Machines
+* Copyright (c) 2003-2013, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 * Author: Alan Liu
@@ -31,14 +31,14 @@ typedef unsigned char ICUZoneinfoVersion;
  * zic to communicate final zone data to tz2icu. */
 #define ICU_ZONE_FILE "icu_zone.txt"
 
-/* File containing legacy aliases.  Read by tz2icu. */
-#define ICU_TZ_ALIAS  "tz.alias"
-
 /* Output resource name.  This determines both the file name and the
  * resource name within the file.  That is, the output will be to the
  * file ICU_TZ_RESOURCE ".txt" and the resource within it will be
  * ICU_TZ_RESOURCE. */
 #define ICU_TZ_RESOURCE_OLD "zoneinfo"
 #define ICU_TZ_RESOURCE "zoneinfo64"
+
+/* File containinng custom zone-region mapping. */
+#define ICU_REGIONS "icuregions"
 
 #endif

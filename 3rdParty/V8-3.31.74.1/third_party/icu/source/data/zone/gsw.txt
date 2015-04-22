@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/gsw.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/gsw.xml
  */
 gsw{
-    Version{"2.0.92.87"}
+    Version{"2.1.7.41"}
     zoneStrings{
         "Africa:Accra"{
             ec{"Akkra"}
@@ -88,10 +88,7 @@ gsw{
             ec{"St. Vincent"}
         }
         "Antarctica:DumontDUrville"{
-            ec{"Dumont D'Urville"}
-        }
-        "Antarctica:South_Pole"{
-            ec{"Süüdpol"}
+            ec{"Dumont D’Urville"}
         }
         "Antarctica:Vostok"{
             ec{"Woschtok"}
@@ -306,6 +303,11 @@ gsw{
             ld{"Amazonas-Summerziit"}
             lg{"Amazonas-Ziit"}
             ls{"Amazonas-Schtandardziit"}
+        }
+        "meta:America_Central"{
+            ld{"Amerika-Zentraal Summerziit"}
+            lg{"Amerika-Zentraal Ziit"}
+            ls{"Amerika-Zentraal Schtandardziit"}
         }
         "meta:Europe_Central"{
             ld{"Mitteleuropäischi Summerziit"}

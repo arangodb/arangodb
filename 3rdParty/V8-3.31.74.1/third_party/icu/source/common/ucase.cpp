@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2004-2012, International Business Machines
+*   Copyright (C) 2004-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -29,7 +29,6 @@
 #include "cmemory.h"
 #include "utrie2.h"
 #include "ucase.h"
-#include "ucln_cmn.h"
 
 struct UCaseProps {
     UDataMemory *mem;

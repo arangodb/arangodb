@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/shi_Latn.xml
@@ -28,10 +28,6 @@ shi_Latn{
             "BHD",
             "adinar n bḥrayn",
         }
-        BIF{
-            "BIF",
-            "frank n burundi",
-        }
         BWP{
             "BWP",
             "abula n butswana",
@@ -52,14 +48,6 @@ shi_Latn{
             "CN¥",
             "ayan n ccinwa",
         }
-        CVE{
-            "CVE",
-            "iskudu n kabbirdi",
-        }
-        DJF{
-            "DJF",
-            "frank n djibuti",
-        }
         DZD{
             "DZD",
             "adinar n dzayr",
@@ -67,10 +55,6 @@ shi_Latn{
         EGP{
             "EGP",
             "ajnih n miṣṛ",
-        }
-        ERN{
-            "ERN",
-            "nafka n iritirya",
         }
         ETB{
             "ETB",
@@ -84,16 +68,8 @@ shi_Latn{
             "£",
             "ajnih astrlini n nngliz",
         }
-        GMD{
-            "GMD",
-            "dalasi n gambya",
-        }
-        GNS{
-            "GNS",
-            "frank n ɣinya",
-        }
         INR{
-            "₹",
+            "Rs.",
             "arubi n lhind",
         }
         JPY{
@@ -103,18 +79,6 @@ shi_Latn{
         KES{
             "KES",
             "acilin n kinya",
-        }
-        KMF{
-            "KMF",
-            "frank n qumuṛ",
-        }
-        LRD{
-            "LRD",
-            "adular n libirya",
-        }
-        LSL{
-            "LSL",
-            "luti n liṣuṭu",
         }
         LYD{
             "LYD",
@@ -156,33 +120,13 @@ shi_Latn{
             "SAR",
             "aryal n ssaɛudiya",
         }
-        SCR{
-            "SCR",
-            "arubi n ssicil",
-        }
         SDG{
             "SDG",
             "adinar n ssudan",
         }
-        SHP{
-            "SHP",
-            "ajnih n santilin",
-        }
         SLL{
             "SLL",
             "liyun",
-        }
-        SOS{
-            "SOS",
-            "acilin n ṣṣumal",
-        }
-        STD{
-            "STD",
-            "adubra n sanṭumi",
-        }
-        SZL{
-            "SZL",
-            "lilanjini",
         }
         TND{
             "TND",
@@ -217,5 +161,5 @@ shi_Latn{
             "akwaca n zambya",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

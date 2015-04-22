@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bs_Cyrl.xml
@@ -11,7 +11,7 @@
  */
 bs_Cyrl{
     %%Parent{"root"}
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"Абиџан"}
@@ -439,9 +439,6 @@ bs_Cyrl{
         "America:Montevideo"{
             ec{"Монтевидео"}
         }
-        "America:Montreal"{
-            ec{"Монтреал"}
-        }
         "America:Montserrat"{
             ec{"Монтсерат"}
         }
@@ -526,9 +523,6 @@ bs_Cyrl{
         "America:Scoresbysund"{
             ec{"Скорезбисунд"}
         }
-        "America:Shiprock"{
-            ec{"Шипрок"}
-        }
         "America:St_Barthelemy"{
             ec{"Св. Бартоломeј"}
         }
@@ -603,9 +597,6 @@ bs_Cyrl{
         }
         "Antarctica:Rothera"{
             ec{"Ротера"}
-        }
-        "Antarctica:South_Pole"{
-            ec{"Јужни пол"}
         }
         "Antarctica:Syowa"{
             ec{"Шова"}

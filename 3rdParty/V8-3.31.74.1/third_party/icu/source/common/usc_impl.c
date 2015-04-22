@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1999-2009, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -146,7 +146,7 @@ highBit(int32_t value)
     }
 
     if (value >= 1 << 1) {
-        value >>= 1;
+        //value >>= 1;
         bit += 1;
     }
 

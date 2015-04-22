@@ -1,6 +1,6 @@
 /*****************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************/
@@ -65,8 +65,6 @@ U_NAMESPACE_USE
 #include "unicode/udata.h"
 U_CFUNC char uconvmsg_dat[];
 #endif
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 #define DEFAULT_BUFSZ   4096
 #define UCONVMSG "uconvmsg"
@@ -659,9 +657,9 @@ ConvertFile::convertFile(const char *pname,
         parse.line = -1;
 
         if (uprv_strchr(translit, ':') || uprv_strchr(translit, '>') || uprv_strchr(translit, '<') || uprv_strchr(translit, '>')) {
-            t = Transliterator::createFromRules("Uconv", str, UTRANS_FORWARD, parse, err);
+            t = Transliterator::createFromRules(UNICODE_STRING_SIMPLE("Uconv"), str, UTRANS_FORWARD, parse, err);
         } else {
-            t = Transliterator::createInstance(translit, UTRANS_FORWARD, err);
+            t = Transliterator::createInstance(UnicodeString(translit, -1, US_INV), UTRANS_FORWARD, err);
         }
 
         if (U_FAILURE(err)) {
@@ -946,7 +944,7 @@ ConvertFile::convertFile(const char *pname,
                     int8_t i, length, errorLength;
 
                     UErrorCode localError = U_ZERO_ERROR;
-                    errorLength = (int8_t)LENGTHOF(errorUChars);
+                    errorLength = (int8_t)UPRV_LENGTHOF(errorUChars);
                     ucnv_getInvalidUChars(convto, errorUChars, &errorLength, &localError);
                     if (U_FAILURE(localError) || errorLength == 0) {
                         // need at least 1 so that we don't access beyond the length of fromoffsets[]

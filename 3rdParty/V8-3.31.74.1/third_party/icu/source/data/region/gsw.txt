@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/gsw.xml
@@ -106,7 +106,7 @@ gsw{
         GU{"Guam"}
         GW{"Gineea-Bissau"}
         GY{"Guäjaana"}
-        HK{"Sonderverwaltigszone Hongkong"}
+        HK{"Hongkong"}
         HM{"Höörd- und MäcDonald-Insle"}
         HN{"Honduras"}
         HR{"Kroaazie"}
@@ -159,7 +159,7 @@ gsw{
         ML{"Maali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolei"}
-        MO{"Sonderverwaltigszone Macao"}
+        MO{"Macao"}
         MP{"Nördlichi Mariaane"}
         MQ{"Martinigg"}
         MR{"Mauretaanie"}
@@ -262,9 +262,8 @@ gsw{
         ZW{"Simbabwe"}
         ZZ{"Unbekannti oder ungültigi Regioon"}
     }
-    CountriesShort{
-        HK{"Hongkong"}
-        MO{"Macao"}
+    Countries%variant{
+        MK{"Mazedoonie (EJRM)"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.41"}
 }

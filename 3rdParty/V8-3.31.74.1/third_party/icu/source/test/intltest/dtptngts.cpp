@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2008-2013, International Business Machines Corporation and
+ * Copyright (c) 2008-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -168,7 +168,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
         UnicodeString("23:58"),                               // 10: jjmm  -> "HH:mm"
         UnicodeString("58:59"),                               // 11: mmss  -> "mm:ss"
         UnicodeString("enero de 1999"),                       // 12: yyyyMMMM -> "MMMM 'de' yyyy"
-        CharsToUnicodeString("mi\\u00E9. 13 de ene."),        // 13: MMMEd -> "E d 'de' MMM"
+        CharsToUnicodeString("mi\\u00E9., 13 de ene."),        // 13: MMMEd -> "E, d 'de' MMM"
         CharsToUnicodeString("mi\\u00E9. 13"),                // 14: Ed    -> "EEE d"
         UnicodeString("23:58:59,123"),                        // 15: jmmssSSS -> "H:mm:ss,SSS"
         UnicodeString("23:58"),                               // 16: JJmm
@@ -200,7 +200,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
         UnicodeString("1/13"),                                            // 04: Md    -> M/d
         CharsToUnicodeString("1\\u670813\\u65E5"),                        // 05: MMMd  -> M\u6708d\u65E5
         CharsToUnicodeString("1\\u670813\\u65E5"),                        // 06: MMMMd  -> M\u6708d\u65E5
-        CharsToUnicodeString("\\u5E73\\u6210 11 Q1"),                     // 07: yQQQ  -> G y QQQ
+        CharsToUnicodeString("\\u5E73\\u621011/Q1"),                     // 07: yQQQ  -> Gy/QQQ
         CharsToUnicodeString("\\u5348\\u5F8C11:58"),                      // 08: hhmm  ->
         UnicodeString("23:58"),                                           // 09: HHmm  -> HH:mm          (as for ja)
         UnicodeString("23:58"),                                           // 10: jjmm
@@ -212,7 +212,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
         UnicodeString("23:58"),                                           // 16: JJmm
 
         // zh_Hans_CN                                                     // 7 zh_Hans_CN
-        UnicodeString("1999/1", -1, US_INV),                              // 00: yM
+        CharsToUnicodeString("1999\\u5E741\\u6708"),                      // 00: yM -> y\u5E74M\u6708
         CharsToUnicodeString("1999\\u5E741\\u6708"),                      // 01: yMMM  -> yyyy\u5E74MMM (fixed expected result per ticket:6626:)
         CharsToUnicodeString("1999/1/13"),                                // 02: yMd
         CharsToUnicodeString("1999\\u5E741\\u670813\\u65E5"),             // 03: yMMMd -> yyyy\u5E74MMMd\u65E5 (fixed expected result per ticket:6626:)
@@ -251,38 +251,38 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
 
         // ru                                                             // 9 ru
         UnicodeString("01.1999"),                                         // 00: yM    -> MM.y
-        CharsToUnicodeString("\\u042F\\u043D\\u0432. 1999"),              // 01: yMMM  -> LLL y
+        CharsToUnicodeString("\\u044F\\u043D\\u0432. 1999"),              // 01: yMMM  -> LLL y
         UnicodeString("13.01.1999"),                                      // 02: yMd   -> dd.MM.y
         CharsToUnicodeString("13 \\u044F\\u043D\\u0432. 1999 \\u0433."),  // 03: yMMMd -> d MMM y
         UnicodeString("13.01"),                                           // 04: Md    -> dd.MM
         CharsToUnicodeString("13 \\u044F\\u043D\\u0432."),                // 05: MMMd  -> d MMM
         CharsToUnicodeString("13 \\u044F\\u043D\\u0432\\u0430\\u0440\\u044F"), // 06: MMMMd  -> d MMMM
         CharsToUnicodeString("1-\\u0439 \\u043A\\u0432. 1999 \\u0433."),  // 07: yQQQ  -> y QQQ
-        CharsToUnicodeString("11:58 \\u043F\\u043E\\u0441\\u043B\\u0435 \\u043F\\u043E\\u043B\\u0443\\u0434\\u043D\\u044F"),                                        // 07: hhmm  -> hh:mm a
+        UnicodeString("11:58 PM"),                                        // 07: hhmm  -> hh:mm a
         UnicodeString("23:58"),                                           // 09: HHmm  -> HH:mm
         UnicodeString("23:58"),                                           // 10: jjmm  -> HH:mm
         UnicodeString("58:59"),                                           // 11: mmss  -> mm:ss
-        CharsToUnicodeString("\\u042F\\u043D\\u0432\\u0430\\u0440\\u044C 1999"), // 12: yyyyMMMM -> LLLL y
+        CharsToUnicodeString("\\u044F\\u043D\\u0432\\u0430\\u0440\\u044C 1999"), // 12: yyyyMMMM -> LLLL y
         CharsToUnicodeString("\\u0421\\u0440, 13 \\u044F\\u043D\\u0432."), // 13: MMMEd -> ccc, d MMM
         CharsToUnicodeString("\\u0421\\u0440, 13"),                       // 14: Ed    -> EEE, d
         UnicodeString("23:58:59,123"),                                    // 15: jmmssSSS -> "H:mm:ss,SSS"
         UnicodeString("23:58"),                                           // 16: JJmm
 
         // zh@calendar=chinese                                            // 10 zh@calendar=chinese
-        CharsToUnicodeString("\\u620A\\u5BC5\\u5E7411\\u6708"),           // 00: yM
-        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u5341\\u4E00\\u6708"),  // 01: yMMM
-        CharsToUnicodeString("\\u620A\\u5BC5\\u5E7411\\u670826\\u65E5"),  // 02: yMd
-        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u5341\\u4E00\\u670826\\u65E5"),  // 03: yMMMd
+        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u51AC\\u6708"),      // 00: yMMM
+        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u51AC\\u6708"),      // 01: yMMM
+        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u51AC\\u670826\\u65E5"), // 02: yMMMd
+        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u51AC\\u670826\\u65E5"), // 03: yMMMd
         UnicodeString("11-26"),                                           // 04: Md
-        CharsToUnicodeString("\\u5341\\u4E00\\u670826\\u65E5"),           // 05: MMMd
-        CharsToUnicodeString("\\u5341\\u4E00\\u670826\\u65E5"),           // 06: MMMMd
+        CharsToUnicodeString("\\u51AC\\u670826\\u65E5"),                  // 05: MMMd
+        CharsToUnicodeString("\\u51AC\\u670826\\u65E5"),                  // 06: MMMMd
         CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u7b2c\\u56db\\u5B63\\u5EA6"),    // 07: yQQQ
         CharsToUnicodeString("\\u4E0B\\u534811:58"),                      // 08: hhmm
         UnicodeString("23:58"),                                           // 09: HHmm
         CharsToUnicodeString("\\u4E0B\\u534811:58"),                      // 10: jjmm
         UnicodeString("58:59"),                                           // 11: mmss
-        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u5341\\u4E00\\u6708"), // 12: yyyyMMMM
-        CharsToUnicodeString("\\u5341\\u4E00\\u670826\\u65E5\\u5468\\u4E09"), // 13: MMMEd
+        CharsToUnicodeString("\\u620A\\u5BC5\\u5E74\\u51AC\\u6708"),      // 12: yyyyMMMM
+        CharsToUnicodeString("\\u51AC\\u670826\\u65E5\\u5468\\u4E09"),    // 13: MMMEd
         CharsToUnicodeString("26\\u65E5\\u5468\\u4E09"),                  // 14: Ed    -> d\u65E5EEE
         CharsToUnicodeString("\\u4E0B\\u534811:58:59.123"),               // 15: jmmssSS
         UnicodeString("11:58"),                                           // 16: JJmm
@@ -433,7 +433,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
     UnicodeString dateReturned, expectedResult;
     dateReturned.remove();
     dateReturned = format->format(sampleDate, dateReturned, status);
-    expectedResult=UnicodeString("14. Okt. 08:58", -1, US_INV);
+    expectedResult=UnicodeString("14. Okt., 08:58", -1, US_INV);
     if ( dateReturned != expectedResult ) {
         errln("ERROR: Simple test in getBestPattern with Locale::getGermany()).");
     }
@@ -449,7 +449,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
     format->applyPattern(gen->getBestPattern(UnicodeString("MMMMdHmm"), status));
     dateReturned.remove();
     dateReturned = format->format(sampleDate, dateReturned, status);
-    expectedResult=UnicodeString("14. von Oktober 08:58", -1, US_INV);
+    expectedResult=UnicodeString("14. von Oktober, 08:58", -1, US_INV);
     if ( dateReturned != expectedResult ) {
         errln(UnicodeString("ERROR: Simple test addPattern failed!: d\'. von\' MMMM   Got: ") + dateReturned + UnicodeString(" Expected: ") + expectedResult);
     }
@@ -463,7 +463,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
     pattern = format->toPattern(pattern);
     dateReturned.remove();
     dateReturned = format->format(sampleDate, dateReturned, status);
-    expectedResult=CharsToUnicodeString("Donnerstag, 14. Oktober 1999 08:58:59 Mitteleurop\\u00E4ische Sommerzeit");
+    expectedResult=CharsToUnicodeString("Donnerstag, 14. Oktober 1999 um 08:58:59 Mitteleurop\\u00E4ische Sommerzeit");
     if ( dateReturned != expectedResult ) {
         errln("ERROR: Simple test uses full date format.");
         errln(UnicodeString(" Got: ") + dateReturned + UnicodeString(" Expected: ") + expectedResult);
@@ -474,7 +474,7 @@ void IntlTestDateTimePatternGeneratorAPI::testAPI(/*char *par*/)
     format->applyPattern(newPattern);
     dateReturned.remove();
     dateReturned = format->format(sampleDate, dateReturned, status);
-    expectedResult=CharsToUnicodeString("Donnerstag, 14. Oktober 1999 08:58:59 Mitteleurop\\u00E4ische Zeit");
+    expectedResult=CharsToUnicodeString("Donnerstag, 14. Oktober 1999 um 08:58:59 Mitteleurop\\u00E4ische Zeit");
     if ( dateReturned != expectedResult ) {
         errln("ERROR: Simple test modify the timezone!");
         errln(UnicodeString(" Got: ")+ dateReturned + UnicodeString(" Expected: ") + expectedResult);
@@ -863,15 +863,28 @@ void IntlTestDateTimePatternGeneratorAPI::testOptions(/*char *par*/)
         { "be", "HHmm", "HH.mm",   UDATPG_MATCH_HOUR_FIELD_LENGTH },
         { "be", "hhmm", "hh.mm a", UDATPG_MATCH_HOUR_FIELD_LENGTH },
         //
-        { "en",                   "yyyy", "yyyy", UDATPG_MATCH_NO_OPTIONS },
-        { "en",                   "YYYY", "YYYY", UDATPG_MATCH_NO_OPTIONS },
-        { "en",                   "U",    "y",    UDATPG_MATCH_NO_OPTIONS },
-        { "en@calendar=japanese", "yyyy", "y G",  UDATPG_MATCH_NO_OPTIONS },
-        { "en@calendar=japanese", "YYYY", "Y G",  UDATPG_MATCH_NO_OPTIONS },
-        { "en@calendar=japanese", "U",    "y G",  UDATPG_MATCH_NO_OPTIONS },
-        { "en@calendar=chinese",  "yyyy", "U",    UDATPG_MATCH_NO_OPTIONS },
-        { "en@calendar=chinese",  "YYYY", "Y",    UDATPG_MATCH_NO_OPTIONS },
-        { "en@calendar=chinese",  "U",    "U",    UDATPG_MATCH_NO_OPTIONS },
+        { "en",                   "yyyy",  "yyyy",  UDATPG_MATCH_NO_OPTIONS },
+        { "en",                   "YYYY",  "YYYY",  UDATPG_MATCH_NO_OPTIONS },
+        { "en",                   "U",     "y",     UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=japanese", "yyyy",  "y G",   UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=japanese", "YYYY",  "Y G",   UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=japanese", "U",     "y G",   UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "yyyy",  "U",     UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "YYYY",  "Y",     UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "U",     "U",     UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "Gy",    "U",     UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "GU",    "U",     UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "ULLL",  "MMM U", UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "yMMM",  "MMM U", UDATPG_MATCH_NO_OPTIONS },
+        { "en@calendar=chinese",  "GUMMM", "MMM U", UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "yyyy",  "U\\u5E74",    UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "YYYY",  "Y\\u5E74",    UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "U",     "U\\u5E74",    UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "Gy",    "U\\u5E74",    UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "GU",    "U\\u5E74",    UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "ULLL",  "U\\u5E74MMM", UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "yMMM",  "U\\u5E74MMM", UDATPG_MATCH_NO_OPTIONS },
+        { "zh@calendar=chinese",  "GUMMM", "U\\u5E74MMM", UDATPG_MATCH_NO_OPTIONS },
     };
     
     int count = sizeof(testData) / sizeof(testData[0]);
@@ -882,7 +895,7 @@ void IntlTestDateTimePatternGeneratorAPI::testOptions(/*char *par*/)
 
         Locale locale(testDataPtr->locale);
         UnicodeString skel(testDataPtr->skel);
-        UnicodeString expectedPattern(testDataPtr->expectedPattern);
+        UnicodeString expectedPattern(UnicodeString(testDataPtr->expectedPattern).unescape());
         UDateTimePatternMatchOptions options = testDataPtr->options;
 
         DateTimePatternGenerator * dtpgen = DateTimePatternGenerator::createInstance(locale, status);

@@ -1,11 +1,13 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 1999-2008, International Business Machines
+ *   Copyright (C) 1999-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
  */
+
+#ifndef USING_ICULEHB /* C API not available under HB */
 
 #include "unicode/utypes.h"
 #include "unicode/ubidi.h"
@@ -511,6 +513,7 @@ static void U_CALLCONV DataDrivenTest(void)
  */
 static void U_CALLCONV GlyphToCharTest(void)
 {
+#if !UCONFIG_NO_BREAK_ITERATION
     LEErrorCode status = LE_NO_ERROR;
     le_font *font;
     pl_fontRuns *fontRuns;
@@ -728,6 +731,7 @@ close_font:
 
 finish:
     return;
+#endif
 }
 
 U_CFUNC void addCTests(TestNode **root)
@@ -740,3 +744,4 @@ U_CFUNC void addCTests(TestNode **root)
 }
 
 
+#endif

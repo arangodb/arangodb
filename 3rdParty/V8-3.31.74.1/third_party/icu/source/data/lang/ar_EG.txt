@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ar_EG.xml
@@ -10,7 +10,6 @@ ar_EG{
     Languages{
         ady{"الأديغة"}
         ae{"الأفستانية"}
-        af{"الأفريقانية"}
         agq{"الأغيمية"}
         alt{"الألطية الجنوبية"}
         an{"الأرغونية"}
@@ -18,7 +17,6 @@ ar_EG{
         as{"الأساميزية"}
         asa{"الآسو"}
         av{"الآفارية"}
-        az{"الأذربيجانية"}
         ban{"اللغة البالينية"}
         bbj{"لغة الغومالا"}
         be{"البيلاروسية"}
@@ -78,8 +76,6 @@ ar_EG{
         nl_BE{"الفلمنكية"}
         nmg{"لغة الكواسيو"}
         nnh{"لغة النجيمبون"}
-        nus{"النوير"}
-        pra{"لغة البراكريت"}
         rof{"الرومبو"}
         rom{"الغجرية"}
         rwk{"الروا"}
@@ -98,7 +94,6 @@ ar_EG{
         ti{"التيغرينية"}
         tig{"التيغرية"}
         trv{"لغة التاروكو"}
-        tut{"اللغة الألطية"}
         twq{"لغة التاساواك"}
         tyv{"التوفية"}
         tzm{"التمازيغية الأوسط أطلسية"}
@@ -113,5 +108,5 @@ ar_EG{
         yav{"اليانغبين"}
         ybb{"يمبا"}
     }
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
 }

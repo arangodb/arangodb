@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2007, International Business Machines
+*   Copyright (C) 2007-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -194,9 +194,6 @@ private:
         lo = gcal->getTime(status);
         gcal->set(hiyear, 0, 1, 0, 0, 0);
         hi = gcal->getTime(status);
-    }
-
-    void dumpZone(ostream& out, const char* linesep, UnicodeString tzid, int32_t low, int32_t high) {
     }
 
     TimeZone*   timezone;

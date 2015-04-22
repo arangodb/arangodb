@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nnh.xml
@@ -13,9 +13,9 @@ nnh{
     AuxExemplarCharacters{"[q r x]"}
     ExemplarCharacters{
         "[a á à â ǎ b c d e é è ê ě ɛ {ɛ\u0301} {ɛ\u0300} {ɛ\u0302} {ɛ\u030C} f g h i"
-        " í ì j k l m n ŋ o ó ò ô ǒ ɔ {ɔ\u0301} {ɔ\u0300} {ɔ\u0302} {ɔ\u030C} p {pf} "
-        "s {sh} t {ts} u ú ù û ǔ ʉ {ʉ\u0301} {ʉ\u0300} {ʉ\u0302} {ʉ\u030C} v w ẅ y ÿ "
-        "z ʼ]"
+        " í ì j k l m ḿ n ń ŋ o ó ò ô ǒ ɔ {ɔ\u0301} {ɔ\u0300} {ɔ\u0302} {ɔ\u030C} p {"
+        "pf} s {sh} t {ts} u ú ù û ǔ ʉ {ʉ\u0301} {ʉ\u0300} {ʉ\u0302} {ʉ\u030C} v w ẅ "
+        "y ÿ z ʼ]"
     }
     ExemplarCharactersIndex{
         "[A B C D E Ɛ F G H I J K L M N Ŋ O Ɔ P {Pf} R S {Sh} T {Ts} U Ʉ V W Ẅ Y Ÿ Z "
@@ -27,6 +27,10 @@ nnh{
     }
     NumberElements{
         latn{
+            patterns{
+                currencyFormat{"¤ #,##0.00"}
+                decimalFormat{"#,##0.###"}
+            }
             symbols{
                 decimal{","}
                 group{"."}
@@ -35,7 +39,7 @@ nnh{
             }
         }
     }
-    Version{"2.0.92.97"}
+    Version{"2.1.6.69"}
     calendar{
         generic{
             DateTimePatterns{

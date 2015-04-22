@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2013, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -39,7 +39,7 @@ U_CDECL_BEGIN
  * @see u_getUnicodeVersion
  * @stable ICU 2.0
  */
-#define U_UNICODE_VERSION "6.3"
+#define U_UNICODE_VERSION "7.0"
 
 /**
  * \file
@@ -1452,8 +1452,75 @@ enum UBlockCode {
     /** @stable ICU 49 */
     UBLOCK_TAKRI = 220, /*[11680]*/
 
+    /* New blocks in Unicode 7.0 */
+
+    /** @stable ICU 54 */
+    UBLOCK_BASSA_VAH = 221, /*[16AD0]*/
+    /** @stable ICU 54 */
+    UBLOCK_CAUCASIAN_ALBANIAN = 222, /*[10530]*/
+    /** @stable ICU 54 */
+    UBLOCK_COPTIC_EPACT_NUMBERS = 223, /*[102E0]*/
+    /** @stable ICU 54 */
+    UBLOCK_COMBINING_DIACRITICAL_MARKS_EXTENDED = 224, /*[1AB0]*/
+    /** @stable ICU 54 */
+    UBLOCK_DUPLOYAN = 225, /*[1BC00]*/
+    /** @stable ICU 54 */
+    UBLOCK_ELBASAN = 226, /*[10500]*/
+    /** @stable ICU 54 */
+    UBLOCK_GEOMETRIC_SHAPES_EXTENDED = 227, /*[1F780]*/
+    /** @stable ICU 54 */
+    UBLOCK_GRANTHA = 228, /*[11300]*/
+    /** @stable ICU 54 */
+    UBLOCK_KHOJKI = 229, /*[11200]*/
+    /** @stable ICU 54 */
+    UBLOCK_KHUDAWADI = 230, /*[112B0]*/
+    /** @stable ICU 54 */
+    UBLOCK_LATIN_EXTENDED_E = 231, /*[AB30]*/
+    /** @stable ICU 54 */
+    UBLOCK_LINEAR_A = 232, /*[10600]*/
+    /** @stable ICU 54 */
+    UBLOCK_MAHAJANI = 233, /*[11150]*/
+    /** @stable ICU 54 */
+    UBLOCK_MANICHAEAN = 234, /*[10AC0]*/
+    /** @stable ICU 54 */
+    UBLOCK_MENDE_KIKAKUI = 235, /*[1E800]*/
+    /** @stable ICU 54 */
+    UBLOCK_MODI = 236, /*[11600]*/
+    /** @stable ICU 54 */
+    UBLOCK_MRO = 237, /*[16A40]*/
+    /** @stable ICU 54 */
+    UBLOCK_MYANMAR_EXTENDED_B = 238, /*[A9E0]*/
+    /** @stable ICU 54 */
+    UBLOCK_NABATAEAN = 239, /*[10880]*/
+    /** @stable ICU 54 */
+    UBLOCK_OLD_NORTH_ARABIAN = 240, /*[10A80]*/
+    /** @stable ICU 54 */
+    UBLOCK_OLD_PERMIC = 241, /*[10350]*/
+    /** @stable ICU 54 */
+    UBLOCK_ORNAMENTAL_DINGBATS = 242, /*[1F650]*/
+    /** @stable ICU 54 */
+    UBLOCK_PAHAWH_HMONG = 243, /*[16B00]*/
+    /** @stable ICU 54 */
+    UBLOCK_PALMYRENE = 244, /*[10860]*/
+    /** @stable ICU 54 */
+    UBLOCK_PAU_CIN_HAU = 245, /*[11AC0]*/
+    /** @stable ICU 54 */
+    UBLOCK_PSALTER_PAHLAVI = 246, /*[10B80]*/
+    /** @stable ICU 54 */
+    UBLOCK_SHORTHAND_FORMAT_CONTROLS = 247, /*[1BCA0]*/
+    /** @stable ICU 54 */
+    UBLOCK_SIDDHAM = 248, /*[11580]*/
+    /** @stable ICU 54 */
+    UBLOCK_SINHALA_ARCHAIC_NUMBERS = 249, /*[111E0]*/
+    /** @stable ICU 54 */
+    UBLOCK_SUPPLEMENTAL_ARROWS_C = 250, /*[1F800]*/
+    /** @stable ICU 54 */
+    UBLOCK_TIRHUTA = 251, /*[11480]*/
+    /** @stable ICU 54 */
+    UBLOCK_WARANG_CITI = 252, /*[118A0]*/
+
     /** @stable ICU 2.0 */
-    UBLOCK_COUNT = 221,
+    UBLOCK_COUNT = 253,
 
     /** @stable ICU 2.0 */
     UBLOCK_INVALID_CODE=-1
@@ -1662,6 +1729,34 @@ typedef enum UJoiningGroup {
     U_JG_FARSI_YEH, /**< @stable ICU 4.4 */
     U_JG_NYA,       /**< @stable ICU 4.4 */
     U_JG_ROHINGYA_YEH,  /**< @stable ICU 49 */
+    U_JG_MANICHAEAN_ALEPH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_AYIN,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_BETH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_DALETH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_DHAMEDH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_FIVE,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_GIMEL,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_HETH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_HUNDRED,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_KAPH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_LAMEDH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_MEM,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_NUN,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_ONE,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_PE,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_QOPH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_RESH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_SADHE,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_SAMEKH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_TAW,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_TEN,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_TETH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_THAMEDH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_TWENTY,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_WAW,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_YODH,  /**< @stable ICU 54 */
+    U_JG_MANICHAEAN_ZAYIN,  /**< @stable ICU 54 */
+    U_JG_STRAIGHT_WAW,  /**< @stable ICU 54 */
     U_JG_COUNT
 } UJoiningGroup;
 
@@ -2740,7 +2835,7 @@ u_charName(UChar32 code, UCharNameChoice nameChoice,
  *
  * @deprecated ICU 49
  */
-U_STABLE int32_t U_EXPORT2
+U_DEPRECATED int32_t U_EXPORT2
 u_getISOComment(UChar32 c,
                 char *dest, int32_t destCapacity,
                 UErrorCode *pErrorCode);

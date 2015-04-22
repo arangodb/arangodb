@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nmg.xml
@@ -27,10 +27,6 @@ nmg{
             "BHD",
             "Mɔn Bahrein",
         }
-        BIF{
-            "BIF",
-            "Fraŋ Burundi",
-        }
         BWP{
             "BWP",
             "Mɔn Botswana",
@@ -51,14 +47,6 @@ nmg{
             "CN¥",
             "Mɔn bó Chinois",
         }
-        CVE{
-            "CVE",
-            "Mɔn Kapvɛrt",
-        }
-        DJF{
-            "DJF",
-            "Fraŋ Jibuti",
-        }
         DZD{
             "DZD",
             "Mɔn Algeria",
@@ -66,10 +54,6 @@ nmg{
         EGP{
             "EGP",
             "Mɔn Ägyptɛn",
-        }
-        ERN{
-            "ERN",
-            "Mɔn Erytré",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ nmg{
             "£",
             "Mɔn Ngɛ̄lɛ̄n",
         }
-        GMD{
-            "GMD",
-            "Mɔn Gambia",
-        }
-        GNS{
-            "GNS",
-            "Fraŋ Guiné",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Mɔn India",
         }
         JPY{
@@ -102,18 +78,6 @@ nmg{
         KES{
             "KES",
             "Mɔn Kɛnya",
-        }
-        KMF{
-            "KMF",
-            "Fraŋ bó Kɔmɔr",
-        }
-        LRD{
-            "LRD",
-            "Dɔ́llɔ Liberia",
-        }
-        LSL{
-            "LSL",
-            "Mɔn Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ nmg{
             "SAR",
             "Mɔn Saudi Arabia",
         }
-        SCR{
-            "SCR",
-            "Mɔn Seychɛlle",
-        }
         SDG{
             "SDG",
             "Mɔn Sudan",
         }
-        SHP{
-            "SHP",
-            "Mɔn má Saint Lina",
-        }
         SLL{
             "SLL",
             "Mɔn Leɔne",
-        }
-        SOS{
-            "SOS",
-            "Mɔn Somalía",
-        }
-        STD{
-            "STD",
-            "Mɔn Sao tomé na prinship",
-        }
-        SZL{
-            "SZL",
-            "Mɔn Ligangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ nmg{
             "Mɔn Zambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

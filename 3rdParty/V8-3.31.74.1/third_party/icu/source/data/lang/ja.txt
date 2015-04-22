@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ja.xml
@@ -16,12 +16,12 @@ ja{
         ak{"アカン語"}
         am{"アムハラ語"}
         ar{"アラビア語"}
+        ar_001{"現代標準アラビア語"}
         az{"アゼルバイジャン語"}
         ban{"バリ語"}
         be{"ベラルーシ語"}
         bem{"ベンバ語"}
         bg{"ブルガリア語"}
-        bh{"ビハール語"}
         bn{"ベンガル語"}
         br{"ブルトン語"}
         bs{"ボスニア語"}
@@ -34,7 +34,7 @@ ja{
         cy{"ウェールズ語"}
         da{"デンマーク語"}
         de{"ドイツ語"}
-        de_CH{"正統ドイツ語(スイス)"}
+        de_CH{"標準ドイツ語(スイス)"}
         ee{"エウェ語"}
         el{"ギリシャ語"}
         en{"英語"}
@@ -79,6 +79,7 @@ ja{
         km{"クメール語"}
         kn{"カンナダ語"}
         ko{"韓国語"}
+        kri{"クリオ語"}
         ku{"クルド語"}
         ky{"キルギス語"}
         la{"ラテン語"}
@@ -95,7 +96,6 @@ ja{
         mk{"マケドニア語"}
         ml{"マラヤーラム語"}
         mn{"モンゴル語"}
-        mo{"モルダビア語"}
         mr{"マラーティー語"}
         ms{"マレー語"}
         mt{"マルタ語"}
@@ -121,6 +121,7 @@ ja{
         rm{"ロマンシュ語"}
         rn{"ルンディ語"}
         ro{"ルーマニア語"}
+        ro_MD{"モルダビア語"}
         ru{"ロシア語"}
         rw{"ルワンダ語"}
         sd{"シンド語"}
@@ -142,6 +143,7 @@ ja{
         th{"タイ語"}
         ti{"ティグリニア語"}
         tk{"トルクメン語"}
+        tl{"タガログ語"}
         tn{"ツワナ語"}
         to{"トンガ語"}
         tr{"トルコ語"}
@@ -162,11 +164,18 @@ ja{
         zh_Hant{"繁体中国語"}
         zu{"ズールー語"}
     }
+    Languages%variant{
+        ps{"パシュトゥ語"}
+        ug{"ウィグル語"}
+    }
     LanguagesShort{
         az{"アゼリー語"}
+        en_GB{"英語(英国)"}
+        en_US{"英語(米国)"}
     }
     Scripts{
         Afak{"アファカ文字"}
+        Aghb{"カフカス・アルバニア文字"}
         Arab{"アラビア文字"}
         Armi{"帝国アラム文字"}
         Armn{"アルメニア文字"}
@@ -198,6 +207,7 @@ ja{
         Egyd{"エジプト民衆文字"}
         Egyh{"エジプト神官文字"}
         Egyp{"エジプト聖刻文字"}
+        Elba{"エルバサン文字"}
         Ethi{"エチオピア文字"}
         Geok{"グルジア文字(フツリ)"}
         Geor{"グルジア文字"}
@@ -245,6 +255,7 @@ ja{
         Loma{"ロマ文字"}
         Lyci{"リキア文字"}
         Lydi{"リディア文字"}
+        Mahj{"マハージャニー文字"}
         Mand{"マンダ文字"}
         Mani{"マニ文字"}
         Maya{"マヤ象形文字"}
@@ -252,6 +263,7 @@ ja{
         Merc{"メロエ文字草書体"}
         Mero{"メロエ文字"}
         Mlym{"マラヤーラム文字"}
+        Modi{"モーディー文字"}
         Mong{"モンゴル文字"}
         Moon{"ムーン文字"}
         Mroo{"ムロ文字"}
@@ -268,6 +280,7 @@ ja{
         Orya{"オリヤー文字"}
         Osma{"オスマニア文字"}
         Palm{"パルミラ文字"}
+        Pauc{"パウ・チン・ハウ文字"}
         Perm{"古ぺルム文字"}
         Phag{"パスパ文字"}
         Phli{"碑文パフラヴィー文字"}
@@ -286,6 +299,7 @@ ja{
         Sgnw{"手話文字"}
         Shaw{"ショー文字"}
         Shrd{"シャーラダー文字"}
+        Sidd{"梵字"}
         Sind{"クダワディ文字"}
         Sinh{"シンハラ文字"}
         Sora{"ソラング・ソンペング文字"}
@@ -322,14 +336,17 @@ ja{
         Zmth{"数学記号"}
         Zsym{"記号文字"}
         Zxxx{"非表記"}
-        Zyyy{"未解読文字"}
+        Zyyy{"共通文字"}
         Zzzz{"未定義文字"}
     }
     Scripts%stand-alone{
         Hans{"漢字(簡体字)"}
         Hant{"漢字(繁体字)"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"ペルソ・アラビア文字"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"言語: {0}"}
         script{"文字: {0}"}

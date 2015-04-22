@@ -1,6 +1,6 @@
 /*
 ***************************************************************************
-*   Copyright (C) 1999-2013 International Business Machines Corporation   *
+*   Copyright (C) 1999-2014 International Business Machines Corporation   *
 *   and others. All rights reserved.                                      *
 ***************************************************************************
 
@@ -62,7 +62,7 @@ struct RBBIStateTable;
  *    not part of the ICU API, and may not remain stable.</p>
  *
  */
-class U_COMMON_API RuleBasedBreakIterator : public BreakIterator {
+class U_COMMON_API RuleBasedBreakIterator /*U_FINAL*/ : public BreakIterator {
 
 protected:
     /**
@@ -423,8 +423,8 @@ public:
     virtual void  setText(UText *text, UErrorCode &status);
 
     /**
-     * Sets the current iteration position to the beginning of the text.
-     * @return The offset of the beginning of the text.
+     * Sets the current iteration position to the beginning of the text, position zero.
+     * @return The offset of the beginning of the text, zero.
      *  @stable ICU 2.0
      */
     virtual int32_t first(void);

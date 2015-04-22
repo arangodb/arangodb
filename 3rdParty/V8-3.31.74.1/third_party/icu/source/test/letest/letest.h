@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 1999-2011, International Business Machines
+ *   Copyright (C) 1999-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -14,7 +14,12 @@
 #ifndef __LETEST_H
 #define __LETEST_H
 
+
+#ifdef USING_ICULEHB
+#include "layout/LETypes.h"
+#else
 #include "LETypes.h"
+#endif
 #include "unicode/ctest.h"
 
 #include <stdlib.h>

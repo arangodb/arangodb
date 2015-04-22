@@ -1,5 +1,5 @@
 ## Makefile.in for ICU - test/letest
-## Copyright (c) 2001-2013, International Business Machines Corporation and
+## Copyright (c) 2001-2014, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -31,9 +31,12 @@ BUILDDIR := $(BUILDDIR:test\\cintltst/../../=)
 # Simplify the path for Windows 98
 BUILDDIR := $(BUILDDIR:TEST\\CINTLTST/../../=)
 
-CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(top_srcdir)/tools/ctestfw -I$(top_srcdir)/tools/toolutil -I$(top_srcdir)/layout -I$(top_srcdir)/layoutex -I$(top_srcdir)
+CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(top_srcdir)/tools/ctestfw -I$(top_srcdir)/tools/toolutil -I$(top_srcdir)/layoutex $(ICULE_CFLAGS)
+ifeq ($(USING_ICULEHB),no)
+CPPFLAGS+=-I$(top_srcdir)/layout
+endif
 DEFS += -D'U_TOPSRCDIR="$(top_srcdir)/"' -D'U_TOPBUILDDIR="$(BUILDDIR)"'
-LIBS = $(LIBICULX) $(LIBICULE) $(LIBICUUC) $(LIBICUI18N) $(LIBCTESTFW) $(LIBICUTOOLUTIL) @LIBS@ @LIB_M@
+LIBS = $(LIBICULX) $(LIBICULE) $(LIBICUUC) $(LIBICUI18N) $(LIBCTESTFW) $(LIBICUTOOLUTIL) $(DEFAULT_LIBS) $(LIB_M) 
 
 COMMONOBJECTS = letsutil.o cmaps.o FontTableCache.o SimpleFontInstance.o PortableFontInstance.o
 TESTOBJECTS   = letest.o
@@ -46,7 +49,7 @@ DEPS = $(OBJECTS:.o=.d)
 
 ## List of phony targets
 .PHONY : all all-local install install-local clean clean-local	\
-distclean distclean-local dist dist-local check check-local
+distclean distclean-local dist dist-local check check-local xcheck xcheck-local
 
 ## Clear suffix list
 .SUFFIXES :
@@ -58,6 +61,7 @@ clean: clean-local
 distclean : distclean-local
 dist: dist-local
 check: all check-local
+xcheck: all xcheck-local
 
 all-local: $(TESTTARGET)
 
@@ -73,18 +77,22 @@ distclean-local: clean-local
 	$(RMV) Makefile
 
 check-local: all-local
-	$(INVOKE) ./$(TESTTARGET)
+	$(INVOKE) ./$(TESTTARGET) $(TEST_OUTPUT_OPTS) $(LETEST_OPTS)
+
+TESTXML=$(top_builddir)/test-$(TESTTARGET).xml
+xcheck-local: all-local
+	$(INVOKE) ./$(TESTTARGET) $(TEST_OUTPUT_OPTS) $(LETEST_OPTS) -x $(TESTXML)
 
 Makefile: $(srcdir)/Makefile.in  $(top_builddir)/config.status
 	cd $(top_builddir) \
 	 && CONFIG_FILES=$(subdir)/$@ CONFIG_HEADERS= $(SHELL) ./config.status
 
 $(TESTTARGET) : $(COMMONOBJECTS) $(TESTOBJECTS) $(CTESTOBJECTS)
-	$(LINK.cc) -o $@ $^ $(LIBS)
+	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS)
 	$(POST_BUILD_STEP)
 
 $(GENTARGET) : $(COMMONOBJECTS) $(GENOBJECTS)
-	$(LINK.cc) -o $@ $^ $(LIBS)
+	$(LINK.cc) $(OUTOPT)$@ $^ $(LIBS)
 	$(POST_BUILD_STEP)
 
 invoke:

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -480,7 +480,7 @@ testLCID(UResourceBundle *currentBundle,
             log_verbose("WARNING: %-5s resolves to %s (0x%.4x)\n",
                 localeName, lcidStringC, expectedLCID);
         }
-        else {
+        else if (strncmp(localeName, "hsb", 3) != 0 || !log_knownIssue("11216", "Duplicate LCID mapping for language hsb")) {
             log_err("ERROR:   %-5s has 0x%.4x and the number resolves wrongfully to %s\n",
                 localeName, expectedLCID, lcidStringC);
         }
@@ -492,7 +492,7 @@ static void
 TestLocaleStructure(void) {
     // This test checks the locale structure against a key file located
     // at source/test/testdata/structLocale.txt. When adding new data to
-    // a loale file such as en.txt, the structLocale.txt file must be changed
+    // a locale file such as en.txt, the structLocale.txt file must be changed
     // too to include the the template of the new data. Otherwise this test
     // will fail!
 
@@ -995,12 +995,10 @@ static void VerifyTranslation(void) {
                         log_err("error ures_getStringByIndex(%d) returned %s\n", idx, u_errorName(errorCode));
                         continue;
                     }
-                    if (uprv_strstr(currLoc, "uz_Arab") != currLoc || !log_knownIssue("10405", "skipping exemplar check: %s", currLoc)) { /* TODO: FIX or REMOVE this test! */
-                        strIdx = findStringSetMismatch(currLoc, fromBundleStr, langSize, mergedExemplarSet, TRUE, &badChar);
-                        if (strIdx >= 0) {
-                            log_err("getDayNames(%s, %d) at index %d returned characters not in the exemplar characters: %04X.\n",
-                                currLoc, idx, strIdx, badChar);
-                        }
+                    strIdx = findStringSetMismatch(currLoc, fromBundleStr, langSize, mergedExemplarSet, TRUE, &badChar);
+                    if (strIdx >= 0) {
+                        log_err("getDayNames(%s, %d) at index %d returned characters not in the exemplar characters: %04X.\n",
+                            currLoc, idx, strIdx, badChar);
                     }
                 }
                 ures_close(resArray);
@@ -1026,12 +1024,10 @@ static void VerifyTranslation(void) {
                         log_err("error ures_getStringByIndex(%d) returned %s\n", idx, u_errorName(errorCode));
                         continue;
                     }
-                    if (uprv_strstr(currLoc, "uz_Arab") != currLoc || !log_knownIssue("10405", "skipping exemplar check: %s", currLoc)) { /* TODO: FIX or REMOVE this test! */
-                        strIdx = findStringSetMismatch(currLoc, fromBundleStr, langSize, mergedExemplarSet, TRUE, &badChar);
-                        if (strIdx >= 0) {
-                            log_err("getMonthNames(%s, %d) at index %d returned characters not in the exemplar characters: %04X.\n",
-                                currLoc, idx, strIdx, badChar);
-                        }
+                    strIdx = findStringSetMismatch(currLoc, fromBundleStr, langSize, mergedExemplarSet, TRUE, &badChar);
+                    if (strIdx >= 0) {
+                        log_err("getMonthNames(%s, %d) at index %d returned characters not in the exemplar characters: %04X.\n",
+                            currLoc, idx, strIdx, badChar);
                     }
                 }
                 ures_close(resArray);
@@ -1042,6 +1038,9 @@ static void VerifyTranslation(void) {
             }
             errorCode = U_ZERO_ERROR;
             numScripts = uscript_getCode(currLoc, scripts, sizeof(scripts)/sizeof(scripts[0]), &errorCode);
+            if (strcmp(currLoc, "yi") == 0 && numScripts > 0 && log_knownIssue("11217", "Fix result of uscript_getCode for yi: USCRIPT_YI -> USCRIPT_HEBREW")) {
+                scripts[0] = USCRIPT_HEBREW;
+            }
             if (numScripts == 0) {
                 log_err("uscript_getCode(%s) doesn't work.\n", currLoc);
             }else if(scripts[0] == USCRIPT_COMMON){
@@ -1171,6 +1170,9 @@ static void TestExemplarSet(void){
                 log_err("ExemplarSet contains unassigned characters for locale : %s\n", locale);
             }
             codeLen = uscript_getCode(locale, code, 8, &ec);
+            if (strcmp(locale, "yi") == 0 && codeLen > 0 && log_knownIssue("11217", "Fix result of uscript_getCode for yi: USCRIPT_YI -> USCRIPT_HEBREW")) {
+                code[0] = USCRIPT_HEBREW;
+            }
             if (!assertSuccess("uscript_getCode", &ec)) goto END;
 
             for (j=0; j<MAX_SCRIPTS_PER_LOCALE; ++j) {

@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -198,7 +198,6 @@ TransliteratorTest::runIndexedTest(int32_t index, UBool exec,
     }
 }
 
-static const UVersionInfo ICU_39 = {3,9,4,0};
 /**
  * Make sure every system transliterator can be instantiated.
  * 
@@ -1478,7 +1477,7 @@ void TransliteratorTest::TestNormalizationTransliterator() {
     Transliterator* NFKD = Transliterator::createInstance("NFKD", UTRANS_FORWARD, parseError, status);
     Transliterator* NFKC = Transliterator::createInstance("NFKC", UTRANS_FORWARD, parseError, status);
     if (!NFKD || !NFKC) {
-        errln("FAIL: createInstance failed");
+        dataerrln("FAIL: createInstance failed");
         delete NFKD;
         delete NFKC;
         return;
@@ -4283,7 +4282,6 @@ static const char* BEGIN_END_RULES[] = {
     "::Upper(Lower);"
     "::([XYZ]);"
 };
-static const int32_t BEGIN_END_RULES_length = (int32_t)(sizeof(BEGIN_END_RULES) / sizeof(BEGIN_END_RULES[0]));
 
 /*
 (This entire test is commented out below and will need some heavy revision when we re-add

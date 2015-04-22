@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  bocsu.cpp
@@ -24,10 +24,10 @@
 #include "bocsu.h"
 
 /*
- * encode one difference value -0x10ffff..+0x10ffff in 1..3 bytes,
+ * encode one difference value -0x10ffff..+0x10ffff in 1..4 bytes,
  * preserving lexical order
  */
-U_CFUNC uint8_t *
+static uint8_t *
 u_writeDiff(int32_t diff, uint8_t *p) {
     if(diff>=SLOPE_REACH_NEG_1) {
         if(diff<=SLOPE_REACH_POS_1) {
@@ -95,12 +95,11 @@ u_writeDiff(int32_t diff, uint8_t *p) {
  * Note that the identical-level run in a sort key is generated from
  * NFD text - there are never Hangul characters included.
  */
-U_CFUNC void
-u_writeIdenticalLevelRun(const UChar *s, int32_t length, icu::ByteSink &sink) {
+U_CFUNC UChar32
+u_writeIdenticalLevelRun(UChar32 prev, const UChar *s, int32_t length, icu::ByteSink &sink) {
     char scratch[64];
     int32_t capacity;
 
-    UChar32 prev=0;
     int32_t i=0;
     while(i<length) {
         char *buffer=sink.GetAppendBuffer(1, length*2, scratch, (int32_t)sizeof(scratch), &capacity);
@@ -127,28 +126,17 @@ u_writeIdenticalLevelRun(const UChar *s, int32_t length, icu::ByteSink &sink) {
 
             UChar32 c;
             U16_NEXT(s, i, length, c);
-            p=u_writeDiff(c-prev, p);
-            prev=c;
+            if(c==0xfffe) {
+                *p++=2;  // merge separator
+                prev=0;
+            } else {
+                p=u_writeDiff(c-prev, p);
+                prev=c;
+            }
         }
         sink.Append(buffer, (int32_t)(p-reinterpret_cast<uint8_t *>(buffer)));
     }
-}
-
-U_CFUNC int32_t
-u_writeIdenticalLevelRunTwoChars(UChar32 first, UChar32 second, uint8_t *p) {
-    uint8_t *p0 = p;
-    if(first<0x4e00 || first>=0xa000) {
-        first=(first&~0x7f)-SLOPE_REACH_NEG_1;
-    } else {
-        /*
-         * Unihan U+4e00..U+9fa5:
-         * double-bytes down from the upper end
-         */
-        first=0x9fff-SLOPE_REACH_POS_2;
-    }
-
-    p=u_writeDiff(second-first, p);
-    return (int32_t)(p-p0);
+    return prev;
 }
 
 #endif /* #if !UCONFIG_NO_COLLATION */

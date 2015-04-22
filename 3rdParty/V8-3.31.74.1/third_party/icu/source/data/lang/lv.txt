@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/lv.xml
@@ -22,7 +22,6 @@ lv{
         be{"baltkrievu"}
         bem{"bembu"}
         bg{"bulgāru"}
-        bh{"biharu"}
         bn{"bengāļu"}
         br{"bretoņu"}
         bs{"bosniešu"}
@@ -101,7 +100,6 @@ lv{
         mk{"maķedoniešu"}
         ml{"malajalu"}
         mn{"mongoļu"}
-        mo{"moldāvu"}
         mr{"maratu"}
         ms{"malajiešu"}
         mt{"maltiešu"}
@@ -128,6 +126,7 @@ lv{
         rm{"retoromāņu"}
         rn{"rundu"}
         ro{"rumāņu"}
+        ro_MD{"moldāvu"}
         ru{"krievu"}
         rw{"kiņaruanda"}
         sd{"sindhu"}
@@ -149,6 +148,7 @@ lv{
         th{"taju"}
         ti{"tigrinja"}
         tk{"turkmēņu"}
+        tl{"tagalu"}
         tn{"cvanu"}
         to{"tongiešu"}
         tr{"turku"}
@@ -253,7 +253,10 @@ lv{
         Hans{"hanu vienkāršotā"}
         Hant{"hanu tradicionālā"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"persiešu-arābu"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Valoda: {0}"}
         script{"Rakstība: {0}"}

@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 ## Solaris-specific setup using gcc
-## Copyright (c) 1999-2010, International Business Machines Corporation and
+## Copyright (c) 1999-2014, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Flags for position independent code
@@ -9,8 +9,8 @@ SHAREDLIBCXXFLAGS = -fPIC
 SHAREDLIBCPPFLAGS = -DPIC
 
 ## Commands to generate dependency files
-GEN_DEPS.c= 	$(CC) -E -MM $(DEFS) $(CPPFLAGS)
-GEN_DEPS.cc=	$(CXX) -E -MM $(DEFS) $(CPPFLAGS)
+GEN_DEPS.c= 	$(CC) -E -MM $(DEFS) $(CPPFLAGS) $(CFLAGS)
+GEN_DEPS.cc=	$(CXX) -E -MM $(DEFS) $(CPPFLAGS) $(CXXFLAGS)
 
 ## These are the library specific LDFLAGS
 LDFLAGSICUDT=-nodefaultlibs -nostdlib

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2000-2011, International Business Machines
+*   Copyright (C) 2000-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -29,7 +29,6 @@
 #include "cstring.h"
 #include "unewdata.h"
 #include "ustr.h"
-#include "uhash.h"
 
 U_CDECL_BEGIN
 
@@ -54,7 +53,6 @@ struct SRBRoot {
   int32_t fKeysCount;
   int32_t fLocalKeyLimit; /* key offset < limit fits into URES_TABLE */
 
-  UHashtable *fStringSet;
   uint16_t *f16BitUnits;
   int32_t f16BitUnitsCapacity;
   int32_t f16BitUnitsLength;
@@ -131,13 +129,6 @@ struct SResString {
 };
 
 struct SResource *string_open(struct SRBRoot *bundle, const char *tag, const UChar *value, int32_t len, const struct UString* comment, UErrorCode *status);
-
-/**
- * Remove a string from a bundle and close (delete) it.
- * The string must not have been added to a table or array yet.
- * This function only undoes what string_open() did.
- */
-void bundle_closeString(struct SRBRoot *bundle, struct SResource *string);
 
 struct SResource *alias_open(struct SRBRoot *bundle, const char *tag, UChar *value, int32_t len, const struct UString* comment, UErrorCode *status);
 

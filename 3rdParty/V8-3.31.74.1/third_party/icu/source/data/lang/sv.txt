@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sv.xml
@@ -22,7 +22,6 @@ sv{
         be{"vitryska"}
         bem{"bemba"}
         bg{"bulgariska"}
-        bh{"bihari"}
         bn{"bengali"}
         br{"bretonska"}
         bs{"bosniska"}
@@ -65,7 +64,7 @@ sv{
         gl{"galiciska"}
         gn{"guaraní"}
         gu{"gujarati"}
-        ha{"haussa"}
+        ha{"hausa"}
         haw{"hawaiiska"}
         he{"hebreiska"}
         hi{"hindi"}
@@ -75,7 +74,7 @@ sv{
         hy{"armeniska"}
         ia{"interlingua"}
         id{"indonesiska"}
-        ig{"ibo"}
+        ig{"igbo"}
         is{"isländska"}
         it{"italienska"}
         ja{"japanska"}
@@ -101,7 +100,6 @@ sv{
         mk{"makedonska"}
         ml{"malayalam"}
         mn{"mongoliska"}
-        mo{"moldaviska"}
         mr{"marathi"}
         ms{"malajiska"}
         mt{"maltesiska"}
@@ -128,6 +126,7 @@ sv{
         rm{"rätoromanska"}
         rn{"rundi"}
         ro{"rumänska"}
+        ro_MD{"moldaviska"}
         ru{"ryska"}
         rw{"kinjarwanda"}
         sd{"sindhi"}
@@ -149,6 +148,7 @@ sv{
         th{"thailändska"}
         ti{"tigrinja"}
         tk{"turkmeniska"}
+        tl{"tagalog"}
         tn{"tswana"}
         to{"tonganska"}
         tr{"turkiska"}
@@ -169,12 +169,17 @@ sv{
         zh_Hant{"traditionell kinesiska"}
         zu{"zulu"}
     }
+    Languages%variant{
+        ps{"pashto"}
+        ug{"östturkiska"}
+    }
     LanguagesShort{
         az{"azeriska"}
         en_GB{"engelska (UK)"}
     }
     Scripts{
         Afak{"afakiska"}
+        Aghb{"kaukasiska albanska"}
         Arab{"arabiska"}
         Armi{"imperisk arameiska"}
         Armn{"armeniska"}
@@ -206,6 +211,7 @@ sv{
         Egyd{"demotiska"}
         Egyh{"hieratiska"}
         Egyp{"egyptiska hieroglyfer"}
+        Elba{"elbasiska"}
         Ethi{"etiopiska"}
         Geok{"kutsuri"}
         Geor{"georgiska"}
@@ -253,6 +259,7 @@ sv{
         Loma{"loma"}
         Lyci{"lykiska"}
         Lydi{"lydiska"}
+        Mahj{"mahajaniska"}
         Mand{"mandaéiska"}
         Mani{"manikeanska"}
         Maya{"mayahieroglyfer"}
@@ -260,6 +267,7 @@ sv{
         Merc{"kursiv-meroitiska"}
         Mero{"meriotiska"}
         Mlym{"malayalam"}
+        Modi{"modiska"}
         Mong{"mongoliska"}
         Moon{"moon"}
         Mroo{"mru"}
@@ -276,6 +284,7 @@ sv{
         Orya{"oriya"}
         Osma{"osmanja"}
         Palm{"palmyreniska"}
+        Pauc{"Pau Cin Hau-skrift"}
         Perm{"fornpermiska"}
         Phag{"phags-pa"}
         Phli{"tidig pahlavi"}
@@ -294,6 +303,7 @@ sv{
         Sgnw{"teckningsskrift"}
         Shaw{"shawiska"}
         Shrd{"sharada"}
+        Sidd{"siddhamska"}
         Sind{"sindhiska"}
         Sinh{"singalesiska"}
         Sora{"sora sompeng"}
@@ -337,7 +347,7 @@ sv{
         Hans{"förenklade han-tecken"}
         Hant{"traditionella han-tecken"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     codePatterns{
         language{"språk: {0}"}
         script{"skrift: {0}"}

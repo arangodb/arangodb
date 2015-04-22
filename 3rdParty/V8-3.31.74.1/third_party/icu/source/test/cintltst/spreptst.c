@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2010, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -24,9 +24,6 @@
 #include "cstring.h"
 #include "cintltst.h"
 #include "nfsprep.h"
-
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 void addUStringPrepTest(TestNode** root);
 void doStringPrepTest(const char* binFileName, const char* txtFileName, 
@@ -444,7 +441,7 @@ Test_nfs4_mixed_prep(void){
         char src[MAX_BUFFER_SIZE];
         int32_t srcLen;
 
-        for(i=0; i< LENGTHOF(mixed_prep_data); i++){
+        for(i=0; i< UPRV_LENGTHOF(mixed_prep_data); i++){
             int32_t destLen=0;
             char* dest = NULL;
             UErrorCode status = U_ZERO_ERROR;
@@ -761,7 +758,7 @@ static void TestStringPrepProfiles(void) {
     int32_t i, testNum = 0;
     UStringPrepProfile *sprep = NULL;
     
-    for (i = 0; i < LENGTHOF(profile_test_case); i++) {
+    for (i = 0; i < UPRV_LENGTHOF(profile_test_case); i++) {
         if (uprv_strstr(profile_test_case[i], "RFC")) {
             if (sprep != NULL) {
                 usprep_close(sprep);

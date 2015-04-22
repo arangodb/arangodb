@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/chr.xml
@@ -153,7 +153,7 @@ chr{
         ML{"ᎹᎵ"}
         MM{"ᎹᏯᎹᎵ"}
         MN{"ᎹᏂᎪᎵᎠ"}
-        MO{"ᎹᎧᎣ (ᎤᏓᏤᎵᏓ ᏧᏂᎸᏫᏍᏓᏁᏗ ᎢᎬᎾᏕᎾ) ᏣᎢ"}
+        MO{"ᎹᎧᎣ"}
         MP{"ᎾᏍᎩ ᎤᏴᏢ ᏗᏜ ᎹᎵᎠᎾ ᏚᎦᏚᏛ"}
         MQ{"ᎹᏘᏂᎨ"}
         MR{"ᎹᏘᎢᏯ"}
@@ -209,8 +209,8 @@ chr{
         US{"ᎠᎹᏰᏟ"}
         ZZ{"ᏄᏬᎵᏍᏛᎾ ᎤᏔᏂᏗᎦᏙᎯ"}
     }
-    CountriesShort{
-        MO{"ᎹᎧᎣ"}
+    Countries%variant{
+        FK{"ᏩᎩ ᎤᎦᏚᏛ (ᎢᏍᎳᏍ ᎹᎸᏫᎾᏍ)"}
     }
-    Version{"2.0.93.15"}
+    Version{"2.1.6.69"}
 }

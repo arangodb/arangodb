@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2004-2006, International Business Machines
+* Copyright (c) 2004-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 * Author: Alan Liu
@@ -68,13 +68,6 @@ class U_I18N_API CurrencyUnit: public MeasureUnit {
      * @stable ICU 3.0
      */
     virtual ~CurrencyUnit();
-
-    /**
-     * Equality operator.  Return true if this object is equal
-     * to the given object.
-     * @stable ICU 3.0
-     */
-    UBool operator==(const UObject& other) const;
 
     /**
      * Returns a unique class ID for this object POLYMORPHICALLY.

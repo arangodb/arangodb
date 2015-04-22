@@ -1,5 +1,5 @@
 #**********************************************************************
-#* Copyright (C) 1999-2013, International Business Machines Corporation
+#* Copyright (C) 1999-2014, International Business Machines Corporation
 #* and others.  All Rights Reserved.
 #**********************************************************************
 # nmake file for creating data files on win32
@@ -10,10 +10,10 @@
 
 ##############################################################################
 # Keep the following in sync with the version - see common/unicode/uvernum.h
-U_ICUDATA_NAME=icudt52
+U_ICUDATA_NAME=icudt54
 ##############################################################################
 U_ICUDATA_ENDIAN_SUFFIX=l
-UNICODE_VERSION=6.3
+UNICODE_VERSION=7.0
 ICU_LIB_TARGET=$(DLL_OUTPUT)\$(U_ICUDATA_NAME).dll
 
 #  ICUMAKE
@@ -356,6 +356,7 @@ ZONE_SOURCE=$(ZONE_SOURCE) $(ZONE_SOURCE_LOCAL)
 !ELSE
 !MESSAGE Information: cannot find "zone\reslocal.mk". Not building user-additional resource bundle files.
 !ENDIF
+ZONE_SOURCE=$(ZONE_SOURCE) tzdbNames.txt
 !ELSE
 !MESSAGE Warning: cannot find "zone\resfiles.mk"
 !ENDIF
@@ -366,6 +367,27 @@ ZONE_RES_FILES = $(ZONE_FILES:.txt =.res zone\)
 ZONE_RES_FILES = $(ZONE_RES_FILES:.txt=.res)
 ZONE_RES_FILES = zone\pool.res $(ZONE_RES_FILES:zone\ =zone\)
 ALL_RES = $(ALL_RES) zone\res_index.res
+!ENDIF
+
+# Read the list of units display name resource bundle files
+!IF EXISTS("$(ICUSRCDATA)\unit\resfiles.mk")
+!INCLUDE "$(ICUSRCDATA)\unit\resfiles.mk"
+!IF EXISTS("$(ICUSRCDATA)\unit\reslocal.mk")
+!INCLUDE "$(ICUSRCDATA)\unit\reslocal.mk"
+UNIT_SOURCE=$(UNIT_SOURCE) $(UNIT_SOURCE_LOCAL)
+!ELSE
+!MESSAGE Information: cannot find "unit\reslocal.mk". Not building user-additional resource bundle files.
+!ENDIF
+!ELSE
+!MESSAGE Warning: cannot find "unit\resfiles.mk"
+!ENDIF
+
+!IFDEF UNIT_SOURCE
+UNIT_FILES = unit\root.txt $(UNIT_ALIAS_SOURCE) $(UNIT_SOURCE)
+UNIT_RES_FILES = $(UNIT_FILES:.txt =.res unit\)
+UNIT_RES_FILES = $(UNIT_RES_FILES:.txt=.res)
+UNIT_RES_FILES = unit\pool.res $(UNIT_RES_FILES:unit\ =unit\)
+ALL_RES = $(ALL_RES) unit\res_index.res
 !ENDIF
 
 # Read the list of collation resource bundle files
@@ -489,7 +511,7 @@ ALL : GODATA "$(ICU_LIB_TARGET)"
 # 2010-dec Removed pnames.icu.
 # Command line:
 #   C:\svn\icuproj\icu\trunk\source\data>nmake -f makedata.mak ICUMAKE=C:\svn\icuproj\icu\trunk\source\data\ CFG=x86\Debug uni-core-data
-uni-core-data: GODATA "$(ICUBLD_PKG)\pnames.icu" "$(ICUBLD_PKG)\uprops.icu" "$(ICUBLD_PKG)\ucase.icu" "$(ICUBLD_PKG)\ubidi.icu"
+uni-core-data: GODATA "$(ICUBLD_PKG)\pnames.icu" "$(ICUBLD_PKG)\uprops.icu" "$(ICUBLD_PKG)\ucase.icu" "$(ICUBLD_PKG)\ubidi.icu" "$(ICUBLD_PKG)\nfc.nrm"
 	@echo Unicode .icu files built to "$(ICUBLD_PKG)"
 
 # Build the ICU4J icudata.jar and testdata.jar.
@@ -502,7 +524,7 @@ ICU4J_TZDATA_PATHS=$(ICU4J_DATA_DIRNAME)\zoneinfo64.res $(ICU4J_DATA_DIRNAME)\me
 generate-data: GODATA "$(ICUOUT)\$(ICUPKG).dat" uni-core-data
 	if not exist "$(ICUOUT)\icu4j\$(ICU4J_DATA_DIRNAME)" mkdir "$(ICUOUT)\icu4j\$(ICU4J_DATA_DIRNAME)"
 	if not exist "$(ICUOUT)\icu4j\tzdata\$(ICU4J_DATA_DIRNAME)" mkdir "$(ICUOUT)\icu4j\tzdata\$(ICU4J_DATA_DIRNAME)"
-	echo pnames.icu ubidi.icu ucase.icu uprops.icu > "$(ICUOUT)\icu4j\add.txt"
+	echo pnames.icu ubidi.icu ucase.icu uprops.icu nfc.nrm > "$(ICUOUT)\icu4j\add.txt"
 	"$(ICUPBIN)\icupkg" "$(ICUOUT)\$(ICUPKG).dat" "$(ICUOUT)\icu4j\$(U_ICUDATA_NAME)b.dat" -a "$(ICUOUT)\icu4j\add.txt" -s "$(ICUBLD_PKG)" -x * -tb -d "$(ICUOUT)\icu4j\$(ICU4J_DATA_DIRNAME)"
 	@for %f in ($(ICU4J_TZDATA_PATHS)) do @move "$(ICUOUT)\icu4j\%f" "$(ICUOUT)\icu4j\tzdata\$(ICU4J_DATA_DIRNAME)"
 
@@ -603,16 +625,14 @@ icu4j-data-install :
 	copy "$(ICUTMP)\$(ICUPKG).dat" "$(ICUOUT)\$(U_ICUDATA_NAME)$(U_ICUDATA_ENDIAN_SUFFIX).dat"
 	-@erase "$(ICUTMP)\$(ICUPKG).dat"
 !ELSE
-"$(ICU_LIB_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) $(CNV_FILES) $(CNV_FILES_SPECIAL) "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\cnvalias.icu" "$(ICUBLD_PKG)\nfc.nrm" "$(ICUBLD_PKG)\nfkc.nrm" "$(ICUBLD_PKG)\nfkc_cf.nrm" "$(ICUBLD_PKG)\uts46.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu" "$(ICUBLD_PKG)\$(ICUCOL)\invuca.icu" $(CURR_RES_FILES) $(LANG_RES_FILES) $(REGION_RES_FILES) $(ZONE_RES_FILES) $(BRK_FILES) $(BRK_DICT_FILES) $(BRK_RES_FILES) $(ALL_RES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(TRANSLIT_RES_FILES) $(SPREP_FILES) "$(ICUBLD_PKG)\confusables.cfu"
+"$(ICU_LIB_TARGET)" : $(COMMON_ICUDATA_DEPENDENCIES) $(CNV_FILES) $(CNV_FILES_SPECIAL) "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\cnvalias.icu" "$(ICUBLD_PKG)\nfkc.nrm" "$(ICUBLD_PKG)\nfkc_cf.nrm" "$(ICUBLD_PKG)\uts46.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu"  $(CURR_RES_FILES) $(LANG_RES_FILES) $(REGION_RES_FILES) $(ZONE_RES_FILES) $(UNIT_RES_FILES) $(BRK_FILES) $(BRK_DICT_FILES) $(BRK_RES_FILES) $(ALL_RES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(TRANSLIT_RES_FILES) $(SPREP_FILES) "$(ICUBLD_PKG)\confusables.cfu"
 	@echo Building icu data
 	cd "$(ICUBLD_PKG)"
 	"$(ICUPBIN)\pkgdata" $(COMMON_ICUDATA_ARGUMENTS) <<"$(ICUTMP)\icudata.lst"
 unames.icu
 confusables.cfu
 $(ICUCOL)\ucadata.icu
-$(ICUCOL)\invuca.icu
 cnvalias.icu
-nfc.nrm
 nfkc.nrm
 nfkc_cf.nrm
 uts46.nrm
@@ -629,6 +649,8 @@ $(LANG_RES_FILES:.res =.res
 $(REGION_RES_FILES:.res =.res
 )
 $(ZONE_RES_FILES:.res =.res
+)
+$(UNIT_RES_FILES:.res =.res
 )
 $(COL_COL_FILES:.res =.res
 )
@@ -742,11 +764,15 @@ CLEAN : GODATA
 
 $(ICUBRK)\thaidict.dict:
 	@echo Creating $(ICUBRK)\thaidict.dict
-	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0xe00 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\thaidict.txt "$(ICUBLD_PKG)\$(ICUBRK)\thaidict.dict"
+	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0x0e00 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\thaidict.txt "$(ICUBLD_PKG)\$(ICUBRK)\thaidict.dict"
 
 $(ICUBRK)\laodict.dict:
 	@echo Creating $(ICUBRK)\laodict.dict
-	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0xe00 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\laodict.txt "$(ICUBLD_PKG)\$(ICUBRK)\laodict.dict"
+	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0x0e80 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\laodict.txt "$(ICUBLD_PKG)\$(ICUBRK)\laodict.dict"
+
+$(ICUBRK)\burmesedict.dict:
+	@echo Creating $(ICUBRK)\burmesedict.dict
+	@"$(ICUTOOLS)\gendict\$(CFG)\gendict" -c --bytes --transform offset-0x1000 $(ICUSRCDATA_RELATIVE_PATH)\$(ICUBRK)\burmesedict.txt "$(ICUBLD_PKG)\$(ICUBRK)\burmesedict.dict"
 
 $(ICUBRK)\khmerdict.dict:
 	@echo Creating $(ICUBRK)\khmerdict.dict
@@ -885,6 +911,28 @@ res_index:table(nofallback) {
 	@"$(ICUTOOLS)\genrb\$(CFG)\genrb" -k -d"$(ICUBLD_PKG)\zone" .\zone\res_index.txt
 
 
+{$(ICUSRCDATA_RELATIVE_PATH)\unit}.txt{unit}.res::
+	@echo Making unit display name files
+	@"$(ICUTOOLS)\genrb\$(CFG)\genrb" --usePoolBundle $(ICUSRCDATA_RELATIVE_PATH)\unit -k -i "$(ICUBLD_PKG)" -d"$(ICUBLD_PKG)\unit" $<
+
+# copy the unit/pool.res file from the source folder to the build output folder
+# and swap it to native endianness
+unit\pool.res: $(ICUSRCDATA_RELATIVE_PATH)\unit\pool.res
+	"$(ICUPBIN)\icupkg" -tl "$(ICUSRCDATA_RELATIVE_PATH)\unit\pool.res" unit\pool.res
+
+unit\res_index.res:
+	@echo Generating <<unit\res_index.txt
+// Warning this file is automatically generated
+res_index:table(nofallback) {
+    InstalledLocales {
+        $(UNIT_SOURCE:.txt= {""}
+       )
+    }
+}
+<<KEEP
+	@"$(ICUTOOLS)\genrb\$(CFG)\genrb" -k -d"$(ICUBLD_PKG)\unit" .\unit\res_index.txt
+
+
 {$(ICUSRCDATA_RELATIVE_PATH)\$(ICUCOL)}.txt{$(ICUCOL)}.res::
 	@echo Making Collation files
 	@"$(ICUTOOLS)\genrb\$(CFG)\genrb" -k -i "$(ICUBLD_PKG)" -d"$(ICUBLD_PKG)\$(ICUCOL)" $<
@@ -977,10 +1025,7 @@ res_index:table(nofallback) {
 "$(ICUBLD_PKG)\uts46.nrm": $(ICUSRCDATA_RELATIVE_PATH)\in\uts46.nrm
 	"$(ICUPBIN)\icupkg" -tl $? $@
 
-"$(ICUBLD_PKG)\coll\invuca.icu": $(ICUSRCDATA_RELATIVE_PATH)\in\coll\invuca.icu
-	"$(ICUPBIN)\icupkg" -tl $? $@
-
-"$(ICUBLD_PKG)\coll\ucadata.icu": $(ICUSRCDATA_RELATIVE_PATH)\in\coll\ucadata.icu
+"$(ICUBLD_PKG)\coll\ucadata.icu": $(ICUSRCDATA_RELATIVE_PATH)\in\coll\ucadata-unihan.icu
 	"$(ICUPBIN)\icupkg" -tl $? $@
 
 # Stringprep .spp file generation.
@@ -1011,10 +1056,9 @@ $(UCM_SOURCE_SPECIAL): {"$(ICUTOOLS)\makeconv\$(CFG)"}makeconv.exe
 # This used to depend on "$(ICUBLD_PKG)\uprops.icu" "$(ICUBLD_PKG)\ucase.icu" "$(ICUBLD_PKG)\ubidi.icu"
 # This data is now hard coded as a part of the library.
 # See Jitterbug 4497 for details.
-$(MISC_SOURCE) $(RB_FILES) $(CURR_FILES) $(LANG_FILES) $(REGION_FILES) $(ZONE_FILES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(BRK_RES_FILES) $(TRANSLIT_RES_FILES): {"$(ICUTOOLS)\genrb\$(CFG)"}genrb.exe "$(ICUBLD_PKG)\nfc.nrm" "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu"
+$(MISC_SOURCE) $(RB_FILES) $(CURR_FILES) $(LANG_FILES) $(REGION_FILES) $(ZONE_FILES) $(UNIT_FILES) $(COL_COL_FILES) $(RBNF_RES_FILES) $(BRK_RES_FILES) $(TRANSLIT_RES_FILES): {"$(ICUTOOLS)\genrb\$(CFG)"}genrb.exe "$(ICUBLD_PKG)\$(ICUCOL)\ucadata.icu"
 
 # This used to depend on "$(ICUBLD_PKG)\pnames.icu" "$(ICUBLD_PKG)\uprops.icu" "$(ICUBLD_PKG)\ucase.icu" "$(ICUBLD_PKG)\ubidi.icu"
 # These are now hardcoded in ICU4C and only loaded in ICU4J.
-$(BRK_SOURCE) : "$(ICUBLD_PKG)\unames.icu" "$(ICUBLD_PKG)\nfc.nrm"
+$(BRK_SOURCE) : "$(ICUBLD_PKG)\unames.icu"
 !ENDIF
-

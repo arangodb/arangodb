@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/br.xml
@@ -112,7 +112,7 @@ br{
         GU{"Guam"}
         GW{"Ginea-Bissau"}
         GY{"Guyana"}
-        HK{"Hong Kong RMD Sina"}
+        HK{"Hong Kong"}
         HM{"Inizi Heard ha McDonald"}
         HN{"Honduras"}
         HR{"Kroatia"}
@@ -166,7 +166,7 @@ br{
         ML{"Mali"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
-        MO{"Macau RMD Sina"}
+        MO{"Macau"}
         MP{"Inizi Mariana an Norzh"}
         MQ{"Martinik"}
         MR{"Maouritania"}
@@ -193,7 +193,7 @@ br{
         OM{"Oman"}
         PA{"Panamá"}
         PE{"Perou"}
-        PF{"Polinezia cʼhall"}
+        PF{"Polinezia Cʼhall"}
         PG{"Papoua Ginea-Nevez"}
         PH{"Filipinez"}
         PK{"Pakistan"}
@@ -201,7 +201,7 @@ br{
         PM{"Sant-Pêr-ha-Mikelon"}
         PN{"Enez Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Tiriadoù Palestina"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -218,7 +218,7 @@ br{
         SD{"Soudan"}
         SE{"Sveden"}
         SG{"Singapour"}
-        SH{"Saint Helena"}
+        SH{"Saint-Helena"}
         SI{"Slovenia"}
         SJ{"Svalbard"}
         SK{"Slovakia"}
@@ -227,7 +227,7 @@ br{
         SN{"Senegal"}
         SO{"Somalia"}
         SR{"Surinam"}
-        SS{"Su Soudan"}
+        SS{"Susoudan"}
         ST{"São Tomé ha Príncipe"}
         SV{"Salvador"}
         SX{"Sint Maarten"}
@@ -265,6 +265,7 @@ br{
         VU{"Vanuatu"}
         WF{"Wallis ha Futuna"}
         WS{"Samoa"}
+        XK{"Kosovo"}
         YE{"Yemen"}
         YT{"Mayotte"}
         ZA{"Suafrika"}
@@ -272,9 +273,17 @@ br{
         ZW{"Zimbabwe"}
         ZZ{"Rannved dianav"}
     }
-    CountriesShort{
-        HK{"Hong Kong"}
-        MO{"Macau"}
+    Countries%variant{
+        CD{"Kongo (RDK)"}
+        CG{"Kongo (Republik)"}
+        CI{"Aod Olifant"}
+        FK{"Inizi Falkland (Inizi Maloù)"}
+        MK{"Makedonia (RYKM)"}
+        TL{"Timor ar Reter"}
     }
-    Version{"2.0.92.75"}
+    CountriesShort{
+        GB{"R.U."}
+        US{"S.U."}
+    }
+    Version{"2.1.7.39"}
 }

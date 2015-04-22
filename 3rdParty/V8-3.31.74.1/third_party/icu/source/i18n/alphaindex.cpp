@@ -1,20 +1,20 @@
 /*
 *******************************************************************************
-* Copyright (C) 2009-2013, International Business Machines Corporation and
+* Copyright (C) 2009-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 */
 
 #include "unicode/utypes.h"
 
-#if !UCONFIG_NO_COLLATION && !UCONFIG_NO_NORMALIZATION
+#if !UCONFIG_NO_COLLATION
 
 #include "unicode/alphaindex.h"
-#include "unicode/coleitr.h"
 #include "unicode/coll.h"
 #include "unicode/localpointer.h"
 #include "unicode/normalizer2.h"
 #include "unicode/tblcoll.h"
+#include "unicode/uchar.h"
 #include "unicode/ulocdata.h"
 #include "unicode/uniset.h"
 #include "unicode/uobject.h"
@@ -25,11 +25,10 @@
 #include "cstring.h"
 #include "uassert.h"
 #include "uvector.h"
+#include "uvectr64.h"
 
 //#include <string>
 //#include <iostream>
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 U_NAMESPACE_BEGIN
 
@@ -329,7 +328,7 @@ void AlphabeticIndex::initLabels(UVector &indexCharacters, UErrorCode &errorCode
         if (collatorPrimaryOnly_->compare(*item, firstScriptBoundary, errorCode) < 0) {
             // Ignore a primary-ignorable or non-alphabetic index character.
         } else if (collatorPrimaryOnly_->compare(*item, overflowBoundary, errorCode) >= 0) {
-            // Ignore an index characters that will land in the overflow bucket.
+            // Ignore an index character that will land in the overflow bucket.
         } else if (checkDistinct &&
                 collatorPrimaryOnly_->compare(*item, separated(*item), errorCode) == 0) {
             // Ignore a multi-code point index character that does not sort distinctly
@@ -350,7 +349,7 @@ void AlphabeticIndex::initLabels(UVector &indexCharacters, UErrorCode &errorCode
     }
     if (U_FAILURE(errorCode)) { return; }
 
-    // if the result is still too large, cut down to maxCount elements, by removing every nth element
+    // if the result is still too large, cut down to maxLabelCount_ elements, by removing every nth element
 
     int32_t size = indexCharacters.size() - 1;
     if (size > maxLabelCount_) {
@@ -393,18 +392,17 @@ const UnicodeString &fixLabel(const UnicodeString &current, UnicodeString &temp)
 }
 
 UBool hasMultiplePrimaryWeights(
-        CollationElementIterator &cei, int32_t variableTop,
-        const UnicodeString &s, UErrorCode &errorCode) {
-    cei.setText(s, errorCode);
+        const RuleBasedCollator &coll, uint32_t variableTop,
+        const UnicodeString &s, UVector64 &ces, UErrorCode &errorCode) {
+    ces.removeAllElements();
+    coll.internalGetCEs(s, ces, errorCode);
+    if (U_FAILURE(errorCode)) { return FALSE; }
     UBool seenPrimary = FALSE;
-    for (;;) {
-        int32_t ce32 = cei.next(errorCode);
-        if (ce32 == CollationElementIterator::NULLORDER) {
-            break;
-        }
-        int32_t p = CollationElementIterator::primaryOrder(ce32);
-        if (p > variableTop && (ce32 & 0xc0) != 0xc0) {
-            // not primary ignorable, and not a continuation CE
+    for (int32_t i = 0; i < ces.size(); ++i) {
+        int64_t ce = ces.elementAti(i);
+        uint32_t p = (uint32_t)(ce >> 32);
+        if (p > variableTop) {
+            // not primary ignorable
             if (seenPrimary) {
                 return TRUE;
             }
@@ -424,16 +422,10 @@ BucketList *AlphabeticIndex::createBucketList(UErrorCode &errorCode) const {
     if (U_FAILURE(errorCode)) { return NULL; }
 
     // Variables for hasMultiplePrimaryWeights().
-    LocalPointer<CollationElementIterator> cei(
-        collatorPrimaryOnly_->createCollationElementIterator(emptyString_));
-    if (cei.isNull()) {
-        errorCode = U_MEMORY_ALLOCATION_ERROR;
-        return NULL;
-    }
-    int32_t variableTop;
+    UVector64 ces(errorCode);
+    uint32_t variableTop;
     if (collatorPrimaryOnly_->getAttribute(UCOL_ALTERNATE_HANDLING, errorCode) == UCOL_SHIFTED) {
-        variableTop = CollationElementIterator::primaryOrder(
-            (int32_t)collatorPrimaryOnly_->getVariableTop(errorCode));
+        variableTop = collatorPrimaryOnly_->getVariableTop(errorCode);
     } else {
         variableTop = 0;
     }
@@ -514,7 +506,8 @@ BucketList *AlphabeticIndex::createBucketList(UErrorCode &errorCode) const {
         }
         // Check for multiple primary weights.
         if (!current.startsWith(BASE, BASE_LENGTH) &&
-                hasMultiplePrimaryWeights(*cei, variableTop, current, errorCode) &&
+                hasMultiplePrimaryWeights(*collatorPrimaryOnly_, variableTop, current,
+                                          ces, errorCode) &&
                 current.charAt(current.length() - 1) != 0xFFFF /* !current.endsWith("\uffff") */) {
             // "AE-ligature" or "Sch" etc.
             for (int32_t i = bucketList->size() - 2;; --i) {
@@ -525,8 +518,9 @@ BucketList *AlphabeticIndex::createBucketList(UErrorCode &errorCode) const {
                     break;
                 }
                 if (singleBucket->displayBucket_ == NULL &&
-                        !hasMultiplePrimaryWeights(
-                            *cei, variableTop, singleBucket->lowerBoundary_, errorCode)) {
+                        !hasMultiplePrimaryWeights(*collatorPrimaryOnly_, variableTop,
+                                                   singleBucket->lowerBoundary_,
+                                                   ces, errorCode)) {
                     // Add an invisible bucket that redirects strings greater than the expansion
                     // to the previous single-character bucket.
                     // For example, after ... Q R S Sch we add Sch\uFFFF->S
@@ -710,20 +704,6 @@ void AlphabeticIndex::internalResetBucketIterator() {
 
 
 void AlphabeticIndex::addIndexExemplars(const Locale &locale, UErrorCode &status) {
-    if (U_FAILURE(status)) { return; }
-    // Chinese index characters, which are specific to each of the several Chinese tailorings,
-    // take precedence over the single locale data exemplar set per language.
-    const char *language = locale.getLanguage();
-    if (uprv_strcmp(language, "zh") == 0 || uprv_strcmp(language, "ja") == 0 ||
-            uprv_strcmp(language, "ko") == 0) {
-        // TODO: This should be done regardless of the language, but it's expensive.
-        // We should add a Collator function (can be @internal)
-        // to enumerate just the contractions that start with a given code point or string.
-        if (addChineseIndexCharacters(status) || U_FAILURE(status)) {
-            return;
-        }
-    }
-
     LocalULocaleDataPointer uld(ulocdata_open(locale.getName(), &status));
     if (U_FAILURE(status)) {
         return;
@@ -784,50 +764,21 @@ void AlphabeticIndex::addIndexExemplars(const Locale &locale, UErrorCode &status
 
 UBool AlphabeticIndex::addChineseIndexCharacters(UErrorCode &errorCode) {
     UnicodeSet contractions;
-    ucol_getContractionsAndExpansions(collatorPrimaryOnly_->getUCollator(),
-                                      contractions.toUSet(), NULL, FALSE, &errorCode);
-    if (U_FAILURE(errorCode)) { return FALSE; }
-    UnicodeString firstHanBoundary;
-    UBool hasPinyin = FALSE;
+    collatorPrimaryOnly_->internalAddContractions(BASE[0], contractions, errorCode);
+    if (U_FAILURE(errorCode) || contractions.isEmpty()) { return FALSE; }
+    initialLabels_->addAll(contractions);
     UnicodeSetIterator iter(contractions);
     while (iter.next()) {
         const UnicodeString &s = iter.getString();
-        if (s.startsWith(BASE, BASE_LENGTH)) {
-            initialLabels_->add(s);
-            if (firstHanBoundary.isEmpty() ||
-                    collatorPrimaryOnly_->compare(s, firstHanBoundary, errorCode) < 0) {
-                firstHanBoundary = s;
-            }
-            UChar c = s.charAt(s.length() - 1);
-            if (0x41 <= c && c <= 0x5A) {  // A-Z
-                hasPinyin = TRUE;
-            }
+        U_ASSERT (s.startsWith(BASE, BASE_LENGTH));
+        UChar c = s.charAt(s.length() - 1);
+        if (0x41 <= c && c <= 0x5A) {  // A-Z
+            // There are Pinyin labels, add ASCII A-Z labels as well.
+            initialLabels_->add(0x41, 0x5A);  // A-Z
+            break;
         }
     }
-    if (hasPinyin) {
-        initialLabels_->add(0x41, 0x5A);  // A-Z
-    }
-    if (!firstHanBoundary.isEmpty()) {
-        // The hardcoded list of script boundaries includes U+4E00
-        // which is tailored to not be the first primary
-        // in all Chinese tailorings except "unihan".
-        // Replace U+4E00 with the first boundary string from the tailoring.
-        // TODO: This becomes obsolete when the root collator gets
-        // reliable script-first-primary mappings.
-        int32_t hanIndex = binarySearch(
-                *firstCharsInScripts_, UnicodeString((UChar)0x4E00), *collatorPrimaryOnly_);
-        if (hanIndex >= 0) {
-            UnicodeString *fh = new UnicodeString(firstHanBoundary);
-            if (fh == NULL) {
-                errorCode = U_MEMORY_ALLOCATION_ERROR;
-                return FALSE;
-            }
-            firstCharsInScripts_->setElementAt(fh, hanIndex);
-        }
-        return TRUE;
-    } else {
-        return FALSE;
-    }
+    return TRUE;
 }
 
 
@@ -865,9 +816,7 @@ UBool AlphabeticIndex::operator!=(const AlphabeticIndex& /* other */) const {
 
 
 const RuleBasedCollator &AlphabeticIndex::getCollator() const {
-    // There are no known non-RuleBasedCollator collators, and none ever expected.
-    // But, in case that changes, better a null pointer than a wrong type.
-    return *dynamic_cast<RuleBasedCollator *>(collator_);
+    return *collator_;
 }
 
 
@@ -947,10 +896,19 @@ void AlphabeticIndex::init(const Locale *locale, UErrorCode &status) {
     underflowLabel_ = inflowLabel_;
 
     if (collator_ == NULL) {
-        collator_ = static_cast<RuleBasedCollator *>(Collator::createInstance(*locale, status));
-        if (U_FAILURE(status)) { return; }
-        if (collator_ == NULL) {
+        Collator *coll = Collator::createInstance(*locale, status);
+        if (U_FAILURE(status)) {
+            delete coll;
+            return;
+        }
+        if (coll == NULL) {
             status = U_MEMORY_ALLOCATION_ERROR;
+            return;
+        }
+        collator_ = dynamic_cast<RuleBasedCollator *>(coll);
+        if (collator_ == NULL) {
+            delete coll;
+            status = U_UNSUPPORTED_ERROR;
             return;
         }
     }
@@ -963,22 +921,6 @@ void AlphabeticIndex::init(const Locale *locale, UErrorCode &status) {
     firstCharsInScripts_ = firstStringsInScript(status);
     if (U_FAILURE(status)) { return; }
     firstCharsInScripts_->sortWithUComparator(collatorComparator, collatorPrimaryOnly_, status);
-    UnicodeString _4E00((UChar)0x4E00);
-    UnicodeString _1100((UChar)0x1100);
-    UnicodeString _1112((UChar)0x1112);
-    if (collatorPrimaryOnly_->compare(_4E00, _1112, status) <= 0 &&
-            collatorPrimaryOnly_->compare(_1100, _4E00, status) <= 0) {
-        // The standard Korean tailoring sorts Hanja (Han characters)
-        // as secondary differences from Hangul syllables.
-        // This makes U+4E00 not useful as a Han-script boundary.
-        // TODO: This becomes obsolete when the root collator gets
-        // reliable script-first-primary mappings.
-        int32_t hanIndex = binarySearch(
-                *firstCharsInScripts_, _4E00, *collatorPrimaryOnly_);
-        if (hanIndex >= 0) {
-            firstCharsInScripts_->removeElementAt(hanIndex);
-        }
-    }
     // Guard against a degenerate collator where
     // some script boundary strings are primary ignorable.
     for (;;) {
@@ -997,7 +939,9 @@ void AlphabeticIndex::init(const Locale *locale, UErrorCode &status) {
         }
     }
 
-    if (locale != NULL) {
+    // Chinese index characters, which are specific to each of the several Chinese tailorings,
+    // take precedence over the single locale data exemplar set per language.
+    if (!addChineseIndexCharacters(status) && locale != NULL) {
         addIndexExemplars(*locale, status);
     }
 }
@@ -1042,90 +986,45 @@ recordCompareFn(const void *context, const void *left, const void *right) {
     return col->compare(leftRec->name_, rightRec->name_, errorCode);
 }
 
-
-/**
- * This list contains one character per script that has the
- * lowest primary weight for that script in the root collator.
- * This list will be copied and sorted to account for script reordering.
- *
- * <p>TODO: This is fragile. If the first character of a script is tailored
- * so that it does not map to the script's lowest primary weight any more,
- * then the buckets will be off.
- * There are hacks in the code to handle the known CJK tailorings of U+4E00.
- *
- * <p>We use "A" not "a" because the en_US_POSIX tailoring sorts A primary-before a.
- *
- * Keep this in sync with HACK_FIRST_CHARS_IN_SCRIPTS in
- * ICU4J main/classes/collate/src/com/ibm/icu/text/AlphabeticIndex.java
- */
-static const UChar HACK_FIRST_CHARS_IN_SCRIPTS[] =  {
-    0x41, 0, 0x03B1, 0,
-    0x2C81, 0, 0x0430, 0, 0x2C30, 0, 0x10D0, 0, 0x0561, 0, 0x05D0, 0, 0xD802, 0xDD00, 0, 0x0800, 0, 0x0621, 0, 0x0710, 0,
-    0x0780, 0, 0x07CA, 0, 0x2D30, 0, 0x1200, 0, 0x0950, 0, 0x0985, 0, 0x0A74, 0, 0x0AD0, 0, 0x0B05, 0, 0x0BD0, 0,
-    0x0C05, 0, 0x0C85, 0, 0x0D05, 0, 0x0D85, 0,
-    0xAAF2, 0,  // Meetei Mayek
-    0xA800, 0, 0xA882, 0, 0xD804, 0xDC83, 0,
-    U16_LEAD(0x111C4), U16_TRAIL(0x111C4), 0,  // Sharada
-    U16_LEAD(0x11680), U16_TRAIL(0x11680), 0,  // Takri
-    0x1B83, 0,
-    0xD802, 0xDE00, 0, 0x0E01, 0,
-    0x0EDE, 0,  // Lao
-    0xAA80, 0, 0x0F40, 0, 0x1C00, 0, 0xA840, 0, 0x1900, 0, 0x1700, 0, 0x1720, 0,
-    0x1740, 0, 0x1760, 0, 0x1A00, 0, 0xA930, 0, 0xA90A, 0, 0x1000, 0,
-    U16_LEAD(0x11103), U16_TRAIL(0x11103), 0,  // Chakma
-    0x1780, 0, 0x1950, 0, 0x1980, 0, 0x1A20, 0,
-    0xAA00, 0, 0x1B05, 0, 0xA984, 0, 0x1880, 0, 0x1C5A, 0, 0x13A0, 0, 0x1401, 0, 0x1681, 0, 0x16A0, 0, 0xD803, 0xDC00, 0,
-    0xA500, 0, 0xA6A0, 0, 0x1100, 0, 0x3041, 0, 0x30A1, 0, 0x3105, 0, 0xA000, 0, 0xA4F8, 0,
-    U16_LEAD(0x16F00), U16_TRAIL(0x16F00), 0,  // Miao
-    0xD800, 0xDE80, 0,
-    0xD800, 0xDEA0, 0, 0xD802, 0xDD20, 0, 0xD800, 0xDF00, 0, 0xD800, 0xDF30, 0, 0xD801, 0xDC28, 0, 0xD801, 0xDC50, 0,
-    0xD801, 0xDC80, 0,
-    U16_LEAD(0x110D0), U16_TRAIL(0x110D0), 0,  // Sora Sompeng
-    0xD800, 0xDC00, 0, 0xD802, 0xDC00, 0, 0xD802, 0xDE60, 0, 0xD802, 0xDF00, 0, 0xD802, 0xDC40, 0,
-    0xD802, 0xDF40, 0, 0xD802, 0xDF60, 0, 0xD800, 0xDF80, 0, 0xD800, 0xDFA0, 0, 0xD808, 0xDC00, 0, 0xD80C, 0xDC00, 0,
-    U16_LEAD(0x109A0), U16_TRAIL(0x109A0), 0,  // Meroitic Cursive
-    U16_LEAD(0x10980), U16_TRAIL(0x10980), 0,  // Meroitic Hieroglyphs
-    0x4E00, 0,
-    // TODO: The overflow bucket's lowerBoundary string should be the
-    // first item after the last reordering group in the collator's script order.
-    // This should normally be the first Unicode code point
-    // that is unassigned (U+0378 in Unicode 6.3) and untailored.
-    // However, at least up to ICU 51 the Hani reordering group includes
-    // unassigned code points,
-    // and there is no stable string for the start of the trailing-weights range.
-    // The only known string that sorts "high" is U+FFFF.
-    // When ICU separates Hani vs. unassigned reordering groups, we need to fix this,
-    // and fix relevant test code.
-    // Ideally, FractionalUCA.txt will have a "script first primary"
-    // for unassigned code points.
-    0xFFFF, 0
-};
-
 UVector *AlphabeticIndex::firstStringsInScript(UErrorCode &status) {
     if (U_FAILURE(status)) {
         return NULL;
     }
-    UVector *dest = new UVector(status);
-    if (dest == NULL) {
+    LocalPointer<UVector> dest(new UVector(status));
+    if (dest.isNull()) {
         status = U_MEMORY_ALLOCATION_ERROR;
         return NULL;
     }
     dest->setDeleter(uprv_deleteUObject);
-    const UChar *src  = HACK_FIRST_CHARS_IN_SCRIPTS;
-    const UChar *limit = src + LENGTHOF(HACK_FIRST_CHARS_IN_SCRIPTS);
-    do {
-        if (U_FAILURE(status)) {
-            return dest;
+    // Fetch the script-first-primary contractions which are defined in the root collator.
+    // They all start with U+FDD1.
+    UnicodeSet set;
+    collatorPrimaryOnly_->internalAddContractions(0xFDD1, set, status);
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
+    if (set.isEmpty()) {
+        status = U_UNSUPPORTED_ERROR;
+        return NULL;
+    }
+    UnicodeSetIterator iter(set);
+    while (iter.next()) {
+        const UnicodeString &boundary = iter.getString();
+        uint32_t gcMask = U_GET_GC_MASK(boundary.char32At(1));
+        if ((gcMask & (U_GC_L_MASK | U_GC_CN_MASK)) == 0) {
+            // Ignore boundaries for the special reordering groups.
+            // Take only those for "real scripts" (where the sample character is a Letter,
+            // and the one for unassigned implicit weights (Cn).
+            continue;
         }
-        UnicodeString *str = new UnicodeString(src, -1);
-        if (str == NULL) {
+        UnicodeString *s = new UnicodeString(boundary);
+        if (s == NULL) {
             status = U_MEMORY_ALLOCATION_ERROR;
-            return dest;
+            return NULL;
         }
-        dest->addElement(str, status);
-        src += str->length() + 1;
-    } while (src < limit);
-    return dest;
+        dest->addElement(s, status);
+    }
+    return dest.orphan();
 }
 
 
@@ -1347,4 +1246,4 @@ AlphabeticIndex::Bucket::~Bucket() {
 
 U_NAMESPACE_END
 
-#endif
+#endif  // !UCONFIG_NO_COLLATION

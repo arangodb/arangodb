@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bas.xml
@@ -27,10 +27,6 @@ bas{
             "BHD",
             "Dinâr Bàraìn",
         }
-        BIF{
-            "BIF",
-            "Frǎŋ bùrundì",
-        }
         BWP{
             "BWP",
             "Pùla Bòtswanà",
@@ -51,14 +47,6 @@ bas{
             "CN¥",
             "Yùan kinà",
         }
-        CVE{
-            "CVE",
-            "Èskudò kabwe᷆r",
-        }
-        DJF{
-            "DJF",
-            "Frǎŋ jìbutì",
-        }
         DZD{
             "DZD",
             "Dìnâr àlgerìà",
@@ -66,10 +54,6 @@ bas{
         EGP{
             "EGP",
             "Paùnd ègîptò",
-        }
-        ERN{
-            "ERN",
-            "Nafkà èrìtrěà",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ bas{
             "£",
             "Stɛrlìŋ ŋgìsì",
         }
-        GMD{
-            "GMD",
-            "Dalasì gambìà",
-        }
-        GNS{
-            "GNS",
-            "Frǎŋ gìnê",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rùpi īndìà",
         }
         JPY{
@@ -102,18 +78,6 @@ bas{
         KES{
             "KES",
             "Silîŋ kenìà",
-        }
-        KMF{
-            "KMF",
-            "Frǎŋ kòmorà",
-        }
-        LRD{
-            "LRD",
-            "Dɔ̀lâr lìberìà",
-        }
-        LSL{
-            "LSL",
-            "Lotì lèsòtò",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ bas{
             "SAR",
             "Rìal sàudì",
         }
-        SCR{
-            "SCR",
-            "Rùpiɛ̀ sèsɛ̂l",
-        }
         SDG{
             "SDG",
             "Dìnâr sùdân",
         }
-        SHP{
-            "SHP",
-            "Paùnd hèlenà",
-        }
         SLL{
             "SLL",
             "Lèonɛ̀",
-        }
-        SOS{
-            "SOS",
-            "Silîŋ sòmàli",
-        }
-        STD{
-            "STD",
-            "Dobrà sàotòme",
-        }
-        SZL{
-            "SZL",
-            "Lìlàŋgeni swàzì",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ bas{
             "Kwàca sàmbià",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

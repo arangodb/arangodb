@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sn.xml
@@ -27,10 +27,6 @@ sn{
             "BHD",
             "Dhinari re Bhahareni",
         }
-        BIF{
-            "BIF",
-            "Furenki re Bhurundi",
-        }
         BWP{
             "BWP",
             "Pura re Botswana",
@@ -51,14 +47,6 @@ sn{
             "CN¥",
             "Yuan Renminbi ye China",
         }
-        CVE{
-            "CVE",
-            "Dhora re Escudo",
-        }
-        DJF{
-            "DJF",
-            "Furenki re Jibhuti",
-        }
         DZD{
             "DZD",
             "Dhinari re Aljeria",
@@ -66,10 +54,6 @@ sn{
         EGP{
             "EGP",
             "Paundi re Ijipita",
-        }
-        ERN{
-            "ERN",
-            "Nakfa re Eritrea",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ sn{
             "£",
             "Paundi ye Bhiriteni",
         }
-        GMD{
-            "GMD",
-            "Dalasi ye Gambia",
-        }
-        GNS{
-            "GNS",
-            "Furenki re Gine",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rupe re India",
         }
         JPY{
@@ -102,18 +78,6 @@ sn{
         KES{
             "KES",
             "Shiringi ye Kenya",
-        }
-        KMF{
-            "KMF",
-            "Furenki re Komoro",
-        }
-        LRD{
-            "LRD",
-            "Dora re Liberia",
-        }
-        LSL{
-            "LSL",
-            "Loti ye Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ sn{
             "SAR",
             "Riyali re Saudi",
         }
-        SCR{
-            "SCR",
-            "Rupi re Seyisheri",
-        }
         SDG{
             "SDG",
             "Dinari re Sudani",
         }
-        SHP{
-            "SHP",
-            "Paundi re Senti Helena",
-        }
         SLL{
             "SLL",
             "Leoni",
-        }
-        SOS{
-            "SOS",
-            "Shiringi re Somalia",
-        }
-        STD{
-            "STD",
-            "Dobra re Sao Tome ne Principe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ sn{
             "Kwacha ye Zambia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

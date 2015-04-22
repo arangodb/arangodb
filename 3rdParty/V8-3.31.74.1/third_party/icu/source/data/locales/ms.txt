@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ms.xml
@@ -29,6 +29,7 @@ ms{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -133,10 +134,13 @@ ms{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             eras{
@@ -402,6 +406,14 @@ ms{
                 "PG",
                 "PTG",
             }
+            AmPmMarkersAbbr{
+                "pg",
+                "ptg",
+            }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
                 "h:mm:ss a z",
@@ -417,19 +429,22 @@ ms{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"t/hari"}
+            NoonMarkerNarrow{"t"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
                 Ehm{"E h:mm a"}
                 Ehms{"E h:mm:ss a"}
-                Gy{"y G"}
-                GyMMM{"MMM y G"}
-                GyMMMEd{"E, d MMM y G"}
-                GyMMMd{"d MMM y G"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
                 H{"HH"}
                 Hm{"HH:mm"}
                 Hmm{"H:mm"}
@@ -540,6 +555,10 @@ ms{
                     "S.M.",
                     "TM",
                 }
+                wide{
+                    "S.M.",
+                    "TM",
+                }
             }
             intervalFormats{
                 H{
@@ -617,8 +636,8 @@ ms{
                     y{"MMM y – MMM y"}
                 }
                 yMMMEd{
-                    M{"E, d MMM – E, d MMM, y"}
-                    d{"E, d MMM – E, d MMM, y"}
+                    M{"E, d MMM – E, d MMM y"}
+                    d{"E, d MMM – E, d MMM y"}
                     y{"E, d MMM y – E, d MMM y"}
                 }
                 yMMMM{
@@ -817,18 +836,40 @@ ms{
         day{
             dn{"Hari"}
             relative{
-                "-1"{"Semalam"}
-                "-2"{"Hari sebelum semalam"}
-                "0"{"Hari ini"}
-                "1"{"Esok"}
-                "2"{"Hari selepas esok"}
+                "-1"{"semalam"}
+                "-2"{"kelmarin"}
+                "0"{"hari ini"}
+                "1"{"esok"}
+                "2"{"lusa"}
             }
             relativeTime{
                 future{
-                    other{"Dalam {0} hari"}
+                    other{"dalam {0} hari"}
                 }
                 past{
                     other{"{0} hari lalu"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"hari"}
+            relativeTime{
+                future{
+                    other{"dlm {0} hari"}
+                }
+                past{
+                    other{"{0} hari yg lalu"}
+                }
+            }
+        }
+        day-short{
+            dn{"hari"}
+            relativeTime{
+                future{
+                    other{"dlm {0} hari"}
+                }
+                past{
+                    other{"{0} hari yg lalu"}
                 }
             }
         }
@@ -845,14 +886,50 @@ ms{
                 "1"{"Jumaat depan"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"Jum lalu"}
+                "0"{"Jum ini"}
+                "1"{"Jum depan"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"Jum lalu"}
+                "0"{"Jum ini"}
+                "1"{"Jum depan"}
+            }
+        }
         hour{
             dn{"Jam"}
             relativeTime{
                 future{
-                    other{"Dalam {0} jam"}
+                    other{"dalam {0} jam"}
                 }
                 past{
-                    other{"{0} jam lalu"}
+                    other{"{0} jam yang lalu"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"jam"}
+            relativeTime{
+                future{
+                    other{"dlm {0} jam"}
+                }
+                past{
+                    other{"{0} jam yg lalu"}
+                }
+            }
+        }
+        hour-short{
+            dn{"jam"}
+            relativeTime{
+                future{
+                    other{"dlm {0} jam"}
+                }
+                past{
+                    other{"{0} jam yg lalu"}
                 }
             }
         }
@@ -860,10 +937,32 @@ ms{
             dn{"Minit"}
             relativeTime{
                 future{
-                    other{"Dalam {0} minit"}
+                    other{"dalam {0} minit"}
                 }
                 past{
-                    other{"{0} minit lalu"}
+                    other{"{0} minit yang lalu"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    other{"dlm {0} min"}
+                }
+                past{
+                    other{"{0} min yg lalu"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    other{"dlm {0} min"}
+                }
+                past{
+                    other{"{0} min yg lalu"}
                 }
             }
         }
@@ -872,6 +971,20 @@ ms{
                 "-1"{"Isnin lalu"}
                 "0"{"Isnin ini"}
                 "1"{"Isnin depan"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"Isn lalu"}
+                "0"{"Isn ini"}
+                "1"{"Isn depan"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"Isn lalu"}
+                "0"{"Isn ini"}
+                "1"{"Isn depan"}
             }
         }
         month{
@@ -883,10 +996,65 @@ ms{
             }
             relativeTime{
                 future{
-                    other{"Dalam {0} bulan"}
+                    other{"dalam {0} bulan"}
                 }
                 past{
                     other{"{0} bulan lalu"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"bln"}
+            relativeTime{
+                future{
+                    other{"dalam {0} bln lalu"}
+                }
+                past{
+                    other{"{0} bulan lalu"}
+                }
+            }
+        }
+        month-short{
+            dn{"bln"}
+            relativeTime{
+                future{
+                    other{"dlm {0} bln"}
+                }
+                past{
+                    other{"{0} bln lalu"}
+                }
+            }
+        }
+        quarter{
+            dn{"Suku Tahun"}
+            relativeTime{
+                future{
+                    other{"dalam {0} suku"}
+                }
+                past{
+                    other{"{0} suku lalu"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"suku"}
+            relativeTime{
+                future{
+                    other{"dlm {0} suku"}
+                }
+                past{
+                    other{"{0} suku lalu"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"suku"}
+            relativeTime{
+                future{
+                    other{"dlm {0} suku"}
+                }
+                past{
+                    other{"{0} suku lalu"}
                 }
             }
         }
@@ -897,17 +1065,53 @@ ms{
                 "1"{"Sabtu depan"}
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"Sab lalu"}
+                "0"{"Sab ini"}
+                "1"{"Sab depan"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"Sab lalu"}
+                "0"{"Sab ini"}
+                "1"{"Sab depan"}
+            }
+        }
         second{
-            dn{"Kedua"}
+            dn{"Saat"}
             relative{
                 "0"{"sekarang"}
             }
             relativeTime{
                 future{
-                    other{"Dalam {0} saat"}
+                    other{"dalam {0} saat"}
                 }
                 past{
                     other{"{0} saat lalu"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"saat"}
+            relativeTime{
+                future{
+                    other{"dlm {0} saat"}
+                }
+                past{
+                    other{"{0} saat yg lalu"}
+                }
+            }
+        }
+        second-short{
+            dn{"saat"}
+            relativeTime{
+                future{
+                    other{"dlm {0} saat"}
+                }
+                past{
+                    other{"{0} saat yg lalu"}
                 }
             }
         }
@@ -918,11 +1122,39 @@ ms{
                 "1"{"Ahad depan"}
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"Ahd lalu"}
+                "0"{"Ahd ini"}
+                "1"{"Ahd depan"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"Aha lalu"}
+                "0"{"Aha ini"}
+                "1"{"Aha depan"}
+            }
+        }
         thu{
             relative{
                 "-1"{"Khamis lalu"}
                 "0"{"Khamis ini"}
                 "1"{"Khamis depan"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"Kha lalu"}
+                "0"{"Kha ini"}
+                "1"{"Kha depan"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"Kha lalu"}
+                "0"{"Kha ini"}
+                "1"{"Kha depan"}
             }
         }
         tue{
@@ -932,11 +1164,39 @@ ms{
                 "1"{"Selasa depan"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"Sel lalu"}
+                "0"{"Sel ini"}
+                "1"{"Sel depan"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"Sel lalu"}
+                "0"{"Sel ini"}
+                "1"{"Sel depan"}
+            }
+        }
         wed{
             relative{
                 "-1"{"Rabu lalu"}
                 "0"{"Rabu ini"}
                 "1"{"Rabu depan"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"Rab lalu"}
+                "0"{"Rab ini"}
+                "1"{"Rab depan"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"Rab lalu"}
+                "0"{"Rab ini"}
+                "1"{"Rab depan"}
             }
         }
         week{
@@ -948,10 +1208,32 @@ ms{
             }
             relativeTime{
                 future{
-                    other{"Dalam {0} minggu"}
+                    other{"dalam {0} minggu"}
                 }
                 past{
                     other{"{0} minggu lalu"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"mgu"}
+            relativeTime{
+                future{
+                    other{"dlm {0} mgu"}
+                }
+                past{
+                    other{"{0} mgu lalu"}
+                }
+            }
+        }
+        week-short{
+            dn{"mgu"}
+            relativeTime{
+                future{
+                    other{"dlm {0} mgu"}
+                }
+                past{
+                    other{"{0} mng lalu"}
                 }
             }
         }
@@ -967,10 +1249,32 @@ ms{
             }
             relativeTime{
                 future{
-                    other{"Dalam {0} tahun"}
+                    other{"dalam {0} saat"}
                 }
                 past{
                     other{"{0} tahun lalu"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"thn"}
+            relativeTime{
+                future{
+                    other{"dalam {0} thn"}
+                }
+                past{
+                    other{"{0} thn lalu"}
+                }
+            }
+        }
+        year-short{
+            dn{"thn"}
+            relativeTime{
+                future{
+                    other{"dalam {0} thn"}
+                }
+                past{
+                    other{"{0} thn lalu"}
                 }
             }
         }
@@ -981,21 +1285,21 @@ ms{
     listPattern{
         standard{
             2{"{0} dan {1}"}
-            end{"{0}, dan {1}"}
-            middle{"{0}, {1}"}
-            start{"{0}, {1}"}
-        }
-        unit{
-            2{"{0} dan {1}"}
             end{"{0} dan {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
-        unit-narrow{
+        unit{
             2{"{0}, {1}"}
             end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
         }
         unit-short{
             2{"{0}, {1}"}
@@ -1020,98 +1324,5 @@ ms{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Penerbitan"}
-    }
-    units{
-        compound{
-            per{"{0} per {1}"}
-        }
-        duration{
-            day{
-                other{"{0} hari"}
-            }
-            hour{
-                other{"{0} jam"}
-            }
-            millisecond{
-                other{"{0} milisaat"}
-            }
-            minute{
-                other{"{0} minit"}
-            }
-            month{
-                other{"{0} bulan"}
-            }
-            second{
-                other{"{0} saat"}
-            }
-            week{
-                other{"{0} minggu"}
-            }
-            year{
-                other{"{0} tahun"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0} h"}
-            }
-            hour{
-                other{"{0} j"}
-            }
-            millisecond{
-                other{"{0} ms"}
-            }
-            minute{
-                other{"{0} min"}
-            }
-            month{
-                other{"{0} bln"}
-            }
-            second{
-                other{"{0} s"}
-            }
-            week{
-                other{"{0} mgu"}
-            }
-            year{
-                other{"{0} thn"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0} hari"}
-            }
-            hour{
-                other{"{0} j"}
-            }
-            millisecond{
-                other{"{0} ms"}
-            }
-            minute{
-                other{"{0} min"}
-            }
-            month{
-                other{"{0} bln"}
-            }
-            second{
-                other{"{0} saat"}
-            }
-            week{
-                other{"{0} mgu"}
-            }
-            year{
-                other{"{0} thn"}
-            }
-        }
     }
 }

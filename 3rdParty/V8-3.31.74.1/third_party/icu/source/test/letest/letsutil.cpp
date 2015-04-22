@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 1999-2008, International Business Machines
+ *   Copyright (C) 1999-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -20,7 +20,9 @@
 #include "layout/LayoutEngine.h"
 #include "layout/LELanguages.h"
 
+#ifndef USING_ICULEHB
 #include "OpenTypeLayoutEngine.h"
+#endif
 
 #include "letest.h"
 #include "letsutil.h"
@@ -102,11 +104,13 @@ le_int32 getLanguageCode(const char *lang)
 
     LETag langTag = (LETag) ((lang[0] << 24) + (lang[1] << 16) + (lang[2] << 8) + 0x20);
 
+#ifndef USING_ICULEHB
     for (le_int32 i = 0; i < languageCodeCount; i += 1) {
         if (langTag == OpenTypeLayoutEngine::languageTags[i]) {
             return i;
         }
     }
+#endif
 
     return -1;
 }

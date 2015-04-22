@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/et.xml
@@ -26,6 +26,7 @@ et{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"⩾{0}"}
@@ -154,10 +155,13 @@ et{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{"."}
             }
         }
+        minimumGroupingDigits{"3"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -233,7 +237,7 @@ et{
                     d{"E, dd.MM–E, dd.MM"}
                 }
                 MMM{
-                    M{"LLL–LLL"}
+                    M{"MMM–MMM"}
                 }
                 MMMEd{
                     M{"E, d. MMM–E, d. MMM"}
@@ -261,7 +265,7 @@ et{
                     m{"h:mm–h:mm a"}
                 }
                 hmv{
-                    a{"HH.mma–HH.mma v"}
+                    a{"h:mm a – h:mm a v"}
                     h{"h:mm–h:mm a v"}
                     m{"h:mm–h:mm a v"}
                 }
@@ -311,6 +315,14 @@ et{
                 "AM",
                 "PM",
             }
+            AmPmMarkersAbbr{
+                "e.k.",
+                "p.k.",
+            }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "H:mm.ss zzzz",
                 "H:mm.ss z",
@@ -318,7 +330,7 @@ et{
                 "H:mm",
                 "EEEE, d. MMMM y",
                 "d. MMMM y",
-                "dd.MM.y",
+                "d. MMM y",
                 "dd.MM.yy",
                 "{1} {0}",
                 "{1} {0}",
@@ -326,10 +338,13 @@ et{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"keskpäev"}
+            NoonMarkerNarrow{"n"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E, d"}
@@ -450,6 +465,10 @@ et{
                     "e.m.a.",
                     "m.a.j.",
                 }
+                abbreviated%variant{
+                    "EMA",
+                    "MA",
+                }
                 narrow{
                     "e.m.a.",
                     "m.a.j.",
@@ -457,6 +476,10 @@ et{
                 wide{
                     "enne meie aega",
                     "meie aja järgi",
+                }
+                wide%variant{
+                    "enne meie ajaarvamist",
+                    "meie ajaarvamise järgi",
                 }
             }
             intervalFormats{
@@ -482,7 +505,7 @@ et{
                     d{"E, dd.MM–E, dd.MM"}
                 }
                 MMM{
-                    M{"LLL–LLL"}
+                    M{"MMM-MMM"}
                 }
                 MMMEd{
                     M{"E, d. MMM–E, d. MMM"}
@@ -510,7 +533,7 @@ et{
                     m{"h:mm–h:mm a"}
                 }
                 hmv{
-                    a{"HH.mma–HH.mma v"}
+                    a{"h:mm a – h:mm a v"}
                     h{"h:mm–h:mm a v"}
                     m{"h:mm–h:mm a v"}
                 }
@@ -720,6 +743,32 @@ et{
                 }
             }
         }
+        day-narrow{
+            dn{"p"}
+            relativeTime{
+                future{
+                    one{"{0} p pärast"}
+                    other{"{0} p pärast"}
+                }
+                past{
+                    one{"{0} p tagasi"}
+                    other{"{0} p tagasi"}
+                }
+            }
+        }
+        day-short{
+            dn{"p"}
+            relativeTime{
+                future{
+                    one{"{0} p pärast"}
+                    other{"{0} p pärast"}
+                }
+                past{
+                    one{"{0} p tagasi"}
+                    other{"{0} p tagasi"}
+                }
+            }
+        }
         dayperiod{
             dn{"enne/pärast lõunat"}
         }
@@ -727,6 +776,20 @@ et{
             dn{"ajastu"}
         }
         fri{
+            relative{
+                "-1"{"eelmine reede"}
+                "0"{"käesolev reede"}
+                "1"{"järgmine reede"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"eelmine reede"}
+                "0"{"käesolev reede"}
+                "1"{"järgmine reede"}
+            }
+        }
+        fri-short{
             relative{
                 "-1"{"eelmine reede"}
                 "0"{"käesolev reede"}
@@ -746,6 +809,32 @@ et{
                 }
             }
         }
+        hour-narrow{
+            dn{"t"}
+            relativeTime{
+                future{
+                    one{"{0} h pärast"}
+                    other{"{0} h pärast"}
+                }
+                past{
+                    one{"{0} h tagasi"}
+                    other{"{0} h tagasi"}
+                }
+            }
+        }
+        hour-short{
+            dn{"t"}
+            relativeTime{
+                future{
+                    one{"{0} h pärast"}
+                    other{"{0} h pärast"}
+                }
+                past{
+                    one{"{0} h tagasi"}
+                    other{"{0} h tagasi"}
+                }
+            }
+        }
         minute{
             dn{"minut"}
             relativeTime{
@@ -759,7 +848,47 @@ et{
                 }
             }
         }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"{0} min pärast"}
+                    other{"{0} min pärast"}
+                }
+                past{
+                    one{"{0} min tagasi"}
+                    other{"{0} min tagasi"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"{0} min pärast"}
+                    other{"{0} min pärast"}
+                }
+                past{
+                    one{"{0} min tagasi"}
+                    other{"{0} min tagasi"}
+                }
+            }
+        }
         mon{
+            relative{
+                "-1"{"eelmine esmaspäev"}
+                "0"{"käesolev esmaspäev"}
+                "1"{"järgmine esmaspäev"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"eelmine esmaspäev"}
+                "0"{"käesolev esmaspäev"}
+                "1"{"järgmine esmaspäev"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"eelmine esmaspäev"}
                 "0"{"käesolev esmaspäev"}
@@ -784,7 +913,86 @@ et{
                 }
             }
         }
+        month-narrow{
+            dn{"k"}
+            relativeTime{
+                future{
+                    one{"{0} kuu pärast"}
+                    other{"{0} kuu pärast"}
+                }
+                past{
+                    one{"{0} kuu eest"}
+                    other{"{0} kuu eest"}
+                }
+            }
+        }
+        month-short{
+            dn{"k"}
+            relativeTime{
+                future{
+                    one{"{0} kuu pärast"}
+                    other{"{0} kuu pärast"}
+                }
+                past{
+                    one{"{0} kuu eest"}
+                    other{"{0} kuu eest"}
+                }
+            }
+        }
+        quarter{
+            dn{"Kvartal"}
+            relativeTime{
+                future{
+                    one{"{0} kvartali pärast"}
+                    other{"{0} kvartali pärast"}
+                }
+                past{
+                    one{"{0} kvartali eest"}
+                    other{"{0} kvartali eest"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"kv"}
+            relativeTime{
+                future{
+                    one{"+{0} kv"}
+                    other{"+{0} kv"}
+                }
+                past{
+                    one{"-{0} kv"}
+                    other{"-{0} kv"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"kv"}
+            relativeTime{
+                future{
+                    one{"{0} kv pärast"}
+                    other{"{0} kv pärast"}
+                }
+                past{
+                    one{"{0} kv eest"}
+                    other{"{0} kv eest"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"eelmine laupäev"}
+                "0"{"käesolev laupäev"}
+                "1"{"järgmine laupäev"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"eelmine laupäev"}
+                "0"{"käesolev laupäev"}
+                "1"{"järgmine laupäev"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"eelmine laupäev"}
                 "0"{"käesolev laupäev"}
@@ -807,7 +1015,47 @@ et{
                 }
             }
         }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"{0} s pärast"}
+                    other{"{0} s pärast"}
+                }
+                past{
+                    one{"{0} s tagasi"}
+                    other{"{0} s tagasi"}
+                }
+            }
+        }
+        second-short{
+            dn{"sek"}
+            relativeTime{
+                future{
+                    one{"{0} s pärast"}
+                    other{"{0} s pärast"}
+                }
+                past{
+                    one{"{0} s tagasi"}
+                    other{"{0} s tagasi"}
+                }
+            }
+        }
         sun{
+            relative{
+                "-1"{"eelmine pühapäev"}
+                "0"{"käesolev pühapäev"}
+                "1"{"järgmine pühapäev"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"eelmine pühapäev"}
+                "0"{"käesolev pühapäev"}
+                "1"{"järgmine pühapäev"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"eelmine pühapäev"}
                 "0"{"käesolev pühapäev"}
@@ -821,6 +1069,20 @@ et{
                 "1"{"järgmine neljapäev"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"eelmine neljapäev"}
+                "0"{"käesolev neljapäev"}
+                "1"{"järgmine neljapäev"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"eelmine neljapäev"}
+                "0"{"käesolev neljapäev"}
+                "1"{"järgmine neljapäev"}
+            }
+        }
         tue{
             relative{
                 "-1"{"eelmine teisipäev"}
@@ -828,7 +1090,35 @@ et{
                 "1"{"järgmine teisipäev"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"eelmine teisipäev"}
+                "0"{"käesolev teisipäev"}
+                "1"{"järgmine teisipäev"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"eelmine teisipäev"}
+                "0"{"käesolev teisipäev"}
+                "1"{"järgmine teisipäev"}
+            }
+        }
         wed{
+            relative{
+                "-1"{"eelmine kolmapäev"}
+                "0"{"käesolev kolmapäev"}
+                "1"{"järgmine kolmapäev"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"eelmine kolmapäev"}
+                "0"{"käesolev kolmapäev"}
+                "1"{"järgmine kolmapäev"}
+            }
+        }
+        wed-short{
             relative{
                 "-1"{"eelmine kolmapäev"}
                 "0"{"käesolev kolmapäev"}
@@ -853,6 +1143,32 @@ et{
                 }
             }
         }
+        week-narrow{
+            dn{"näd"}
+            relativeTime{
+                future{
+                    one{"{0} nädala pärast"}
+                    other{"{0} nädala pärast"}
+                }
+                past{
+                    one{"{0} nädala eest"}
+                    other{"{0} nädala eest"}
+                }
+            }
+        }
+        week-short{
+            dn{"näd"}
+            relativeTime{
+                future{
+                    one{"{0} nädala pärast"}
+                    other{"{0} nädala pärast"}
+                }
+                past{
+                    one{"{0} nädala eest"}
+                    other{"{0} nädala eest"}
+                }
+            }
+        }
         weekday{
             dn{"nädalapäev"}
         }
@@ -863,6 +1179,32 @@ et{
                 "0"{"käesolev aasta"}
                 "1"{"järgmine aasta"}
             }
+            relativeTime{
+                future{
+                    one{"{0} aasta pärast"}
+                    other{"{0} aasta pärast"}
+                }
+                past{
+                    one{"{0} aasta eest"}
+                    other{"{0} aasta eest"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"a"}
+            relativeTime{
+                future{
+                    one{"{0} aasta pärast"}
+                    other{"{0} aasta pärast"}
+                }
+                past{
+                    one{"{0} aasta eest"}
+                    other{"{0} aasta eest"}
+                }
+            }
+        }
+        year-short{
+            dn{"a"}
             relativeTime{
                 future{
                     one{"{0} aasta pärast"}
@@ -920,122 +1262,5 @@ et{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Kirjastamine"}
-    }
-    units{
-        compound{
-            per{"{0} {1} kohta"}
-        }
-        duration{
-            day{
-                one{"{0} ööpäev"}
-                other{"{0} ööpäeva"}
-            }
-            hour{
-                one{"{0} tund"}
-                other{"{0} tundi"}
-            }
-            millisecond{
-                one{"{0} millisekund"}
-                other{"{0} millisekundit"}
-            }
-            minute{
-                one{"{0} minut"}
-                other{"{0} minutit"}
-            }
-            month{
-                one{"{0} kuu"}
-                other{"{0} kuud"}
-            }
-            second{
-                one{"{0} sekund"}
-                other{"{0} sekundit"}
-            }
-            week{
-                one{"{0} nädal"}
-                other{"{0} nädalat"}
-            }
-            year{
-                one{"{0} aasta"}
-                other{"{0} aastat"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} p"}
-                other{"{0} p"}
-            }
-            hour{
-                one{"{0} h"}
-                other{"{0} h"}
-            }
-            millisecond{
-                one{"{0}ms"}
-                other{"{0}ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} k"}
-                other{"{0} k"}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} n"}
-                other{"{0} n"}
-            }
-            year{
-                one{"{0} a"}
-                other{"{0} a"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} päev"}
-                other{"{0} päeva"}
-            }
-            hour{
-                one{"{0} h"}
-                other{"{0} h"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} kuu"}
-                other{"{0} kuud"}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} nädal"}
-                other{"{0} nädalat"}
-            }
-            year{
-                one{"{0} a"}
-                other{"{0} a"}
-            }
-        }
     }
 }

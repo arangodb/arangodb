@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kab.xml
@@ -27,10 +27,6 @@ kab{
             "BHD",
             "Adinar Abaḥrini",
         }
-        BIF{
-            "BIF",
-            "Afrank Aburandi",
-        }
         BWP{
             "BWP",
             "Apula Abusṭwanan",
@@ -51,14 +47,6 @@ kab{
             "CN¥",
             "Ayuwan Renminbi Acinwa",
         }
-        CVE{
-            "CVE",
-            "Akabuviradinu Askudi",
-        }
-        DJF{
-            "DJF",
-            "Afrank Ajibuti",
-        }
         DZD{
             "DA",
             "Adinar Azzayri",
@@ -66,10 +54,6 @@ kab{
         EGP{
             "EGP",
             "Apund Amaṣri",
-        }
-        ERN{
-            "ERN",
-            "Anakfa Iritiri",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ kab{
             "£",
             "Apund Sterling Aglizi",
         }
-        GMD{
-            "GMD",
-            "Adalasi Agambi",
-        }
-        GNS{
-            "GNS",
-            "Afrank Aɣini",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Arupi Ahendi",
         }
         JPY{
@@ -102,18 +78,6 @@ kab{
         KES{
             "KES",
             "Aciling Akini",
-        }
-        KMF{
-            "KMF",
-            "Afrank Akamiruni",
-        }
-        LRD{
-            "LRD",
-            "Adular Alibiri",
-        }
-        LSL{
-            "LSL",
-            "Aluṭi Alizuṭi",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ kab{
             "SAR",
             "Aryal Asuɛudi",
         }
-        SCR{
-            "SCR",
-            "Arupi Aseycili",
-        }
         SDG{
             "SDG",
             "Apund Asudani",
         }
-        SHP{
-            "SHP",
-            "Apund Asant Ilini",
-        }
         SLL{
             "SLL",
             "Alyun",
-        }
-        SOS{
-            "SOS",
-            "Aciling Aṣumali",
-        }
-        STD{
-            "STD",
-            "Asw Ṭum d Udubra Amenzay",
-        }
-        SZL{
-            "SZL",
-            "Alilangini",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ kab{
             "Akwaca Azambi",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

@@ -1,4 +1,4 @@
-﻿* Copyright (C) 2004-2013, International Business Machines
+﻿* Copyright (C) 2004-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 *
 *   file name:  changes.txt
@@ -10,6 +10,405 @@
 *   created by: Markus W. Scherer
 *
 * change log for Unicode updates
+
+---------------------------------------------------------------------------- ***
+
+Unicode 8.0 update for ICU ??
+
+* UCA issue from 7.0
+
+- U+1DE9 COMBINING LATIN SMALL LETTER BETA
+  sorts with Greek Beta, should sort with Latin B?
+  + Ken says:
+    No, it was deliberate:
+
+    03B2;GREEK SMALL LETTER BETA;Ll;;;;0392;;0392
+    1D5D;MODIFIER LETTER SMALL BETA;Lm;<super> 03B2;;;;;
+    1DE9;COMBINING LATIN SMALL LETTER BETA;Mn;<sort> 03B2;;;;;
+    1D66;GREEK SUBSCRIPT SMALL LETTER BETA;Ll;<sub> 03B2;;;;;
+
+    Note the relationship to U+1D5D.
+
+    When the disunified *Latin* beta base letter shows up in Unicode 8.0:
+
+    U+A7B4 LATIN CAPITAL LETTER BETA
+    U+A7B5 LATIN SMALL LETTER BETA
+
+    we could re-evaluate what U+1DE9 equates to, for collation,
+    but currently there isn’t any Latin beta to serve that function
+    in Unicode 7.0.
+
+- ICU_ROOT=~/svn.icu/trunk
+- ICU_SRC_DIR=$ICU_ROOT/src
+- ~/svn.icutools/trunk/dbg/unicode/c$ genuca/genuca --hanOrder implicit $ICU_SRC_DIR
+- ~/svn.icutools/trunk/dbg/unicode/c$ genuca/genuca --hanOrder radical-stroke $ICU_SRC_DIR
+
+
+---------------------------------------------------------------------------- ***
+
+Unicode 7.0 update for ICU 54
+
+http://www.unicode.org/review/pri271/  -- beta review
+http://www.unicode.org/reports/uax-proposed-updates.html
+http://www.unicode.org/versions/beta-7.0.0.html#notable_issues
+http://www.unicode.org/reports/tr44/tr44-13.html
+
+*** ICU Trac
+
+- ticket 10821: Unicode 7.0, UCA 7.0
+- C++ branches/markus/uni70 at r35584 from trunk at r35580
+- Java branches/markus/uni70 at r35587 from trunk at r35545
+
+*** CLDR Trac
+
+- ticket 7195: UCA 7.0 CLDR root collation
+- branches/markus/uni70 at r10062 from trunk at r10061
+
+- ticket 6762: script metadata for Unicode 7.0 new scripts
+
+*** Unicode version numbers
+- makedata.mak
+- uchar.h
+- com.ibm.icu.util.VersionInfo
+- com.ibm.icu.dev.test.lang.UCharacterTest.VERSION_
+
+- Run ICU4C "configure" _after_ updating the Unicode version number in uchar.h
+  so that the makefiles see the new version number.
+
+*** data files & enums & parser code
+
+* file preparation
+
+- download UCD & IDNA files
+- make sure that the Unicode data folder passed into preparseucd.py
+  includes a copy of the latest IdnaMappingTable.txt (can be in some subfolder)
+- only for manual diffs: remove version suffixes from the file names
+  ~/unidata/uni70/20140403$ ../../desuffixucd.py .
+  (see https://sites.google.com/site/unicodetools/inputdata)
+- only for manual diffs: extract Unihan.zip to "here" (.../ucd/Unihan/*.txt), delete Unihan.zip
+- ~/svn.icutools/trunk/src/unicode$ py/preparseucd.py ~/unidata/uni70/20140403 $ICU_SRC_DIR ~/svn.icutools/trunk/src
+- This writes files (especially ppucd.txt) to the ICU4C unidata and testdata subfolders.
+- Restore TODO diffs in source/data/unidata/UCARules.txt
+    cd $ICU_SRC_DIR
+    meld ../../trunk/src/source/data/unidata/UCARules.txt source/data/unidata/UCARules.txt
+- Restore ICU patches for ticket #10176 in source/test/testdata/LineBreakTest.txt
+
+- also: from http://unicode.org/Public/security/7.0.0/ download new
+  confusables.txt & confusablesWholeScript.txt
+  and copy to $ICU_ROOT/src/source/data/unidata/
+
+* initial preparseucd.py changes
+- remove new Unicode scripts from the
+  only-in-ISO-15924 list according to the error message:
+    ValueError: remove ['Hmng', 'Lina', 'Perm', 'Mani', 'Phlp', 'Bass',
+                        'Dupl', 'Elba', 'Gran', 'Mend', 'Narb', 'Nbat', 'Palm',
+                        'Sind', 'Wara', 'Mroo', 'Khoj', 'Tirh', 'Aghb', 'Mahj']
+    from _scripts_only_in_iso15924
+  -> fix expectedLong names in cucdapi.c/TestUScriptCodeAPI()
+      and in com.ibm.icu.dev.test.lang.TestUScript.java
+- NamesList.txt now has a heading with a non-ASCII character
+  + keep ppucd.txt in platform charset, rather than changing tool/test parsers
+  + escape non-ASCII characters in heading comments
+- gets Unicode copyright line from PropertyAliases.txt which is currently still at 2013
+  + get the copyright from the first file whose copyright line contains the current year
+
+* PropertyValueAliases.txt changes
+- 32 new Block (blk) values:
+    blk; Bassa_Vah                        ; Bassa_Vah
+    blk; Caucasian_Albanian               ; Caucasian_Albanian
+    blk; Coptic_Epact_Numbers             ; Coptic_Epact_Numbers
+    blk; Diacriticals_Ext                 ; Combining_Diacritical_Marks_Extended
+    blk; Duployan                         ; Duployan
+    blk; Elbasan                          ; Elbasan
+    blk; Geometric_Shapes_Ext             ; Geometric_Shapes_Extended
+    blk; Grantha                          ; Grantha
+    blk; Khojki                           ; Khojki
+    blk; Khudawadi                        ; Khudawadi
+    blk; Latin_Ext_E                      ; Latin_Extended_E
+    blk; Linear_A                         ; Linear_A
+    blk; Mahajani                         ; Mahajani
+    blk; Manichaean                       ; Manichaean
+    blk; Mende_Kikakui                    ; Mende_Kikakui
+    blk; Modi                             ; Modi
+    blk; Mro                              ; Mro
+    blk; Myanmar_Ext_B                    ; Myanmar_Extended_B
+    blk; Nabataean                        ; Nabataean
+    blk; Old_North_Arabian                ; Old_North_Arabian
+    blk; Old_Permic                       ; Old_Permic
+    blk; Ornamental_Dingbats              ; Ornamental_Dingbats
+    blk; Pahawh_Hmong                     ; Pahawh_Hmong
+    blk; Palmyrene                        ; Palmyrene
+    blk; Pau_Cin_Hau                      ; Pau_Cin_Hau
+    blk; Psalter_Pahlavi                  ; Psalter_Pahlavi
+    blk; Shorthand_Format_Controls        ; Shorthand_Format_Controls
+    blk; Siddham                          ; Siddham
+    blk; Sinhala_Archaic_Numbers          ; Sinhala_Archaic_Numbers
+    blk; Sup_Arrows_C                     ; Supplemental_Arrows_C
+    blk; Tirhuta                          ; Tirhuta
+    blk; Warang_Citi                      ; Warang_Citi
+  -> add to uchar.h
+    use long property names for enum constants
+  -> add to UCharacter.UnicodeBlock IDs
+    Eclipse find     UBLOCK_([^ ]+) = ([0-9]+), (/.+)
+            replace  public static final int \1_ID = \2; \3
+  -> add to UCharacter.UnicodeBlock objects
+    Eclipse find     UBLOCK_([^ ]+) = [0-9]+, (/.+)
+            replace  public static final UnicodeBlock \1 = new UnicodeBlock("\1", \1_ID); \2
+- 28 new Joining_Group (jg) values:
+    jg ; Manichaean_Aleph                 ; Manichaean_Aleph
+    jg ; Manichaean_Ayin                  ; Manichaean_Ayin
+    jg ; Manichaean_Beth                  ; Manichaean_Beth
+    jg ; Manichaean_Daleth                ; Manichaean_Daleth
+    jg ; Manichaean_Dhamedh               ; Manichaean_Dhamedh
+    jg ; Manichaean_Five                  ; Manichaean_Five
+    jg ; Manichaean_Gimel                 ; Manichaean_Gimel
+    jg ; Manichaean_Heth                  ; Manichaean_Heth
+    jg ; Manichaean_Hundred               ; Manichaean_Hundred
+    jg ; Manichaean_Kaph                  ; Manichaean_Kaph
+    jg ; Manichaean_Lamedh                ; Manichaean_Lamedh
+    jg ; Manichaean_Mem                   ; Manichaean_Mem
+    jg ; Manichaean_Nun                   ; Manichaean_Nun
+    jg ; Manichaean_One                   ; Manichaean_One
+    jg ; Manichaean_Pe                    ; Manichaean_Pe
+    jg ; Manichaean_Qoph                  ; Manichaean_Qoph
+    jg ; Manichaean_Resh                  ; Manichaean_Resh
+    jg ; Manichaean_Sadhe                 ; Manichaean_Sadhe
+    jg ; Manichaean_Samekh                ; Manichaean_Samekh
+    jg ; Manichaean_Taw                   ; Manichaean_Taw
+    jg ; Manichaean_Ten                   ; Manichaean_Ten
+    jg ; Manichaean_Teth                  ; Manichaean_Teth
+    jg ; Manichaean_Thamedh               ; Manichaean_Thamedh
+    jg ; Manichaean_Twenty                ; Manichaean_Twenty
+    jg ; Manichaean_Waw                   ; Manichaean_Waw
+    jg ; Manichaean_Yodh                  ; Manichaean_Yodh
+    jg ; Manichaean_Zayin                 ; Manichaean_Zayin
+    jg ; Straight_Waw                     ; Straight_Waw
+  -> uchar.h & UCharacter.JoiningGroup
+- 23 new Script (sc) values:
+    sc ; Aghb                             ; Caucasian_Albanian
+    sc ; Bass                             ; Bassa_Vah
+    sc ; Dupl                             ; Duployan
+    sc ; Elba                             ; Elbasan
+    sc ; Gran                             ; Grantha
+    sc ; Hmng                             ; Pahawh_Hmong
+    sc ; Khoj                             ; Khojki
+    sc ; Lina                             ; Linear_A
+    sc ; Mahj                             ; Mahajani
+    sc ; Mani                             ; Manichaean
+    sc ; Mend                             ; Mende_Kikakui
+    sc ; Modi                             ; Modi
+    sc ; Mroo                             ; Mro
+    sc ; Narb                             ; Old_North_Arabian
+    sc ; Nbat                             ; Nabataean
+    sc ; Palm                             ; Palmyrene
+    sc ; Pauc                             ; Pau_Cin_Hau
+    sc ; Perm                             ; Old_Permic
+    sc ; Phlp                             ; Psalter_Pahlavi
+    sc ; Sidd                             ; Siddham
+    sc ; Sind                             ; Khudawadi
+    sc ; Tirh                             ; Tirhuta
+    sc ; Wara                             ; Warang_Citi
+  -> uscript.h (many were added before)
+    comment "Mende Kikakui" for USCRIPT_MENDE
+    add USCRIPT_KHUDAWADI, make USCRIPT_SINDHI an alias
+  -> com.ibm.icu.lang.UScript
+    find     USCRIPT_([^ ]+) *= ([0-9]+),(.+)
+    replace  public static final int \1 = \2; \3
+- 6 new script codes from ISO 15924 http://www.unicode.org/iso15924/codechanges.html
+  (added 2012-11-01)
+    Ahom        338     Ahom
+    Hatr        127     Hatran
+    Mult        323     Multani
+  (added 2013-10-12)
+    Modi        324     Modi
+    Pauc        263     Pau Cin Hau
+    Sidd        302     Siddham
+  -> uscript.h (some overlap with additions from Unicode)
+  -> com.ibm.icu.lang.UScript
+    find     USCRIPT_([^ ]+) *= ([0-9]+),(.+)
+    replace  public static final int \1 = \2; \3
+  -> add Ahom, Hatr, Mult to preparseucd.py _scripts_only_in_iso15924
+  -> add to expectedLong and expectedShort names in cintltst/cucdapi.c/TestUScriptCodeAPI()
+      and in com.ibm.icu.dev.test.lang.TestUScript.java
+
+* update Script metadata: SCRIPT_PROPS[] in uscript_props.cpp & UScript.ScriptMetadata
+    (not strictly necessary for NOT_ENCODED scripts)
+  ~/svn.icutools/trunk/src/unicode$ py/parsescriptmetadata.py $ICU_SRC_DIR/source/common/unicode/uscript.h ~/svn.cldr/trunk/common/properties/scriptMetadata.txt
+
+* generate normalization data files
+- cd $ICU_ROOT/dbg
+- export LD_LIBRARY_PATH=$ICU_ROOT/dbg/lib
+- SRC_DATA_IN=$ICU_SRC_DIR/source/data/in
+- UNIDATA=$ICU_SRC_DIR/source/data/unidata
+- bin/gennorm2 -o $ICU_SRC_DIR/source/common/norm2_nfc_data.h -s $UNIDATA/norm2 nfc.txt --csource
+- bin/gennorm2 -o $SRC_DATA_IN/nfc.nrm     -s $UNIDATA/norm2 nfc.txt
+- bin/gennorm2 -o $SRC_DATA_IN/nfkc.nrm    -s $UNIDATA/norm2 nfc.txt nfkc.txt
+- bin/gennorm2 -o $SRC_DATA_IN/nfkc_cf.nrm -s $UNIDATA/norm2 nfc.txt nfkc.txt nfkc_cf.txt
+- bin/gennorm2 -o $SRC_DATA_IN/uts46.nrm   -s $UNIDATA/norm2 nfc.txt uts46.txt
+
+* build ICU (make install)
+  so that the tools build can pick up the new definitions from the installed header files.
+
+~/svn.icu/uni70/dbg$ echo;echo;make -j5 install > out.txt 2>&1 ; tail -n 20 out.txt
+
+* build Unicode tools using CMake+make
+
+~/svn.icutools/trunk/src/unicode/c/icudefs.txt:
+
+# Location (--prefix) of where ICU was installed.
+set(ICU_INST_DIR /home/mscherer/svn.icu/uni70/inst)
+# Location of the ICU source tree.
+set(ICU_SRC_DIR /home/mscherer/svn.icu/uni70/src)
+
+~/svn.icutools/trunk/dbg/unicode/c$ cmake ../../../src/unicode/c
+~/svn.icutools/trunk/dbg/unicode/c$ make
+
+* genprops work
+- new code point range for Joining_Group values: 10AC0..10AFF Manichaean
+  + add second array of Joining_Group values for at most 10800..10FFF
+    icutools: unicode/c/genprops/bidipropsbuilder.cpp
+    icu: source/common/ubidi_props.h/.c/_data.h
+    icu4j: main/classes/core/src/com/ibm/icu/impl/UBiDiProps.java
+
+* generate core properties data files
+- ~/svn.icutools/trunk/dbg/unicode/c$ genprops/genprops $ICU_SRC_DIR
+- ~/svn.icutools/trunk/dbg/unicode/c$ genuca/genuca $ICU_SRC_DIR
+- rebuild ICU (make install) & tools
+- run genuca again (see step above) so that it picks up the new nfc.nrm
+- rebuild ICU (make install) & tools
+
+* update uts46test.cpp and UTS46Test.java if there are new characters that are equivalent to
+  sequences with non-LDH ASCII (that is, their decompositions contain '=' or similar)
+- grep IdnaMappingTable.txt or uts46.txt for "disallowed_STD3_valid" on non-ASCII characters
+- Unicode 6.0..7.0: U+2260, U+226E, U+226F
+- nothing new in 7.0, no test file to update
+
+* run & fix ICU4C tests
+
+* update Java data files
+- refresh just the UCD-related files, just to be safe
+- see (ICU4C)/source/data/icu4j-readme.txt
+- mkdir /tmp/icu4j
+- ~/svn.icu/uni70/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+  output:
+    ...
+    Unicode .icu files built to ./out/build/icudt53l
+    echo timestamp > uni-core-data
+    mkdir -p ./out/icu4j/com/ibm/icu/impl/data/icudt53b
+    mkdir -p ./out/icu4j/tzdata/com/ibm/icu/impl/data/icudt53b
+    echo pnames.icu ubidi.icu ucase.icu uprops.icu > ./out/icu4j/add.txt
+    LD_LIBRARY_PATH=../lib:../stubdata:../tools/ctestfw:$LD_LIBRARY_PATH  ../bin/icupkg ./out/tmp/icudt53l.dat ./out/icu4j/icudt53b.dat -a ./out/icu4j/add.txt -s ./out/build/icudt53l -x '*' -tb -d ./out/icu4j/com/ibm/icu/impl/data/icudt53b
+    mv ./out/icu4j/"com/ibm/icu/impl/data/icudt53b/zoneinfo64.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt53b/metaZones.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt53b/timezoneTypes.res" ./out/icu4j/"com/ibm/icu/impl/data/icudt53b/windowsZones.res" "./out/icu4j/tzdata/com/ibm/icu/impl/data/icudt53b"
+    jar cf ./out/icu4j/icudata.jar -C ./out/icu4j com/ibm/icu/impl/data/icudt53b/
+    mkdir -p /tmp/icu4j/main/shared/data
+    cp ./out/icu4j/icudata.jar /tmp/icu4j/main/shared/data
+    jar cf ./out/icu4j/icutzdata.jar -C ./out/icu4j/tzdata com/ibm/icu/impl/data/icudt53b/
+    mkdir -p /tmp/icu4j/main/shared/data
+    cp ./out/icu4j/icutzdata.jar /tmp/icu4j/main/shared/data
+    make[1]: Leaving directory `/home/mscherer/svn.icu/uni70/dbg/data'
+- copy the big-endian Unicode data files to another location,
+  separate from the other data files
+    ICUDT=icudt54b
+    mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/coll
+    mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/brkitr
+    cd ~/svn.icu/uni70/dbg/data/out/icu4j
+    cp com/ibm/icu/impl/data/$ICUDT/confusables.cfu /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT
+    cp com/ibm/icu/impl/data/$ICUDT/*.icu /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT
+    rm /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/cnvalias.icu
+    cp com/ibm/icu/impl/data/$ICUDT/*.nrm /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT
+    cp com/ibm/icu/impl/data/$ICUDT/coll/*.icu /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/coll
+    cp com/ibm/icu/impl/data/$ICUDT/brkitr/* /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/brkitr
+- refresh ICU4J
+    ~/svn.icu/uni70/dbg/data/out/icu4j$ jar uf ~/svn.icu4j/trunk/src/main/shared/data/icudata.jar -C /tmp/icu4j com/ibm/icu/impl/data/$ICUDT
+
+* update CollationFCD.java
+  + copy & paste the initializers of lcccIndex[] etc. from
+    ICU4C/source/i18n/collationfcd.cpp to
+    ICU4J/main/classes/collate/src/com/ibm/icu/impl/coll/CollationFCD.java
+
+* refresh Java test .txt files
+- copy new .txt files into ICU4J's main/tests/core/src/com/ibm/icu/dev/data/unicode
+    cd $ICU_SRC_DIR/source/data/unidata
+    cp confusables.txt confusablesWholeScript.txt NormalizationCorrections.txt NormalizationTest.txt SpecialCasing.txt UnicodeData.txt ~/svn.icu4j/trunk/src/main/tests/core/src/com/ibm/icu/dev/data/unicode
+    cd ../../test/testdata
+    cp BidiCharacterTest.txt BidiTest.txt ~/svn.icu4j/trunk/src/main/tests/core/src/com/ibm/icu/dev/data/unicode
+    cp ~/unidata/uni70/20140409/ucd/CompositionExclusions.txt ~/svn.icu4j/trunk/src/main/tests/core/src/com/ibm/icu/dev/data/unicode
+
+* UCA
+
+- download UCA files (mostly allkeys.txt) from http://www.unicode.org/Public/UCA/<beta version>/
+- run desuffixucd.py (see https://sites.google.com/site/unicodetools/inputdata)
+- update the input files for Mark's UCA tools, in ~/svn.unitools/trunk/data/uca/7.0.0/
+- run Mark's UCA Main: https://sites.google.com/site/unicodetools/home#TOC-UCA
+- output files are in ~/svn.unitools/Generated/uca/7.0.0/
+- review data; compare files, use blankweights.sed or similar
+  ~/svn.unitools$ sed -r -f blankweights.sed Generated/uca/7.0.0/CollationAuxiliary/FractionalUCA.txt > frac-7.0.txt
+- cd ~/svn.unitools/Generated/uca/7.0.0/
+- update source/data/unidata/FractionalUCA.txt with FractionalUCA_SHORT.txt
+  cp CollationAuxiliary/FractionalUCA_SHORT.txt $ICU_SRC_DIR/source/data/unidata/FractionalUCA.txt
+- update source/data/unidata/UCARules.txt with UCA_Rules_SHORT.txt
+    (note removing the underscore before "Rules")
+    cp CollationAuxiliary/UCA_Rules_SHORT.txt $ICU_SRC_DIR/source/data/unidata/UCARules.txt
+- update (ICU4C)/source/test/testdata/CollationTest_*.txt
+  and (ICU4J)/main/tests/collate/src/com/ibm/icu/dev/data/CollationTest_*.txt
+  with output from Mark's Unicode tools (..._CLDR_..._SHORT.txt)
+    cp CollationAuxiliary/CollationTest_CLDR_NON_IGNORABLE_SHORT.txt $ICU_SRC_DIR/source/test/testdata/CollationTest_NON_IGNORABLE_SHORT.txt
+    cp CollationAuxiliary/CollationTest_CLDR_SHIFTED_SHORT.txt $ICU_SRC_DIR/source/test/testdata/CollationTest_SHIFTED_SHORT.txt
+    cp $ICU_SRC_DIR/source/test/testdata/CollationTest_*.txt ~/svn.icu4j/trunk/src/main/tests/collate/src/com/ibm/icu/dev/data
+- run genuca, see command line above
+- rebuild ICU4C
+- refresh ICU4J collation data:
+  (subset of instructions above for properties data refresh, except copies all coll/*)
+    ICUDT=icudt54b
+    ~/svn.icu/uni70/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+    ~/svn.icu/uni70/dbg$ mkdir -p /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/coll
+    ~/svn.icu/uni70/dbg/data/out/icu4j$ cp com/ibm/icu/impl/data/$ICUDT/coll/* /tmp/icu4j/com/ibm/icu/impl/data/$ICUDT/coll
+    ~/svn.icu/uni70/dbg/data/out/icu4j$ jar uf ~/svn.icu4j/trunk/src/main/shared/data/icudata.jar -C /tmp/icu4j com/ibm/icu/impl/data/$ICUDT
+- run all tests with the *_SHORT.txt or the full files (the full ones have comments, useful for debugging)
+- note on intltest: if collate/UCAConformanceTest fails, then
+  utility/MultithreadTest/TestCollators will fail as well;
+  fix the conformance test before looking into the multi-thread test
+- copy all output from Mark's UCA tool to unicode.org for review & staging by Ken & editors
+- copy most of ~/svn.unitools/Generated/uca/7.0.0/CollationAuxiliary/* to CLDR branch
+  ~/svn.unitools$ cp Generated/uca/7.0.0/CollationAuxiliary/* ~/svn.cldr/trunk/common/uca/
+
+* When refreshing all of ICU4J data from ICU4C
+- ~/svn.icu/uni70/dbg$ make ICU4J_ROOT=/tmp/icu4j icu4j-data-install
+- cp /tmp/icu4j/main/shared/data/icudata.jar ~/svn.icu4j/trunk/src/main/shared/data
+or
+- ~/svn.icu/uni70/dbg$ make ICU4J_ROOT=~/svn.icu4j/trunk/src icu4j-data-install
+
+* run & fix ICU4J tests
+
+*** LayoutEngine script information
+
+(For details see the Unicode 5.2 change log below.)
+
+* Run icu4j-tools: com.ibm.icu.dev.tool.layout.ScriptNameBuilder.
+  This generates LEScripts.h, LELanguages.h, ScriptAndLanguageTags.h and ScriptAndLanguageTags.cpp
+  in the working directory.
+  (It also generates ScriptRunData.cpp, which is no longer needed.)
+
+  The generated files have a current copyright date and "@stable" statement.
+  ICU 54: Fixed tools/misc/src/com/ibm/icu/dev/tool/layout/ScriptIDModuleWriter.java
+  for "born stable" Unicode API constants, and to stop parsing ICU version numbers
+  which may not contain dots any more.
+
+- diff current <icu>/source/layout files vs. generated ones
+    ~/svn.icu4j/trunk/src$ meld $ICU_SRC_DIR/source/layout tools/misc/src/com/ibm/icu/dev/tool/layout
+  review and manually merge desired changes;
+  fix gratuitous changes, incorrect @draft/@stable and missing aliases;
+  Unicode-derived script codes should be "born stable" like constants in uchar.h, uscript.h etc.
+- if you just copy the above files, then
+  fix mixed line endings, review the diffs as above and restore changes to API tags etc.;
+  manually re-add the "Indic script xyz v.2" tags in ScriptAndLanguageTags.h
+
+*** API additions
+- send notice to icu-design about new born-@stable API (enum constants etc.)
+
+*** merge the Unicode update branches back onto the trunk
+- do not merge the icudata.jar and testdata.jar,
+  instead rebuild them from merged & tested ICU4C
 
 ---------------------------------------------------------------------------- ***
 

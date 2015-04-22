@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nmg.xml
@@ -13,7 +13,7 @@ nmg{
     Languages{
         ak{"Kiɛl akan"}
         am{"Kiɛl amaria"}
-        ar{"Kiɛl b'árabe"}
+        ar{"Kiɛl b’árabe"}
         be{"Kiɛl belarussie"}
         bg{"Kiɛl bulgaria"}
         bn{"Kiɛl bengalia"}
@@ -25,8 +25,8 @@ nmg{
         fa{"Kiɛl pɛrsia"}
         fr{"Fala"}
         ha{"Kiɛl máwúsá"}
-        hi{"Kiɛl b'indien"}
-        hu{"Kiɛl b'ɔ́ngrois"}
+        hi{"Kiɛl b’indien"}
+        hu{"Kiɛl b’ɔ́ngrois"}
         id{"Kiɛl indonesie"}
         ig{"Kiɛl ikbo"}
         it{"Kiɛl italia"}
@@ -49,12 +49,12 @@ nmg{
         ta{"Kiɛl tamul"}
         th{"Kiɛl thaï"}
         tr{"Kiɛl bó turk"}
-        uk{"Kiɛl b'ukrɛ̄nien"}
+        uk{"Kiɛl b’ukrɛ̄nien"}
         ur{"Kiɛl úrdu"}
         vi{"Kiɛl viɛtnam"}
         yo{"Yorúbâ"}
         zh{"Kiɛl bó chinois"}
         zu{"Zulu"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

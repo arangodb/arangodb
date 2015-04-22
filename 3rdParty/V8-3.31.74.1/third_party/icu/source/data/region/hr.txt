@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/hr.xml
@@ -53,7 +53,7 @@ hr{
         BZ{"Belize"}
         CA{"Kanada"}
         CC{"Kokosovi (Keeling) Otoci"}
-        CD{"Kongo (DRK)"}
+        CD{"Kongo - Kinshasa"}
         CF{"Srednjoafrička Republika"}
         CG{"Kongo - Brazzaville"}
         CH{"Švicarska"}
@@ -86,7 +86,7 @@ hr{
         ER{"Eritreja"}
         ES{"Španjolska"}
         ET{"Etiopija"}
-        EU{"Europska Unija"}
+        EU{"Europska unija"}
         FI{"Finska"}
         FJ{"Fidži"}
         FK{"Falklandski Otoci"}
@@ -112,7 +112,7 @@ hr{
         GU{"Guam"}
         GW{"Gvineja Bisau"}
         GY{"Gvajana"}
-        HK{"Hong Kong PUP Kina"}
+        HK{"Hong Kong"}
         HM{"Otoci Heard i McDonald"}
         HN{"Honduras"}
         HR{"Hrvatska"}
@@ -166,7 +166,7 @@ hr{
         ML{"Mali"}
         MM{"Mijanmar (Burma)"}
         MN{"Mongolija"}
-        MO{"Makao PUP Kina"}
+        MO{"Makao"}
         MP{"Sjeverni Marijanski Otoci"}
         MQ{"Martinique"}
         MR{"Mauritanija"}
@@ -201,7 +201,7 @@ hr{
         PM{"Sveti Petar i Mikelon"}
         PN{"Otoci Pitcairn"}
         PR{"Portoriko"}
-        PS{"Palestinsko Područje"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paragvaj"}
@@ -273,12 +273,16 @@ hr{
         ZW{"Zimbabve"}
         ZZ{"nepoznato područje"}
     }
+    Countries%variant{
+        CD{"Kongo (DRK)"}
+        CG{"Kongo (RK)"}
+        CI{"Bjelokosna Obala"}
+        FK{"Falklandski Otoci (Malvini)"}
+        MK{"Makedonija (BJRM)"}
+    }
     CountriesShort{
         GB{"UK"}
-        HK{"Hong Kong"}
-        MO{"Makao"}
-        PS{"Palestina"}
         US{"SAD"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

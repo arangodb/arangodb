@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/rbnf/zh.xml
@@ -27,6 +27,21 @@ zh{
             "10: <<>>>;",
             "100: <<>>>;",
             "1000: <<>>>;",
+            "%spellout-numbering-days:",
+            "-x: \u8D1F>>;",
+            "x.x: =#,##0.#=;",
+            "0: \u3007;",
+            "1: \u521D=%spellout-numbering=;",
+            "11: =%spellout-numbering=;",
+            "21: =%%numbering-days=;",
+            "%%numbering-days:",
+            "0: =%spellout-numbering=;",
+            "21: \u5EFF>>;",
+            "30: <<\u5341;",
+            "31: \u4E17>>;",
+            "40: <<\u5341;",
+            "41: \u534C>>;",
+            "50: =%spellout-numbering=;",
             "%spellout-numbering:",
             "-x: \u8D1F>>;",
             "x.x: <<\u70B9>>>;",
@@ -234,5 +249,5 @@ zh{
             "0: \u7B2C=%spellout-numbering=;",
         }
     }
-    Version{"2.0.82.42"}
+    Version{"2.0.97.32"}
 }

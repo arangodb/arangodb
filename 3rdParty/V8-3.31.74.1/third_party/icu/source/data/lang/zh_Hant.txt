@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh_Hant.xml
@@ -23,9 +23,8 @@ zh_Hant{
         be{"白俄羅斯文"}
         bem{"別姆巴文"}
         bg{"保加利亞文"}
-        bh{"比哈爾文"}
         bn{"孟加拉文"}
-        br{"布里多尼文"}
+        br{"布列塔尼文"}
         bs{"波士尼亞文"}
         ca{"加泰羅尼亞文"}
         ceb{"宿霧文"}
@@ -36,7 +35,7 @@ zh_Hant{
         cy{"威爾斯文"}
         da{"丹麥文"}
         de{"德文"}
-        de_CH{"高地德文 (瑞士)"}
+        de_CH{"高地德文（瑞士）"}
         ee{"埃維文"}
         el{"希臘文"}
         en{"英文"}
@@ -53,7 +52,7 @@ zh_Hant{
         ga{"愛爾蘭文"}
         gaa{"加族文"}
         gd{"蘇格蘭蓋爾文"}
-        gl{"加里西亞文"}
+        gl{"加利西亞文"}
         gn{"瓜拉尼文"}
         gu{"古吉拉特文"}
         ha{"豪撒文"}
@@ -76,6 +75,7 @@ zh_Hant{
         km{"高棉文"}
         kn{"坎那達文"}
         ko{"韓文"}
+        kri{"塞拉利昂克裏奧爾文"}
         ku{"庫爾德文"}
         ky{"吉爾吉斯文"}
         la{"拉丁文"}
@@ -87,12 +87,11 @@ zh_Hant{
         lua{"魯巴魯魯亞文"}
         lv{"拉脫維亞文"}
         mfe{"克里奧文（模里西斯）"}
-        mg{"馬爾加什文"}
+        mg{"馬拉加什文"}
         mi{"毛利文"}
         mk{"馬其頓文"}
         ml{"馬來亞拉姆文"}
         mn{"蒙古文"}
-        mo{"摩爾多瓦文"}
         mr{"馬拉地文"}
         ms{"馬來文"}
         mt{"馬爾他文"}
@@ -117,9 +116,10 @@ zh_Hant{
         rm{"羅曼斯文"}
         rn{"隆迪文"}
         ro{"羅馬尼亞文"}
+        ro_MD{"摩爾多瓦文"}
         ru{"俄文"}
         rw{"盧安達文"}
-        sd{"印度語"}
+        sd{"信德文"}
         sh{"塞爾維亞克羅埃西亞文"}
         si{"僧伽羅文"}
         sk{"斯洛伐克文"}
@@ -138,6 +138,7 @@ zh_Hant{
         th{"泰文"}
         ti{"提格利尼亞文"}
         tk{"土庫曼文"}
+        tl{"塔加路族文"}
         tn{"突尼西亞文"}
         to{"東加文"}
         tr{"土耳其文"}
@@ -163,6 +164,7 @@ zh_Hant{
     }
     Scripts{
         Afak{"阿法卡文字"}
+        Aghb{"高加索阿爾巴尼亞文"}
         Arab{"阿拉伯文"}
         Armi{"皇室亞美尼亞文"}
         Armn{"亞美尼亞文"}
@@ -194,8 +196,9 @@ zh_Hant{
         Egyd{"古埃及世俗體"}
         Egyh{"古埃及僧侶體"}
         Egyp{"古埃及象形文字"}
+        Elba{"愛爾巴桑文"}
         Ethi{"衣索比亞文"}
-        Geok{"格魯吉亞語系（阿索他路里和努斯克胡里文）"}
+        Geok{"喬治亞語系（阿索他路里和努斯克胡里文）"}
         Geor{"喬治亞文"}
         Glag{"格拉哥里文"}
         Goth{"歌德文"}
@@ -206,8 +209,8 @@ zh_Hant{
         Hang{"韓文字"}
         Hani{"漢語"}
         Hano{"哈努諾文"}
-        Hans{"簡體字"}
-        Hant{"繁體字"}
+        Hans{"簡體"}
+        Hant{"繁體"}
         Hebr{"希伯來文"}
         Hira{"平假名"}
         Hluw{"安那托利亞象形文字"}
@@ -241,7 +244,7 @@ zh_Hant{
         Loma{"洛馬文"}
         Lyci{"呂西亞語"}
         Lydi{"里底亞語"}
-        Mand{"曼安底文"}
+        Mand{"曼底安文"}
         Mani{"摩尼教文"}
         Maya{"瑪雅象形文字"}
         Mend{"門德文"}
@@ -282,6 +285,7 @@ zh_Hant{
         Sgnw{"手語書寫符號"}
         Shaw{"簫柏納字符"}
         Shrd{"夏拉達文"}
+        Sidd{"悉曇文字"}
         Sind{"信德文"}
         Sinh{"錫蘭文"}
         Sora{"索朗桑朋文字"}
@@ -298,7 +302,7 @@ zh_Hant{
         Taml{"坦米爾文"}
         Tang{"西夏文"}
         Tavt{"傣擔文"}
-        Telu{"泰盧古文"}
+        Telu{"泰盧固文"}
         Teng{"談格瓦文"}
         Tfng{"提非納文"}
         Tglg{"塔加拉文"}
@@ -325,7 +329,10 @@ zh_Hant{
         Hans{"簡體中文"}
         Hant{"繁體中文"}
     }
-    Version{"2.0.93.8"}
+    Scripts%variant{
+        Arab{"波斯阿拉伯文字"}
+    }
+    Version{"2.1.8.95"}
     codePatterns{
         language{"語言：{0}"}
         script{"文字：{0}"}

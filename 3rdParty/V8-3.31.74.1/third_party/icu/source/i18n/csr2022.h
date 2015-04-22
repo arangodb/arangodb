@@ -65,6 +65,7 @@ public:
     UBool match(InputText *textIn, CharsetMatch *results) const;
 };
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 class CharsetRecog_2022KR :public CharsetRecog_2022 {
 public:
     virtual ~CharsetRecog_2022KR();
@@ -84,6 +85,7 @@ public:
 
     UBool match(InputText *textIn, CharsetMatch *results) const;
 };
+#endif
 
 U_NAMESPACE_END
 

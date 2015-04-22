@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/gl.xml
@@ -112,7 +112,7 @@ gl{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Güiana"}
-        HK{"Hong Kong RAE de China"}
+        HK{"Hong Kong"}
         HM{"Illa Heard e Illas McDonald"}
         HN{"Honduras"}
         HR{"Croacia"}
@@ -166,7 +166,7 @@ gl{
         ML{"Mali"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
-        MO{"Macau RAE de China"}
+        MO{"Macau"}
         MP{"Illas Marianas do norte"}
         MQ{"Martinica"}
         MR{"Mauritania"}
@@ -201,7 +201,7 @@ gl{
         PM{"San Pedro e Miguelón"}
         PN{"Illas Pitcairn"}
         PR{"Porto Rico"}
-        PS{"Territorios palestinos"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguai"}
@@ -273,10 +273,15 @@ gl{
         ZW{"Cimbabue"}
         ZZ{"Rexión descoñecida"}
     }
-    CountriesShort{
-        HK{"Hong Kong"}
-        MO{"Macau"}
-        PS{"Palestina"}
+    Countries%variant{
+        CD{"Congo (RDC)"}
+        CG{"Congo (RC)"}
+        CI{"Costa do Marfil"}
+        FK{"Illas Malvinas (Falkland)"}
+        MK{"Macedonia (ARIM)"}
     }
-    Version{"2.0.92.87"}
+    CountriesShort{
+        GB{"RU"}
+    }
+    Version{"2.1.8.9"}
 }

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/lkt.xml
@@ -17,7 +17,6 @@ lkt{
         af{"Afrikaans Iyápi"}
         alt{"Itóǧata Altai Iyápi"}
         am{"Amharic Iyápi"}
-        apa{"Čhíŋčakiŋze Iyápi"}
         ar{"Arab Iyápi"}
         arp{"Maȟpíya Tȟó Iyápi"}
         as{"Assamese Iyápi"}
@@ -120,7 +119,6 @@ lkt{
         or{"Oriya Iyápi"}
         pa{"Punjabi Iyápi"}
         pl{"Polish Iyápi"}
-        pra{"Prakrit Iyápi"}
         ps{"Pashto Iyápi"}
         pt{"Portuguese Iyápi"}
         qu{"Quechua Iyápi"}
@@ -163,5 +161,5 @@ lkt{
         zu{"Zulu Iyápi"}
         zza{"Zaza Iyápi"}
     }
-    Version{"2.0.92.80"}
+    Version{"2.1.6.69"}
 }

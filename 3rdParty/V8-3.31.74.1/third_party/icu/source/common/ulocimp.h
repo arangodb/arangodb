@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2004-2010, International Business Machines
+*   Copyright (C) 2004-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -61,5 +61,24 @@ ulocimp_getCountry(const char *localeID,
 
 U_CAPI const char * U_EXPORT2
 locale_getKeywordsStart(const char *localeID);
+
+
+U_CFUNC UBool
+ultag_isUnicodeLocaleKey(const char* s, int32_t len);
+
+U_CFUNC UBool
+ultag_isUnicodeLocaleType(const char* s, int32_t len);
+
+U_CFUNC const char*
+ulocimp_toBcpKey(const char* key);
+
+U_CFUNC const char*
+ulocimp_toLegacyKey(const char* key);
+
+U_CFUNC const char*
+ulocimp_toBcpType(const char* key, const char* type, UBool* isKnownKey, UBool* isSpecialType);
+
+U_CFUNC const char*
+ulocimp_toLegacyType(const char* key, const char* type, UBool* isKnownKey, UBool* isSpecialType);
 
 #endif

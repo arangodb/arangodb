@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -28,8 +28,6 @@
 #include "cmemory.h"
 #include "ucase.h"
 #include "ustr_imp.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 U_NAMESPACE_USE
 
@@ -399,7 +397,7 @@ ustrcase_map(const UCaseMap *csm,
          (dest>=src && dest<(src+srcLength)))
     ) {
         /* overlap: provide a temporary destination buffer and later copy the result */
-        if(destCapacity<=LENGTHOF(buffer)) {
+        if(destCapacity<=UPRV_LENGTHOF(buffer)) {
             /* the stack buffer is large enough */
             temp=buffer;
         } else {

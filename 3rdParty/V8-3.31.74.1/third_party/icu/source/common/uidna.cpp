@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2009, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -408,13 +408,12 @@ _internal_toUnicode(const UChar* src, int32_t srcLength,
 
     //initialize pointers to stack buffers
     UChar  *b1 = b1Stack, *b2 = b2Stack, *b1Prime=NULL, *b3=b3Stack;
-    int32_t b1Len, b2Len, b1PrimeLen, b3Len,
+    int32_t b1Len = 0, b2Len, b1PrimeLen, b3Len,
             b1Capacity = MAX_LABEL_BUFFER_SIZE, 
             b2Capacity = MAX_LABEL_BUFFER_SIZE,
             b3Capacity = MAX_LABEL_BUFFER_SIZE,
             reqLength=0;
 
-    b1Len = 0;
     UBool* caseFlags = NULL;
 
     UBool srcIsASCII = TRUE;

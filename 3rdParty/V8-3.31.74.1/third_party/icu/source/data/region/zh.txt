@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh.xml
@@ -112,7 +112,7 @@ zh{
         GU{"关岛"}
         GW{"几内亚比绍"}
         GY{"圭亚那"}
-        HK{"中国香港特别行政区"}
+        HK{"香港"}
         HM{"赫德岛和麦克唐纳群岛"}
         HN{"洪都拉斯"}
         HR{"克罗地亚"}
@@ -166,7 +166,7 @@ zh{
         ML{"马里"}
         MM{"缅甸"}
         MN{"蒙古"}
-        MO{"中国澳门特别行政区"}
+        MO{"澳门"}
         MP{"北马里亚纳群岛"}
         MQ{"马提尼克"}
         MR{"毛里塔尼亚"}
@@ -201,7 +201,7 @@ zh{
         PM{"圣皮埃尔和密克隆群岛"}
         PN{"皮特凯恩群岛"}
         PR{"波多黎各"}
-        PS{"巴勒斯坦领土"}
+        PS{"巴勒斯坦"}
         PT{"葡萄牙"}
         PW{"帕劳"}
         PY{"巴拉圭"}
@@ -273,12 +273,16 @@ zh{
         ZW{"津巴布韦"}
         ZZ{"未知地区"}
     }
+    Countries%variant{
+        CD{"刚果民主共和国"}
+        CG{"刚果共和国"}
+        CI{"象牙海岸"}
+        FK{"福克兰群岛（马尔维纳斯群岛）"}
+        MK{"马其顿（前南斯拉夫的马其顿共和国）"}
+    }
     CountriesShort{
         GB{"英国"}
-        HK{"香港"}
-        MO{"澳门"}
-        PS{"巴勒斯坦"}
         US{"美国"}
     }
-    Version{"2.0.93.8"}
+    Version{"2.1.8.9"}
 }

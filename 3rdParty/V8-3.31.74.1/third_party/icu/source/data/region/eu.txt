@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/eu.xml
@@ -47,7 +47,7 @@ eu{
         BR{"Brasil"}
         BS{"Bahamak"}
         BT{"Bhutan"}
-        BV{"Bouvet Uhartea"}
+        BV{"Bouvet uhartea"}
         BW{"Botswana"}
         BY{"Bielorrusia"}
         BZ{"Belize"}
@@ -112,7 +112,7 @@ eu{
         GU{"Guam"}
         GW{"Ginea-Bissau"}
         GY{"Guyana"}
-        HK{"Hong Kong AEB Txina"}
+        HK{"Hong Kong"}
         HM{"Heard eta McDonald uharteak"}
         HN{"Honduras"}
         HR{"Kroazia"}
@@ -166,7 +166,7 @@ eu{
         ML{"Mali"}
         MM{"Myanmar"}
         MN{"Mongolia"}
-        MO{"Macau AEB Txina"}
+        MO{"Macau"}
         MP{"Iparraldeko Mariana uharteak"}
         MQ{"Martinika"}
         MR{"Mauritania"}
@@ -201,7 +201,7 @@ eu{
         PM{"Saint-Pierre eta Mikelune"}
         PN{"Pitcairn uharteak"}
         PR{"Puerto Rico"}
-        PS{"Palestinako Lurraldeak"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguai"}
@@ -273,11 +273,16 @@ eu{
         ZW{"Zimbabwe"}
         ZZ{"Eskualde ezezaguna"}
     }
+    Countries%variant{
+        CD{"Kongo (KED)"}
+        CG{"Kongo (errepublika)"}
+        FK{"Falkland uharteak (Malvina uharteak)"}
+        MK{"Mazedonia (Mazedoniako Yugoslaviar Errepublika ohia)"}
+        TL{"Timor ekialdea"}
+    }
     CountriesShort{
-        HK{"Hong Kong"}
-        MO{"Macau"}
-        PS{"Palestina"}
+        GB{"EB"}
         US{"AEB"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2000-2012, International Business Machines
+*   Copyright (C) 2000-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -25,6 +25,7 @@
 
 #include "uarrsort.h"
 #include "uelement.h"
+#include "uhash.h"
 #include "uinvchar.h"
 #include "ustr_imp.h"
 #include "unicode/utf16.h"
@@ -105,6 +106,19 @@ bundle_compactStrings(struct SRBRoot *bundle, UErrorCode *status);
 /* Writing Functions */
 
 /*
+ * Preflight strings.
+ * Find duplicates and count the total number of string code units
+ * so that they can be written first to the 16-bit array,
+ * for minimal string and container storage.
+ *
+ * We walk the final parse tree, rather than collecting this information while building it,
+ * so that we need not deal with changes to the parse tree (especially removing resources).
+ */
+static void
+res_preflightStrings(struct SRBRoot *bundle, struct SResource *res, UHashtable *stringSet,
+                     UErrorCode *status);
+
+/*
  * type_write16() functions write resource values into f16BitUnits
  * and determine the resource item word, if possible.
  */
@@ -140,6 +154,92 @@ static void
 res_write(UNewDataMemory *mem, uint32_t *byteOffset,
           struct SRBRoot *bundle, struct SResource *res,
           UErrorCode *status);
+
+static void
+string_preflightStrings(struct SRBRoot *bundle, struct SResource *res, UHashtable *stringSet,
+                        UErrorCode *status) {
+    res->u.fString.fSame = uhash_get(stringSet, res);
+    if (res->u.fString.fSame != NULL) {
+        return;  /* This is a duplicate of an earlier-visited string. */
+    }
+    /* Put this string into the set for finding duplicates. */
+    uhash_put(stringSet, res, res, status);
+
+    if (bundle->fStringsForm != STRINGS_UTF16_V1) {
+        const UChar *s = res->u.fString.fChars;
+        int32_t len = res->u.fString.fLength;
+        if (len <= MAX_IMPLICIT_STRING_LENGTH && !U16_IS_TRAIL(s[0]) && len == u_strlen(s)) {
+            /*
+             * This string will be stored without an explicit length.
+             * Runtime will detect !U16_IS_TRAIL(s[0]) and call u_strlen().
+             */
+            res->u.fString.fNumCharsForLength = 0;
+        } else if (len <= 0x3ee) {
+            res->u.fString.fNumCharsForLength = 1;
+        } else if (len <= 0xfffff) {
+            res->u.fString.fNumCharsForLength = 2;
+        } else {
+            res->u.fString.fNumCharsForLength = 3;
+        }
+        bundle->f16BitUnitsLength += res->u.fString.fNumCharsForLength + len + 1;  /* +1 for the NUL */
+    }
+}
+
+static void
+array_preflightStrings(struct SRBRoot *bundle, struct SResource *res, UHashtable *stringSet,
+                       UErrorCode *status) {
+    struct SResource *current;
+
+    if (U_FAILURE(*status)) {
+        return;
+    }
+    for (current = res->u.fArray.fFirst; current != NULL; current = current->fNext) {
+        res_preflightStrings(bundle, current, stringSet, status);
+    }
+}
+
+static void
+table_preflightStrings(struct SRBRoot *bundle, struct SResource *res, UHashtable *stringSet,
+                       UErrorCode *status) {
+    struct SResource *current;
+
+    if (U_FAILURE(*status)) {
+        return;
+    }
+    for (current = res->u.fTable.fFirst; current != NULL; current = current->fNext) {
+        res_preflightStrings(bundle, current, stringSet, status);
+    }
+}
+
+static void
+res_preflightStrings(struct SRBRoot *bundle, struct SResource *res, UHashtable *stringSet,
+                     UErrorCode *status) {
+    if (U_FAILURE(*status) || res == NULL) {
+        return;
+    }
+    if (res->fRes != RES_BOGUS) {
+        /*
+         * The resource item word was already precomputed, which means
+         * no further data needs to be written.
+         * This might be an integer, or an empty string/binary/etc.
+         */
+        return;
+    }
+    switch (res->fType) {
+    case URES_STRING:
+        string_preflightStrings(bundle, res, stringSet, status);
+        break;
+    case URES_ARRAY:
+        array_preflightStrings(bundle, res, stringSet, status);
+        break;
+    case URES_TABLE:
+        table_preflightStrings(bundle, res, stringSet, status);
+        break;
+    default:
+        /* Neither a string nor a container. */
+        break;
+    }
+}
 
 static uint16_t *
 reserve16BitUnits(struct SRBRoot *bundle, int32_t length, UErrorCode *status) {
@@ -221,10 +321,7 @@ string_write16(struct SRBRoot *bundle, struct SResource *res, UErrorCode *status
     struct SResource *same;
     if ((same = res->u.fString.fSame) != NULL) {
         /* This is a duplicate. */
-        if (same->fRes == RES_BOGUS) {
-            /* The original has not been visited yet. */
-            string_write16(bundle, same, status);
-        }
+        assert(same->fRes != RES_BOGUS && same->fWritten);
         res->fRes = same->fRes;
         res->fWritten = same->fWritten;
     }
@@ -900,96 +997,41 @@ string_comp(const UElement key1, const UElement key2) {
                              FALSE);
 }
 
-struct SResource *string_open(struct SRBRoot *bundle, const char *tag, const UChar *value, int32_t len, const struct UString* comment, UErrorCode *status) {
+static struct SResource *
+stringbase_open(struct SRBRoot *bundle, const char *tag, int8_t type,
+                const UChar *value, int32_t len, const struct UString* comment,
+                UErrorCode *status) {
     struct SResource *res = res_open(bundle, tag, comment, status);
     if (U_FAILURE(*status)) {
         return NULL;
     }
-    res->fType = URES_STRING;
+    res->fType = type;
 
     if (len == 0 && gFormatVersion > 1) {
         res->u.fString.fChars = &gEmptyString;
-        res->fRes = 0;
+        res->fRes = URES_MAKE_EMPTY_RESOURCE(type);
         res->fWritten = TRUE;
         return res;
     }
 
     res->u.fString.fLength = len;
-
-    if (gFormatVersion > 1) {
-        /* check for duplicates */
-        res->u.fString.fChars  = (UChar *)value;
-        if (bundle->fStringSet == NULL) {
-            UErrorCode localStatus = U_ZERO_ERROR;  /* if failure: just don't detect dups */
-            bundle->fStringSet = uhash_open(string_hash, string_comp, string_comp, &localStatus);
-        } else {
-            res->u.fString.fSame = uhash_get(bundle->fStringSet, res);
-        }
-    }
-    if (res->u.fString.fSame == NULL) {
-        /* this is a new string */
-        res->u.fString.fChars = (UChar *) uprv_malloc(sizeof(UChar) * (len + 1));
-
-        if (res->u.fString.fChars == NULL) {
-            *status = U_MEMORY_ALLOCATION_ERROR;
-            uprv_free(res);
-            return NULL;
-        }
-
-        uprv_memcpy(res->u.fString.fChars, value, sizeof(UChar) * len);
-        res->u.fString.fChars[len] = 0;
-        if (bundle->fStringSet != NULL) {
-            /* put it into the set for finding duplicates */
-            uhash_put(bundle->fStringSet, res, res, status);
-        }
-
-        if (bundle->fStringsForm != STRINGS_UTF16_V1) {
-            if (len <= MAX_IMPLICIT_STRING_LENGTH && !U16_IS_TRAIL(value[0]) && len == u_strlen(value)) {
-                /*
-                 * This string will be stored without an explicit length.
-                 * Runtime will detect !U16_IS_TRAIL(value[0]) and call u_strlen().
-                 */
-                res->u.fString.fNumCharsForLength = 0;
-            } else if (len <= 0x3ee) {
-                res->u.fString.fNumCharsForLength = 1;
-            } else if (len <= 0xfffff) {
-                res->u.fString.fNumCharsForLength = 2;
-            } else {
-                res->u.fString.fNumCharsForLength = 3;
-            }
-            bundle->f16BitUnitsLength += res->u.fString.fNumCharsForLength + len + 1;  /* +1 for the NUL */
-        }
-    } else {
-        /* this is a duplicate of fSame */
-        struct SResource *same = res->u.fString.fSame;
-        res->u.fString.fChars = same->u.fString.fChars;
-    }
-    return res;
-}
-
-/* TODO: make alias_open and string_open use the same code */
-struct SResource *alias_open(struct SRBRoot *bundle, const char *tag, UChar *value, int32_t len, const struct UString* comment, UErrorCode *status) {
-    struct SResource *res = res_open(bundle, tag, comment, status);
-    if (U_FAILURE(*status)) {
-        return NULL;
-    }
-    res->fType = URES_ALIAS;
-    if (len == 0 && gFormatVersion > 1) {
-        res->u.fString.fChars = &gEmptyString;
-        res->fRes = URES_MAKE_EMPTY_RESOURCE(URES_ALIAS);
-        res->fWritten = TRUE;
-        return res;
-    }
-
-    res->u.fString.fLength = len;
-    res->u.fString.fChars  = (UChar *) uprv_malloc(sizeof(UChar) * (len + 1));
+    res->u.fString.fChars = (UChar *) uprv_malloc(sizeof(UChar) * (len + 1));
     if (res->u.fString.fChars == NULL) {
         *status = U_MEMORY_ALLOCATION_ERROR;
         uprv_free(res);
         return NULL;
     }
-    uprv_memcpy(res->u.fString.fChars, value, sizeof(UChar) * (len + 1));
+    uprv_memcpy(res->u.fString.fChars, value, sizeof(UChar) * len);
+    res->u.fString.fChars[len] = 0;
     return res;
+}
+
+struct SResource *string_open(struct SRBRoot *bundle, const char *tag, const UChar *value, int32_t len, const struct UString* comment, UErrorCode *status) {
+    return stringbase_open(bundle, tag, URES_STRING, value, len, comment, status);
+}
+
+struct SResource *alias_open(struct SRBRoot *bundle, const char *tag, UChar *value, int32_t len, const struct UString* comment, UErrorCode *status) {
+    return stringbase_open(bundle, tag, URES_ALIAS, value, len, comment, status);
 }
 
 
@@ -1142,9 +1184,7 @@ static void array_close(struct SResource *array) {
 
 static void string_close(struct SResource *string) {
     if (string->u.fString.fChars != NULL &&
-        string->u.fString.fChars != &gEmptyString &&
-        string->u.fString.fSame == NULL
-    ) {
+            string->u.fString.fChars != &gEmptyString) {
         uprv_free(string->u.fString.fChars);
         string->u.fString.fChars =NULL;
     }
@@ -1218,16 +1258,8 @@ void bundle_close(struct SRBRoot *bundle, UErrorCode *status) {
     uprv_free(bundle->fLocale);
     uprv_free(bundle->fKeys);
     uprv_free(bundle->fKeyMap);
-    uhash_close(bundle->fStringSet);
     uprv_free(bundle->f16BitUnits);
     uprv_free(bundle);
-}
-
-void bundle_closeString(struct SRBRoot *bundle, struct SResource *string) {
-    if (bundle->fStringSet != NULL) {
-        uhash_remove(bundle->fStringSet, string);
-    }
-    string_close(string);
 }
 
 /* Adding Functions */
@@ -1664,14 +1696,22 @@ string_writeUTF16v2(struct SRBRoot *bundle, struct SResource *res, int32_t utf16
 
 static void
 bundle_compactStrings(struct SRBRoot *bundle, UErrorCode *status) {
+    UHashtable *stringSet;
+    if (gFormatVersion > 1) {
+        stringSet = uhash_open(string_hash, string_comp, string_comp, status);
+        res_preflightStrings(bundle, bundle->fRoot, stringSet, status);
+    } else {
+        stringSet = NULL;
+    }
     if (U_FAILURE(*status)) {
+        uhash_close(stringSet);
         return;
     }
     switch(bundle->fStringsForm) {
     case STRINGS_UTF16_V2:
         if (bundle->f16BitUnitsLength > 0) {
             struct SResource **array;
-            int32_t count = uhash_count(bundle->fStringSet);
+            int32_t count = uhash_count(stringSet);
             int32_t i, pos;
             /*
              * Allocate enough space for the initial NUL and the UTF-16 v2 strings,
@@ -1685,6 +1725,7 @@ bundle_compactStrings(struct SRBRoot *bundle, UErrorCode *status) {
                 uprv_free(bundle->f16BitUnits);
                 bundle->f16BitUnits = NULL;
                 uprv_free(array);
+                uhash_close(stringSet);
                 *status = U_MEMORY_ALLOCATION_ERROR;
                 return;
             }
@@ -1694,7 +1735,7 @@ bundle_compactStrings(struct SRBRoot *bundle, UErrorCode *status) {
             utf16Length = 1;
             ++bundle->f16BitUnitsLength;
             for (pos = -1, i = 0; i < count; ++i) {
-                array[i] = (struct SResource *)uhash_nextElement(bundle->fStringSet, &pos)->key.pointer;
+                array[i] = (struct SResource *)uhash_nextElement(stringSet, &pos)->key.pointer;
             }
             /* Sort the strings so that each one is immediately followed by all of its suffixes. */
             uprv_sortArray(array, count, (int32_t)sizeof(struct SResource **),
@@ -1769,4 +1810,5 @@ bundle_compactStrings(struct SRBRoot *bundle, UErrorCode *status) {
     default:
         break;
     }
+    uhash_close(stringSet);
 }

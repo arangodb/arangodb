@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/dyo.xml
@@ -23,10 +23,6 @@ dyo{
             "BHD",
             "dinaar yati Bahrayn",
         }
-        BIF{
-            "BIF",
-            "fraaŋ yati Burundi",
-        }
         BWP{
             "BWP",
             "pula yati Boswana",
@@ -43,14 +39,6 @@ dyo{
             "CN¥",
             "yuan yati Siin",
         }
-        CVE{
-            "CVE",
-            "eskuudo yati Kap Ver",
-        }
-        DJF{
-            "DJF",
-            "fraaŋ yati Jibuti",
-        }
         DZD{
             "DZD",
             "dinaar yati Alseri",
@@ -58,10 +46,6 @@ dyo{
         EGP{
             "EGP",
             "liiverey yati Esípt",
-        }
-        ERN{
-            "ERN",
-            "nafka yati Eritree",
         }
         ETB{
             "ETB",
@@ -71,16 +55,8 @@ dyo{
             "€",
             "euro",
         }
-        GMD{
-            "GMD",
-            "dalasi yati Gambi",
-        }
-        GNS{
-            "GNS",
-            "sili yati Giné",
-        }
         INR{
-            "₹",
+            "Rs.",
             "rupii yati End",
         }
         JPY{
@@ -90,14 +66,6 @@ dyo{
         KES{
             "KES",
             "silliŋ yati Keniya",
-        }
-        KMF{
-            "KMF",
-            "fraaŋ yati Komor",
-        }
-        LRD{
-            "LRD",
-            "dolaar yati Liberia",
         }
         LYD{
             "LYD",
@@ -124,5 +92,5 @@ dyo{
             "seefa yati BCEAO",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2008, International Business Machines Corporation and
+* Copyright (C) 2007-2008,2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -74,6 +74,7 @@
 #define CAP_Q             ((UChar)0x0051)
 #define CAP_S             ((UChar)0x0053)
 #define CAP_T             ((UChar)0x0054)
+#define CAP_U             ((UChar)0x0055)
 #define CAP_V             ((UChar)0x0056)
 #define CAP_W             ((UChar)0x0057)
 #define CAP_Y             ((UChar)0x0059)

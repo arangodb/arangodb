@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/tr.xml
@@ -78,7 +78,7 @@ tr{
         DM{"Dominika"}
         DO{"Dominik Cumhuriyeti"}
         DZ{"Cezayir"}
-        EA{"Ceuta ve Melilla"}
+        EA{"Septe ve Melilla"}
         EC{"Ekvador"}
         EE{"Estonya"}
         EG{"Mısır"}
@@ -90,7 +90,7 @@ tr{
         FI{"Finlandiya"}
         FJ{"Fiji"}
         FK{"Falkland Adaları"}
-        FM{"Mikronezya Federal Eyaletleri"}
+        FM{"Mikronezya"}
         FO{"Faroe Adaları"}
         FR{"Fransa"}
         GA{"Gabon"}
@@ -112,7 +112,7 @@ tr{
         GU{"Guam"}
         GW{"Gine-Bissau"}
         GY{"Guyana"}
-        HK{"Çin Hong Kong ÖYB"}
+        HK{"Hong Kong"}
         HM{"Heard Adası ve McDonald Adaları"}
         HN{"Honduras"}
         HR{"Hırvatistan"}
@@ -124,7 +124,7 @@ tr{
         IL{"İsrail"}
         IM{"Man Adası"}
         IN{"Hindistan"}
-        IO{"İngiliz Hint Okyanusu Bölgesi"}
+        IO{"Britanya Hint Okyanusu Toprakları"}
         IQ{"Irak"}
         IR{"İran"}
         IS{"İzlanda"}
@@ -166,7 +166,7 @@ tr{
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Moğolistan"}
-        MO{"Çin Makao ÖYB"}
+        MO{"Makao"}
         MP{"Kuzey Mariana Adaları"}
         MQ{"Martinik"}
         MR{"Moritanya"}
@@ -201,7 +201,7 @@ tr{
         PM{"Saint Pierre ve Miquelon"}
         PN{"Pitcairn Adaları"}
         PR{"Porto Riko"}
-        PS{"Filistin Bölgeleri"}
+        PS{"Filistin"}
         PT{"Portekiz"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -236,7 +236,7 @@ tr{
         TA{"Tristan da Cunha"}
         TC{"Turks ve Caicos Adaları"}
         TD{"Çad"}
-        TF{"Fransız Güney Bölgeleri"}
+        TF{"Fransız Güney Toprakları"}
         TG{"Togo"}
         TH{"Tayland"}
         TJ{"Tacikistan"}
@@ -252,7 +252,7 @@ tr{
         TZ{"Tanzanya"}
         UA{"Ukrayna"}
         UG{"Uganda"}
-        UM{"ABD Dış Adaları"}
+        UM{"ABD Uzak Adaları"}
         US{"ABD"}
         UY{"Uruguay"}
         UZ{"Özbekistan"}
@@ -273,12 +273,16 @@ tr{
         ZW{"Zimbabve"}
         ZZ{"Bilinmeyen Bölge"}
     }
+    Countries%variant{
+        CD{"Demokratik Kongo Cumhuriyeti"}
+        CG{"Kongo Cumhuriyeti"}
+        FK{"Falkland Adaları (Malvinas Adaları)"}
+        MK{"Makedonya (EYMC)"}
+        TL{"Doğu Timor"}
+    }
     CountriesShort{
         GB{"BK"}
-        HK{"Hong Kong"}
-        MO{"Makao"}
-        PS{"Filistin"}
         US{"ABD"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

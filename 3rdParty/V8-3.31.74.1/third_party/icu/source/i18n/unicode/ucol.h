@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (c) 1996-2013, International Business Machines Corporation and others.
+* Copyright (c) 1996-2014, International Business Machines Corporation and others.
 * All Rights Reserved.
 *******************************************************************************
 */
@@ -28,23 +28,17 @@
  * The C API for Collator performs locale-sensitive
  * string comparison. You use this service to build
  * searching and sorting routines for natural language text.
- * <em>Important: </em>The ICU collation service has been reimplemented 
- * in order to achieve better performance and UCA compliance. 
- * For details, see the 
- * <a href="http://source.icu-project.org/repos/icu/icuhtml/trunk/design/collation/ICU_collation_design.htm">
- * collation design document</a>.
  * <p>
  * For more information about the collation service see 
- * <a href="http://icu-project.org/userguide/Collate_Intro.html">the users guide</a>.
+ * <a href="http://userguide.icu-project.org/collation">the User Guide</a>.
  * <p>
  * Collation service provides correct sorting orders for most locales supported in ICU. 
  * If specific data for a locale is not available, the orders eventually falls back
- * to the <a href="http://www.unicode.org/unicode/reports/tr10/">UCA sort order</a>. 
+ * to the <a href="http://www.unicode.org/reports/tr35/tr35-collation.html#Root_Collation">CLDR root sort order</a>. 
  * <p>
  * Sort ordering may be customized by providing your own set of rules. For more on
- * this subject see the 
- * <a href="http://icu-project.org/userguide/Collate_Customization.html">
- * Collation customization</a> section of the users guide.
+ * this subject see the <a href="http://userguide.icu-project.org/collation/customization">
+ * Collation Customization</a> section of the User Guide.
  * <p>
  * @see         UCollationResult
  * @see         UNormalizationMode
@@ -291,13 +285,17 @@ typedef enum {
      UCOL_DECOMPOSITION_MODE = UCOL_NORMALIZATION_MODE,
      /** The strength attribute. Can be either UCOL_PRIMARY, UCOL_SECONDARY,
       * UCOL_TERTIARY, UCOL_QUATERNARY or UCOL_IDENTICAL. The usual strength
-      * for most locales (except Japanese) is tertiary. Quaternary strength 
+      * for most locales (except Japanese) is tertiary.
+      *
+      * Quaternary strength 
       * is useful when combined with shifted setting for alternate handling
-      * attribute and for JIS x 4061 collation, when it is used to distinguish
-      * between Katakana  and Hiragana (this is achieved by setting the 
-      * UCOL_HIRAGANA_QUATERNARY mode to on. Otherwise, quaternary level
-      * is affected only by the number of non ignorable code points in
-      * the string. Identical strength is rarely useful, as it amounts 
+      * attribute and for JIS X 4061 collation, when it is used to distinguish
+      * between Katakana and Hiragana.
+      * Otherwise, quaternary level
+      * is affected only by the number of non-ignorable code points in
+      * the string.
+      *
+      * Identical strength is rarely useful, as it amounts 
       * to codepoints of the NFD form of the string.
       * @stable ICU 2.0
       */
@@ -307,21 +305,31 @@ typedef enum {
       * non-ignorables on quaternary level This is a sneaky way to produce JIS
       * sort order.
       *
-      * This attribute is an implementation detail of the CLDR Japanese tailoring.
-      * The implementation might change to use a different mechanism
-      * to achieve the same Japanese sort order.
+      * This attribute was an implementation detail of the CLDR Japanese tailoring.
       * Since ICU 50, this attribute is not settable any more via API functions.
-      * @deprecated ICU 50 Implementation detail, cannot be set via API, might be removed from implementation.
+      * Since CLDR 25/ICU 53, explicit quaternary relations are used
+      * to achieve the same Japanese sort order.
+      *
+      * @deprecated ICU 50 Implementation detail, cannot be set via API, was removed from implementation.
       */
      UCOL_HIRAGANA_QUATERNARY_MODE = UCOL_STRENGTH + 1,
 #endif  /* U_HIDE_DEPRECATED_API */
-     /** When turned on, this attribute generates a collation key
-      * for the numeric value of substrings of digits.
+     /**
+      * When turned on, this attribute makes
+      * substrings of digits sort according to their numeric values.
+      *
       * This is a way to get '100' to sort AFTER '2'. Note that the longest
-      * digit substring that can be treated as a single collation element is
+      * digit substring that can be treated as a single unit is
       * 254 digits (not counting leading zeros). If a digit substring is
       * longer than that, the digits beyond the limit will be treated as a
-      * separate digit substring associated with a separate collation element.
+      * separate digit substring.
+      *
+      * A "digit" in this sense is a code point with General_Category=Nd,
+      * which does not include circled numbers, roman numerals, etc.
+      * Only a contiguous digit substring is considered, that is,
+      * non-negative integers without separators.
+      * There is no support for plus/minus signs, decimals, exponents, etc.
+      *
       * @stable ICU 2.8
       */
      UCOL_NUMERIC_COLLATION = UCOL_STRENGTH + 2, 
@@ -354,6 +362,14 @@ typedef enum {
 
 /**
  * Open a UCollator for comparing strings.
+ *
+ * For some languages, multiple collation types are available;
+ * for example, "de@collation=phonebook".
+ * Starting with ICU 54, collation attributes can be specified via locale keywords as well,
+ * in the old locale extension syntax ("el@colCaseFirst=upper")
+ * or in language tag syntax ("el-u-kf-upper").
+ * See <a href="http://userguide.icu-project.org/collation/api">User Guide: Collation API</a>.
+ *
  * The UCollator pointer is used in all the calls to the Collation 
  * service. After finished, collator must be disposed of by calling
  * {@link #ucol_close }.
@@ -361,8 +377,8 @@ typedef enum {
  *            Special values for locales can be passed in - 
  *            if NULL is passed for the locale, the default locale
  *            collation rules will be used. If empty string ("") or
- *            "root" are passed, UCA rules will be used.
- * @param status A pointer to an UErrorCode to receive any errors
+ *            "root" are passed, the root collator will be returned.
+ * @param status A pointer to a UErrorCode to receive any errors
  * @return A pointer to a UCollator, or 0 if an error occurred.
  * @see ucol_openRules
  * @see ucol_safeClone
@@ -373,7 +389,7 @@ U_STABLE UCollator* U_EXPORT2
 ucol_open(const char *loc, UErrorCode *status);
 
 /**
- * Produce an UCollator instance according to the rules supplied.
+ * Produce a UCollator instance according to the rules supplied.
  * The rules are used to change the default ordering, defined in the
  * UCA in a process called tailoring. The resulting UCollator pointer
  * can be used in the same way as the one obtained by {@link #ucol_strcoll }.
@@ -389,7 +405,7 @@ ucol_open(const char *loc, UErrorCode *status);
  * @param parseError  A pointer to UParseError to recieve information about errors
  *                    occurred during parsing. This argument can currently be set
  *                    to NULL, but at users own risk. Please provide a real structure.
- * @param status A pointer to an UErrorCode to receive any errors
+ * @param status A pointer to a UErrorCode to receive any errors
  * @return A pointer to a UCollator. It is not guaranteed that NULL be returned in case
  *         of error - please use status argument to check for errors.
  * @see ucol_open
@@ -405,11 +421,12 @@ ucol_openRules( const UChar        *rules,
                 UParseError        *parseError,
                 UErrorCode         *status);
 
+#ifndef U_HIDE_DEPRECATED_API
 /** 
  * Open a collator defined by a short form string.
  * The structure and the syntax of the string is defined in the "Naming collators"
  * section of the users guide: 
- * http://icu-project.org/userguide/Collate_Concepts.html#Naming_Collators
+ * http://userguide.icu-project.org/collation/concepts#TOC-Collator-naming-scheme
  * Attributes are overriden by the subsequent attributes. So, for "S2_S3", final
  * strength will be 3. 3066bis locale overrides individual locale parts.
  * The call to this function is equivalent to a call to ucol_open, followed by a 
@@ -436,21 +453,21 @@ ucol_openRules( const UChar        *rules,
  * @see ucol_setVariableTop
  * @see ucol_getShortDefinitionString
  * @see ucol_normalizeShortDefinitionString
- * @stable ICU 3.0
- *
+ * @deprecated ICU 54 Use ucol_open() with language tag collation keywords instead.
  */
-U_STABLE UCollator* U_EXPORT2
+U_DEPRECATED UCollator* U_EXPORT2
 ucol_openFromShortString( const char *definition,
                           UBool forceDefaults,
                           UParseError *parseError,
                           UErrorCode *status);
+#endif  /* U_HIDE_DEPRECATED_API */
 
 #ifndef U_HIDE_DEPRECATED_API
 /**
  * Get a set containing the contractions defined by the collator. The set includes
- * both the UCA contractions and the contractions defined by the collator. This set
+ * both the root collator's contractions and the contractions defined by the collator. This set
  * will contain only strings. If a tailoring explicitly suppresses contractions from 
- * the UCA (like Russian), removed contractions will not be in the resulting set.
+ * the root collator (like Russian), removed contractions will not be in the resulting set.
  * @param coll collator 
  * @param conts the set to hold the result. It gets emptied before
  *              contractions are added. 
@@ -467,7 +484,7 @@ ucol_getContractions( const UCollator *coll,
 
 /**
  * Get a set containing the expansions defined by the collator. The set includes
- * both the UCA expansions and the expansions defined by the tailoring
+ * both the root collator's expansions and the expansions defined by the tailoring
  * @param coll collator
  * @param contractions if not NULL, the set to hold the contractions
  * @param expansions if not NULL, the set to hold the expansions
@@ -545,7 +562,7 @@ ucol_strcoll(    const    UCollator    *coll,
 * @param sourceLength The length of source, or -1 if null-terminated. 
 * @param target The target UTF-8 string. 
 * @param targetLength The length of target, or -1 if null-terminated. 
-* @param status A pointer to an UErrorCode to receive any errors 
+* @param status A pointer to a UErrorCode to receive any errors 
 * @return The result of comparing the strings; one of UCOL_EQUAL, 
 * UCOL_GREATER, UCOL_LESS 
 * @see ucol_greater 
@@ -627,7 +644,7 @@ ucol_equal(const UCollator *coll,
  * @param tIter The target string iterator.
  * @return The result of comparing the strings; one of UCOL_EQUAL,
  * UCOL_GREATER, UCOL_LESS
- * @param status A pointer to an UErrorCode to receive any errors
+ * @param status A pointer to a UErrorCode to receive any errors
  * @see ucol_strcoll
  * @stable ICU 2.6
  */
@@ -702,7 +719,7 @@ ucol_getReorderCodes(const UCollator* coll,
  * to the default for this collator. The default reordering may be the DUCET/CLDR order or may be a reordering that
  * was specified when this collator was created from resource data or from rules. The 
  * DEFAULT code <b>must</b> be the sole code supplied when it used. If not
- * that will result in an U_ILLEGAL_ARGUMENT_ERROR being set.
+ * that will result in a U_ILLEGAL_ARGUMENT_ERROR being set.
  * <p>The special reorder code NONE will remove any reordering for this collator.
  * The result of setting no reordering will be to have the DUCET/CLDR ordering used. The 
  * NONE code <b>must</b> be the sole code supplied when it used.
@@ -753,7 +770,7 @@ ucol_getEquivalentReorderCodes(int32_t reorderCode,
  * @param dispLoc The locale for display.
  * @param result A pointer to a buffer to receive the attribute.
  * @param resultLength The maximum size of result.
- * @param status A pointer to an UErrorCode to receive any errors
+ * @param status A pointer to a UErrorCode to receive any errors
  * @return The total buffer size needed; if greater than resultLength,
  * the output was truncated.
  * @stable ICU 2.0
@@ -850,31 +867,32 @@ ucol_getKeywordValuesForLocale(const char* key,
                                UErrorCode* status);
 
 /**
- * Return the functionally equivalent locale for the given
- * requested locale, with respect to given keyword, for the
- * collation service.  If two locales return the same result, then
- * collators instantiated for these locales will behave
- * equivalently.  The converse is not always true; two collators
+ * Return the functionally equivalent locale for the specified
+ * input locale, with respect to given keyword, for the
+ * collation service. If two different input locale + keyword
+ * combinations produce the same result locale, then collators
+ * instantiated for these two different input locales will behave
+ * equivalently. The converse is not always true; two collators
  * may in fact be equivalent, but return different results, due to
- * internal details.  The return result has no other meaning than
+ * internal details. The return result has no other meaning than
  * that stated above, and implies nothing as to the relationship
- * between the two locales.  This is intended for use by
+ * between the two locales. This is intended for use by
  * applications who wish to cache collators, or otherwise reuse
- * collators when possible.  The functional equivalent may change
- * over time.  For more information, please see the <a
- * href="http://icu-project.org/userguide/locale.html#services">
+ * collators when possible. The functional equivalent may change
+ * over time. For more information, please see the <a
+ * href="http://userguide.icu-project.org/locale#TOC-Locales-and-Services">
  * Locales and Services</a> section of the ICU User Guide.
- * @param result fillin for the functionally equivalent locale
+ * @param result fillin for the functionally equivalent result locale
  * @param resultCapacity capacity of the fillin buffer
  * @param keyword a particular keyword as enumerated by
  * ucol_getKeywords.
- * @param locale the requested locale
+ * @param locale the specified input locale
  * @param isAvailable if non-NULL, pointer to a fillin parameter that
- * indicates whether the requested locale was 'available' to the
- * collation service. A locale is defined as 'available' if it
+ * on return indicates whether the specified input locale was 'available'
+ * to the collation service. A locale is defined as 'available' if it
  * physically exists within the collation locale data.
  * @param status pointer to input-output error code
- * @return the actual buffer size needed for the locale.  If greater
+ * @return the actual buffer size needed for the locale. If greater
  * than resultCapacity, the returned full name will be truncated and
  * an error code will be returned.
  * @stable ICU 3.0
@@ -896,13 +914,14 @@ U_STABLE const UChar* U_EXPORT2
 ucol_getRules(    const    UCollator    *coll, 
         int32_t            *length);
 
+#ifndef U_HIDE_DEPRECATED_API
 /** Get the short definition string for a collator. This API harvests the collator's
  *  locale and the attribute set and produces a string that can be used for opening 
- *  a collator with the same properties using the ucol_openFromShortString API.
+ *  a collator with the same attributes using the ucol_openFromShortString API.
  *  This string will be normalized.
  *  The structure and the syntax of the string is defined in the "Naming collators"
  *  section of the users guide: 
- *  http://icu-project.org/userguide/Collate_Concepts.html#Naming_Collators
+ *  http://userguide.icu-project.org/collation/concepts#TOC-Collator-naming-scheme
  *  This API supports preflighting.
  *  @param coll a collator
  *  @param locale a locale that will appear as a collators locale in the resulting
@@ -914,9 +933,9 @@ ucol_getRules(    const    UCollator    *coll,
  *  @return length of the resulting string
  *  @see ucol_openFromShortString
  *  @see ucol_normalizeShortDefinitionString
- *  @stable ICU 3.0
+ *  @deprecated ICU 54
  */
-U_STABLE int32_t U_EXPORT2
+U_DEPRECATED int32_t U_EXPORT2
 ucol_getShortDefinitionString(const UCollator *coll,
                               const char *locale,
                               char *buffer,
@@ -940,20 +959,24 @@ ucol_getShortDefinitionString(const UCollator *coll,
  *  @see ucol_openFromShortString
  *  @see ucol_getShortDefinitionString
  * 
- *  @stable ICU 3.0
+ *  @deprecated ICU 54
  */
 
-U_STABLE int32_t U_EXPORT2
+U_DEPRECATED int32_t U_EXPORT2
 ucol_normalizeShortDefinitionString(const char *source,
                                     char *destination,
                                     int32_t capacity,
                                     UParseError *parseError,
                                     UErrorCode *status);
+#endif  /* U_HIDE_DEPRECATED_API */
 
 
 /**
  * Get a sort key for a string from a UCollator.
  * Sort keys may be compared using <TT>strcmp</TT>.
+ *
+ * Note that sort keys are often less efficient than simply doing comparison.  
+ * For more details, see the ICU User Guide.
  *
  * Like ICU functions that write to an output buffer, the buffer contents
  * is undefined if the buffer capacity (resultLength parameter) is too small.
@@ -1096,6 +1119,17 @@ ucol_getUCAVersion(const UCollator* coll, UVersionInfo info);
  *
  * This is useful, for example, for combining sort keys from first and last names
  * to sort such pairs.
+ * See http://www.unicode.org/reports/tr10/#Merging_Sort_Keys
+ *
+ * The recommended way to achieve "merged" sorting is by
+ * concatenating strings with U+FFFE between them.
+ * The concatenation has the same sort order as the merged sort keys,
+ * but merge(getSortKey(str1), getSortKey(str2)) may differ from getSortKey(str1 + '\uFFFE' + str2).
+ * Using strings with U+FFFE may yield shorter sort keys.
+ *
+ * For details about Sort Key Features see
+ * http://userguide.icu-project.org/collation/api#TOC-Sort-Key-Features
+ *
  * It is possible to merge multiple sort keys by consecutively merging
  * another one with the intermediate result.
  *
@@ -1158,55 +1192,93 @@ ucol_setAttribute(UCollator *coll, UColAttribute attr, UColAttributeValue value,
 U_STABLE UColAttributeValue  U_EXPORT2 
 ucol_getAttribute(const UCollator *coll, UColAttribute attr, UErrorCode *status);
 
-/** Variable top
- * is a two byte primary value which causes all the codepoints with primary values that
- * are less or equal than the variable top to be shifted when alternate handling is set
- * to UCOL_SHIFTED.
- * Sets the variable top to a collation element value of a string supplied. 
- * @param coll collator which variable top needs to be changed
+#ifndef U_HIDE_DRAFT_API
+
+/**
+ * Sets the variable top to the top of the specified reordering group.
+ * The variable top determines the highest-sorting character
+ * which is affected by UCOL_ALTERNATE_HANDLING.
+ * If that attribute is set to UCOL_NON_IGNORABLE, then the variable top has no effect.
+ * @param coll the collator
+ * @param group one of UCOL_REORDER_CODE_SPACE, UCOL_REORDER_CODE_PUNCTUATION,
+ *              UCOL_REORDER_CODE_SYMBOL, UCOL_REORDER_CODE_CURRENCY;
+ *              or UCOL_REORDER_CODE_DEFAULT to restore the default max variable group
+ * @param pErrorCode Standard ICU error code. Its input value must
+ *                   pass the U_SUCCESS() test, or else the function returns
+ *                   immediately. Check for U_FAILURE() on output or use with
+ *                   function chaining. (See User Guide for details.)
+ * @see ucol_getMaxVariable
+ * @draft ICU 53
+ */
+U_DRAFT void U_EXPORT2
+ucol_setMaxVariable(UCollator *coll, UColReorderCode group, UErrorCode *pErrorCode);
+
+/**
+ * Returns the maximum reordering group whose characters are affected by UCOL_ALTERNATE_HANDLING.
+ * @param coll the collator
+ * @return the maximum variable reordering group.
+ * @see ucol_setMaxVariable
+ * @draft ICU 53
+ */
+U_DRAFT UColReorderCode U_EXPORT2
+ucol_getMaxVariable(const UCollator *coll);
+
+#endif  /* U_HIDE_DRAFT_API */
+
+#ifndef U_HIDE_DEPRECATED_API
+/**
+ * Sets the variable top to the primary weight of the specified string.
+ *
+ * Beginning with ICU 53, the variable top is pinned to
+ * the top of one of the supported reordering groups,
+ * and it must not be beyond the last of those groups.
+ * See ucol_setMaxVariable().
+ * @param coll the collator
  * @param varTop one or more (if contraction) UChars to which the variable top should be set
  * @param len length of variable top string. If -1 it is considered to be zero terminated.
- * @param status error code. If error code is set, the return value is undefined. 
- *               Errors set by this function are: <br>
- *    U_CE_NOT_FOUND_ERROR if more than one character was passed and there is no such 
- *    a contraction<br>
- *    U_PRIMARY_TOO_LONG_ERROR if the primary for the variable top has more than two bytes
- * @return a 32 bit value containing the value of the variable top in upper 16 bits. 
- *         Lower 16 bits are undefined
+ * @param status error code. If error code is set, the return value is undefined.
+ *               Errors set by this function are:<br>
+ *    U_CE_NOT_FOUND_ERROR if more than one character was passed and there is no such contraction<br>
+ *    U_ILLEGAL_ARGUMENT_ERROR if the variable top is beyond
+ *    the last reordering group supported by ucol_setMaxVariable()
+ * @return variable top primary weight
  * @see ucol_getVariableTop
  * @see ucol_restoreVariableTop
- * @stable ICU 2.0
+ * @deprecated ICU 53 Call ucol_setMaxVariable() instead.
  */
-U_STABLE uint32_t U_EXPORT2 
+U_DEPRECATED uint32_t U_EXPORT2 
 ucol_setVariableTop(UCollator *coll, 
                     const UChar *varTop, int32_t len, 
                     UErrorCode *status);
+#endif  /* U_HIDE_DEPRECATED_API */
 
 /** 
  * Gets the variable top value of a Collator. 
- * Lower 16 bits are undefined and should be ignored.
  * @param coll collator which variable top needs to be retrieved
  * @param status error code (not changed by function). If error code is set, 
  *               the return value is undefined.
- * @return the variable top value of a Collator.
+ * @return the variable top primary weight
+ * @see ucol_getMaxVariable
  * @see ucol_setVariableTop
  * @see ucol_restoreVariableTop
  * @stable ICU 2.0
  */
 U_STABLE uint32_t U_EXPORT2 ucol_getVariableTop(const UCollator *coll, UErrorCode *status);
 
-/** 
- * Sets the variable top to a collation element value supplied. Variable top is 
- * set to the upper 16 bits. 
- * Lower 16 bits are ignored.
- * @param coll collator which variable top needs to be changed
- * @param varTop CE value, as returned by ucol_setVariableTop or ucol)getVariableTop
- * @param status error code (not changed by function)
+/**
+ * Sets the variable top to the specified primary weight.
+ *
+ * Beginning with ICU 53, the variable top is pinned to
+ * the top of one of the supported reordering groups,
+ * and it must not be beyond the last of those groups.
+ * See ucol_setMaxVariable().
+ * @param varTop primary weight, as returned by ucol_setVariableTop or ucol_getVariableTop
+ * @param status error code
  * @see ucol_getVariableTop
  * @see ucol_setVariableTop
- * @stable ICU 2.0
+ * @deprecated ICU 53 Call ucol_setMaxVariable() instead.
  */
-U_STABLE void U_EXPORT2 
+U_DEPRECATED void U_EXPORT2 
 ucol_restoreVariableTop(UCollator *coll, const uint32_t varTop, UErrorCode *status);
 
 /**
@@ -1302,7 +1374,7 @@ U_STABLE const char * U_EXPORT2
 ucol_getLocaleByType(const UCollator *coll, ULocDataLocaleType type, UErrorCode *status);
 
 /**
- * Get an Unicode set that contains all the characters and sequences tailored in 
+ * Get a Unicode set that contains all the characters and sequences tailored in 
  * this collator. The result must be disposed of by using uset_close.
  * @param coll        The UCollator for which we want to get tailored chars
  * @param status      error code of the operation
@@ -1315,31 +1387,6 @@ U_STABLE USet * U_EXPORT2
 ucol_getTailoredSet(const UCollator *coll, UErrorCode *status);
 
 #ifndef U_HIDE_INTERNAL_API
-/**
- * Universal attribute getter that returns UCOL_DEFAULT if the value is default
- * @param coll collator which attributes are to be changed
- * @param attr attribute type
- * @return attribute value or UCOL_DEFAULT if the value is default
- * @param status to indicate whether the operation went on smoothly or there were errors
- * @see UColAttribute
- * @see UColAttributeValue
- * @see ucol_setAttribute
- * @internal ICU 3.0
- */
-U_INTERNAL UColAttributeValue  U_EXPORT2
-ucol_getAttributeOrDefault(const UCollator *coll, UColAttribute attr, UErrorCode *status);
-
-/** Check whether two collators are equal. Collators are considered equal if they
- *  will sort strings the same. This means that both the current attributes and the
- *  rules must be equivalent. Currently used for RuleBasedCollator::operator==.
- *  @param source first collator
- *  @param target second collator
- *  @return TRUE or FALSE
- *  @internal ICU 3.0
- */
-U_INTERNAL UBool U_EXPORT2
-ucol_equals(const UCollator *source, const UCollator *target);
-
 /** Calculates the set of unsafe code points, given a collator.
  *   A character is unsafe if you could append any character and cause the ordering to alter significantly.
  *   Collation sorts in normalized order, so anything that rearranges in normalization can cause this.
@@ -1355,12 +1402,6 @@ U_INTERNAL int32_t U_EXPORT2
 ucol_getUnsafeSet( const UCollator *coll,
                   USet *unsafe,
                   UErrorCode *status);
-
-/** Reset UCA's static pointers. You don't want to use this, unless your static memory can go away.
- * @internal ICU 3.2.1
- */
-U_INTERNAL void U_EXPORT2
-ucol_forgetUCA(void);
 
 /** Touches all resources needed for instantiating a collator from a short string definition,
  *  thus filling up the cache.
@@ -1409,14 +1450,14 @@ ucol_cloneBinary(const UCollator *coll,
  *  ucol_cloneBinary. Binary image used in instantiation of the 
  *  collator remains owned by the user and should stay around for 
  *  the lifetime of the collator. The API also takes a base collator
- *  which usualy should be UCA.
+ *  which must be the root collator.
  *  @param bin binary image owned by the user and required through the
  *             lifetime of the collator
  *  @param length size of the image. If negative, the API will try to
  *                figure out the length of the image
- *  @param base fallback collator, usually UCA. Base is required to be
- *              present through the lifetime of the collator. Currently 
- *              it cannot be NULL.
+ *  @param base Base collator, for lookup of untailored characters.
+ *              Must be the root collator, must not be NULL.
+ *              The base is required to be present through the lifetime of the collator.
  *  @param status for catching errors
  *  @return newly created collator
  *  @see ucol_cloneBinary

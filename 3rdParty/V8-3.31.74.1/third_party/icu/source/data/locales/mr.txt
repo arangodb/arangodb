@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mr.xml
@@ -20,10 +20,10 @@ mr{
         word-medial{"{0} … {1}"}
     }
     ExemplarCharacters{
-        "[\u093C ० १ २ ३ ४ ५ ६ ७ ८ ९ ॐ \u0902 \u0901 ः अ आ इ ई उ ऊ ऋ ऌ ऍ ए ऐ ऑ ओ औ क "
-        "ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह ळ ऽ ा ि ी "
-	"\u200C \u200D"
-        "\u0941 \u0942 \u0943 \u0944 \u0945 \u0947 \u0948 ॉ ो ौ \u094D]"
+        "[\u093C ॐ \u0902 \u0901 ः अ आ इ ई उ ऊ ऋ ऌ ऍ ए ऐ ऑ ओ औ क ख ग घ ङ च छ ज झ ञ ट "
+        "ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह ळ ऽ ा ि ी \u0941 \u0942 \u0943 "
+        "\u200C \u200D"
+        "\u0944 \u0945 \u0947 \u0948 ॉ ो ौ \u094D]"
     }
     ExemplarCharactersIndex{
         "[\u200D ॐ \u0902 ः अ आ इ ई उ ऊ ऋ ऌ ए ऐ ऑ ओ औ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त"
@@ -39,7 +39,7 @@ mr{
         deva{
             patterns{
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
+                decimalFormat{"#,##,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"[#E0]"}
             }
@@ -54,6 +54,7 @@ mr{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
         latn{
@@ -64,7 +65,7 @@ mr{
             patterns{
                 accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
                 currencyFormat{"¤#,##0.00"}
-                decimalFormat{"#,##0.###"}
+                decimalFormat{"#,##,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"[#E0]"}
             }
@@ -123,52 +124,52 @@ mr{
             patternsShort{
                 decimalFormat{
                     1000{
-                        one{"0K"}
-                        other{"0K"}
+                        one{"0 ह"}
+                        other{"0 ह"}
                     }
                     10000{
-                        one{"00K"}
-                        other{"00K"}
+                        one{"00 ह"}
+                        other{"00 ह"}
                     }
                     100000{
-                        one{"000K"}
-                        other{"000K"}
+                        one{"0 लाख"}
+                        other{"0 लाख"}
                     }
                     1000000{
-                        one{"0M"}
-                        other{"0M"}
+                        one{"00 लाख"}
+                        other{"00 लाख"}
                     }
                     10000000{
-                        one{"00M"}
-                        other{"00M"}
+                        one{"0 कोटी"}
+                        other{"0 कोटी"}
                     }
                     100000000{
-                        one{"000M"}
-                        other{"000M"}
+                        one{"00 कोटी"}
+                        other{"00 कोटी"}
                     }
                     1000000000{
-                        one{"0B"}
-                        other{"0B"}
+                        one{"0 अब्ज"}
+                        other{"0 अब्ज"}
                     }
                     10000000000{
-                        one{"00B"}
-                        other{"00B"}
+                        one{"00 अब्ज"}
+                        other{"00 अब्ज"}
                     }
                     100000000000{
-                        one{"000B"}
-                        other{"000B"}
+                        one{"0 खर्व"}
+                        other{"0 खर्व"}
                     }
                     1000000000000{
-                        one{"0T"}
-                        other{"0T"}
+                        one{"00 खर्व"}
+                        other{"00 खर्व"}
                     }
                     10000000000000{
-                        one{"00T"}
-                        other{"00T"}
+                        one{"0 पद्म"}
+                        other{"0 पद्म"}
                     }
                     100000000000000{
-                        one{"000T"}
-                        other{"000T"}
+                        one{"00 पद्म"}
+                        other{"00 पद्म"}
                     }
                 }
             }
@@ -184,11 +185,13 @@ mr{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
         native{"deva"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -257,14 +260,14 @@ mr{
                     H{"HH–HH v"}
                 }
                 M{
-                    M{"M–M"}
+                    M{"M – M"}
                 }
                 MEd{
                     M{"E, d/M – E, d/M"}
                     d{"E, d/M – E, d/M"}
                 }
                 MMM{
-                    M{"MMM–MMM"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
                     M{"E, d MMM – E, d MMM"}
@@ -272,14 +275,14 @@ mr{
                 }
                 MMMd{
                     M{"d MMM – d MMM"}
-                    d{"d–d MMM"}
+                    d{"d – d MMM"}
                 }
                 Md{
                     M{"d/M – d/M"}
                     d{"d/M – d/M"}
                 }
                 d{
-                    d{"d–d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} – {1}"}
                 h{
@@ -301,7 +304,7 @@ mr{
                     h{"h–h a v"}
                 }
                 y{
-                    y{"y–y G"}
+                    y{"y – y G"}
                 }
                 yM{
                     M{"M/y – M/y GGGGG"}
@@ -313,7 +316,7 @@ mr{
                     y{"E, d/M/y – E, d/M/y GGGGG"}
                 }
                 yMMM{
-                    M{"MMM–MMM y G"}
+                    M{"MMM – MMM y G"}
                     y{"MMM y – MMM y G"}
                 }
                 yMMMEd{
@@ -322,12 +325,12 @@ mr{
                     y{"E, d MMM y - E, d MMM y G"}
                 }
                 yMMMM{
-                    M{"MMMM–MMMM y G"}
+                    M{"MMMM – MMMM y G"}
                     y{"MMMM y – MMMM y G"}
                 }
                 yMMMd{
                     M{"d MMM – d, MMM y G"}
-                    d{"d–d, MMM y G"}
+                    d{"d – d, MMM y G"}
                     y{"d, MMM y – d, MMM y G"}
                 }
                 yMd{
@@ -339,12 +342,16 @@ mr{
         }
         gregorian{
             AmPmMarkers{
-                "[AM]",
-                "[PM]",
+                "म.पू.",
+                "म.उ.",
             }
-            AmPmMarkersNarrow{
+            AmPmMarkersAbbr{
                 "AM",
                 "PM",
+            }
+            AmPmMarkersNarrow{
+                "स",
+                "सं",
             }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -361,10 +368,13 @@ mr{
                 "{1}, {0}",
                 "{1}, {0}",
             }
+            NoonMarker{"मध्यान्ह"}
+            NoonMarkerNarrow{"दु"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -482,38 +492,46 @@ mr{
             }
             eras{
                 abbreviated{
-                    "ईसापूर्व",
-                    "सन",
+                    "इ. स. पू.",
+                    "इ. स.",
+                }
+                abbreviated%variant{
+                    "इ. स. पू. युग",
+                    "ख्रि. यु.",
                 }
                 wide{
                     "ईसवीसनपूर्व",
                     "ईसवीसन",
                 }
+                wide%variant{
+                    "ईसापूर्व युग",
+                    "ईसायुग",
+                }
             }
             intervalFormats{
                 H{
-                    H{"HH–HH"}
+                    H{"HH – HH"}
                 }
                 Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
                 }
                 Hmv{
-                    H{"HH:mm–HH:mm v"}
-                    m{"HH:mm–HH:mm v"}
+                    H{"HH:mm – HH:mm v"}
+                    m{"HH:mm – HH:mm v"}
                 }
                 Hv{
                     H{"HH–HH v"}
                 }
                 M{
-                    M{"M–M"}
+                    M{"M – M"}
                 }
                 MEd{
                     M{"E, d/M - E, d/M"}
                     d{"E, d/M - E, d/M"}
                 }
                 MMM{
-                    M{"MMM–MMM"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
                     M{"E, d MMM - E, d MMM"}
@@ -521,36 +539,36 @@ mr{
                 }
                 MMMd{
                     M{"d MMM - d MMM"}
-                    d{"d-d MMM"}
+                    d{"d - d MMM"}
                 }
                 Md{
                     M{"d/M - d/M"}
                     d{"d/M - d/M"}
                 }
                 d{
-                    d{"d–d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} – {1}"}
                 h{
                     a{"h a – h a"}
-                    h{"h–h a"}
+                    h{"h – h a"}
                 }
                 hm{
                     a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
                 }
                 hmv{
                     a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
                     h{"h–h a v"}
                 }
                 y{
-                    y{"y–y"}
+                    y{"y – y"}
                 }
                 yM{
                     M{"M/y – M/y"}
@@ -562,7 +580,7 @@ mr{
                     y{"E, d/M/y – E, d/M/y"}
                 }
                 yMMM{
-                    M{"MMM–MMM y"}
+                    M{"MMM – MMM y"}
                     y{"MMM y – MMM y"}
                 }
                 yMMMEd{
@@ -576,7 +594,7 @@ mr{
                 }
                 yMMMd{
                     M{"d MMM – d MMM, y"}
-                    d{"d-d MMM, y"}
+                    d{"d - d MMM, y"}
                     y{"d MMM, y – d MMM, y"}
                 }
                 yMd{
@@ -678,16 +696,16 @@ mr{
             quarters{
                 format{
                     abbreviated{
-                        "ति1",
-                        "ति2",
-                        "ति3",
-                        "ति4",
+                        "ति१",
+                        "ति२",
+                        "ति३",
+                        "ति४",
                     }
                     narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
+                        "१",
+                        "२",
+                        "३",
+                        "४",
                     }
                     wide{
                         "प्रथम तिमाही",
@@ -698,16 +716,16 @@ mr{
                 }
                 stand-alone{
                     abbreviated{
-                        "ति1",
-                        "ति2",
-                        "ति3",
-                        "ति4",
+                        "ति१",
+                        "ति२",
+                        "ति३",
+                        "ति४",
                     }
                     narrow{
-                        "1",
-                        "2",
-                        "3",
-                        "4",
+                        "१",
+                        "२",
+                        "३",
+                        "४",
                     }
                     wide{
                         "प्रथम तिमाही",
@@ -749,6 +767,32 @@ mr{
                 }
             }
         }
+        day-narrow{
+            dn{"दिवस"}
+            relativeTime{
+                future{
+                    one{"+{0} दिवस"}
+                    other{"+{0} दिवस"}
+                }
+                past{
+                    one{"-{0} दिवस"}
+                    other{"-{0} दिवस"}
+                }
+            }
+        }
+        day-short{
+            dn{"दिवस"}
+            relativeTime{
+                future{
+                    one{"{0} दिवसामध्ये"}
+                    other{"{0} दिवसांमध्ये"}
+                }
+                past{
+                    one{"{0} दिवसापूर्वी"}
+                    other{"{0} दिवसांपूर्वी"}
+                }
+            }
+        }
         dayperiod{
             dn{"[AM/PM]"}
         }
@@ -762,6 +806,20 @@ mr{
                 "1"{"पुढील शुक्रवार"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"मागील शुक्र"}
+                "0"{"हा शुक्र"}
+                "1"{"पुढील शुक्र"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"मागील शुक्र."}
+                "0"{"हा शुक्र."}
+                "1"{"पुढील शुक्र."}
+            }
+        }
         hour{
             dn{"तास"}
             relativeTime{
@@ -772,6 +830,32 @@ mr{
                 past{
                     one{"{0} तासापूर्वी"}
                     other{"{0} तासांपूर्वी"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"तास"}
+            relativeTime{
+                future{
+                    one{"+{0} ता"}
+                    other{"+{0} ता"}
+                }
+                past{
+                    one{"-{0} ता"}
+                    other{"-{0} ता"}
+                }
+            }
+        }
+        hour-short{
+            dn{"तास"}
+            relativeTime{
+                future{
+                    one{"{0} तासामध्ये"}
+                    other{"{0} तासामध्ये"}
+                }
+                past{
+                    one{"{0} तासापूर्वी"}
+                    other{"{0} तासापूर्वी"}
                 }
             }
         }
@@ -788,11 +872,51 @@ mr{
                 }
             }
         }
+        minute-narrow{
+            dn{"मि"}
+            relativeTime{
+                future{
+                    one{"+{0} मि"}
+                    other{"+{0} मि"}
+                }
+                past{
+                    one{"-{0} मि"}
+                    other{"-{0} मि"}
+                }
+            }
+        }
+        minute-short{
+            dn{"मि."}
+            relativeTime{
+                future{
+                    one{"{0} मिनि. मध्ये"}
+                    other{"{0} मिनि. मध्ये"}
+                }
+                past{
+                    one{"{0} मिनि. पूर्वी"}
+                    other{"{0} मिनि. पूर्वी"}
+                }
+            }
+        }
         mon{
             relative{
                 "-1"{"मागील सोमवार"}
                 "0"{"हा सोमवार"}
                 "1"{"पुढील सोमवार"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"मागील सोम"}
+                "0"{"हा सोम"}
+                "1"{"पुढील सो"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"मागील सोम."}
+                "0"{"हा सोम."}
+                "1"{"पुढील सोम."}
             }
         }
         month{
@@ -813,11 +937,90 @@ mr{
                 }
             }
         }
+        month-narrow{
+            dn{"महिना"}
+            relativeTime{
+                future{
+                    one{"+{0} महिना"}
+                    other{"+{0} महिना"}
+                }
+                past{
+                    one{"-{0} महिना"}
+                    other{"-{0} महिना"}
+                }
+            }
+        }
+        month-short{
+            dn{"महिना"}
+            relativeTime{
+                future{
+                    one{"{0} महिन्यामध्ये"}
+                    other{"{0} महिन्यामध्ये"}
+                }
+                past{
+                    one{"{0} महिन्यापूर्वी"}
+                    other{"{0} महिन्यापूर्वी"}
+                }
+            }
+        }
+        quarter{
+            dn{"तिमाही"}
+            relativeTime{
+                future{
+                    one{"{0} तिमाहीमध्ये"}
+                    other{"{0} तिमाहींमध्ये"}
+                }
+                past{
+                    one{"{0} तिमाहीपूर्वी"}
+                    other{"{0} तिमाहींपूर्वी"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"तिमाही"}
+            relativeTime{
+                future{
+                    one{"+{0} तिमाही"}
+                    other{"+{0} तिमाही"}
+                }
+                past{
+                    one{"-{0} तिमाही"}
+                    other{"-{0} तिमाही"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"तिमाही"}
+            relativeTime{
+                future{
+                    one{"{0} तिमाहीमध्ये"}
+                    other{"{0} तिमाहींमध्ये"}
+                }
+                past{
+                    one{"{0} तिमाहीपूर्वी"}
+                    other{"{0} तिमाहींपूर्वी"}
+                }
+            }
+        }
         sat{
             relative{
                 "-1"{"मागील शनिवार"}
                 "0"{"हा शनिवार"}
                 "1"{"पुढील शनिवार"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"मागील शनि"}
+                "0"{"हा शनि"}
+                "1"{"पुढील शनि"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"मागील शनि."}
+                "0"{"हा शनि."}
+                "1"{"पुढील शनि."}
             }
         }
         second{
@@ -836,11 +1039,51 @@ mr{
                 }
             }
         }
+        second-narrow{
+            dn{"से"}
+            relativeTime{
+                future{
+                    one{"+{0} से"}
+                    other{"+{0} से"}
+                }
+                past{
+                    one{"-{0} से पूर्वी"}
+                    other{"-{0} से पूर्वी"}
+                }
+            }
+        }
+        second-short{
+            dn{"से."}
+            relativeTime{
+                future{
+                    one{"{0} सेकंदामध्ये"}
+                    other{"{0} सेकंदामध्ये"}
+                }
+                past{
+                    one{"{0} सेकंदापूर्वी"}
+                    other{"{0} सेकंदापूर्वी"}
+                }
+            }
+        }
         sun{
             relative{
                 "-1"{"मागील रविवार"}
                 "0"{"हा रविवार"}
                 "1"{"पुढील रविवार"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"मागील रवि"}
+                "0"{"हा रवि"}
+                "1"{"पुढील रवि"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"मागील रवि."}
+                "0"{"हा रवि."}
+                "1"{"पुढील रवि."}
             }
         }
         thu{
@@ -850,11 +1093,39 @@ mr{
                 "1"{"पुढील गुरुवार"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"मागील गुरू"}
+                "0"{"हा गुरू"}
+                "1"{"पुढील गुरू"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"मागील गुरू."}
+                "0"{"हा गुरू."}
+                "1"{"पुढील गुरू."}
+            }
+        }
         tue{
             relative{
                 "-1"{"मागील मंगळवार"}
                 "0"{"हा मंगळवार"}
                 "1"{"पुढील मंगळवार"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"मागील मंगळ"}
+                "0"{"हा मंगळ"}
+                "1"{"पुढील मंगळ"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"मागील मंगळ."}
+                "0"{"हा मंगळ."}
+                "1"{"पुढील मंगळ."}
             }
         }
         wed{
@@ -864,8 +1135,22 @@ mr{
                 "1"{"पुढील बुधवार"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"मागील बुध"}
+                "0"{"हा बुध"}
+                "1"{"पुढील बुध"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"मागील बुध."}
+                "0"{"हा बुध."}
+                "1"{"पुढील बुध."}
+            }
+        }
         week{
-            dn{"आठव़डा"}
+            dn{"आठवडा"}
             relative{
                 "-1"{"मागील आठवडा"}
                 "0"{"हा आठवडा"}
@@ -879,6 +1164,32 @@ mr{
                 past{
                     one{"{0} आठवड्यापूर्वी"}
                     other{"{0} आठवड्यांपूर्वी"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"आठवडा"}
+            relativeTime{
+                future{
+                    one{"+{0} आठवडा"}
+                    other{"+{0} आठवडा"}
+                }
+                past{
+                    one{"-{0} आठवडा"}
+                    other{"-{0} आठवडा"}
+                }
+            }
+        }
+        week-short{
+            dn{"आठवडा"}
+            relativeTime{
+                future{
+                    one{"{0} आठवड्यामध्ये"}
+                    other{"{0} आठवड्यामध्ये"}
+                }
+                past{
+                    one{"{0} आठवड्यापूर्वी"}
+                    other{"{0} आठवड्यापूर्वी"}
                 }
             }
         }
@@ -903,6 +1214,32 @@ mr{
                 }
             }
         }
+        year-narrow{
+            dn{"वर्ष"}
+            relativeTime{
+                future{
+                    one{"+{0} वर्ष"}
+                    other{"+{0} वर्ष"}
+                }
+                past{
+                    one{"-{0} वर्ष"}
+                    other{"-{0} वर्ष"}
+                }
+            }
+        }
+        year-short{
+            dn{"वर्ष"}
+            relativeTime{
+                future{
+                    one{"{0} वर्षांमध्ये"}
+                    other{"{0} वर्षांमध्ये"}
+                }
+                past{
+                    one{"{0} वर्षांपूर्वी"}
+                    other{"{0} वर्षांपूर्वी"}
+                }
+            }
+        }
         zone{
             dn{"वेळ क्षेत्र"}
         }
@@ -919,6 +1256,12 @@ mr{
             end{"{0} आणि {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
         }
         unit-short{
             2{"{0}, {1}"}
@@ -943,122 +1286,5 @@ mr{
         x-Jamo{"जामो"}
         x-Pinyin{"पिनयिन"}
         x-Publishing{"प्रकाशन"}
-    }
-    units{
-        compound{
-            per{"{0} प्रति {1}"}
-        }
-        duration{
-            day{
-                one{"{0} दिवस"}
-                other{"{0} दिवस"}
-            }
-            hour{
-                one{"{0} तास"}
-                other{"{0} तास"}
-            }
-            millisecond{
-                one{"{0} मिलिसेकंद"}
-                other{"{0} मिलिसेकंद"}
-            }
-            minute{
-                one{"{0} मिनिट"}
-                other{"{0} मिनिटे"}
-            }
-            month{
-                one{"{0} महिना"}
-                other{"{0} महिने"}
-            }
-            second{
-                one{"{0} सेकंद"}
-                other{"{0} सेकंद"}
-            }
-            week{
-                one{"{0} आठवडा"}
-                other{"{0} आठवडे"}
-            }
-            year{
-                one{"{0} वर्ष"}
-                other{"{0} वर्षे"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0}दि"}
-                other{"{0}दि"}
-            }
-            hour{
-                one{"{0}ता"}
-                other{"{0}ता"}
-            }
-            millisecond{
-                one{"{0} मिलिसे"}
-                other{"{0} मिलिसे"}
-            }
-            minute{
-                one{"{0} मिनिट"}
-                other{"{0}मि"}
-            }
-            month{
-                one{"{0}म"}
-                other{"{0}म"}
-            }
-            second{
-                one{"{0}से"}
-                other{"{0}से"}
-            }
-            week{
-                one{"{0}आ"}
-                other{"{0}आ"}
-            }
-            year{
-                one{"{0}व"}
-                other{"{0}व"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} दिवस"}
-                other{"{0} दिवस"}
-            }
-            hour{
-                one{"{0} ता"}
-                other{"{0} ता"}
-            }
-            millisecond{
-                one{"{0} मिलिसे"}
-                other{"{0} मिलिसे"}
-            }
-            minute{
-                one{"{0} मिनि"}
-                other{"{0} मिनि"}
-            }
-            month{
-                one{"{0} महिना"}
-                other{"{0} महिने"}
-            }
-            second{
-                one{"{0} से"}
-                other{"{0} से"}
-            }
-            week{
-                one{"{0} आ"}
-                other{"{0} आ"}
-            }
-            year{
-                one{"{0} वर्ष"}
-                other{"{0} वर्षे"}
-            }
-        }
     }
 }

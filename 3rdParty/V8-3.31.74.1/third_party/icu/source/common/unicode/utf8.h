@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -78,9 +78,9 @@ utf8_countTrailBytes[256];
  * @internal
  */
 #define U8_COUNT_TRAIL_BYTES(leadByte) \
-    ((leadByte)<0xf0 ? \
-        ((leadByte)>=0xc0)+((leadByte)>=0xe0) : \
-        (leadByte)<0xfe ? 3+((leadByte)>=0xf8)+((leadByte)>=0xfc) : 0)
+    ((uint8_t)(leadByte)<0xf0 ? \
+        ((uint8_t)(leadByte)>=0xc0)+((uint8_t)(leadByte)>=0xe0) : \
+        (uint8_t)(leadByte)<0xfe ? 3+((uint8_t)(leadByte)>=0xf8)+((uint8_t)(leadByte)>=0xfc) : 0)
 
 /**
  * Counts the trail bytes for a UTF-8 lead byte of a valid UTF-8 sequence.
@@ -253,7 +253,6 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
     U8_NEXT(s, _u8_get_index, length, c); \
 }
 
-#ifndef U_HIDE_DRAFT_API
 /**
  * Get a code point from a string at a random-access offset,
  * without changing the offset.
@@ -277,14 +276,13 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
  * @param length int32_t string length
  * @param c output UChar32 variable, set to U+FFFD in case of an error
  * @see U8_GET
- * @draft ICU 51
+ * @stable ICU 51
  */
 #define U8_GET_OR_FFFD(s, start, i, length, c) { \
     int32_t _u8_get_index=(i); \
     U8_SET_CP_START(s, start, _u8_get_index); \
     U8_NEXT_OR_FFFD(s, _u8_get_index, length, c); \
 }
-#endif /* U_HIDE_DRAFT_API */
 
 /* definitions with forward iteration --------------------------------------- */
 
@@ -368,7 +366,6 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
     } \
 }
 
-#ifndef U_HIDE_DRAFT_API
 /**
  * Get a code point from a string at a code point boundary offset,
  * and advance the offset to the next code point boundary.
@@ -391,7 +388,7 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
  * @param length int32_t string length
  * @param c output UChar32 variable, set to U+FFFD in case of an error
  * @see U8_NEXT
- * @draft ICU 51
+ * @stable ICU 51
  */
 #define U8_NEXT_OR_FFFD(s, i, length, c) { \
     (c)=(uint8_t)(s)[(i)++]; \
@@ -419,7 +416,6 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
         } \
     } \
 }
-#endif /* U_HIDE_DRAFT_API */
 
 /**
  * Append a code point to a string, overwriting 1 to 4 bytes.
@@ -676,7 +672,6 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
     } \
 }
 
-#ifndef U_HIDE_DRAFT_API
 /**
  * Move the string offset from one code point boundary to the previous one
  * and get the code point between them.
@@ -699,7 +694,7 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
  * @param i int32_t string offset, must be start<i
  * @param c output UChar32 variable, set to U+FFFD in case of an error
  * @see U8_PREV
- * @draft ICU 51
+ * @stable ICU 51
  */
 #define U8_PREV_OR_FFFD(s, start, i, c) { \
     (c)=(uint8_t)(s)[--(i)]; \
@@ -707,7 +702,6 @@ utf8_back1SafeBody(const uint8_t *s, int32_t start, int32_t i);
         (c)=utf8_prevCharSafeBody((const uint8_t *)s, start, &(i), c, -3); \
     } \
 }
-#endif /* U_HIDE_DRAFT_API */
 
 /**
  * Move the string offset from one code point boundary to the previous one.

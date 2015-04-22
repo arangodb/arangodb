@@ -1,8 +1,8 @@
-﻿# LineBreakTest-6.3.0.txt
-# Date: 2012-12-20, 22:18:30 GMT [MD]
+﻿# LineBreakTest-7.0.0.txt
+# Date: 2014-02-19, 15:51:25 GMT [MD]
 #
 # Unicode Character Database
-# Copyright (c) 1991-2013 Unicode, Inc.
+# Copyright (c) 1991-2014 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 # For documentation, see http://www.unicode.org/reports/tr44/
 #
@@ -4914,9 +4914,9 @@
 × 002F × 0020 ÷ AC01 ÷	#  × [0.3] SOLIDUS (SY) × [7.01] SPACE (SP) ÷ [18.0] HANGUL SYLLABLE GAG (H3) ÷ [0.3]
 × 002F × 0308 ÷ AC01 ÷	#  × [0.3] SOLIDUS (SY) × [9.0] COMBINING DIAERESIS (CM) ÷ [999.0] HANGUL SYLLABLE GAG (H3) ÷ [0.3]
 × 002F × 0308 × 0020 ÷ AC01 ÷	#  × [0.3] SOLIDUS (SY) × [9.0] COMBINING DIAERESIS (CM) × [7.01] SPACE (SP) ÷ [18.0] HANGUL SYLLABLE GAG (H3) ÷ [0.3]
-× 002F × 05D0 ÷	#  × [0.3] SOLIDUS (SY) ÷ [21.05] HEBREW LETTER ALEF (HL) ÷ [0.3]
+× 002F × 05D0 ÷ #  × [0.3] SOLIDUS (SY) ÷ [21.05] HEBREW LETTER ALEF (HL) ÷ [0.3] -- ICU patch for ticket #10176
 × 002F × 0020 ÷ 05D0 ÷	#  × [0.3] SOLIDUS (SY) × [7.01] SPACE (SP) ÷ [18.0] HEBREW LETTER ALEF (HL) ÷ [0.3]
-× 002F × 0308 × 05D0 ÷	#  × [0.3] SOLIDUS (SY) × [9.0] COMBINING DIAERESIS (CM) ÷ [21.05] HEBREW LETTER ALEF (HL) ÷ [0.3]
+× 002F × 0308 × 05D0 ÷  #  × [0.3] SOLIDUS (SY) × [9.0] COMBINING DIAERESIS (CM) ÷ [21.05] HEBREW LETTER ALEF (HL) ÷ [0.3] -- ICU patch for ticket #10176
 × 002F × 0308 × 0020 ÷ 05D0 ÷	#  × [0.3] SOLIDUS (SY) × [9.0] COMBINING DIAERESIS (CM) × [7.01] SPACE (SP) ÷ [18.0] HEBREW LETTER ALEF (HL) ÷ [0.3]
 × 002F × 002D ÷	#  × [0.3] SOLIDUS (SY) × [21.02] HYPHEN-MINUS (HY) ÷ [0.3]
 × 002F × 0020 ÷ 002D ÷	#  × [0.3] SOLIDUS (SY) × [7.01] SPACE (SP) ÷ [18.0] HYPHEN-MINUS (HY) ÷ [0.3]

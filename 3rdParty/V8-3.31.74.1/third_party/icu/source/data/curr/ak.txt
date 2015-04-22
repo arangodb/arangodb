@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ak.xml
@@ -27,10 +27,6 @@ ak{
             "BHD",
             "Baren Dina",
         }
-        BIF{
-            "BIF",
-            "Burundi Frank",
-        }
         BWP{
             "BWP",
             "Botswana Pula",
@@ -47,14 +43,6 @@ ak{
             "CN¥",
             "Yuan",
         }
-        CVE{
-            "CVE",
-            "Ɛskudo",
-        }
-        DJF{
-            "DJF",
-            "Gyebuti Frank",
-        }
         DZD{
             "DZD",
             "Ɔlgyeria Dina",
@@ -62,10 +50,6 @@ ak{
         EGP{
             "EGP",
             "Egypt Pɔn",
-        }
-        ERN{
-            "ERN",
-            "Ɛretereya Nakfa",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ ak{
             "GH₵",
             "Ghana Sidi",
         }
-        GMD{
-            "GMD",
-            "Gambia Dalasi",
-        }
-        GNS{
-            "GNS",
-            "Gini Frank",
-        }
         INR{
-            "₹",
+            "Rs.",
             "India Rupi",
         }
         JPY{
@@ -102,18 +78,6 @@ ak{
         KES{
             "KES",
             "Kenya Hyelen",
-        }
-        KMF{
-            "KMF",
-            "Komoro Frank",
-        }
-        LRD{
-            "LRD",
-            "Laeberia Dɔla",
-        }
-        LSL{
-            "LSL",
-            "Lesoto Loti",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ ak{
             "SAR",
             "Saudi Riyal",
         }
-        SCR{
-            "SCR",
-            "Seyhyɛls Rupi",
-        }
         SDG{
             "SDG",
             "Sudan Dina",
         }
-        SHP{
-            "SHP",
-            "St Helena Pɔn",
-        }
         SLL{
             "SLL",
             "Leone",
-        }
-        SOS{
-            "SOS",
-            "Somailia Hyelen",
-        }
-        STD{
-            "STD",
-            "Sao Tome ne Principe Dobra",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -212,5 +156,5 @@ ak{
             "Zambia Kwacha",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

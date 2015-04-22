@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2004-2006, International Business Machines
+* Copyright (c) 2004-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 * Author: Alan Liu
@@ -29,15 +29,11 @@ class MeasureUnit;
 /**
  * An amount of a specified unit, consisting of a number and a Unit.
  * For example, a length measure consists of a number and a length
- * unit, such as feet or meters.  This is an abstract class.
- * Subclasses specify a concrete Unit type.
+ * unit, such as feet or meters.
  *
- * <p>Measure objects are parsed and formatted by subclasses of
- * MeasureFormat.
+ * <p>Measure objects are formatted by MeasureFormat.
  *
  * <p>Measure objects are immutable.
- *
- * <p>This is an abstract class.
  *
  * @author Alan Liu
  * @stable ICU 3.0
@@ -74,7 +70,7 @@ class U_I18N_API Measure: public UObject {
      * have the same class as returned by getDynamicClassID().
      * @stable ICU 3.0
      */
-    virtual UObject* clone() const = 0;
+    virtual UObject* clone() const;
 
     /**
      * Destructor
@@ -102,6 +98,32 @@ class U_I18N_API Measure: public UObject {
      * @stable ICU 3.0
      */
     inline const MeasureUnit& getUnit() const;
+
+    /**
+     * Return the class ID for this class. This is useful only for comparing to
+     * a return value from getDynamicClassID(). For example:
+     * <pre>
+     * .   Base* polymorphic_pointer = createPolymorphicObject();
+     * .   if (polymorphic_pointer->getDynamicClassID() ==
+     * .       erived::getStaticClassID()) ...
+     * </pre>
+     * @return          The class ID for all objects of this class.
+     * @draft ICU 53
+     */
+    static UClassID U_EXPORT2 getStaticClassID(void);
+
+    /**
+     * Returns a unique class ID POLYMORPHICALLY. Pure virtual override. This
+     * method is to implement a simple version of RTTI, since not all C++
+     * compilers support genuine RTTI. Polymorphic operator==() and clone()
+     * methods call this method.
+     *
+     * @return          The class ID for this object. All objects of a
+     *                  given class have the same class ID.  Objects of
+     *                  other classes have different class IDs.
+     * @draft ICU 53
+     */
+    virtual UClassID getDynamicClassID(void) const;
 
  protected:
     /**

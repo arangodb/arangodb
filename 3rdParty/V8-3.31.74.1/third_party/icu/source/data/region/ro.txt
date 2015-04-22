@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ro.xml
@@ -53,9 +53,9 @@ ro{
         BZ{"Belize"}
         CA{"Canada"}
         CC{"Insulele Cocos (Keeling)"}
-        CD{"Republica Democrată Congo"}
+        CD{"Congo - Kinshasa"}
         CF{"Republica Centrafricană"}
-        CG{"Congo"}
+        CG{"Congo - Brazzaville"}
         CH{"Elveția"}
         CI{"Côte d’Ivoire"}
         CK{"Insulele Cook"}
@@ -112,7 +112,7 @@ ro{
         GU{"Guam"}
         GW{"Guineea-Bissau"}
         GY{"Guyana"}
-        HK{"R.A.S. Hong Kong a Chinei"}
+        HK{"Hong Kong"}
         HM{"Insula Heard și Insulele McDonald"}
         HN{"Honduras"}
         HR{"Croația"}
@@ -166,7 +166,7 @@ ro{
         ML{"Mali"}
         MM{"Myanmar (Birmania)"}
         MN{"Mongolia"}
-        MO{"R.A.S. Macao a Chinei"}
+        MO{"Macao"}
         MP{"Insulele Mariane de Nord"}
         MQ{"Martinica"}
         MR{"Mauritania"}
@@ -201,7 +201,7 @@ ro{
         PM{"Saint-Pierre și Miquelon"}
         PN{"Insulele Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Teritoriile Palestiniene"}
+        PS{"Palestina"}
         PT{"Portugalia"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -252,7 +252,7 @@ ro{
         TZ{"Tanzania"}
         UA{"Ucraina"}
         UG{"Uganda"}
-        UM{"Insulele Minore Îndepărtate ale Statelor Unite ale Americii"}
+        UM{"Insulele Îndepărtate ale S.U.A."}
         US{"Statele Unite ale Americii"}
         UY{"Uruguay"}
         UZ{"Uzbekistan"}
@@ -273,12 +273,16 @@ ro{
         ZW{"Zimbabwe"}
         ZZ{"Regiune necunoscută"}
     }
+    Countries%variant{
+        CD{"Congo (Republica Democrată Congo)"}
+        CG{"Congo (Republica)"}
+        CI{"Coasta de Fildeș"}
+        FK{"Insulele Falkland (Insulele Malvine)"}
+        MK{"Macedonia (FRIM)"}
+    }
     CountriesShort{
         GB{"Regatul Unit"}
-        HK{"Hong Kong"}
-        MO{"Macao"}
-        PS{"Palestina"}
         US{"S.U.A."}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

@@ -3,21 +3,91 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-cd $(dirname $0)/../source/data
+# Keep only the currencies used by the larget 60 economies in terms of GDP
+# with several more added in.
+# TODO(jshin): Use ucurr_isAvailable in ICU to drop more currencies.
+# See also http://en.wikipedia.org/wiki/List_of_circulating_currencies
+# Copied from scripts/trim_data.sh. Need to refactor.
+for currency in $(grep -v '^#' currencies.list)
+do
+  OP=${KEEPLIST:+|}
+  KEEPLIST=${KEEPLIST}${OP}${currency}
+done
+KEEPLIST="(${KEEPLIST})"
 
-# Excludes curr data which is not used on Android.
-echo Overwriting curr/reslocal.mk...
-cat >curr/reslocal.mk <<END
-CURR_CLDR_VERSION = 1.9
-CURR_SYNTHETIC_ALIAS =
-CURR_ALIAS_SOURCE =
-CURR_SOURCE =
-END
+cd "$(dirname "$0")/.."
+
+echo "Applying brkitr.patch"
+patch -p1 < android/brkitr.patch || { echo "failed to patch"; exit 1; }
+
+cd source/data
+
+for i in curr/*.txt
+do
+  locale=$(basename $i .txt)
+  [ $locale == 'supplementalData' ] && continue;
+  echo "Overwriting $i for $locale"
+  sed -n -r -i \
+    '1, /^'${locale}'\{$/ p
+     /^    "%%ALIAS"\{/p
+     /^    %%Parent\{/p
+     /^    Currencies\{$/, /^    \}$/ {
+       /^    Currencies\{$/ p
+       /^        '$KEEPLIST'\{$/, /^        \}$/ p
+       /^    \}$/ p
+     }
+     /^    Currencies%narrow\{$/, /^    \}$/ {
+       /^    Currencies%narrow\{$/ p
+       /^        '$KEEPLIST'\{".*\}$/ p
+       /^    \}$/ p
+     }
+     /^    CurrencyPlurals\{$/, /^    \}$/ {
+       /^    CurrencyPlurals\{$/ p
+       /^        '$KEEPLIST'\{$/, /^        \}$/ p
+       /^    \}$/ p
+     }
+     /^    [cC]urrency(Map|Meta|Spacing|UnitPatterns)\{$/, /^    \}$/ p
+     /^    Version\{.*\}$/p
+     /^\}$/p' $i
+done
+
+# Chrome on Android is not localized to the following languages and we
+# have to minimize the locale data for them.
+EXTRA_LANGUAGES="bn et gu kn ml mr ms ta te"
+
+# TODO(jshin): Copied from scripts/trim_data.sh. Need to refactor.
+echo Creating minimum locale data in locales
+for lang in ${EXTRA_LANGUAGES}
+do
+  target=locales/${lang}.txt
+  [  -e ${target} ] || { echo "missing ${lang}"; continue; }
+  echo Overwriting ${target} ...
+
+  # Do not include '%%Parent' line on purpose.
+  sed -n -r -i \
+    '1, /^'${lang}'\{$/p
+     /^    "%%ALIAS"\{/p
+     /^    AuxExemplarCharacters\{.*\}$/p
+     /^    AuxExemplarCharacters\{$/, /^    \}$/p
+     /^    ExemplarCharacters\{.*\}$/p
+     /^    ExemplarCharacters\{$/, /^    \}$/p
+     /^    (LocaleScript|layout)\{$/, /^    \}$/p
+     /^    Version\{.*$/p
+     /^\}$/p' ${target}
+done
+
+echo Overwriting curr/reslocal.mk to drop the currency names
+echo for ${EXTRA_LANGUAGES}
+for lang in ${EXTRA_LANGUAGES}
+do
+  sed -i -e '/'$lang'.txt/ d' curr/reslocal.mk
+done
+
 
 # Excludes region data. On Android Java API is used to get the data.
 echo Overwriting region/reslocal.mk...
 cat >region/reslocal.mk <<END
-REGION_CLDR_VERSION = 1.9
+REGION_CLDR_VERSION = %version%
 REGION_SYNTHETIC_ALIAS =
 REGION_ALIAS_SOURCE =
 REGION_SOURCE =
@@ -94,12 +164,15 @@ for i in locales/*.txt; do
     ja)
       EXTRA_CAL='japanese'
       ;;
+    *)
+      EXTRA_CAL=''
+      ;;
   esac
 
   # Add 'roc' calendar to zh_Hant*.
-  [[ "$(basename $i .txt)" =~ 'zh_Hant' ]] && { EXTRA_CAL="$EXTRA_CAL|roc"; }
+  [[ "$(basename $i .txt)" =~ 'zh_Hant' ]] && { EXTRA_CAL="${EXTRA_CAL}|roc"; }
 
-  CAL_PATTERN="(${COMMON_CALENDARS}|${EXTRA_CAL})"
+  CAL_PATTERN="(${COMMON_CALENDARS}${EXTRA_CAL:+|${EXTRA_CAL}})"
   echo $CAL_PATTERN
 
   echo Overwriting $i...

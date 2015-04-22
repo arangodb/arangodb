@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-*   Copyright (C) 2009-2012, International Business Machines
+*   Copyright (C) 2009-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ******************************************************************************
 */
@@ -174,18 +174,16 @@ U_CAPI void U_EXPORT2 ulist_resetList(UList *list) {
 
 U_CAPI void U_EXPORT2 ulist_deleteList(UList *list) {
     UListNode *listHead = NULL;
-    UListNode *listPointer = NULL;
-    
+
     if (list != NULL) {
         listHead = list->head;
-        listPointer = listHead;
         while (listHead != NULL) {
-            listPointer = listHead->next;
-            
+            UListNode *listPointer = listHead->next;
+
             if (listHead->forceDelete) {
                 uprv_free(listHead->data);
             }
-            
+
             uprv_free(listHead);
             listHead = listPointer;
         }

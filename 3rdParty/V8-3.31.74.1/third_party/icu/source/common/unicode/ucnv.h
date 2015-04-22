@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
  *  ucnv.h:
@@ -18,7 +18,7 @@
 
 /**
  * \file
- * \brief C API: Character conversion 
+ * \brief C API: Character conversion
  *
  * <h2>Character Conversion C API</h2>
  *
@@ -39,7 +39,7 @@
  * or {@link ucnv_setToUCallBack() } on the converter. The header ucnv_err.h defines
  * many other callback actions that can be used instead of a character substitution.</p>
  *
- * <p>More information about this API can be found in our 
+ * <p>More information about this API can be found in our
  * <a href="http://icu-project.org/userguide/conversion.html">User's
  * Guide</a>.</p>
  */
@@ -116,7 +116,7 @@ typedef enum {
     /** @stable ICU 2.0 */
     UCNV_LMBCS_1 = 11,
     /** @stable ICU 2.0 */
-    UCNV_LMBCS_2, 
+    UCNV_LMBCS_2,
     /** @stable ICU 2.0 */
     UCNV_LMBCS_3,
     /** @stable ICU 2.0 */
@@ -237,7 +237,7 @@ U_CDECL_END
 #define UCNV_OPTION_SEP_CHAR ','
 
 /**
- * String version of UCNV_OPTION_SEP_CHAR. 
+ * String version of UCNV_OPTION_SEP_CHAR.
  * @see ucnv_open
  * @stable ICU 2.0
  */
@@ -251,7 +251,7 @@ U_CDECL_END
 #define UCNV_VALUE_SEP_CHAR '='
 
 /**
- * String version of UCNV_VALUE_SEP_CHAR. 
+ * String version of UCNV_VALUE_SEP_CHAR.
  * @see ucnv_open
  * @stable ICU 2.0
  */
@@ -269,7 +269,7 @@ U_CDECL_END
 
 /**
  * Converter option for specifying a version selector (0..9) for some converters.
- * For example, 
+ * For example,
  * \code
  *   ucnv_open("UTF-7,version=1", &errorCode);
  * \endcode
@@ -361,29 +361,29 @@ ucnv_compareNames(const char *name1, const char *name2);
  * @see ucnv_compareNames
  * @stable ICU 2.0
  */
-U_STABLE UConverter* U_EXPORT2 
+U_STABLE UConverter* U_EXPORT2
 ucnv_open(const char *converterName, UErrorCode *err);
 
 
 /**
- * Creates a Unicode converter with the names specified as unicode string. 
+ * Creates a Unicode converter with the names specified as unicode string.
  * The name should be limited to the ASCII-7 alphanumerics range.
  * The actual name will be resolved with the alias file
  * using a case-insensitive string comparison that ignores
  * leading zeroes and all non-alphanumeric characters.
  * E.g., the names "UTF8", "utf-8", "u*T@f08" and "Utf 8" are all equivalent.
  * (See also ucnv_compareNames().)
- * If <TT>NULL</TT> is passed for the converter name, it will create 
+ * If <TT>NULL</TT> is passed for the converter name, it will create
  * one with the ucnv_getDefaultName() return value.
  * If the alias is ambiguous, then the preferred converter is used
  * and the status is set to U_AMBIGUOUS_ALIAS_WARNING.
  *
  * <p>See ucnv_open for the complete details</p>
- * @param name Name of the UConverter table in a zero terminated 
+ * @param name Name of the UConverter table in a zero terminated
  *        Unicode string
- * @param err outgoing error status <TT>U_MEMORY_ALLOCATION_ERROR, 
+ * @param err outgoing error status <TT>U_MEMORY_ALLOCATION_ERROR,
  *        U_FILE_ACCESS_ERROR</TT>
- * @return the created Unicode converter object, or <TT>NULL</TT> if an 
+ * @return the created Unicode converter object, or <TT>NULL</TT> if an
  *        error occured
  * @see ucnv_open
  * @see ucnv_openCCSID
@@ -391,7 +391,7 @@ ucnv_open(const char *converterName, UErrorCode *err);
  * @see ucnv_compareNames
  * @stable ICU 2.0
  */
-U_STABLE UConverter* U_EXPORT2 
+U_STABLE UConverter* U_EXPORT2
 ucnv_openU(const UChar *name,
            UErrorCode *err);
 
@@ -466,20 +466,20 @@ ucnv_openCCSID(int32_t codepage,
 
 /**
  * <p>Creates a UConverter object specified from a packageName and a converterName.</p>
- * 
+ *
  * <p>The packageName and converterName must point to an ICU udata object, as defined by
  *   <code> udata_open( packageName, "cnv", converterName, err) </code> or equivalent.
  * Typically, packageName will refer to a (.dat) file, or to a package registered with
  * udata_setAppData(). Using a full file or directory pathname for packageName is deprecated.</p>
- * 
+ *
  * <p>The name will NOT be looked up in the alias mechanism, nor will the converter be
  * stored in the converter cache or the alias table. The only way to open further converters
- * is call this function multiple times, or use the ucnv_safeClone() function to clone a 
+ * is call this function multiple times, or use the ucnv_safeClone() function to clone a
  * 'master' converter.</p>
  *
  * <p>A future version of ICU may add alias table lookups and/or caching
  * to this function.</p>
- * 
+ *
  * <p>Example Use:
  *      <code>cnv = ucnv_openPackage("myapp", "myconverter", &err);</code>
  * </p>
@@ -494,7 +494,7 @@ ucnv_openCCSID(int32_t codepage,
  * @see ucnv_close
  * @stable ICU 2.2
  */
-U_STABLE UConverter* U_EXPORT2 
+U_STABLE UConverter* U_EXPORT2
 ucnv_openPackage(const char *packageName, const char *converterName, UErrorCode *err);
 
 /**
@@ -522,7 +522,7 @@ ucnv_openPackage(const char *packageName, const char *converterName, UErrorCode 
  *
  * @param cnv converter to be cloned
  * @param stackBuffer <em>Deprecated functionality as of ICU 52, use NULL.</em><br>
- *  user allocated space for the new clone. If NULL new memory will be allocated. 
+ *  user allocated space for the new clone. If NULL new memory will be allocated.
  *  If buffer is not large enough, new memory will be allocated.
  *  Clients can use the U_CNV_SAFECLONE_BUFFERSIZE. This will probably be enough to avoid memory allocations.
  * @param pBufferSize <em>Deprecated functionality as of ICU 52, use NULL or 1.</em><br>
@@ -536,10 +536,10 @@ ucnv_openPackage(const char *packageName, const char *converterName, UErrorCode 
  * @return pointer to the new clone
  * @stable ICU 2.0
  */
-U_STABLE UConverter * U_EXPORT2 
-ucnv_safeClone(const UConverter *cnv, 
+U_STABLE UConverter * U_EXPORT2
+ucnv_safeClone(const UConverter *cnv,
                void             *stackBuffer,
-               int32_t          *pBufferSize, 
+               int32_t          *pBufferSize,
                UErrorCode       *status);
 
 #ifndef U_HIDE_DEPRECATED_API
@@ -595,7 +595,7 @@ U_NAMESPACE_END
  *
  * @param converter the Unicode converter
  * @param subChars the subsitution characters
- * @param len on input the capacity of subChars, on output the number 
+ * @param len on input the capacity of subChars, on output the number
  * of bytes copied to it
  * @param  err the outgoing error status code.
  * If the substitution character array is too small, an
@@ -693,7 +693,7 @@ ucnv_getInvalidChars(const UConverter *converter,
  *
  * @param converter the Unicode converter
  * @param errUChars the UChars which were in error
- * @param len on input the capacity of errUChars, on output the number of 
+ * @param len on input the capacity of errUChars, on output the number of
  *  UChars which were copied to it
  * @param err the error status code.
  * If the substitution character array is too small, an
@@ -724,7 +724,7 @@ ucnv_reset(UConverter *converter);
  * @param converter the Unicode converter
  * @stable ICU 2.0
  */
-U_STABLE void U_EXPORT2 
+U_STABLE void U_EXPORT2
 ucnv_resetToUnicode(UConverter *converter);
 
 /**
@@ -735,7 +735,7 @@ ucnv_resetToUnicode(UConverter *converter);
  * @param converter the Unicode converter
  * @stable ICU 2.0
  */
-U_STABLE void U_EXPORT2 
+U_STABLE void U_EXPORT2
 ucnv_resetFromUnicode(UConverter *converter);
 
 /**
@@ -779,8 +779,10 @@ ucnv_resetFromUnicode(UConverter *converter);
  * - ISO-2022-CN: 8 (4-byte designator sequences + 2-byte SS2/SS3 + DBCS)
  *
  * @param converter The Unicode converter.
- * @return The maximum number of bytes per UChar that are output by ucnv_fromUnicode(),
- *         to be used together with UCNV_GET_MAX_BYTES_FOR_STRING for buffer allocation.
+ * @return The maximum number of bytes per UChar (16 bit code unit)
+ *    that are output by ucnv_fromUnicode(),
+ *    to be used together with UCNV_GET_MAX_BYTES_FOR_STRING
+ *    for buffer allocation.
  *
  * @see UCNV_GET_MAX_BYTES_FOR_STRING
  * @see ucnv_getMinCharSize
@@ -812,10 +814,10 @@ ucnv_getMaxCharSize(const UConverter *converter);
      (((int32_t)(length)+10)*(int32_t)(maxCharSize))
 
 /**
- * Returns the minimum byte length for characters in this codepage. 
+ * Returns the minimum byte length (per codepoint) for characters in this codepage.
  * This is usually either 1 or 2.
  * @param converter the Unicode converter
- * @return the minimum number of bytes allowed by this particular converter
+ * @return the minimum number of bytes per codepoint allowed by this particular converter
  * @see ucnv_getMaxCharSize
  * @stable ICU 2.0
  */
@@ -823,7 +825,7 @@ U_STABLE int8_t U_EXPORT2
 ucnv_getMinCharSize(const UConverter *converter);
 
 /**
- * Returns the display name of the converter passed in based on the Locale 
+ * Returns the display name of the converter passed in based on the Locale
  * passed in. If the locale contains no display name, the internal ASCII
  * name will be filled in.
  *
@@ -845,7 +847,7 @@ ucnv_getDisplayName(const UConverter *converter,
 
 /**
  * Gets the internal, canonical name of the converter (zero-terminated).
- * The lifetime of the returned string will be that of the converter 
+ * The lifetime of the returned string will be that of the converter
  * passed to this function.
  * @param converter the Unicode converter
  * @param err UErrorCode status
@@ -853,7 +855,7 @@ ucnv_getDisplayName(const UConverter *converter,
  * @see ucnv_getDisplayName
  * @stable ICU 2.0
  */
-U_STABLE const char * U_EXPORT2 
+U_STABLE const char * U_EXPORT2
 ucnv_getName(const UConverter *converter, UErrorCode *err);
 
 /**
@@ -884,10 +886,10 @@ ucnv_getCCSID(const UConverter *converter,
               UErrorCode *err);
 
 /**
- * Gets a codepage platform associated with the converter. Currently, 
+ * Gets a codepage platform associated with the converter. Currently,
  * only <TT>UCNV_IBM</TT> will be returned.
- * Does not test if the converter is <TT>NULL</TT> or if converter's data 
- * table is <TT>NULL</TT>. 
+ * Does not test if the converter is <TT>NULL</TT> or if converter's data
+ * table is <TT>NULL</TT>.
  * @param converter the Unicode converter
  * @param err the error status code.
  * @return The codepage platform
@@ -899,7 +901,7 @@ ucnv_getPlatform(const UConverter *converter,
 
 /**
  * Gets the type of the converter
- * e.g. SBCS, MBCS, DBCS, UTF8, UTF16_BE, UTF16_LE, ISO_2022, 
+ * e.g. SBCS, MBCS, DBCS, UTF8, UTF16_BE, UTF16_LE, ISO_2022,
  * EBCDIC_STATEFUL, LATIN_1
  * @param converter a valid, opened converter
  * @return the type of the converter
@@ -911,20 +913,20 @@ ucnv_getType(const UConverter * converter);
 /**
  * Gets the "starter" (lead) bytes for converters of type MBCS.
  * Will fill in an <TT>U_ILLEGAL_ARGUMENT_ERROR</TT> if converter passed in
- * is not MBCS. Fills in an array of type UBool, with the value of the byte 
+ * is not MBCS. Fills in an array of type UBool, with the value of the byte
  * as offset to the array. For example, if (starters[0x20] == TRUE) at return,
  * it means that the byte 0x20 is a starter byte in this converter.
  * Context pointers are always owned by the caller.
- * 
+ *
  * @param converter a valid, opened converter of type MBCS
  * @param starters an array of size 256 to be filled in
- * @param err error status, <TT>U_ILLEGAL_ARGUMENT_ERROR</TT> if the 
+ * @param err error status, <TT>U_ILLEGAL_ARGUMENT_ERROR</TT> if the
  * converter is not a type which can return starters.
  * @see ucnv_getType
  * @stable ICU 2.0
  */
 U_STABLE void U_EXPORT2
-ucnv_getStarters(const UConverter* converter, 
+ucnv_getStarters(const UConverter* converter,
                  UBool starters[256],
                  UErrorCode* err);
 
@@ -997,7 +999,7 @@ ucnv_getUnicodeSet(const UConverter *cnv,
 
 /**
  * Gets the current calback function used by the converter when an illegal
- *  or invalid codepage sequence is found. 
+ *  or invalid codepage sequence is found.
  * Context pointers are always owned by the caller.
  *
  * @param converter the unicode converter
@@ -1012,7 +1014,7 @@ ucnv_getToUCallBack (const UConverter * converter,
                      const void **context);
 
 /**
- * Gets the current callback function used by the converter when illegal 
+ * Gets the current callback function used by the converter when illegal
  * or invalid Unicode sequence is found.
  * Context pointers are always owned by the caller.
  *
@@ -1078,26 +1080,26 @@ ucnv_setFromUCallBack (UConverter * converter,
  * characters. This function is optimized for converting a continuous
  * stream of data in buffer-sized chunks, where the entire source and
  * target does not fit in available buffers.
- * 
- * The source pointer is an in/out parameter. It starts out pointing where the 
- * conversion is to begin, and ends up pointing after the last UChar consumed. 
- * 
+ *
+ * The source pointer is an in/out parameter. It starts out pointing where the
+ * conversion is to begin, and ends up pointing after the last UChar consumed.
+ *
  * Target similarly starts out pointer at the first available byte in the output
  * buffer, and ends up pointing after the last byte written to the output.
- * 
- * The converter always attempts to consume the entire source buffer, unless 
+ *
+ * The converter always attempts to consume the entire source buffer, unless
  * (1.) the target buffer is full, or (2.) a failing error is returned from the
  * current callback function.  When a successful error status has been
  * returned, it means that all of the source buffer has been
  *  consumed. At that point, the caller should reset the source and
  *  sourceLimit pointers to point to the next chunk.
- * 
+ *
  * At the end of the stream (flush==TRUE), the input is completely consumed
  * when *source==sourceLimit and no error code is set.
  * The converter object is then automatically reset by this function.
  * (This means that a converter need not be reset explicitly between data
  * streams if it finishes the previous stream without errors.)
- * 
+ *
  * This is a <I>stateful</I> conversion. Additionally, even when all source data has
  * been consumed, some data may be in the converters' internal state.
  * Call this function repeatedly, updating the target pointers with
@@ -1110,20 +1112,20 @@ ucnv_setFromUCallBack (UConverter * converter,
  *  codepage characters to. Output : points to after the last codepage character copied
  *  to <TT>target</TT>.
  * @param targetLimit the pointer just after last of the <TT>target</TT> buffer
- * @param source I/O parameter, pointer to pointer to the source Unicode character buffer. 
+ * @param source I/O parameter, pointer to pointer to the source Unicode character buffer.
  * @param sourceLimit the pointer just after the last of the source buffer
  * @param offsets if NULL is passed, nothing will happen to it, otherwise it needs to have the same number
  * of allocated cells as <TT>target</TT>. Will fill in offsets from target to source pointer
  * e.g: <TT>offsets[3]</TT> is equal to 6, it means that the <TT>target[3]</TT> was a result of transcoding <TT>source[6]</TT>
  * For output data carried across calls, and other data without a specific source character
- * (such as from escape sequences or callbacks)  -1 will be placed for offsets. 
+ * (such as from escape sequences or callbacks)  -1 will be placed for offsets.
  * @param flush set to <TT>TRUE</TT> if the current source buffer is the last available
  * chunk of the source, <TT>FALSE</TT> otherwise. Note that if a failing status is returned,
  * this function may have to be called multiple times with flush set to <TT>TRUE</TT> until
  * the source buffer is consumed.
  * @param err the error status.  <TT>U_ILLEGAL_ARGUMENT_ERROR</TT> will be set if the
  * converter is <TT>NULL</TT>.
- * <code>U_BUFFER_OVERFLOW_ERROR</code> will be set if the target is full and there is 
+ * <code>U_BUFFER_OVERFLOW_ERROR</code> will be set if the target is full and there is
  * still data to be written to the target.
  * @see ucnv_fromUChars
  * @see ucnv_convert
@@ -1131,7 +1133,7 @@ ucnv_setFromUCallBack (UConverter * converter,
  * @see ucnv_setToUCallBack
  * @stable ICU 2.0
  */
-U_STABLE void U_EXPORT2 
+U_STABLE void U_EXPORT2
 ucnv_fromUnicode (UConverter * converter,
                   char **target,
                   const char *targetLimit,
@@ -1146,15 +1148,15 @@ ucnv_fromUnicode (UConverter * converter,
  * characters. This function is optimized for converting a continuous
  * stream of data in buffer-sized chunks, where the entire source and
  * target does not fit in available buffers.
- * 
- * The source pointer is an in/out parameter. It starts out pointing where the 
- * conversion is to begin, and ends up pointing after the last byte of source consumed. 
- * 
+ *
+ * The source pointer is an in/out parameter. It starts out pointing where the
+ * conversion is to begin, and ends up pointing after the last byte of source consumed.
+ *
  * Target similarly starts out pointer at the first available UChar in the output
- * buffer, and ends up pointing after the last UChar written to the output. 
+ * buffer, and ends up pointing after the last UChar written to the output.
  * It does NOT necessarily keep UChar sequences together.
- * 
- * The converter always attempts to consume the entire source buffer, unless 
+ *
+ * The converter always attempts to consume the entire source buffer, unless
  * (1.) the target buffer is full, or (2.) a failing error is returned from the
  * current callback function.  When a successful error status has been
  * returned, it means that all of the source buffer has been
@@ -1166,7 +1168,7 @@ ucnv_fromUnicode (UConverter * converter,
  * The converter object is then automatically reset by this function.
  * (This means that a converter need not be reset explicitly between data
  * streams if it finishes the previous stream without errors.)
- * 
+ *
  * This is a <I>stateful</I> conversion. Additionally, even when all source data has
  * been consumed, some data may be in the converters' internal state.
  * Call this function repeatedly, updating the target pointers with
@@ -1178,21 +1180,21 @@ ucnv_fromUnicode (UConverter * converter,
  * @param target I/O parameter. Input : Points to the beginning of the buffer to copy
  *  UChars into. Output : points to after the last UChar copied.
  * @param targetLimit the pointer just after the end of the <TT>target</TT> buffer
- * @param source I/O parameter, pointer to pointer to the source codepage buffer. 
+ * @param source I/O parameter, pointer to pointer to the source codepage buffer.
  * @param sourceLimit the pointer to the byte after the end of the source buffer
  * @param offsets if NULL is passed, nothing will happen to it, otherwise it needs to have the same number
  * of allocated cells as <TT>target</TT>. Will fill in offsets from target to source pointer
  * e.g: <TT>offsets[3]</TT> is equal to 6, it means that the <TT>target[3]</TT> was a result of transcoding <TT>source[6]</TT>
  * For output data carried across calls, and other data without a specific source character
- * (such as from escape sequences or callbacks)  -1 will be placed for offsets. 
+ * (such as from escape sequences or callbacks)  -1 will be placed for offsets.
  * @param flush set to <TT>TRUE</TT> if the current source buffer is the last available
  * chunk of the source, <TT>FALSE</TT> otherwise. Note that if a failing status is returned,
  * this function may have to be called multiple times with flush set to <TT>TRUE</TT> until
  * the source buffer is consumed.
  * @param err the error status.  <TT>U_ILLEGAL_ARGUMENT_ERROR</TT> will be set if the
  * converter is <TT>NULL</TT>.
- * <code>U_BUFFER_OVERFLOW_ERROR</code> will be set if the target is full and there is 
- * still data to be written to the target. 
+ * <code>U_BUFFER_OVERFLOW_ERROR</code> will be set if the target is full and there is
+ * still data to be written to the target.
  * @see ucnv_fromUChars
  * @see ucnv_convert
  * @see ucnv_getMinCharSize
@@ -1200,7 +1202,7 @@ ucnv_fromUnicode (UConverter * converter,
  * @see ucnv_getNextUChar
  * @stable ICU 2.0
  */
-U_STABLE void U_EXPORT2 
+U_STABLE void U_EXPORT2
 ucnv_toUnicode(UConverter *converter,
                UChar **target,
                const UChar *targetLimit,
@@ -1331,8 +1333,8 @@ ucnv_toUChars(UConverter *cnv,
  *  updated to point after the bytes consumed in the conversion call.
  * @param sourceLimit points to the end of the input buffer
  * @param err fills in error status (see ucnv_toUnicode)
- * <code>U_INDEX_OUTOFBOUNDS_ERROR</code> will be set if the input 
- * is empty or does not convert to any output (e.g.: pure state-change 
+ * <code>U_INDEX_OUTOFBOUNDS_ERROR</code> will be set if the input
+ * is empty or does not convert to any output (e.g.: pure state-change
  * codes SI/SO, escape sequences for ISO 2022,
  * or if the callback did not output anything, ...).
  * This function will not set a <code>U_BUFFER_OVERFLOW_ERROR</code> because
@@ -1436,7 +1438,7 @@ ucnv_getNextUChar(UConverter * converter,
  *                    NULL, NULL, NULL, NULL,
  *                    TRUE, TRUE,
  *                    pErrorCode);
- * 
+ *
  *     myReleaseCachedUTF8Converter(utf8Cnv);
  *
  *     // return the output string length, but without preflighting
@@ -1724,7 +1726,7 @@ ucnv_openAllNames(UErrorCode *pErrorCode);
  * @return number of names on alias list for given alias
  * @stable ICU 2.0
  */
-U_STABLE uint16_t U_EXPORT2 
+U_STABLE uint16_t U_EXPORT2
 ucnv_countAliases(const char *alias, UErrorCode *pErrorCode);
 
 /**
@@ -1739,7 +1741,7 @@ ucnv_countAliases(const char *alias, UErrorCode *pErrorCode);
  * @see ucnv_countAliases
  * @stable ICU 2.0
  */
-U_STABLE const char * U_EXPORT2 
+U_STABLE const char * U_EXPORT2
 ucnv_getAlias(const char *alias, uint16_t n, UErrorCode *pErrorCode);
 
 /**
@@ -1755,7 +1757,7 @@ ucnv_getAlias(const char *alias, uint16_t n, UErrorCode *pErrorCode);
  * @param pErrorCode result of operation
  * @stable ICU 2.0
  */
-U_STABLE void U_EXPORT2 
+U_STABLE void U_EXPORT2
 ucnv_getAliases(const char *alias, const char **aliases, UErrorCode *pErrorCode);
 
 /**
@@ -1887,9 +1889,9 @@ ucnv_setDefaultName(const char *name);
 #endif  /* U_HIDE_SYSTEM_API */
 
 /**
- * Fixes the backslash character mismapping.  For example, in SJIS, the backslash 
- * character in the ASCII portion is also used to represent the yen currency sign.  
- * When mapping from Unicode character 0x005C, it's unclear whether to map the 
+ * Fixes the backslash character mismapping.  For example, in SJIS, the backslash
+ * character in the ASCII portion is also used to represent the yen currency sign.
+ * When mapping from Unicode character 0x005C, it's unclear whether to map the
  * character back to yen or backslash in SJIS.  This function will take the input
  * buffer and replace all the yen sign characters with backslash.  This is necessary
  * when the user tries to open a file with the input buffer on Windows.
@@ -1910,7 +1912,7 @@ ucnv_fixFileSeparator(const UConverter *cnv, UChar *source, int32_t sourceLen);
  * Determines if the converter contains ambiguous mappings of the same
  * character or not.
  * @param cnv the converter to be tested
- * @return TRUE if the converter contains ambiguous mapping of the same 
+ * @return TRUE if the converter contains ambiguous mapping of the same
  * character, FALSE otherwise.
  * @stable ICU 2.0
  */
@@ -1927,12 +1929,12 @@ ucnv_isAmbiguous(const UConverter *cnv);
  * http://www.icu-project.org/userguide/conversion-data.html#ucmformat
  *
  * @param cnv The converter to set the fallback mapping usage on.
- * @param usesFallback TRUE if the user wants the converter to take advantage of the fallback 
+ * @param usesFallback TRUE if the user wants the converter to take advantage of the fallback
  * mapping, FALSE otherwise.
  * @stable ICU 2.0
  * @see ucnv_usesFallback
  */
-U_STABLE void U_EXPORT2 
+U_STABLE void U_EXPORT2
 ucnv_setFallback(UConverter *cnv, UBool usesFallback);
 
 /**
@@ -1944,7 +1946,7 @@ ucnv_setFallback(UConverter *cnv, UBool usesFallback);
  * @stable ICU 2.0
  * @see ucnv_setFallback
  */
-U_STABLE UBool U_EXPORT2 
+U_STABLE UBool U_EXPORT2
 ucnv_usesFallback(const UConverter *cnv);
 
 /**
@@ -1968,12 +1970,12 @@ ucnv_usesFallback(const UConverter *cnv);
  *
  * @param source            The source string in which the signature should be detected.
  * @param sourceLength      Length of the input string, or -1 if terminated with a NUL byte.
- * @param signatureLength   A pointer to int32_t to receive the number of bytes that make up the signature 
+ * @param signatureLength   A pointer to int32_t to receive the number of bytes that make up the signature
  *                          of the detected UTF. 0 if not detected.
  *                          Can be a NULL pointer.
  * @param pErrorCode        ICU error code in/out parameter.
  *                          Must fulfill U_SUCCESS before the function call.
- * @return The name of the encoding detected. NULL if encoding is not detected. 
+ * @return The name of the encoding detected. NULL if encoding is not detected.
  * @stable ICU 2.4
  */
 U_STABLE const char* U_EXPORT2
@@ -1983,8 +1985,8 @@ ucnv_detectUnicodeSignature(const char* source,
                             UErrorCode *pErrorCode);
 
 /**
- * Returns the number of UChars held in the converter's internal state 
- * because more input is needed for completing the conversion. This function is 
+ * Returns the number of UChars held in the converter's internal state
+ * because more input is needed for completing the conversion. This function is
  * useful for mapping semantics of ICU's converter interface to those of iconv,
  * and this information is not needed for normal conversion.
  * @param cnv       The converter in which the input is held
@@ -1998,7 +2000,7 @@ ucnv_fromUCountPending(const UConverter* cnv, UErrorCode* status);
 
 /**
  * Returns the number of chars held in the converter's internal state
- * because more input is needed for completing the conversion. This function is 
+ * because more input is needed for completing the conversion. This function is
  * useful for mapping semantics of ICU's converter interface to those of iconv,
  * and this information is not needed for normal conversion.
  * @param cnv       The converter in which the input is held as internal state

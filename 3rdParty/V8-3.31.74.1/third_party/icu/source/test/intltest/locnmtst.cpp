@@ -1,6 +1,6 @@
 /*********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2010-2013, International Business Machines Corporation and
+ * Copyright (c) 2010-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  *********************************************************************/
 
@@ -259,69 +259,94 @@ typedef struct {
     const char * displayLocale;
     UDisplayContext dialectHandling;
     UDisplayContext capitalization;
+    UDisplayContext displayLength;
     const char * localeToBeNamed;
     const UChar * result;
 } LocNameDispContextItem;
 
 static char en[]    = "en";
-static char en_US[] = "en_US";
+static char en_GB[] = "en_GB";
 
 static UChar daFor_en[]       = {0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0}; //"engelsk"
-static UChar daFor_en_US[]    = {0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0x20,0x28,0x55,0x53,0x41,0x29,0}; //"engelsk (USA)"
-static UChar daFor_en_US_D[]  = {0x61,0x6D,0x65,0x72,0x69,0x6B,0x61,0x6E,0x73,0x6B,0x20,0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0}; //"amerikansk engelsk"
-static UChar esFor_en[]       = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0}; //"ingles" with acute on e
-static UChar esFor_en_US[]    = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x28,0x45,0x73,0x74,0x61,0x64,0x6F,0x73,0x20,0x55,0x6E,0x69,0x64,0x6F,0x73,0x29,0}; //"ingles (Estados Unidos)" ...
-static UChar esFor_en_US_D[]  = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x65,0x73,0x74,0x61,0x64,0x6F,0x75,0x6E,0x69,0x64,0x65,0x6E,0x73,0x65,0}; //"ingles estadounidense" ...
+static UChar daFor_en_GB[]    = {0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0x20,0x28,0x53,0x74,0x6F,0x72,0x62,0x72,0x69,0x74,0x61,0x6E,0x6E,0x69,0x65,0x6E,0x29,0}; //"engelsk (Storbritannien)"
+static UChar daFor_en_GB_S[]  = {0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0x20,0x28,0x55,0x4B,0x29,0}; //"engelsk (UK)"
+static UChar daFor_en_GB_D[]  = {0x62,0x72,0x69,0x74,0x69,0x73,0x6B,0x20,0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0}; //"britisk engelsk"
+static UChar esFor_en[]       = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0}; //"ingles" with acute on the e
+static UChar esFor_en_GB[]    = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x28,0x52,0x65,0x69,0x6E,0x6F,0x20,0x55,0x6E,0x69,0x64,0x6F,0x29,0}; //"ingles (Reino Unido)" ...
+static UChar esFor_en_GB_S[]  = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x28,0x52,0x55,0x29,0}; //"ingles (RU)" ...
+static UChar esFor_en_GB_D[]  = {0x69,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x62,0x72,0x69,0x74,0xE1,0x6E,0x69,0x63,0x6F,0}; //"ingles britanico" with acute on the e, a
 #if !UCONFIG_NO_BREAK_ITERATION
 static UChar daFor_en_T[]     = {0x45,0x6E,0x67,0x65,0x6C,0x73,0x6B,0}; //"Engelsk"
-static UChar daFor_en_US_T[]  = {0x45,0x6E,0x67,0x65,0x6C,0x73,0x6B,0x20,0x28,0x55,0x53,0x41,0x29,0}; //"Engelsk (USA)"
-static UChar daFor_en_US_DT[] = {0x41,0x6D,0x65,0x72,0x69,0x6B,0x61,0x6E,0x73,0x6B,0x20,0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0}; //"Amerikansk engelsk"
-static UChar esFor_en_T[]     = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0}; //"Ingles" ...
-static UChar esFor_en_US_T[]  = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x28,0x45,0x73,0x74,0x61,0x64,0x6F,0x73,0x20,0x55,0x6E,0x69,0x64,0x6F,0x73,0x29,0}; //"Ingles (Estados Unidos)" ...
-static UChar esFor_en_US_DT[] = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x65,0x73,0x74,0x61,0x64,0x6F,0x75,0x6E,0x69,0x64,0x65,0x6E,0x73,0x65,0}; //"Ingles estadounidense" ...
+static UChar daFor_en_GB_T[]  = {0x45,0x6E,0x67,0x65,0x6C,0x73,0x6B,0x20,0x28,0x53,0x74,0x6F,0x72,0x62,0x72,0x69,0x74,0x61,0x6E,0x6E,0x69,0x65,0x6E,0x29,0}; //"Engelsk (Storbritannien)"
+static UChar daFor_en_GB_ST[] = {0x45,0x6E,0x67,0x65,0x6C,0x73,0x6B,0x20,0x28,0x55,0x4B,0x29,0}; //"Engelsk (UK)"
+static UChar daFor_en_GB_DT[] = {0x42,0x72,0x69,0x74,0x69,0x73,0x6B,0x20,0x65,0x6E,0x67,0x65,0x6C,0x73,0x6B,0}; //"Britisk engelsk"
+static UChar esFor_en_T[]     = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0}; //"Ingles" with acute on the e
+static UChar esFor_en_GB_T[]  = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x28,0x52,0x65,0x69,0x6E,0x6F,0x20,0x55,0x6E,0x69,0x64,0x6F,0x29,0}; //"Ingles (Reino Unido)" ...
+static UChar esFor_en_GB_ST[] = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x28,0x52,0x55,0x29,0}; //"Ingles (RU)" ...
+static UChar esFor_en_GB_DT[] = {0x49,0x6E,0x67,0x6C,0xE9,0x73,0x20,0x62,0x72,0x69,0x74,0xE1,0x6E,0x69,0x63,0x6F,0}; //"Ingles britanico" with acute on the e, a
 #endif /* #if !UCONFIG_NO_BREAK_ITERATION */
 
 static const LocNameDispContextItem ctxtItems[] = {
-    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    en,    daFor_en   },
-    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    en_US, daFor_en_US   },
-    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    en_US, daFor_en_US_D  },
-    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    en,    esFor_en   },
-    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    en_US, esFor_en_US   },
-    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    en_US, esFor_en_US_D  },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_FULL,   en,    daFor_en },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_SHORT,  en_GB, daFor_en_GB_S },
+    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB_D },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_FULL,   en,    esFor_en },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_SHORT,  en_GB, esFor_en_GB_S },
+    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,    UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_D },
 #if !UCONFIG_NO_BREAK_ITERATION
-    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, en,    daFor_en_T },
-    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, en_US, daFor_en_US_T },
-    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, en_US, daFor_en_US_DT },
-    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, en,    esFor_en_T },
-    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, en_US, esFor_en_US_T },
-    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       en_US, esFor_en_US_DT },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_FULL,   en,    daFor_en_T },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB_T },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_SHORT,  en_GB, daFor_en_GB_ST },
+    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB_DT },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_FULL,   en,    esFor_en_T },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_T },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_SHORT,  en_GB, esFor_en_GB_ST },
+    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_DT },
 
-    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       en,    daFor_en_T },
-    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       en_US, daFor_en_US_T },
-    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       en_US, daFor_en_US_DT },
-    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       en,    esFor_en_T },
-    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       en_US, esFor_en_US_T },
-    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_BEGINNING_OF_SENTENCE, en_US, esFor_en_US_DT },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_FULL,   en,    daFor_en_T },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB_T },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_SHORT,  en_GB, daFor_en_GB_ST },
+    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB_DT },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_FULL,   en,    esFor_en_T },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_T },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_SHORT,  en_GB, esFor_en_GB_ST },
+    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_UI_LIST_OR_MENU,       UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_DT },
+
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_FULL,   en,    daFor_en },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB },
+    { "da", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_SHORT,  en_GB, daFor_en_GB_S },
+    { "da", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_FULL,   en_GB, daFor_en_GB_D },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_FULL,   en,    esFor_en_T },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_T },
+    { "es", UDISPCTX_STANDARD_NAMES, UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_SHORT,  en_GB, esFor_en_GB_ST },
+    { "es", UDISPCTX_DIALECT_NAMES,  UDISPCTX_CAPITALIZATION_FOR_STANDALONE,            UDISPCTX_LENGTH_FULL,   en_GB, esFor_en_GB_DT },
  #endif /* #if !UCONFIG_NO_BREAK_ITERATION */
-    { NULL, (UDisplayContext)0,      (UDisplayContext)0,                                NULL,  NULL }
+    { NULL, (UDisplayContext)0,      (UDisplayContext)0,                                (UDisplayContext)0,     NULL,  NULL }
 };
 
 void LocaleDisplayNamesTest::TestUldnDisplayContext() {
     const LocNameDispContextItem * ctxtItemPtr;
     for (ctxtItemPtr = ctxtItems; ctxtItemPtr->displayLocale != NULL; ctxtItemPtr++) {
-        UDisplayContext contexts[2] = {ctxtItemPtr->dialectHandling, ctxtItemPtr->capitalization};
+        UDisplayContext contexts[3] = {ctxtItemPtr->dialectHandling, ctxtItemPtr->capitalization, ctxtItemPtr->displayLength};
         UErrorCode status = U_ZERO_ERROR;
-        ULocaleDisplayNames * uldn = uldn_openForContext(ctxtItemPtr->displayLocale, contexts, 2, &status);
+        ULocaleDisplayNames * uldn = uldn_openForContext(ctxtItemPtr->displayLocale, contexts, 3, &status);
         if (U_FAILURE(status)) {
             errln(UnicodeString("FAIL: uldn_openForContext failed for locale ") + ctxtItemPtr->displayLocale +
-                  ", dialectHandling " + ctxtItemPtr->dialectHandling + ", capitalization " +  ctxtItemPtr->capitalization);
+                  ", dialectHandling " + ctxtItemPtr->dialectHandling +
+                  ", capitalization " +  ctxtItemPtr->capitalization +
+                  ", displayLength " +  ctxtItemPtr->displayLength);
         } else {
             UDisplayContext dialectHandling = uldn_getContext(uldn, UDISPCTX_TYPE_DIALECT_HANDLING, &status);
             UDisplayContext capitalization = uldn_getContext(uldn, UDISPCTX_TYPE_CAPITALIZATION, &status);
+            UDisplayContext displayLength = uldn_getContext(uldn, UDISPCTX_TYPE_DISPLAY_LENGTH, &status);
             if (U_FAILURE(status)) {
                 errln(UnicodeString("FAIL: uldn_getContext status ") + (int)status);
-            } else if (dialectHandling != ctxtItemPtr->dialectHandling || capitalization != ctxtItemPtr->capitalization) {
-                errln("FAIL: uldn_getContext retrieved incorrect dialectHandling or capitalization");
+            } else if (dialectHandling != ctxtItemPtr->dialectHandling ||
+                       capitalization != ctxtItemPtr->capitalization ||
+                       displayLength != ctxtItemPtr->displayLength) {
+                errln("FAIL: uldn_getContext retrieved incorrect dialectHandling, capitalization, or displayLength");
             } else {
                 UChar nameBuf[ULOC_FULLNAME_CAPACITY];
                 int32_t len = uldn_localeDisplayName(uldn, ctxtItemPtr->localeToBeNamed, nameBuf, ULOC_FULLNAME_CAPACITY, &status);

@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 2012, International Business Machines
+*   Copyright (C) 2012,2014 International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -21,9 +21,10 @@
 
 U_NAMESPACE_BEGIN
 
+/* Can't use #ifndef U_HIDE_INTERNAL_API for the entire EnumSet class, needed in .h file declarations */
 /**
  * enum bitset for boolean fields. Similar to Java EnumSet<>. 
- * Needs to range check.
+ * Needs to range check. Used for private instance variables.
  * @internal
  */
 template<typename T, uint32_t minValue, uint32_t limitValue>
@@ -32,6 +33,7 @@ public:
     inline EnumSet() : fBools(0) {}
     inline EnumSet(const EnumSet<T,minValue,limitValue>& other) : fBools(other.fBools) {}
     inline ~EnumSet() {}
+#ifndef U_HIDE_INTERNAL_API
     inline void clear() { fBools=0; }
     inline void add(T toAdd) { set(toAdd, 1); }
     inline void remove(T toRemove) { set(toRemove, 0); }
@@ -48,6 +50,7 @@ public:
     inline uint32_t getAll() const {
         return fBools; 
     }
+#endif /* U_HIDE_INTERNAL_API */
 
 private:
     inline uint32_t flag(T toCheck) const { return (1<<(toCheck-minValue)); }

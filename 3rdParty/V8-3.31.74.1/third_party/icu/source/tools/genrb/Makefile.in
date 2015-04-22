@@ -1,6 +1,6 @@
 #################################################################################
 ## Makefile.in for ICU - tools/genrb                                            #
-## Copyright (c) 1999-2013, International Business Machines Corporation and     #
+## Copyright (c) 1999-2014, International Business Machines Corporation and     #
 ## others. All Rights Reserved.                                                 #
 #################################################################################
 
@@ -32,6 +32,7 @@ TARGET = $(BINDIR)/$(TARGET_STUB_NAME)$(EXEEXT)
 @ICUIO_TRUE@DERB = $(BINDIR)/$(DERB_STUB_NAME)$(EXEEXT)
 
 CPPFLAGS += -I$(top_srcdir)/common -I$(top_srcdir)/i18n -I$(srcdir)/../toolutil -I$(top_srcdir)/io
+CPPFLAGS += -DUNISTR_FROM_CHAR_EXPLICIT=explicit -DUNISTR_FROM_STRING_EXPLICIT=explicit
 LIBS = $(LIBICUTOOLUTIL) $(LIBICUI18N) $(LIBICUUC) $(DEFAULT_LIBS) $(LIB_M)
 
 OBJECTS = errmsg.o genrb.o parse.o read.o reslist.o ustr.o rbutil.o \

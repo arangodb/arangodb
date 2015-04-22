@@ -258,7 +258,7 @@ do
 	    ;;
 
 	--ldflags)
-	    echo $ECHO_N "${LDFLAGS} ${ICULIBS} ${LIBS} ${ECHO_C}"
+	    echo $ECHO_N "${LDFLAGS} ${ICULIBS} ${ECHO_C}"
 # $RPATH_LDFLAGS
 	    ;;
 

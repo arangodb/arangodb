@@ -3,7 +3,7 @@
 //
 /*
 ***************************************************************************
-*   Copyright (C) 2002-2012 International Business Machines Corporation   *
+*   Copyright (C) 2002-2013 International Business Machines Corporation   *
 *   and others. All rights reserved.                                      *
 ***************************************************************************
 */
@@ -275,21 +275,21 @@ RegexPattern::compile(const UnicodeString &regex,
     if (U_FAILURE(status)) {
         return NULL;
     }
-    
+
     const uint32_t allFlags = UREGEX_CANON_EQ | UREGEX_CASE_INSENSITIVE | UREGEX_COMMENTS |
     UREGEX_DOTALL   | UREGEX_MULTILINE        | UREGEX_UWORD |
     UREGEX_ERROR_ON_UNKNOWN_ESCAPES           | UREGEX_UNIX_LINES | UREGEX_LITERAL;
-    
+
     if ((flags & ~allFlags) != 0) {
         status = U_REGEX_INVALID_FLAG;
         return NULL;
     }
-    
+
     if ((flags & UREGEX_CANON_EQ) != 0) {
         status = U_REGEX_UNIMPLEMENTED;
         return NULL;
     }
-    
+
     RegexPattern *This = new RegexPattern;
     if (This == NULL) {
         status = U_MEMORY_ALLOCATION_ERROR;
@@ -301,15 +301,15 @@ RegexPattern::compile(const UnicodeString &regex,
         return NULL;
     }
     This->fFlags = flags;
-    
+
     RegexCompile     compiler(This, status);
     compiler.compile(regex, pe, status);
-    
+
     if (U_FAILURE(status)) {
         delete This;
         This = NULL;
     }
-    
+
     return This;
 }
 
@@ -355,7 +355,7 @@ RegexPattern::compile(UText                *regex,
 
     RegexCompile     compiler(This, status);
     compiler.compile(regex, pe, status);
-    
+
     if (U_FAILURE(status)) {
         delete This;
         This = NULL;
@@ -538,12 +538,12 @@ UnicodeString RegexPattern::pattern() const {
         int64_t nativeLen = utext_nativeLength(fPattern);
         int32_t len16 = utext_extract(fPattern, 0, nativeLen, NULL, 0, &status); // buffer overflow error
         UnicodeString result;
-        
+
         status = U_ZERO_ERROR;
         UChar *resultChars = result.getBuffer(len16);
         utext_extract(fPattern, 0, nativeLen, resultChars, len16, &status); // unterminated warning
         result.releaseBuffer(len16);
-        
+
         return result;
     }
 }
@@ -622,8 +622,9 @@ int32_t  RegexPattern::split(UText *input,
 //           Debugging function only.
 //
 //---------------------------------------------------------------------
-#if defined(REGEX_DEBUG)
 void   RegexPattern::dumpOp(int32_t index) const {
+    (void)index;  // Suppress warnings in non-debug build.
+#if defined(REGEX_DEBUG)
     static const char * const opNames[] = {URX_OPCODE_NAMES};
     int32_t op          = fCompiledPat->elementAti(index);
     int32_t val         = URX_VAL(op);
@@ -633,7 +634,7 @@ void   RegexPattern::dumpOp(int32_t index) const {
         pinnedType = 0;
     }
 
-    REGEX_DUMP_DEBUG_PRINTF(("%4d   %08x    %-15s  ", index, op, opNames[pinnedType]));
+    printf("%4d   %08x    %-15s  ", index, op, opNames[pinnedType]);
     switch (type) {
     case URX_NOP:
     case URX_DOTANY:
@@ -682,12 +683,12 @@ void   RegexPattern::dumpOp(int32_t index) const {
     case URX_LOOP_C:
     case URX_LOOP_DOT_I:
         // types with an integer operand field.
-        REGEX_DUMP_DEBUG_PRINTF(("%d", val));
+        printf("%d", val);
         break;
 
     case URX_ONECHAR:
     case URX_ONECHAR_I:
-        REGEX_DUMP_DEBUG_PRINTF(("%c", val<256?val:'?'));
+        printf("%c", val<256?val:'?');
         break;
 
     case URX_STRING:
@@ -700,7 +701,7 @@ void   RegexPattern::dumpOp(int32_t index) const {
             for (i=val; i<val+length; i++) {
                 UChar c = fLiteralText[i];
                 if (c < 32 || c >= 256) {c = '.';}
-                REGEX_DUMP_DEBUG_PRINTF(("%c", c));
+                printf("%c", c);
             }
         }
         break;
@@ -712,7 +713,7 @@ void   RegexPattern::dumpOp(int32_t index) const {
             UnicodeSet *set = (UnicodeSet *)fSets->elementAt(val);
             set->toPattern(s, TRUE);
             for (int32_t i=0; i<s.length(); i++) {
-                REGEX_DUMP_DEBUG_PRINTF(("%c", s.charAt(i)));
+                printf("%c", s.charAt(i));
             }
         }
         break;
@@ -722,89 +723,88 @@ void   RegexPattern::dumpOp(int32_t index) const {
         {
             UnicodeString s;
             if (val & URX_NEG_SET) {
-                REGEX_DUMP_DEBUG_PRINTF(("NOT "));
+                printf("NOT ");
                 val &= ~URX_NEG_SET;
             }
             UnicodeSet *set = fStaticSets[val];
             set->toPattern(s, TRUE);
             for (int32_t i=0; i<s.length(); i++) {
-                REGEX_DUMP_DEBUG_PRINTF(("%c", s.charAt(i)));
+                printf("%c", s.charAt(i));
             }
         }
         break;
 
 
     default:
-        REGEX_DUMP_DEBUG_PRINTF(("??????"));
+        printf("??????");
         break;
     }
-    REGEX_DUMP_DEBUG_PRINTF(("\n"));
-}
+    printf("\n");
 #endif
+}
 
 
+void RegexPattern::dumpPattern() const {
 #if defined(REGEX_DEBUG)
-U_CAPI void  U_EXPORT2
-RegexPatternDump(const RegexPattern *This) {
     int      index;
     int      i;
 
-    REGEX_DUMP_DEBUG_PRINTF(("Original Pattern:  "));
-    UChar32 c = utext_next32From(This->fPattern, 0);
+    printf("Original Pattern:  ");
+    UChar32 c = utext_next32From(fPattern, 0);
     while (c != U_SENTINEL) {
         if (c<32 || c>256) {
             c = '.';
         }
-        REGEX_DUMP_DEBUG_PRINTF(("%c", c));
-        
-        c = UTEXT_NEXT32(This->fPattern);
-    }
-    REGEX_DUMP_DEBUG_PRINTF(("\n"));
-    REGEX_DUMP_DEBUG_PRINTF(("   Min Match Length:  %d\n", This->fMinMatchLen));
-    REGEX_DUMP_DEBUG_PRINTF(("   Match Start Type:  %s\n", START_OF_MATCH_STR(This->fStartType)));
-    if (This->fStartType == START_STRING) {
-        REGEX_DUMP_DEBUG_PRINTF(("    Initial match string: \""));
-        for (i=This->fInitialStringIdx; i<This->fInitialStringIdx+This->fInitialStringLen; i++) {
-            REGEX_DUMP_DEBUG_PRINTF(("%c", This->fLiteralText[i]));   // TODO:  non-printables, surrogates.
-        }
-        REGEX_DUMP_DEBUG_PRINTF(("\"\n"));
+        printf("%c", c);
 
-    } else if (This->fStartType == START_SET) {
-        int32_t numSetChars = This->fInitialChars->size();
+        c = UTEXT_NEXT32(fPattern);
+    }
+    printf("\n");
+    printf("   Min Match Length:  %d\n", fMinMatchLen);
+    printf("   Match Start Type:  %s\n", START_OF_MATCH_STR(fStartType));
+    if (fStartType == START_STRING) {
+        printf("    Initial match string: \"");
+        for (i=fInitialStringIdx; i<fInitialStringIdx+fInitialStringLen; i++) {
+            printf("%c", fLiteralText[i]);   // TODO:  non-printables, surrogates.
+        }
+        printf("\"\n");
+
+    } else if (fStartType == START_SET) {
+        int32_t numSetChars = fInitialChars->size();
         if (numSetChars > 20) {
             numSetChars = 20;
         }
-        REGEX_DUMP_DEBUG_PRINTF(("     Match First Chars : "));
+        printf("     Match First Chars : ");
         for (i=0; i<numSetChars; i++) {
-            UChar32 c = This->fInitialChars->charAt(i);
+            UChar32 c = fInitialChars->charAt(i);
             if (0x20<c && c <0x7e) {
-                REGEX_DUMP_DEBUG_PRINTF(("%c ", c));
+                printf("%c ", c);
             } else {
-                REGEX_DUMP_DEBUG_PRINTF(("%#x ", c));
+                printf("%#x ", c);
             }
         }
-        if (numSetChars < This->fInitialChars->size()) {
-            REGEX_DUMP_DEBUG_PRINTF((" ..."));
+        if (numSetChars < fInitialChars->size()) {
+            printf(" ...");
         }
-        REGEX_DUMP_DEBUG_PRINTF(("\n"));
+        printf("\n");
 
-    } else if (This->fStartType == START_CHAR) {
-        REGEX_DUMP_DEBUG_PRINTF(("    First char of Match : "));
-        if (0x20 < This->fInitialChar && This->fInitialChar<0x7e) {
-                REGEX_DUMP_DEBUG_PRINTF(("%c\n", This->fInitialChar));
+    } else if (fStartType == START_CHAR) {
+        printf("    First char of Match : ");
+        if (0x20 < fInitialChar && fInitialChar<0x7e) {
+                printf("%c\n", fInitialChar);
             } else {
-                REGEX_DUMP_DEBUG_PRINTF(("%#x\n", This->fInitialChar));
+                printf("%#x\n", fInitialChar);
             }
     }
 
-    REGEX_DUMP_DEBUG_PRINTF(("\nIndex   Binary     Type             Operand\n" \
-           "-------------------------------------------\n"));
-    for (index = 0; index<This->fCompiledPat->size(); index++) {
-        This->dumpOp(index);
+    printf("\nIndex   Binary     Type             Operand\n" \
+           "-------------------------------------------\n");
+    for (index = 0; index<fCompiledPat->size(); index++) {
+        dumpOp(index);
     }
-    REGEX_DUMP_DEBUG_PRINTF(("\n\n"));
-}
+    printf("\n\n");
 #endif
+}
 
 
 

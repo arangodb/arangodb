@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/uz.xml
@@ -38,7 +38,7 @@ uz{
         BH{"Bahrayn"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Muqaddas Varfalomey"}
+        BL{"Avliyo Varfolomey"}
         BM{"Bermuda"}
         BN{"Bruney"}
         BO{"Boliviya"}
@@ -70,7 +70,7 @@ uz{
         CX{"Rojdestvo oroli"}
         CY{"Kipr"}
         CZ{"Chexiya Respublikasi"}
-        DE{"Olmoniya"}
+        DE{"Germaniya"}
         DG{"Diyego Garsiya"}
         DJ{"Djibuti"}
         DK{"Daniya"}
@@ -111,7 +111,7 @@ uz{
         GU{"Guam"}
         GW{"Gvineya-Bisau"}
         GY{"Gayana"}
-        HK{"Gonkong Xitoy MMH"}
+        HK{"Gonkong"}
         HM{"Gerd oroli va MakDonald orollari"}
         HN{"Gonduras"}
         HR{"Xorvatiya"}
@@ -140,7 +140,7 @@ uz{
         KN{"Sent-Kits va Nevis"}
         KP{"Shimoliy Koreya"}
         KR{"Janubiy Koreya"}
-        KW{"Kuvayt"}
+        KW{"Quveyt"}
         KY{"Kayman orollari"}
         KZ{"Qozogʻiston"}
         LA{"Laos"}
@@ -164,8 +164,8 @@ uz{
         MK{"Makedoniya"}
         ML{"Mali"}
         MM{"Myanma (Birma)"}
-        MN{"Mugʻuliston"}
-        MO{"Makao Xitoy MMH"}
+        MN{"Mo‘g‘uliston"}
+        MO{"Makao"}
         MP{"Shimoliy Marianna orollari"}
         MQ{"Martinika"}
         MR{"Mavritaniya"}
@@ -189,7 +189,7 @@ uz{
         NR{"Nauru"}
         NU{"Niuye"}
         NZ{"Yangi Zelandiya"}
-        OM{"Ummon"}
+        OM{"Omon"}
         PA{"Panama"}
         PE{"Peru"}
         PF{"Frantsuz Polineziyasi"}
@@ -200,7 +200,7 @@ uz{
         PM{"Sent-Pyer va Mikelon"}
         PN{"Pitkarin orollari"}
         PR{"Puerto-Riko"}
-        PS{"Falastin hududi"}
+        PS{"Falastin"}
         PT{"Portugaliya"}
         PW{"Palau"}
         PY{"Paragvay"}
@@ -228,8 +228,8 @@ uz{
         SR{"Surinam"}
         SS{"Janubiy Sudan"}
         ST{"San-Tome va Prinsipi"}
-        SV{"El-Salvador"}
-        SX{"Sint-Maarten"}
+        SV{"Salvador"}
+        SX{"Sint Martin"}
         SY{"Suriya"}
         SZ{"Svazilend"}
         TA{"Tristan de Kuna"}
@@ -267,17 +267,22 @@ uz{
         XK{"Kosovo"}
         YE{"Yaman"}
         YT{"Mayotta"}
-        ZA{"Janubiy Afrika"}
+        ZA{"Janubi-Afrika"}
         ZM{"Zambiya"}
         ZW{"Zimbabve"}
         ZZ{"Nomaʼlum hudud"}
     }
-    CountriesShort{
-        GB{"Birlashgan Qirollik"}
-        HK{"Gonkong"}
-        MO{"Makao"}
-        PS{"Falastina"}
-        US{"AKSH"}
+    Countries%variant{
+        CD{"Kongo (KDR)"}
+        CG{"Kongo (Respublika)"}
+        CI{"Fil Suyagi Qirgʻogʻi"}
+        FK{"Folklend orollari (Malvin orollari)"}
+        MK{"Makedoniya (SYUR)"}
+        TL{"Sharqiy Timor"}
     }
-    Version{"2.0.92.87"}
+    CountriesShort{
+        GB{"B.Q."}
+        US{"AQSH"}
+    }
+    Version{"2.1.8.9"}
 }

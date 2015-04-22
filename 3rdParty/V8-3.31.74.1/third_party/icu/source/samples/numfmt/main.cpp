@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1999-2010, International Business Machines Corporation and
+ * Copyright (c) 1999-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -15,8 +15,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 extern "C" void capi();
 void cppapi();
@@ -153,12 +151,12 @@ setNumberFormatCurrency_2_4(NumberFormat &nf, const char *currency, UErrorCode &
 
     int32_t i;
 
-    for(i=0; i<LENGTHOF(currencyMap); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(currencyMap); ++i) {
         if(strcmp(currency, currencyMap[i].currency)==0) {
             break;
         }
     }
-    if(i==LENGTHOF(currencyMap)) {
+    if(i==UPRV_LENGTHOF(currencyMap)) {
         // a more specific error code would be useful in a real application
         errorCode=U_UNSUPPORTED_ERROR;
         return;
@@ -235,7 +233,7 @@ showCurrencyFormatting(UBool useICU26API) {
     // TODO: Using printf() here assumes that the runtime encoding is ASCII-friendly
     // and can therefore be mixed with UTF-8
 
-    for(i=0; i<LENGTHOF(sampleLocaleIDs); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(sampleLocaleIDs); ++i) {
         printf("show currency formatting (method for %s) in the locale \"%s\"\n",
                 useICU26API ? "ICU 2.6" : "before ICU 2.6",
                 sampleLocaleIDs[i]);
@@ -249,7 +247,7 @@ showCurrencyFormatting(UBool useICU26API) {
             continue;
         }
 
-        for(j=0; j<LENGTHOF(sampleCurrencies); ++j) {
+        for(j=0; j<UPRV_LENGTHOF(sampleCurrencies); ++j) {
             printf("  - format currency \"%s\": ", sampleCurrencies[j]);
 
             // set the actual currency to be formatted

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ksf.xml
@@ -27,10 +27,6 @@ ksf{
             "BHD",
             "mɔni mǝ á barǝ́n",
         }
-        BIF{
-            "BIF",
-            "mɔni mǝ á burundí",
-        }
         BWP{
             "BWP",
             "mɔni mǝ á botswana",
@@ -51,14 +47,6 @@ ksf{
             "CN¥",
             "mɔni mǝ á cín",
         }
-        CVE{
-            "CVE",
-            "mɔni mǝ á kapvɛr",
-        }
-        DJF{
-            "DJF",
-            "mɔni mǝ á dyibutí",
-        }
         DZD{
             "DZD",
             "mɔni mǝ á aljɛrí",
@@ -66,10 +54,6 @@ ksf{
         EGP{
             "EGP",
             "mɔni mǝ á ɛjípt",
-        }
-        ERN{
-            "ERN",
-            "mɔni mǝ á ɛritrɛ́",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ ksf{
             "£",
             "mɔni mǝ á ingɛrís",
         }
-        GMD{
-            "GMD",
-            "mɔni mǝ á gambí",
-        }
-        GNS{
-            "GNS",
-            "mɔni mǝ á ginɛ́",
-        }
         INR{
-            "₹",
+            "Rs.",
             "mɔni mǝ á indí",
         }
         JPY{
@@ -102,18 +78,6 @@ ksf{
         KES{
             "KES",
             "mɔni mǝ á kɛnya",
-        }
-        KMF{
-            "KMF",
-            "mɔni mǝ á komɔr",
-        }
-        LRD{
-            "LRD",
-            "mɔni mǝ á libɛrya",
-        }
-        LSL{
-            "LSL",
-            "mɔni mǝ á lǝsóto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ ksf{
             "SAR",
             "mɔni mǝ á arabí saodí",
         }
-        SCR{
-            "SCR",
-            "mɔni mǝ á sɛcɛl",
-        }
         SDG{
             "SDG",
             "mɔni mǝ á sudan",
         }
-        SHP{
-            "SHP",
-            "mɔni mǝ á sɛntɛ́len",
-        }
         SLL{
             "SLL",
             "mɔni mǝ á syɛraleon",
-        }
-        SOS{
-            "SOS",
-            "mɔni mǝ á somalí",
-        }
-        STD{
-            "STD",
-            "mɔni mǝ á saotomɛ́ ri priŋsib",
-        }
-        SZL{
-            "SZL",
-            "mɔni mǝ á swazilan",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ ksf{
             "mɔni mǝ á zambí",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

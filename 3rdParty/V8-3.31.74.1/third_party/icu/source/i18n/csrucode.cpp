@@ -29,17 +29,48 @@ const char *CharsetRecog_UTF_16_BE::getName() const
     return "UTF-16BE";
 }
 
+// UTF-16 confidence calculation. Very simple minded, but better than nothing.
+//   Any 8 bit non-control characters bump the confidence up. These have a zero high byte,
+//     and are very likely to be UTF-16, although they could also be part of a UTF-32 code.
+//   NULs are a contra-indication, they will appear commonly if the actual encoding is UTF-32.
+//   NULs should be rare in actual text. 
+
+static int32_t adjustConfidence(UChar codeUnit, int32_t confidence) {
+    if (codeUnit == 0) {
+        confidence -= 10;
+    } else if ((codeUnit >= 0x20 && codeUnit <= 0xff) || codeUnit == 0x0a) {
+        confidence += 10;
+    }
+    if (confidence < 0) {
+        confidence = 0;
+    } else if (confidence > 100) {
+        confidence = 100;
+    }
+    return confidence;
+}
+
+
 UBool CharsetRecog_UTF_16_BE::match(InputText* textIn, CharsetMatch *results) const
 {
     const uint8_t *input = textIn->fRawInput;
-    int32_t confidence = 0;
+    int32_t confidence = 10;
     int32_t length = textIn->fRawLength;
 
-    if (length >=2 && input[0] == 0xFE && input[1] == 0xFF) {
-        confidence = 100;
+    int32_t bytesToCheck = (length > 30) ? 30 : length;
+    for (int32_t charIndex=0; charIndex<bytesToCheck-1; charIndex+=2) {
+        UChar codeUnit = (input[charIndex] << 8) | input[charIndex + 1];
+        if (charIndex == 0 && codeUnit == 0xFEFF) {
+            confidence = 100;
+            break;
+        }
+        confidence = adjustConfidence(codeUnit, confidence);
+        if (confidence == 0 || confidence == 100) {
+            break;
+        }
     }
-
-    // TODO: Do some statastics to check for unsigned UTF-16BE
+    if (bytesToCheck < 4 && confidence < 100) {
+        confidence = 0;
+    }
     results->set(textIn, this, confidence);
     return (confidence > 0);
 }
@@ -57,14 +88,27 @@ const char *CharsetRecog_UTF_16_LE::getName() const
 UBool CharsetRecog_UTF_16_LE::match(InputText* textIn, CharsetMatch *results) const
 {
     const uint8_t *input = textIn->fRawInput;
-    int32_t confidence = 0;
+    int32_t confidence = 10;
     int32_t length = textIn->fRawLength;
 
-    if (length >= 4 && input[0] == 0xFF && input[1] == 0xFE && (input[2] != 0x00 || input[3] != 0x00)) {
-        confidence = 100;
+    int32_t bytesToCheck = (length > 30) ? 30 : length;
+    for (int32_t charIndex=0; charIndex<bytesToCheck-1; charIndex+=2) {
+        UChar codeUnit = input[charIndex] | (input[charIndex + 1] << 8);
+        if (charIndex == 0 && codeUnit == 0xFEFF) {
+            confidence = 100;     // UTF-16 BOM
+            if (length >= 4 && input[2] == 0 && input[3] == 0) {
+                confidence = 0;   // UTF-32 BOM
+            }
+            break;
+        }
+        confidence = adjustConfidence(codeUnit, confidence);
+        if (confidence == 0 || confidence == 100) {
+            break;
+        }
     }
-
-    // TODO: Do some statastics to check for unsigned UTF-16LE
+    if (bytesToCheck < 4 && confidence < 100) {
+        confidence = 0;
+    }
     results->set(textIn, this, confidence);
     return (confidence > 0);
 }

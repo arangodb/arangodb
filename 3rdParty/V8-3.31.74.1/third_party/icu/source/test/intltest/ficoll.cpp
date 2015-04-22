@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2009, International Business Machines
+ * Copyright (c) 1997-2009,2014, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************/
 
@@ -42,19 +42,19 @@ CollationFinnishTest::~CollationFinnishTest()
 }
 
 const UChar CollationFinnishTest::testSourceCases[][CollationFinnishTest::MAX_TOKEN_LEN] = {
-    {0x77, 0x61, 0x74, 0},
-    {0x76, 0x61, 0x74, 0},
+    {0x77, 0x61, 0x74, 0},  // "wat"
+    {0x76, 0x61, 0x74, 0},  // "vat"
     {0x61, 0x00FC, 0x62, 0x65, 0x63, 0x6b, 0},
     {0x4c, 0x00E5, 0x76, 0x69, 0},
-    {0x77, 0x61, 0x74, 0}
+    {0x77, 0x61, 0x74, 0}   // "wat"
 };
 
 const UChar CollationFinnishTest::testTargetCases[][CollationFinnishTest::MAX_TOKEN_LEN] = {
-    {0x76, 0x61, 0x74, 0},
+    {0x76, 0x61, 0x74, 0},  // "vat"
     {0x77, 0x61, 0x79, 0},
     {0x61, 0x78, 0x62, 0x65, 0x63, 0x6b, 0},
     {0x4c, 0x00E4, 0x77, 0x65, 0},
-    {0x76, 0x61, 0x74, 0}
+    {0x76, 0x61, 0x74, 0}   // "vat"
 };
 
 const Collator::EComparisonResult CollationFinnishTest::results[] = {
@@ -63,7 +63,7 @@ const Collator::EComparisonResult CollationFinnishTest::results[] = {
     Collator::GREATER,
     Collator::LESS,
     // test primary > 4
-    Collator::EQUAL,
+    Collator::GREATER,  // v < w per cldrbug 6615
 };
 
 void CollationFinnishTest::TestTertiary(/* char* par */)

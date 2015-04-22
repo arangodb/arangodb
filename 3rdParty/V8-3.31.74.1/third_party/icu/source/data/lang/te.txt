@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/te.xml
@@ -22,7 +22,6 @@ te{
         be{"బెలరుశియన్"}
         bem{"బెంబా"}
         bg{"బల్గేరియన్"}
-        bh{"బీహారి"}
         bn{"బెంగాలీ"}
         br{"బ్రెటన్"}
         bs{"బోస్నియన్"}
@@ -101,7 +100,6 @@ te{
         mk{"మసడోనియన్"}
         ml{"మలయాళం"}
         mn{"మంగోలియన్"}
-        mo{"మొల్డావియన్"}
         mr{"మరాఠీ"}
         ms{"మలేయ్"}
         mt{"మాల్టీస్"}
@@ -128,6 +126,7 @@ te{
         rm{"రోమన్ష్"}
         rn{"రండి"}
         ro{"రోమానియన్"}
+        ro_MD{"మొల్డావియన్"}
         ru{"రష్యన్"}
         rw{"కిన్యర్వాండా"}
         sd{"సింధీ"}
@@ -149,6 +148,7 @@ te{
         th{"థాయ్"}
         ti{"తిగ్రిన్యా"}
         tk{"తుర్కమెన్"}
+        tl{"తగలోగ్"}
         tn{"సెటస్వానా"}
         to{"టాంగాన్"}
         tr{"టర్కిష్"}
@@ -166,8 +166,11 @@ te{
         yo{"యోరుబా"}
         zh{"చైనీస్"}
         zh_Hans{"సరళీకృత చైనీస్"}
-        zh_Hant{"సాంప్రదాయ చైనీస్"}
+        zh_Hant{"సాంప్రదాయక చైనీస్"}
         zu{"జూలూ"}
+    }
+    Languages%variant{
+        ps{"పుష్టో"}
     }
     LanguagesShort{
         az{"అజెరి"}
@@ -310,7 +313,10 @@ te{
         Hans{"సరళీకృత హాన్"}
         Hant{"సాంప్రదాయక హాన్"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"పెర్‌సో-అరబిక్"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"భాష: {0}"}
         script{"లిపి: {0}"}

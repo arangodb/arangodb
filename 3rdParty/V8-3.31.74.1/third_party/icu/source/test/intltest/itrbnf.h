@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 1996-2012, International Business Machines Corporation and    *
+ * Copyright (C) 1996-2014, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  */
@@ -132,6 +132,11 @@ class IntlTestRBNF : public IntlTest {
    * Test the setDecimalFormatSymbols in RBNF
    */
   virtual void TestSetDecimalFormatSymbols();
+
+  /**
+   * Test the plural rules in RBNF
+   */
+  virtual void TestPluralRules();
 
  protected:
   virtual void doTest(RuleBasedNumberFormat* formatter, const char* const testData[][2], UBool testParsing);

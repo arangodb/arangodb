@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kea.xml
@@ -13,24 +13,46 @@ kea{
     Languages{
         ab{"abkaziu"}
         af{"afrikaner"}
+        agq{"aghem"}
         ak{"akan"}
         am{"amariku"}
         ar{"arabi"}
+        ar_001{"arabi mudernu"}
+        arn{"araukanu"}
         as{"asames"}
+        asa{"asu"}
         ay{"aimara"}
         az{"azerbaijanu"}
+        ba{"baxkir"}
         be{"bielorusu"}
+        bem{"bemba"}
+        bez{"bena"}
         bg{"bulgaru"}
+        bm{"bambara"}
         bn{"bengali"}
         bo{"tibetanu"}
+        br{"bretãu"}
+        brx{"bodo"}
         bs{"bosniu"}
         ca{"katalãu"}
+        cgg{"xiga"}
+        chr{"xeroki"}
+        ckb{"kurdu sorani"}
+        co{"córsiku"}
         cs{"txeku"}
         cy{"gales"}
         da{"dinamarkes"}
-        de{"alemãu"}
+        dav{"taita"}
+        de{"alimãu"}
         de_AT{"alimãu austriaku"}
         de_CH{"altu alimãu suisu"}
+        dje{"zarma"}
+        dsb{"sórbiu baxu"}
+        dua{"duala"}
+        dyo{"jola-fonyi"}
+        dz{"dzonka"}
+        ebu{"embu"}
+        ee{"eve"}
         el{"gregu"}
         en{"ingles"}
         en_AU{"ingles australianu"}
@@ -41,6 +63,7 @@ kea{
         es{"spanhol"}
         es_419{"spanhol latinu-merkanu"}
         es_ES{"spanhol europeu"}
+        es_MX{"spanhol mexikanu"}
         et{"stonianu"}
         eu{"basku"}
         fa{"persa"}
@@ -53,23 +76,31 @@ kea{
         fr_CH{"franses suisu"}
         fy{"frisiu osidental"}
         ga{"irlandes"}
+        gag{"gagauz"}
         gl{"galegu"}
         gn{"guarani"}
         gsw{"alimãu di Suisa"}
         gu{"gujarati"}
+        guz{"gusii"}
+        gv{"manks"}
         ha{"auza"}
         haw{"avaianu"}
         he{"ebraiku"}
         hi{"indi"}
         hr{"kroata"}
+        hsb{"sórbiu altu"}
         ht{"aitianu"}
         hu{"úngaru"}
         hy{"arméniu"}
         id{"indoneziu"}
         ig{"ibo"}
+        ii{"nuosu"}
         is{"islandes"}
         it{"italianu"}
+        iu{"inuktitut"}
         ja{"japones"}
+        jgo{"ñomba"}
+        jmc{"matxame"}
         jv{"javanes"}
         ka{"jorjianu"}
         kea{"kabuverdianu"}
@@ -98,6 +129,7 @@ kea{
         nl{"olandes"}
         nl_BE{"flamengu"}
         nn{"norueges nynorsk"}
+        om{"oromo"}
         or{"oriya"}
         pa{"pandjabi"}
         pl{"pulaku"}
@@ -106,6 +138,7 @@ kea{
         pt_BR{"purtuges brazileru"}
         pt_PT{"purtuges europeu"}
         qu{"kexua"}
+        quc{"kitxe"}
         rm{"romanxi"}
         ro{"rumenu"}
         ru{"rusu"}
@@ -145,11 +178,16 @@ kea{
         zu{"zulu"}
         zxx{"sem konteudo linguistiku"}
     }
+    LanguagesShort{
+        en_GB{"ingles (R.U.)"}
+        en_US{"ingles (S.U.)"}
+    }
     Scripts{
         Arab{"arabiku"}
         Armn{"armeniu"}
         Beng{"bengali"}
         Bopo{"bopomofo"}
+        Brai{"braille"}
         Cyrl{"siriliku"}
         Deva{"devanagari"}
         Ethi{"etiopiku"}
@@ -159,8 +197,8 @@ kea{
         Guru{"gurmuki"}
         Hang{"angul"}
         Hani{"han"}
-        Hans{"han simplifikadu"}
-        Hant{"han tradisional"}
+        Hans{"simplifikadu"}
+        Hant{"tradisional"}
         Hebr{"ebraiku"}
         Hira{"iragana"}
         Jpan{"japones"}
@@ -185,6 +223,10 @@ kea{
         Zyyy{"komun"}
         Zzzz{"skrita diskonxedu"}
     }
+    Scripts%stand-alone{
+        Hans{"han simplifikadu"}
+        Hant{"han tradisional"}
+    }
     Types{
         calendar{
             gregorian{"Kalendariu Gregorianu"}
@@ -193,7 +235,7 @@ kea{
             latn{"Numerus Arabikus"}
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     codePatterns{
         language{"Lingua: {0}"}
         script{"Skrita: {0}"}

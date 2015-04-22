@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 1997-2013, International Business Machines
+ *   Copyright (C) 1997-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *
@@ -186,7 +186,7 @@ typedef enum UScriptCode {
       /** @stable ICU 3.4 */
       USCRIPT_OLD_PERSIAN   = 61, /* Xpeo */
 
-      /* New script codes from ISO 15924 */
+      /* New script codes from Unicode and ISO 15924 */
       /** @stable ICU 3.6 */
       USCRIPT_BALINESE                      = 62, /* Bali */
       /** @stable ICU 3.6 */
@@ -278,7 +278,6 @@ typedef enum UScriptCode {
       /** @stable ICU 3.6 */
       USCRIPT_UNKNOWN                       = 103,/* Zzzz */ /* Unknown="Code for uncoded script", for unassigned code points */
 
-      /* New script codes from ISO 15924 */
       /** @stable ICU 3.8 */
       USCRIPT_CARIAN                        = 104,/* Cari */
       /** @stable ICU 3.8 */
@@ -304,7 +303,6 @@ typedef enum UScriptCode {
       /** @stable ICU 3.8 */
       USCRIPT_MEITEI_MAYEK                  = 115,/* Mtei */
 
-      /* New script codes from ISO 15924 */
       /** @stable ICU 4.0 */
       USCRIPT_IMPERIAL_ARAMAIC              = 116,/* Armi */
       /** @stable ICU 4.0 */
@@ -334,7 +332,6 @@ typedef enum UScriptCode {
       /** @stable ICU 4.0 */
       USCRIPT_SYMBOLS                       = 129,/* Zsym */
 
-      /* New script codes from ISO 15924 */
       /** @stable ICU 4.4 */
       USCRIPT_BAMUM                         = 130,/* Bamu */
       /** @stable ICU 4.4 */
@@ -344,11 +341,14 @@ typedef enum UScriptCode {
       /** @stable ICU 4.4 */
       USCRIPT_OLD_SOUTH_ARABIAN             = 133,/* Sarb */
 
-      /* New script codes from ISO 15924 */
       /** @stable ICU 4.6 */
       USCRIPT_BASSA_VAH                     = 134,/* Bass */
-      /** @stable ICU 4.6 */
-      USCRIPT_DUPLOYAN_SHORTAND             = 135,/* Dupl */
+      /** @stable ICU 54 */
+      USCRIPT_DUPLOYAN                      = 135,/* Dupl */
+#ifndef U_HIDE_DEPRECATED_API
+      /** @deprecated ICU 54 Typo, use USCRIPT_DUPLOYAN */
+      USCRIPT_DUPLOYAN_SHORTAND             = USCRIPT_DUPLOYAN,
+#endif  /* U_HIDE_DEPRECATED_API */
       /** @stable ICU 4.6 */
       USCRIPT_ELBASAN                       = 136,/* Elba */
       /** @stable ICU 4.6 */
@@ -357,7 +357,7 @@ typedef enum UScriptCode {
       USCRIPT_KPELLE                        = 138,/* Kpel */
       /** @stable ICU 4.6 */
       USCRIPT_LOMA                          = 139,/* Loma */
-      /** @stable ICU 4.6 */
+      /** Mende Kikakui @stable ICU 4.6 */
       USCRIPT_MENDE                         = 140,/* Mend */
       /** @stable ICU 4.6 */
       USCRIPT_MEROITIC_CURSIVE              = 141,/* Merc */
@@ -367,8 +367,10 @@ typedef enum UScriptCode {
       USCRIPT_NABATAEAN                     = 143,/* Nbat */
       /** @stable ICU 4.6 */
       USCRIPT_PALMYRENE                     = 144,/* Palm */
+      /** @stable ICU 54 */
+      USCRIPT_KHUDAWADI                     = 145,/* Sind */
       /** @stable ICU 4.6 */
-      USCRIPT_SINDHI                        = 145,/* Sind */
+      USCRIPT_SINDHI                        = USCRIPT_KHUDAWADI,
       /** @stable ICU 4.6 */
       USCRIPT_WARANG_CITI                   = 146,/* Wara */
 
@@ -403,22 +405,36 @@ typedef enum UScriptCode {
       /** @stable ICU 52 */
       USCRIPT_MAHAJANI                      = 160,/* Mahj */
 
+      /** @stable ICU 54 */
+      USCRIPT_AHOM                          = 161,/* Ahom */
+      /** @stable ICU 54 */
+      USCRIPT_HATRAN                        = 162,/* Hatr */
+      /** @stable ICU 54 */
+      USCRIPT_MODI                          = 163,/* Modi */
+      /** @stable ICU 54 */
+      USCRIPT_MULTANI                       = 164,/* Mult */
+      /** @stable ICU 54 */
+      USCRIPT_PAU_CIN_HAU                   = 165,/* Pauc */
+      /** @stable ICU 54 */
+      USCRIPT_SIDDHAM                       = 166,/* Sidd */
+
       /* Private use codes from Qaaa - Qabx are not supported */
 
       /** @stable ICU 2.2 */
-      USCRIPT_CODE_LIMIT    = 161
+      USCRIPT_CODE_LIMIT    = 167
 } UScriptCode;
 
 /**
- * Gets script codes associated with the given locale or ISO 15924 abbreviation or name. 
+ * Gets the script codes associated with the given locale or ISO 15924 abbreviation or name. 
  * Fills in USCRIPT_MALAYALAM given "Malayam" OR "Mlym".
  * Fills in USCRIPT_LATIN given "en" OR "en_US" 
- * If required capacity is greater than capacity of the destination buffer then the error code
- * is set to U_BUFFER_OVERFLOW_ERROR and the required capacity is returned
+ * If the required capacity is greater than the capacity of the destination buffer,
+ * then the error code is set to U_BUFFER_OVERFLOW_ERROR and the required capacity is returned.
  *
  * <p>Note: To search by short or long script alias only, use
- * u_getPropertyValueEnum(UCHAR_SCRIPT, alias) instead.  This does
+ * u_getPropertyValueEnum(UCHAR_SCRIPT, alias) instead.  That does
  * a fast lookup with no access of the locale data.
+ *
  * @param nameOrAbbrOrLocale name of the script, as given in
  * PropertyValueAliases.txt, or ISO 15924 code or locale
  * @param fillIn the UScriptCode buffer to fill in the script code
@@ -431,22 +447,25 @@ U_STABLE int32_t  U_EXPORT2
 uscript_getCode(const char* nameOrAbbrOrLocale,UScriptCode* fillIn,int32_t capacity,UErrorCode *err);
 
 /**
- * Gets a script name associated with the given script code. 
- * Returns  "Malayam" given USCRIPT_MALAYALAM
+ * Returns the long Unicode script name, if there is one.
+ * Otherwise returns the 4-letter ISO 15924 script code.
+ * Returns "Malayam" given USCRIPT_MALAYALAM.
+ *
  * @param scriptCode UScriptCode enum
- * @return script long name as given in
- * PropertyValueAliases.txt, or NULL if scriptCode is invalid
+ * @return long script name as given in PropertyValueAliases.txt, or the 4-letter code,
+ * or NULL if scriptCode is invalid
  * @stable ICU 2.4
  */
 U_STABLE const char*  U_EXPORT2 
 uscript_getName(UScriptCode scriptCode);
 
 /**
- * Gets a script name associated with the given script code. 
- * Returns  "Mlym" given USCRIPT_MALAYALAM
+ * Returns the 4-letter ISO 15924 script code,
+ * which is the same as the short Unicode script name if Unicode has names for the script.
+ * Returns "Mlym" given USCRIPT_MALAYALAM.
+ *
  * @param scriptCode UScriptCode enum
- * @return script abbreviated name as given in
- * PropertyValueAliases.txt, or NULL if scriptCode is invalid
+ * @return short script name (4-letter code), or NULL if scriptCode is invalid
  * @stable ICU 2.4
  */
 U_STABLE const char*  U_EXPORT2 
@@ -517,27 +536,25 @@ uscript_getScriptExtensions(UChar32 c,
                             UScriptCode *scripts, int32_t capacity,
                             UErrorCode *errorCode);
 
-#ifndef U_HIDE_DRAFT_API
-
 /**
  * Script usage constants.
  * See UAX #31 Unicode Identifier and Pattern Syntax.
  * http://www.unicode.org/reports/tr31/#Table_Candidate_Characters_for_Exclusion_from_Identifiers
  *
- * @draft ICU 51
+ * @stable ICU 51
  */
 typedef enum UScriptUsage {
-    /** Not encoded in Unicode. @draft ICU 51 */
+    /** Not encoded in Unicode. @stable ICU 51 */
     USCRIPT_USAGE_NOT_ENCODED,
-    /** Unknown script usage. @draft ICU 51 */
+    /** Unknown script usage. @stable ICU 51 */
     USCRIPT_USAGE_UNKNOWN,
-    /** Candidate for Exclusion from Identifiers. @draft ICU 51 */
+    /** Candidate for Exclusion from Identifiers. @stable ICU 51 */
     USCRIPT_USAGE_EXCLUDED,
-    /** Limited Use script. @draft ICU 51 */
+    /** Limited Use script. @stable ICU 51 */
     USCRIPT_USAGE_LIMITED_USE,
-    /** Aspirational Use script. @draft ICU 51 */
+    /** Aspirational Use script. @stable ICU 51 */
     USCRIPT_USAGE_ASPIRATIONAL,
-    /** Recommended script. @draft ICU 51 */
+    /** Recommended script. @stable ICU 51 */
     USCRIPT_USAGE_RECOMMENDED
 } UScriptUsage;
 
@@ -551,9 +568,9 @@ typedef enum UScriptUsage {
  * @param capacity number of UChars in the dest array
  * @param pErrorCode standard ICU in/out error code, must pass U_SUCCESS() on input
  * @return the string length, even if U_BUFFER_OVERFLOW_ERROR
- * @draft ICU 51
+ * @stable ICU 51
  */
-U_DRAFT int32_t U_EXPORT2
+U_STABLE int32_t U_EXPORT2
 uscript_getSampleString(UScriptCode script, UChar *dest, int32_t capacity, UErrorCode *pErrorCode);
 
 #if U_SHOW_CPLUSPLUS_API
@@ -569,7 +586,7 @@ U_NAMESPACE_END
  *
  * @param script script code
  * @return the sample character string
- * @draft ICU 51
+ * @stable ICU 51
  */
 U_COMMON_API icu::UnicodeString U_EXPORT2
 uscript_getSampleUnicodeString(UScriptCode script);
@@ -583,9 +600,9 @@ uscript_getSampleUnicodeString(UScriptCode script);
  * @param script script code
  * @return script usage
  * @see UScriptUsage
- * @draft ICU 51
+ * @stable ICU 51
  */
-U_DRAFT UScriptUsage U_EXPORT2
+U_STABLE UScriptUsage U_EXPORT2
 uscript_getUsage(UScriptCode script);
 
 /**
@@ -594,9 +611,9 @@ uscript_getUsage(UScriptCode script);
  *
  * @param script script code
  * @return TRUE if the script is right-to-left
- * @draft ICU 51
+ * @stable ICU 51
  */
-U_DRAFT UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 uscript_isRightToLeft(UScriptCode script);
 
 /**
@@ -606,9 +623,9 @@ uscript_isRightToLeft(UScriptCode script);
  *
  * @param script script code
  * @return TRUE if the script allows line breaks between letters
- * @draft ICU 51
+ * @stable ICU 51
  */
-U_DRAFT UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 uscript_breaksBetweenLetters(UScriptCode script);
 
 /**
@@ -617,11 +634,9 @@ uscript_breaksBetweenLetters(UScriptCode script);
  *
  * @param script script code
  * @return TRUE if the script is cased
- * @draft ICU 51
+ * @stable ICU 51
  */
-U_DRAFT UBool U_EXPORT2
+U_STABLE UBool U_EXPORT2
 uscript_isCased(UScriptCode script);
-
-#endif  /* U_HIDE_DRAFT_API */
 
 #endif

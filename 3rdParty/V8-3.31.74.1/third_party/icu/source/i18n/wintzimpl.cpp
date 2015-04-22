@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2009-2011, International Business Machines
+*   Copyright (C) 2009-2013, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************
 *
@@ -11,7 +11,7 @@
 
 #include "unicode/utypes.h"
 
-#if U_PLATFORM_HAS_WIN32_API
+#if U_PLATFORM_HAS_WIN32_API && !UCONFIG_NO_FORMATTING 
 
 #include "wintzimpl.h"
 

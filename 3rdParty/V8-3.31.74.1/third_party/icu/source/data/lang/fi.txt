@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fi.xml
@@ -22,7 +22,6 @@ fi{
         be{"valkovenäjä"}
         bem{"bemba"}
         bg{"bulgaria"}
-        bh{"bihari"}
         bn{"bengali"}
         br{"bretoni"}
         bs{"bosnia"}
@@ -85,6 +84,7 @@ fi{
         km{"khmer"}
         kn{"kannada"}
         ko{"korea"}
+        kri{"krio"}
         ku{"kurdi"}
         ky{"kirgiisi"}
         la{"latina"}
@@ -101,7 +101,6 @@ fi{
         mk{"makedonia"}
         ml{"malajalam"}
         mn{"mongoli"}
-        mo{"moldova"}
         mr{"marathi"}
         ms{"malaiji"}
         mt{"malta"}
@@ -128,6 +127,7 @@ fi{
         rm{"retoromaani"}
         rn{"rundi"}
         ro{"romania"}
+        ro_MD{"moldova"}
         ru{"venäjä"}
         rw{"ruanda"}
         sd{"sindhi"}
@@ -149,6 +149,7 @@ fi{
         th{"thai"}
         ti{"tigrinja"}
         tk{"turkmeeni"}
+        tl{"tagalog"}
         tn{"tswana"}
         to{"tonga"}
         tr{"turkki"}
@@ -169,6 +170,12 @@ fi{
         zh_Hant{"perinteinen kiina"}
         zu{"zulu"}
     }
+    Languages%secondary{
+        crh{"kriminturkki"}
+        fa{"persia"}
+        kl{"grönlanti"}
+        lad{"juutalaisespanja"}
+    }
     LanguagesShort{
         az{"azeri"}
         en_GB{"englanti (Britannia)"}
@@ -176,6 +183,7 @@ fi{
     }
     Scripts{
         Afak{"afaka"}
+        Aghb{"kaukasianalbanialainen"}
         Arab{"arabialainen"}
         Armi{"valtakunnanaramealainen"}
         Armn{"armenialainen"}
@@ -207,6 +215,7 @@ fi{
         Egyd{"egyptiläinen demoottinen"}
         Egyh{"egyptiläinen hieraattinen"}
         Egyp{"egyptiläiset hieroglyfit"}
+        Elba{"elbasanilainen"}
         Ethi{"etiopialainen"}
         Geok{"muinaisgeorgialainen"}
         Geor{"georgialainen"}
@@ -219,8 +228,8 @@ fi{
         Hang{"hangul"}
         Hani{"kiinalainen han"}
         Hano{"hanunoolainen"}
-        Hans{"kiinalainen yksinkertaistettu han"}
-        Hant{"kiinalainen perinteinen han"}
+        Hans{"yksinkertaistettu han"}
+        Hant{"perinteinen han"}
         Hebr{"heprealainen"}
         Hira{"hiragana"}
         Hluw{"anatolialaiset hieroglyfit"}
@@ -254,6 +263,7 @@ fi{
         Loma{"loma"}
         Lyci{"lyykialainen"}
         Lydi{"lyydialainen"}
+        Mahj{"mahajanilainen"}
         Mand{"mandealainen"}
         Mani{"manikealainen"}
         Maya{"maya-hieroglyfit"}
@@ -261,6 +271,7 @@ fi{
         Merc{"meroiittinen kursiivikirjoitus"}
         Mero{"meroiittinen"}
         Mlym{"malajalamilainen"}
+        Modi{"modi-aakkoset"}
         Mong{"mongolilainen"}
         Moon{"moon-kohokirjoitus"}
         Mroo{"mro"}
@@ -269,7 +280,7 @@ fi{
         Narb{"muinaispohjoisarabialainen"}
         Nbat{"nabatealainen"}
         Nkgb{"naxi geba"}
-        Nkoo{"n'ko"}
+        Nkoo{"n’ko"}
         Nshu{"nüshu"}
         Ogam{"ogam"}
         Olck{"ol chiki"}
@@ -277,6 +288,7 @@ fi{
         Orya{"orijalainen"}
         Osma{"osmanjalainen"}
         Palm{"palmyralainen"}
+        Pauc{"zotuallai"}
         Perm{"muinaispermiläinen"}
         Phag{"phags-pa"}
         Phli{"piirtokirjoituspahlavilainen"}
@@ -294,7 +306,8 @@ fi{
         Saur{"saurashtra"}
         Sgnw{"SignWriting"}
         Shaw{"shaw’lainen"}
-        Shrd{"sarada"}
+        Shrd{"šarada"}
+        Sidd{"siddham-tavukirjoitus"}
         Sind{"khudabadi"}
         Sinh{"sinhalilainen"}
         Sora{"sorang sompeng"}
@@ -334,11 +347,24 @@ fi{
         Zyyy{"määrittämätön"}
         Zzzz{"tuntematon kirjoitusjärjestelmä"}
     }
-    Scripts%stand-alone{
-        Hans{"yksinkertaistettu han"}
-        Hant{"perinteinen han"}
+    Scripts%secondary{
+        Ethi{"ge’ez"}
+        Geok{"khutsuri"}
+        Geor{"mkhedruli"}
+        Mtei{"meitei mayek"}
+        Visp{"Visible Speech"}
     }
-    Version{"2.0.92.87"}
+    Scripts%stand-alone{
+        Hans{"kiinalainen yksinkertaistettu han"}
+        Hant{"kiinalainen perinteinen han"}
+    }
+    Scripts%variant{
+        Arab{"persialaisarabialainen"}
+    }
+    Variants%secondary{
+        FONUPA{"suomalais-ugrilainen tarkekirjoitus"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"kieli: {0}"}
         script{"kirjoitusjärjestelmä: {0}"}

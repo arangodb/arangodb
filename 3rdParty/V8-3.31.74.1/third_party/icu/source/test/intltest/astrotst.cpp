@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1996-2010, International Business Machines Corporation and
+ * Copyright (c) 1996-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -17,8 +17,6 @@
 #include "gregoimp.h" // for Math
 #include "unicode/simpletz.h"
 
-
-static const double DAY_MS = 24.*60.*60.*1000.;
 
 #define CASE(id,test) case id: name = #test; if (exec) { logln(#test "---"); logln((UnicodeString)""); test(); } break
 

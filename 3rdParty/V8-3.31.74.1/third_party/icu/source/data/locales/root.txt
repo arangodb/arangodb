@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/root.xml
@@ -11,63 +11,6 @@
  */
 root{
     AuxExemplarCharacters{"[]"}
-    CurrenciesNarrow{
-        ARS{"$"}
-        AUD{"$"}
-        BBD{"$"}
-        BDT{"৳"}
-        BMD{"$"}
-        BND{"$"}
-        BRL{"R$"}
-        BSD{"$"}
-        BYR{"р."}
-        BZD{"$"}
-        CAD{"$"}
-        CLP{"$"}
-        CNY{"¥"}
-        COP{"$"}
-        CRC{"₡"}
-        CUP{"$"}
-        DOP{"$"}
-        ESP{"₧"}
-        EUR{"€"}
-        FJD{"$"}
-        GBP{"£"}
-        GHS{"₵"}
-        GIP{"£"}
-        GYD{"$"}
-        HKD{"$"}
-        ILS{"₪"}
-        INR{"₹"}
-        JMD{"$"}
-        JPY{"¥"}
-        KHR{"៛"}
-        KRW{"₩"}
-        KYD{"$"}
-        KZT{"₸"}
-        LAK{"₭"}
-        LRD{"$"}
-        MNT{"₮"}
-        MXN{"$"}
-        NAD{"$"}
-        NGN{"₦"}
-        NZD{"$"}
-        PHP{"₱"}
-        PYG{"₲"}
-        RUR{"р."}
-        SBD{"$"}
-        SGD{"$"}
-        SRD{"$"}
-        SSP{"£"}
-        THB{"฿"}
-        TRY{"₺"}
-        TTD{"$"}
-        TWD{"NT$"}
-        UAH{"₴"}
-        USD{"$"}
-        UYU{"$"}
-        VND{"₫"}
-    }
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
@@ -96,6 +39,7 @@ root{
                 percentSign{"٪"}
                 plusSign{"‏+"}
                 superscriptingExponent{"×"}
+                timeSeparator{"٫"}
             }
         }
         arabext{
@@ -111,15 +55,102 @@ root{
                 percentSign{"٪"}
                 plusSign{"‎+‎"}
                 superscriptingExponent{"×"}
+                timeSeparator{"٫"}
+            }
+        }
+        bali{
+            symbols{
+                alias{""}
+            }
+        }
+        beng{
+            symbols{
+                alias{""}
+            }
+        }
+        brah{
+            symbols{
+                alias{""}
+            }
+        }
+        cakm{
+            symbols{
+                alias{""}
+            }
+        }
+        cham{
+            symbols{
+                alias{""}
             }
         }
         default{"latn"}
+        deva{
+            symbols{
+                alias{""}
+            }
+        }
+        fullwide{
+            symbols{
+                alias{""}
+            }
+        }
+        gujr{
+            symbols{
+                alias{""}
+            }
+        }
+        guru{
+            symbols{
+                alias{""}
+            }
+        }
+        hanidec{
+            symbols{
+                alias{""}
+            }
+        }
+        java{
+            symbols{
+                alias{""}
+            }
+        }
+        kali{
+            symbols{
+                alias{""}
+            }
+        }
+        khmr{
+            symbols{
+                alias{""}
+            }
+        }
+        knda{
+            symbols{
+                alias{""}
+            }
+        }
+        lana{
+            symbols{
+                alias{""}
+            }
+        }
+        lanatham{
+            symbols{
+                alias{""}
+            }
+        }
+        laoo{
+            symbols{
+                alias{""}
+            }
+        }
         latn{
             miscPatterns{
                 atLeast{"⩾{0}"}
                 range{"{0}–{1}"}
             }
             patterns{
+                accountingFormat:alias{"/LOCALE/NumberElements/latn/patterns/currencyFormat"}
                 currencyFormat{"¤ #,##0.00"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
@@ -177,15 +208,130 @@ root{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
+            }
+        }
+        lepc{
+            symbols{
+                alias{""}
+            }
+        }
+        limb{
+            symbols{
+                alias{""}
+            }
+        }
+        minimumGroupingDigits{"1"}
+        mlym{
+            symbols{
+                alias{""}
+            }
+        }
+        mong{
+            symbols{
+                alias{""}
+            }
+        }
+        mtei{
+            symbols{
+                alias{""}
+            }
+        }
+        mymr{
+            symbols{
+                alias{""}
+            }
+        }
+        mymrshan{
+            symbols{
+                alias{""}
             }
         }
         native{"latn"}
+        nkoo{
+            symbols{
+                alias{""}
+            }
+        }
+        olck{
+            symbols{
+                alias{""}
+            }
+        }
+        orya{
+            symbols{
+                alias{""}
+            }
+        }
+        osma{
+            symbols{
+                alias{""}
+            }
+        }
+        saur{
+            symbols{
+                alias{""}
+            }
+        }
+        shrd{
+            symbols{
+                alias{""}
+            }
+        }
+        sora{
+            symbols{
+                alias{""}
+            }
+        }
+        sund{
+            symbols{
+                alias{""}
+            }
+        }
+        takr{
+            symbols{
+                alias{""}
+            }
+        }
+        talu{
+            symbols{
+                alias{""}
+            }
+        }
+        tamldec{
+            symbols{
+                alias{""}
+            }
+        }
+        telu{
+            symbols{
+                alias{""}
+            }
+        }
+        thai{
+            symbols{
+                alias{""}
+            }
+        }
+        tibt{
+            symbols{
+                alias{""}
+            }
+        }
+        vaii{
+            symbols{
+                alias{""}
+            }
+        }
     }
-    Version{"2.0.93.8"}
+    Version{"2.1.7.12"}
     calendar{
         buddhist{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -202,6 +348,7 @@ root{
         }
         chinese{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns{
                 "HH:mm:ss zzzz",
                 "HH:mm:ss z",
@@ -217,6 +364,8 @@ root{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems{
                 Day{"{0} ({2}: {1})"}
                 Day-Of-Week{"{0} {1}"}
@@ -231,6 +380,7 @@ root{
                 Year{"{1} {0}"}
             }
             availableFormats{
+                E{"ccc"}
                 Ed{"d, E"}
                 Gy{"U"}
                 GyMMM{"U MMM"}
@@ -285,6 +435,44 @@ root{
                 }
                 days:alias{"/LOCALE/calendar/chinese/cyclicNameSets/years"}
                 months:alias{"/LOCALE/calendar/chinese/cyclicNameSets/years"}
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "spring begins",
+                            "rain water",
+                            "insects awaken",
+                            "spring equinox",
+                            "bright and clear",
+                            "grain rain",
+                            "summer begins",
+                            "grain full",
+                            "grain in ear",
+                            "summer solstice",
+                            "minor heat",
+                            "major heat",
+                            "autumn begins",
+                            "end of heat",
+                            "white dew",
+                            "autumn equinox",
+                            "cold dew",
+                            "frost descends",
+                            "winter begins",
+                            "minor snow",
+                            "major snow",
+                            "winter solstice",
+                            "minor cold",
+                            "major cold",
+                        }
+                        narrow:alias{
+                            "/LOCALE/calendar/chinese/cyclicNameSets/solarTerms/format/abbreviate"
+                            "d"
+                        }
+                        wide:alias{
+                            "/LOCALE/calendar/chinese/cyclicNameSets/solarTerms/format/abbreviate"
+                            "d"
+                        }
+                    }
+                }
                 years{
                     format{
                         abbreviated{
@@ -355,6 +543,7 @@ root{
                 }
                 zodiacs{
                     format{
+                        abbreviated:alias{"/LOCALE/calendar/chinese/cyclicNameSets/dayParts/format/abbreviated"}
                         narrow:alias{"/LOCALE/calendar/chinese/cyclicNameSets/zodiacs/format/abbreviated"}
                         wide:alias{"/LOCALE/calendar/chinese/cyclicNameSets/zodiacs/format/abbreviated"}
                     }
@@ -519,7 +708,10 @@ root{
         }
         coptic{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -576,7 +768,10 @@ root{
         }
         dangi{
             AmPmMarkers:alias{"/LOCALE/calendar/chinese/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/chinese/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/chinese/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/chinese/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/chinese/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/chinese/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/chinese/availableFormats"}
             cyclicNameSets:alias{"/LOCALE/calendar/chinese/cyclicNameSets"}
@@ -589,7 +784,10 @@ root{
         default{"gregorian"}
         ethiopic{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -646,7 +844,10 @@ root{
         }
         ethiopic-amete-alem{
             AmPmMarkers:alias{"/LOCALE/calendar/ethiopic/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/ethiopic/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/ethiopic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/ethiopic/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/ethiopic/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/ethiopic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/ethiopic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/ethiopic/dayNames"}
@@ -663,6 +864,7 @@ root{
         }
         generic{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns{
                 "HH:mm:ss zzzz",
                 "HH:mm:ss z",
@@ -678,6 +880,8 @@ root{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems{
                 Day{"{0} ({2}: {1})"}
                 Day-Of-Week{"{0} {1}"}
@@ -692,6 +896,7 @@ root{
                 Year{"{1} {0}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d, E"}
@@ -875,6 +1080,10 @@ root{
                 "AM",
                 "PM",
             }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
                 "HH:mm:ss z",
@@ -890,6 +1099,8 @@ root{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"noon"}
+            NoonMarkerNarrow{"n"}
             appendItems{
                 Day{"{0} ({2}: {1})"}
                 Day-Of-Week{"{0} {1}"}
@@ -904,6 +1115,7 @@ root{
                 Year{"{1} {0}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d, E"}
@@ -1133,7 +1345,10 @@ root{
         }
         hebrew{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -1191,13 +1406,16 @@ root{
         }
         indian{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
             eras{
                 abbreviated{
-                    "SAKA",
+                    "Saka",
                 }
                 narrow:alias{"/LOCALE/calendar/indian/eras/abbreviated"}
                 wide:alias{"/LOCALE/calendar/indian/eras/abbreviated"}
@@ -1245,7 +1463,10 @@ root{
         }
         islamic{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -1312,7 +1533,10 @@ root{
         }
         islamic-civil{
             AmPmMarkers:alias{"/LOCALE/calendar/islamic/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/islamic/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/islamic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/islamic/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/islamic/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/islamic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/islamic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/islamic/dayNames"}
@@ -1323,7 +1547,10 @@ root{
         }
         islamic-rgsa{
             AmPmMarkers:alias{"/LOCALE/calendar/islamic/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/islamic/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/islamic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/islamic/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/islamic/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/islamic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/islamic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/islamic/dayNames"}
@@ -1334,7 +1561,10 @@ root{
         }
         islamic-tbla{
             AmPmMarkers:alias{"/LOCALE/calendar/islamic/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/islamic/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/islamic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/islamic/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/islamic/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/islamic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/islamic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/islamic/dayNames"}
@@ -1345,7 +1575,10 @@ root{
         }
         islamic-umalqura{
             AmPmMarkers:alias{"/LOCALE/calendar/islamic/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/islamic/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/islamic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/islamic/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/islamic/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/islamic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/islamic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/islamic/dayNames"}
@@ -1356,7 +1589,10 @@ root{
         }
         japanese{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -1845,7 +2081,10 @@ root{
         }
         persian{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -1899,7 +2138,10 @@ root{
         }
         roc{
             AmPmMarkers:alias{"/LOCALE/calendar/gregorian/AmPmMarkers"}
+            AmPmMarkersNarrow:alias{"/LOCALE/calendar/gregorian/AmPmMarkersNarrow"}
             DateTimePatterns:alias{"/LOCALE/calendar/generic/DateTimePatterns"}
+            NoonMarker:alias{"/LOCALE/calendar/gregorian/NoonMarker"}
+            NoonMarkerNarrow:alias{"/LOCALE/calendar/gregorian/NoonMarkerNarrow"}
             appendItems:alias{"/LOCALE/calendar/generic/appendItems"}
             availableFormats:alias{"/LOCALE/calendar/generic/availableFormats"}
             dayNames:alias{"/LOCALE/calendar/gregorian/dayNames"}
@@ -1944,6 +2186,8 @@ root{
                 }
             }
         }
+        day-narrow:alias{"/LOCALE/fields/day-short"}
+        day-short:alias{"/LOCALE/fields/day"}
         dayperiod{
             dn{"Dayperiod"}
         }
@@ -1957,6 +2201,8 @@ root{
                 "1"{"next Friday"}
             }
         }
+        fri-narrow:alias{"/LOCALE/fields/fri-short"}
+        fri-short:alias{"/LOCALE/fields/fri"}
         hour{
             dn{"Hour"}
             relativeTime{
@@ -1968,6 +2214,8 @@ root{
                 }
             }
         }
+        hour-narrow:alias{"/LOCALE/fields/hour-short"}
+        hour-short:alias{"/LOCALE/fields/hour"}
         minute{
             dn{"Minute"}
             relativeTime{
@@ -1979,6 +2227,8 @@ root{
                 }
             }
         }
+        minute-narrow:alias{"/LOCALE/fields/minute-short"}
+        minute-short:alias{"/LOCALE/fields/minute"}
         mon{
             relative{
                 "-1"{"last Monday"}
@@ -1986,6 +2236,8 @@ root{
                 "1"{"next Monday"}
             }
         }
+        mon-narrow:alias{"/LOCALE/fields/mon-short"}
+        mon-short:alias{"/LOCALE/fields/mon"}
         month{
             dn{"Month"}
             relative{
@@ -2002,6 +2254,26 @@ root{
                 }
             }
         }
+        month-narrow:alias{"/LOCALE/fields/month-short"}
+        month-short:alias{"/LOCALE/fields/month"}
+        quarter{
+            dn{"Quarter"}
+            relative{
+                "-1"{"last quarter"}
+                "0"{"this quarter"}
+                "1"{"next quarter"}
+            }
+            relativeTime{
+                future{
+                    other{"+{0} Q"}
+                }
+                past{
+                    other{"-{0} Q"}
+                }
+            }
+        }
+        quarter-narrow:alias{"/LOCALE/fields/quarter-short"}
+        quarter-short:alias{"/LOCALE/fields/quarter"}
         sat{
             relative{
                 "-1"{"last Saturday"}
@@ -2009,6 +2281,8 @@ root{
                 "1"{"next Saturday"}
             }
         }
+        sat-narrow:alias{"/LOCALE/fields/sat-short"}
+        sat-short:alias{"/LOCALE/fields/sat"}
         second{
             dn{"Second"}
             relative{
@@ -2023,6 +2297,8 @@ root{
                 }
             }
         }
+        second-narrow:alias{"/LOCALE/fields/second-short"}
+        second-short:alias{"/LOCALE/fields/second"}
         sun{
             relative{
                 "-1"{"last Sunday"}
@@ -2030,6 +2306,8 @@ root{
                 "1"{"next Sunday"}
             }
         }
+        sun-narrow:alias{"/LOCALE/fields/sun-short"}
+        sun-short:alias{"/LOCALE/fields/sun"}
         thu{
             relative{
                 "-1"{"last Thursday"}
@@ -2037,6 +2315,8 @@ root{
                 "1"{"next Thursday"}
             }
         }
+        thu-narrow:alias{"/LOCALE/fields/thu-short"}
+        thu-short:alias{"/LOCALE/fields/thu"}
         tue{
             relative{
                 "-1"{"last Tuesday"}
@@ -2044,6 +2324,8 @@ root{
                 "1"{"next Tuesday"}
             }
         }
+        tue-narrow:alias{"/LOCALE/fields/tue-short"}
+        tue-short:alias{"/LOCALE/fields/tue"}
         wed{
             relative{
                 "-1"{"last Wednesday"}
@@ -2051,6 +2333,8 @@ root{
                 "1"{"next Wednesday"}
             }
         }
+        wed-narrow:alias{"/LOCALE/fields/wed-short"}
+        wed-short:alias{"/LOCALE/fields/wed"}
         week{
             dn{"Week"}
             relative{
@@ -2067,6 +2351,8 @@ root{
                 }
             }
         }
+        week-narrow:alias{"/LOCALE/fields/week-short"}
+        week-short:alias{"/LOCALE/fields/week"}
         weekday{
             dn{"Day of the Week"}
         }
@@ -2086,6 +2372,8 @@ root{
                 }
             }
         }
+        year-narrow:alias{"/LOCALE/fields/year-short"}
+        year-short:alias{"/LOCALE/fields/year"}
         zone{
             dn{"Zone"}
         }
@@ -2126,35 +2414,4 @@ root{
         metric{"Metric"}
     }
     units:alias{"/LOCALE/unitsShort"}
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0} d"}
-            }
-            hour{
-                other{"{0} h"}
-            }
-            millisecond{
-                other{"{0} ms"}
-            }
-            minute{
-                other{"{0} min"}
-            }
-            month{
-                other{"{0} m"}
-            }
-            second{
-                other{"{0} s"}
-            }
-            week{
-                other{"{0} w"}
-            }
-            year{
-                other{"{0} y"}
-            }
-        }
-    }
 }

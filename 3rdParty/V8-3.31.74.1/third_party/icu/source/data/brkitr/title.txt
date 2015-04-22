@@ -1,32 +1,53 @@
-# Copyright (c) 2002-2003, International Business Machines Corporation and
+# Copyright (c) 2002-2014, International Business Machines Corporation and
 # others. All Rights Reserved.
 #
 #  Title Casing Break Rules
 #
 
+
 $CaseIgnorable   = [[:Mn:][:Me:][:Cf:][:Lm:][:Sk:] \u0027 \u00AD \u2019];
 $Cased           = [[:Upper_Case:][:Lower_Case:][:Lt:]  - $CaseIgnorable];
-$NotCased        = [^ $Cased];
+$NotCased        = [[^ $Cased] - $CaseIgnorable];
 
-#
-#  If the iterator was not stopped on a cased character, advance it to the first cased char
-#
-$NotCased+;
+!!forward;
 
-#
-#  If the iterator starts on a cased item, advance through all adjacent cased items plus
-#    any non-cased stuff, to reach the start of the next word.
-#
-$Cased ($Cased | $CaseIgnorable)* $NotCased*;
+#  If the iterator begins on a CaseIgnorable, advance it past it/them.
+#  This can occur at the start-of-text, or after application of the
+#  safe-reverse rule.
 
-#
+($CaseIgnorable | $NotCased)*;
+
+#   Normal exact forward rule: beginning at the start of a word
+#         (at a cased character), advance through the word and through
+#         the uncased characters following the word.
+
+$Cased ($Cased | $CaseIgnorable)* ($NotCased | $CaseIgnorable)*;
+
+
 #  Reverse Rules
-#
+!!reverse;
 
-! $NotCased+;
+#  Normal Rule, will work nearly universally, so long as there is a
+#    start-of-word preceding the current iteration position.
 
-#
-#  If the iterator starts on a cased item, advance through all adjacent cased items plus
-#    any non-cased stuff, to reach the start of the next word.
-#
-! $NotCased* ($Cased | $CaseIgnorable)* $Cased;
+($NotCased | $CaseIgnorable)* ($Cased | $CaseIgnorable)* $Cased;
+
+#  Short rule, will be effective only when moving to the start of text,
+#    with no word (cased character) preceding the current iteration position.
+
+($NotCased | $CaseIgnorable)*;
+
+!!safe_reverse;
+
+# Safe Reverse: the exact forward rule must not start in the middle
+#  of a word, so the safe reverse skips over any Cased characters,
+#  leaving it just before the start of a word.
+
+($Cased | $CaseIgnorable)*;
+
+!!safe_forward;
+
+# Safe Forward, nothing needs to be done, the exact Reverse rules will
+#   always find valid boundaries from any starting position.
+#   Still, some rule is needed, so '.', a one character movement.
+.;

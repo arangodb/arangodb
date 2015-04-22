@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2013, International Business Machines
+*   Copyright (C) 2003-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -26,9 +26,6 @@
 #include "ucm.h"
 #include "makeconv.h"
 #include "genmbcs.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
-
 
 static void
 CnvExtClose(NewConverter *cnvData);
@@ -849,7 +846,7 @@ addFromUTrieEntry(CnvExtData *extData, UChar32 c, uint32_t value) {
 
         extData->stage1[i1]=(uint16_t)newBlock;
         extData->stage2Top=newBlock+MBCS_STAGE_2_BLOCK_SIZE;
-        if(extData->stage2Top>LENGTHOF(extData->stage2)) {
+        if(extData->stage2Top>UPRV_LENGTHOF(extData->stage2)) {
             fprintf(stderr, "error: too many stage 2 entries at U+%04x\n", (int)c);
             exit(U_MEMORY_ALLOCATION_ERROR);
         }
@@ -871,7 +868,7 @@ addFromUTrieEntry(CnvExtData *extData, UChar32 c, uint32_t value) {
         extData->stage2[i2]=(uint16_t)(newBlock>>UCNV_EXT_STAGE_2_LEFT_SHIFT);
 
         extData->stage3Top=newBlock+MBCS_STAGE_3_BLOCK_SIZE;
-        if(extData->stage3Top>LENGTHOF(extData->stage3)) {
+        if(extData->stage3Top>UPRV_LENGTHOF(extData->stage3)) {
             fprintf(stderr, "error: too many stage 3 entries at U+%04x\n", (int)c);
             exit(U_MEMORY_ALLOCATION_ERROR);
         }
@@ -915,7 +912,7 @@ addFromUTrieEntry(CnvExtData *extData, UChar32 c, uint32_t value) {
             }
         }
     } else {
-        if((i3b=extData->stage3bTop++)>=LENGTHOF(extData->stage3b)) {
+        if((i3b=extData->stage3bTop++)>=UPRV_LENGTHOF(extData->stage3b)) {
             fprintf(stderr, "error: too many stage 3b entries at U+%04x\n", (int)c);
             exit(U_MEMORY_ALLOCATION_ERROR);
         }

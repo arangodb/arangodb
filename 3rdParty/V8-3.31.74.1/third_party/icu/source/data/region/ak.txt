@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ak.xml
@@ -49,7 +49,7 @@ ak{
         CF{"Afrika Finimfin Man"}
         CG{"Kongo"}
         CH{"Swetzaland"}
-        CI{"La Côte d'Ivoire"}
+        CI{"La Côte d’Ivoire"}
         CK{"Kook Nsupɔw"}
         CL{"Kyili"}
         CM{"Kamɛrun"}
@@ -237,5 +237,5 @@ ak{
         ZM{"Zambia"}
         ZW{"Zembabwe"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

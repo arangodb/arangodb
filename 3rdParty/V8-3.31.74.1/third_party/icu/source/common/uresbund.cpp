@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-* Copyright (C) 1997-2013, International Business Machines Corporation and
+* Copyright (C) 1997-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 ******************************************************************************
 *
@@ -36,6 +36,7 @@
 #include "putilimp.h"
 #include "uassert.h"
 
+using namespace icu;
 
 /*
 Static cache for already opened resource bundles - mostly for keeping fallback info
@@ -1732,8 +1733,8 @@ ures_getByKeyWithFallback(const UResourceBundle *resB,
         const char* key = inKey;
         if(res == RES_BOGUS) {
             UResourceDataEntry *dataEntry = resB->fData;
-            char path[256];
-            char* myPath = path;
+            CharString path;
+            char *myPath = NULL;
             const char* resPath = resB->fResPath;
             int32_t len = resB->fResPathLen;
             while(res == RES_BOGUS && dataEntry->fParent != NULL) { /* Otherwise, we'll look in parents */
@@ -1741,11 +1742,16 @@ ures_getByKeyWithFallback(const UResourceBundle *resB,
                 rootRes = dataEntry->fData.rootRes;
 
                 if(dataEntry->fBogus == U_ZERO_ERROR) {
+                    path.clear();
                     if (len > 0) {
-                        uprv_memcpy(path, resPath, len);
+                        path.append(resPath, len, *status);
                     }
-                    uprv_strcpy(path+len, inKey);
-                    myPath = path;
+                    path.append(inKey, *status);
+                    if (U_FAILURE(*status)) {
+                        ures_close(helper);
+                        return fillIn;
+                    }
+                    myPath = path.data();
                     key = inKey;
                     do {
                         res = res_findResource(&(dataEntry->fData), rootRes, &myPath, &key);
@@ -1982,7 +1988,6 @@ ures_getLocaleByType(const UResourceBundle* resourceBundle,
         case ULOC_VALID_LOCALE:
             return resourceBundle->fTopLevelData->fName;
         case ULOC_REQUESTED_LOCALE:
-            return NULL;
         default:
             *status = U_ILLEGAL_ARGUMENT_ERROR;
             return NULL;
@@ -2762,20 +2767,23 @@ ures_getKeywordValues(const char *path, const char *keyword, UErrorCode *status)
             const char *k;
             int32_t i;
             k = ures_getKey(subPtr);
-            
+
 #if defined(URES_TREE_DEBUG)
             /* fprintf(stderr, "%s | %s | %s | %s\n", path?path:"<ICUDATA>", keyword, locale, k); */
 #endif
-            for(i=0;k&&i<valuesCount;i++) {
+            if(k == NULL || *k == 0 ||
+                    uprv_strcmp(k, DEFAULT_TAG) == 0 || uprv_strncmp(k, "private-", 8) == 0) {
+                // empty or "default" or unlisted type
+                continue;
+            }
+            for(i=0; i<valuesCount; i++) {
                 if(!uprv_strcmp(valuesList[i],k)) {
                     k = NULL; /* found duplicate */
+                    break;
                 }
             }
-            if(k && *k) {
+            if(k != NULL) {
                 int32_t kLen = (int32_t)uprv_strlen(k);
-                if(!uprv_strcmp(k,DEFAULT_TAG)) {
-                    continue; /* don't need 'default'. */
-                }
                 if((valuesCount >= (VALUES_LIST_SIZE-1)) ||       /* no more space in list .. */
                     ((valuesIndex+kLen+1+1) >= VALUES_BUF_SIZE)) { /* no more space in buffer (string + 2 nulls) */
                     *status = U_ILLEGAL_ARGUMENT_ERROR; /* out of space.. */

@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 2008-2013, International Business Machines Corporation and
+ * Copyright (c) 2008-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -7,10 +7,12 @@
 
 #if !UCONFIG_NO_FORMATTING
 
+#include "unicode/decimfmt.h"
 #include "unicode/tmunit.h"
 #include "unicode/tmutamt.h"
 #include "unicode/tmutfmt.h"
 #include "tufmtts.h"
+#include "cmemory.h"
 #include "unicode/ustring.h"
 
 //TODO: put as compilation flag
@@ -27,8 +29,26 @@ void TimeUnitTest::runIndexedTest( int32_t index, UBool exec, const char* &name,
         TESTCASE(1, testAPI);
         TESTCASE(2, testGreekWithFallback);
         TESTCASE(3, testGreekWithSanitization);
+        TESTCASE(4, test10219Plurals);
         default: name = ""; break;
     }
+}
+
+// This function is more lenient than equals operator as it considers integer 3 hours and
+// double 3.0 hours to be equal
+static UBool tmaEqual(const TimeUnitAmount& left, const TimeUnitAmount& right) {
+    if (left.getTimeUnitField() != right.getTimeUnitField()) {
+        return FALSE;
+    }
+    UErrorCode status = U_ZERO_ERROR;
+    if (!left.getNumber().isNumeric() || !right.getNumber().isNumeric()) {
+        return FALSE;
+    }
+    UBool result = left.getNumber().getDouble(status) == right.getNumber().getDouble(status);
+    if (U_FAILURE(status)) {
+        return FALSE;
+    }
+    return result;
 }
 
 /**
@@ -78,14 +98,14 @@ void TimeUnitTest::testBasic() {
                 Formattable result;
                 ((Format*)formats[style])->parseObject(formatted, result, status);
                 if (!assertSuccess("parseObject()", status)) return;
-                if (result != formattable) {
+                if (!tmaEqual(*((TimeUnitAmount *)result.getObject()), *((TimeUnitAmount *) formattable.getObject()))) {
                     dataerrln("No round trip: ");
                 }
                 // other style parsing
                 Formattable result_1;
                 ((Format*)formats[1-style])->parseObject(formatted, result_1, status);
                 if (!assertSuccess("parseObject()", status)) return;
-                if (result_1 != formattable) {
+                if (!tmaEqual(*((TimeUnitAmount *)result_1.getObject()), *((TimeUnitAmount *) formattable.getObject()))) {
                     dataerrln("No round trip: ");
                 }
             }
@@ -117,10 +137,39 @@ void TimeUnitTest::testAPI() {
 
     TimeUnit::UTimeUnitFields field = tmunit_m->getTimeUnitField();
     assertTrue("field of month time unit is month", (field == TimeUnit::UTIMEUNIT_MONTH));
-    
+
+    //===== Interoperability with MeasureUnit ======
+    MeasureUnit **ptrs = new MeasureUnit *[TimeUnit::UTIMEUNIT_FIELD_COUNT];
+
+    ptrs[TimeUnit::UTIMEUNIT_YEAR] = MeasureUnit::createYear(status);
+    ptrs[TimeUnit::UTIMEUNIT_MONTH] = MeasureUnit::createMonth(status);
+    ptrs[TimeUnit::UTIMEUNIT_DAY] = MeasureUnit::createDay(status);
+    ptrs[TimeUnit::UTIMEUNIT_WEEK] = MeasureUnit::createWeek(status);
+    ptrs[TimeUnit::UTIMEUNIT_HOUR] = MeasureUnit::createHour(status);
+    ptrs[TimeUnit::UTIMEUNIT_MINUTE] = MeasureUnit::createMinute(status);
+    ptrs[TimeUnit::UTIMEUNIT_SECOND] = MeasureUnit::createSecond(status);
+    if (!assertSuccess("TimeUnit::createInstance", status)) return;
+
+    for (TimeUnit::UTimeUnitFields j = TimeUnit::UTIMEUNIT_YEAR; 
+            j < TimeUnit::UTIMEUNIT_FIELD_COUNT; 
+            j = (TimeUnit::UTimeUnitFields)(j+1)) {
+        MeasureUnit *ptr = TimeUnit::createInstance(j, status);
+        if (!assertSuccess("TimeUnit::createInstance", status)) return;
+        // We have to convert *ptr to a MeasureUnit or else == will fail over
+        // differing types (TimeUnit vs. MeasureUnit).
+        assertTrue(
+                "Time unit should be equal to corresponding MeasureUnit",
+                MeasureUnit(*ptr) == *ptrs[j]);
+        delete ptr;
+    }
     delete tmunit;
     delete another;
     delete tmunit_m;
+    for (int i = 0; i < TimeUnit::UTIMEUNIT_FIELD_COUNT; ++i) {
+        delete ptrs[i];
+    }
+    delete [] ptrs;
+
     //
     //================= TimeUnitAmount =================
 
@@ -226,15 +275,18 @@ void TimeUnitTest::testGreekWithFallback() {
     const UChar oneMonth[] = {0x0031, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x03b1, 0x03c2, 0};
     const UChar oneMonthShort[] = {0x0031, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x002e, 0};
     const UChar oneYear[] = {0x0031, 0x0020, 0x03ad, 0x03c4, 0x03bf, 0x03c2, 0};
+    const UChar oneYearShort[] = {0x0031, 0x0020, 0x03ad, 0x03c4, 0x002e, 0};
     const UChar sevenSeconds[] = {0x0037, 0x0020, 0x03b4, 0x03b5, 0x03c5, 0x03c4, 0x03b5, 0x03c1, 0x03cc, 0x03bb, 0x03b5, 0x03c0, 0x03c4, 0x03b1, 0};
     const UChar sevenSecondsShort[] = {0x0037, 0x0020, 0x03b4, 0x03b5, 0x03c5, 0x03c4, 0x002e, 0};
     const UChar sevenMinutes[] = {0x0037, 0x0020, 0x03bb, 0x03b5, 0x03c0, 0x03c4, 0x03ac, 0};
     const UChar sevenMinutesShort[] = {0x0037, 0x0020, 0x03bb, 0x03b5, 0x03c0, 0x002e, 0};
     const UChar sevenHours[] = {0x0037, 0x0020, 0x03ce, 0x03c1, 0x03b5, 0x03c2, 0};
+    const UChar sevenHoursShort[] = {0x0037, 0x0020, 0x03ce, 0x03c1, 0x002e, 0};
     const UChar sevenDays[] = {0x0037, 0x0020, 0x03b7, 0x03bc, 0x03ad, 0x03c1, 0x03b5, 0x03c2, 0};
     const UChar sevenMonths[] = {0x0037, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x03b5, 0x3c2, 0};
     const UChar sevenMonthsShort[] = {0x0037, 0x0020, 0x03bc, 0x03ae, 0x03bd, 0x002e, 0};
     const UChar sevenYears[] = {0x0037, 0x0020, 0x03ad, 0x03c4, 0x03b7, 0};
+    const UChar sevenYearsShort[] = {0x0037, 0x0020, 0x03ad, 0x03c4, 0x002e, 0};
 
     const UnicodeString oneSecondStr(oneSecond);
     const UnicodeString oneSecondShortStr(oneSecondShort);
@@ -245,24 +297,29 @@ void TimeUnitTest::testGreekWithFallback() {
     const UnicodeString oneMonthStr(oneMonth);
     const UnicodeString oneMonthShortStr(oneMonthShort);
     const UnicodeString oneYearStr(oneYear);
+    const UnicodeString oneYearShortStr(oneYearShort);
     const UnicodeString sevenSecondsStr(sevenSeconds);
     const UnicodeString sevenSecondsShortStr(sevenSecondsShort);
     const UnicodeString sevenMinutesStr(sevenMinutes);
     const UnicodeString sevenMinutesShortStr(sevenMinutesShort);
     const UnicodeString sevenHoursStr(sevenHours);
+    const UnicodeString sevenHoursShortStr(sevenHoursShort);
     const UnicodeString sevenDaysStr(sevenDays);
     const UnicodeString sevenMonthsStr(sevenMonths);
     const UnicodeString sevenMonthsShortStr(sevenMonthsShort);
     const UnicodeString sevenYearsStr(sevenYears);
+    const UnicodeString sevenYearsShortStr(sevenYearsShort);
 
-    const UnicodeString expected[] = {oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
-                              oneSecondShortStr, oneMinuteShortStr, oneHourStr, oneDayStr, oneMonthShortStr, oneYearStr,
-                              sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
-                              sevenSecondsShortStr, sevenMinutesShortStr, sevenHoursStr, sevenDaysStr, sevenMonthsShortStr, sevenYearsStr,
-                              oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
-                              oneSecondShortStr, oneMinuteShortStr, oneHourStr, oneDayStr, oneMonthShortStr, oneYearStr,
-                              sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
-                              sevenSecondsShortStr, sevenMinutesShortStr, sevenHoursStr, sevenDaysStr, sevenMonthsShortStr, sevenYearsStr};
+    const UnicodeString expected[] = {
+            oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
+            oneSecondShortStr, oneMinuteShortStr, oneHourStr, oneDayStr, oneMonthShortStr, oneYearShortStr,
+            sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
+            sevenSecondsShortStr, sevenMinutesShortStr, sevenHoursShortStr, sevenDaysStr, sevenMonthsShortStr, sevenYearsShortStr,
+
+            oneSecondStr, oneMinuteStr, oneHourStr, oneDayStr, oneMonthStr, oneYearStr,
+            oneSecondShortStr, oneMinuteShortStr, oneHourStr, oneDayStr, oneMonthShortStr, oneYearShortStr,
+            sevenSecondsStr, sevenMinutesStr, sevenHoursStr, sevenDaysStr, sevenMonthsStr, sevenYearsStr,
+            sevenSecondsShortStr, sevenMinutesShortStr, sevenHoursShortStr, sevenDaysStr, sevenMonthsShortStr, sevenYearsShortStr};
 
     int counter = 0;
     for ( unsigned int locIndex = 0;
@@ -352,6 +409,63 @@ void TimeUnitTest::testGreekWithSanitization() {
 
     delete numberFmt;
     delete timeUnitFormat;
+}
+
+void TimeUnitTest::test10219Plurals() {
+    Locale usLocale("en_US");
+    double values[2] = {1.588, 1.011};
+    UnicodeString expected[2][3] = {
+        {"1 minute", "1.5 minutes", "1.58 minutes"},
+        {"1 minute", "1.0 minutes", "1.01 minutes"}
+    };
+    UErrorCode status = U_ZERO_ERROR;
+    TimeUnitFormat tuf(usLocale, status);
+    if (U_FAILURE(status)) {
+        dataerrln("generating TimeUnitFormat Object failed: %s", u_errorName(status));
+        return;
+    }
+    LocalPointer<DecimalFormat> nf((DecimalFormat *) NumberFormat::createInstance(usLocale, status));
+    if (U_FAILURE(status)) {
+        dataerrln("generating NumberFormat Object failed: %s", u_errorName(status));
+        return;
+    }
+    for (int32_t j = 0; j < UPRV_LENGTHOF(values); ++j) {
+        for (int32_t i = 0; i < UPRV_LENGTHOF(expected[j]); ++i) {
+            nf->setMinimumFractionDigits(i);
+            nf->setMaximumFractionDigits(i);
+            nf->setRoundingMode(DecimalFormat::kRoundDown);
+            tuf.setNumberFormat(*nf, status);
+            if (U_FAILURE(status)) {
+                dataerrln("setting NumberFormat failed: %s", u_errorName(status));
+                return;
+            }
+            UnicodeString actual;
+            Formattable fmt;
+            LocalPointer<TimeUnitAmount> tamt(new TimeUnitAmount(values[j], TimeUnit::UTIMEUNIT_MINUTE, status));
+            if (U_FAILURE(status)) {
+                dataerrln("generating TimeUnitAmount Object failed: %s", u_errorName(status));
+                return;
+            }
+            fmt.adoptObject(tamt.orphan());
+            tuf.format(fmt, actual, status);
+            if (U_FAILURE(status)) {
+                dataerrln("Actual formatting failed: %s", u_errorName(status));
+                return;
+            }
+            if (expected[j][i] != actual) {
+                errln("Expected " + expected[j][i] + ", got " + actual);
+            }
+        }
+    }
+
+    // test parsing
+    Formattable result;
+    ParsePosition pos;
+    UnicodeString formattedString = "1 minutes";
+    tuf.parseObject(formattedString, result, pos);
+    if (formattedString.length() != pos.getIndex()) {
+        errln("Expect parsing to go all the way to the end of the string.");
+    }
 }
 
 #endif

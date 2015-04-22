@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ksb.xml
@@ -23,7 +23,7 @@ ksb{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -210,7 +210,7 @@ ksb{
                     wide{
                         "Lobo ya bosi",
                         "Lobo ya mbii",
-                        "Lobo ya nnd'atu",
+                        "Lobo ya nnd’atu",
                         "Lobo ya nne",
                     }
                 }
@@ -245,7 +245,7 @@ ksb{
             dn{"Dakika"}
         }
         month{
-            dn{"Ng'ezi"}
+            dn{"Ng’ezi"}
         }
         second{
             dn{"Sekunde"}
@@ -257,7 +257,7 @@ ksb{
             dn{"Mwesiku za wiki"}
         }
         year{
-            dn{"Ng'waka"}
+            dn{"Ng’waka"}
         }
         zone{
             dn{"Majila"}

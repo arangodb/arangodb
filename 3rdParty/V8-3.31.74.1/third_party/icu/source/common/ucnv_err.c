@@ -1,7 +1,7 @@
 /*
  *****************************************************************************
  *
- *   Copyright (C) 1998-2007, International Business Machines
+ *   Copyright (C) 1998-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *****************************************************************************
@@ -50,6 +50,50 @@
 #define UCNV_PRV_ESCAPE_CSS2        'S'
 #define UCNV_PRV_STOP_ON_ILLEGAL    'i'
 
+/*
+ * IS_DEFAULT_IGNORABLE_CODE_POINT
+ * This is to check if a code point has the default ignorable unicode property.
+ * As such, this list needs to be updated if the ignorable code point list ever
+ * changes.
+ * To avoid dependency on other code, this list is hard coded here.
+ * When an ignorable code point is found and is unmappable, the default callbacks
+ * will ignore them.
+ * For a list of the default ignorable code points, use this link: http://unicode.org/cldr/utility/list-unicodeset.jsp?a=[%3ADI%3A]&g=
+ *
+ * This list should be sync with the one in CharsetCallback.java
+ */
+#define IS_DEFAULT_IGNORABLE_CODE_POINT(c) (\
+    (c == 0x00AD) || \
+    (c == 0x034F) || \
+    (c == 0x061C) || \
+    (c == 0x115F) || \
+    (c == 0x1160) || \
+    (0x17B4 <= c && c <= 0x17B5) || \
+    (0x180B <= c && c <= 0x180E) || \
+    (0x200B <= c && c <= 0x200F) || \
+    (0x202A <= c && c <= 0x202E) || \
+    (c == 0x2060) || \
+    (0x2066 <= c && c <= 0x2069) || \
+    (0x2061 <= c && c <= 0x2064) || \
+    (0x206A <= c && c <= 0x206F) || \
+    (c == 0x3164) || \
+    (0x0FE00 <= c && c <= 0x0FE0F) || \
+    (c == 0x0FEFF) || \
+    (c == 0x0FFA0) || \
+    (0x01BCA0  <= c && c <= 0x01BCA3) || \
+    (0x01D173 <= c && c <= 0x01D17A) || \
+    (c == 0x0E0001) || \
+    (0x0E0020 <= c && c <= 0x0E007F) || \
+    (0x0E0100 <= c && c <= 0x0E01EF) || \
+    (c == 0x2065) || \
+    (0x0FFF0 <= c && c <= 0x0FFF8) || \
+    (c == 0x0E0000) || \
+    (0x0E0002 <= c && c <= 0x0E001F) || \
+    (0x0E0080 <= c && c <= 0x0E00FF) || \
+    (0x0E01F0 <= c && c <= 0x0E0FFF) \
+    )
+
+
 /*Function Pointer STOPS at the ILLEGAL_SEQUENCE */
 U_CAPI void    U_EXPORT2
 UCNV_FROM_U_CALLBACK_STOP (
@@ -61,6 +105,13 @@ UCNV_FROM_U_CALLBACK_STOP (
                   UConverterCallbackReason reason,
                   UErrorCode * err)
 {
+    if (reason == UCNV_UNASSIGNED && IS_DEFAULT_IGNORABLE_CODE_POINT(codePoint))
+    {
+        /*
+         * Skip if the codepoint has unicode property of default ignorable.
+         */
+        *err = U_ZERO_ERROR;
+    }
     /* the caller must have set the error code accordingly */
     return;
 }
@@ -92,7 +143,14 @@ UCNV_FROM_U_CALLBACK_SKIP (
 {
     if (reason <= UCNV_IRREGULAR)
     {
-        if (context == NULL || (*((char*)context) == UCNV_PRV_STOP_ON_ILLEGAL && reason == UCNV_UNASSIGNED))
+        if (reason == UCNV_UNASSIGNED && IS_DEFAULT_IGNORABLE_CODE_POINT(codePoint))
+        {
+            /*
+             * Skip if the codepoint has unicode property of default ignorable.
+             */
+            *err = U_ZERO_ERROR;
+        }
+        else if (context == NULL || (*((char*)context) == UCNV_PRV_STOP_ON_ILLEGAL && reason == UCNV_UNASSIGNED))
         {
             *err = U_ZERO_ERROR;
         }
@@ -113,7 +171,14 @@ UCNV_FROM_U_CALLBACK_SUBSTITUTE (
 {
     if (reason <= UCNV_IRREGULAR)
     {
-        if (context == NULL || (*((char*)context) == UCNV_PRV_STOP_ON_ILLEGAL && reason == UCNV_UNASSIGNED))
+        if (reason == UCNV_UNASSIGNED && IS_DEFAULT_IGNORABLE_CODE_POINT(codePoint))
+        {
+            /*
+             * Skip if the codepoint has unicode property of default ignorable.
+             */
+            *err = U_ZERO_ERROR;
+        }
+        else if (context == NULL || (*((char*)context) == UCNV_PRV_STOP_ON_ILLEGAL && reason == UCNV_UNASSIGNED))
         {
             *err = U_ZERO_ERROR;
             ucnv_cbFromUWriteSub(fromArgs, 0, err);
@@ -153,6 +218,14 @@ UCNV_FROM_U_CALLBACK_ESCAPE (
   
   if (reason > UCNV_IRREGULAR)
   {
+      return;
+  }
+  else if (reason == UCNV_UNASSIGNED && IS_DEFAULT_IGNORABLE_CODE_POINT(codePoint))
+  {
+      /*
+       * Skip if the codepoint has unicode property of default ignorable.
+       */
+      *err = U_ZERO_ERROR;
       return;
   }
 

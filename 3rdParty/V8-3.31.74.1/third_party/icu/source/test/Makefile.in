@@ -1,5 +1,5 @@
 ## Makefile.in for ICU tests
-## Copyright (c) 1999-2013, International Business Machines Corporation and
+## Copyright (c) 1999-2014, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 ## Source directory information
@@ -15,6 +15,11 @@ subdir = test
 
 @ICUIO_TRUE@IOTEST = iotest
 
+# the letest directory depends on layoutex.
+# If you have layoutex but not layout, you will be using
+# harfbuzz.
+@LAYOUTEX_TRUE@LETEST = letest
+
 # status dir
 STATUS_TMP = tmp
 STATUS_FULL = $(shell pwd)/$(STATUS_TMP)
@@ -22,7 +27,7 @@ STATUS_FULL = $(shell pwd)/$(STATUS_TMP)
 ## Files to remove for 'make clean'
 CLEANFILES = *~ $(STATUS_TMP)
 
-SUBDIRS = testdata intltest $(IOTEST) cintltst
+SUBDIRS = testdata intltest $(IOTEST) cintltst $(LETEST)
 
 ## List of phony targets
 .PHONY : everything all all-local all-recursive install install-local		\
@@ -121,15 +126,24 @@ pcheck_setup: testdata
 	@echo Beginning parallel make. Output may be interleaved!
 
 $(STATUS_FULL)/status.$(STATUS_NUM).deleteme.%: pcheck_setup
-	@$(MAKE) -C $* TEST_STATUS_FILE=$@ check || ( echo "FAILED: $* (other tests may still be running..)" ; touch $@.FAIL ; false )
-	-@touch $@.PASS
-	-@echo "PASSED: $* (other tests may still be running..)"
+	-@$(MAKE) -C $* TEST_STATUS_FILE=$@ check || ( echo "FAILED: $* (other tests may still be running..)" ; touch $@ ; cp $@ $@.FAIL ; false )
+	-@[ ! -f $@.FAIL ] && touch $@.PASS && echo "PASSED: $* (other tests may still be running..)"
+	-@touch $@
 
 # print out status
 pcheck: $(STATUS_FILES)
 	@goods= ; \
 	bads= ; \
-	echo "---------------"; \
+	echo "----------------------------------------"; \
+	for subdir in $(SUBDIRS); do \
+	  if [ -s "$(MYSTATUS_R).$$subdir" ]; then \
+	    echo "-------------" ; \
+	    echo "| ***     FAILING TEST SUMMARY FOR:              $$subdir  " ; \
+	    cat "$(MYSTATUS_R).$$subdir" ; \
+	    echo "| *** END FAILING TEST SUMMARY FOR:              $$subdir" ; \
+	    $(RMV) "$(MYSTATUS_R).$$subdir" ; \
+	  fi; \
+	done; \
 	for subdir in $(SUBDIRS); do \
 		if [ -f "$(MYSTATUS_R).$$subdir.FAIL" ]; \
 		then \

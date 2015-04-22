@@ -1,28 +1,23 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh_Hant_HK.xml
 // *
 // ***************************************************************************
 zh_Hant_HK{
-    Version{"2.0.92.87"}
+    %%Parent{"zh_Hant"}
+    Version{"2.1.8.28"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"阿比贊"}
-        }
-        "Africa:Addis_Ababa"{
-            ec{"亞的斯亞貝巴"}
         }
         "Africa:Asmera"{
             ec{"阿斯馬拉"}
         }
         "Africa:Dar_es_Salaam"{
             ec{"達累斯薩拉姆"}
-        }
-        "Africa:Khartoum"{
-            ec{"喀土木"}
         }
         "Africa:Lagos"{
             ec{"拉各斯"}
@@ -36,9 +31,6 @@ zh_Hant_HK{
         "Africa:Lusaka"{
             ec{"盧薩卡"}
         }
-        "Africa:Malabo"{
-            ec{"馬拉波"}
-        }
         "Africa:Maseru"{
             ec{"馬塞魯"}
         }
@@ -48,17 +40,20 @@ zh_Hant_HK{
         "Africa:Windhoek"{
             ec{"溫特和克"}
         }
+        "America:Aruba"{
+            ec{"阿魯巴"}
+        }
         "America:Cayenne"{
             ec{"法屬蓋亞那"}
         }
         "America:Costa_Rica"{
             ec{"哥斯達黎加"}
         }
-        "America:Indiana:Petersburg"{
-            ec{"印第安那州彼得堡"}
+        "America:Guyana"{
+            ec{"圭亞那"}
         }
-        "America:Indiana:Winamac"{
-            ec{"印第安那州威納馬克"}
+        "America:Managua"{
+            ec{"馬那瓜"}
         }
         "America:North_Dakota:Beulah"{
             ec{"比尤拉，北達科他州"}
@@ -78,11 +73,14 @@ zh_Hant_HK{
         "Asia:Dushanbe"{
             ec{"杜尚別"}
         }
+        "Asia:Hong_Kong"{
+            ec{"香港"}
+        }
         "Asia:Karachi"{
             ec{"卡拉奇"}
         }
-        "Asia:Muscat"{
-            ec{"馬斯喀特"}
+        "Asia:Macau"{
+            ec{"澳門"}
         }
         "Asia:Nicosia"{
             ec{"尼科西亞"}
@@ -93,6 +91,15 @@ zh_Hant_HK{
         "Atlantic:Stanley"{
             ec{"史坦雷"}
         }
+        "Australia:Brisbane"{
+            ec{"布里斯本"}
+        }
+        "Australia:Perth"{
+            ec{"珀斯"}
+        }
+        "Australia:Sydney"{
+            ec{"悉尼"}
+        }
         "Europe:Belgrade"{
             ec{"貝爾格萊德"}
         }
@@ -102,14 +109,8 @@ zh_Hant_HK{
         "Europe:Chisinau"{
             ec{"基希訥烏"}
         }
-        "Europe:Jersey"{
-            ec{"澤西"}
-        }
         "Europe:Ljubljana"{
             ec{"盧布爾雅那"}
-        }
-        "Europe:Mariehamn"{
-            ec{"馬里漢姆"}
         }
         "Europe:Podgorica"{
             ec{"波德戈里察"}
@@ -120,23 +121,14 @@ zh_Hant_HK{
         "Europe:Skopje"{
             ec{"斯科普里"}
         }
-        "Europe:Sofia"{
-            ec{"索非亞"}
-        }
         "Indian:Comoro"{
             ec{"科摩羅"}
         }
         "Indian:Kerguelen"{
             ec{"凱爾蓋朗"}
         }
-        "Indian:Mahe"{
-            ec{"馬希"}
-        }
         "Pacific:Guadalcanal"{
             ec{"瓜達爾卡納爾"}
-        }
-        "Pacific:Port_Moresby"{
-            ec{"莫爾斯比港"}
         }
         "Pacific:Tongatapu"{
             ec{"湯加塔布"}
@@ -145,6 +137,12 @@ zh_Hant_HK{
             ld{"亞塞拜疆夏令時間"}
             lg{"亞塞拜疆時間"}
             ls{"亞塞拜疆標準時間"}
+        }
+        "meta:Cocos"{
+            ls{"可可斯群島時間"}
+        }
+        "meta:Galapagos"{
+            ls{"加拉帕戈群島時間"}
         }
         "meta:Georgia"{
             ld{"格魯吉亞夏令時間"}
@@ -159,8 +157,18 @@ zh_Hant_HK{
             lg{"毛里求斯時間"}
             ls{"毛里求斯標準時間"}
         }
+        "meta:New_Caledonia"{
+            ld{"新喀里多尼亞夏令時間"}
+            lg{"新喀里多尼亞時間"}
+            ls{"新喀里多尼亞標準時間"}
+        }
+        "meta:Pitcairn"{
+            ls{"皮特康時間"}
+        }
         "meta:Solomon"{
             ls{"所羅門群島時間"}
         }
+        regionFormatDaylight{"{0}夏令時間"}
+        regionFormatStandard{"{0}標準時間"}
     }
 }

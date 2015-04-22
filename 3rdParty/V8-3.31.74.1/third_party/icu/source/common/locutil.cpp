@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 2002-2011, International Business Machines Corporation and
+ * Copyright (C) 2002-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  *******************************************************************************
  */
@@ -18,6 +18,7 @@
 #include "umutex.h"
 
 // see LocaleUtility::getAvailableLocaleNames
+static icu::UInitOnce   LocaleUtilityInitOnce = U_INITONCE_INITIALIZER;
 static icu::Hashtable * LocaleUtility_cache = NULL;
 
 #define UNDERSCORE_CHAR ((UChar)0x005f)
@@ -39,6 +40,25 @@ static UBool U_CALLCONV service_cleanup(void) {
     }
     return TRUE;
 }
+
+
+static void U_CALLCONV locale_utility_init(UErrorCode &status) {
+    using namespace icu;
+    U_ASSERT(LocaleUtility_cache == NULL);
+    ucln_common_registerCleanup(UCLN_COMMON_SERVICE, service_cleanup);
+    LocaleUtility_cache = new Hashtable(status);
+    if (U_FAILURE(status)) {
+        delete LocaleUtility_cache;
+        LocaleUtility_cache = NULL;
+        return;
+    }
+    if (LocaleUtility_cache == NULL) {
+        status = U_MEMORY_ALLOCATION_ERROR;
+        return;
+    }
+    LocaleUtility_cache->setValueDeleter(uhash_deleteHashtable);
+}
+
 U_CDECL_END
 
 U_NAMESPACE_BEGIN
@@ -189,33 +209,12 @@ LocaleUtility::getAvailableLocaleNames(const UnicodeString& bundleID)
     // garbage ((void*)1 or other random pointer).
 
     UErrorCode status = U_ZERO_ERROR;
-    Hashtable* cache;
-    umtx_lock(NULL);
-    cache = LocaleUtility_cache;
-    umtx_unlock(NULL);
-
+    umtx_initOnce(LocaleUtilityInitOnce, locale_utility_init, status);
+    Hashtable *cache = LocaleUtility_cache;
     if (cache == NULL) {
-        cache = new Hashtable(status);
-        if (cache == NULL || U_FAILURE(status)) {
-            return NULL; // catastrophic failure; e.g. out of memory
-        }
-        cache->setValueDeleter(uhash_deleteHashtable);
-        Hashtable* h; // set this to final LocaleUtility_cache value
-        umtx_lock(NULL);
-        h = LocaleUtility_cache;
-        if (h == NULL) {
-            LocaleUtility_cache = h = cache;
-            cache = NULL;
-            ucln_common_registerCleanup(UCLN_COMMON_SERVICE, service_cleanup);
-        }
-        umtx_unlock(NULL);
-        if(cache != NULL) {
-          delete cache;
-        }
-        cache = h;
+        // Catastrophic failure.
+        return NULL;
     }
-
-    U_ASSERT(cache != NULL);
 
     Hashtable* htp;
     umtx_lock(NULL);
@@ -242,8 +241,17 @@ LocaleUtility::getAvailableLocaleNames(const UnicodeString& bundleID)
                 return NULL;
             }
             umtx_lock(NULL);
-            cache->put(bundleID, (void*)htp, status);
-            umtx_unlock(NULL);
+            Hashtable *t = static_cast<Hashtable *>(cache->get(bundleID));
+            if (t != NULL) {
+                // Another thread raced through this code, creating the cache entry first.
+                // Discard ours and return theirs.
+                umtx_unlock(NULL);
+                delete htp;
+                htp = t;
+            } else {
+                cache->put(bundleID, (void*)htp, status);
+                umtx_unlock(NULL);
+            }
         }
     }
     return htp;

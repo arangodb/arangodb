@@ -1,0 +1,141 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/kea.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/kea.xml
+ */
+kea{
+    Version{"2.1.7.39"}
+    units{
+        duration{
+            day{
+                dnam{"dia"}
+                other{"{0} dia"}
+            }
+            hour{
+                dnam{"ora"}
+                other{"{0} ora"}
+                per{"{0} pur ora"}
+            }
+            microsecond{
+                dnam{"mikrosigundu"}
+                other{"{0} mikrosigundu"}
+            }
+            millisecond{
+                dnam{"milisigundu"}
+                other{"{0} milisigundu"}
+            }
+            minute{
+                dnam{"minutu"}
+                other{"{0} minutu"}
+            }
+            month{
+                dnam{"mes"}
+                other{"{0} mes"}
+            }
+            nanosecond{
+                dnam{"nanosigundu"}
+                other{"{0} nanosigundu"}
+            }
+            second{
+                dnam{"sigundu"}
+                other{"{0} sigundu"}
+                per{"{0} pur sigundu"}
+            }
+            week{
+                dnam{"simana"}
+                other{"{0} simana"}
+            }
+            year{
+                dnam{"anu"}
+                other{"{0} anu"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                dnam{"dia"}
+                other{"{0} dia"}
+            }
+            hour{
+                dnam{"ora"}
+                other{"{0} h"}
+            }
+            millisecond{
+                dnam{"ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+            }
+            month{
+                dnam{"mes"}
+                other{"{0} mes"}
+            }
+            second{
+                dnam{"sig."}
+                other{"{0} s"}
+            }
+            week{
+                dnam{"sim."}
+                other{"{0} sim."}
+            }
+            year{
+                dnam{"anu"}
+                other{"{0} anu"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"dia"}
+                other{"{0} dia"}
+            }
+            hour{
+                dnam{"ora"}
+                other{"{0} h"}
+                per{"{0}/h"}
+            }
+            microsecond{
+                dnam{"μs"}
+                other{"{0} μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                other{"{0} ms"}
+            }
+            minute{
+                dnam{"min."}
+                other{"{0} min."}
+            }
+            month{
+                dnam{"mes"}
+                other{"{0} mes"}
+            }
+            nanosecond{
+                dnam{"ns"}
+                other{"{0} ns"}
+            }
+            second{
+                dnam{"sig."}
+                other{"{0} sig."}
+                per{"{0}/s"}
+            }
+            week{
+                dnam{"sim."}
+                other{"{0} sim."}
+            }
+            year{
+                dnam{"anu"}
+                other{"{0} anu"}
+            }
+        }
+    }
+}

@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2005-2009, International Business Machines
+ *   Copyright (C) 2005-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -25,7 +25,6 @@
 static const UChar C_TAG[] = {0x3D, 0x3D, 0x3D, 0x3D, 0x3D, 0}; // =====
 static const UChar C_NAMEZONE[] = {0x6E, 0x61, 0x6D, 0x65, 0x7A, 0x6F, 0x6E, 0x65, 0}; // namezone 
 static const UChar C_NAMEBASE[] = {0x6E, 0x61, 0x6D, 0x65, 0x62, 0x61, 0x73, 0x65, 0}; // namebase 
-static const UChar C_NAMEUTF8[] = {0x6E, 0x61, 0x6D, 0x65, 0x75, 0x74, 0x66, 0x38, 0}; // nameutf8 
 
 static const UChar C_TYPE[] = {0x74, 0x79, 0x70, 0x65, 0}; // type
 static const UChar C_TOASCII[]  =  {0x74, 0x6F, 0x61, 0x73, 0x63, 0x69, 0x69, 0};       // toascii

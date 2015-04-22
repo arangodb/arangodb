@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2003-2011, International Business Machines
+*   Copyright (C) 2003-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -42,8 +42,6 @@
 #include "ucnv_io.h"
 
 // general definitions ----------------------------------------------------- ***
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 U_CDECL_BEGIN
 

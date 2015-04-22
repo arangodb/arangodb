@@ -3,20 +3,12 @@
 ** 2006-07-17 by Arthur David Olson.
 */
 
-#ifndef lint
-#ifndef NOID
-static char	elsieid[] = "@(#)scheck.c	8.19";
-#endif /* !defined lint */
-#endif /* !defined NOID */
-
 /*LINTLIBRARY*/
 
 #include "private.h"
 
 const char *
-scheck(string, format)
-const char * const	string;
-const char * const	format;
+scheck(const char *const string, const char *const format)
 {
 	register char *		fbuf;
 	register const char *	fp;
@@ -28,36 +20,45 @@ const char * const	format;
 	result = "";
 	if (string == NULL || format == NULL)
 		return result;
-	fbuf = imalloc((int) (2 * strlen(format) + 4));
+	fbuf = malloc(2 * strlen(format) + 4);
 	if (fbuf == NULL)
 		return result;
 	fp = format;
 	tp = fbuf;
+
+	/*
+	** Copy directives, suppressing each conversion that is not
+	** already suppressed.  Scansets containing '%' are not
+	** supported; e.g., the conversion specification "%[%]" is not
+	** supported.  Also, multibyte characters containing a
+	** non-leading '%' byte are not supported.
+	*/
 	while ((*tp++ = c = *fp++) != '\0') {
 		if (c != '%')
 			continue;
-		if (*fp == '%') {
-			*tp++ = *fp++;
-			continue;
+		if (is_digit(*fp)) {
+			char const *f = fp;
+			char *t = tp;
+			do {
+				*t++ = c = *f++;
+			} while (is_digit(c));
+			if (c == '$') {
+				fp = f;
+				tp = t;
+			}
 		}
 		*tp++ = '*';
 		if (*fp == '*')
 			++fp;
-		while (is_digit(*fp))
-			*tp++ = *fp++;
-		if (*fp == 'l' || *fp == 'h')
-			*tp++ = *fp++;
-		else if (*fp == '[')
-			do *tp++ = *fp++;
-				while (*fp != '\0' && *fp != ']');
 		if ((*tp++ = *fp++) == '\0')
 			break;
 	}
+
 	*(tp - 1) = '%';
 	*tp++ = 'c';
 	*tp = '\0';
 	if (sscanf(string, fbuf, &dummy) != 1)
-		result = (char *) format;
-	ifree(fbuf);
+		result = format;
+	free(fbuf);
 	return result;
 }

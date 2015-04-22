@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2010-2013, International Business Machines Corporation and
+* Copyright (C) 2010-2014, International Business Machines Corporation and
 * others. All Rights Reserved.
 *******************************************************************************
 *
@@ -135,6 +135,9 @@ public:
     /**
      * Returns the name of this numbering system if it was created using one of the predefined names
      * known to ICU.  Otherwise, returns NULL.
+     * The predefined names are identical to the numbering system names as defined by
+     * the BCP47 definition in Unicode CLDR.
+     * See also, http://www.unicode.org/repos/cldr/tags/latest/common/bcp47/number.xml
      * @stable ICU 4.6
      */
     const char * getName() const;

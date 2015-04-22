@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ro.xml
@@ -27,6 +27,7 @@ ro{
     }
     MoreInformation{"..."}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{">{0}"}
@@ -179,10 +180,13 @@ ro{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             eras{
@@ -269,8 +273,8 @@ ro{
                 "dd.MM.y G",
                 "dd.MM.y GGGGG",
                 "{1}, {0}",
-                "{1}, {0}",
-                "{1}, {0}",
+                "{1} 'la' {0}",
+                "{1} 'la' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
             }
@@ -408,6 +412,10 @@ ro{
                 "a.m.",
                 "p.m.",
             }
+            AmPmMarkersNarrow{
+                "a.m.",
+                "p.m.",
+            }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
                 "HH:mm:ss z",
@@ -423,10 +431,13 @@ ro{
                 "{1}, {0}",
                 "{1}, {0}",
             }
+            NoonMarker{"la prânz"}
+            NoonMarkerNarrow{"prânz"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d"}
@@ -533,13 +544,13 @@ ro{
                         "Sâ",
                     }
                     wide{
-                        "duminică",
-                        "luni",
-                        "marți",
-                        "miercuri",
-                        "joi",
-                        "vineri",
-                        "sâmbătă",
+                        "Duminică",
+                        "Luni",
+                        "Marți",
+                        "Miercuri",
+                        "Joi",
+                        "Vineri",
+                        "Sâmbătă",
                     }
                 }
             }
@@ -548,9 +559,17 @@ ro{
                     "î.Hr.",
                     "d.Hr.",
                 }
+                abbreviated%variant{
+                    "î.e.n",
+                    "e.n.",
+                }
                 wide{
                     "înainte de Hristos",
                     "după Hristos",
+                }
+                wide%variant{
+                    "înaintea erei noastre",
+                    "era noastră",
                 }
             }
             intervalFormats{
@@ -723,18 +742,18 @@ ro{
                         "D",
                     }
                     wide{
-                        "ianuarie",
-                        "februarie",
-                        "martie",
-                        "aprilie",
-                        "mai",
-                        "iunie",
-                        "iulie",
-                        "august",
-                        "septembrie",
-                        "octombrie",
-                        "noiembrie",
-                        "decembrie",
+                        "Ianuarie",
+                        "Februarie",
+                        "Martie",
+                        "Aprilie",
+                        "Mai",
+                        "Iunie",
+                        "Iulie",
+                        "August",
+                        "Septembrie",
+                        "Octombrie",
+                        "Noiembrie",
+                        "Decembrie",
                     }
                 }
             }
@@ -761,10 +780,10 @@ ro{
                 }
                 stand-alone{
                     abbreviated{
-                        "T1",
-                        "T2",
-                        "T3",
-                        "T4",
+                        "Trim. I",
+                        "Trim. II",
+                        "Trim. III",
+                        "Trim. IV",
                     }
                     narrow{
                         "1",
@@ -773,10 +792,10 @@ ro{
                         "4",
                     }
                     wide{
-                        "trimestrul I",
-                        "trimestrul al II-lea",
-                        "trimestrul al III-lea",
-                        "trimestrul al IV-lea",
+                        "Trimestrul I",
+                        "Trimestrul al II-lea",
+                        "Trimestrul al III-lea",
+                        "Trimestrul al IV-lea",
                     }
                 }
             }
@@ -865,7 +884,7 @@ ro{
         alternateQuotationEnd{"»"}
         alternateQuotationStart{"«"}
         quotationEnd{"”"}
-        quotationStart{"„"}
+        quotationStart{"“"}
     }
     durationUnits{
         hm{"h:mm"}
@@ -874,7 +893,7 @@ ro{
     }
     fields{
         day{
-            dn{"zi"}
+            dn{"Zi"}
             relative{
                 "-1"{"ieri"}
                 "-2"{"alaltăieri"}
@@ -884,22 +903,52 @@ ro{
             }
             relativeTime{
                 future{
-                    few{"Peste {0} zile"}
-                    one{"Peste {0} zi"}
-                    other{"Peste {0} de zile"}
+                    few{"peste {0} zile"}
+                    one{"peste {0} zi"}
+                    other{"peste {0} de zile"}
                 }
                 past{
-                    few{"Acum {0} zile"}
-                    one{"Acum {0} zi"}
-                    other{"Acum {0} de zile"}
+                    few{"acum {0} zile"}
+                    one{"acum {0} zi"}
+                    other{"acum {0} de zile"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"zi"}
+            relativeTime{
+                future{
+                    few{"+{0} zile"}
+                    one{"+{0} zi"}
+                    other{"+{0} zile"}
+                }
+                past{
+                    few{"-{0} zile"}
+                    one{"-{0} zi"}
+                    other{"-{0} zile"}
+                }
+            }
+        }
+        day-short{
+            dn{"zi"}
+            relativeTime{
+                future{
+                    few{"peste {0} zile"}
+                    one{"peste {0} zi"}
+                    other{"peste {0} zile"}
+                }
+                past{
+                    few{"acum {0} zile"}
+                    one{"acum {0} zi"}
+                    other{"acum {0} zile"}
                 }
             }
         }
         dayperiod{
-            dn{"a.m./p.m"}
+            dn{"a.m/p.m."}
         }
         era{
-            dn{"eră"}
+            dn{"Eră"}
         }
         fri{
             relative{
@@ -908,33 +957,107 @@ ro{
                 "1"{"vinerea viitoare"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"V (trecută)"}
+                "0"{"V (aceasta)"}
+                "1"{"V (viitoare)"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"vin. trecută"}
+                "0"{"vin. aceasta"}
+                "1"{"vin. viitoare"}
+            }
+        }
         hour{
-            dn{"oră"}
+            dn{"Oră"}
             relativeTime{
                 future{
-                    few{"Peste {0} ore"}
-                    one{"Peste {0} oră"}
-                    other{"Peste {0} de ore"}
+                    few{"peste {0} ore"}
+                    one{"peste {0} oră"}
+                    other{"peste {0} de ore"}
                 }
                 past{
-                    few{"Acum {0} ore"}
-                    one{"Acum {0} oră"}
-                    other{"Acum {0} de ore"}
+                    few{"acum {0} ore"}
+                    one{"acum {0} oră"}
+                    other{"acum {0} de ore"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
+                    few{"+{0} h"}
+                    one{"+{0} h"}
+                    other{"+{0} h"}
+                }
+                past{
+                    few{"-{0} h"}
+                    one{"-{0} h"}
+                    other{"-{0} h"}
+                }
+            }
+        }
+        hour-short{
+            dn{"h"}
+            relativeTime{
+                future{
+                    few{"peste {0} h"}
+                    one{"peste {0} h"}
+                    other{"peste {0} h"}
+                }
+                past{
+                    few{"acum {0} h"}
+                    one{"acum {0} h"}
+                    other{"acum {0} h"}
                 }
             }
         }
         minute{
-            dn{"minut"}
+            dn{"Minut"}
             relativeTime{
                 future{
-                    few{"Peste {0} minute"}
-                    one{"Peste {0} minut"}
-                    other{"Peste {0} de minute"}
+                    few{"peste {0} minute"}
+                    one{"peste {0} minut"}
+                    other{"peste {0} de minute"}
                 }
                 past{
-                    few{"Acum {0} minute"}
-                    one{"Acum {0} minut"}
-                    other{"Acum {0} de minute"}
+                    few{"acum {0} minute"}
+                    one{"acum {0} minut"}
+                    other{"acum {0} de minute"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"m"}
+            relativeTime{
+                future{
+                    few{"+{0} m"}
+                    one{"+{0} m"}
+                    other{"+{0} m"}
+                }
+                past{
+                    few{"-{0} m"}
+                    one{"-{0} m"}
+                    other{"-{0} m"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    few{"peste {0} min."}
+                    one{"peste {0} min."}
+                    other{"peste {0} min."}
+                }
+                past{
+                    few{"acum {0} min."}
+                    one{"acum {0} min."}
+                    other{"acum {0} min."}
                 }
             }
         }
@@ -945,8 +1068,22 @@ ro{
                 "1"{"lunea viitoare"}
             }
         }
+        mon-narrow{
+            relative{
+                "-1"{"L (trecută)"}
+                "0"{"L (aceasta)"}
+                "1"{"L (viitoare)"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"lun. trecută"}
+                "0"{"lun. aceasta"}
+                "1"{"lun. viitoare"}
+            }
+        }
         month{
-            dn{"lună"}
+            dn{"Lună"}
             relative{
                 "-1"{"luna trecută"}
                 "0"{"luna aceasta"}
@@ -954,14 +1091,89 @@ ro{
             }
             relativeTime{
                 future{
-                    few{"Peste {0} luni"}
-                    one{"Peste {0} lună"}
-                    other{"Peste {0} de luni"}
+                    few{"peste {0} luni"}
+                    one{"peste {0} lună"}
+                    other{"peste {0} de luni"}
                 }
                 past{
-                    few{"Acum {0} luni"}
-                    one{"Acum {0} lună"}
-                    other{"Acum {0} de luni"}
+                    few{"acum {0} luni"}
+                    one{"acum {0} lună"}
+                    other{"acum {0} de luni"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"lună"}
+            relativeTime{
+                future{
+                    few{"+{0} luni"}
+                    one{"+{0} lună"}
+                    other{"+{0} luni"}
+                }
+                past{
+                    few{"-{0} luni"}
+                    one{"-{0} lună"}
+                    other{"-{0} luni"}
+                }
+            }
+        }
+        month-short{
+            dn{"lună"}
+            relativeTime{
+                future{
+                    few{"peste {0} luni"}
+                    one{"peste {0} lună"}
+                    other{"peste {0} luni"}
+                }
+                past{
+                    few{"acum {0} luni"}
+                    one{"acum {0} lună"}
+                    other{"acum {0} luni"}
+                }
+            }
+        }
+        quarter{
+            dn{"Trimestru"}
+            relativeTime{
+                future{
+                    few{"peste {0} trimestre"}
+                    one{"peste {0} trimestru"}
+                    other{"peste {0} de trimestre"}
+                }
+                past{
+                    few{"acum {0} trimestre"}
+                    one{"acum {0} trimestru"}
+                    other{"acum {0} de trimestre"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    few{"+{0} trim."}
+                    one{"+{0} trim."}
+                    other{"+{0} trim."}
+                }
+                past{
+                    few{"+{0} trim."}
+                    one{"+{0} trim."}
+                    other{"+{0} trim."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    few{"peste {0} trim."}
+                    one{"peste {0} trim."}
+                    other{"peste {0} trim."}
+                }
+                past{
+                    few{"acum {0} trim."}
+                    one{"acum {0} trim."}
+                    other{"acum {0} trim."}
                 }
             }
         }
@@ -972,21 +1184,65 @@ ro{
                 "1"{"sâmbăta viitoare"}
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"S (trecută)"}
+                "0"{"S (aceasta)"}
+                "1"{"S (viitoare)"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"sâm. trecută"}
+                "0"{"sâm. aceasta"}
+                "1"{"sâm. viitoare"}
+            }
+        }
         second{
-            dn{"secundă"}
+            dn{"Secundă"}
             relative{
                 "0"{"acum"}
             }
             relativeTime{
                 future{
-                    few{"Peste {0} secunde"}
-                    one{"Peste {0} secundă"}
-                    other{"Peste {0} de secunde"}
+                    few{"peste {0} secunde"}
+                    one{"peste {0} secundă"}
+                    other{"peste {0} de secunde"}
                 }
                 past{
-                    few{"Acum {0} secunde"}
-                    one{"Acum {0} secundă"}
-                    other{"Acum {0} de secunde"}
+                    few{"acum {0} secunde"}
+                    one{"acum {0} secundă"}
+                    other{"acum {0} de secunde"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    few{"+{0} s"}
+                    one{"+{0} s"}
+                    other{"+{0} s"}
+                }
+                past{
+                    few{"-{0} s"}
+                    one{"-{0} s"}
+                    other{"-{0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"sec."}
+            relativeTime{
+                future{
+                    few{"peste {0} sec."}
+                    one{"peste {0} sec."}
+                    other{"peste {0} sec."}
+                }
+                past{
+                    few{"acum {0} sec."}
+                    one{"acum {0} sec."}
+                    other{"acum {0} sec."}
                 }
             }
         }
@@ -997,7 +1253,35 @@ ro{
                 "1"{"duminica viitoare"}
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"D (trecută)"}
+                "0"{"D (aceasta)"}
+                "1"{"D (viitoare)"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"dum. trecută"}
+                "0"{"dum. aceasta"}
+                "1"{"dum. viitoare"}
+            }
+        }
         thu{
+            relative{
+                "-1"{"joia trecută"}
+                "0"{"joia aceasta"}
+                "1"{"joia viitoare"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"J (trecută)"}
+                "0"{"J (aceasta)"}
+                "1"{"J (viitoare)"}
+            }
+        }
+        thu-short{
             relative{
                 "-1"{"joia trecută"}
                 "0"{"joia aceasta"}
@@ -1011,6 +1295,20 @@ ro{
                 "1"{"marțea viitoare"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"Ma (trecută)"}
+                "0"{"Ma (aceasta)"}
+                "1"{"Ma (viitoare)"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"mar. trecută"}
+                "0"{"mar. aceasta"}
+                "1"{"mar. viitoare"}
+            }
+        }
         wed{
             relative{
                 "-1"{"miercurea trecută"}
@@ -1018,8 +1316,22 @@ ro{
                 "1"{"miercurea viitoare"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"Mi (trecută)"}
+                "0"{"Mi (aceasta)"}
+                "1"{"Mi (viitoare)"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"mie. trecută"}
+                "0"{"mie. aceasta"}
+                "1"{"mie. viitoare"}
+            }
+        }
         week{
-            dn{"săptămână"}
+            dn{"Săptămână"}
             relative{
                 "-1"{"săptămâna trecută"}
                 "0"{"săptămâna aceasta"}
@@ -1027,22 +1339,52 @@ ro{
             }
             relativeTime{
                 future{
-                    few{"Peste {0} săptămâni"}
-                    one{"Peste {0} săptămână"}
-                    other{"Peste {0} de săptămâni"}
+                    few{"peste {0} săptămâni"}
+                    one{"peste {0} săptămână"}
+                    other{"peste {0} de săptămâni"}
                 }
                 past{
-                    few{"Acum {0} săptămâni"}
-                    one{"Acum {0} săptămână"}
-                    other{"Acum {0} de săptămâni"}
+                    few{"acum {0} săptămâni"}
+                    one{"acum {0} săptămână"}
+                    other{"acum {0} de săptămâni"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"săpt."}
+            relativeTime{
+                future{
+                    few{"+{0} săpt."}
+                    one{"+{0} săpt."}
+                    other{"+{0} săpt."}
+                }
+                past{
+                    few{"-{0} săpt."}
+                    one{"-{0} săpt."}
+                    other{"-{0} săpt."}
+                }
+            }
+        }
+        week-short{
+            dn{"săpt."}
+            relativeTime{
+                future{
+                    few{"peste {0} săpt."}
+                    one{"peste {0} săpt."}
+                    other{"peste {0} săpt."}
+                }
+                past{
+                    few{"acum {0} săpt."}
+                    one{"acum {0} săpt."}
+                    other{"acum {0} săpt."}
                 }
             }
         }
         weekday{
-            dn{"zi a săptămânii"}
+            dn{"Zi a săptămânii"}
         }
         year{
-            dn{"an"}
+            dn{"An"}
             relative{
                 "-1"{"anul trecut"}
                 "0"{"anul acesta"}
@@ -1050,19 +1392,49 @@ ro{
             }
             relativeTime{
                 future{
-                    few{"Peste {0} ani"}
-                    one{"Peste {0} an"}
-                    other{"Peste {0} de ani"}
+                    few{"peste {0} ani"}
+                    one{"peste {0} an"}
+                    other{"peste {0} de ani"}
                 }
                 past{
-                    few{"Acum {0} ani"}
-                    one{"Acum {0} an"}
-                    other{"Acum {0} de ani"}
+                    few{"acum {0} ani"}
+                    one{"acum {0} an"}
+                    other{"acum {0} de ani"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"an"}
+            relativeTime{
+                future{
+                    few{"+{0} ani"}
+                    one{"+{0} an"}
+                    other{"+{0} ani"}
+                }
+                past{
+                    few{"-{0} ani"}
+                    one{"-{0} an"}
+                    other{"-{0} ani"}
+                }
+            }
+        }
+        year-short{
+            dn{"an"}
+            relativeTime{
+                future{
+                    few{"peste {0} ani"}
+                    one{"peste {0} an"}
+                    other{"peste {0} ani"}
+                }
+                past{
+                    few{"acum {0} ani"}
+                    one{"acum {0} an"}
+                    other{"acum {0} de ani"}
                 }
             }
         }
         zone{
-            dn{"fus orar"}
+            dn{"Fus orar"}
         }
     }
     listPattern{
@@ -1107,146 +1479,5 @@ ro{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Publicare"}
-    }
-    units{
-        compound{
-            per{"{0} pe {1}"}
-        }
-        duration{
-            day{
-                few{"{0} zile"}
-                one{"{0} zi"}
-                other{"{0} de zile"}
-            }
-            hour{
-                few{"{0} ore"}
-                one{"{0} oră"}
-                other{"{0} de ore"}
-            }
-            millisecond{
-                few{"{0} milisecunde"}
-                one{"{0} milisecundă"}
-                other{"{0} de milisecunde"}
-            }
-            minute{
-                few{"{0} minute"}
-                one{"{0} minut"}
-                other{"{0} de minute"}
-            }
-            month{
-                few{"{0} luni"}
-                one{"{0} lună"}
-                other{"{0} de luni"}
-            }
-            second{
-                few{"{0} secunde"}
-                one{"{0} secundă"}
-                other{"{0} de secunde"}
-            }
-            week{
-                few{"{0} săptămâni"}
-                one{"{0} săptămână"}
-                other{"{0} de săptămâni"}
-            }
-            year{
-                few{"{0} ani"}
-                one{"{0} an"}
-                other{"{0} de ani"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} z"}
-                one{"{0} z"}
-                other{"{0} z"}
-            }
-            hour{
-                few{"{0} h"}
-                one{"{0} h"}
-                other{"{0} h"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                few{"{0} m"}
-                one{"{0} m"}
-                other{"{0} m"}
-            }
-            month{
-                few{"{0} l"}
-                one{"{0} l"}
-                other{"{0} l"}
-            }
-            second{
-                few{"{0} s"}
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                few{"{0} săpt."}
-                one{"{0} săpt."}
-                other{"{0} săpt."}
-            }
-            year{
-                few{"{0} a"}
-                one{"{0} a"}
-                other{"{0} a"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} zile"}
-                one{"{0} zi"}
-                other{"{0} zile"}
-            }
-            hour{
-                few{"{0} ore"}
-                one{"{0} oră"}
-                other{"{0} ore"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                few{"{0} min."}
-                one{"{0} min."}
-                other{"{0} min."}
-            }
-            month{
-                few{"{0} luni"}
-                one{"{0} lună"}
-                other{"{0} luni"}
-            }
-            second{
-                few{"{0} sec."}
-                one{"{0} sec."}
-                other{"{0} sec."}
-            }
-            week{
-                few{"{0} săpt."}
-                one{"{0} săpt."}
-                other{"{0} săpt."}
-            }
-            year{
-                few{"{0} ani"}
-                one{"{0} an"}
-                other{"{0} ani"}
-            }
-        }
     }
 }

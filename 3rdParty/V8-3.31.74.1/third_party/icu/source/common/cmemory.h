@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2015, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -59,6 +59,14 @@ U_CAPI void uprv_checkValidMemory(const void *p, size_t n);
 
 #endif  /* U_DEBUG */
 
+/**
+ * \def UPRV_LENGTHOF
+ * Convenience macro to determine the length of a fixed array at compile-time.
+ * @param array A fixed length array
+ * @return The length of the array, in elements
+ * @internal
+ */
+#define UPRV_LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 #define uprv_memset(buffer, mark, size) U_STANDARD_CPP_NAMESPACE memset(buffer, mark, size)
 #define uprv_memcmp(buffer1, buffer2, size) U_STANDARD_CPP_NAMESPACE memcmp(buffer1, buffer2,size)
 
@@ -106,13 +114,6 @@ typedef union {
  * in order to get the next UAlignedMemory-aligned address.
  */
 #define U_ALIGNMENT_OFFSET_UP(ptr) (sizeof(UAlignedMemory) - U_ALIGNMENT_OFFSET(ptr))
-
-/**
-  *  Indicate whether the ICU allocation functions have been used.
-  *  This is used to determine whether ICU is in an initial, unused state.
-  */
-U_CFUNC UBool 
-cmemory_inUse(void);
 
 /**
   *  Heap clean up function, called from u_cleanup()

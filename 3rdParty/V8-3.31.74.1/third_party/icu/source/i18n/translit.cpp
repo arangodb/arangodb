@@ -1,6 +1,6 @@
 /*
  **********************************************************************
- *   Copyright (C) 1999-2012, International Business Machines
+ *   Copyright (C) 1999-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *   Date        Name        Description
@@ -1619,7 +1619,7 @@ UBool Transliterator::initializeRegistry(UErrorCode &status) {
 
 U_NAMESPACE_END
 
-// Defined in ucln_in.h:
+// Defined in transreg.h:
 
 /**
  * Release all static memory held by transliterator.  This will

@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 1997-2013, International Business Machines Corporation and    *
+ * Copyright (C) 1997-2014, International Business Machines Corporation and    *
  * others. All Rights Reserved.                                                *
  *******************************************************************************
  *
@@ -25,6 +25,7 @@
 #include "unicode/datefmt.h"
 #include "unicode/smpdtfmt.h"
 #include "unicode/dtptngen.h"
+#include "unicode/udisplaycontext.h"
 #include "reldtfmt.h"
 
 #include "cstring.h"
@@ -42,7 +43,8 @@ U_NAMESPACE_BEGIN
 
 DateFormat::DateFormat()
 :   fCalendar(0),
-    fNumberFormat(0)
+    fNumberFormat(0),
+    fCapitalizationContext(UDISPCTX_CAPITALIZATION_NONE)
 {
 }
 
@@ -51,7 +53,8 @@ DateFormat::DateFormat()
 DateFormat::DateFormat(const DateFormat& other)
 :   Format(other),
     fCalendar(0),
-    fNumberFormat(0)
+    fNumberFormat(0),
+    fCapitalizationContext(UDISPCTX_CAPITALIZATION_NONE)
 {
     *this = other;
 }
@@ -75,6 +78,7 @@ DateFormat& DateFormat::operator=(const DateFormat& other)
           fNumberFormat = NULL;
         }
         fBoolFlags = other.fBoolFlags;
+        fCapitalizationContext = other.fCapitalizationContext;
     }
     return *this;
 }
@@ -102,7 +106,8 @@ DateFormat::operator==(const Format& other) const
     return (this == fmt) ||
         (Format::operator==(other) &&
          fCalendar&&(fCalendar->isEquivalentTo(*fmt->fCalendar)) &&
-         (fNumberFormat && *fNumberFormat == *fmt->fNumberFormat));
+         (fNumberFormat && *fNumberFormat == *fmt->fNumberFormat) &&
+         (fCapitalizationContext == fmt->fCapitalizationContext) );
 }
 
 //----------------------------------------------------------------------
@@ -498,12 +503,38 @@ DateFormat::setLenient(UBool lenient)
     if (fCalendar != NULL) {
         fCalendar->setLenient(lenient);
     }
+    UErrorCode status = U_ZERO_ERROR;
+    setBooleanAttribute(UDAT_PARSE_ALLOW_WHITESPACE, lenient, status);
+    setBooleanAttribute(UDAT_PARSE_ALLOW_NUMERIC, lenient, status);
 }
 
 //----------------------------------------------------------------------
 
 UBool
 DateFormat::isLenient() const
+{
+    UBool lenient = TRUE;
+    if (fCalendar != NULL) {
+        lenient = fCalendar->isLenient();
+    }
+    UErrorCode status = U_ZERO_ERROR;
+    return lenient
+        && getBooleanAttribute(UDAT_PARSE_ALLOW_WHITESPACE, status)
+        && getBooleanAttribute(UDAT_PARSE_ALLOW_NUMERIC, status);
+}
+
+void
+DateFormat::setCalendarLenient(UBool lenient)
+{
+    if (fCalendar != NULL) {
+        fCalendar->setLenient(lenient);
+    }
+}
+
+//----------------------------------------------------------------------
+
+UBool
+DateFormat::isCalendarLenient() const
 {
     if (fCalendar != NULL) {
         return fCalendar->isLenient();
@@ -512,7 +543,39 @@ DateFormat::isLenient() const
     return FALSE;
 }
 
+
 //----------------------------------------------------------------------
+
+
+void DateFormat::setContext(UDisplayContext value, UErrorCode& status)
+{
+    if (U_FAILURE(status))
+        return;
+    if ( (UDisplayContextType)((uint32_t)value >> 8) == UDISPCTX_TYPE_CAPITALIZATION ) {
+        fCapitalizationContext = value;
+    } else {
+        status = U_ILLEGAL_ARGUMENT_ERROR;
+   }
+}
+
+
+//----------------------------------------------------------------------
+
+
+UDisplayContext DateFormat::getContext(UDisplayContextType type, UErrorCode& status) const
+{
+    if (U_FAILURE(status))
+        return (UDisplayContext)0;
+    if (type != UDISPCTX_TYPE_CAPITALIZATION) {
+        status = U_ILLEGAL_ARGUMENT_ERROR;
+        return (UDisplayContext)0;
+    }
+    return fCapitalizationContext;
+}
+
+
+//----------------------------------------------------------------------
+
 
 DateFormat& 
 DateFormat::setBooleanAttribute(UDateFormatBooleanAttribute attr,

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2005-2012, International Business Machines Corporation and
+ * Copyright (c) 2005-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 #include "unicode/utypes.h"
@@ -159,9 +159,9 @@ static void TestFractionDigitOverride(void) {
     UNumberFormat *fmt = unum_open(UNUM_CURRENCY, NULL, 0, "hu_HU", NULL, &status);
     UChar buffer[256];
     UChar expectedBuf[256];
-    const char expectedFirst[] = "123\\u00A0Ft";
-    const char expectedSecond[] = "123,46\\u00A0Ft";
-    const char expectedThird[] = "123,456\\u00A0Ft";
+    const char expectedFirst[] = "123,46\\u00A0HUF"; /* changed to use 2 fraction digits */
+    const char expectedSecond[] = "123,46\\u00A0HUF";
+    const char expectedThird[] = "123,456\\u00A0HUF";
     if (U_FAILURE(status)) {
        log_data_err("Error: unum_open returned %s (Are you missing data?)\n", myErrorName(status));
        return;
