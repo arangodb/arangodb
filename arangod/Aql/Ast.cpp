@@ -628,7 +628,7 @@ AstNode* Ast::createNodeVariable (char const* name,
   }
 
   if (isUserDefined && *name == '_') {
-    _query->registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID);
+    _query->registerError(TRI_ERROR_QUERY_VARIABLE_NAME_INVALID, name);
     return nullptr;
   }
 
