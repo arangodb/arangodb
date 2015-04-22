@@ -65,11 +65,11 @@ class SimpleEdgeExpander {
         // TODO Error Handling
         return;
       }
-      std::unique_ptr<char[]>& key;
-      string& collectionName = string(str, split);
-      auto const length = str->length() - split - 1;
+      std::unique_ptr<char> key;
+      string collectionName = string(str, split);
+      auto const length = source.size() - split - 1;
       auto buffer = new char[length + 1];
-      memcpy(buffer, *str + split + 1, length);
+      memcpy(buffer, str + split + 1, length);
       buffer[length] = '\0';
       key.reset(buffer);
 
@@ -106,7 +106,7 @@ class SimpleEdgeExpander {
         backwardDirection = TRI_EDGE_ANY;
       }
     };
-}
+};
 
 
 struct LocalCollectionGuard {
