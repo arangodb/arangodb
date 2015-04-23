@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Traverser.h"
-#include <thread>
 
 using namespace std;
 using namespace triagens::basics;
