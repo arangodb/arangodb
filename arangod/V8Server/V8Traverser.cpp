@@ -55,8 +55,6 @@ class SimpleEdgeExpander {
     CollectionNameResolver const* resolver;
     bool usesDist;
 
-    string dirung;
-
   public: 
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t ptr) {
@@ -87,7 +85,6 @@ class SimpleEdgeExpander {
                       Traverser::Direction dir,
                       vector<Traverser::Neighbor>& result
                     ) {
-      cout << dirung << endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       // Process Vertex Id!
       size_t split;
@@ -164,16 +161,10 @@ class SimpleEdgeExpander {
     SimpleEdgeExpander(
       TRI_edge_direction_e edgeDirection,
       TRI_document_collection_t* edgeCollection,
-<<<<<<< HEAD
       CollectionNameResolver const* resolver
-=======
       string edgeCollectionName,
-      CollectionNameResolver const resolver,
-      string dirung
->>>>>>> Added version with broken threads. Computation is correct, but threads do not fire up
     ) : 
       edgeCollection(edgeCollection),
-<<<<<<< HEAD
       resolver(resolver)
     {
       usesDist = false;
@@ -190,23 +181,10 @@ class SimpleEdgeExpander {
     };
 };
 
-static <v8::Handle<v8::Value> pathToV8(v8::Isolate* isolate, Traverser::Path p) {
-  v8::Handle<v8::Value> result;
-=======
-      resolver(resolver),
-      usesDist(false),
-      dirung(dirung)
-    {
-      cout << direction << endl;
-      edgeIdPrefix = edgeCollectionName + "/";
-    };
-};
-
 static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
->>>>>>> Added version with broken threads. Computation is correct, but threads do not fire up
 
   uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
@@ -222,12 +200,8 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& 
   for (size_t j = 0;  j < en;  ++j) {
     edges->Set(static_cast<uint32_t>(j), TRI_V8_ASCII_STRING(p.edges[j]));
   }
-<<<<<<< HEAD
-  result->Set("edges", edges);
-=======
   result->Set(TRI_V8_STRING("edges"), edges);
   result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
->>>>>>> Added version with broken threads. Computation is correct, but threads do not fire up
 
   return result;
 };
@@ -347,15 +321,11 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-<<<<<<< HEAD
-  v8::Handle<v8::Value> result;
-  v8::Handle<v8::Array> documents;
-=======
   TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
-  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1, "A");
-  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2, "B");
+  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1);
+  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2);
 
   Traverser traverser(forwardExpander, backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));
@@ -366,7 +336,6 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   auto result = pathIdsToV8(isolate, *path);
   res = trx.finish(res);
->>>>>>> Added version with broken threads. Computation is correct, but threads do not fire up
 
   // This is how to get the data out of the collections!
   // Vertices
