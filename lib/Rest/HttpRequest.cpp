@@ -32,10 +32,10 @@
 
 #include "Basics/conversions.h"
 #include "Basics/logging.h"
-#include "Basics/tri-strings.h"
-#include "Basics/utf8-helper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
+#include "Basics/tri-strings.h"
+#include "Basics/Utf8Helper.h"
 
 using namespace std;
 using namespace triagens::basics;

@@ -263,6 +263,10 @@ ModificationOptions ExecutionPlan::createModificationOptions (AstNode const* nod
     }
   }
 
+  // this means a data-modification query must first read the entire input data
+  // before starting with the modifications
+  // this is safe in all cases
+  // the flag can be set to false later to execute read and write operations in lockstep
   options.readCompleteInput = true;
 
   if (! _ast->functionsMayAccessDocuments()) {
@@ -270,6 +274,7 @@ ModificationOptions ExecutionPlan::createModificationOptions (AstNode const* nod
     bool isReadWrite = false;
 
     auto const collections = _ast->query()->collections();
+
     for (auto it : *(collections->collections())) {
       if (it.second->isReadWrite) {
         isReadWrite = true;
@@ -278,7 +283,7 @@ ModificationOptions ExecutionPlan::createModificationOptions (AstNode const* nod
     }
 
     if (! isReadWrite) {
-      // no collection is used in both read and write
+      // no collection is used in both read and write mode
       // this means the query's write operation can use read & write in lockstep
       options.readCompleteInput = false;
     }
