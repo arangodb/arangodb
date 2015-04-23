@@ -186,7 +186,7 @@ var computeRootAppPath = function(mount, isValidation) {
     this.configure(cfg);
 
     var depsLookup = {};
-    var deps = config.options.dependencies;
+    var deps = config.options.dependencies || {};
     this._options.dependencies = deps;
     this._dependencies = depsLookup;
     _.each(deps, function (mount, name) {
@@ -197,7 +197,7 @@ var computeRootAppPath = function(mount, isValidation) {
           return require("org/arangodb/foxx").requireApp(mount);
         }
       });
-    }, this);
+    });
 
     this._context = new AppContext(this);
     this._context.appPackage = module.createAppPackage(this);
