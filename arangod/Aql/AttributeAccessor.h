@@ -32,6 +32,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
 #include "Basics/StringBuffer.h"
+#include "ShapedJson/shaped-json.h"
 #include "Utils/AqlTransaction.h"
 
 struct TRI_document_collection_t;
@@ -47,6 +48,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
     class AttributeAccessor {
+
+        enum AttributeType {
+          ATTRIBUTE_TYPE_KEY,
+          ATTRIBUTE_TYPE_REV,
+          ATTRIBUTE_TYPE_ID,
+          ATTRIBUTE_TYPE_FROM,
+          ATTRIBUTE_TYPE_TO,
+          ATTRIBUTE_TYPE_REGULAR
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -82,6 +92,54 @@ namespace triagens {
                       std::vector<RegisterId> const&);
 
 // -----------------------------------------------------------------------------
+// --SECTION--                                                   private methods
+// -----------------------------------------------------------------------------
+
+      private:
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _key attribute from a ShapedJson marker
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue extractKey (AqlValue const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _rev attribute from a ShapedJson marker
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue extractRev (AqlValue const&);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _id attribute from a ShapedJson marker
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue extractId (AqlValue const&,
+                            triagens::arango::AqlTransaction*,
+                            struct TRI_document_collection_t const*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _from attribute from a ShapedJson marker
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue extractFrom (AqlValue const&,
+                              triagens::arango::AqlTransaction*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract the _to attribute from a ShapedJson marker
+////////////////////////////////////////////////////////////////////////////////
+
+        AqlValue extractTo (AqlValue const&,
+                            triagens::arango::AqlTransaction*);
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief extract any other attribute from a ShapedJson marker
+////////////////////////////////////////////////////////////////////////////////
+        
+        AqlValue extractRegular (AqlValue const&,
+                                 triagens::arango::AqlTransaction*,
+                                 struct TRI_document_collection_t const*);
+
+// -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
 
@@ -104,6 +162,28 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         triagens::basics::StringBuffer _buffer;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attribute path id cache for shapes
+////////////////////////////////////////////////////////////////////////////////
+
+        TRI_shape_pid_t _pid;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection name lookup cache
+////////////////////////////////////////////////////////////////////////////////
+
+        struct {
+          std::string value;
+          TRI_voc_cid_t cid;
+        }
+        _nameCache;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief attribute type (to save repeated strcmp calls)
+////////////////////////////////////////////////////////////////////////////////
+
+        AttributeType _attributeType;
 
     };
 
