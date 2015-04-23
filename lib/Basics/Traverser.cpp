@@ -154,9 +154,9 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
 
   std::thread forwardSearcher(&Traverser::searchFromVertex, 
-                                            this, &forwardInfo, &backwardInfo, start, forwardExpander, "X");
+                                            this, &forwardInfo, &backwardInfo, start, forwardExpander, string("X"));
   std::thread backwardSearcher(&Traverser::searchFromVertex, 
-                                             this, &backwardInfo, &forwardInfo, target, backwardExpander, "Y");
+                                             this, &backwardInfo, &forwardInfo, target, backwardExpander, string("Y"));
   forwardSearcher.join();
   backwardSearcher.join();
 
