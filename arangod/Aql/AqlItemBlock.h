@@ -119,7 +119,7 @@ namespace triagens {
 
       void setValue (size_t index, RegisterId varNr, AqlValue const& value) {
         TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-        TRI_ASSERT_EXPENSIVE(_data.at(index * _nrRegs + varNr).isEmpty());
+        TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
 
         // First update the reference count, if this fails, the value is empty
         if (value.requiresDestruction()) {
@@ -140,6 +140,20 @@ namespace triagens {
       }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief fill a slot in the item block with a SHAPED AqlValue
+/// this is a specialization without reference counting
+////////////////////////////////////////////////////////////////////////////////
+
+        void setShaped (size_t index, RegisterId varNr, TRI_df_marker_t const* marker) {
+          TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+          TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
+
+          auto& v = _data[index * _nrRegs + varNr];
+          v._marker = marker;
+          v._type = AqlValue::SHAPED;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief eraseValue, erase the current value of a register and freeing it
 /// if this was the last reference to the value
 /// use with caution only in special situations when it can be ensured that
@@ -152,6 +166,7 @@ namespace triagens {
 
           if (element.requiresDestruction()) {
             auto it = _valueCount.find(element);
+
             if (it != _valueCount.end()) {
               if (--(it->second) == 0) {
                 try {
@@ -179,6 +194,7 @@ namespace triagens {
 
           if (element.requiresDestruction()) {
             auto it = _valueCount.find(element);
+
             if (it != _valueCount.end()) {
               if (--(it->second) == 0) {
                 try {
@@ -215,6 +231,7 @@ namespace triagens {
 
         uint32_t valueCount (AqlValue const& v) const {
           auto it = _valueCount.find(v);
+
           if (it == _valueCount.end()) {
             return 0;
           }
@@ -231,6 +248,7 @@ namespace triagens {
         void steal (AqlValue const& v) {
           if (v.requiresDestruction()) {
             auto it = _valueCount.find(v);
+
             if (it != _valueCount.end()) {
               _valueCount.erase(it);
             }
@@ -345,13 +363,6 @@ namespace triagens {
         std::vector<AqlValue> _data;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _docColls, for every column a possible collection, which contains
-/// all AqlValues of type SHAPED in this column.
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<TRI_document_collection_t const*> _docColls;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief _valueCount, since we have to allow for identical AqlValues
 /// in an AqlItemBlock, this map keeps track over which AqlValues we
 /// have in this AqlItemBlock and how often.
@@ -361,6 +372,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<AqlValue, uint32_t> _valueCount;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _docColls, for every column a possible collection, which contains
+/// all AqlValues of type SHAPED in this column.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<TRI_document_collection_t const*> _docColls;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _nrItems, number of rows
