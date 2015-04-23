@@ -217,6 +217,25 @@
     res.json(FoxxManager.configure(mount, {configuration: data}));
   }).queryParam("mount", mountPoint);
 
+  /** Get the dependencies for an app
+   *
+   * Used to request the dependencies options for apps
+   */
+  controller.get("/deps", function(req, res) {
+    var mount = validateMount(req);
+    res.json(FoxxManager.dependencies(mount));
+  }).queryParam("mount", mountPoint);
+
+  /** Set the dependencies for an app
+   *
+   * Used to overwrite the dependencies options for apps
+   */
+  controller.patch("/deps", function(req, res) {
+    var mount = validateMount(req);
+    var data = req.body();
+    res.json(FoxxManager.configure(mount, {dependencies: data}));
+  }).queryParam("mount", mountPoint);
+
   /** Run tests for an app
    *
    * Used to run the tests of an app
