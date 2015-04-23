@@ -287,6 +287,45 @@ for filename in filenames:
 
     f.close()
 
+
+################################################################################
+### @brief generate arangosh example headers with functions etc. needed later
+################################################################################
+def generateArangoshHeader():
+    print "/*jshint esnext:true, -W051 -W069 */"
+    #print "'use strict'"
+    print "var internal = require('internal');"
+    print "var fs = require('fs');"
+    print "var hashes = '%s';" % ('#' * 80)
+    print "var ArangoshOutput = {};"
+    print "var allErrors = '';"
+    print "var output = '';"
+    print "var XXX;"
+    print "var testFunc;"
+    print "internal.startPrettyPrint(true);"
+    print "internal.stopColorPrint(true);"
+    print "var appender = function(text) { output += text; };"
+    print "var log = function (a) { internal.startCaptureMode(); print(a); appender(internal.stopCaptureMode()); };"
+    print "var logCurlRequestRaw = internal.appendCurlRequest(appender);"
+    print "var logCurlRequest = function () { var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments); db._collections(); return r; };"
+    print "var curlRequestRaw = internal.appendCurlRequest(function (text) {});"
+    print "var curlRequest = function () { return curlRequestRaw.apply(curlRequestRaw, arguments); };"
+    print "var logJsonResponse = internal.appendJsonResponse(appender);"
+    print "var logRawResponse = internal.appendRawResponse(appender);"
+    print "var globalAssert = function(condition, testname) { if (! condition) { internal.output(hashes + '\\nASSERTION FAILED: ' + testname + '\\n' + hashes + '\\n'); throw new Error('assertion ' + testname + ' failed'); } };"
+
+
+    print "var runTestFunc = function (execFunction, testName) {";
+    print "  try { "
+    print "    execFunction();"
+    print "    internal.output('RUN SUCCEEDED: ' + testName + '\\n');"
+    print "  } catch (err) { "
+    print "    print(hashes + '\\nRUN FAILED: ' + testName + ', ', err, '\\n' + hashes + '\\n');"
+    print "    allErrors += '\\nRUN FAILED: ' + testName + ', ' + err + '\\n';"
+    print "  }"
+    print "};"
+
+
 ################################################################################
 ### @brief generate arangosh example
 ################################################################################
@@ -294,11 +333,6 @@ for filename in filenames:
 gr1 = re.compile(r'^[ \n]*(while|if|var|throw|for) ')
 
 def generateArangoshOutput():
-    print "var internal = require('internal');"
-    print "var fs = require('fs');"
-    print "var ArangoshOutput = {};"
-    print "internal.startPrettyPrint(true);"
-    print "internal.stopColorPrint(true);"
 
     if JS_DEBUG:
         print "internal.output('%s\\n');" % ('=' * 80)
@@ -318,7 +352,7 @@ def generateArangoshOutput():
 
         for l in value:
             print "try {"
-            print "  var XXX;"
+            print "  XXX = undefined;"
 
             m = gr1.match(l[0])
 
@@ -332,7 +366,7 @@ def generateArangoshOutput():
                 if l[1]:
                     print "if (XXX !== undefined) {print(XXX);}"
 
-            print "} catch (err) { print(err); }"
+            print "} catch (err) { print(err); allErrors += '\\n%s: ' + err; }" % (key)
 
         print "var output = internal.stopCaptureMode();"
         print "ArangoshOutput['%s'] = output;" % key
@@ -348,8 +382,6 @@ def generateArangoshOutput():
 ################################################################################
 
 def generateArangoshRun():
-    print "var internal = require('internal');"
-    print "var fs = require('fs');"
     print "var ArangoshRun = {};"
     print "internal.startPrettyPrint(true);"
     print "internal.stopColorPrint(true);"
@@ -368,17 +400,13 @@ def generateArangoshRun():
 
         print "(function() {"
         print "internal.output('RUN STARTING:  %s\\n');" % key
-        print "var output = '';"
-        print "var appender = function(text) { output += text; };"
-        print "var log = function (a) { internal.startCaptureMode(); print(a); appender(internal.stopCaptureMode()); };"
-        print "var logCurlRequestRaw = internal.appendCurlRequest(appender);"
-        print "var logCurlRequest = function () { var r = logCurlRequestRaw.apply(logCurlRequestRaw, arguments); db._collections(); return r; };"
-        print "var curlRequestRaw = internal.appendCurlRequest(function (text) {});"
-        print "var curlRequest = function () { return curlRequestRaw.apply(curlRequestRaw, arguments); };"
-        print "var logJsonResponse = internal.appendJsonResponse(appender);"
-        print "var logRawResponse = internal.appendRawResponse(appender);"
-        print "var assert = function(a) { if (! a) { internal.output('%s\\nASSERTION FAILED: %s\\n%s\\n'); throw new Error('assertion failed'); } };" % ('#' * 80, key, '#' * 80)
-        print "try { %s internal.output('RUN SUCCEEDED: %s\\n'); } catch (err) { print('%s\\nRUN FAILED: %s, ', err, '\\n%s\\n'); }" % (value, key, '#' * 80, key, '#' * 80)
+        print "output = '';"
+        print "var assert = function(a) { globalAssert(a, '%s'); };" % (key)
+
+        print "testFunc = function() {"
+        print "%s};" % (value)
+        print "runTestFunc(testFunc, '%s');" % (key)
+
         print "ArangoshRun['%s'] = output;" % key
         if JS_DEBUG:
             print "internal.output('%s', ':\\n', output, '\\n%s\\n');" % (key, '-' * 80)
@@ -386,8 +414,18 @@ def generateArangoshRun():
         print "}());"
 
 ################################################################################
+### @brief generate arangosh run
+################################################################################
+def generateArangoshShutdown():
+    print "if (allErrors.length > 0) {"
+    print "    throw new Error('troubles during generating documentation data: \\n' + allErrors);"
+    print "}"
+
+################################################################################
 ### @brief main
 ################################################################################
 
+generateArangoshHeader()
 generateArangoshOutput()
 generateArangoshRun()
+generateArangoshShutdown()
