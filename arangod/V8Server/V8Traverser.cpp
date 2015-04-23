@@ -54,8 +54,6 @@ class SimpleEdgeExpander {
     CollectionNameResolver const resolver;
     bool usesDist;
 
-    string dirung;
-
   public: 
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
@@ -84,7 +82,6 @@ class SimpleEdgeExpander {
     void operator() ( Traverser::VertexId source,
                       vector<Traverser::Neighbor>& result
                     ) {
-      cout << dirung << endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. Due to multi-threading
       // Process Vertex Id!
@@ -163,14 +160,12 @@ class SimpleEdgeExpander {
       TRI_edge_direction_e direction,
       TRI_document_collection_t* edgeCollection,
       string edgeCollectionName,
-      CollectionNameResolver const resolver,
-      string dirung
+      CollectionNameResolver const resolver
     ) : 
       direction(direction),
       edgeCollection(edgeCollection),
       resolver(resolver),
-      usesDist(false),
-      dirung(dirung)
+      usesDist(false)
     {
       cout << direction << endl;
       edgeIdPrefix = edgeCollectionName + "/";
@@ -325,8 +320,8 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
-  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1, "A");
-  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2, "B");
+  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1);
+  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2);
 
   Traverser traverser(forwardExpander, backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));
