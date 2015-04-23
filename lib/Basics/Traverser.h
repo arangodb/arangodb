@@ -32,6 +32,9 @@
 
 #include "Basics/Common.h"
 
+#include <thread>
+#include <mutex>
+
 namespace triagens {
   namespace basics {
 
