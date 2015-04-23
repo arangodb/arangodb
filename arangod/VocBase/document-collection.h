@@ -599,7 +599,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID (TRI_df_marker_t const* 
 /// @brief extracts the _from cid from a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline char const* TRI_EXTRACT_MARKER_FROM_CID (TRI_doc_mptr_t const* mptr) {
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_FROM_CID (TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
   return TRI_EXTRACT_MARKER_FROM_CID(marker);
 }
@@ -628,7 +628,7 @@ static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID (TRI_df_marker_t const* ma
 /// @brief extracts the _to cid from a master pointer
 ////////////////////////////////////////////////////////////////////////////////
 
-static inline char const* TRI_EXTRACT_MARKER_TO_CID (TRI_doc_mptr_t const* mptr) {
+static inline TRI_voc_cid_t TRI_EXTRACT_MARKER_TO_CID (TRI_doc_mptr_t const* mptr) {
   TRI_df_marker_t const* marker = static_cast<TRI_df_marker_t const*>(mptr->getDataPtr());
   return TRI_EXTRACT_MARKER_TO_CID(marker);
 }
