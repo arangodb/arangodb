@@ -27,4 +27,11 @@
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef ARANGODB_V8_TRAVERSER_H
+#define ARANGODB_V8_TRAVERSER_H 1
 
+#include "Basics/Common.h"
+
+void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args);
+
+#endif
