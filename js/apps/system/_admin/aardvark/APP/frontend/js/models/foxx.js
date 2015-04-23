@@ -60,10 +60,22 @@
       sendRequest(this, callback, "DELETE");
     },
 
+    isBroken: function () {
+      return false;
+    },
+
+    needsAttention: function () {
+      return this.isBroken() || this.needsConfiguration() || this.hasUnconfiguredDependencies();
+    },
+
     needsConfiguration: function () {
       return _.any(this.get('config'), function (cfg) {
         return cfg.current === undefined;
-      }) || _.any(this.get('deps'), function (dep) {
+      });
+    },
+
+    hasUnconfiguredDependencies: function () {
+      return _.any(this.get('deps'), function (dep) {
         return dep.current === undefined;
       });
     },

@@ -1,5 +1,18 @@
 <script id="foxxActiveView.ejs" type="text/template">
   <img src="foxxes/thumbnail?mount=<%= model.encodedMount() %>" height="50" width="50" alt="Icon for App" class="icon">
+    <% if (model.needsAttention()) { %>
+      <span class="warning-icons">
+        <% if (model.isBroken()) { %>
+          <span class="fa fa-warning" title="Mount error"></span>
+        <% } %>
+        <% if (model.needsConfiguration()) { %>
+          <span class="fa fa-cog" title="Needs configuration">!</span>
+        <% } %>
+        <% if (model.hasUnconfiguredDependencies()) { %>
+          <span class="fa fa-cubes" title="Unconfigured dependencies">!</span>
+        <% } %>
+      </span>
+    <% } %>
   <% if(model.isDevelopment()) { %>
     <div class="tileBadge">
       <span>

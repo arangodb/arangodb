@@ -37,13 +37,15 @@
 
     updateConfig: function() {
       this.model.getConfiguration(function () {
-        $('#app-unconfigured-warning')[this.model.needsConfiguration() ? 'show' : 'hide']();
+        $('#app-warning')[this.model.needsAttention() ? 'show' : 'hide']();
+        $('#app-warning-config')[this.model.needsConfiguration() ? 'show' : 'hide']();
       }.bind(this));
     },
 
     updateDeps: function() {
       this.model.getDependencies(function () {
-        $('#app-unconfigured-warning')[this.model.needsConfiguration() ? 'show' : 'hide']();
+        $('#app-warning')[this.model.needsAttention() ? 'show' : 'hide']();
+        $('#app-warning-deps')[this.model.hasUnconfiguredDependencies() ? 'show' : 'hide']();
       }.bind(this));
     },
 
