@@ -48,6 +48,9 @@ void Traverser::insertNeighbor (ThreadInfo& info,
       neighbor,
       LookupInfo(weight, edge, predecessor)
     );
+    info.queue.insert(
+      QueueInfo(neighbor, weight)
+    );
     return;
   }
   if (it->second.done) {
@@ -63,8 +66,8 @@ void Traverser::insertNeighbor (ThreadInfo& info,
 };
 
 void Traverser::lookupPeer (ThreadInfo& info,
-                            VertexId neighbor,
-                            EdgeWeight weight) {
+                            VertexId& neighbor,
+                            EdgeWeight& weight) {
   std::lock_guard<std::mutex> guard(info.mutex);
   auto it = info.lookup.find(neighbor);
   if (it == info.lookup.end()) {
@@ -90,28 +93,32 @@ void Traverser::searchFromVertex (
     ThreadInfo myInfo,
     ThreadInfo peerInfo,
     VertexId start,
-    Direction dir
+    ExpanderFunction expander
     ) {
   insertNeighbor(myInfo, start, "", "", 0);
-  auto nextVertex = myInfo.queue.begin();
+  auto nextVertexIt = myInfo.queue.begin();
   std::vector<Neighbor> neighbors;
 
   // Iterate while no bingo found and
   // there still is a vertex on the stack.
-  while (!bingo && nextVertex != myInfo.queue.end()) {
-    myInfo.queue.erase(nextVertex);
-    _neighborFunction(nextVertex->vertex, dir, neighbors);
+  while (!bingo && nextVertexIt != myInfo.queue.end()) {
+    auto nextVertex = *nextVertexIt;
+    myInfo.queue.erase(nextVertexIt);
+    expander(nextVertex.vertex, neighbors);
     for (auto neighbor : neighbors) {
-      insertNeighbor(myInfo, neighbor.neighbor, nextVertex->vertex,
-                     neighbor.edge, nextVertex->weight + neighbor.weight);
+      insertNeighbor(myInfo, neighbor.neighbor, nextVertex.vertex,
+                     neighbor.edge, nextVertex.weight + neighbor.weight);
     }
-    lookupPeer(peerInfo, nextVertex->vertex, nextVertex->weight);
+    lookupPeer(peerInfo, nextVertex.vertex, nextVertex.weight);
     myInfo.mutex.lock();
     // Can move nextVertexLookup up?
-    auto nextVertexLookup = myInfo.lookup.find(nextVertex->vertex);
+    auto nextVertexLookup = myInfo.lookup.find(nextVertex.vertex);
+
+    TRI_ASSERT(nextVertexLookup != myInfo.lookup.end());
+
     nextVertexLookup->second.done = true;
     myInfo.mutex.unlock();
-    nextVertex = myInfo.queue.begin();
+    nextVertexIt = myInfo.queue.begin();
   }
   // No possible path, can possibly terminate other thread
 };
@@ -126,6 +133,7 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   std::vector<VertexId> r_vertices;
   std::vector<VertexId> r_edges;
   highscore = 1e50;
+  bingo = false;
 
   // Forward
   _forwardLookup.clear();
@@ -137,13 +145,12 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
 
   std::thread forwardSearcher(&Traverser::searchFromVertex, 
-                                            this, forwardInfo, backwardInfo, start, FORWARD);
+                                            this, forwardInfo, backwardInfo, start, forwardExpander);
   std::thread backwardSearcher(&Traverser::searchFromVertex, 
-                                             this, backwardInfo, forwardInfo, target, BACKWARD);
+                                             this, backwardInfo, forwardInfo, target, backwardExpander);
   forwardSearcher.join();
   backwardSearcher.join();
 
-  // TODO Return result
   if (!bingo) {
     return nullptr;
   }
@@ -152,20 +159,23 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   // FORWARD Go path back from intermediate -> start.
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
-  do {
+  TRI_ASSERT(pathLookup != _forwardLookup.end());
+  if (pathLookup->second.predecessor != "") {
+    r_edges.insert(r_edges.begin(), pathLookup->second.edge);
+    pathLookup = _forwardLookup.find(pathLookup->second.predecessor);
+  }
+  while (pathLookup->second.predecessor != "") {
     r_edges.insert(r_edges.begin(), pathLookup->second.edge);
     r_vertices.insert(r_vertices.begin(), pathLookup->first);
     pathLookup = _forwardLookup.find(pathLookup->second.predecessor);
-  } while (pathLookup->second.predecessor != "");
+  }
   r_vertices.insert(r_vertices.begin(), pathLookup->first);
 
   // BACKWARD Go path back from intermediate -> target.
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
   pathLookup = _backwardLookup.find(intermediate);
-  r_vertices.push_back(intermediate);
-  r_edges.push_back(pathLookup->second.edge);
-  pathLookup = _backwardLookup.find(pathLookup->second.predecessor);
+  TRI_ASSERT(pathLookup != _backwardLookup.end());
   while (pathLookup->second.predecessor != "") {
     r_vertices.push_back(pathLookup->first);
     r_edges.push_back(pathLookup->second.edge);
