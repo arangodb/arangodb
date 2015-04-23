@@ -92,7 +92,7 @@ namespace triagens {
       ////////////////////////////////////////////////////////////////////////////////
       typedef enum {FORWARD, BACKWARD} Direction;
 
-      typedef std::function<void(VertexId source, Direction dir, std::vector<Neighbor>& result)>
+      typedef std::function<void(VertexId source, std::vector<Neighbor>& result)>
               ExpanderFunction;
 
 // -----------------------------------------------------------------------------
@@ -103,13 +103,22 @@ namespace triagens {
 /// @brief create the Traverser
 ////////////////////////////////////////////////////////////////////////////////
 
-        Traverser (ExpanderFunction const& n) : _neighborFunction(n) {
+        Traverser (
+          ExpanderFunction const& forwardExpander,
+          ExpanderFunction const& backwardExpander
+        ) : highscore(1e50),
+            bingo(false),
+            intermediate(""),
+            forwardExpander(forwardExpander),
+            backwardExpander(backwardExpander) {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
-        ~Traverser ();
+        ~Traverser () {
+          // TODO: Implement!!
+        };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -198,9 +207,9 @@ namespace triagens {
         };
 
 
-        ExpanderFunction const& _neighborFunction;
+        ExpanderFunction const& forwardExpander;
+        ExpanderFunction const& backwardExpander;
 
-        // Are they needed anyway??
         // ShortestPath will create these variables
         std::unordered_map<VertexId, LookupInfo> _forwardLookup;
         std::set<QueueInfo, std::less<QueueInfo>> _forwardQueue;
@@ -219,13 +228,13 @@ namespace triagens {
                             );
 
         void lookupPeer ( ThreadInfo& info,
-                          VertexId neighbor,
-                          EdgeWeight weight
+                          VertexId& neighbor,
+                          EdgeWeight& weight
                         );
         void searchFromVertex ( ThreadInfo myInfo,
                                 ThreadInfo peerInfo,
                                 VertexId start,
-                                Direction dir
+                                ExpanderFunction expander
                               );
     };
   }
