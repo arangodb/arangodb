@@ -107,7 +107,7 @@ js/apps/system/_admin/aardvark/APP/node_modules/*
 Documentation/Books/allComments.txt
 
 .gdb-history
-
+npm-debug.log
 
 UNITTEST_RESULT*
 log-*
