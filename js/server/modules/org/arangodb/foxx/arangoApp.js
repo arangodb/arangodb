@@ -321,37 +321,34 @@ var computeRootAppPath = function(mount, isValidation) {
 /// @brief get app configuration
 ////////////////////////////////////////////////////////////////////////////////
 
-  ArangoApp.prototype.getConfiguration = function(simple) {
-    if (!this._manifest.hasOwnProperty("configuration")) {
-      return {};
-    }
-    // Make sure originial is unmodified
-    var config = JSON.parse(JSON.stringify(this._manifest.configuration));
-    var setting = this._options.configuration || {};
-    var attr;
-    if (simple) {
-      var res = {};
-      for (attr in config) {
-        if (config.hasOwnProperty(attr)) {
-          if (setting.hasOwnProperty(attr)) {
-            res[attr] = setting[attr];
-          } else if (config[attr].hasOwnProperty("default")) {
-            res[attr] = config[attr].default;
-          }
-        }
-      }
-      return res;
-    }
-    for (attr in config) {
-      if (config.hasOwnProperty(attr)) {
-        if (setting.hasOwnProperty(attr)) {
-          config[attr].current = setting[attr];
-        } else if (config[attr].hasOwnProperty("default")) {
-          config[attr].current = config[attr].default;
-        }
-      }
-    }
+  ArangoApp.prototype.getConfiguration = function (simple) {
+    var config = {};
+    var definitions = this._manifest.configuration;
+    var options = this._options.configuration;
+    _.each(definitions, function (dfn, name) {
+      var value = options[name] === undefined ? dfn.default : options[name];
+      config[name] = simple ? value : _.extend(_.clone(dfn), {
+        current: value
+      });
+    });
     return config;
+  };
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief get app dependencies
+////////////////////////////////////////////////////////////////////////////////
+
+  ArangoApp.prototype.getDependencies = function(simple) {
+    var deps = {};
+    var definitions = this._manifest.dependencies;
+    var options = this._options.dependencies;
+    _.each(definitions, function (dfn, name) {
+      deps[name] = simple ? options[name] : {
+        definition: dfn,
+        current: options[name]
+      };
+    });
+    return deps;
   };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -360,15 +357,12 @@ var computeRootAppPath = function(mount, isValidation) {
 
   ArangoApp.prototype.needsConfiguration = function() {
     var config = this.getConfiguration();
-    var attr;
-    for (attr in config) {
-      if (config.hasOwnProperty(attr)) {
-        if (!config[attr].hasOwnProperty("current")) {
-          return true;
-        }
-      }
-    }
-    return false;
+    var deps = this.getDependencies();
+    return _.any(config, function (cfg) {
+      return cfg.current === undefined;
+    }) || _.any(deps, function (dep) {
+      return dep.current === undefined;
+    });
   };
 
 ////////////////////////////////////////////////////////////////////////////////

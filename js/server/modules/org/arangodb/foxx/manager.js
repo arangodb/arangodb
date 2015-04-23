@@ -1426,6 +1426,20 @@ var configuration = function(mount) {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief Get the dependencies for the app at the given mountpoint
+////////////////////////////////////////////////////////////////////////////////
+
+var dependencies = function(mount) {
+  checkParameter(
+    "dependencies(<mount>)",
+    [ [ "Mount path", "string" ] ],
+    [ mount ] );
+  utils.validateMount(mount, true);
+  var app = lookupApp(mount);
+  return app.getDependencies();
+};
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief Require the exports defined on the mount point
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -1487,6 +1501,7 @@ exports.development = setDevelopment;
 exports.production = setProduction;
 exports.configure = configure;
 exports.configuration = configuration;
+exports.dependencies = dependencies;
 exports.requireApp = requireApp;
 exports._resetCache = resetCache;
 
