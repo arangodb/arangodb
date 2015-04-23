@@ -574,10 +574,11 @@ namespace triagens {
                           VertexId& neighbor,
                           EdgeWeight& weight
                         );
-        void searchFromVertex ( ThreadInfo myInfo,
-                                ThreadInfo peerInfo,
+        void searchFromVertex ( ThreadInfo* myInfo,
+                                ThreadInfo* peerInfo,
                                 VertexId start,
-                                ExpanderFunction expander
+                                ExpanderFunction expander,
+                                std::string id
                               );
     };
   }

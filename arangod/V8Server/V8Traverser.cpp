@@ -54,6 +54,8 @@ class SimpleEdgeExpander {
     CollectionNameResolver const resolver;
     bool usesDist;
 
+    string dirung;
+
   public: 
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
@@ -82,6 +84,7 @@ class SimpleEdgeExpander {
     void operator() ( Traverser::VertexId source,
                       vector<Traverser::Neighbor>& result
                     ) {
+      cout << dirung << endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. Due to multi-threading
       // Process Vertex Id!
@@ -104,6 +107,11 @@ class SimpleEdgeExpander {
       }
       auto collectionCId = col->_cid;
       edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, buffer);
+        
+      if (direction == 1) {
+        cout << edges.size() << endl;
+      }
+        
       std::unordered_map<Traverser::VertexId, Traverser::Neighbor> candidates;
       Traverser::VertexId from;
       Traverser::VertexId to;
@@ -155,13 +163,16 @@ class SimpleEdgeExpander {
       TRI_edge_direction_e direction,
       TRI_document_collection_t* edgeCollection,
       string edgeCollectionName,
-      CollectionNameResolver const resolver
+      CollectionNameResolver const resolver,
+      string dirung
     ) : 
       direction(direction),
       edgeCollection(edgeCollection),
       resolver(resolver),
-      usesDist(false)
+      usesDist(false),
+      dirung(dirung)
     {
+      cout << direction << endl;
       edgeIdPrefix = edgeCollectionName + "/";
     };
 };
@@ -169,8 +180,7 @@ class SimpleEdgeExpander {
 static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
   v8::EscapableHandleScope scope(isolate);
   TRI_GET_GLOBALS();
-  TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
-  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
+  v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
@@ -187,6 +197,7 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& 
     edges->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.edges[j].c_str()));
   }
   result->Set(TRI_V8_STRING("edges"), edges);
+  result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
 
   return scope.Escape<v8::Value>(result);
 };
@@ -314,8 +325,8 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
-  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1);
-  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2);
+  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1, "A");
+  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2, "B");
 
   Traverser traverser(forwardExpander, backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));
