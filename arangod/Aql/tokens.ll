@@ -442,7 +442,7 @@ namespace triagens {
   BEGIN(INITIAL);
 }
 
-<COMMENT_SINGLE>[^*\n]+ { 
+<COMMENT_SINGLE>[^\n]+ { 
   // eat comment in chunks
 }
 

@@ -29,16 +29,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Utf8Helper.h"
-
-#include "unicode/normalizer2.h"
-#include "unicode/ucasemap.h"
-#include "unicode/brkiter.h"
-#include "unicode/ustdio.h"
-#include "unicode/uclean.h"
-
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Basics/utf8-helper.h"
+#include "unicode/normalizer2.h"
+#include "unicode/brkiter.h"
+#include "unicode/ucasemap.h"
+#include "unicode/uclean.h"
+#include "unicode/unorm2.h"
+#include "unicode/ustdio.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
@@ -46,7 +44,6 @@
 
 using namespace triagens::basics;
 using namespace std;
-
 
 Utf8Helper Utf8Helper::DefaultUtf8Helper;
 
@@ -73,7 +70,8 @@ Utf8Helper::~Utf8Helper () {
   }
 }
 
-int Utf8Helper::compareUtf8 (const char* left, const char* right) const {
+int Utf8Helper::compareUtf8 (char const* left, 
+                             char const* right) const {
   if (! _coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
     return (strcmp(left, right));
@@ -89,8 +87,27 @@ int Utf8Helper::compareUtf8 (const char* left, const char* right) const {
   return result;
 }
 
+int Utf8Helper::compareUtf8 (char const* left, 
+                             size_t leftLength,
+                             char const* right,
+                             size_t rightLength) const {
+  if (! _coll) {
+    LOG_ERROR("no Collator in Utf8Helper::compareUtf8()!");
+    return (strcmp(left, right));
+  }
+
+  UErrorCode status = U_ZERO_ERROR;
+  int result = _coll->compareUTF8(StringPiece(left, leftLength), StringPiece(right, rightLength), status);
+  if (U_FAILURE(status)) {
+    LOG_ERROR("error in Collator::compareUTF8(...): %s", u_errorName(status));
+    return (strcmp(left, right));
+  }
+
+  return result;
+}
+
 int Utf8Helper::compareUtf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) const {
-  if (!_coll) {
+  if (! _coll) {
     LOG_ERROR("no Collator in Utf8Helper::compareUtf16()!");
 
     if (leftLength == rightLength) {
@@ -516,9 +533,22 @@ int TRI_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* 
 /// @brief compare two utf8 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_compare_utf8 (const char* left, const char* right) {
+int TRI_compare_utf8 (char const* left, 
+                      char const* right) {
   return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, right);
 }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compare two utf8 strings
+////////////////////////////////////////////////////////////////////////////////
+
+int TRI_compare_utf8 (char const* left, 
+                      size_t leftLength,
+                      char const* right,
+                      size_t rightLength) {
+  return Utf8Helper::DefaultUtf8Helper.compareUtf8(left, leftLength, right, rightLength);
+}
+
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Lowercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
@@ -546,6 +576,194 @@ TRI_vector_string_t* TRI_get_words (const char* const text,
                                     const size_t maximalWordLength,
                                     bool lowerCase) {
   return Utf8Helper::DefaultUtf8Helper.getWords(text, textLength, minimalWordLength, maximalWordLength, lowerCase);
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                 private functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a utf-8 string to a uchar (utf-16)
+////////////////////////////////////////////////////////////////////////////////
+
+UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
+                        const char* utf8,
+                        const size_t inLength,
+                        size_t* outLength) {
+  UErrorCode status;
+  UChar* utf16;
+  int32_t utf16Length;
+
+  // 1. convert utf8 string to utf16
+  // calculate utf16 string length
+  status = U_ZERO_ERROR;
+  u_strFromUTF8(nullptr, 0, &utf16Length, utf8, (int32_t) inLength, &status);
+  if (status != U_BUFFER_OVERFLOW_ERROR) {
+    return nullptr;
+  }
+
+  utf16 = (UChar *) TRI_Allocate(zone, (utf16Length + 1) * sizeof(UChar), false);
+  if (utf16 == nullptr) {
+    return nullptr;
+  }
+
+  // now convert
+  status = U_ZERO_ERROR;
+  // the +1 will append a 0 byte at the end
+  u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t) inLength, &status);
+  if (status != U_ZERO_ERROR) {
+    TRI_Free(zone, utf16);
+    return 0;
+  }
+
+  *outLength = (size_t) utf16Length;
+
+  return utf16;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief convert a uchar (utf-16) to a utf-8 string
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
+                       const UChar* uchar,
+                       const size_t inLength,
+                       size_t* outLength) {
+  UErrorCode status;
+  char* utf8;
+  int32_t utf8Length;
+
+  // calculate utf8 string length
+  status = U_ZERO_ERROR;
+  u_strToUTF8(nullptr, 0, &utf8Length, uchar, (int32_t) inLength, &status);
+  if (status != U_BUFFER_OVERFLOW_ERROR) {
+    return nullptr;
+  }
+
+  utf8 = static_cast<char*>(TRI_Allocate(zone, (utf8Length + 1) * sizeof(char), false));
+
+  if (utf8 == nullptr) {
+    return nullptr;
+  }
+
+  // convert to utf8
+  status = U_ZERO_ERROR;
+  // the +1 will append a 0 byte at the end
+  u_strToUTF8(utf8, utf8Length + 1, nullptr, uchar, (int32_t) inLength, &status);
+  if (status != U_ZERO_ERROR) {
+    TRI_Free(zone, utf8);
+    return nullptr;
+  }
+
+  *outLength = ((size_t) utf8Length);
+
+  return utf8;
+}
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                  public functions
+// -----------------------------------------------------------------------------
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize an utf8 string (NFC)
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
+                                 const char* utf8,
+                                 const size_t inLength,
+                                 size_t* outLength) {
+  UChar* utf16;
+  size_t utf16Length;
+  char* utf8Dest;
+
+  *outLength = 0;
+
+  if (inLength == 0) {
+    utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
+
+    if (utf8Dest != nullptr) {
+      utf8Dest[0] = '\0';
+    }
+    return utf8Dest;
+  }
+
+  utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
+  if (utf16 == nullptr) {
+    return nullptr;
+  }
+
+  // continue in TR_normalize_utf16_to_NFC
+  utf8Dest = TRI_normalize_utf16_to_NFC(zone, (const uint16_t*) utf16, (int32_t) utf16Length, outLength);
+  TRI_Free(zone, utf16);
+
+  return utf8Dest;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief normalize an utf8 string (NFC)
+////////////////////////////////////////////////////////////////////////////////
+
+char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
+                                  const uint16_t* utf16,
+                                  const size_t inLength,
+                                  size_t* outLength) {
+  UErrorCode status;
+  UChar * utf16Dest;
+  int32_t utf16DestLength;
+  char * utf8Dest;
+  const UNormalizer2 *norm2;
+  char buffer[64];
+  bool mustFree;
+
+  *outLength = 0;
+
+  if (inLength == 0) {
+    utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
+    if (utf8Dest != nullptr) {
+      utf8Dest[0] = '\0';
+    }
+    return utf8Dest;
+  }
+
+  status = U_ZERO_ERROR;
+  norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
+
+  if (status != U_ZERO_ERROR) {
+    return nullptr;
+  }
+
+  // normalize UChar (UTF-16)
+
+  if (inLength < sizeof(buffer) / sizeof(UChar)) {
+    // use a static buffer
+    utf16Dest = (UChar *) &buffer[0];
+    mustFree = false;
+  }
+  else {
+    // use dynamic memory
+    utf16Dest = (UChar *) TRI_Allocate(zone, (inLength + 1) * sizeof(UChar), false);
+    if (utf16Dest == nullptr) {
+      return nullptr;
+    }
+    mustFree = true;
+  }
+
+  status = U_ZERO_ERROR;
+  utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, (int32_t) inLength, utf16Dest, (int32_t) (inLength + 1), &status);
+  if (status != U_ZERO_ERROR) {
+    if (mustFree) {
+      TRI_Free(zone, utf16Dest);
+    }
+    return nullptr;
+  }
+
+  // Convert data back from UChar (UTF-16) to UTF-8
+  utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, (size_t) utf16DestLength, outLength);
+  if (mustFree) {
+    TRI_Free(zone, utf16Dest);
+  }
+
+  return utf8Dest;
 }
 
 // -----------------------------------------------------------------------------

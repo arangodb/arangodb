@@ -68,7 +68,6 @@ lib_libarango_a_SOURCES = \
 	lib/Basics/tri-strings.cpp \
 	lib/Basics/tri-zip.cpp \
 	lib/Basics/Utf8Helper.cpp \
-	lib/Basics/utf8-helper.cpp \
 	lib/Basics/vector.cpp \
 	lib/Basics/voc-errors.cpp \
 	lib/Basics/voc-mimetypes.cpp \

@@ -28,8 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "skiplistIndex.h"
-
-#include "Basics/utf8-helper.h"
+#include "Basics/Utf8Helper.h"
 #include "ShapedJson/json-shaper.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"

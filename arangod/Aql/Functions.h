@@ -36,11 +36,14 @@
 #include "Utils/AqlTransaction.h"
 
 #include <functional>
-
+      
 namespace triagens {
   namespace aql {
 
-    typedef std::function<AqlValue(triagens::arango::AqlTransaction*,
+    class Query;
+
+    typedef std::function<AqlValue(triagens::aql::Query*,
+                                   triagens::arango::AqlTransaction*,
                                    TRI_document_collection_t const*,
                                    AqlValue const)> FunctionImplementation;
 
@@ -50,15 +53,17 @@ namespace triagens {
 /// @brief functions
 ////////////////////////////////////////////////////////////////////////////////
 
-      static AqlValue IsNull (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsBool (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsNumber (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsString (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsArray (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsObject (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Length (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Concat (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Passthru (triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsNull   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsBool   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsNumber (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsString (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsArray  (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsObject (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Length   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Concat   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Passthru (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Unset    (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Keep     (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 
   }

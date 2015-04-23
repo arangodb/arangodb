@@ -36,7 +36,7 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
-#include "Basics/utf8-helper.h"
+#include "Basics/Utf8Helper.h"
 
 using namespace triagens::aql;
 using JsonHelper = triagens::basics::JsonHelper;
