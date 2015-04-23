@@ -42,25 +42,36 @@
         padding: 5px;
         position: relative;
 
-        h3 {
-          float: left;
-          padding-right: 5px;
+        .header_line {
+          h3 {
+            float: left;
+            padding-right: 5px;
+          }
+
+          .license,
+          .version {
+            @include border-radius(6px);
+
+            border: 1px solid $c-editor-toolbar;
+            color: $c-editor-toolbar;
+            font-size: .6em;
+            padding: 0 8px;
+            position: relative;
+            top: -2px;
+          }
+
+          &:after {
+            content: '';
+            display: table;
+            clear: both;
+          }
         }
 
-        .license,
-        .version {
+        .app-warning {
           @include border-radius(6px);
-
-          border: 1px solid $c-editor-toolbar;
-          color: $c-editor-toolbar;
-          font-size: .6em;
+          border: 1px solid $c-negative;
+          color: $c-negative;
           padding: 0 8px;
-          position: relative;
-          top: -2px;
-        }
-
-        .description {
-          clear: left;
         }
       }
     }
