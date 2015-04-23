@@ -393,10 +393,11 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == 
-        getPlanNode()->_regsToClear.end()) {
-      if (! src->getValue(srcRow, i).isEmpty()) {
-        AqlValue a = src->getValue(srcRow, i).clone();
+    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+      auto value = src->getValueReference(srcRow, i);
+
+      if (! value.isEmpty()) {
+        AqlValue a = value.clone();
         try {
           dst->setValue(dstRow, i, a);
         }
@@ -422,10 +423,11 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == 
-        getPlanNode()->_regsToClear.end()) {
-      if (! src->getValue(row, i).isEmpty()) {
-        AqlValue a = src->getValueReference(row, i).clone();
+    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+      auto value = src->getValueReference(row, i);
+
+      if (! value.isEmpty()) {
+        AqlValue a = value.clone();
         try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -678,9 +680,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 
 int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // Create a deep copy of the register values given to us:
-  if (_inputRegisterValues != nullptr) {
-    delete _inputRegisterValues;
-  }
+  deleteInputVariables();
+  
   if (items != nullptr) {
     _inputRegisterValues = items->slice(pos, pos + 1);
   }
@@ -911,9 +912,9 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
-                    AqlValue(reinterpret_cast<TRI_df_marker_t
-                             const*>(_documents[_posInDocuments].getDataPtr())));
+      res->setShaped(j, 
+                     static_cast<triagens::aql::RegisterId>(curRegs),
+                     reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInDocuments].getDataPtr()));
       // No harm done, if the setValue throws!
     }
 
@@ -2671,7 +2672,8 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
   for (size_t i = 0; i < n; i++) {
     // need not clone to avoid a copy, the AqlItemBlock's hash takes
     // care of correct freeing:
-    AqlValue a = result->getValueReference(i, _inRegs[0]);
+    auto a = result->getValueReference(i, _inRegs[0]);
+
     try {
       TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
