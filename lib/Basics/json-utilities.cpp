@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/json-utilities.h"
+#include "Basics/fasthash.h"
 #include "Basics/hashes.h"
 #include "Basics/string-buffer.h"
 #include "Basics/Utf8Helper.h"
@@ -797,10 +798,10 @@ static uint64_t HashJsonRecursive (uint64_t hash,
       size_t const n = object->_value._objects._length;
       uint64_t tmphash = hash;
       for (size_t i = 0;  i < n;  i += 2) {
-        TRI_json_t const* subjson = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         TRI_ASSERT(TRI_IsStringJson(subjson));
         tmphash ^= HashJsonRecursive(hash, subjson);
-        subjson = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i + 1));
+        subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i + 1));
         tmphash ^= HashJsonRecursive(hash, subjson);
       }
       return tmphash;
@@ -810,7 +811,7 @@ static uint64_t HashJsonRecursive (uint64_t hash,
       hash = HashBlock(hash, "list", 4);   // strlen("list")
       size_t const n = object->_value._objects._length;
       for (size_t i = 0;  i < n;  ++i) {
-        TRI_json_t const* subjson = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         hash = HashJsonRecursive(hash, subjson);
       }
       return hash;
@@ -866,6 +867,77 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
     }
   }
   return hash;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief workhorse for fasthash computing
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t FastHashJsonRecursive (uint64_t hash, 
+                                       TRI_json_t const* object) {
+  if (nullptr == object) {
+    return fasthash64(static_cast<const void*>("null"), 4, hash);
+  }
+
+  switch (object->_type) {
+    case TRI_JSON_UNUSED: {
+      return hash;
+    }
+
+    case TRI_JSON_NULL: {
+      return fasthash64(static_cast<const void*>("null"), 4, hash);
+    }
+
+    case TRI_JSON_BOOLEAN: {
+      if (object->_value._boolean) {
+        return fasthash64(static_cast<const void*>("true"), 4, hash);
+      }
+      return fasthash64(static_cast<const void*>("false"), 5, hash);
+    }
+
+    case TRI_JSON_NUMBER: {
+      return fasthash64(static_cast<const void*>(&object->_value._number), sizeof(object->_value._number), hash);
+    }
+
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE: {
+      return fasthash64(static_cast<const void*>(object->_value._string.data), object->_value._string.length, hash);
+    }
+
+    case TRI_JSON_OBJECT: {
+      hash = fasthash64(static_cast<const void*>("object"), 6, hash);
+      size_t const n = object->_value._objects._length;
+      uint64_t tmphash = hash;
+      for (size_t i = 0;  i < n;  i += 2) {
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
+        TRI_ASSERT(TRI_IsStringJson(subjson));
+        tmphash ^= FastHashJsonRecursive(hash, subjson);
+        subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i + 1));
+        tmphash ^= FastHashJsonRecursive(hash, subjson);
+      }
+      return tmphash;
+    }
+
+    case TRI_JSON_ARRAY: {
+      hash = fasthash64(static_cast<const void*>("array"), 5, hash);
+      size_t const n = object->_value._objects._length;
+      for (size_t i = 0;  i < n;  ++i) {
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
+        hash = FastHashJsonRecursive(hash, subjson);
+      }
+    }
+  }
+  return hash;   // never reached
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute a hash value for a JSON document, using fasthash64.
+/// This is slightly faster than the FNV-based hashing
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_FastHashJson (TRI_json_t const* json) {
+  return FastHashJsonRecursive(0x012345678, json);
 }
 
 // -----------------------------------------------------------------------------
