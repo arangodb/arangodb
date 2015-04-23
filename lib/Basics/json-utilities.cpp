@@ -50,8 +50,8 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
   size_t const n = rhs->_value._objects._length;
   for (size_t i = 0; i < n; i += 2) {
     // enumerate all the replacement values
-    auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
-    auto value = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i + 1));
+    auto key = static_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
+    auto value = static_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i + 1));
 
     if (value->_type == TRI_JSON_NULL && nullMeansRemove) {
       // replacement value is a null and we don't want to store nulls => delete attribute from the result

@@ -4166,15 +4166,18 @@ function AQL_KEEP (value) {
 function AQL_MERGE () {
   'use strict';
 
-  var result = { }, i;
+  var result = { };
 
   var add = function (element) {
-    Object.keys(element).forEach(function(k) {
-      result[k] = element[k];
-    });
+    for (var k in element) {
+      if (element.hasOwnProperty(k)) {
+        result[k] = element[k];
+      }
+    }
   };
 
-  for (i in arguments) {
+  var j = 0;
+  for (var i in arguments) {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
@@ -4183,8 +4186,13 @@ function AQL_MERGE () {
         return null;
       }
 
-      add(element);
-
+      if (j === 0) {
+        result = element;
+      }
+      else {
+        add(element);
+      }
+      ++j;
     }
   }
 

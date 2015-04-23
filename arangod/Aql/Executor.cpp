@@ -176,10 +176,10 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "REMOVE_NTH",                  Function("REMOVE_NTH",                  "AQL_REMOVE_NTH", "l,n", true, false, true) },
 
   // document functions
-  { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true) },
+  { "HAS",                         Function("HAS",                         "AQL_HAS", "az,s", true, false, true, &Functions::Has) },
   { "ATTRIBUTES",                  Function("ATTRIBUTES",                  "AQL_ATTRIBUTES", "a|b,b", true, false, true) },
   { "VALUES",                      Function("VALUES",                      "AQL_VALUES", "a|b", true, false, true) },
-  { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true) },
+  { "MERGE",                       Function("MERGE",                       "AQL_MERGE", "a,a|+", true, false, true, &Functions::Merge) },
   { "MERGE_RECURSIVE",             Function("MERGE_RECURSIVE",             "AQL_MERGE_RECURSIVE", "a,a|+", true, false, true) },
   { "DOCUMENT",                    Function("DOCUMENT",                    "AQL_DOCUMENT", "h.|.", false, true, false) },
   { "MATCHES",                     Function("MATCHES",                     "AQL_MATCHES", ".,l|b", true, false, true) },
