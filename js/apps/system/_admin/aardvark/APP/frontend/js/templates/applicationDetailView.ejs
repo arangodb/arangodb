@@ -77,11 +77,13 @@
               <span class="version"><%= app.attributes.version %></span>
             </h3>
           </div>
-          <p id="app-unconfigured-warning" class="app-warning" style="display:<%=app.needsConfiguration()?'inline-block':'none' %>;">
-            <strong>This app has not yet been configured properly.</strong><br>
-            Please check the app configuration and/or dependencies.
-          </p>
           <p class="description"><%= app.attributes.description %></p>
+        </div>
+        <div id="app-warning" class="app-warning" style="display:<%=app.needsAttention()?'block':'none' %>;">
+          <h4>Out of order</h4>
+          <p id="app-warning-broken" style="display:<%=app.isBroken()?'block':'none' %>;">This app has failed to mount due to an error.</p>
+          <p id="app-warning-config" style="display:<%=app.needsConfiguration()?'block':'none' %>;">This app has not yet been configured properly.</p>
+          <p id="app-warning-deps" style="display:<%=app.hasUnconfiguredDependencies()?'block':'block' %>;">Some dependencies have not yet been set up.</p>
         </div>
       </div>
       <div class="swagger">

@@ -4,7 +4,6 @@
     padding: 13px 0 0;
 
     .header {
-      float: left;
       height: 200px;
       margin-bottom: 10px;
       position: relative;
@@ -38,9 +37,8 @@
       }
 
       .header_right {
-        left: 300px;
+        margin-left: 300px;
         padding: 5px;
-        position: relative;
 
         .header_line {
           h3 {
@@ -66,12 +64,21 @@
             clear: both;
           }
         }
+      }
 
-        .app-warning {
-          @include border-radius(6px);
-          border: 1px solid $c-negative;
-          color: $c-negative;
-          padding: 0 8px;
+      .app-warning {
+        position: absolute;
+        top: 0;
+        right: 20px;
+        @include border-radius(6px);
+        border: 1px solid $c-negative-hover;
+        color: $c-negative;
+        background: $c-negative-bg;
+        padding: 4px 8px;
+
+        h4, p {
+          margin: 0;
+          font-size: 1em;
         }
       }
     }
