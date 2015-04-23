@@ -62,8 +62,8 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
-                                 const char* utf8,
-                                 const size_t inLength,
+                                 char const* utf8,
+                                 size_t inLength,
                                  size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -71,8 +71,8 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char * TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
-                                   const uint16_t* utf16,
-                                   const size_t inLength,
+                                   uint16_t const* utf16,
+                                   size_t inLength,
                                    size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////

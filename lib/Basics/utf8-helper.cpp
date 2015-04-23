@@ -122,14 +122,13 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
-                                 const char* utf8,
-                                 const size_t inLength,
+                                 char const* utf8,
+                                 size_t inLength,
                                  size_t* outLength) {
-  UChar* utf16;
   size_t utf16Length;
-  char* utf8Dest;
 
   *outLength = 0;
+  char* utf8Dest;
 
   if (inLength == 0) {
     utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
@@ -140,7 +139,8 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
     return utf8Dest;
   }
 
-  utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
+  UChar* utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
+
   if (utf16 == nullptr) {
     return nullptr;
   }
@@ -157,18 +157,11 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
-                                  const uint16_t* utf16,
-                                  const size_t inLength,
+                                  uint16_t const* utf16,
+                                  size_t inLength,
                                   size_t* outLength) {
-  UErrorCode status;
-  UChar * utf16Dest;
-  int32_t utf16DestLength;
-  char * utf8Dest;
-  const UNormalizer2 *norm2;
-  char buffer[64];
-  bool mustFree;
-
   *outLength = 0;
+  char* utf8Dest;
 
   if (inLength == 0) {
     utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
@@ -178,14 +171,17 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
     return utf8Dest;
   }
 
-  status = U_ZERO_ERROR;
-  norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
+  UErrorCode status = U_ZERO_ERROR;
+  const UNormalizer2* norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
 
   if (status != U_ZERO_ERROR) {
     return nullptr;
   }
 
   // normalize UChar (UTF-16)
+  UChar* utf16Dest;
+  bool mustFree;
+  char buffer[64];
 
   if (inLength < sizeof(buffer) / sizeof(UChar)) {
     // use a static buffer
@@ -201,9 +197,57 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
     mustFree = true;
   }
 
-  status = U_ZERO_ERROR;
-  utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, (int32_t) inLength, utf16Dest, (int32_t) (inLength + 1), &status);
-  if (status != U_ZERO_ERROR) {
+  size_t overhead = 0;
+  int32_t utf16DestLength;
+ 
+  while (true) {
+    status = U_ZERO_ERROR;
+    utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, (int32_t) inLength, utf16Dest, (int32_t) (inLength + overhead + 1), &status);
+
+    if (status == U_ZERO_ERROR) {
+      break;
+    }
+
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+      // output buffer was too small. now re-try with a bigger buffer (inLength + overhead size)
+      if (mustFree) {
+        // free original buffer first so we don't leak
+        TRI_Free(zone, utf16Dest);
+        mustFree = false;
+      }
+      
+      if (overhead == 0) {
+        // set initial overhead size
+        if (inLength < 256) {
+          overhead = 16;
+        }
+        else if (inLength < 4096) {
+          overhead = 128;
+        }
+        else {
+          overhead = 256;
+        }
+      }
+      else {
+        // use double buffer size
+        overhead += overhead;
+
+        if (overhead >= 1024 * 1024) {
+          // enough is enough
+          return nullptr;
+        }
+      }
+
+      utf16Dest = (UChar *) TRI_Allocate(zone, (inLength + overhead + 1) * sizeof(UChar), false);
+
+      if (utf16Dest != nullptr) {
+        // got new memory. now try again with the adjusted, bigger buffer
+        mustFree = true;
+        continue;
+      }
+      // fall-through intentional
+    }
+
     if (mustFree) {
       TRI_Free(zone, utf16Dest);
     }
@@ -212,6 +256,7 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
 
   // Convert data back from UChar (UTF-16) to UTF-8
   utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, (size_t) utf16DestLength, outLength);
+
   if (mustFree) {
     TRI_Free(zone, utf16Dest);
   }
