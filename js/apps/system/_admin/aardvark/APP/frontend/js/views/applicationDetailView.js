@@ -12,6 +12,7 @@
       'click .open': 'openApp',
       'click .delete': 'deleteApp',
       'click #configure-app': 'showConfigureDialog',
+      'click #app-deps': 'showDepsDialog',
       'click #app-switch-mode': 'toggleDevelopment',
       "click #app-scripts [data-script]": "runScript",
       "click #app-tests": "runTests",
@@ -35,13 +36,14 @@
     },
 
     updateConfig: function() {
-      this.model.getConfiguration(function(cfg) {
-        this._appConfig = cfg;
-        if (Object.keys(this._appConfig).length === 0) {
-          $("#configure-app").addClass("disabled");
-        } else {
-          $("#configure-app").removeClass("disabled");
-        }
+      this.model.getConfiguration(function () {
+        $('#app-unconfigured-warning')[this.model.needsConfiguration() ? 'show' : 'hide']();
+      }.bind(this));
+    },
+
+    updateDeps: function() {
+      this.model.getDependencies(function () {
+        $('#app-unconfigured-warning')[this.model.needsConfiguration() ? 'show' : 'hide']();
       }.bind(this));
     },
 
@@ -61,8 +63,7 @@
 
     runScript: function(event) {
       event.preventDefault();
-      this.model.runScript($(event.currentTarget).attr('data-script'), function() {
-      });
+      this.model.runScript($(event.currentTarget).attr('data-script'));
     },
 
     runTests: function(event) {
@@ -97,6 +98,7 @@
       }.bind(this));
 
       this.updateConfig();
+      this.updateDeps();
 
       return $(this.el);
     },
@@ -109,8 +111,8 @@
       var buttons = [];
       buttons.push(
         window.modalView.createDeleteButton("Delete", function() {
-          this.model.destroy(function (result) {
-            if (result.error === false) {
+          this.model.destroy(function (err, result) {
+            if (!err && result.error === false) {
               window.modalView.hide();
               window.App.navigate("applications", { trigger: true });
             }
@@ -136,7 +138,7 @@
 
     readConfig: function() {
       var cfg = {};
-      _.each(this._appConfig, function(opt, key) {
+      _.each(this.model.get('config'), function(opt, key) {
         var $el = $("#app_config_" + key);
         var val = window.arangoHelper.escapeHtml($el.val());
         if (opt.type === "boolean") {
@@ -163,14 +165,13 @@
     },
 
     showConfigureDialog: function(e) {
-      if (Object.keys(this._appConfig).length === 0) {
-        e.stopPropagation();
+      if (_.isEmpty(this.model.get('config'))) {
         return;
       }
       var buttons = [],
           tableContent = [],
           entry;
-      _.each(this._appConfig, function(obj, name) {
+      _.each(this.model.get('config'), function(obj, name) {
         var def;
         var current;
         var check;
@@ -243,7 +244,7 @@
     },
 
     showDropdown: function () {
-      if (this.model.get('scripts').length) {
+      if (!_.isEmpty(this.model.get('scripts'))) {
         $("#scripts_dropdown").show(200);
       }
     },

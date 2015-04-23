@@ -4,23 +4,23 @@
       <div class="headerButtonBar">
         <ul class="headerButtonList">
           <li>
-            <a id="configure-app" class="headerButton">
+            <a id="configure-app" class="headerButton <%= _.isEmpty(app.get('config')) ? 'disabled' : '' %>">
               <span class="icon_arangodb_settings2" title="Configure"></span>
             </a>
           </li>
           <li>
-            <a id="app-dependencies" class="headerButton disabled">
+            <a id="app-dependencies" class="headerButton <%= _.isEmpty(app.get('deps')) ? 'disabled' : '' %>">
               <span class="fa fa-cubes" title="Dependencies"></span>
             </a>
           </li>
           <li id="app-scripts" class="dropdown">
-            <a class="headerButton <%= app.get('scripts').length ? '' : 'disabled' %>" title="Scripts">
+            <a class="headerButton <%= _.isEmpty(app.get('scripts')) ? 'disabled' : '' %>" title="Scripts">
               <i class="fa fa-cogs"></i>
             </a>
             <ul class="script-dropdown-menu dropdown-menu" id="scripts_dropdown">
-            <% app.get('scripts').forEach(function (script) { %>
+            <% _.each(app.get('scripts'), function (title, name) { %>
               <li class="dropdown-item">
-                <a class="tab" data-script="<%= script.name %>"><%= script.title %></a>
+                <a class="tab" data-script="<%= name %>"><%= title %></a>
               </li>
             <% }) %>
             </ul>
@@ -64,17 +64,23 @@
           <input type="button" class="delete button-danger" value="Delete" <%=app.isSystem()?"disabled":""%> />
         </div>
         <div class="header_right">
-          <h3>
-            <%= app.attributes.name %>
-          </h3>
-          <h3>
-            <% if (app.attributes.license) { %>
-              <span class="license"><%= app.attributes.license %></span>
-            <% } %>
-          </h3>
-          <h3>
-            <span class="version"><%= app.attributes.version %></span>
-          </h3>
+          <div class="header_line">
+            <h3>
+              <%= app.attributes.name %>
+            </h3>
+            <h3>
+              <% if (app.attributes.license) { %>
+                <span class="license"><%= app.attributes.license %></span>
+              <% } %>
+            </h3>
+            <h3>
+              <span class="version"><%= app.attributes.version %></span>
+            </h3>
+          </div>
+          <p id="app-unconfigured-warning" class="app-warning" style="display:<%=app.needsConfiguration()?'inline-block':'none' %>;">
+            <strong>This app has not yet been configured properly.</strong><br>
+            Please check the app configuration and/or dependencies.
+          </p>
           <p class="description"><%= app.attributes.description %></p>
         </div>
       </div>
