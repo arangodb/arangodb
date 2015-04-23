@@ -37,6 +37,7 @@
 #include "Utils/transactions.h"
 #include "Utils/V8ResolverGuard.h"
 #include "Utils/CollectionNameResolver.h"
+#include "VocBase/document-collection.h"
 #include "Traverser.h"
 #include "VocBase/key-generator.h"
 
@@ -47,17 +48,42 @@ using namespace triagens::arango;
 class SimpleEdgeExpander {
 
   private:
-    TRI_edge_direction_e forwardDirection;
-    TRI_edge_direction_e backwardDirection;
+    TRI_edge_direction_e direction;
     TRI_document_collection_t* edgeCollection;
-    CollectionNameResolver const* resolver;
+    string edgeIdPrefix;
+    CollectionNameResolver const resolver;
+    bool usesDist;
 
   public: 
+
+    Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
+      char const* key = TRI_EXTRACT_MARKER_FROM_KEY(&ptr);
+      TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_FROM_CID(&ptr);
+      string col = resolver.getCollectionName(cid);
+      col.append("/");
+      col.append(key);
+      return col;
+    };
+
+    Traverser::VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
+      char const* key = TRI_EXTRACT_MARKER_TO_KEY(&ptr);
+      TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_TO_CID(&ptr);
+      string col = resolver.getCollectionName(cid);
+      col.append("/");
+      col.append(key);
+      return col;
+    };
+
+    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+      char const* key = TRI_EXTRACT_MARKER_KEY(&ptr);
+      return edgeIdPrefix + key;
+    };
+
     void operator() ( Traverser::VertexId source,
-                      Traverser::Direction dir,
                       vector<Traverser::Neighbor>& result
                     ) {
       std::vector<TRI_doc_mptr_copy_t> edges;
+      TransactionBase fake(true); // Fake a transaction to please checks. Due to multi-threading
       // Process Vertex Id!
       size_t split;
       char const* str = source.c_str();
@@ -65,49 +91,105 @@ class SimpleEdgeExpander {
         // TODO Error Handling
         return;
       }
-      std::unique_ptr<char> key;
       string collectionName = string(str, split);
-      auto const length = source.size() - split - 1;
+      auto const length = strlen(str) - split - 1;
       auto buffer = new char[length + 1];
       memcpy(buffer, str + split + 1, length);
       buffer[length] = '\0';
-      key.reset(buffer);
 
-      auto col = resolver->getCollectionStruct(collectionName);
+      auto col = resolver.getCollectionStruct(collectionName);
       if (col == nullptr) {
         // collection not found
         throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
       auto collectionCId = col->_cid;
-      if (dir == Traverser::FORWARD) {
-        edges = TRI_LookupEdgesDocumentCollection(edgeCollection, forwardDirection, collectionCId, key.get());
+      edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, buffer);
+      std::unordered_map<Traverser::VertexId, Traverser::Neighbor> candidates;
+      Traverser::VertexId from;
+      Traverser::VertexId to;
+      std::unordered_map<Traverser::VertexId, Traverser::Neighbor>::const_iterator cand;
+      if (usesDist) {
+        for (size_t j = 0;  j < edges.size();  ++j) {
+          from = extractFromId(edges[j]);
+          to = extractFromId(edges[j]);
+          if (from != source) {
+            candidates.find(from);
+            if (cand == candidates.end()) {
+              // Add weight
+              candidates.emplace(from, Traverser::Neighbor(from, extractEdgeId(edges[j]), 1));
+            } else {
+              // Compare weight
+            }
+          } else if (to != source) {
+            candidates.find(to);
+            if (cand == candidates.end()) {
+              // Add weight
+              candidates.emplace(to, Traverser::Neighbor(to, extractEdgeId(edges[j]), 1));
+            } else {
+              // Compare weight
+            }
+          }
+        }
       } else {
-        edges = TRI_LookupEdgesDocumentCollection(edgeCollection, backwardDirection, collectionCId, key.get());
+        for (size_t j = 0;  j < edges.size();  ++j) {
+          from = extractFromId(edges[j]);
+          to = extractToId(edges[j]);
+          if (from != source) {
+            candidates.find(from);
+            if (cand == candidates.end()) {
+              candidates.emplace(from, Traverser::Neighbor(from, extractEdgeId(edges[j]), 1));
+            }
+          } else if (to != source) {
+            candidates.find(to);
+            if (cand == candidates.end()) {
+              candidates.emplace(to, Traverser::Neighbor(to, extractEdgeId(edges[j]), 1));
+            }
+          }
+        }
       }
-
-      // TODO Build result
+      for (auto it = candidates.begin(); it != candidates.end(); ++it) {
+        result.push_back(it->second);
+      }
     }
     SimpleEdgeExpander(
-      TRI_edge_direction_e edgeDirection,
+      TRI_edge_direction_e direction,
       TRI_document_collection_t* edgeCollection,
-      CollectionNameResolver const* resolver
+      string edgeCollectionName,
+      CollectionNameResolver const resolver
     ) : 
+      direction(direction),
       edgeCollection(edgeCollection),
-      resolver(resolver)
+      resolver(resolver),
+      usesDist(false)
     {
-      if (edgeDirection == TRI_EDGE_OUT) {
-        forwardDirection = TRI_EDGE_OUT;
-        backwardDirection = TRI_EDGE_IN;
-      } else if (edgeDirection == TRI_EDGE_IN) {
-        forwardDirection = TRI_EDGE_IN;
-        backwardDirection = TRI_EDGE_OUT;
-      } else {
-        forwardDirection = TRI_EDGE_ANY;
-        backwardDirection = TRI_EDGE_ANY;
-      }
+      edgeIdPrefix = edgeCollectionName + "/";
     };
 };
 
+static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
+  v8::EscapableHandleScope scope(isolate);
+  TRI_GET_GLOBALS();
+  TRI_GET_GLOBAL(VocbaseColTempl, v8::ObjectTemplate);
+  v8::Handle<v8::Object> result = VocbaseColTempl->NewInstance();
+
+  uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
+  v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
+
+  for (size_t j = 0;  j < vn;  ++j) {
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].c_str()));
+  }
+  result->Set(TRI_V8_STRING("vertices"), vertices);
+
+  uint32_t const en = static_cast<uint32_t>(p.edges.size());
+  v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
+
+  for (size_t j = 0;  j < en;  ++j) {
+    edges->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.edges[j].c_str()));
+  }
+  result->Set(TRI_V8_STRING("edges"), edges);
+
+  return scope.Escape<v8::Value>(result);
+};
 
 struct LocalCollectionGuard {
   LocalCollectionGuard (TRI_vocbase_col_t* collection)
@@ -139,9 +221,6 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   vector<string> readCollections;
   vector<string> writeCollections;
-  TRI_voc_cid_t vertexCollectionCId;
-  TRI_voc_cid_t edgeCollectionCId;
-  TRI_voc_rid_t rid;
 
   double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
   bool embed = false;
@@ -172,7 +251,14 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (! args[2]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <startVertex>");
   }
+  string const startVertex = TRI_ObjectToString(args[2]);
 
+  if (! args[3]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <targetVertex>");
+  }
+  string const targetVertex = TRI_ObjectToString(args[3]);
+
+  /*
 
   std::string vertexColName;
 
@@ -185,6 +271,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   TRI_ASSERT(key.get() != nullptr);
+  */
 
   // IHHF isCoordinator
 
@@ -209,7 +296,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // collection not found
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  vertexCollectionCId = col->_cid;
+
   if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -219,25 +306,42 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // collection not found
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  edgeCollectionCId = col->_cid;
+
   if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
 
-  v8::Handle<v8::Value> result;
-  v8::Handle<v8::Array> documents;
+  TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
+  CollectionNameResolver resolver1(vocbase);
+  CollectionNameResolver resolver2(vocbase);
+  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1);
+  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2);
 
+  Traverser traverser(forwardExpander, backwardExpander);
+  unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));
+  if (path.get() == nullptr) {
+    res = trx.finish(res);
+    v8::EscapableHandleScope scope(isolate);
+    TRI_V8_RETURN(scope.Escape<v8::Value>(v8::Object::New(isolate)));
+  }
+  auto result = pathIdsToV8(isolate, *path);
+  res = trx.finish(res);
+
+  TRI_V8_RETURN(result);
+
+  /*
   // This is how to get the data out of the collections!
   // Vertices
   TRI_doc_mptr_copy_t document;
   res = trx.readSingle(trx.trxCollection(vertexCollectionCId), &document, key.get());
 
   // Edges TRI_EDGE_OUT is hardcoded
-  TRI_document_collection_t* ecol = trx.trxCollection(edgeCollectionCId)->_collection->_collection;
   std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(ecol, TRI_EDGE_OUT, vertexCollectionCId, key.get());
+  */
 
   // Add Dijkstra here
 
+  /*
   // Now build up the result use Subtransactions for each used collection
   if (res == TRI_ERROR_NO_ERROR) {
     {
@@ -292,9 +396,5 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
       res = subtrx2.finish(res);
     }
   } 
-  res = trx.finish(res);
-
-  // Not yet correct. Needs to build an object first.
-  // TRI_V8_RETURN(result);
-  TRI_V8_RETURN(documents);
+  */
 }

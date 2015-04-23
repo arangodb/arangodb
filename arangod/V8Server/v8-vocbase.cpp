@@ -33,6 +33,7 @@
 #include "v8-vocindex.h"
 #include "v8-collection.h"
 #include "v8-voccursor.h"
+#include "V8Traverser.h"
 
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
@@ -1482,7 +1483,7 @@ static void JS_QueryIsKilledAql (const v8::FunctionCallbackInfo<v8::Value>& args
 ////////////////////////////////////////////////////////////////////////////////
 
 static void JS_QueryShortestPath (const v8::FunctionCallbackInfo<v8::Value>& args) {
-//   TRI_RunDijkstraSearch(args);
+   TRI_RunDijkstraSearch(args);
 }
 
 
