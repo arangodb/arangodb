@@ -38,6 +38,8 @@ struct TRI_document_collection_t;
 
 namespace triagens {
   namespace aql {
+
+    class AqlItemBlock;
     struct Variable;
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -74,8 +76,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue get (triagens::arango::AqlTransaction* trx,
-                      std::vector<TRI_document_collection_t const*>&,
-                      std::vector<AqlValue>&,
+                      AqlItemBlock const*,
                       size_t,
                       std::vector<Variable*> const&,
                       std::vector<RegisterId> const&);

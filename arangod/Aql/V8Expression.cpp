@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/V8Expression.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Executor.h"
 #include "Aql/Query.h"
 #include "Aql/Variable.h"
@@ -74,8 +75,7 @@ V8Expression::~V8Expression () {
 AqlValue V8Expression::execute (v8::Isolate* isolate,
                                 Query* query,
                                 triagens::arango::AqlTransaction* trx,
-                                std::vector<TRI_document_collection_t const*>& docColls,
-                                std::vector<AqlValue>& argv,
+                                AqlItemBlock const* argv,
                                 size_t startPos,
                                 std::vector<Variable*> const& vars,
                                 std::vector<RegisterId> const& regs) {
@@ -87,22 +87,24 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
   v8::Handle<v8::Object> values = v8::Object::New(isolate);
 
   for (size_t i = 0; i < n; ++i) {
-    auto const varname = vars[i]->name;
     auto reg = regs[i];
 
-    // TODO: decide which is better
-    // TRI_ASSERT_EXPENSIVE(! argv[reg].isEmpty());
-    if (argv[reg].isEmpty()) {
+    auto const& value(argv->getValueReference(startPos, reg)); 
+
+    if (value.isEmpty()) {
       continue;
     }
+    
+    auto document = argv->getDocumentCollection(reg);
+    auto const& varname = vars[i]->name;
 
-    if (hasRestrictions && argv[startPos + reg]._type == AqlValue::JSON) { 
+    if (hasRestrictions && value.isJson()) {
       // check if we can get away with constructing a partial JSON object
       auto it = _attributeRestrictions.find(vars[i]);
 
       if (it != _attributeRestrictions.end()) {
         // build a partial object
-        values->ForceSet(TRI_V8_STD_STRING(varname), argv[startPos + reg].toV8Partial(isolate, trx, (*it).second, docColls[reg]));
+        values->ForceSet(TRI_V8_STD_STRING(varname), value.toV8Partial(isolate, trx, (*it).second, document));
         continue;
       }
     }
@@ -110,7 +112,7 @@ AqlValue V8Expression::execute (v8::Isolate* isolate,
     // fallthrough to building the complete object
 
     // build the regular object
-    values->ForceSet(TRI_V8_STD_STRING(varname), argv[startPos + reg].toV8(isolate, trx, docColls[reg]));
+    values->ForceSet(TRI_V8_STD_STRING(varname), value.toV8(isolate, trx, document));
   }
 
   TRI_ASSERT(query != nullptr);

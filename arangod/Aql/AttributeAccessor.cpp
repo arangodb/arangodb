@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "AttributeAccessor.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/Variable.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
@@ -71,8 +72,7 @@ AttributeAccessor::~AttributeAccessor () {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
-                                 std::vector<TRI_document_collection_t const*>& docColls,
-                                 std::vector<AqlValue>& argv,
+                                 AqlItemBlock const* argv,
                                  size_t startPos,
                                  std::vector<Variable*> const& vars,
                                  std::vector<RegisterId> const& regs) {
@@ -82,10 +82,10 @@ AqlValue AttributeAccessor::get (triagens::arango::AqlTransaction* trx,
     if ((*it)->id == _variable->id) {
 
       // save the collection info
-      TRI_document_collection_t const* collection = docColls[regs[i]];
+      TRI_document_collection_t const* collection = argv->getDocumentCollection(regs[i]);
 
       // get the AQL value
-      auto& result = argv[startPos + regs[i]];
+      auto& result = argv->getValueReference(startPos, regs[i]);
     
       // extract the attribute
       auto j = result.extractObjectMember(trx, collection, _name, true, _buffer);
