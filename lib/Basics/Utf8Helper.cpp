@@ -227,6 +227,7 @@ std::string Utf8Helper::getCollatorCountry () {
 std::string Utf8Helper::toLowerCase (std::string const& src) {
   int32_t utf8len = 0;
   char* utf8 = tolower(TRI_UNKNOWN_MEM_ZONE, src.c_str(), (int32_t) src.length(), utf8len);
+
   if (utf8 == nullptr) {
     return string("");
   }
@@ -240,8 +241,11 @@ std::string Utf8Helper::toLowerCase (std::string const& src) {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Utf8Helper::tolower (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength) {
-  char* utf8_dest = 0;
+char* Utf8Helper::tolower (TRI_memory_zone_t* zone, 
+                           char const* src, 
+                           int32_t srcLength, 
+                           int32_t& dstLength) {
+  char* utf8_dest = nullptr;
 
   if (src == nullptr || srcLength == 0) {
     utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
@@ -326,12 +330,15 @@ std::string Utf8Helper::toUpperCase (std::string const& src) {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength) {
+char* Utf8Helper::toupper (TRI_memory_zone_t* zone, 
+                           char const* src, 
+                           int32_t srcLength, 
+                           int32_t& dstLength) {
   char* utf8_dest = nullptr;
 
   if (src == nullptr || srcLength == 0) {
     utf8_dest = (char*) TRI_Allocate(zone, sizeof(char), false);
-    if (utf8_dest != 0) {
+    if (utf8_dest != nullptr) {
       utf8_dest[0] = '\0';
     }
     dstLength = 0;
@@ -396,10 +403,10 @@ char* Utf8Helper::toupper (TRI_memory_zone_t* zone, const char *src, int32_t src
 /// @brief Extract the words from a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
-                                           const size_t textLength,
-                                           const size_t minimalLength,
-                                           const size_t maximalLength,
+TRI_vector_string_t* Utf8Helper::getWords (char const* text,
+                                           size_t textLength,
+                                           size_t minimalLength,
+                                           size_t maximalLength,
                                            bool lowerCase) {
   TRI_vector_string_t* words;
   UErrorCode status = U_ZERO_ERROR;
@@ -525,7 +532,10 @@ TRI_vector_string_t* Utf8Helper::getWords (const char* const text,
 /// @brief compare two utf16 strings
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_compare_utf16 (const uint16_t* left, size_t leftLength, const uint16_t* right, size_t rightLength) {
+int TRI_compare_utf16 (uint16_t const* left, 
+                       size_t leftLength, 
+                       uint16_t const* right, 
+                       size_t rightLength) {
   return Utf8Helper::DefaultUtf8Helper.compareUtf16(left, leftLength, right, rightLength);
 }
 
@@ -554,7 +564,10 @@ int TRI_compare_utf8 (char const* left,
 /// @brief Lowercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
+char* TRI_tolower_utf8 (TRI_memory_zone_t* zone, 
+                        char const* src, 
+                        int32_t srcLength, 
+                        int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.tolower(zone, src, srcLength, *dstLength);
 }
 
@@ -562,7 +575,10 @@ char* TRI_tolower_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLen
 /// @brief Uppercase the characters in a UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t* dstLength) {
+char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, 
+                        char const* src, 
+                        int32_t srcLength, 
+                        int32_t* dstLength) {
   return Utf8Helper::DefaultUtf8Helper.toupper(zone, src, srcLength, *dstLength);
 }
 
@@ -570,10 +586,10 @@ char* TRI_toupper_utf8 (TRI_memory_zone_t* zone, const char *src, int32_t srcLen
 /// @brief Get words of an UTF-8 string (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-TRI_vector_string_t* TRI_get_words (const char* const text,
-                                    const size_t textLength,
-                                    const size_t minimalWordLength,
-                                    const size_t maximalWordLength,
+TRI_vector_string_t* TRI_get_words (char const* text,
+                                    size_t textLength,
+                                    size_t minimalWordLength,
+                                    size_t maximalWordLength,
                                     bool lowerCase) {
   return Utf8Helper::DefaultUtf8Helper.getWords(text, textLength, minimalWordLength, maximalWordLength, lowerCase);
 }
@@ -587,8 +603,8 @@ TRI_vector_string_t* TRI_get_words (const char* const text,
 ////////////////////////////////////////////////////////////////////////////////
 
 UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
-                        const char* utf8,
-                        const size_t inLength,
+                        char const* utf8,
+                        size_t inLength,
                         size_t* outLength) {
   UErrorCode status;
   UChar* utf16;
@@ -613,7 +629,7 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
   u_strFromUTF8(utf16, utf16Length + 1, nullptr, utf8, (int32_t) inLength, &status);
   if (status != U_ZERO_ERROR) {
     TRI_Free(zone, utf16);
-    return 0;
+    return nullptr;
   }
 
   *outLength = (size_t) utf16Length;
@@ -626,8 +642,8 @@ UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
-                       const UChar* uchar,
-                       const size_t inLength,
+                       UChar const* uchar,
+                       size_t inLength,
                        size_t* outLength) {
   UErrorCode status;
   char* utf8;
@@ -669,14 +685,13 @@ char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
-                                 const char* utf8,
-                                 const size_t inLength,
+                                 char const* utf8,
+                                 size_t inLength,
                                  size_t* outLength) {
-  UChar* utf16;
   size_t utf16Length;
-  char* utf8Dest;
 
   *outLength = 0;
+  char* utf8Dest;
 
   if (inLength == 0) {
     utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
@@ -687,7 +702,8 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
     return utf8Dest;
   }
 
-  utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
+  UChar* utf16 = TRI_Utf8ToUChar(zone, utf8, inLength, &utf16Length);
+
   if (utf16 == nullptr) {
     return nullptr;
   }
@@ -704,18 +720,11 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
-                                  const uint16_t* utf16,
-                                  const size_t inLength,
+                                  uint16_t const* utf16,
+                                  size_t inLength,
                                   size_t* outLength) {
-  UErrorCode status;
-  UChar * utf16Dest;
-  int32_t utf16DestLength;
-  char * utf8Dest;
-  const UNormalizer2 *norm2;
-  char buffer[64];
-  bool mustFree;
-
   *outLength = 0;
+  char* utf8Dest;
 
   if (inLength == 0) {
     utf8Dest = static_cast<char*>(TRI_Allocate(zone, sizeof(char), false));
@@ -725,14 +734,17 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
     return utf8Dest;
   }
 
-  status = U_ZERO_ERROR;
-  norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
+  UErrorCode status = U_ZERO_ERROR;
+  UNormalizer2 const* norm2 = unorm2_getInstance(nullptr, "nfc", UNORM2_COMPOSE, &status);
 
   if (status != U_ZERO_ERROR) {
     return nullptr;
   }
 
   // normalize UChar (UTF-16)
+  UChar* utf16Dest;
+  bool mustFree;
+  char buffer[64];
 
   if (inLength < sizeof(buffer) / sizeof(UChar)) {
     // use a static buffer
@@ -748,17 +760,67 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
     mustFree = true;
   }
 
-  status = U_ZERO_ERROR;
-  utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, (int32_t) inLength, utf16Dest, (int32_t) (inLength + 1), &status);
-  if (status != U_ZERO_ERROR) {
+  size_t overhead = 0;
+  int32_t utf16DestLength;
+ 
+  while (true) {
+    status = U_ZERO_ERROR;
+    utf16DestLength = unorm2_normalize(norm2, (UChar*) utf16, (int32_t) inLength, utf16Dest, (int32_t) (inLength + overhead + 1), &status);
+
+    if (status == U_ZERO_ERROR) {
+      break;
+    }
+
+    if (status == U_BUFFER_OVERFLOW_ERROR) {
+      // output buffer was too small. now re-try with a bigger buffer (inLength + overhead size)
+      if (mustFree) {
+        // free original buffer first so we don't leak
+        TRI_Free(zone, utf16Dest);
+        mustFree = false;
+      }
+      
+      if (overhead == 0) {
+        // set initial overhead size
+        if (inLength < 256) {
+          overhead = 16;
+        }
+        else if (inLength < 4096) {
+          overhead = 128;
+        }
+        else {
+          overhead = 256;
+        }
+      }
+      else {
+        // use double buffer size
+        overhead += overhead;
+
+        if (overhead >= 1024 * 1024) {
+          // enough is enough
+          return nullptr;
+        }
+      }
+
+      utf16Dest = (UChar *) TRI_Allocate(zone, (inLength + overhead + 1) * sizeof(UChar), false);
+
+      if (utf16Dest != nullptr) {
+        // got new memory. now try again with the adjusted, bigger buffer
+        mustFree = true;
+        continue;
+      }
+      // fall-through intentional
+    }
+
     if (mustFree) {
       TRI_Free(zone, utf16Dest);
     }
+
     return nullptr;
   }
 
   // Convert data back from UChar (UTF-16) to UTF-8
   utf8Dest = TRI_UCharToUtf8(zone, utf16Dest, (size_t) utf16DestLength, outLength);
+
   if (mustFree) {
     TRI_Free(zone, utf16Dest);
   }
