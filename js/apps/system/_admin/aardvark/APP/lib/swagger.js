@@ -49,7 +49,7 @@
     pathes = routes.routes;
 
     for (i in pathes) {
-      if (pathes[i].url.methods !== undefined) {
+      if (!pathes[i].internal && pathes[i].url.methods !== undefined) {
         url = pathes[i].url.match;
         api = {};
         ops = [];
