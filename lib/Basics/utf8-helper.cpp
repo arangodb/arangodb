@@ -208,7 +208,8 @@ char* TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
       break;
     }
 
-    if (status == U_BUFFER_OVERFLOW_ERROR) {
+    if (status == U_BUFFER_OVERFLOW_ERROR ||
+        status == U_STRING_NOT_TERMINATED_WARNING) {
       // output buffer was too small. now re-try with a bigger buffer (inLength + overhead size)
       if (mustFree) {
         // free original buffer first so we don't leak
