@@ -165,8 +165,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue execute (triagens::arango::AqlTransaction* trx,
-                          std::vector<TRI_document_collection_t const*>&,
-                          std::vector<AqlValue>&, 
+                          AqlItemBlock const*,
                           size_t,
                           std::vector<Variable*> const&,
                           std::vector<RegisterId> const&,
@@ -304,8 +303,7 @@ namespace triagens {
         AqlValue executeSimpleExpression (AstNode const*,
                                           TRI_document_collection_t const**,
                                           triagens::arango::AqlTransaction*,
-                                          std::vector<TRI_document_collection_t const*>&,
-                                          std::vector<AqlValue> const&, 
+                                          AqlItemBlock const*,
                                           size_t,
                                           std::vector<Variable*> const&,
                                           std::vector<RegisterId> const&);
