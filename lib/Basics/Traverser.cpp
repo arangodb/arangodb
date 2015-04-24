@@ -65,7 +65,7 @@ class Searcher : public Thread {
                          Traverser::EdgeWeight weight) {
 
       std::lock_guard<std::mutex> guard(_myInfo._mutex);
-      Traverser::Step* s = _myInfo._pq.lookup(neighbor);
+      Traverser::Step* s = _myInfo._pq.find(neighbor);
 
       // Not found, so insert it:
       if (s == nullptr) {
@@ -90,7 +90,7 @@ class Searcher : public Thread {
                      Traverser::EdgeWeight weight) {
 
       std::lock_guard<std::mutex> guard(_peerInfo._mutex);
-      Traverser::Step* s = _peerInfo._pq.lookup(vertex);
+      Traverser::Step* s = _peerInfo._pq.find(vertex);
       if (s == nullptr) {
         // Not found, nothing more to do
         return;
@@ -156,7 +156,7 @@ class Searcher : public Thread {
         lookupPeer(v, s._weight);
 
         std::lock_guard<std::mutex> guard(_myInfo._mutex);
-        Traverser::Step* s2 = _myInfo._pq.lookup(v);
+        Traverser::Step* s2 = _myInfo._pq.find(v);
         s2->_done = true;
         b = _myInfo._pq.popMinimal(v, s, true);
       }
@@ -200,7 +200,7 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
     return nullptr;
   }
 
-  Step* s = forward._pq.lookup(_intermediate);
+  Step* s = forward._pq.find(_intermediate);
   r_vertices.push_back(_intermediate);
 
   // FORWARD Go path back from intermediate -> start.
@@ -209,17 +209,17 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   while (s->_predecessor != "") {
     r_edges.push_front(s->_edge);
     r_vertices.push_front(s->_predecessor);
-    s = forward._pq.lookup(s->_predecessor);
+    s = forward._pq.find(s->_predecessor);
   }
 
   // BACKWARD Go path back from intermediate -> target.
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
-  s = backward._pq.lookup(_intermediate);
+  s = backward._pq.find(_intermediate);
   while (s->_predecessor != "") {
     r_edges.push_back(s->_edge);
     r_vertices.push_back(s->_predecessor);
-    s = backward._pq.lookup(s->_predecessor);
+    s = backward._pq.find(s->_predecessor);
   }
   return new Path(r_vertices, r_edges, _highscore);
 };
