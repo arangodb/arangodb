@@ -505,13 +505,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Traverser (
-          ExpanderFunction const& forwardExpander,
-          ExpanderFunction const& backwardExpander
+          ExpanderFunction forwardExpander,
+          ExpanderFunction backwardExpander
         ) : highscore(1e50),
             bingo(false),
             intermediate(""),
-            forwardExpander(forwardExpander),
-            backwardExpander(backwardExpander) {
+            _forwardExpander(forwardExpander),
+            _backwardExpander(backwardExpander) {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -609,8 +609,8 @@ namespace triagens {
         };
 
 
-        ExpanderFunction const& forwardExpander;
-        ExpanderFunction const& backwardExpander;
+        ExpanderFunction _forwardExpander;
+        ExpanderFunction _backwardExpander;
 
         // ShortestPath will create these variables
         std::unordered_map<VertexId, LookupInfo> _forwardLookup;
