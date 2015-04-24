@@ -32,6 +32,9 @@
 
 #include "Basics/Common.h"
 
+#include <thread>
+#include <mutex>
+
 namespace triagens {
   namespace basics {
 
@@ -621,10 +624,11 @@ namespace triagens {
                           VertexId& neighbor,
                           EdgeWeight& weight
                         );
-        void searchFromVertex ( ThreadInfo myInfo,
-                                ThreadInfo peerInfo,
+        void searchFromVertex ( ThreadInfo* myInfo,
+                                ThreadInfo* peerInfo,
                                 VertexId start,
-                                ExpanderFunction expander
+                                ExpanderFunction expander,
+                                std::string id
                               );
     };
   }

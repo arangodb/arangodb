@@ -28,7 +28,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Traverser.h"
-#include <thread>
 
 using namespace std;
 using namespace triagens::basics;
@@ -90,11 +89,16 @@ void Traverser::lookupPeer (ThreadInfo& info,
 ////////////////////////////////////////////////////////////////////////////////
 
 void Traverser::searchFromVertex (
-    ThreadInfo myInfo,
-    ThreadInfo peerInfo,
+    ThreadInfo* myInfo_p,
+    ThreadInfo* peerInfo_p,
     VertexId start,
-    ExpanderFunction expander
+    ExpanderFunction expander,
+    string id
     ) {
+  ThreadInfo& myInfo(*myInfo_p);
+  ThreadInfo& peerInfo(*peerInfo_p);
+
+  cout << id << ": inserting " << start << endl;
   insertNeighbor(myInfo, start, "", "", 0);
   auto nextVertexIt = myInfo.queue.begin();
   std::vector<Neighbor> neighbors;
@@ -103,9 +107,12 @@ void Traverser::searchFromVertex (
   // there still is a vertex on the stack.
   while (!bingo && nextVertexIt != myInfo.queue.end()) {
     auto nextVertex = *nextVertexIt;
+    cout << id << ": next " << nextVertex.vertex << endl;
     myInfo.queue.erase(nextVertexIt);
+    neighbors.clear();
     expander(nextVertex.vertex, neighbors);
-    for (auto neighbor : neighbors) {
+    for (auto& neighbor : neighbors) {
+      cout << id << ": neighbor " << neighbor.neighbor << endl;
       insertNeighbor(myInfo, neighbor.neighbor, nextVertex.vertex,
                      neighbor.edge, nextVertex.weight + neighbor.weight);
     }
@@ -115,6 +122,7 @@ void Traverser::searchFromVertex (
     auto nextVertexLookup = myInfo.lookup.find(nextVertex.vertex);
 
     TRI_ASSERT(nextVertexLookup != myInfo.lookup.end());
+    cout << id << ": done " << nextVertexLookup->first << endl;
 
     nextVertexLookup->second.done = true;
     myInfo.mutex.unlock();
@@ -145,11 +153,13 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
 
   std::thread forwardSearcher(&Traverser::searchFromVertex, 
-                                            this, forwardInfo, backwardInfo, start, forwardExpander);
+                                            this, &forwardInfo, &backwardInfo, start, forwardExpander, string("X"));
   std::thread backwardSearcher(&Traverser::searchFromVertex, 
-                                             this, backwardInfo, forwardInfo, target, backwardExpander);
+                                             this, &backwardInfo, &forwardInfo, target, backwardExpander, string("Y"));
   forwardSearcher.join();
   backwardSearcher.join();
+
+  cout << forwardInfo.lookup.size() << backwardInfo.lookup.size() << endl;
 
   if (!bingo) {
     return nullptr;
