@@ -45,12 +45,14 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
+std::mutex m;
+
 class SimpleEdgeExpander {
 
     TRI_edge_direction_e direction;
     TRI_document_collection_t* edgeCollection;
     string edgeIdPrefix;
-    CollectionNameResolver const resolver;
+    CollectionNameResolver* resolver;
     bool usesDist;
     string id;
 
@@ -60,7 +62,7 @@ class SimpleEdgeExpander {
       TRI_edge_direction_e direction,
       TRI_document_collection_t* edgeCollection,
       string edgeCollectionName,
-      CollectionNameResolver const resolver,
+      CollectionNameResolver* resolver,
       string id
     ) : 
       direction(direction),
@@ -69,14 +71,14 @@ class SimpleEdgeExpander {
       usesDist(false),
       id(id)
     {
-      cout << id << direction << endl;
+      // cout << id << direction << endl;
       edgeIdPrefix = edgeCollectionName + "/";
     };
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
       char const* key = TRI_EXTRACT_MARKER_FROM_KEY(&ptr);
       TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_FROM_CID(&ptr);
-      string col = resolver.getCollectionName(cid);
+      string col = resolver->getCollectionName(cid);
       col.append("/");
       col.append(key);
       return col;
@@ -85,7 +87,7 @@ class SimpleEdgeExpander {
     Traverser::VertexId extractToId(TRI_doc_mptr_copy_t& ptr) {
       char const* key = TRI_EXTRACT_MARKER_TO_KEY(&ptr);
       TRI_voc_cid_t cid = TRI_EXTRACT_MARKER_TO_CID(&ptr);
-      string col = resolver.getCollectionName(cid);
+      string col = resolver->getCollectionName(cid);
       col.append("/");
       col.append(key);
       return col;
@@ -99,7 +101,9 @@ class SimpleEdgeExpander {
     void operator() ( Traverser::VertexId source,
                       vector<Traverser::Neighbor>& result
                     ) {
-      cout << "Hallole: " << id << endl;
+      //std::lock_guard<std::mutex> guard(m);
+
+      // cout << "Hallole: " << id << endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. Due to multi-threading
       // Process Vertex Id!
@@ -115,7 +119,7 @@ class SimpleEdgeExpander {
       memcpy(buffer, str + split + 1, length);
       buffer[length] = '\0';
 
-      auto col = resolver.getCollectionStruct(collectionName);
+      auto col = resolver->getCollectionStruct(collectionName);
       if (col == nullptr) {
         // collection not found
         throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
@@ -124,7 +128,7 @@ class SimpleEdgeExpander {
       edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, buffer);
         
       if (direction == 1) {
-        cout << edges.size() << endl;
+        // cout << edges.size() << endl;
       }
         
       std::unordered_map<Traverser::VertexId, Traverser::Neighbor> candidates;
@@ -324,8 +328,8 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
-  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1, "A");
-  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2, "B");
+  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, &resolver1, "A");
+  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, &resolver2, "B");
 
   Traverser traverser(forwardExpander, backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));

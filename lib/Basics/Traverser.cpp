@@ -123,7 +123,7 @@ class Searcher : public Thread {
 
     virtual void run () {
 
-      cout << _id << ": inserting " << _start << endl;
+      //cout << _id << ": inserting " << _start << endl;
       string empty;
       insertNeighbor(_myInfo, _start, empty, empty, 0);
       auto nextVertexIt = _myInfo.queue.begin();
@@ -133,12 +133,12 @@ class Searcher : public Thread {
       // there still is a vertex on the stack.
       while (!_traverser->bingo && nextVertexIt != _myInfo.queue.end()) {
         auto nextVertex = *nextVertexIt;
-        cout << _id << ": next " << nextVertex.vertex << endl;
+        //cout << _id << ": next " << nextVertex.vertex << endl;
         _myInfo.queue.erase(nextVertexIt);
         neighbors.clear();
         _expander(nextVertex.vertex, neighbors);
         for (auto& neighbor : neighbors) {
-          cout << _id << ": neighbor " << neighbor.neighbor << endl;
+          //cout << _id << ": neighbor " << neighbor.neighbor << endl;
           insertNeighbor(_myInfo, neighbor.neighbor, nextVertex.vertex,
                          neighbor.edge, nextVertex.weight + neighbor.weight);
         }
@@ -148,7 +148,7 @@ class Searcher : public Thread {
         auto nextVertexLookup = _myInfo.lookup.find(nextVertex.vertex);
 
         TRI_ASSERT(nextVertexLookup != _myInfo.lookup.end());
-        cout << _id << ": done " << nextVertexLookup->first << endl;
+        //cout << _id << ": done " << nextVertexLookup->first << endl;
 
         nextVertexLookup->second.done = true;
         _myInfo.mutex.unlock();
@@ -166,8 +166,8 @@ class Searcher : public Thread {
 Traverser::Path* Traverser::ShortestPath (VertexId const& start,
                                           VertexId const& target) {
 
-  cout << "Forwardexpander: " << &forwardExpander << endl;
-  cout << "Backwardexpander: " << &backwardExpander << endl;
+  //cout << "Forwardexpander: " << &_forwardExpander << endl;
+  //cout << "Backwardexpander: " << &_backwardExpander << endl;
   std::vector<VertexId> r_vertices;
   std::vector<VertexId> r_edges;
   highscore = 1e50;
@@ -183,15 +183,15 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
 
   Searcher forwardSearcher(this, forwardInfo, backwardInfo, start,
-                           forwardExpander, "X");
+                           _forwardExpander, "X");
   Searcher backwardSearcher(this, backwardInfo, forwardInfo, target,
-                            backwardExpander, "Y");
+                            _backwardExpander, "Y");
   forwardSearcher.start();
   backwardSearcher.start();
   forwardSearcher.join();
   backwardSearcher.join();
 
-  cout << forwardInfo.lookup.size() << backwardInfo.lookup.size() << endl;
+  //cout << forwardInfo.lookup.size() << backwardInfo.lookup.size() << endl;
 
   if (!bingo || intermediate == "") {
     return nullptr;
