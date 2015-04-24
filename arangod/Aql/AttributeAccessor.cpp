@@ -52,7 +52,7 @@ AttributeAccessor::AttributeAccessor (char const* name,
     _variable(variable),
     _buffer(TRI_UNKNOWN_MEM_ZONE),
     _pid(0),
-    _nameCache{ "", 0 },
+    _nameCache({ "", 0 }),
     _attributeType(ATTRIBUTE_TYPE_REGULAR) {
 
   TRI_ASSERT(_name != nullptr);
