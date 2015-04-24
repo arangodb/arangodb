@@ -189,12 +189,12 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   // Now the searcher threads:
   Searcher forwardSearcher(this, forward, backward, start,
                            _forwardExpander, "Forward");
-  //Searcher backwardSearcher(this, backward, forward, target,
-  //                          _backwardExpander, "Backward");
+  Searcher backwardSearcher(this, backward, forward, target,
+                            _backwardExpander, "Backward");
   forwardSearcher.start();
-  //backwardSearcher.start();
+  backwardSearcher.start();
   forwardSearcher.join();
-  //backwardSearcher.join();
+  backwardSearcher.join();
 
   if (!_bingo || _intermediate == "") {
     return nullptr;
