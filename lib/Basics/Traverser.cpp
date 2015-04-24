@@ -48,8 +48,8 @@ class Searcher : public Thread {
     Searcher (Traverser* traverser, Traverser::ThreadInfo& myInfo, 
               Traverser::ThreadInfo& peerInfo, Traverser::VertexId start,
               Traverser::ExpanderFunction expander, string id)
-      : Thread(id), _traverser(traverser), _myInfo(myInfo), _peerInfo(peerInfo), 
-        _start(start), _expander(expander), _id(id) {
+      : Thread(id), _traverser(traverser), _myInfo(myInfo), 
+        _peerInfo(peerInfo), _start(start), _expander(expander), _id(id) {
     }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ class Searcher : public Thread {
         _myInfo.mutex.unlock();
         nextVertexIt = _myInfo.queue.begin();
       }
-      _traverser->bingo = true;
+      // _traverser->bingo = true;
       // No possible path, can possibly terminate other thread
     }
 };
@@ -166,6 +166,8 @@ class Searcher : public Thread {
 Traverser::Path* Traverser::ShortestPath (VertexId const& start,
                                           VertexId const& target) {
 
+  cout << "Forwardexpander: " << &forwardExpander << endl;
+  cout << "Backwardexpander: " << &backwardExpander << endl;
   std::vector<VertexId> r_vertices;
   std::vector<VertexId> r_edges;
   highscore = 1e50;
