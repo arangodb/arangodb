@@ -32,14 +32,15 @@
 
 #include "Basics/Common.h"
 
-#include <thread>
 #include <mutex>
+
+class Searcher;
 
 namespace triagens {
   namespace basics {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   class Traverser
+// --SECTION--                                               class PriorityQueue
 // -----------------------------------------------------------------------------
 
     template <typename Key, typename Value, typename Weight>
@@ -48,11 +49,16 @@ namespace triagens {
       // store with the additional property that every Value has a
       // positive Weight (provided by the weight() and setWeight(w)
       // methods), which is a numerical type, and for which operator<
-      // is defined. Furthermore, the Value type must be copyable and
-      // movable. Finally, the Value type must have a method getKey that
-      // returns a Key const&.
+      // is defined. With respect to this weight the data structure
+      // is at the same time a priority queue in that it is possible
+      // to ask for (one of) the value(s) with the smallest weight and
+      // remove this efficiently.
+      // The Value type must be copyable and should be movable. Finally,
+      // the Value type must have a method getKey that returns a Key
+      // const&.
       // This data structure makes the following complexity promises 
-      // (amortized), where n is the number of key/value pairs stored:
+      // (amortized), where n is the number of key/value pairs stored
+      // in the queue:
       //   insert:                  O(log(n))   (but see below)
       //   lookup value by key:     O(1)
       //   get smallest:            O(1)
@@ -63,6 +69,10 @@ namespace triagens {
       // and if we do not use lower weight by key, then we even get:
       //   insert:                  O(1)
       //   get and erase smallest:  O(1)
+      // With the "get and erase smallest" operation one has the option
+      // of retaining the erased value in the key/value store. It can then
+      // still be looked up but will no longer be considered for the
+      // priority queue.
 
       public:
 
@@ -122,7 +132,8 @@ namespace triagens {
               }
               _heap.push_back(v);
               try {
-                _lookup.insert(std::make_pair(k, _heap.size()-1 + _popped));
+                _lookup.insert(std::make_pair(k, 
+                               static_cast<ssize_t>(_heap.size()-1 + _popped)));
               }
               catch (...) {
                 _heap.pop_back();
@@ -135,7 +146,8 @@ namespace triagens {
           _heap.push_back(v);
           try {
             size_t newpos = _heap.size() - 1;
-            _lookup.insert(std::make_pair(k, newpos + _popped));
+            _lookup.insert(std::make_pair(k, 
+                           static_cast<ssize_t>(newpos + _popped)));
             repairUp(newpos);
           }
           catch (...) {
@@ -154,7 +166,14 @@ namespace triagens {
           if (it == _lookup.end()) {
             return nullptr;
           }
-          return const_cast<Value const*>(&(_heap[it->second - _popped]));
+          if (it->second >= 0) {   // still in the queue
+            return const_cast<Value const*>
+                   (&(_heap[static_cast<size_t>(it->second) - _popped]));
+          }
+          else {  // already in the history
+            return const_cast<Value const*>
+                   (&(_history[static_cast<size_t>(-it->second) - 1]));
+          }
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,9 +188,15 @@ namespace triagens {
           if (it == _lookup.end()) {
             return false;
           }
-          size_t pos = it->second - _popped;
-          _heap[pos].setWeight(newWeight);
-          repairUp(pos);
+          if (it->second >= 0) {  // still in the queue
+            size_t pos = static_cast<size_t>(it->second) - _popped;
+            _heap[pos].setWeight(newWeight);
+            repairUp(pos);
+          }
+          else {  // already in the history
+            size_t pos = static_cast<size_t>(-it->second) - 1;
+            _history[pos].setWeight(newWeight);
+          }
           return true;
         }
 
@@ -191,18 +216,28 @@ namespace triagens {
 /// if the structure is empty. Key and Value are stored in k and v.
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool popMinimal (Key& k, Value& v) {
+        bool popMinimal (Key& k, Value& v, bool keepForLookup = false) {
           if (_heap.empty()) {
             return false;
           }
           k = _heap[0].getKey();
           v = _heap[0];
           if (! _isHeap) {
+            auto it = _lookup.find(k);
+            TRI_ASSERT(it != _lookup.end());
+            if (keepForLookup) {
+              _history.push_back(_heap[0]);
+              it->second = -static_cast<ssize_t>(_history.size());
+              // Note: This is intentionally one too large to shift by 1
+            }
+            else {
+              _lookup.erase(it);
+            }
             _heap.pop_front();
             _popped++;
           }
           else {
-            removeFromHeap();
+            removeFromHeap(keepForLookup);
           }
           return true;
         }
@@ -322,7 +357,7 @@ namespace triagens {
 /// @brief removeFromHeap, remove first position in the heap
 ////////////////////////////////////////////////////////////////////////////////
 
-        void removeFromHeap () {
+        void removeFromHeap (bool keepForLookup) {
           if (_heap.size() == 1) {
             _heap.clear();
             _popped = 0;
@@ -334,12 +369,19 @@ namespace triagens {
 
           auto it = _lookup.find(_heap[0].getKey());
           TRI_ASSERT(it != _lookup.end());
-          _lookup.erase(it);
+          if (keepForLookup) {
+            _history.push_back(_heap[0]);
+            it->second = -static_cast<ssize_t>(_history.size());
+            // Note: This is intentionally one too large to shift by 1
+          }
+          else {
+            _lookup.erase(it);
+          }
           _heap[0] = _heap.back();
           _heap.pop_back();
           it = _lookup.find(_heap[0].getKey());
           TRI_ASSERT(it != _lookup.end());
-          it->second = _popped;
+          it->second = static_cast<ssize_t>(_popped);
           repairDown();
         }
 
@@ -360,7 +402,7 @@ namespace triagens {
 /// @brief _lookup, this provides O(1) lookup by Key
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_map<Key, size_t> _lookup;
+        std::unordered_map<Key, ssize_t> _lookup;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _isHeap, starts as false, in which case we only use a deque,
@@ -382,9 +424,21 @@ namespace triagens {
 
         Weight _maxWeight;
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _history, the actual data that is only in the key/value store
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<Value> _history;
+
     };
 
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class Traverser
+// -----------------------------------------------------------------------------
+
     class Traverser {
+
+      friend class ::Searcher;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   data structures
@@ -433,9 +487,10 @@ namespace triagens {
         };
       };
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief edge direction
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge direction
+////////////////////////////////////////////////////////////////////////////////
+
       typedef enum {FORWARD, BACKWARD} Direction;
 
       typedef std::function<void(VertexId source, std::vector<Neighbor>& result)>
@@ -450,13 +505,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Traverser (
-          ExpanderFunction const& forwardExpander,
-          ExpanderFunction const& backwardExpander
+          ExpanderFunction forwardExpander,
+          ExpanderFunction backwardExpander
         ) : highscore(1e50),
             bingo(false),
             intermediate(""),
-            forwardExpander(forwardExpander),
-            backwardExpander(backwardExpander) {
+            _forwardExpander(forwardExpander),
+            _backwardExpander(backwardExpander) {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -492,6 +547,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to compute all neighbors of a given vertex
 ////////////////////////////////////////////////////////////////////////////////
+
       private:
 
         std::atomic<EdgeWeight> highscore;
@@ -553,8 +609,8 @@ namespace triagens {
         };
 
 
-        ExpanderFunction const& forwardExpander;
-        ExpanderFunction const& backwardExpander;
+        ExpanderFunction _forwardExpander;
+        ExpanderFunction _backwardExpander;
 
         // ShortestPath will create these variables
         std::unordered_map<VertexId, LookupInfo> _forwardLookup;
@@ -564,25 +620,6 @@ namespace triagens {
         std::unordered_map<VertexId, LookupInfo> _backwardLookup;
         std::set<QueueInfo, std::less<QueueInfo>> _backwardQueue;
         std::mutex _backwardMutex;
-
-
-        void insertNeighbor ( ThreadInfo& info,
-                              VertexId neighbor,
-                              VertexId predecessor,
-                              EdgeId edge,
-                              EdgeWeight weight
-                            );
-
-        void lookupPeer ( ThreadInfo& info,
-                          VertexId& neighbor,
-                          EdgeWeight& weight
-                        );
-        void searchFromVertex ( ThreadInfo* myInfo,
-                                ThreadInfo* peerInfo,
-                                VertexId start,
-                                ExpanderFunction expander,
-                                std::string id
-                              );
     };
   }
 }
