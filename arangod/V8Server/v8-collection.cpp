@@ -3142,8 +3142,7 @@ static void InsertEdgeColCoordinator (TRI_vocbase_col_t* collection,
 /// `collection.insert(data)`
 ///
 /// Creates a new document in the *collection* from the given *data*. The
-/// *data* must be an object. It must not contain attributes starting
-/// with *_*.
+/// *data* must be an object.
 ///
 /// The method returns a document with the attributes *_id* and *_rev*.
 /// The attribute *_id* contains the document handle of the newly created
