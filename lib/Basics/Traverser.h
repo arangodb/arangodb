@@ -40,7 +40,7 @@ namespace triagens {
   namespace basics {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   class Traverser
+// --SECTION--                                               class PriorityQueue
 // -----------------------------------------------------------------------------
 
     template <typename Key, typename Value, typename Weight>
@@ -431,6 +431,10 @@ namespace triagens {
         std::vector<Value> _history;
 
     };
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                   class Traverser
+// -----------------------------------------------------------------------------
 
     class Traverser {
 
