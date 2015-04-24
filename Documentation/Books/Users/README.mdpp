@@ -4,7 +4,7 @@ Welcome to the ArangoDB documentation!
 
 The documentation introduces ArangoDB for you as an user, developer and administrator and describes all of its functions in detail. 
 
-ArangoDB is a multi-purpose, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
+ArangoDB is a multi-model, open-source database with flexible data models for documents, graphs, and key-values. Build high performance applications using a convenient SQL-like query language or JavaScript extensions. Use ACID transactions if you require them. Scale horizontally and vertically with a few mouse clicks.
 
 Key features include:
 
@@ -23,9 +23,7 @@ Key features include:
 
 In this documentation you can inform yourself about all the functions, features and programs ArangoDB provides for you. 
 
-If you want to test the shell go [here](https://www.arangodb.com/shtutorial/).
-
-If you want to play with our query language, go to our [AQL Tutorial](https://www.arangodb.com/aqltutorial/).
+You can also go to our [cookbook](https://docs.arangodb.com/cookbook) and look through some recipes to learn more about ArangoDB specific problems and solutions.
 
 !SUBSECTION Community
 
@@ -36,4 +34,3 @@ If you have any questions don't hesitate to ask on:
 - [stackoverflow](http://stackoverflow.com/questions/tagged/arangodb)
 
 We will respond as soon as possible.
-
