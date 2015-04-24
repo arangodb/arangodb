@@ -47,14 +47,31 @@ using namespace triagens::arango;
 
 class SimpleEdgeExpander {
 
-  private:
     TRI_edge_direction_e direction;
     TRI_document_collection_t* edgeCollection;
     string edgeIdPrefix;
     CollectionNameResolver const resolver;
     bool usesDist;
+    string id;
 
   public: 
+
+    SimpleEdgeExpander(
+      TRI_edge_direction_e direction,
+      TRI_document_collection_t* edgeCollection,
+      string edgeCollectionName,
+      CollectionNameResolver const resolver,
+      string id
+    ) : 
+      direction(direction),
+      edgeCollection(edgeCollection),
+      resolver(resolver),
+      usesDist(false),
+      id(id)
+    {
+      cout << id << direction << endl;
+      edgeIdPrefix = edgeCollectionName + "/";
+    };
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
       char const* key = TRI_EXTRACT_MARKER_FROM_KEY(&ptr);
@@ -82,6 +99,7 @@ class SimpleEdgeExpander {
     void operator() ( Traverser::VertexId source,
                       vector<Traverser::Neighbor>& result
                     ) {
+      cout << "Hallole: " << id << endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. Due to multi-threading
       // Process Vertex Id!
@@ -156,20 +174,6 @@ class SimpleEdgeExpander {
         result.push_back(it->second);
       }
     }
-    SimpleEdgeExpander(
-      TRI_edge_direction_e direction,
-      TRI_document_collection_t* edgeCollection,
-      string edgeCollectionName,
-      CollectionNameResolver const resolver
-    ) : 
-      direction(direction),
-      edgeCollection(edgeCollection),
-      resolver(resolver),
-      usesDist(false)
-    {
-      cout << direction << endl;
-      edgeIdPrefix = edgeCollectionName + "/";
-    };
 };
 
 static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
@@ -320,8 +324,8 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
-  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1);
-  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2);
+  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, resolver1, "A");
+  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, resolver2, "B");
 
   Traverser traverser(forwardExpander, backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));
