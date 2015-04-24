@@ -458,13 +458,13 @@ namespace triagens {
       // Convention vertices.size() -1 === edges.size()
       // path is vertices[0] , edges[0], vertices[1] etc.
       struct Path {
-        std::vector<VertexId> vertices; 
-        std::vector<EdgeId> edges; 
+        std::deque<VertexId> vertices; 
+        std::deque<EdgeId> edges; 
         EdgeWeight weight;
 
         Path (
-          std::vector<VertexId> vertices,
-          std::vector<EdgeId> edges,
+          std::deque<VertexId> vertices,
+          std::deque<EdgeId> edges,
           EdgeWeight weight
         ) : vertices(vertices),
             edges(edges),
