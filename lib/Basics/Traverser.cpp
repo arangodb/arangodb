@@ -168,7 +168,7 @@ class Searcher : public Thread {
 ////////////////////////////////////////////////////////////////////////////////
 
 Traverser::Path* Traverser::shortestPath (VertexId const& start,
-                               VertexId const& target) {
+                                          VertexId const& target) {
 
   // For the result:
   std::deque<VertexId> r_vertices;
@@ -192,9 +192,9 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   Searcher backwardSearcher(this, backward, forward, target,
                             _backwardExpander, "Backward");
   forwardSearcher.start();
-  backwardSearcher.start();
+  //backwardSearcher.start();
   forwardSearcher.join();
-  backwardSearcher.join();
+  //backwardSearcher.join();
 
   if (!_bingo || _intermediate == "") {
     return nullptr;
