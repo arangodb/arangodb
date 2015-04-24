@@ -71,7 +71,7 @@ namespace triagens {
 /// @brief destroys an endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~EndpointUnixDomain ();
+        ~EndpointUnixDomain ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
@@ -89,13 +89,13 @@ namespace triagens {
 /// @brief disconnect the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual void disconnect ();
+        void disconnect () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief init an incoming connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool initIncoming (TRI_socket_t);
+        bool initIncoming (TRI_socket_t) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief get endpoint domain

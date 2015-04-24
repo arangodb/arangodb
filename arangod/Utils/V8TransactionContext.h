@@ -39,7 +39,7 @@ struct TRI_transaction_s;
 namespace triagens {
   namespace arango {
 
-    class V8TransactionContext : public TransactionContext {
+    class V8TransactionContext final : public TransactionContext {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        class V8TransactionContext
@@ -61,7 +61,7 @@ namespace triagens {
 /// @brief destroy the context
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~V8TransactionContext ();
+        ~V8TransactionContext ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public functions

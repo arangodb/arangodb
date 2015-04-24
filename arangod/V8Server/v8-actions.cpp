@@ -563,7 +563,7 @@ static HttpResponse* ResponseV8ToCpp (v8::Isolate* isolate,
            ((int) (TRI_ObjectToDouble(res->Get(ResponseCodeKey))));
   }
 
-  HttpResponse* response = new HttpResponse(code, compatibility);
+  std::unique_ptr<HttpResponse> response(new HttpResponse(code, compatibility));
 
   TRI_GET_GLOBAL_STRING(ContentTypeKey);
   if (res->Has(ContentTypeKey)) {
@@ -578,6 +578,7 @@ static HttpResponse* ResponseV8ToCpp (v8::Isolate* isolate,
   TRI_GET_GLOBAL_STRING(BodyFromFileKey);
   TRI_GET_GLOBAL_STRING(HeadersKey);
   TRI_GET_GLOBAL_STRING(CookiesKey);
+
   if (res->Has(BodyKey)) {
     // check if we should apply result transformations
     // transformations turn the result from one type into another
@@ -624,7 +625,8 @@ static HttpResponse* ResponseV8ToCpp (v8::Isolate* isolate,
       }
       else {
         // treat body as a string
-        response->body().appendText(TRI_ObjectToString(res->Get(BodyKey)));
+        std::string&& obj(TRI_ObjectToString(res->Get(BodyKey)));
+        response->body().appendText(obj);
       }
     }
   }
@@ -685,17 +687,17 @@ static HttpResponse* ResponseV8ToCpp (v8::Isolate* isolate,
       for (uint32_t i = 0; i < v8Array->Length(); i++) {
         v8::Handle<v8::Value> v8Cookie = v8Array->Get(i);
         if (v8Cookie->IsObject()) {
-          AddCookie(isolate, v8g, response, v8Cookie.As<v8::Object>());
+          AddCookie(isolate, v8g, response.get(), v8Cookie.As<v8::Object>());
         }
       }
     }
     else if (v8Cookies->IsObject()) {
       // one cookie
-      AddCookie(isolate, v8g, response, v8Cookies);
+      AddCookie(isolate, v8g, response.get(), v8Cookies);
     }
   }
 
-  return response;
+  return response.release();
 }
 
 ////////////////////////////////////////////////////////////////////////////////
