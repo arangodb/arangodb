@@ -156,13 +156,13 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup, note that the resulting pointer is only valid until the
+/// @brief find, note that the resulting pointer is only valid until the
 /// the next modification of the data structure happens (insert or lowerWeight
 /// or popMinimal). The weight in the Value type must not be modified other
 /// than via lowerWeight, otherwise the queue order could be violated.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Value* lookup (Key const& k) {
+        Value* find (Key const& k) {
           auto it = _lookup.find(k);
           if (it == _lookup.end()) {
             return nullptr;
