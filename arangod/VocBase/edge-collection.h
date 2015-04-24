@@ -110,7 +110,7 @@ std::vector<TRI_doc_mptr_copy_t> TRI_LookupEdgesDocumentCollection (
                                                   struct TRI_document_collection_t*,
                                                   TRI_edge_direction_e,
                                                   TRI_voc_cid_t,
-                                                  TRI_voc_key_t);
+                                                  TRI_voc_key_t const);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief looks up edges using the index, restarting at the edge pointed at
