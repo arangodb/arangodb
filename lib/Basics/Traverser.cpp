@@ -29,107 +29,134 @@
 
 #include "Traverser.h"
 
+#include "Basics/Thread.h"
+
 using namespace std;
 using namespace triagens::basics;
 
-void Traverser::insertNeighbor (ThreadInfo& info,
-                            VertexId neighbor,
-                            VertexId predecessor,
-                            EdgeId edge,
-                            EdgeWeight weight
-                           ) {
-  std::lock_guard<std::mutex> guard(info.mutex);
-  auto it = info.lookup.find(neighbor);
+class Searcher : public Thread {
 
-  // Not found insert it
-  if (it == info.lookup.end()) {
-    info.lookup.emplace(
-      neighbor,
-      LookupInfo(weight, edge, predecessor)
-    );
-    info.queue.insert(
-      QueueInfo(neighbor, weight)
-    );
-    return;
-  }
-  if (it->second.done) {
-    return;
-  }
-  if (it->second.weight > weight) {
-    QueueInfo q(neighbor, it->second.weight);
-    info.queue.erase(q);
-    q.weight = weight;
-    info.queue.insert(q);
-    it->second.weight = weight;
-  }
-};
+    Traverser* _traverser;
+    Traverser::ThreadInfo& _myInfo;
+    Traverser::ThreadInfo& _peerInfo;
+    Traverser::VertexId _start;
+    Traverser::ExpanderFunction _expander;
+    string _id;
 
-void Traverser::lookupPeer (ThreadInfo& info,
-                            VertexId& neighbor,
-                            EdgeWeight& weight) {
-  std::lock_guard<std::mutex> guard(info.mutex);
-  auto it = info.lookup.find(neighbor);
-  if (it == info.lookup.end()) {
-    return;
-  }
-  EdgeWeight total = it->second.weight + weight;
-  if (total < highscore) {
-    highscore = total;
-  }
-  if (it->second.done && total <= highscore) {
-    std::lock_guard<std::mutex> guard(resultMutex);
-    intermediate = neighbor;
-    bingo = true;
-  }
-};
+  public:
+
+    Searcher (Traverser* traverser, Traverser::ThreadInfo& myInfo, 
+              Traverser::ThreadInfo& peerInfo, Traverser::VertexId start,
+              Traverser::ExpanderFunction expander, string id)
+      : Thread(id), _traverser(traverser), _myInfo(myInfo), _peerInfo(peerInfo), 
+        _start(start), _expander(expander), _id(id) {
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Insert a neighbor to the todo list.
+////////////////////////////////////////////////////////////////////////////////
+
+  private:
+
+    void insertNeighbor (Traverser::ThreadInfo& info,
+                         Traverser::VertexId& neighbor,
+                         Traverser::VertexId& predecessor,
+                         Traverser::EdgeId& edge,
+                         Traverser::EdgeWeight weight) {
+
+      std::lock_guard<std::mutex> guard(info.mutex);
+      auto it = info.lookup.find(neighbor);
+
+      // Not found, so insert it:
+      if (it == info.lookup.end()) {
+        info.lookup.emplace(
+          neighbor,
+          Traverser::LookupInfo(weight, edge, predecessor)
+        );
+        info.queue.insert(
+          Traverser::QueueInfo(neighbor, weight)
+        );
+        return;
+      }
+      if (it->second.done) {
+        return;
+      }
+      if (it->second.weight > weight) {
+        Traverser::QueueInfo q(neighbor, it->second.weight);
+        info.queue.erase(q);
+        q.weight = weight;
+        info.queue.insert(q);
+        it->second.weight = weight;
+      }
+    }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Lookup a neighbor in the list of our peer.
+////////////////////////////////////////////////////////////////////////////////
+
+    void lookupPeer (Traverser::ThreadInfo& info,
+                     Traverser::VertexId& neighbor,
+                     Traverser::EdgeWeight weight) {
+
+      std::lock_guard<std::mutex> guard(info.mutex);
+      auto it = info.lookup.find(neighbor);
+      if (it == info.lookup.end()) {
+        return;
+      }
+      Traverser::EdgeWeight total = it->second.weight + weight;
+      if (total < _traverser->highscore) {
+        _traverser->highscore = total;
+      }
+      if (it->second.done && total <= _traverser->highscore) {
+        std::lock_guard<std::mutex> guard(_traverser->resultMutex);
+        _traverser->intermediate = neighbor;
+        _traverser->bingo = true;
+      }
+    }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Search graph starting at Start following edges of the given
-///        direction only
+/// direction only
 ////////////////////////////////////////////////////////////////////////////////
 
-void Traverser::searchFromVertex (
-    ThreadInfo* myInfo_p,
-    ThreadInfo* peerInfo_p,
-    VertexId start,
-    ExpanderFunction expander,
-    string id
-    ) {
-  ThreadInfo& myInfo(*myInfo_p);
-  ThreadInfo& peerInfo(*peerInfo_p);
+  public:
 
-  cout << id << ": inserting " << start << endl;
-  insertNeighbor(myInfo, start, "", "", 0);
-  auto nextVertexIt = myInfo.queue.begin();
-  std::vector<Neighbor> neighbors;
+    virtual void run () {
 
-  // Iterate while no bingo found and
-  // there still is a vertex on the stack.
-  while (!bingo && nextVertexIt != myInfo.queue.end()) {
-    auto nextVertex = *nextVertexIt;
-    cout << id << ": next " << nextVertex.vertex << endl;
-    myInfo.queue.erase(nextVertexIt);
-    neighbors.clear();
-    expander(nextVertex.vertex, neighbors);
-    for (auto& neighbor : neighbors) {
-      cout << id << ": neighbor " << neighbor.neighbor << endl;
-      insertNeighbor(myInfo, neighbor.neighbor, nextVertex.vertex,
-                     neighbor.edge, nextVertex.weight + neighbor.weight);
+      cout << _id << ": inserting " << _start << endl;
+      string empty;
+      insertNeighbor(_myInfo, _start, empty, empty, 0);
+      auto nextVertexIt = _myInfo.queue.begin();
+      std::vector<Traverser::Neighbor> neighbors;
+
+      // Iterate while no bingo found and
+      // there still is a vertex on the stack.
+      while (!_traverser->bingo && nextVertexIt != _myInfo.queue.end()) {
+        auto nextVertex = *nextVertexIt;
+        cout << _id << ": next " << nextVertex.vertex << endl;
+        _myInfo.queue.erase(nextVertexIt);
+        neighbors.clear();
+        _expander(nextVertex.vertex, neighbors);
+        for (auto& neighbor : neighbors) {
+          cout << _id << ": neighbor " << neighbor.neighbor << endl;
+          insertNeighbor(_myInfo, neighbor.neighbor, nextVertex.vertex,
+                         neighbor.edge, nextVertex.weight + neighbor.weight);
+        }
+        lookupPeer(_peerInfo, nextVertex.vertex, nextVertex.weight);
+        _myInfo.mutex.lock();
+        // Can move nextVertexLookup up?
+        auto nextVertexLookup = _myInfo.lookup.find(nextVertex.vertex);
+
+        TRI_ASSERT(nextVertexLookup != _myInfo.lookup.end());
+        cout << _id << ": done " << nextVertexLookup->first << endl;
+
+        nextVertexLookup->second.done = true;
+        _myInfo.mutex.unlock();
+        nextVertexIt = _myInfo.queue.begin();
+      }
+      _traverser->bingo = true;
+      // No possible path, can possibly terminate other thread
     }
-    lookupPeer(peerInfo, nextVertex.vertex, nextVertex.weight);
-    myInfo.mutex.lock();
-    // Can move nextVertexLookup up?
-    auto nextVertexLookup = myInfo.lookup.find(nextVertex.vertex);
-
-    TRI_ASSERT(nextVertexLookup != myInfo.lookup.end());
-    cout << id << ": done " << nextVertexLookup->first << endl;
-
-    nextVertexLookup->second.done = true;
-    myInfo.mutex.unlock();
-    nextVertexIt = myInfo.queue.begin();
-  }
-  bingo = true;
-  // No possible path, can possibly terminate other thread
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -137,7 +164,7 @@ void Traverser::searchFromVertex (
 ////////////////////////////////////////////////////////////////////////////////
 
 Traverser::Path* Traverser::ShortestPath (VertexId const& start,
-                    VertexId const& target) {
+                                          VertexId const& target) {
 
   std::vector<VertexId> r_vertices;
   std::vector<VertexId> r_edges;
@@ -153,10 +180,12 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   _backwardQueue.clear();
   ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
 
-  std::thread forwardSearcher(&Traverser::searchFromVertex, 
-                                            this, &forwardInfo, &backwardInfo, start, forwardExpander, string("X"));
-  std::thread backwardSearcher(&Traverser::searchFromVertex, 
-                                             this, &backwardInfo, &forwardInfo, target, backwardExpander, string("Y"));
+  Searcher forwardSearcher(this, forwardInfo, backwardInfo, start,
+                           forwardExpander, "X");
+  Searcher backwardSearcher(this, backwardInfo, forwardInfo, target,
+                            backwardExpander, "Y");
+  forwardSearcher.start();
+  backwardSearcher.start();
   forwardSearcher.join();
   backwardSearcher.join();
 
