@@ -106,7 +106,7 @@ namespace triagens {
 /// @brief return the endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        const triagens::rest::Endpoint* getEndpoint () const {
+        triagens::rest::Endpoint const* getEndpoint () const {
           return _endpoint;
         }
 
@@ -114,7 +114,7 @@ namespace triagens {
 /// @brief returns a string representation of the connection endpoint
 ////////////////////////////////////////////////////////////////////////////////
 
-        const std::string getEndpointSpecification () const {
+        std::string getEndpointSpecification () const {
           return _endpoint->getSpecification();
         }
 
@@ -197,7 +197,7 @@ namespace triagens {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual bool prepare (const double, const bool) const = 0;
+        virtual bool prepare (double, bool) const = 0;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data to the connection

@@ -163,7 +163,7 @@ void ClientConnection::disconnectSocket () {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ClientConnection::prepare (const double timeout, const bool isWrite) const {
+bool ClientConnection::prepare (double timeout, bool isWrite) const {
   struct timeval tv;
   fd_set fdset;
   int res;
