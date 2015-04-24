@@ -48,29 +48,53 @@ using namespace triagens::arango;
 class SimpleEdgeExpander {
 
   private:
+////////////////////////////////////////////////////////////////////////////////
+/// @brief direction of expansion
+////////////////////////////////////////////////////////////////////////////////
+
     TRI_edge_direction_e direction;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge collection
+////////////////////////////////////////////////////////////////////////////////
+
     TRI_document_collection_t* edgeCollection;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief collection name and /
+////////////////////////////////////////////////////////////////////////////////
+
     string edgeIdPrefix;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief the collection name resolver
+////////////////////////////////////////////////////////////////////////////////
+
     CollectionNameResolver* resolver;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief this indicates whether or not a distance attribute is used or
+/// whether all edges are considered to have weight 1
+////////////////////////////////////////////////////////////////////////////////
+
     bool usesDist;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief an ID for the expander, just for debuggin
+////////////////////////////////////////////////////////////////////////////////
+
     string id;
 
   public: 
 
-    SimpleEdgeExpander(
-      TRI_edge_direction_e direction,
-      TRI_document_collection_t* edgeCollection,
-      string edgeCollectionName,
-      CollectionNameResolver* resolver,
-      string id
-    ) : 
-      direction(direction),
-      edgeCollection(edgeCollection),
-      resolver(resolver),
-      usesDist(false),
-      id(id)
+    SimpleEdgeExpander(TRI_edge_direction_e direction,
+                       TRI_document_collection_t* edgeCollection,
+                       string edgeCollectionName,
+                       CollectionNameResolver* resolver,
+                       string id) 
+      : direction(direction), edgeCollection(edgeCollection),
+        resolver(resolver), usesDist(false), id(id)
     {
-      // cout << id << direction << endl;
       edgeIdPrefix = edgeCollectionName + "/";
     };
 
@@ -101,6 +125,9 @@ class SimpleEdgeExpander {
     void operator() (Traverser::VertexId source,
                      vector<Traverser::Step>& result) {
       std::vector<TRI_doc_mptr_copy_t> edges;
+      TransactionBase fake(true); // Fake a transaction to please checks. 
+                                  // This is due to multi-threading
+
       // Process Vertex Id!
       size_t split;
       char const* str = source.c_str();
@@ -108,11 +135,7 @@ class SimpleEdgeExpander {
         // TODO Error Handling
         return;
       }
-      string collectionName = string(str, split);
-      auto const length = strlen(str) - split - 1;
-      auto buffer = new char[length + 1];
-      memcpy(buffer, str + split + 1, length);
-      buffer[length] = '\0';
+      string collectionName = source.substr(0, split);
 
       auto col = resolver->getCollectionStruct(collectionName);
       if (col == nullptr) {
@@ -120,57 +143,58 @@ class SimpleEdgeExpander {
         throw TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND;
       }
       auto collectionCId = col->_cid;
-      edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, buffer);
+      edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, const_cast<char*>(str + split + 1));
         
-      if (direction == 1) {
-        // cout << edges.size() << endl;
-      }
-        
-      std::unordered_map<Traverser::VertexId, Traverser::Step> candidates;
+      unordered_map<Traverser::VertexId, size_t> candidates;
       Traverser::VertexId from;
       Traverser::VertexId to;
-      std::unordered_map<Traverser::VertexId, Traverser::Step>::const_iterator cand;
       if (usesDist) {
-        for (size_t j = 0;  j < edges.size();  ++j) {
+        for (size_t j = 0;  j < edges.size(); ++j) {
           from = extractFromId(edges[j]);
           to = extractToId(edges[j]);
           if (from != source) {
-            candidates.find(from);
+            auto cand = candidates.find(from);
             if (cand == candidates.end()) {
               // Add weight
-              candidates.emplace(from, Traverser::Step(to, from, 1, extractEdgeId(edges[j])));
+              result.emplace_back(to, from, 1, extractEdgeId(edges[j]));
+              candidates.emplace(from, result.size()-1);
             } else {
               // Compare weight
+              // use result[cand->seconde].weight() and .setWeight()
             }
-          } else if (to != source) {
-            candidates.find(to);
+          } 
+          else if (to != source) {
+            auto cand = candidates.find(to);
             if (cand == candidates.end()) {
               // Add weight
-              candidates.emplace(to, Traverser::Step(from, to, 1, extractEdgeId(edges[j])));
+              result.emplace_back(to, from, 1, extractEdgeId(edges[j]));
+              candidates.emplace(to, result.size()-1);
             } else {
               // Compare weight
+              // use result[cand->seconde].weight() and .setWeight()
             }
           }
         }
-      } else {
+      } 
+      else {
         for (size_t j = 0;  j < edges.size();  ++j) {
           from = extractFromId(edges[j]);
           to = extractFromId(edges[j]);
           if (from != source) {
-            candidates.find(from);
+            auto cand = candidates.find(from);
             if (cand == candidates.end()) {
-              candidates.emplace(from, Traverser::Step(to, from, 1, extractEdgeId(edges[j])));
+              result.emplace_back(from, to, 1, extractEdgeId(edges[j]));
+              candidates.emplace(from, result.size()-1);
             }
-          } else if (to != source) {
-            candidates.find(to);
+          } 
+          else if (to != source) {
+            auto cand = candidates.find(to);
             if (cand == candidates.end()) {
-              candidates.emplace(to, Traverser::Step(from, to, 1, extractEdgeId(edges[j])));
+              result.emplace_back(to, from, 1, extractEdgeId(edges[j]));
+              candidates.emplace(to, result.size()-1);
             }
           }
         }
-      }
-      for (auto it = candidates.begin(); it != candidates.end(); ++it) {
-        result.push_back(it->second);
       }
     }
 };
