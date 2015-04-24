@@ -123,9 +123,6 @@ class Searcher : public Thread {
 
     virtual void run () {
 
-      //cout << _id << ": inserting " << _start << endl;
-      string empty;
-      insertNeighbor(_myInfo, _start, empty, empty, 0);
       auto nextVertexIt = _myInfo.queue.begin();
       std::vector<Traverser::Neighbor> neighbors;
 
@@ -133,12 +130,10 @@ class Searcher : public Thread {
       // there still is a vertex on the stack.
       while (!_traverser->bingo && nextVertexIt != _myInfo.queue.end()) {
         auto nextVertex = *nextVertexIt;
-        //cout << _id << ": next " << nextVertex.vertex << endl;
         _myInfo.queue.erase(nextVertexIt);
         neighbors.clear();
         _expander(nextVertex.vertex, neighbors);
         for (auto& neighbor : neighbors) {
-          //cout << _id << ": neighbor " << neighbor.neighbor << endl;
           insertNeighbor(_myInfo, neighbor.neighbor, nextVertex.vertex,
                          neighbor.edge, nextVertex.weight + neighbor.weight);
         }
@@ -148,14 +143,11 @@ class Searcher : public Thread {
         auto nextVertexLookup = _myInfo.lookup.find(nextVertex.vertex);
 
         TRI_ASSERT(nextVertexLookup != _myInfo.lookup.end());
-        //cout << _id << ": done " << nextVertexLookup->first << endl;
 
         nextVertexLookup->second.done = true;
         _myInfo.mutex.unlock();
         nextVertexIt = _myInfo.queue.begin();
       }
-      // _traverser->bingo = true;
-      // No possible path, can possibly terminate other thread
     }
 };
 
@@ -166,20 +158,22 @@ class Searcher : public Thread {
 Traverser::Path* Traverser::ShortestPath (VertexId const& start,
                                           VertexId const& target) {
 
-  //cout << "Forwardexpander: " << &_forwardExpander << endl;
-  //cout << "Backwardexpander: " << &_backwardExpander << endl;
-  std::vector<VertexId> r_vertices;
-  std::vector<VertexId> r_edges;
+  std::deque<VertexId> r_vertices;
+  std::deque<VertexId> r_edges;
   highscore = 1e50;
   bingo = false;
 
-  // Forward
+  // Forward with initialization:
   _forwardLookup.clear();
+  _forwardLookup.emplace(start, LookupInfo(0, "", ""));
   _forwardQueue.clear();
+  _forwardQueue.insert(QueueInfo(start, 0));
   ThreadInfo forwardInfo(_forwardLookup, _forwardQueue, _forwardMutex);
 
   _backwardLookup.clear();
+  _backwardLookup.emplace(target, LookupInfo(0, "", ""));
   _backwardQueue.clear();
+  _backwardQueue.insert(QueueInfo(target, 0));
   ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
 
   Searcher forwardSearcher(this, forwardInfo, backwardInfo, start,
@@ -191,8 +185,6 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   forwardSearcher.join();
   backwardSearcher.join();
 
-  //cout << forwardInfo.lookup.size() << backwardInfo.lookup.size() << endl;
-
   if (!bingo || intermediate == "") {
     return nullptr;
   }
@@ -202,16 +194,12 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
   TRI_ASSERT(pathLookup != _forwardLookup.end());
-  if (pathLookup->second.predecessor != "") {
-    r_edges.insert(r_edges.begin(), pathLookup->second.edge);
-    pathLookup = _forwardLookup.find(pathLookup->second.predecessor);
-  }
+  r_vertices.push_back(intermediate);
   while (pathLookup->second.predecessor != "") {
-    r_edges.insert(r_edges.begin(), pathLookup->second.edge);
-    r_vertices.insert(r_vertices.begin(), pathLookup->first);
+    r_edges.push_front(pathLookup->second.edge);
+    r_vertices.push_front(pathLookup->second.predecessor);
     pathLookup = _forwardLookup.find(pathLookup->second.predecessor);
   }
-  r_vertices.insert(r_vertices.begin(), pathLookup->first);
 
   // BACKWARD Go path back from intermediate -> target.
   // Insert all vertices and edges at back of vector
@@ -219,11 +207,10 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
   pathLookup = _backwardLookup.find(intermediate);
   TRI_ASSERT(pathLookup != _backwardLookup.end());
   while (pathLookup->second.predecessor != "") {
-    r_vertices.push_back(pathLookup->first);
     r_edges.push_back(pathLookup->second.edge);
+    r_vertices.push_back(pathLookup->second.predecessor);
     pathLookup = _backwardLookup.find(pathLookup->second.predecessor);
   }
-  r_vertices.push_back(pathLookup->first);
   Path* res = new Path(r_vertices, r_edges, highscore);
   return res;
 };
