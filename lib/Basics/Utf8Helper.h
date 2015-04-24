@@ -138,7 +138,10 @@ namespace triagens {
 /// @brief Lowercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-        char* tolower (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength);
+        char* tolower (TRI_memory_zone_t* zone, 
+                       char const* src, 
+                       int32_t srcLength, 
+                       int32_t& dstLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Uppercase the characters in a UTF-8 string.
@@ -150,17 +153,20 @@ namespace triagens {
 /// @brief Uppercase the characters in a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-        char* toupper (TRI_memory_zone_t* zone, const char *src, int32_t srcLength, int32_t& dstLength);
-
+        char* toupper (TRI_memory_zone_t* zone, 
+                       char const* src, 
+                       int32_t srcLength, 
+                       int32_t& dstLength);
+ 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the words of a UTF-8 string.
 ////////////////////////////////////////////////////////////////////////////////
 
-        TRI_vector_string_t* getWords (const char* const text,
-                                                   const size_t textLength,
-                                                   const size_t minimalWordLength,
-                                                   const size_t maximalWordLength,
-                                                   bool lowerCase);
+        TRI_vector_string_t* getWords (char const* text,
+                                       size_t textLength,
+                                       size_t minimalWordLength,
+                                       size_t maximalWordLength,
+                                       bool lowerCase);
 
       private:
         Collator* _coll;
@@ -178,26 +184,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
 UChar* TRI_Utf8ToUChar (TRI_memory_zone_t* zone,
-                           const char* utf8,
-                           const size_t inLength,
-                           size_t* outLength);
+                        char const* utf8,
+                        size_t inLength,
+                        size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a uchar (utf-16) to a utf-8 string
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_UCharToUtf8 (TRI_memory_zone_t* zone,
-                          const UChar* uchar,
-                          const size_t inLength,
-                          size_t* outLength);
+                       UChar const* uchar,
+                       size_t inLength,
+                       size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief normalize an utf8 string (NFC)
 ////////////////////////////////////////////////////////////////////////////////
 
 char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
-                                 const char* utf8,
-                                 const size_t inLength,
+                                 char const* utf8,
+                                 size_t inLength,
                                  size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -205,17 +211,17 @@ char* TRI_normalize_utf8_to_NFC (TRI_memory_zone_t* zone,
 ////////////////////////////////////////////////////////////////////////////////
 
 char * TRI_normalize_utf16_to_NFC (TRI_memory_zone_t* zone,
-                                   const uint16_t* utf16,
-                                   const size_t inLength,
+                                   uint16_t const* utf16,
+                                   size_t inLength,
                                    size_t* outLength);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief compare two utf16 strings (implemented in Basic/Utf8Helper.cpp)
 ////////////////////////////////////////////////////////////////////////////////
 
-int TRI_compare_utf16 (const uint16_t* left,
+int TRI_compare_utf16 (uint16_t const* left,
                        size_t leftLength,
-                       const uint16_t* right,
+                       uint16_t const* right,
                        size_t rightLength);
 
 ////////////////////////////////////////////////////////////////////////////////

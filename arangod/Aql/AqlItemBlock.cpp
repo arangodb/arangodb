@@ -176,6 +176,10 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AqlItemBlock::destroy () {
+  if (_valueCount.empty()) {
+    return;
+  }
+
   for (auto& it : _data) {
     if (it.requiresDestruction()) {
       try {   // can find() really throw???
@@ -228,8 +232,10 @@ void AqlItemBlock::shrink (size_t nrItems) {
   for (size_t i = nrItems; i < _nrItems; ++i) {
     for (RegisterId j = 0; j < _nrRegs; ++j) {
       AqlValue& a(_data[_nrRegs * i + j]);
+
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
+
         if (it != _valueCount.end()) {
           TRI_ASSERT_EXPENSIVE(it->second > 0);
 
@@ -260,8 +266,10 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
   for (auto reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
+
       if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
+
         if (it != _valueCount.end()) {
           TRI_ASSERT_EXPENSIVE(it->second > 0);
 
@@ -304,6 +312,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
 
       if (! a.isEmpty()) {
         auto it = cache.find(a);
+
         if (it == cache.end()) {
           AqlValue b = a.clone();
           try {
@@ -350,6 +359,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
 
       if (! a.isEmpty()) {
         auto it = cache.find(a);
+
         if (it == cache.end()) {
           AqlValue b = a.clone();
           try {
