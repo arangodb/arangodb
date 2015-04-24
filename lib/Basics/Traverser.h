@@ -34,8 +34,6 @@
 
 #include <mutex>
 
-class Searcher;
-
 namespace triagens {
   namespace basics {
 
@@ -158,21 +156,22 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief lookup
+/// @brief lookup, note that the resulting pointer is only valid until the
+/// the next modification of the data structure happens (insert or lowerWeight
+/// or popMinimal). The weight in the Value type must not be modified other
+/// than via lowerWeight, otherwise the queue order could be violated.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Value const* lookup (Key const& k) {
+        Value* lookup (Key const& k) {
           auto it = _lookup.find(k);
           if (it == _lookup.end()) {
             return nullptr;
           }
           if (it->second >= 0) {   // still in the queue
-            return const_cast<Value const*>
-                   (&(_heap[static_cast<size_t>(it->second) - _popped]));
+            return &(_heap[static_cast<size_t>(it->second) - _popped]);
           }
           else {  // already in the history
-            return const_cast<Value const*>
-                   (&(_history[static_cast<size_t>(-it->second) - 1]));
+            return &(_history[static_cast<size_t>(-it->second) - 1]);
           }
         }
 
@@ -201,19 +200,24 @@ namespace triagens {
         }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief getMinimal
+/// @brief getMinimal, note that the resulting pointer is only valid until the
+/// the next modification of the data structure happens (insert or lowerWeight
+/// or popMinimal). The weight in the Value type must not be modified other
+/// than via lowerWeight, otherwise the queue order could be violated.
 ////////////////////////////////////////////////////////////////////////////////
 
-        Value const* getMinimal() {
+        Value* getMinimal() {
           if (_heap.empty()) {
             return nullptr;
           }
-          return const_cast<Value const*>(&(_heap[0]));
+          return &(_heap[0]);
         }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief popMinimal, returns true if something was returned and false
 /// if the structure is empty. Key and Value are stored in k and v.
+/// If keepForLookup is true then the Value is kept for lookup in the
+/// hash table but removed from the priority queue.
 ////////////////////////////////////////////////////////////////////////////////
 
         bool popMinimal (Key& k, Value& v, bool keepForLookup = false) {
@@ -358,15 +362,6 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void removeFromHeap (bool keepForLookup) {
-          if (_heap.size() == 1) {
-            _heap.clear();
-            _popped = 0;
-            _lookup.clear();
-            _isHeap = false;
-            _maxWeight = 0;
-            return;
-          }
-
           auto it = _lookup.find(_heap[0].getKey());
           TRI_ASSERT(it != _lookup.end());
           if (keepForLookup) {
@@ -377,6 +372,14 @@ namespace triagens {
           else {
             _lookup.erase(it);
           }
+          if (_heap.size() == 1) {
+            _heap.clear();
+            _popped = 0;
+            _isHeap = false;
+            _maxWeight = 0;
+            return;
+          }
+          // Move one in front:
           _heap[0] = _heap.back();
           _heap.pop_back();
           it = _lookup.find(_heap[0].getKey());
@@ -438,22 +441,28 @@ namespace triagens {
 
     class Traverser {
 
-      friend class ::Searcher;
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   data structures
 // -----------------------------------------------------------------------------
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                              path
+// --SECTION--                                                             types
 // -----------------------------------------------------------------------------
 
 
     public:
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief types for vertices, edges and weights
+////////////////////////////////////////////////////////////////////////////////
+
       typedef std::string VertexId;
       typedef std::string EdgeId;
       typedef double EdgeWeight;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Path, type for the result
+////////////////////////////////////////////////////////////////////////////////
 
       // Convention vertices.size() -1 === edges.size()
       // path is vertices[0] , edges[0], vertices[1] etc.
@@ -462,29 +471,43 @@ namespace triagens {
         std::deque<EdgeId> edges; 
         EdgeWeight weight;
 
-        Path (
-          std::deque<VertexId> vertices,
-          std::deque<EdgeId> edges,
-          EdgeWeight weight
-        ) : vertices(vertices),
-            edges(edges),
-            weight(weight) {
+        Path (std::deque<VertexId> vertices, std::deque<EdgeId> edges,
+              EdgeWeight weight) 
+          : vertices(vertices), edges(edges), weight(weight) {
         };
       };
 
-      struct Neighbor {
-        VertexId neighbor;
-        EdgeId edge;
-        EdgeWeight weight;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief Step, one position with a predecessor and the edge
+////////////////////////////////////////////////////////////////////////////////
 
-        Neighbor (
-          VertexId neighbor,
-          EdgeId edge,
-          EdgeWeight weight
-        ) : neighbor(neighbor),
-            edge(edge),
-            weight(weight) {
-        };
+      struct Step {
+        VertexId _vertex;
+        VertexId _predecessor;
+        EdgeWeight _weight;
+        EdgeId _edge;
+        bool _done;
+
+        Step () : _done(false) {
+        }
+
+        Step (VertexId const& vert, VertexId const& pred,
+              EdgeWeight weig, EdgeId const& edge)
+          : _vertex(vert), _predecessor(pred), _weight(weig), _edge(edge),
+            _done(false) {
+        }
+
+        EdgeWeight weight () const {
+          return _weight;
+        }
+
+        void setWeight (EdgeWeight w) {
+          _weight = w;
+        }
+
+        VertexId const& getKey () const {
+          return _vertex;
+        }
       };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -493,7 +516,11 @@ namespace triagens {
 
       typedef enum {FORWARD, BACKWARD} Direction;
 
-      typedef std::function<void(VertexId source, std::vector<Neighbor>& result)>
+////////////////////////////////////////////////////////////////////////////////
+/// @brief callback to find neighbours
+////////////////////////////////////////////////////////////////////////////////
+
+      typedef std::function<void(VertexId V, std::vector<Step>& result)>
               ExpanderFunction;
 
 // -----------------------------------------------------------------------------
@@ -504,12 +531,12 @@ namespace triagens {
 /// @brief create the Traverser
 ////////////////////////////////////////////////////////////////////////////////
 
-        Traverser (
-          ExpanderFunction forwardExpander,
-          ExpanderFunction backwardExpander
-        ) : highscore(1e50),
-            bingo(false),
-            intermediate(""),
+        Traverser (ExpanderFunction forwardExpander,
+                   ExpanderFunction backwardExpander) 
+          : _highscoreSet(false),
+            _highscore(0),
+            _bingo(false),
+            _intermediate(""),
             _forwardExpander(forwardExpander),
             _backwardExpander(backwardExpander) {
         };
@@ -517,15 +544,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief destructor
 ////////////////////////////////////////////////////////////////////////////////
+
         ~Traverser () {
-          // TODO: Implement!!
         };
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods
 // -----------------------------------------------------------------------------
-
-      public:
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Find the shortest path between start and target.
@@ -535,91 +560,59 @@ namespace triagens {
 
         // Caller has to free the result
         // nullptr indicates there is no path
-        Path* ShortestPath (
+        Path* shortestPath (
           VertexId const& start,
           VertexId const& target
         );
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                   private methods
+// --SECTION--                                                       public data
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Function to compute all neighbors of a given vertex
+/// @brief lowest total weight for a complete path found
 ////////////////////////////////////////////////////////////////////////////////
 
-      private:
+        bool _highscoreSet;
 
-        std::atomic<EdgeWeight> highscore;
-        std::atomic<bool> bingo;
-        std::mutex resultMutex;
-        VertexId intermediate;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief lowest total weight for a complete path found
+////////////////////////////////////////////////////////////////////////////////
 
-        struct LookupInfo {
-          EdgeWeight weight;
-          bool done;
-          EdgeId edge;
-          VertexId predecessor;
+        EdgeWeight _highscore;
 
-          LookupInfo (
-            EdgeWeight weight,
-            EdgeId edge,
-            VertexId predecessor
-          ) : weight(weight),
-              done(false),
-              edge(edge),
-              predecessor(predecessor) {
-          };
-        };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _bingo, flag that indicates termination
+////////////////////////////////////////////////////////////////////////////////
 
-        struct QueueInfo {
-          EdgeWeight weight;
-          VertexId vertex;
+        std::atomic<bool> _bingo;
 
-          QueueInfo (
-            VertexId vertex,
-            EdgeWeight weight
-          ) : weight(weight),
-              vertex(vertex) {
-          };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _resultMutex, this is used to protect access to the result data
+////////////////////////////////////////////////////////////////////////////////
 
-          friend bool operator< (QueueInfo const& a, QueueInfo const& b) {
-            if (a.weight == b.weight) {
-              return a.vertex < b.vertex;
-            }
-            return a.weight < b.weight;
-          };
+        std::mutex _resultMutex;
 
-        };
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _intermediate, one vertex on the shortest path found
+////////////////////////////////////////////////////////////////////////////////
 
-        // TODO: Destructor?!
+        VertexId _intermediate;
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                      private data
+// -----------------------------------------------------------------------------
+
+        typedef triagens::basics::PriorityQueue<VertexId, Step, EdgeWeight>
+                PQueue;
+
         struct ThreadInfo {
-          std::unordered_map<VertexId, LookupInfo>& lookup;
-          std::set<QueueInfo, std::less<QueueInfo>>& queue;
-          std::mutex& mutex;
-
-          ThreadInfo (
-            std::unordered_map<VertexId, LookupInfo>& lookup,
-            std::set<QueueInfo, std::less<QueueInfo>>& queue,
-            std::mutex& mutex
-          ) : lookup(lookup),
-              queue(queue),
-              mutex(mutex) {
-          };
+          PQueue     _pq;
+          std::mutex _mutex;
         };
-
 
         ExpanderFunction _forwardExpander;
         ExpanderFunction _backwardExpander;
-
-        // ShortestPath will create these variables
-        std::unordered_map<VertexId, LookupInfo> _forwardLookup;
-        std::set<QueueInfo, std::less<QueueInfo>> _forwardQueue;
-        std::mutex _forwardMutex;
-
-        std::unordered_map<VertexId, LookupInfo> _backwardLookup;
-        std::set<QueueInfo, std::less<QueueInfo>> _backwardQueue;
-        std::mutex _backwardMutex;
     };
   }
 }

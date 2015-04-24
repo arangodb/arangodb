@@ -23,6 +23,7 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
 /// @author Michael Hackstein
+/// @author Max Neunhoeffer
 /// @author Copyright 2014-2015, ArangoDB GmbH, Cologne, Germany
 /// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
@@ -58,59 +59,73 @@ class Searcher : public Thread {
 
   private:
 
-    void insertNeighbor (Traverser::ThreadInfo& info,
-                         Traverser::VertexId& neighbor,
+    void insertNeighbor (Traverser::VertexId& neighbor,
                          Traverser::VertexId& predecessor,
                          Traverser::EdgeId& edge,
                          Traverser::EdgeWeight weight) {
 
-      std::lock_guard<std::mutex> guard(info.mutex);
-      auto it = info.lookup.find(neighbor);
+      std::lock_guard<std::mutex> guard(_myInfo._mutex);
+      Traverser::Step* s = _myInfo._pq.lookup(neighbor);
 
       // Not found, so insert it:
-      if (it == info.lookup.end()) {
-        info.lookup.emplace(
-          neighbor,
-          Traverser::LookupInfo(weight, edge, predecessor)
-        );
-        info.queue.insert(
-          Traverser::QueueInfo(neighbor, weight)
-        );
+      if (s == nullptr) {
+        _myInfo._pq.insert(neighbor, 
+                           Traverser::Step(neighbor, predecessor, 
+                                           weight, edge));
         return;
       }
-      if (it->second.done) {
+      if (s->_done) {
         return;
       }
-      if (it->second.weight > weight) {
-        Traverser::QueueInfo q(neighbor, it->second.weight);
-        info.queue.erase(q);
-        q.weight = weight;
-        info.queue.insert(q);
-        it->second.weight = weight;
+      if (s->_weight > weight) {
+        _myInfo._pq.lowerWeight(neighbor, weight);
       }
     }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief Lookup a neighbor in the list of our peer.
+/// @brief Lookup our current vertex in the data of our peer.
 ////////////////////////////////////////////////////////////////////////////////
 
-    void lookupPeer (Traverser::ThreadInfo& info,
-                     Traverser::VertexId& neighbor,
+    void lookupPeer (Traverser::VertexId& vertex,
                      Traverser::EdgeWeight weight) {
 
-      std::lock_guard<std::mutex> guard(info.mutex);
-      auto it = info.lookup.find(neighbor);
-      if (it == info.lookup.end()) {
+      std::lock_guard<std::mutex> guard(_peerInfo._mutex);
+      Traverser::Step* s = _peerInfo._pq.lookup(vertex);
+      if (s == nullptr) {
+        // Not found, nothing more to do
         return;
       }
-      Traverser::EdgeWeight total = it->second.weight + weight;
-      if (total < _traverser->highscore) {
-        _traverser->highscore = total;
+      Traverser::EdgeWeight total = s->_weight + weight;
+
+      // Update the highscore:
+      std::lock_guard<std::mutex> guard2(_traverser->_resultMutex);
+      if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
+        _traverser->_highscoreSet = true;
+        _traverser->_highscore = total;
       }
-      if (it->second.done && total <= _traverser->highscore) {
-        std::lock_guard<std::mutex> guard(_traverser->resultMutex);
-        _traverser->intermediate = neighbor;
-        _traverser->bingo = true;
+
+      // Now the highscore is set!
+
+      // Did we find a solution together with the other thread?
+      if (s->_done) {
+        if (total <= _traverser->_highscore) {
+          _traverser->_intermediate = vertex;
+          _traverser->_bingo = true;
+        }
+        // We found a way, but somebody else found a better way, so
+        // this is not the shortest path
+        return;
+      }
+
+      // Did we find a solution on our own? This is for the single thread
+      // case and for the case that the other thread is too slow to even
+      // finish its own start vertex!
+      if (s->_weight == 0) {
+        // We have found the target, we have finished all vertices with
+        // a smaller weight than this one (and did not succeed), so this
+        // must be a best solution:
+        _traverser->_intermediate = vertex;
+        _traverser->_bingo = true;
       }
     }
 
@@ -123,30 +138,27 @@ class Searcher : public Thread {
 
     virtual void run () {
 
-      auto nextVertexIt = _myInfo.queue.begin();
-      std::vector<Traverser::Neighbor> neighbors;
+      Traverser::VertexId v;
+      Traverser::Step s;
+      bool b = _myInfo._pq.popMinimal(v, s, true);
+      
+      std::vector<Traverser::Step> neighbors;
 
       // Iterate while no bingo found and
       // there still is a vertex on the stack.
-      while (!_traverser->bingo && nextVertexIt != _myInfo.queue.end()) {
-        auto nextVertex = *nextVertexIt;
-        _myInfo.queue.erase(nextVertexIt);
+      while (!_traverser->_bingo && b) {
         neighbors.clear();
-        _expander(nextVertex.vertex, neighbors);
+        _expander(v, neighbors);
         for (auto& neighbor : neighbors) {
-          insertNeighbor(_myInfo, neighbor.neighbor, nextVertex.vertex,
-                         neighbor.edge, nextVertex.weight + neighbor.weight);
+          insertNeighbor(neighbor._vertex, v, neighbor._edge, 
+                         s._weight + neighbor._weight);
         }
-        lookupPeer(_peerInfo, nextVertex.vertex, nextVertex.weight);
-        _myInfo.mutex.lock();
-        // Can move nextVertexLookup up?
-        auto nextVertexLookup = _myInfo.lookup.find(nextVertex.vertex);
+        lookupPeer(v, s._weight);
 
-        TRI_ASSERT(nextVertexLookup != _myInfo.lookup.end());
-
-        nextVertexLookup->second.done = true;
-        _myInfo.mutex.unlock();
-        nextVertexIt = _myInfo.queue.begin();
+        std::lock_guard<std::mutex> guard(_myInfo._mutex);
+        Traverser::Step* s2 = _myInfo._pq.lookup(v);
+        s2->_done = true;
+        b = _myInfo._pq.popMinimal(v, s, true);
       }
     }
 };
@@ -155,62 +167,60 @@ class Searcher : public Thread {
 /// @brief return the shortest path between the start and target vertex.
 ////////////////////////////////////////////////////////////////////////////////
 
-Traverser::Path* Traverser::ShortestPath (VertexId const& start,
-                                          VertexId const& target) {
+Traverser::Path* Traverser::shortestPath (VertexId const& start,
+                               VertexId const& target) {
 
+  // For the result:
   std::deque<VertexId> r_vertices;
   std::deque<VertexId> r_edges;
-  highscore = 1e50;
-  bingo = false;
+  _highscoreSet = false;
+  _highscore = 0;
+  _bingo = false;
 
   // Forward with initialization:
-  _forwardLookup.clear();
-  _forwardLookup.emplace(start, LookupInfo(0, "", ""));
-  _forwardQueue.clear();
-  _forwardQueue.insert(QueueInfo(start, 0));
-  ThreadInfo forwardInfo(_forwardLookup, _forwardQueue, _forwardMutex);
+  string empty;
+  ThreadInfo forward;
+  forward._pq.insert(start, Step(start, empty, 0, empty));
 
-  _backwardLookup.clear();
-  _backwardLookup.emplace(target, LookupInfo(0, "", ""));
-  _backwardQueue.clear();
-  _backwardQueue.insert(QueueInfo(target, 0));
-  ThreadInfo backwardInfo(_backwardLookup, _backwardQueue, _backwardMutex);
+  // backward with initialization:
+  ThreadInfo backward;
+  backward._pq.insert(target, Step(target, empty, 0, empty));
 
-  Searcher forwardSearcher(this, forwardInfo, backwardInfo, start,
-                           _forwardExpander, "X");
-  Searcher backwardSearcher(this, backwardInfo, forwardInfo, target,
-                            _backwardExpander, "Y");
+  // Now the searcher threads:
+  Searcher forwardSearcher(this, forward, backward, start,
+                           _forwardExpander, "Forward");
+  Searcher backwardSearcher(this, backward, forward, target,
+                            _backwardExpander, "Backward");
   forwardSearcher.start();
   backwardSearcher.start();
   forwardSearcher.join();
   backwardSearcher.join();
 
-  if (!bingo || intermediate == "") {
+  if (!_bingo || _intermediate == "") {
     return nullptr;
   }
 
-  auto pathLookup = _forwardLookup.find(intermediate);
+  Step* s = forward._pq.lookup(_intermediate);
+  r_vertices.push_back(_intermediate);
+
   // FORWARD Go path back from intermediate -> start.
   // Insert all vertices and edges at front of vector
   // Do NOT! insert the intermediate vertex
-  TRI_ASSERT(pathLookup != _forwardLookup.end());
-  r_vertices.push_back(intermediate);
-  while (pathLookup->second.predecessor != "") {
-    r_edges.push_front(pathLookup->second.edge);
-    r_vertices.push_front(pathLookup->second.predecessor);
-    pathLookup = _forwardLookup.find(pathLookup->second.predecessor);
+  while (s->_predecessor != "") {
+    r_edges.push_front(s->_edge);
+    r_vertices.push_front(s->_predecessor);
+    s = forward._pq.lookup(s->_predecessor);
   }
 
   // BACKWARD Go path back from intermediate -> target.
   // Insert all vertices and edges at back of vector
   // Also insert the intermediate vertex
-  pathLookup = _backwardLookup.find(intermediate);
-  TRI_ASSERT(pathLookup != _backwardLookup.end());
-  while (pathLookup->second.predecessor != "") {
-    r_edges.push_back(pathLookup->second.edge);
-    r_vertices.push_back(pathLookup->second.predecessor);
-    pathLookup = _backwardLookup.find(pathLookup->second.predecessor);
+  s = backward._pq.lookup(_intermediate);
+  while (s->_predecessor != "") {
+    r_edges.push_back(s->_edge);
+    r_vertices.push_back(s->_predecessor);
+    s = backward._pq.lookup(s->_predecessor);
   }
-  Path* res = new Path(r_vertices, r_edges, highscore);
-  return res;
+  return new Path(r_vertices, r_edges, _highscore);
 };
+
