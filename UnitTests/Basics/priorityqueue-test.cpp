@@ -100,15 +100,15 @@ BOOST_AUTO_TEST_CASE (tst_deque_case) {
 
   MyValue const* p;
 
-  p = pq.lookup("a");
+  p = pq.find("a");
   BOOST_CHECK_EQUAL(p->_weight, 1);
-  p = pq.lookup("b");
+  p = pq.find("b");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("c");
+  p = pq.find("c");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("d");
+  p = pq.find("d");
   BOOST_CHECK_EQUAL(p->_weight, 4);
-  p = pq.lookup("abc");
+  p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
   std::string k;
@@ -186,15 +186,15 @@ BOOST_AUTO_TEST_CASE (tst_heap_case) {
 
   MyValue const* p;
 
-  p = pq.lookup("a");
+  p = pq.find("a");
   BOOST_CHECK_EQUAL(p->_weight, 4);
-  p = pq.lookup("b");
+  p = pq.find("b");
   BOOST_CHECK_EQUAL(p->_weight, 1);
-  p = pq.lookup("c");
+  p = pq.find("c");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("d");
+  p = pq.find("d");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("abc");
+  p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
   std::string k;
@@ -274,15 +274,15 @@ BOOST_AUTO_TEST_CASE (tst_deque_case_with_lowering) {
 
   MyValue const* p;
 
-  p = pq.lookup("a");
+  p = pq.find("a");
   BOOST_CHECK_EQUAL(p->_weight, 1);
-  p = pq.lookup("b");
+  p = pq.find("b");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("c");
+  p = pq.find("c");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("d");
+  p = pq.find("d");
   BOOST_CHECK_EQUAL(p->_weight, 1);
-  p = pq.lookup("abc");
+  p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
   std::string k;
@@ -362,15 +362,15 @@ BOOST_AUTO_TEST_CASE (tst_heap_case_with_lowering) {
 
   MyValue const* p;
 
-  p = pq.lookup("a");
+  p = pq.find("a");
   BOOST_CHECK_EQUAL(p->_weight, 1);
-  p = pq.lookup("b");
+  p = pq.find("b");
   BOOST_CHECK_EQUAL(p->_weight, 2);
-  p = pq.lookup("c");
+  p = pq.find("c");
   BOOST_CHECK_EQUAL(p->_weight, 3);
-  p = pq.lookup("d");
+  p = pq.find("d");
   BOOST_CHECK_EQUAL(p->_weight, 3);
-  p = pq.lookup("abc");
+  p = pq.find("abc");
   BOOST_CHECK(p == nullptr);
 
   std::string k;
