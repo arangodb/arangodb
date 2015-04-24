@@ -45,8 +45,6 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-std::mutex m;
-
 class SimpleEdgeExpander {
 
     TRI_edge_direction_e direction;
@@ -98,12 +96,8 @@ class SimpleEdgeExpander {
       return edgeIdPrefix + key;
     };
 
-    void operator() ( Traverser::VertexId source,
-                      vector<Traverser::Neighbor>& result
-                    ) {
-      //std::lock_guard<std::mutex> guard(m);
-
-      // cout << "Hallole: " << id << endl;
+    void operator() (Traverser::VertexId source,
+                     vector<Traverser::Step>& result) {
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. Due to multi-threading
       // Process Vertex Id!
@@ -131,19 +125,19 @@ class SimpleEdgeExpander {
         // cout << edges.size() << endl;
       }
         
-      std::unordered_map<Traverser::VertexId, Traverser::Neighbor> candidates;
+      std::unordered_map<Traverser::VertexId, Traverser::Step> candidates;
       Traverser::VertexId from;
       Traverser::VertexId to;
-      std::unordered_map<Traverser::VertexId, Traverser::Neighbor>::const_iterator cand;
+      std::unordered_map<Traverser::VertexId, Traverser::Step>::const_iterator cand;
       if (usesDist) {
         for (size_t j = 0;  j < edges.size();  ++j) {
           from = extractFromId(edges[j]);
-          to = extractFromId(edges[j]);
+          to = extractToId(edges[j]);
           if (from != source) {
             candidates.find(from);
             if (cand == candidates.end()) {
               // Add weight
-              candidates.emplace(from, Traverser::Neighbor(from, extractEdgeId(edges[j]), 1));
+              candidates.emplace(from, Traverser::Step(to, from, 1, extractEdgeId(edges[j])));
             } else {
               // Compare weight
             }
@@ -151,7 +145,7 @@ class SimpleEdgeExpander {
             candidates.find(to);
             if (cand == candidates.end()) {
               // Add weight
-              candidates.emplace(to, Traverser::Neighbor(to, extractEdgeId(edges[j]), 1));
+              candidates.emplace(to, Traverser::Step(from, to, 1, extractEdgeId(edges[j])));
             } else {
               // Compare weight
             }
@@ -164,12 +158,12 @@ class SimpleEdgeExpander {
           if (from != source) {
             candidates.find(from);
             if (cand == candidates.end()) {
-              candidates.emplace(from, Traverser::Neighbor(from, extractEdgeId(edges[j]), 1));
+              candidates.emplace(from, Traverser::Step(to, from, 1, extractEdgeId(edges[j])));
             }
           } else if (to != source) {
             candidates.find(to);
             if (cand == candidates.end()) {
-              candidates.emplace(to, Traverser::Neighbor(to, extractEdgeId(edges[j]), 1));
+              candidates.emplace(to, Traverser::Step(from, to, 1, extractEdgeId(edges[j])));
             }
           }
         }
@@ -332,7 +326,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, &resolver2, "B");
 
   Traverser traverser(forwardExpander, backwardExpander);
-  unique_ptr<Traverser::Path> path(traverser.ShortestPath(startVertex, targetVertex));
+  unique_ptr<Traverser::Path> path(traverser.shortestPath(startVertex, targetVertex));
   if (path.get() == nullptr) {
     res = trx.finish(res);
     v8::EscapableHandleScope scope(isolate);
