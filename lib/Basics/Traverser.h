@@ -32,8 +32,9 @@
 
 #include "Basics/Common.h"
 
-#include <thread>
 #include <mutex>
+
+class Searcher;
 
 namespace triagens {
   namespace basics {
@@ -433,6 +434,8 @@ namespace triagens {
 
     class Traverser {
 
+      friend class ::Searcher;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   data structures
 // -----------------------------------------------------------------------------
@@ -480,9 +483,10 @@ namespace triagens {
         };
       };
 
-      ////////////////////////////////////////////////////////////////////////////////
-      /// @brief edge direction
-      ////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/// @brief edge direction
+////////////////////////////////////////////////////////////////////////////////
+
       typedef enum {FORWARD, BACKWARD} Direction;
 
       typedef std::function<void(VertexId source, std::vector<Neighbor>& result)>
@@ -539,6 +543,7 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Function to compute all neighbors of a given vertex
 ////////////////////////////////////////////////////////////////////////////////
+
       private:
 
         std::atomic<EdgeWeight> highscore;
@@ -611,25 +616,6 @@ namespace triagens {
         std::unordered_map<VertexId, LookupInfo> _backwardLookup;
         std::set<QueueInfo, std::less<QueueInfo>> _backwardQueue;
         std::mutex _backwardMutex;
-
-
-        void insertNeighbor ( ThreadInfo& info,
-                              VertexId neighbor,
-                              VertexId predecessor,
-                              EdgeId edge,
-                              EdgeWeight weight
-                            );
-
-        void lookupPeer ( ThreadInfo& info,
-                          VertexId& neighbor,
-                          EdgeWeight& weight
-                        );
-        void searchFromVertex ( ThreadInfo* myInfo,
-                                ThreadInfo* peerInfo,
-                                VertexId start,
-                                ExpanderFunction expander,
-                                std::string id
-                              );
     };
   }
 }
