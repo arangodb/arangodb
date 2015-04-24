@@ -128,6 +128,7 @@ void Traverser::searchFromVertex (
     myInfo.mutex.unlock();
     nextVertexIt = myInfo.queue.begin();
   }
+  bingo = true;
   // No possible path, can possibly terminate other thread
 };
 
@@ -161,7 +162,7 @@ Traverser::Path* Traverser::ShortestPath (VertexId const& start,
 
   cout << forwardInfo.lookup.size() << backwardInfo.lookup.size() << endl;
 
-  if (!bingo) {
+  if (!bingo || intermediate == "") {
     return nullptr;
   }
 
