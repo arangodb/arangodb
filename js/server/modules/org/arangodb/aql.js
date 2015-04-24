@@ -6083,6 +6083,28 @@ function AQL_TRAVERSAL (vertexCollection,
 ///    This setting may be sensible for graphs that contain cycles (e.g. A -> B -> C -> A).
 ///   * *"global"*: element is excluded if it was already found/visited at any 
 ///   point during the traversal.
+/// * *filterVertices*  An optional array of example vertex documents that the traversal will treat specially.
+///     If no examples are given, the traversal will handle all encountered vertices equally.
+///     If one or many vertex examples are given, the traversal will exclude any non-matching vertex from the
+///     result and/or not descend into it. Optionally, filterVertices can contain a string containing the name
+///     of a user-defined AQL function that should be responsible for filtering.
+///     If so, the AQL function is expected to have the following signature:
+/// 
+///     `function (config, vertex, path)`
+///
+///     If a custom AQL function is used for filterVertices, it is expected to return one of the following values:
+///
+///     * [ ]: Include the vertex in the result and descend into its connected edges
+///     * [ "prune" ]: Will include the vertex in the result but not descend into its connected edges
+///     * [ "exclude" ]: Will not include the vertex in the result but descend into its connected edges
+///     * [ "prune", "exclude" ]: Will completely ignore the vertex and its connected edges
+///
+/// * *vertexFilterMethod:* Only useful in conjunction with filterVertices and if no user-defined AQL function is used.
+///     If specified, it will influence how vertices are handled that don't match the examples in filterVertices:
+///
+///    * [ "prune" ]: Will include non-matching vertices in the result but not descend into them
+///    * [ "exclude" ]: Will not include non-matching vertices in the result but descend into them
+///    * [ "prune", "exclude" ]: Will completely ignore the vertex and its connected edges
 ///
 /// @EXAMPLES
 ///
