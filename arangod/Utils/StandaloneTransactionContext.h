@@ -41,7 +41,7 @@ struct TRI_transaction_s;
 namespace triagens {
   namespace arango {
 
-    class StandaloneTransactionContext : public TransactionContext {
+    class StandaloneTransactionContext final : public TransactionContext {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                class StandaloneTransactionContext
