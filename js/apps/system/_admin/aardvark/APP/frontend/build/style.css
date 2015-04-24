@@ -4717,6 +4717,8 @@ div.headerBar > div.headerButtonBar {
       border-top: 1px solid #888 !important;
       margin-left: 0 !important;
       padding-top: 10px; }
+    .modal-body .tab-content #appstore {
+      max-height: 300px; }
   .modal-body .errorMessage {
     color: #f00;
     font-size: 9pt;
@@ -6490,6 +6492,3 @@ table .sorting {
   text-align: left;
   vertical-align: middle;
   width: 506px; }
-
-.amcharts-balloon-div {
-  line-height: 1.1em; }

@@ -707,7 +707,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
                          TRI_document_collection_t const* document) const {
   switch (_type) {
     case JSON: {
-      return TRI_HashJson(_json->json());
+      return TRI_FastHashJson(_json->json());
     }
 
     case SHAPED: {
@@ -744,7 +744,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
         json(TRI_VOC_ATTRIBUTE_TO, Json(to));
       }
 
-      return TRI_HashJson(json.json());
+      return TRI_FastHashJson(json.json());
     }
           
     case DOCVEC: {
@@ -768,7 +768,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
         }
       }
 
-      return TRI_HashJson(json.json());
+      return TRI_FastHashJson(json.json());
     }
           
     case RANGE: {
@@ -783,7 +783,7 @@ uint64_t AqlValue::hash (triagens::arango::AqlTransaction* trx,
         json.add(Json(static_cast<double>(_range->at(i))));
       }
 
-      return TRI_HashJson(json.json());
+      return TRI_FastHashJson(json.json());
     }
 
     case EMPTY: {

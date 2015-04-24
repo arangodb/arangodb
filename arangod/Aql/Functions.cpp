@@ -29,9 +29,10 @@
 
 #include "Aql/Functions.h"
 #include "Aql/Query.h"
-#include "Basics/fpconv.h"
 #include "Basics/Exceptions.h"
+#include "Basics/fpconv.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
 
 using namespace triagens::aql;
@@ -328,8 +329,11 @@ AqlValue Functions::Concat (triagens::aql::Query*,
   // steal the StringBuffer's char* pointer so we can avoid copying data around
   // multiple times
   size_t length = buffer.length();
-  TRI_json_t* j = TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length);
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j));
+  std::unique_ptr<TRI_json_t> j(TRI_CreateStringJson(TRI_UNKNOWN_MEM_ZONE, buffer.steal(), length));
+
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
+  j.release();
+  return AqlValue(jr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -342,7 +346,9 @@ AqlValue Functions::Passthru (triagens::aql::Query*,
                               AqlValue const parameters) {
 
   Json j(parameters.extractArrayMember(trx, collection, 0, true));
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.json());
+  j.steal();
+  return AqlValue(jr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -376,7 +382,7 @@ AqlValue Functions::Unset (triagens::aql::Query* query,
     size = (n / 2) - names.size(); 
   }
 
-  TRI_json_t* j = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, size);
+  std::unique_ptr<TRI_json_t> j(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, size));
 
   if (j == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -391,15 +397,16 @@ AqlValue Functions::Unset (triagens::aql::Query* query,
       auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
 
       if (copy == nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, j);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       } 
 
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, j, key->_value._string.data, copy);
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, j.get(), key->_value._string.data, copy);
     }
   } 
 
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j));
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
+  j.release();
+  return AqlValue(jr);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -422,7 +429,7 @@ AqlValue Functions::Keep (triagens::aql::Query* query,
 
 
   // create result object
-  TRI_json_t* j = TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, names.size());
+  std::unique_ptr<TRI_json_t> j(TRI_CreateObjectJson(TRI_UNKNOWN_MEM_ZONE, names.size()));
 
   if (j == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
@@ -440,15 +447,104 @@ AqlValue Functions::Keep (triagens::aql::Query* query,
       auto copy = TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, value);
 
       if (copy == nullptr) {
-        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, j);
         THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
       } 
 
-      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, j, key->_value._string.data, copy);
+      TRI_Insert3ObjectJson(TRI_UNKNOWN_MEM_ZONE, j.get(), key->_value._string.data, copy);
     }
   } 
 
-  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j));
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, j.get());
+  j.release();
+  return AqlValue(jr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MERGE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Merge (triagens::aql::Query* query,
+                           triagens::arango::AqlTransaction* trx,
+                           TRI_document_collection_t const* collection,
+                           AqlValue const parameters) {
+  size_t const n = parameters.arraySize();
+
+  if (n == 0) {
+    // no parameters
+    return AqlValue(new Json(Json::Object));
+  }
+
+  // use the first argument as the preliminary result
+  Json initial(parameters.extractArrayMember(trx, collection, 0, true));
+
+  if (! initial.isObject()) {
+    RegisterInvalidArgumentWarning(query, "MERGE");
+    return AqlValue(new Json(Json::Null));
+  }
+
+  std::unique_ptr<TRI_json_t> result(initial.steal());
+
+  // now merge in all other arguments
+  for (size_t i = 1; i < n; ++i) {
+    Json param(parameters.extractArrayMember(trx, collection, i, false));
+
+    if (! param.isObject()) {
+      RegisterInvalidArgumentWarning(query, "MERGE");
+      return AqlValue(new Json(Json::Null));
+    }
+ 
+    auto merged = TRI_MergeJson(TRI_UNKNOWN_MEM_ZONE, result.get(), param.json(), false, true);
+
+    if (merged == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+    }
+
+    result.reset(merged);
+  } 
+
+  auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+  result.release();
+  return AqlValue(jr);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function HAS
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Has (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         TRI_document_collection_t const* collection,
+                         AqlValue const parameters) {
+  size_t const n = parameters.arraySize();
+
+  if (n < 2) {
+    // no parameters
+    return AqlValue(new Json(false));
+  }
+    
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isObject()) {
+    // not an object
+    return AqlValue(new Json(false));
+  }
+ 
+  // process name parameter 
+  Json name(parameters.extractArrayMember(trx, collection, 1, false));
+
+  char const* p;
+
+  if (! name.isString()) {
+    triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+    AppendAsString(buffer, name.json());
+    p = buffer.c_str();
+  }
+  else {
+    p = name.json()->_value._string.data;
+  }
+ 
+  bool const hasAttribute = (TRI_LookupObjectJson(value.json(), p) != nullptr);
+  return AqlValue(new Json(hasAttribute));
 }
 
 // -----------------------------------------------------------------------------

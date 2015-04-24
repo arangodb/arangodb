@@ -28,6 +28,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Expression.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
@@ -156,8 +157,7 @@ std::unordered_set<Variable*> Expression::variables () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
-                              std::vector<TRI_document_collection_t const*>& docColls,
-                              std::vector<AqlValue>& argv,
+                              AqlItemBlock const* argv,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs,
@@ -178,12 +178,12 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
     }
 
     case SIMPLE: {
-      return executeSimpleExpression(_node, collection, trx, docColls, argv, startPos, vars, regs);
+      return executeSimpleExpression(_node, collection, trx, argv, startPos, vars, regs);
     }
 
     case ATTRIBUTE: {
       TRI_ASSERT(_accessor != nullptr);
-      return _accessor->get(trx, docColls, argv, startPos, vars, regs);
+      return _accessor->get(trx, argv, startPos, vars, regs);
     }
     
     case V8: {
@@ -192,7 +192,7 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
         ISOLATE;
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars, regs);
       }
       catch (triagens::basics::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
@@ -426,8 +426,7 @@ void Expression::buildExpression () {
 AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               TRI_document_collection_t const** collection, 
                                               triagens::arango::AqlTransaction* trx,
-                                              std::vector<TRI_document_collection_t const*>& docColls,
-                                              std::vector<AqlValue> const& argv,
+                                              AqlItemBlock const* argv,
                                               size_t startPos,
                                               std::vector<Variable*> const& vars,
                                               std::vector<RegisterId> const& regs) {
@@ -439,7 +438,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto name = static_cast<char const*>(node->getData());
 
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
 
     auto j = result.extractObjectMember(trx, myCollection, name, true, _buffer);
     result.destroy();
@@ -459,11 +458,11 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto index = node->getMember(1);
 
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
 
     if (result.isArray()) {
       TRI_document_collection_t const* myCollection2 = nullptr;
-      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
+      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, argv, startPos, vars, regs);
 
       if (indexResult.isNumber()) {
         auto j = result.extractArrayMember(trx, myCollection, indexResult.toInt64(), true);
@@ -490,7 +489,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
     else if (result.isObject()) {
       TRI_document_collection_t const* myCollection2 = nullptr;
-      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
+      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, argv, startPos, vars, regs);
 
       if (indexResult.isNumber()) {
         auto&& indexString = std::to_string(indexResult.toInt64());
@@ -534,7 +533,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto member = node->getMember(i);
         TRI_document_collection_t const* myCollection = nullptr;
 
-        AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+        AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
         list->add(result.toJson(trx, myCollection));
         result.destroy();
       }
@@ -571,7 +570,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto key = member->getStringValue();
         member = member->getMember(0);
 
-        AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+        AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
         resultArray->set(key, result.toJson(trx, myCollection));
         result.destroy();
       }
@@ -603,8 +602,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         TRI_ASSERT(collection != nullptr);
 
         // save the collection info
-        *collection = docColls[regs[i]]; 
-        return argv[startPos + regs[i]].clone();
+        *collection = argv->getDocumentCollection(regs[i]); 
+        return argv->getValueReference(startPos, regs[i]).clone();
       }
     }
     // fall-through to exception
@@ -620,7 +619,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto member = node->getMember(0);
     TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
         
     auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
     result.destroy();
@@ -633,8 +632,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     auto low = node->getMember(0);
     auto high = node->getMember(1);
-    AqlValue resultLow  = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
-    AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultLow  = executeSimpleExpression(low, &leftCollection, trx, argv, startPos, vars, regs);
+    AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, argv, startPos, vars, regs);
     AqlValue res = AqlValue(resultLow.toInt64(), resultHigh.toInt64());
     resultLow.destroy();
     resultHigh.destroy();
@@ -644,7 +643,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   
   else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs);
     
     bool const operandIsTrue = operand.isTrue();
     operand.destroy();
@@ -654,9 +653,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
            node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
     TRI_document_collection_t const* leftCollection = nullptr;
-    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs);
     TRI_document_collection_t const* rightCollection = nullptr;
-    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv, startPos, vars, regs);
     
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       // AND
@@ -693,9 +692,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
            node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
            node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     TRI_document_collection_t const* leftCollection = nullptr;
-    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs);
     TRI_document_collection_t const* rightCollection = nullptr;
-    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv, startPos, vars, regs);
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
@@ -753,17 +752,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   
   else if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue condition  = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue condition  = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs);
 
     bool const isTrue = condition.isTrue();
     condition.destroy();
     if (isTrue) {
       // return true part
-      return executeSimpleExpression(node->getMember(1), &myCollection, trx, docColls, argv, startPos, vars, regs);
+      return executeSimpleExpression(node->getMember(1), &myCollection, trx, argv, startPos, vars, regs);
     }
     
     // return false part  
-    return executeSimpleExpression(node->getMember(2), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    return executeSimpleExpression(node->getMember(2), &myCollection, trx, argv, startPos, vars, regs);
   }
  
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");

@@ -393,10 +393,11 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == 
-        getPlanNode()->_regsToClear.end()) {
-      if (! src->getValue(srcRow, i).isEmpty()) {
-        AqlValue a = src->getValue(srcRow, i).clone();
+    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+      auto value = src->getValueReference(srcRow, i);
+
+      if (! value.isEmpty()) {
+        AqlValue a = value.clone();
         try {
           dst->setValue(dstRow, i, a);
         }
@@ -422,10 +423,11 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == 
-        getPlanNode()->_regsToClear.end()) {
-      if (! src->getValue(row, i).isEmpty()) {
-        AqlValue a = src->getValueReference(row, i).clone();
+    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+      auto value = src->getValueReference(row, i);
+
+      if (! value.isEmpty()) {
+        AqlValue a = value.clone();
         try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -678,9 +680,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 
 int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // Create a deep copy of the register values given to us:
-  if (_inputRegisterValues != nullptr) {
-    delete _inputRegisterValues;
-  }
+  deleteInputVariables();
+  
   if (items != nullptr) {
     _inputRegisterValues = items->slice(pos, pos + 1);
   }
@@ -911,9 +912,9 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
-                    AqlValue(reinterpret_cast<TRI_df_marker_t
-                             const*>(_documents[_posInDocuments].getDataPtr())));
+      res->setShaped(j, 
+                     static_cast<triagens::aql::RegisterId>(curRegs),
+                     reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInDocuments].getDataPtr()));
       // No harm done, if the setValue throws!
     }
 
@@ -1079,11 +1080,8 @@ void IndexRangeBlock::buildExpressions () {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   AqlItemBlock* cur = _buffer.front();
-  vector<AqlValue>& data(cur->getData());
   vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
-  RegisterId nrRegs = cur->getNrRegs();
         
-  
   IndexOrCondition* newCondition = nullptr;
 
   for (size_t i = 0; i < en->_ranges.size(); i++) {
@@ -1106,10 +1104,7 @@ void IndexRangeBlock::buildExpressions () {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-            _inVars[posInExpressions],
-            _inRegs[posInExpressions],
-            &myCollection);
+        AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
         posInExpressions++;
 
         Json bound;
@@ -1161,10 +1156,7 @@ void IndexRangeBlock::buildExpressions () {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-            _inVars[posInExpressions],
-            _inRegs[posInExpressions],
-            &myCollection);
+        AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
         posInExpressions++;
 
         Json bound;
@@ -2680,7 +2672,8 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
   for (size_t i = 0; i < n; i++) {
     // need not clone to avoid a copy, the AqlItemBlock's hash takes
     // care of correct freeing:
-    AqlValue a = result->getValueReference(i, _inRegs[0]);
+    auto a = result->getValueReference(i, _inRegs[0]);
+
     try {
       TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2699,10 +2692,8 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::executeExpression (AqlItemBlock* result) {
-  std::vector<AqlValue>& data(result->getData());
   std::vector<TRI_document_collection_t const*>& docColls(result->getDocumentCollections());
 
-  RegisterId nrRegs = result->getNrRegs();
   result->setDocumentCollection(_outReg, nullptr);
 
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
@@ -2725,7 +2716,7 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
     
     // execute the expression
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
+    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs, &myCollection);
     
     try {
       TRI_IF_FAILURE("CalculationBlock::executeExpression") {
@@ -3842,17 +3833,19 @@ void SortBlock::doSorting () {
         delete next;
         throw;
       }
+      
       std::unordered_map<AqlValue, AqlValue> cache;
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrregs; j++) {
-          AqlValue a = _buffer[coords[count].first]->getValue(coords[count].second, j);
+          auto a = _buffer[coords[count].first]->getValue(coords[count].second, j);
           // If we have already dealt with this value for the next
           // block, then we just put the same value again:
           if (! a.isEmpty()) {
             auto it = cache.find(a);
+
             if (it != cache.end()) {
-              AqlValue b = it->second;
+              AqlValue const& b = it->second;
               // If one of the following throws, all is well, because
               // the new block already has either a copy or stolen
               // the AqlValue:
@@ -3864,6 +3857,7 @@ void SortBlock::doSorting () {
               // its original buffer, which we know by looking at the
               // valueCount there.
               auto vCount = _buffer[coords[count].first]->valueCount(a);
+
               if (vCount == 0) {
                 // Was already stolen for another block
                 AqlValue b = a.clone();
@@ -3916,7 +3910,7 @@ void SortBlock::doSorting () {
 
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(make_pair(a,a));
+                cache.emplace(make_pair(a, a));
               }
             }
           }
@@ -3954,17 +3948,17 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
 
     int cmp = AqlValue::Compare(
       _trx,
-      _buffer[a.first]->getValue(a.second, reg.first),
+      _buffer[a.first]->getValueReference(a.second, reg.first),
       _colls[i],
-      _buffer[b.first]->getValue(b.second, reg.first),
+      _buffer[b.first]->getValueReference(b.second, reg.first),
       _colls[i],
       true
     );
     
-    if (cmp == -1) {
+    if (cmp < 0) {
       return reg.second;
     } 
-    else if (cmp == 1) {
+    else if (cmp > 0) {
       return ! reg.second;
     }
     i++;
