@@ -1158,7 +1158,7 @@ testFuncs.shell_client = function(options) {
 
 testFuncs.config = function (options) {
   if (options.skipConfig) {
-    return {}
+    return {};
   }
   var topDir = findTopDir();
   var results = {};
