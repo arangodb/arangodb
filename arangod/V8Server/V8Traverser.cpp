@@ -122,6 +122,7 @@ class SimpleEdgeExpander {
 
     void operator() (Traverser::VertexId source,
                      vector<Traverser::Step>& result) {
+      std::cout << "Expander " << id << " called." << std::endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
@@ -142,6 +143,7 @@ class SimpleEdgeExpander {
       }
       auto collectionCId = col->_cid;
       edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, const_cast<char*>(str + split + 1));
+      std::cout << "Expander " << id << " got edges." << std::endl;
         
       unordered_map<Traverser::VertexId, size_t> candidates;
       Traverser::VertexId from;
@@ -194,6 +196,7 @@ class SimpleEdgeExpander {
           }
         }
       }
+      std::cout << "Expander " << id << " done." << std::endl;
     }
 };
 
