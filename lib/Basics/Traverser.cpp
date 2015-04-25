@@ -160,6 +160,7 @@ class Searcher : public Thread {
         s2->_done = true;
         b = _myInfo._pq.popMinimal(v, s, true);
       }
+      std::cout << "Thread " << _id << " done." << std::endl;
     }
 };
 
