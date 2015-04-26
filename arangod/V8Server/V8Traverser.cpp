@@ -309,6 +309,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string const targetVertex = TRI_ObjectToString(args[3]);
 
   string direction = "outbound";
+  bool bidirectional = true;
   if (args.Length() == 5) {
     if (! args[4]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
@@ -323,6 +324,10 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
          ) {
         TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
       }
+    }
+    v8::Local<v8::String> keyBidirectional = TRI_V8_ASCII_STRING("bidirectional");
+    if (options->Has(keyBidirectional)) {
+      bidirectional = TRI_ObjectToBoolean(options->Get(keyBidirectional));
     }
   } 
   // IHHF isCoordinator
@@ -382,7 +387,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   SimpleEdgeExpander forwardExpander(forward, ecol, edgeCollectionName, &resolver1);
   SimpleEdgeExpander backwardExpander(backward, ecol, edgeCollectionName, &resolver2);
 
-  Traverser traverser(forwardExpander, backwardExpander);
+  Traverser traverser(forwardExpander, backwardExpander, bidirectional);
   unique_ptr<Traverser::Path> path(traverser.shortestPath(startVertex, targetVertex));
   if (path.get() == nullptr) {
     res = trx.finish(res);
