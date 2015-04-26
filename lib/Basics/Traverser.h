@@ -532,13 +532,15 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         Traverser (ExpanderFunction forwardExpander,
-                   ExpanderFunction backwardExpander) 
+                   ExpanderFunction backwardExpander,
+                   bool bidirectional = true) 
           : _highscoreSet(false),
             _highscore(0),
             _bingo(false),
             _intermediate(""),
             _forwardExpander(forwardExpander),
-            _backwardExpander(backwardExpander) {
+            _backwardExpander(backwardExpander),
+            _bidirectional(bidirectional) {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -613,6 +615,7 @@ namespace triagens {
 
         ExpanderFunction _forwardExpander;
         ExpanderFunction _backwardExpander;
+        bool _bidirectional;
     };
   }
 }
