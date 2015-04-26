@@ -45,12 +45,23 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
-/*
-struct DistanceInfo {
-  v8::Local<v8::String> keyDistance; = TRI_V8_ASCII_STRING("direction");
+struct WeightInfo {
+  string keyWeight;
+  double defaultWeight; 
+  bool usesWeight;
 
-}
-*/
+  WeightInfo(
+    string keyWeight,
+    double defaultWeight
+  ) :
+    keyWeight(keyWeight), defaultWeight(defaultWeight), usesWeight(true)
+  {
+  };
+
+  WeightInfo() : usesWeight(false) {
+  };
+
+};
 
 class SimpleEdgeExpander {
 
@@ -79,18 +90,13 @@ class SimpleEdgeExpander {
     CollectionNameResolver* resolver;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief this indicates whether or not a distance attribute is used or
-/// whether all edges are considered to have weight 1
-////////////////////////////////////////////////////////////////////////////////
-
-    bool usesDist;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief this is the information required to compute weight by a given
-///        attribute. Is only considered if usesDist==true
+///        attribute. It contains an indicator if weight should be used.
+///        Also it includes a default weight and the name of the weight
+///        attribute.
 ////////////////////////////////////////////////////////////////////////////////
 
-    // DistanceInfo distInfo;
+    WeightInfo weightInfo;
 
   public: 
 
@@ -99,23 +105,21 @@ class SimpleEdgeExpander {
                        string edgeCollectionName,
                        CollectionNameResolver* resolver)
       : direction(direction), edgeCollection(edgeCollection),
-        resolver(resolver), usesDist(false)
+        resolver(resolver)
     {
       edgeIdPrefix = edgeCollectionName + "/";
     };
 
-    /*
     SimpleEdgeExpander(TRI_edge_direction_e direction,
                        TRI_document_collection_t* edgeCollection,
                        string edgeCollectionName,
                        CollectionNameResolver* resolver,
-                       DistanceInfo distInfo)
+                       WeightInfo weightInfo)
       : direction(direction), edgeCollection(edgeCollection),
-        resolver(resolver), usesDist(true), distInfo(distInfo)
+        resolver(resolver), weightInfo(weightInfo)
     {
       edgeIdPrefix = edgeCollectionName + "/";
     };
-    */
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
       char const* key = TRI_EXTRACT_MARKER_FROM_KEY(&ptr);
@@ -166,30 +170,36 @@ class SimpleEdgeExpander {
       unordered_map<Traverser::VertexId, size_t> candidates;
       Traverser::VertexId from;
       Traverser::VertexId to;
-      if (usesDist) {
+      if (weightInfo.usesWeight) {
         for (size_t j = 0;  j < edges.size(); ++j) {
           from = extractFromId(edges[j]);
           to = extractToId(edges[j]);
+          double currentWeight = weightInfo.defaultWeight;
           if (from != source) {
             auto cand = candidates.find(from);
             if (cand == candidates.end()) {
               // Add weight
-              result.emplace_back(to, from, 1, extractEdgeId(edges[j]));
-              candidates.emplace(from, result.size()-1);
+              result.emplace_back(to, from, currentWeight, extractEdgeId(edges[j]));
+              candidates.emplace(from, result.size() - 1);
             } else {
               // Compare weight
-              // use result[cand->seconde].weight() and .setWeight()
+              auto oldWeight = result[cand->second].weight();
+              if (currentWeight < oldWeight) {
+                result[cand->second].setWeight(currentWeight);
+              }
             }
           } 
           else if (to != source) {
             auto cand = candidates.find(to);
             if (cand == candidates.end()) {
               // Add weight
-              result.emplace_back(to, from, 1, extractEdgeId(edges[j]));
-              candidates.emplace(to, result.size()-1);
+              result.emplace_back(to, from, currentWeight, extractEdgeId(edges[j]));
+              candidates.emplace(to, result.size() - 1);
             } else {
-              // Compare weight
-              // use result[cand->seconde].weight() and .setWeight()
+              auto oldWeight = result[cand->second].weight();
+              if (currentWeight < oldWeight) {
+                result[cand->second].setWeight(currentWeight);
+              }
             }
           }
         }
@@ -309,12 +319,18 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   string const targetVertex = TRI_ObjectToString(args[3]);
 
   string direction = "outbound";
+  bool useWeight = false;
+  string weightAttribute = "";
+  double defaultWeight = 1;
   if (args.Length() == 5) {
     if (! args[4]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
     }
     v8::Handle<v8::Object> options = args[4]->ToObject();
     v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+    v8::Local<v8::String> keyWeight= TRI_V8_ASCII_STRING("distance");
+    v8::Local<v8::String> keyDefaultWeight= TRI_V8_ASCII_STRING("defaultDistance");
+
     if (options->Has(keyDirection) ) {
       direction = TRI_ObjectToString(options->Get(keyDirection));
       if (   direction != "outbound"
@@ -323,6 +339,11 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
          ) {
         TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
       }
+    }
+    if (options->Has(keyWeight) && options->Has(keyDefaultWeight) ) {
+      useWeight = true;
+      weightAttribute = TRI_ObjectToString(options->Get(keyWeight));
+      defaultWeight = TRI_ObjectToDouble(options->Get(keyDefaultWeight));
     }
   } 
   // IHHF isCoordinator
@@ -379,10 +400,20 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     backward = TRI_EDGE_ANY;
   }
 
-  SimpleEdgeExpander forwardExpander(forward, ecol, edgeCollectionName, &resolver1);
-  SimpleEdgeExpander backwardExpander(backward, ecol, edgeCollectionName, &resolver2);
+  unique_ptr<SimpleEdgeExpander> forwardExpander;
+  unique_ptr<SimpleEdgeExpander> backwardExpander;
+  if (useWeight) {
+    forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName,
+                                                 &resolver1, WeightInfo(weightAttribute, defaultWeight)));
+    backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName,
+                                                 &resolver2, WeightInfo(weightAttribute, defaultWeight)));
+  } else {
+    forwardExpander.reset(new SimpleEdgeExpander(forward, ecol, edgeCollectionName, &resolver1));
+    backwardExpander.reset(new SimpleEdgeExpander(backward, ecol, edgeCollectionName, &resolver2));
+  }
 
-  Traverser traverser(forwardExpander, backwardExpander);
+
+  Traverser traverser(*forwardExpander, *backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.shortestPath(startVertex, targetVertex));
   if (path.get() == nullptr) {
     res = trx.finish(res);
