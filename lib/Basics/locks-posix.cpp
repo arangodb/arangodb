@@ -402,7 +402,7 @@ void TRI_BroadcastCondition (TRI_condition_t* cond) {
 #ifdef TRI_ENABLE_MAINTAINER_MODE
     TRI_ASSERT(false);
 #endif
-    LOG_FATAL_AND_EXIT("could not croadcast the condition: %s", strerror(rc));
+    LOG_FATAL_AND_EXIT("could not broadcast the condition: %s", strerror(rc));
   }
 }
 

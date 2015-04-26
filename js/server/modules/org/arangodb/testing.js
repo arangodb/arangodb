@@ -61,6 +61,7 @@ var optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
+  '   - `skipConfig`: ommit the noisy configuration tests',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -478,8 +479,8 @@ function checkInstanceAlive(instanceInfo, options) {
           storeArangodPath + 
           " /var/tmp/core*" + instanceInfo.pid.pid + "*'";
         if (require("internal").platform.substr(0,3) === 'win') {
-          copy("bin/arangod.exe", instanceInfo.tmpDataDir);
-          copy("bin/arangod.pdb", instanceInfo.tmpDataDir);
+          copy("bin\\arangod.exe", instanceInfo.tmpDataDir + "\\arangod.exe");
+          copy("bin\\arangod.pdb", instanceInfo.tmpDataDir + "\\arangod.pdb");
           // Windows: wait for procdump to do its job...
           statusExternal(instanceInfo.monitor, true);
         }
@@ -836,6 +837,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   var arangosh = fs.join("bin","arangosh");
   var result;
+  print(toArgv(args));
   var rc = executeAndWait(arangosh, toArgv(args));
   try {
     result = JSON.parse(fs.read("testresult.json"));
@@ -1154,7 +1156,10 @@ testFuncs.shell_client = function(options) {
   return results;
 };
 
-testFuncs.config = function () {
+testFuncs.config = function (options) {
+  if (options.skipConfig) {
+    return {};
+  }
   var topDir = findTopDir();
   var results = {};
   var ts = ["arangod",

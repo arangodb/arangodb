@@ -29,7 +29,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "voc-shaper.h"
-
+#include "Basics/Exceptions.h"
 #include "Basics/Mutex.h"
 #include "Basics/MutexLocker.h"
 #include "Basics/ReadLocker.h"
@@ -40,8 +40,7 @@
 #include "Basics/locks.h"
 #include "Basics/logging.h"
 #include "Basics/tri-strings.h"
-#include "Basics/utf8-helper.h"
-#include "Basics/Exceptions.h"
+#include "Basics/Utf8Helper.h"
 #include "VocBase/document-collection.h"
 #include "Wal/LogfileManager.h"
 
@@ -1346,24 +1345,30 @@ int TRI_CompareShapeTypes (char const* leftDocument,
         case TRI_SHAPE_LONG_STRING: {
           char* leftString;
           char* rightString;
+          size_t leftLength;
+          size_t rightLength;
 
           // compare strings
           // extract the strings
           if (leftType == TRI_SHAPE_SHORT_STRING) {
             leftString = (char*) (sizeof(TRI_shape_length_short_string_t) + left._data.data);
+            leftLength = (size_t) *((TRI_shape_length_short_string_t*) left._data.data) - 1;
           }
           else {
             leftString = (char*) (sizeof(TRI_shape_length_long_string_t) + left._data.data);
+            leftLength = (size_t) *((TRI_shape_length_long_string_t*) left._data.data) - 1;
           }
 
           if (rightType == TRI_SHAPE_SHORT_STRING) {
             rightString = (char*) (sizeof(TRI_shape_length_short_string_t) + right._data.data);
+            rightLength = (size_t) *((TRI_shape_length_short_string_t*) right._data.data) - 1;
           }
           else {
             rightString = (char*) (sizeof(TRI_shape_length_long_string_t) + right._data.data);
+            rightLength = (size_t) *((TRI_shape_length_long_string_t*) right._data.data) - 1;
           }
 
-          return TRI_compare_utf8(leftString, rightString);
+          return TRI_compare_utf8(leftString, leftLength, rightString, rightLength);
         }
         case TRI_SHAPE_ARRAY:
         case TRI_SHAPE_LIST:
@@ -1528,7 +1533,10 @@ int TRI_CompareShapeTypes (char const* leftDocument,
             attribute_entry_t const* l = static_cast<attribute_entry_t const*>(TRI_AtVector(&leftSorted, i));
             attribute_entry_t const* r = static_cast<attribute_entry_t const*>(TRI_AtVector(&rightSorted, i));
 
-            result = TRI_compare_utf8(l->_attribute, r->_attribute);
+            // a binary comparison is sufficient here as we're only interested in if the attribute names are
+            // identical. the attribute names are from ShapedJson, so they have been normalized already
+            result = strcmp(l->_attribute, r->_attribute);
+            // result = TRI_compare_utf8(l->_attribute, r->_attribute);
 
             if (result != 0) {
               break;

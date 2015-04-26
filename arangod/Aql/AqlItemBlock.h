@@ -117,27 +117,41 @@ namespace triagens {
 /// @brief setValue, set the current value of a register
 ////////////////////////////////////////////////////////////////////////////////
 
-      void setValue (size_t index, RegisterId varNr, AqlValue value) {
+      void setValue (size_t index, RegisterId varNr, AqlValue const& value) {
         TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
-        TRI_ASSERT_EXPENSIVE(_data.at(index * _nrRegs + varNr).isEmpty());
+        TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
 
         // First update the reference count, if this fails, the value is empty
-        if (! value.isEmpty()) {
+        if (value.requiresDestruction()) {
           auto it = _valueCount.find(value);
           if (it == _valueCount.end()) {
             TRI_IF_FAILURE("AqlItemBlock::setValue") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
             }
-            _valueCount.emplace(std::make_pair(value, 1));
+            _valueCount.emplace(value, 1);
           }
           else {
             TRI_ASSERT_EXPENSIVE(it->second > 0);
-            it->second++;
+            ++(it->second);
           }
         }
 
         _data[index * _nrRegs + varNr] = value;
       }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief fill a slot in the item block with a SHAPED AqlValue
+/// this is a specialization without reference counting
+////////////////////////////////////////////////////////////////////////////////
+
+        void setShaped (size_t index, RegisterId varNr, TRI_df_marker_t const* marker) {
+          TRI_ASSERT_EXPENSIVE(_data.capacity() > index * _nrRegs + varNr);
+          TRI_ASSERT_EXPENSIVE(_data[index * _nrRegs + varNr].isEmpty());
+
+          auto& v = _data[index * _nrRegs + varNr];
+          v._marker = marker;
+          v._type = AqlValue::SHAPED;
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief eraseValue, erase the current value of a register and freeing it
@@ -147,20 +161,26 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void destroyValue (size_t index, RegisterId varNr) {
-          if (! _data[index * _nrRegs + varNr].isEmpty()) {
-            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+          size_t const pos = index * _nrRegs + varNr;
+          auto& element = _data[pos];
+
+          if (element.requiresDestruction()) {
+            auto it = _valueCount.find(element);
+
             if (it != _valueCount.end()) {
-              if (--it->second == 0) {
+              if (--(it->second) == 0) {
                 try {
                   _valueCount.erase(it);
-                  _data[index * _nrRegs + varNr].destroy();
+                  element.destroy();
+                  return; // no need for an extra element.erase() in this case
                 }
                 catch (...) {
                 }
               }
             }
-            _data[index * _nrRegs + varNr].erase();
           }
+
+          element.erase();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -169,10 +189,14 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void eraseValue (size_t index, RegisterId varNr) {
-          if (! _data[index * _nrRegs + varNr].isEmpty()) {
-            auto it = _valueCount.find(_data[index * _nrRegs + varNr]);
+          size_t const pos = index * _nrRegs + varNr;
+          auto& element = _data[pos];
+
+          if (element.requiresDestruction()) {
+            auto it = _valueCount.find(element);
+
             if (it != _valueCount.end()) {
-              if (--it->second == 0) {
+              if (--(it->second) == 0) {
                 try {
                   _valueCount.erase(it);
                 }
@@ -180,8 +204,9 @@ namespace triagens {
                 }
               }
             }
-            _data[index * _nrRegs + varNr].erase();
           }
+          
+          element.erase();
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -190,12 +215,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         void eraseAll () {
-          size_t const n = _data.size();
-          for (size_t i = 0; i < n; ++i) {
-            if (! _data[i].isEmpty()) {
-              _data[i].erase();
+          for (auto& it : _data) {
+            if (! it.isEmpty()) {
+              it.erase();
             }
           }
+
           _valueCount.clear();
         }
 
@@ -204,14 +229,13 @@ namespace triagens {
 /// this is used if the value is stolen and later released from elsewhere
 ////////////////////////////////////////////////////////////////////////////////
 
-        uint32_t valueCount (AqlValue v) {
+        uint32_t valueCount (AqlValue const& v) const {
           auto it = _valueCount.find(v);
+
           if (it == _valueCount.end()) {
             return 0;
           }
-          else {
-            return it->second;
-          }
+          return it->second;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -221,9 +245,10 @@ namespace triagens {
 /// might be deleted at any time!
 ////////////////////////////////////////////////////////////////////////////////
 
-        void steal (AqlValue v) {
-          if (! v.isEmpty()) {
+        void steal (AqlValue const& v) {
+          if (v.requiresDestruction()) {
             auto it = _valueCount.find(v);
+
             if (it != _valueCount.end()) {
               _valueCount.erase(it);
             }
@@ -260,14 +285,6 @@ namespace triagens {
 
         inline size_t size () const {
           return _nrItems;
-        }
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief getter for _data
-////////////////////////////////////////////////////////////////////////////////
-
-        inline std::vector<AqlValue>& getData () {
-          return _data;
         }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -346,13 +363,6 @@ namespace triagens {
         std::vector<AqlValue> _data;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _docColls, for every column a possible collection, which contains
-/// all AqlValues of type SHAPED in this column.
-////////////////////////////////////////////////////////////////////////////////
-
-        std::vector<TRI_document_collection_t const*> _docColls;
-
-////////////////////////////////////////////////////////////////////////////////
 /// @brief _valueCount, since we have to allow for identical AqlValues
 /// in an AqlItemBlock, this map keeps track over which AqlValues we
 /// have in this AqlItemBlock and how often.
@@ -362,6 +372,13 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<AqlValue, uint32_t> _valueCount;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _docColls, for every column a possible collection, which contains
+/// all AqlValues of type SHAPED in this column.
+////////////////////////////////////////////////////////////////////////////////
+
+        std::vector<TRI_document_collection_t const*> _docColls;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief _nrItems, number of rows

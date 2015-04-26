@@ -15,10 +15,12 @@ arangod_libarangod_a_CPPFLAGS = \
 arangod_libarangod_a_SOURCES = \
 	arangod/Actions/actions.cpp \
 	arangod/Actions/RestActionHandler.cpp \
+	arangod/Aql/AggregationOptions.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
 	arangod/Aql/AqlValue.cpp \
 	arangod/Aql/Ast.cpp \
 	arangod/Aql/AstNode.cpp \
+	arangod/Aql/AttributeAccessor.cpp \
 	arangod/Aql/BindParameters.cpp \
 	arangod/Aql/Collection.cpp \
 	arangod/Aql/CollectionScanner.cpp \

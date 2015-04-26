@@ -72,7 +72,7 @@ namespace triagens {
 // --SECTION--                                    struct RandomCollectionScanner
 // -----------------------------------------------------------------------------
 
-    struct RandomCollectionScanner : public CollectionScanner {
+    struct RandomCollectionScanner final : public CollectionScanner {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -82,9 +82,9 @@ namespace triagens {
                                TRI_transaction_collection_t*);
 
       int scan (std::vector<TRI_doc_mptr_copy_t>&,
-                size_t);
+                size_t) override;
 
-      void reset ();
+      void reset () override;
 
       uint32_t initialPosition;
       uint32_t step;
@@ -94,7 +94,7 @@ namespace triagens {
 // --SECTION--                                    struct LinearCollectionScanner
 // -----------------------------------------------------------------------------
 
-    struct LinearCollectionScanner : public CollectionScanner {
+    struct LinearCollectionScanner final : public CollectionScanner {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -104,9 +104,9 @@ namespace triagens {
                                TRI_transaction_collection_t*); 
 
       int scan (std::vector<TRI_doc_mptr_copy_t>&,
-                size_t);
+                size_t) override;
       
-      void reset ();
+      void reset () override;
     };
 
   }

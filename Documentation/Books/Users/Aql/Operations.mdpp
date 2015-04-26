@@ -232,21 +232,13 @@ available.
 The general syntaxes for *COLLECT* are:
 
 ```
-COLLECT variable-name = expression
-COLLECT variable-name = expression INTO groups-variable
-COLLECT variable-name = expression INTO groups-variable = projection-expression
-COLLECT variable-name = expression INTO groups-variable KEEP keep-variable
-COLLECT variable-name = expression WITH COUNT INTO count-variable
-COLLECT WITH COUNT INTO count-variable
+COLLECT variable-name = expression options
+COLLECT variable-name = expression INTO groups-variable options
+COLLECT variable-name = expression INTO groups-variable = projection-expression options
+COLLECT variable-name = expression INTO groups-variable KEEP keep-variable options
+COLLECT variable-name = expression WITH COUNT INTO count-variable options
+COLLECT WITH COUNT INTO count-variable options
 ```
-
-Note: the first four forms of *COLLECT* require their input be sorted by
-the group criteria. To ensure correctness of the result, the AQL optimizer 
-will automatically insert a *SORT* statement into the query in front of the 
-*COLLECT* statement. The optimizer can optimize away the *SORT* statement
-later if a sorted index is present on the group criteria. This will make
-*COLLECT* operations more efficient.
-
 
 !SUBSUBSECTION Grouping syntaxes
 
@@ -408,6 +400,57 @@ FOR u IN users
 ```
 
 Note: the *WITH COUNT* clause can only be used together with an *INTO* clause.
+
+
+!SUBSUBSECTION COLLECT variants
+
+Since ArangoDB 2.6, there are two variants of *COLLECT* that the optimizer can
+choose from: the *sorted* variant and the *hash* variant. The *hash* variant only becomes a
+candidate for *COLLECT* statements that do not use an *INTO* clause.
+
+The optimizer will always generate a plan that employs the *sorted* method. The *sorted* method 
+requires its input to be sorted by the group criteria specified in the *COLLECT* clause. 
+To ensure correctness of the result, the AQL optimizer will automatically insert a *SORT* 
+statement into the query in front of the *COLLECT* statement. The optimizer may be able to 
+optimize away that *SORT* statement later if a sorted index is present on the group criteria. 
+
+In case a *COLLECT* qualifies for using the *hash* variant, the optimizer will create an extra 
+plan for it at the beginning of the planning phase. In this plan, no extra *SORT* statement will be
+added in front of the *COLLECT*. This is because the *hash* variant of *COLLECT* does not require
+sorted input. Instead, a *SORT* statement will be added after the *COLLECT* to sort its output. 
+This *SORT* statement may be optimized away again in later stages. 
+If the sort order of the *COLLECT* is irrelevant to the user, adding the extra instruction *SORT null* 
+after the *COLLECT* will allow the optimizer to remove the sorts altogether.
+  
+Which *COLLECT* variant is used by the optimizer depends on the optimizer's cost estimations. The 
+created plans with the different *COLLECT* variants will be shipped through the regular optimization 
+pipeline. In the end, the optimizer will pick the plan with the lowest estimated total cost as usual. 
+
+In general, the *sorted* variant of *COLLECT* should be preferred in cases when there is a sorted index
+present on the group criteria. In this case the optimizer can eliminate the *SORT* statement in front
+of the *COLLECT*, so that no *SORT* will be left. 
+
+If there is no sorted index available on the group criteria, the up-front sort required by the *sorted* 
+variant can be expensive. In this case it is likely that the optimizer will prefer the *hash* variant
+of *COLLECT*, which does not require its input to be sorted. 
+
+Which variant of *COLLECT* was actually used can be figured out by looking into the execution plan of
+a query, specifically the *AggregateNode* and its *aggregationOptions* attribute.
+
+
+!SUBSUBSECTION Setting COLLECT options
+
+*options* can be used in a *COLLECT* statement to inform the optimizer about the preferred *COLLECT*
+method. When specifying the following appendix to a *COLLECT* statement, the optimizer will always use
+the *sorted* variant of *COLLECT* and not even create a plan using the *hash* variant:
+
+```
+OPTIONS { method: "sorted" }
+```
+
+Note that specifying *hash* as method will not make the optimizer use the *hash* variant. This is
+because the *hash* variant is not eligible for all queries. Instead, if no options or any other method
+than *sorted* are specified in *OPTIONS*, the optimizer will use its regular cost estimations.
 
 
 !SUBSECTION REMOVE

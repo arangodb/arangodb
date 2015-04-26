@@ -177,11 +177,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief deletes a http response
 ///
-/// The descrutor will free the string buffers used. After the http response
+/// The destructor will free the string buffers used. After the http response
 /// is deleted, the string buffers returned by body() become invalid.
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~HttpResponse ();
+        ~HttpResponse ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                    public methods

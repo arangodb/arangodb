@@ -52,6 +52,7 @@ static bool CreateIndex (SimpleHttpClient*, const std::string&, const std::strin
 struct VersionTest : public BenchmarkOperation {
   VersionTest ()
     : BenchmarkOperation () {
+    _url = "/_api/version";
   }
 
   ~VersionTest () {
@@ -65,9 +66,7 @@ struct VersionTest : public BenchmarkOperation {
   }
 
   std::string url (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
-    static std::string url = "/_api/version";
-
-    return url;
+    return _url;
   }
 
   HttpRequest::HttpRequestType type (const int threadNumber, const size_t threadCounter, const size_t globalCounter) {
@@ -82,6 +81,7 @@ struct VersionTest : public BenchmarkOperation {
     return payload;
   }
 
+  std::string _url;
 };
 
 // -----------------------------------------------------------------------------

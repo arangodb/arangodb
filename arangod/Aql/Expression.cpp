@@ -28,17 +28,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Expression.h"
+#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
+#include "Aql/AttributeAccessor.h"
 #include "Aql/Executor.h"
 #include "Aql/V8Expression.h"
 #include "Aql/Variable.h"
+#include "Basics/Exceptions.h"
 #include "Basics/JsonHelper.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/json.h"
 #include "ShapedJson/shaped-json.h"
 #include "VocBase/document-collection.h"
-#include "Basics/Exceptions.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
@@ -87,7 +89,9 @@ Expression::Expression (Ast* ast,
     _canRunOnDBServer(false),
     _isDeterministic(false),
     _hasDeterminedAttributes(false),
-    _built(false) {
+    _built(false),
+    _attributes(),
+    _buffer(TRI_UNKNOWN_MEM_ZONE) {
 
   TRI_ASSERT(_ast != nullptr);
   TRI_ASSERT(_executor != nullptr);
@@ -110,15 +114,28 @@ Expression::Expression (Ast* ast,
 
 Expression::~Expression () {
   if (_built) {
-    if (_type == V8) {
-      delete _func;
-      _func = nullptr;
-    }
-    else if (_type == JSON) {
-      TRI_ASSERT(_data != nullptr);
-      TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
-      _data = nullptr;
-      // _json is freed automatically by AqlItemBlock
+    switch (_type) {
+      case JSON:
+        TRI_ASSERT(_data != nullptr);
+        TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, _data);
+        break;
+
+      case ATTRIBUTE: {
+        TRI_ASSERT(_accessor != nullptr);
+        delete _accessor;
+        break;
+      }
+
+      case V8:
+        delete _func;
+        break;
+      
+      case SIMPLE: 
+      case UNPROCESSED: {
+        // nothing to do
+        break;
+      }
+      
     }
   }
 }
@@ -140,8 +157,7 @@ std::unordered_set<Variable*> Expression::variables () const {
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
-                              std::vector<TRI_document_collection_t const*>& docColls,
-                              std::vector<AqlValue>& argv,
+                              AqlItemBlock const* argv,
                               size_t startPos,
                               std::vector<Variable*> const& vars,
                               std::vector<RegisterId> const& regs,
@@ -161,13 +177,22 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
       return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, _data, Json::NOFREE));
     }
 
+    case SIMPLE: {
+      return executeSimpleExpression(_node, collection, trx, argv, startPos, vars, regs);
+    }
+
+    case ATTRIBUTE: {
+      TRI_ASSERT(_accessor != nullptr);
+      return _accessor->get(trx, argv, startPos, vars, regs);
+    }
+    
     case V8: {
       TRI_ASSERT(_func != nullptr);
       try {
         ISOLATE;
         // Dump the expression in question  
         // std::cout << triagens::basics::Json(TRI_UNKNOWN_MEM_ZONE, _node->toJson(TRI_UNKNOWN_MEM_ZONE, true)).toString()<< "\n";
-        return _func->execute(isolate, _ast->query(), trx, docColls, argv, startPos, vars, regs);
+        return _func->execute(isolate, _ast->query(), trx, argv, startPos, vars, regs);
       }
       catch (triagens::basics::Exception& ex) {
         if (_ast->query()->verboseErrors()) {
@@ -182,10 +207,6 @@ AqlValue Expression::execute (triagens::arango::AqlTransaction* trx,
       }
     }
 
-    case SIMPLE: {
-      return executeSimpleExpression(_node, collection, trx, docColls, argv, startPos, vars, regs);
-    }
- 
     case UNPROCESSED: {
       // fall-through to exception
     }
@@ -258,7 +279,7 @@ bool Expression::findInList (AqlValue const& left,
       auto listItem = right.extractArrayMember(trx, rightCollection, m, false);
       AqlValue listItemValue(&listItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr, false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -287,7 +308,7 @@ bool Expression::findInList (AqlValue const& left,
       auto listItem = right.extractArrayMember(trx, rightCollection, i, false);
       AqlValue listItemValue(&listItem);
 
-      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr);
+      int compareResult = AqlValue::Compare(trx, left, leftCollection, listItemValue, nullptr, false);
 
       if (compareResult == 0) {
         // item found in the list
@@ -321,6 +342,21 @@ void Expression::analyzeExpression () {
     _canThrow         = _node->canThrow();
     _canRunOnDBServer = _node->canRunOnDBServer();
     _isDeterministic  = _node->isDeterministic();
+
+    if (_node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      TRI_ASSERT_EXPENSIVE(_node->numMembers() == 1);
+      auto member = _node->getMemberUnchecked(0);
+
+      if (member->type == NODE_TYPE_REFERENCE) {
+        auto name = static_cast<char const*>(_node->getData());
+        auto v = static_cast<Variable const*>(member->getData());
+
+        // specialize the simple expression into an attribute accessor
+        _accessor = new AttributeAccessor(name, v);
+        _type = ATTRIBUTE;
+        _built = true;
+      }
+    }
   }
   else {
     // expression is a V8 expression
@@ -390,22 +426,21 @@ void Expression::buildExpression () {
 AqlValue Expression::executeSimpleExpression (AstNode const* node,
                                               TRI_document_collection_t const** collection, 
                                               triagens::arango::AqlTransaction* trx,
-                                              std::vector<TRI_document_collection_t const*>& docColls,
-                                              std::vector<AqlValue> const& argv,
+                                              AqlItemBlock const* argv,
                                               size_t startPos,
                                               std::vector<Variable*> const& vars,
                                               std::vector<RegisterId> const& regs) {
   if (node->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
     // object lookup, e.g. users.name
-    TRI_ASSERT(node->numMembers() == 1);
+    TRI_ASSERT_EXPENSIVE(node->numMembers() == 1);
 
-    auto member = node->getMember(0);
+    auto member = node->getMemberUnchecked(0);
     auto name = static_cast<char const*>(node->getData());
 
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
 
-    auto j = result.extractObjectMember(trx, myCollection, name, true);
+    auto j = result.extractObjectMember(trx, myCollection, name, true, _buffer);
     result.destroy();
     return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
   }
@@ -423,11 +458,11 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto index = node->getMember(1);
 
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
 
     if (result.isArray()) {
       TRI_document_collection_t const* myCollection2 = nullptr;
-      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
+      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, argv, startPos, vars, regs);
 
       if (indexResult.isNumber()) {
         auto j = result.extractArrayMember(trx, myCollection, indexResult.toInt64(), true);
@@ -454,11 +489,11 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     }
     else if (result.isObject()) {
       TRI_document_collection_t const* myCollection2 = nullptr;
-      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, docColls, argv, startPos, vars, regs);
+      AqlValue indexResult = executeSimpleExpression(index, &myCollection2, trx, argv, startPos, vars, regs);
 
       if (indexResult.isNumber()) {
         auto&& indexString = std::to_string(indexResult.toInt64());
-        auto j = result.extractObjectMember(trx, myCollection, indexString.c_str(), true);
+        auto j = result.extractObjectMember(trx, myCollection, indexString.c_str(), true, _buffer);
         indexResult.destroy();
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
@@ -467,7 +502,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto&& value = indexResult.toString();
         indexResult.destroy();
 
-        auto j = result.extractObjectMember(trx, myCollection, value.c_str(), true);
+        auto j = result.extractObjectMember(trx, myCollection, value.c_str(), true, _buffer);
         result.destroy();
         return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, j.steal()));
       }
@@ -498,7 +533,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto member = node->getMember(i);
         TRI_document_collection_t const* myCollection = nullptr;
 
-        AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+        AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
         list->add(result.toJson(trx, myCollection));
         result.destroy();
       }
@@ -535,7 +570,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         auto key = member->getStringValue();
         member = member->getMember(0);
 
-        AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+        AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
         resultArray->set(key, result.toJson(trx, myCollection));
         result.destroy();
       }
@@ -559,7 +594,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   }
 
   else if (node->type == NODE_TYPE_REFERENCE) {
-    auto v = static_cast<Variable*>(node->getData());
+    auto v = static_cast<Variable const*>(node->getData());
 
     size_t i = 0;
     for (auto it = vars.begin(); it != vars.end(); ++it, ++i) {
@@ -567,8 +602,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
         TRI_ASSERT(collection != nullptr);
 
         // save the collection info
-        *collection = docColls[regs[i]]; 
-        return argv[startPos + regs[i]].clone();
+        *collection = argv->getDocumentCollection(regs[i]); 
+        return argv->getValueReference(startPos, regs[i]).clone();
       }
     }
     // fall-through to exception
@@ -584,9 +619,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
     auto member = node->getMember(0);
     TRI_ASSERT(member->type == NODE_TYPE_ARRAY);
 
-    AqlValue result = executeSimpleExpression(member, &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue result = executeSimpleExpression(member, &myCollection, trx, argv, startPos, vars, regs);
         
-    auto res2 = func->implementation(trx, myCollection, result);
+    auto res2 = func->implementation(_ast->query(), trx, myCollection, result);
     result.destroy();
     return res2;
   }
@@ -597,8 +632,8 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
 
     auto low = node->getMember(0);
     auto high = node->getMember(1);
-    AqlValue resultLow  = executeSimpleExpression(low, &leftCollection, trx, docColls, argv, startPos, vars, regs);
-    AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue resultLow  = executeSimpleExpression(low, &leftCollection, trx, argv, startPos, vars, regs);
+    AqlValue resultHigh = executeSimpleExpression(high, &rightCollection, trx, argv, startPos, vars, regs);
     AqlValue res = AqlValue(resultLow.toInt64(), resultHigh.toInt64());
     resultLow.destroy();
     resultHigh.destroy();
@@ -608,7 +643,7 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   
   else if (node->type == NODE_TYPE_OPERATOR_UNARY_NOT) {
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue operand = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs);
     
     bool const operandIsTrue = operand.isTrue();
     operand.destroy();
@@ -618,9 +653,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   else if (node->type == NODE_TYPE_OPERATOR_BINARY_AND ||
            node->type == NODE_TYPE_OPERATOR_BINARY_OR) {
     TRI_document_collection_t const* leftCollection = nullptr;
-    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs);
     TRI_document_collection_t const* rightCollection = nullptr;
-    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv, startPos, vars, regs);
     
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       // AND
@@ -657,9 +692,9 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
            node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
            node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
     TRI_document_collection_t const* leftCollection = nullptr;
-    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue left  = executeSimpleExpression(node->getMember(0), &leftCollection, trx, argv, startPos, vars, regs);
     TRI_document_collection_t const* rightCollection = nullptr;
-    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue right = executeSimpleExpression(node->getMember(1), &rightCollection, trx, argv, startPos, vars, regs);
 
     if (node->type == NODE_TYPE_OPERATOR_BINARY_IN ||
         node->type == NODE_TYPE_OPERATOR_BINARY_NIN) {
@@ -685,8 +720,12 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
       return AqlValue(new triagens::basics::Json(result));
     }
 
-    // all other comparison operators
-    int compareResult = AqlValue::Compare(trx, left, leftCollection, right, rightCollection);
+    // all other comparison operators...
+
+    // for equality and non-equality we can use a binary comparison
+    bool compareUtf8 = (node->type != NODE_TYPE_OPERATOR_BINARY_EQ && node->type != NODE_TYPE_OPERATOR_BINARY_NE);
+
+    int compareResult = AqlValue::Compare(trx, left, leftCollection, right, rightCollection, compareUtf8);
     left.destroy();
     right.destroy();
 
@@ -713,17 +752,17 @@ AqlValue Expression::executeSimpleExpression (AstNode const* node,
   
   else if (node->type == NODE_TYPE_OPERATOR_TERNARY) {
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue condition  = executeSimpleExpression(node->getMember(0), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    AqlValue condition  = executeSimpleExpression(node->getMember(0), &myCollection, trx, argv, startPos, vars, regs);
 
     bool const isTrue = condition.isTrue();
     condition.destroy();
     if (isTrue) {
       // return true part
-      return executeSimpleExpression(node->getMember(1), &myCollection, trx, docColls, argv, startPos, vars, regs);
+      return executeSimpleExpression(node->getMember(1), &myCollection, trx, argv, startPos, vars, regs);
     }
     
     // return false part  
-    return executeSimpleExpression(node->getMember(2), &myCollection, trx, docColls, argv, startPos, vars, regs);
+    return executeSimpleExpression(node->getMember(2), &myCollection, trx, argv, startPos, vars, regs);
   }
  
   THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "unhandled type in simple expression");
@@ -755,16 +794,29 @@ bool Expression::isAttributeAccess () const {
 bool Expression::isReference () const {
   return (_node->type == triagens::aql::NODE_TYPE_REFERENCE);
 }
+ 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a constant node
+////////////////////////////////////////////////////////////////////////////////
+
+bool Expression::isConstant () const {
+  return _node->isConstant();
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
-/// call isSimpleAccessReference in advance to ensure no exceptions.
+/// call isAttributeAccess in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-std::pair<std::string, std::string> Expression::getMultipleAttributes() {
-  if (! isSimple()) {
+std::pair<std::string, std::string> Expression::getAttributeAccess () {
+  if (_type == UNPROCESSED) {
+    analyzeExpression();
+  }
+
+  if (_type != SIMPLE && 
+      _type != ATTRIBUTE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getAccessNRef works only on simple expressions!");
+                                   "getMultipleAttributes works only on simple expressions or attribute accesses!");
   }
 
   auto expNode = _node;
@@ -772,11 +824,11 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() {
 
   if (expNode->type != triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getAccessNRef works only on simple expressions!");
+                                   "getMultipleAttributes works only on simple expressions or attribute accesses(2)!");
   }
 
   while (expNode->type == triagens::aql::NODE_TYPE_ATTRIBUTE_ACCESS) {
-    attributeVector.push_back(expNode->getStringValue());
+    attributeVector.emplace_back(expNode->getStringValue());
     expNode = expNode->getMember(0);
   }
   
@@ -785,14 +837,14 @@ std::pair<std::string, std::string> Expression::getMultipleAttributes() {
        oneAttr != attributeVector.rend();
        ++oneAttr) {
     if (! attributeVectorStr.empty()) {
-      attributeVectorStr += std::string(".");
+      attributeVectorStr.push_back('.');
     }
     attributeVectorStr += *oneAttr;
   }
 
   if (expNode->type != triagens::aql::NODE_TYPE_REFERENCE) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "getAccessNRef works only on simple expressions!");
+                                   "getMultipleAttributes works only on simple expressions or attribute accesses(3)!");
   }
 
   auto variable = static_cast<Variable*>(expNode->getData());

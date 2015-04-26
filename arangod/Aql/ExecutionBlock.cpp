@@ -57,7 +57,6 @@ using StringBuffer = triagens::basics::StringBuffer;
 #define LEAVE_BLOCK
 #endif
 
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                            struct AggregatorGroup
 // -----------------------------------------------------------------------------
@@ -189,6 +188,7 @@ ExecutionBlock::~ExecutionBlock () {
   for (auto it = _buffer.begin(); it != _buffer.end(); ++it) {
     delete *it;
   }
+
   _buffer.clear();
 }
 
@@ -393,10 +393,11 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == 
-        getPlanNode()->_regsToClear.end()) {
-      if (! src->getValue(srcRow, i).isEmpty()) {
-        AqlValue a = src->getValue(srcRow, i).clone();
+    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+      auto value = src->getValueReference(srcRow, i);
+
+      if (! value.isEmpty()) {
+        AqlValue a = value.clone();
         try {
           dst->setValue(dstRow, i, a);
         }
@@ -422,10 +423,11 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
   RegisterId const n = src->getNrRegs();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == 
-        getPlanNode()->_regsToClear.end()) {
-      if (! src->getValue(row, i).isEmpty()) {
-        AqlValue a = src->getValueReference(row, i).clone();
+    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+      auto value = src->getValueReference(row, i);
+
+      if (! value.isEmpty()) {
+        AqlValue a = value.clone();
         try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -452,20 +454,23 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
   throwIfKilled(); // check if we were aborted
 
-  AqlItemBlock* docs = _dependencies[0]->getSome(atLeast, atMost);
+  std::unique_ptr<AqlItemBlock> docs(_dependencies[0]->getSome(atLeast, atMost));
+
   if (docs == nullptr) {
     return false;
   }
+
   try {
     TRI_IF_FAILURE("ExecutionBlock::getBlock") {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
     }
-    _buffer.emplace_back(docs);
+    _buffer.emplace_back(docs.get());
+    docs.release();
   }
   catch (...) {
-    delete docs;
     throw;
   }
+
   return true;
 }
 
@@ -675,9 +680,8 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 
 int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   // Create a deep copy of the register values given to us:
-  if (_inputRegisterValues != nullptr) {
-    delete _inputRegisterValues;
-  }
+  deleteInputVariables();
+  
   if (items != nullptr) {
     _inputRegisterValues = items->slice(pos, pos + 1);
   }
@@ -908,9 +912,9 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
       // The result is in the first variable of this depth,
       // we do not need to do a lookup in getPlanNode()->_registerPlan->varInfo,
       // but can just take cur->getNrRegs() as registerId:
-      res->setValue(j, static_cast<triagens::aql::RegisterId>(curRegs),
-                    AqlValue(reinterpret_cast<TRI_df_marker_t
-                             const*>(_documents[_posInDocuments].getDataPtr())));
+      res->setShaped(j, 
+                     static_cast<triagens::aql::RegisterId>(curRegs),
+                     reinterpret_cast<TRI_df_marker_t const*>(_documents[_posInDocuments].getDataPtr()));
       // No harm done, if the setValue throws!
     }
 
@@ -1076,11 +1080,7 @@ void IndexRangeBlock::buildExpressions () {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   AqlItemBlock* cur = _buffer.front();
-  vector<AqlValue>& data(cur->getData());
-  vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
-  RegisterId nrRegs = cur->getNrRegs();
         
-  
   IndexOrCondition* newCondition = nullptr;
 
   for (size_t i = 0; i < en->_ranges.size(); i++) {
@@ -1103,10 +1103,7 @@ void IndexRangeBlock::buildExpressions () {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-            _inVars[posInExpressions],
-            _inRegs[posInExpressions],
-            &myCollection);
+        AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
         posInExpressions++;
 
         Json bound;
@@ -1158,10 +1155,7 @@ void IndexRangeBlock::buildExpressions () {
         Expression* e = _allVariableBoundExpressions[posInExpressions];
         TRI_ASSERT(e != nullptr);
         TRI_document_collection_t const* myCollection = nullptr; 
-        AqlValue a = e->execute(_trx, docColls, data, nrRegs * _pos,
-            _inVars[posInExpressions],
-            _inRegs[posInExpressions],
-            &myCollection);
+        AqlValue a = e->execute(_trx, cur, _pos, _inVars[posInExpressions], _inRegs[posInExpressions], &myCollection);
         posInExpressions++;
 
         Json bound;
@@ -2677,7 +2671,8 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
   for (size_t i = 0; i < n; i++) {
     // need not clone to avoid a copy, the AqlItemBlock's hash takes
     // care of correct freeing:
-    AqlValue a = result->getValueReference(i, _inRegs[0]);
+    auto a = result->getValueReference(i, _inRegs[0]);
+
     try {
       TRI_IF_FAILURE("CalculationBlock::fillBlockWithReference") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2696,10 +2691,6 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::executeExpression (AqlItemBlock* result) {
-  std::vector<AqlValue>& data(result->getData());
-  std::vector<TRI_document_collection_t const*> docColls(result->getDocumentCollections());
-
-  RegisterId nrRegs = result->getNrRegs();
   result->setDocumentCollection(_outReg, nullptr);
 
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
@@ -2719,10 +2710,11 @@ void CalculationBlock::executeExpression (AqlItemBlock* result) {
         continue;
       }
     }
-
+    
     // execute the expression
     TRI_document_collection_t const* myCollection = nullptr;
-    AqlValue a = _expression->execute(_trx, docColls, data, nrRegs * i, _inVars, _inRegs, &myCollection);
+    AqlValue a = _expression->execute(_trx, result, i, _inVars, _inRegs, &myCollection);
+    
     try {
       TRI_IF_FAILURE("CalculationBlock::executeExpression") {
         THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -3297,11 +3289,15 @@ int SortedAggregateBlock::getOrSkipSome (size_t atLeast,
         size_t i = 0;
 
         for (auto it = _aggregateRegisters.begin(); it != _aggregateRegisters.end(); ++it) {
-          int cmp = AqlValue::Compare(_trx,
-                                      _currentGroup.groupValues[i],
-                                      _currentGroup.collections[i],
-                                      cur->getValue(_pos, (*it).second),
-                                      cur->getDocumentCollection((*it).second));
+          int cmp = AqlValue::Compare(
+            _trx,
+            _currentGroup.groupValues[i],
+            _currentGroup.collections[i],
+            cur->getValue(_pos, (*it).second),
+            cur->getDocumentCollection((*it).second),
+            false
+          );
+
           if (cmp != 0) {
             // group change
             newGroup = true;
@@ -3530,6 +3526,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
                                          bool skipping,
                                          AqlItemBlock*& result,
                                          size_t& skipped) {
+
   TRI_ASSERT(result == nullptr && skipped == 0);
   if (_done) {
     return TRI_ERROR_NO_ERROR;
@@ -3544,7 +3541,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
     }
     _pos = 0;           // this is in the first block
   }
-
+  
   // If we get here, we do have _buffer.front()
   AqlItemBlock* cur = _buffer.front();
 
@@ -3554,7 +3551,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   }
 
   std::unordered_map<std::vector<AqlValue>, size_t, GroupKeyHash, GroupKeyEqual> allGroups(
-    256, 
+    1024, 
     GroupKeyHash(_trx, colls), 
     GroupKeyEqual(_trx, colls)
   );
@@ -3612,25 +3609,27 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
   while (skipped < atMost) {
     groupValues.clear();
 
+    // for hashing simply re-use the aggregate registers, without cloning their contents
     for (size_t i = 0; i < n; ++i) {
       groupValues.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second));
     }
 
+    // now check if we already know this group
     auto it = allGroups.find(groupValues);
 
     if (it == allGroups.end()) {
       // new group
       group.clear();
-      
-      // copy the group values
+
+      // copy the group values before they get invalidated
       for (size_t i = 0; i < n; ++i) {
-        group.emplace_back(cur->getValue(_pos, _aggregateRegisters[i].second).clone());
+        group.emplace_back(cur->getValueReference(_pos, _aggregateRegisters[i].second).clone());
       }
 
-      allGroups.emplace(std::make_pair(group, 1));
+      allGroups.emplace(group, 1);
     }
     else {
-      // existing group
+      // existing group. simply increase the counter
       (*it).second++;
     }
 
@@ -3677,7 +3676,6 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
     }
   }
 
-  
   if (! skipping) {
     TRI_ASSERT(skipped > 0);
   }
@@ -3692,13 +3690,10 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
 ////////////////////////////////////////////////////////////////////////////////
 
 size_t HashedAggregateBlock::GroupKeyHash::operator() (std::vector<AqlValue> const& value) const {
-  size_t const n = value.size();
   uint64_t hash = 0x12345678;
 
-  for (size_t i = 0; i < n; ++i) {
-    auto bound = value[i].toJson(_trx, _colls[i]);
-
-    hash ^= TRI_HashJson(bound.json());
+  for (size_t i = 0; i < _num; ++i) {
+    hash ^= value[i].hash(_trx, _colls[i]);
   }
 
   return static_cast<size_t>(hash);
@@ -3713,7 +3708,7 @@ bool HashedAggregateBlock::GroupKeyEqual::operator() (std::vector<AqlValue> cons
   size_t const n = lhs.size();
 
   for (size_t i = 0; i < n; ++i) {
-    int res = AqlValue::Compare(_trx, lhs[i], _colls[i], rhs[i], _colls[i]);
+    int res = AqlValue::Compare(_trx, lhs[i], _colls[i], rhs[i], _colls[i], false);
 
     if (res != 0) {
       return false;
@@ -3835,17 +3830,19 @@ void SortBlock::doSorting () {
         delete next;
         throw;
       }
+      
       std::unordered_map<AqlValue, AqlValue> cache;
       // only copy as much as needed!
       for (size_t i = 0; i < sizeNext; i++) {
         for (RegisterId j = 0; j < nrregs; j++) {
-          AqlValue a = _buffer[coords[count].first]->getValue(coords[count].second, j);
+          auto a = _buffer[coords[count].first]->getValue(coords[count].second, j);
           // If we have already dealt with this value for the next
           // block, then we just put the same value again:
           if (! a.isEmpty()) {
             auto it = cache.find(a);
+
             if (it != cache.end()) {
-              AqlValue b = it->second;
+              AqlValue const& b = it->second;
               // If one of the following throws, all is well, because
               // the new block already has either a copy or stolen
               // the AqlValue:
@@ -3857,6 +3854,7 @@ void SortBlock::doSorting () {
               // its original buffer, which we know by looking at the
               // valueCount there.
               auto vCount = _buffer[coords[count].first]->valueCount(a);
+
               if (vCount == 0) {
                 // Was already stolen for another block
                 AqlValue b = a.clone();
@@ -3909,7 +3907,7 @@ void SortBlock::doSorting () {
 
                 // If the following does not work, we will create a
                 // few unnecessary copies, but this does not matter:
-                cache.emplace(make_pair(a,a));
+                cache.emplace(make_pair(a, a));
               }
             }
           }
@@ -3945,15 +3943,19 @@ bool SortBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   size_t i = 0;
   for (auto reg : _sortRegisters) {
 
-    int cmp = AqlValue::Compare(_trx,
-                                _buffer[a.first]->getValue(a.second, reg.first),
-                                _colls[i],
-                                _buffer[b.first]->getValue(b.second, reg.first),
-                                _colls[i]);
-    if (cmp == -1) {
+    int cmp = AqlValue::Compare(
+      _trx,
+      _buffer[a.first]->getValueReference(a.second, reg.first),
+      _colls[i],
+      _buffer[b.first]->getValueReference(b.second, reg.first),
+      _colls[i],
+      true
+    );
+    
+    if (cmp < 0) {
       return reg.second;
     } 
-    else if (cmp == 1) {
+    else if (cmp > 0) {
       return ! reg.second;
     }
     i++;
@@ -4133,7 +4135,8 @@ ModificationBlock::ModificationBlock (ExecutionEngine* engine,
     _outRegNew(ExecutionNode::MaxRegisterId),
     _collection(ep->_collection),
     _isDBServer(false),
-    _usesDefaultSharding(true) {
+    _usesDefaultSharding(true),
+    _buffer(TRI_UNKNOWN_MEM_ZONE) {
   
   auto trxCollection = _trx->trxCollection(_collection->cid());
   if (trxCollection != nullptr) {
@@ -4246,14 +4249,14 @@ AqlItemBlock* ModificationBlock::getSome (size_t atLeast,
           
 int ModificationBlock::extractKey (AqlValue const& value,
                                    TRI_document_collection_t const* document,
-                                   std::string& key) const {
+                                   std::string& key) {
   if (value.isShaped()) {
     key = TRI_EXTRACT_MARKER_KEY(value.getMarker());
     return TRI_ERROR_NO_ERROR;
   }
 
   if (value.isObject()) {
-    Json member(value.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY, false));
+    Json member(value.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_KEY, false, _buffer));
 
     TRI_json_t const* json = member.json();
 
@@ -4539,7 +4542,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           // array must have _from and _to attributes
           TRI_json_t const* json;
 
-          Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM, false));
+          Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_FROM, false, _buffer));
           json = member.json();
 
           if (TRI_IsStringJson(json)) {
@@ -4550,7 +4553,7 @@ AqlItemBlock* InsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
           }
          
           if (errorCode == TRI_ERROR_NO_ERROR) { 
-            Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
+            Json member(a.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false, _buffer));
             json = member.json();
             if (TRI_IsStringJson(json)) {
               errorCode = resolve(json->_value._string.data, edge._toCid, to);
@@ -4950,7 +4953,7 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
         if (insertDoc.isObject()) {
           if (isEdgeCollection) {
             // array must have _from and _to attributes
-            Json member(insertDoc.extractObjectMember(_trx, insertDocument, TRI_VOC_ATTRIBUTE_FROM, false));
+            Json member(insertDoc.extractObjectMember(_trx, insertDocument, TRI_VOC_ATTRIBUTE_FROM, false, _buffer));
             TRI_json_t const* json = member.json();
 
             if (TRI_IsStringJson(json)) {
@@ -4961,7 +4964,7 @@ AqlItemBlock* UpsertBlock::work (std::vector<AqlItemBlock*>& blocks) {
             }
           
             if (errorCode == TRI_ERROR_NO_ERROR) { 
-              Json member(insertDoc.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false));
+              Json member(insertDoc.extractObjectMember(_trx, document, TRI_VOC_ATTRIBUTE_TO, false, _buffer));
               json = member.json();
               if (TRI_IsStringJson(json)) {
                 errorCode = resolve(json->_value._string.data, edge._toCid, to);
@@ -5645,11 +5648,13 @@ bool GatherBlock::OurLessThan::operator() (std::pair<size_t, size_t> const& a,
   for (auto reg : _sortRegisters) {
 
     int cmp = AqlValue::Compare(
-        _trx,
-        _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
-        _colls[i],
-        _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
-        _colls[i]);
+      _trx,
+      _gatherBlockBuffer.at(a.first).front()->getValue(a.second, reg.first),
+      _colls[i],
+      _gatherBlockBuffer.at(b.first).front()->getValue(b.second, reg.first),
+      _colls[i],
+      true
+    );
 
     if (cmp == -1) {
       return reg.second;
