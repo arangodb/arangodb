@@ -322,6 +322,8 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   bool useWeight = false;
   string weightAttribute = "";
   double defaultWeight = 1;
+  bool bidirectional = true;
+
   if (args.Length() == 5) {
     if (! args[4]->IsObject()) {
       TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
@@ -344,6 +346,10 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
       useWeight = true;
       weightAttribute = TRI_ObjectToString(options->Get(keyWeight));
       defaultWeight = TRI_ObjectToDouble(options->Get(keyDefaultWeight));
+    }
+    v8::Local<v8::String> keyBidirectional = TRI_V8_ASCII_STRING("bidirectional");
+    if (options->Has(keyBidirectional)) {
+      bidirectional = TRI_ObjectToBoolean(options->Get(keyBidirectional));
     }
   } 
   // IHHF isCoordinator
@@ -413,7 +419,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
 
-  Traverser traverser(*forwardExpander, *backwardExpander);
+  Traverser traverser(*forwardExpander, *backwardExpander, bidirectional);
   unique_ptr<Traverser::Path> path(traverser.shortestPath(startVertex, targetVertex));
   if (path.get() == nullptr) {
     res = trx.finish(res);
