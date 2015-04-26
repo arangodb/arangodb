@@ -73,19 +73,32 @@
       },
       {
         name: "All Flights from CWA"
+      },
+      {
+        name: "Flight distribution"
       }
     ],
 
     el: '#content',
 
-    initialize: function () {
-      this.airportCollection = new window.Airports();
-      window.HASS = this; // <--- BITTE ?!? ;) <-- zu viel Kontakt mit Jan
+    initialize: function (options) {
+      var collectionName = options.collectionName;
+      this.airportCollection = new window.Airports({
+        collectionName: collectionName
+      });
     },
 
     events: {
       "change #flightQuerySelect" : "runSelectedQuery",
-      "keyup #demoSearchInput"   : "searchInput"
+      "keyup #demoSearchInput"   : "searchInput",
+      "click #searchResults ul li": "selectAirport"
+    },
+
+    selectAirport: function (e) {
+      this.showAirportBalloon(e.currentTarget.id);
+      $("#searchResults").slideUp(function() {
+        $("#searchResults ul").html("");
+      });
     },
 
     template: templateEngine.createTemplate("demoView.ejs"),
@@ -164,13 +177,21 @@
         //self.zoomToAirport(airports[0].ref);
         self.showAirportBalloon(airports[0].ref); // <-- only works with single map object, not multiple :(
       }
-
-      //if (airports.length <= 10) {
-      //}
-
+      if (airports.length < 6 && airports.length > 1) {
+        self.insertAirportSelection(airports);
+      } else {
+        $("#searchResults").slideUp();
+      }
       self.map.validateData();
+    },
 
-
+    insertAirportSelection: function (list) {
+      $("#searchResults ul").html("");
+      var i = 0;
+      for (i = 0; i < list.length; ++i) {
+        $("#searchResults ul").append("<li id='" + list[i].ref + "'>" + list[i].ref + "</li>");
+      }
+      $("#searchResults").slideDown();
     },
 
     runSelectedQuery: function() {
@@ -189,6 +210,9 @@
       }
       if (currentQueryPos === "4") {
         this.loadAirportData("CWA");
+      }
+      if (currentQueryPos === "5") {
+        this.loadFlightDistData();
       }
     },
 
@@ -237,6 +261,67 @@
         max: max
       };
 
+    },
+
+    loadFlightDistData: function() {
+      var self = this;
+      var timer = new Date();
+
+      this.airportCollection.getFlightDistribution(function(list) {
+
+        var timeTaken = new Date() - timer;
+
+        self.removeFlightLines(false);
+
+        var allFlights = 0;
+
+        var i = 0;
+
+        self.resetDataHighlighting();
+        var least = Math.log(list[0].count);
+        var best = Math.log(list[list.length - 1].count);
+        var m = 2 /(best - least);
+        var distribute = function(x) {
+          return m * x - m * least;
+        };
+
+        for (i = 0; i < list.length; ++i) {
+          var to = list[i].Dest;
+          var count = Math.log(list[i].count);
+          self.setAirportColor(to, self.airportHighlightColor);
+
+          var toSize = distribute(count);
+          console.log(toSize);
+          if (toSize <= 0.25) {
+            toSize = 0.25;
+          }
+
+          self.setAirportSize(to, toSize);
+        }
+
+        if ($("#demo-mapdiv-info").length === 0) {
+          $("#demo-mapdiv").append("<div id='demo-mapdiv-info'></div>");
+        }
+
+        var tempHTML = "";
+        tempHTML = "<b>Aggregation</b> - Flight distribution<br>" + 
+          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+          "Number destinations: <b>" + list.length + "</b><br>" + 
+          "Number flights: <b>" + allFlights + "</b><br>" +
+          "Top 5:<br>";
+
+        for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
+          var airportData = self.airportCollection.findWhere({_key: list[i].Dest});
+          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
+          if (i > (list.length - 5)) {
+            tempHTML += "<br>";
+          }
+        }
+
+        $("#demo-mapdiv-info").html(tempHTML);
+
+        self.map.validateData();
+      });
     },
 
     loadAirportData: function(airport) {
@@ -309,6 +394,7 @@
     },
 
     showAirportBalloon: function (id) {
+      this.map.allowMultipleDescriptionWindows = true;
       var mapObject = this.map.getObjectById(id);
       this.map.rollOverMapObject(mapObject);
     },
@@ -368,7 +454,7 @@
           svgPath: self.MAPtarget,
           color: self.airportColor,
           scale: self.airportScale,
-          selectedScale: 2.5,
+          selectedScale: 1.5,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
           rollOverColor: self.airportHoverColor,
           selectable: true
@@ -469,7 +555,6 @@
     },
 
     addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
-      //console.log("Adding", from, to, count, lineColor, lineWidth);
 
       this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
 
@@ -477,7 +562,8 @@
       this.setAirportColor(to, this.airportHighlightColor);
       this.setAirportSize(from, 1.5);
 
-      var toSize = count * 0.001;
+      // var toSize = count * 0.001;
+      var toSize = Math.sqrt(count * 0.001);
       if (toSize <= 0.25) {
         toSize = 0.25;
       }
