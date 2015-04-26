@@ -26,6 +26,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/OptimizerRules.h"
+#include "Aql/AggregationOptions.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Function.h"
@@ -74,7 +75,6 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
 
     if (sortInfo.isValid && ! sortInfo.criteria.empty()) {
       // we found a sort that we can understand
-    
       std::vector<ExecutionNode*> stack;
       for (auto dep : sortNode->getDependencies()) {
         stack.push_back(dep);
@@ -155,7 +155,7 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
         }
         else {
           // abort at all other type of nodes. we cannot remove a sort beyond them
-          // this include COLLECT and LIMIT
+          // this includes COLLECT and LIMIT
           break;
         }
                  
@@ -171,9 +171,16 @@ int triagens::aql::removeRedundantSortsRule (Optimizer* opt,
           stack.push_back(dep);
         }
       }
+
+      if (toUnlink.find(n) == toUnlink.end() &&
+          sortNode->simplify(plan)) {
+        // sort node had only constant expressions. it will make no difference if we execute it or not
+        // so we can remove it
+        toUnlink.insert(n);
+      }
     }
   }
-            
+
   if (! toUnlink.empty()) {
     plan->unlinkNodes(toUnlink);
     plan->findVarUsage();
@@ -1104,7 +1111,8 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
 
     // test if we can use an alternative version of COLLECT with a hash table
     bool const canUseHashAggregation = (! aggregateVariables.empty() &&
-                                        (! collectNode->hasOutVariable() || collectNode->count()));
+                                        (! collectNode->hasOutVariable() || collectNode->count()) &&
+                                        collectNode->getOptions().canUseHashMethod());
   
     if (canUseHashAggregation) {
       // create a new plan with the adjusted COLLECT node
@@ -1116,7 +1124,7 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
       
       // specialize the AggregateNode so it will become a HashAggregateBlock later
       // additionally, add a SortNode BEHIND the AggregateNode (to sort the final result)
-      newCollectNode->aggregationMethod(AggregateNode::AGGREGATION_HASH);
+      newCollectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_HASH);
 
       std::vector<std::pair<Variable const*, bool>> sortElements;
       for (auto const& v : newCollectNode->aggregateVariables()) {
@@ -1142,7 +1150,7 @@ int triagens::aql::specializeCollectRule (Optimizer* opt,
       
     // specialize the AggregateNode so it will become a SortedAggregateBlock later
     // insert a SortNode IN FRONT OF the AggregateNode
-    collectNode->aggregationMethod(AggregateNode::AGGREGATION_SORTED);
+    collectNode->aggregationMethod(AggregationOptions::AggregationMethod::AGGREGATION_METHOD_SORTED);
 
     if (! aggregateVariables.empty()) {
       std::vector<std::pair<Variable const*, bool>> sortElements;
@@ -2584,7 +2592,7 @@ public:
           auto oneSortExpression = cn->expression();
           
           if (oneSortExpression->isAttributeAccess()) {
-            auto simpleExpression = oneSortExpression->getMultipleAttributes();
+            auto simpleExpression = oneSortExpression->getAttributeAccess();
             d->variableName = simpleExpression.first;
             d->attributevec = simpleExpression.second;
           }

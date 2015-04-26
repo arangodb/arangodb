@@ -47,7 +47,8 @@ using JsonHelper = triagens::basics::JsonHelper;
 
 AqlItemBlock::AqlItemBlock (size_t nrItems, 
                             RegisterId nrRegs)
-  : _nrItems(nrItems), _nrRegs(nrRegs) {
+  : _nrItems(nrItems),  
+    _nrRegs(nrRegs) {
 
   TRI_ASSERT(nrItems > 0);  // no, empty AqlItemBlocks are not allowed!
 
@@ -56,10 +57,8 @@ AqlItemBlock::AqlItemBlock (size_t nrItems,
     // this compare value is arbitrary, but having so many registers in a single query seems unlikely
     TRI_ASSERT(nrRegs <= ExecutionNode::MaxRegisterId); 
 
-    _data.reserve(nrItems * nrRegs);
-    for (size_t i = 0; i < nrItems * nrRegs; ++i) {
-      _data.emplace_back();
-    }
+    _data.resize(nrItems * nrRegs);
+
     _docColls.reserve(nrRegs);
     for (size_t i = 0; i < nrRegs; ++i) {
       _docColls.emplace_back(nullptr);
@@ -76,18 +75,17 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
   if (exhausted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "exhausted must be false");
   }
+
   _nrItems = JsonHelper::getNumericValue<size_t>(json.json(), "nrItems", 0);
   if (_nrItems == 0) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "nrItems must be > 0");
   }
+
   _nrRegs = JsonHelper::getNumericValue<RegisterId>(json.json(), "nrRegs", 0);
 
   // Initialize the data vector:
   if (_nrRegs > 0) {
-    _data.reserve(_nrItems * _nrRegs);
-    for (size_t i = 0; i < _nrItems * _nrRegs; ++i) {
-      _data.emplace_back();
-    }
+    _data.resize(_nrItems * _nrRegs);
     _docColls.reserve(_nrRegs);
     for (size_t i = 0; i < _nrRegs; ++i) {
       _docColls.emplace_back(nullptr);
@@ -178,17 +176,21 @@ AqlItemBlock::AqlItemBlock (Json const& json) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void AqlItemBlock::destroy () {
-  for (size_t i = 0; i < _nrItems * _nrRegs; i++) {
-    if (! _data[i].isEmpty()) {
-      try {   // can find() really throw???
-        auto it = _valueCount.find(_data[i]);
-        if (it != _valueCount.end()) { // if we know it, we are still responsible
-          TRI_ASSERT_EXPENSIVE(it->second > 0);
+  if (_valueCount.empty()) {
+    return;
+  }
 
-          if (--(it->second) == 0) {
-            _data[i].destroy();
+  for (auto& it : _data) {
+    if (it.requiresDestruction()) {
+      try {   // can find() really throw???
+        auto it2 = _valueCount.find(it);
+        if (it2 != _valueCount.end()) { // if we know it, we are still responsible
+          TRI_ASSERT_EXPENSIVE(it2->second > 0);
+          
+          if (--(it2->second) == 0) {
+            it.destroy();
             try {
-              _valueCount.erase(it);
+              _valueCount.erase(it2);
             }
             catch (...) {
             }
@@ -198,6 +200,9 @@ void AqlItemBlock::destroy () {
       catch (...) {
       }
       // Note that if we do not know it the thing it has been stolen from us!
+    }
+    else {
+      it.erase();
     }
   }
 }
@@ -227,8 +232,10 @@ void AqlItemBlock::shrink (size_t nrItems) {
   for (size_t i = nrItems; i < _nrItems; ++i) {
     for (RegisterId j = 0; j < _nrRegs; ++j) {
       AqlValue& a(_data[_nrRegs * i + j]);
-      if (! a.isEmpty()) {
+
+      if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
+
         if (it != _valueCount.end()) {
           TRI_ASSERT_EXPENSIVE(it->second > 0);
 
@@ -241,8 +248,8 @@ void AqlItemBlock::shrink (size_t nrItems) {
             }
           }
         }
-        a.erase();
       }
+      a.erase();
     }
   }
 
@@ -259,8 +266,10 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
   for (auto reg : toClear) {
     for (size_t i = 0; i < _nrItems; i++) {
       AqlValue& a(_data[_nrRegs * i + reg]);
-      if (! a.isEmpty()) {
+
+      if (a.requiresDestruction()) {
         auto it = _valueCount.find(a);
+
         if (it != _valueCount.end()) {
           TRI_ASSERT_EXPENSIVE(it->second > 0);
 
@@ -268,13 +277,14 @@ void AqlItemBlock::clearRegisters (std::unordered_set<RegisterId> const& toClear
             a.destroy();
             try {
               _valueCount.erase(it);
+              continue; // no need for an extra a.erase() here
             }
             catch (...) {
             }
           }
         }
-        a.erase();
       }
+      a.erase();
     }
   }
 }
@@ -302,6 +312,7 @@ AqlItemBlock* AqlItemBlock::slice (size_t from,
 
       if (! a.isEmpty()) {
         auto it = cache.find(a);
+
         if (it == cache.end()) {
           AqlValue b = a.clone();
           try {
@@ -348,6 +359,7 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
 
       if (! a.isEmpty()) {
         auto it = cache.find(a);
+
         if (it == cache.end()) {
           AqlValue b = a.clone();
           try {
@@ -379,7 +391,8 @@ AqlItemBlock* AqlItemBlock::slice (std::vector<size_t>& chosen,
 ////////////////////////////////////////////////////////////////////////////////
 
 AqlItemBlock* AqlItemBlock::steal (std::vector<size_t>& chosen, 
-                                   size_t from, size_t to) {
+                                   size_t from, 
+                                   size_t to) {
   TRI_ASSERT(from < to && to <= chosen.size());
 
   std::unique_ptr<AqlItemBlock> res(new AqlItemBlock(to - from, _nrRegs));

@@ -4126,11 +4126,11 @@ function AQL_UNSET (value) {
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "UNSET");
   // copy over all that is left
 
-  Object.keys(value).forEach(function(k) {
-    if (keys[k] !== true) {
+  for (var k in value) {
+    if (value.hasOwnProperty(k) && ! keys.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
-  });
+  }
 
   return result;
 }
@@ -4150,11 +4150,11 @@ function AQL_KEEP (value) {
   var result = { }, keys = EXTRACT_KEYS(arguments, 1, "KEEP");
 
   // copy over all that is left
-  Object.keys(keys).forEach(function(k) {
-    if (value.hasOwnProperty(k)) {
+  for (var k in value) {
+    if (value.hasOwnProperty(k) && keys.hasOwnProperty(k)) {
       result[k] = CLONE(value[k]);
     }
-  });
+  }
 
   return result;
 }
@@ -4166,15 +4166,18 @@ function AQL_KEEP (value) {
 function AQL_MERGE () {
   'use strict';
 
-  var result = { }, i;
+  var result = { };
 
   var add = function (element) {
-    Object.keys(element).forEach(function(k) {
-      result[k] = element[k];
-    });
+    for (var k in element) {
+      if (element.hasOwnProperty(k)) {
+        result[k] = element[k];
+      }
+    }
   };
 
-  for (i in arguments) {
+  var j = 0;
+  for (var i in arguments) {
     if (arguments.hasOwnProperty(i)) {
       var element = arguments[i];
 
@@ -4183,8 +4186,13 @@ function AQL_MERGE () {
         return null;
       }
 
-      add(element);
-
+      if (j === 0) {
+        result = element;
+      }
+      else {
+        add(element);
+      }
+      ++j;
     }
   }
 
@@ -5286,7 +5294,7 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
     example = [ { } ];
   }
   if (typeof example === "string") {
-    example = { _id : example };
+    example = [ { _id : example } ];
   }
   if (! Array.isArray(example)) {
     example = [ example ];
@@ -5296,7 +5304,7 @@ function DOCUMENTS_BY_EXAMPLE (collectionList, example) {
     if (typeof e === "string") {
       tmp.push({ _id : e });
     } 
-    else {
+    else if (e !== null) {
       tmp.push(e);
     }
   });

@@ -305,6 +305,14 @@ scripts/unittest is mostly only a wrapper; The backend functionality lives in:
 **js/server/modules/org/arangodb/testing.js**
 
 
+Running foxx tests with a fake foxx Repo
+----------------------------------------
+Since downloading fox apps from github can be cumbersome with shaky DSL
+and DOS'ed github, we can fake it like this:
+
+    export FOXX_BASE_URL="http://germany/fakegit/"
+    ./scripts/unittest single_server --test 'js/server/tests/shell-foxx-manager-spec.js'
+
 arangod Emergency console
 -------------------------
 

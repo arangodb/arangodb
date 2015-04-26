@@ -35,6 +35,7 @@
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "Utils/AqlTransaction.h"
 
 struct TRI_json_t;
@@ -42,7 +43,6 @@ struct TRI_json_t;
 namespace triagens {
   namespace basics {
     class Json;
-    class StringBuffer;
   }
 
   namespace aql {
@@ -50,6 +50,7 @@ namespace triagens {
     class AqlItemBlock;
     struct AqlValue;
     class Ast;
+    class AttributeAccessor;
     class Executor;
     struct V8Expression;
 
@@ -63,7 +64,8 @@ namespace triagens {
         UNPROCESSED,
         JSON,
         V8,
-        SIMPLE
+        SIMPLE,
+        ATTRIBUTE
       };
 
 // -----------------------------------------------------------------------------
@@ -163,22 +165,11 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         AqlValue execute (triagens::arango::AqlTransaction* trx,
-                          std::vector<TRI_document_collection_t const*>&,
-                          std::vector<AqlValue>&, size_t,
+                          AqlItemBlock const*,
+                          size_t,
                           std::vector<Variable*> const&,
                           std::vector<RegisterId> const&,
                           TRI_document_collection_t const**);
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief check whether this is a simple expression
-////////////////////////////////////////////////////////////////////////////////
-
-        inline bool isSimple () {
-          if (_type == UNPROCESSED) {
-            analyzeExpression();
-          }
-          return _type == SIMPLE;
-        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief check whether this is a JSON expression
@@ -210,11 +201,14 @@ namespace triagens {
           if (_type == UNPROCESSED) {
             analyzeExpression();
           }
+
           switch (_type) {
             case JSON:
               return "json";
             case SIMPLE:
               return "simple";
+            case ATTRIBUTE:
+              return "attribute";
             case V8:
               return "v8";
             case UNPROCESSED: {
@@ -238,11 +232,17 @@ namespace triagens {
         bool isReference () const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief check whether this is a constant node
+////////////////////////////////////////////////////////////////////////////////
+        
+        bool isConstant () const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief this gives you ("variable.access", "Reference")
-/// call isSimpleAccessReference in advance to ensure no exceptions.
+/// call isAttributeAccess in advance to ensure no exceptions.
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::pair<std::string, std::string> getMultipleAttributes();
+        std::pair<std::string, std::string> getAttributeAccess();
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stringify an expression
@@ -303,8 +303,7 @@ namespace triagens {
         AqlValue executeSimpleExpression (AstNode const*,
                                           TRI_document_collection_t const**,
                                           triagens::arango::AqlTransaction*,
-                                          std::vector<TRI_document_collection_t const*>&,
-                                          std::vector<AqlValue> const&, 
+                                          AqlItemBlock const*,
                                           size_t,
                                           std::vector<Variable*> const&,
                                           std::vector<RegisterId> const&);
@@ -342,6 +341,8 @@ namespace triagens {
           V8Expression*           _func;
 
           struct TRI_json_t*      _data;
+
+          AttributeAccessor*      _accessor;
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -386,6 +387,12 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::unordered_map<Variable const*, std::unordered_set<std::string>> _attributes;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief buffer for temporary strings
+////////////////////////////////////////////////////////////////////////////////
+
+        triagens::basics::StringBuffer _buffer;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                             public static members

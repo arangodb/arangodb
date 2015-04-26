@@ -89,15 +89,15 @@ AmCharts.themes.light = {
 	// ammap
 	AreasSettings: {
 		alpha: 0.9,
-		color: "#8aa051",
+		color: "#6A873E",
+		// color: "#8aa051",
 		colorSolid: "#ff0000",
-		// colorSolid: "#003767",
 		unlistedAreasAlpha: 0.4,
 		unlistedAreasColor: "#ff0000",
     outlineColor: "#FFFFFF",
 		outlineAlpha: 0.5,
 		outlineThickness: 0.5,
-		rollOverColor: "#8aa051",
+		rollOverColor: "#6A873E",
 		rollOverOutlineColor: "#FFFFFF",
 		selectedOutlineColor: "#FFFFFF",
 		selectedColor: "#f15135",

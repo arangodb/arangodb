@@ -97,7 +97,6 @@ add_library(
     Basics/tri-strings.cpp
     Basics/tri-zip.cpp
     Basics/Utf8Helper.cpp
-    Basics/utf8-helper.cpp
     Basics/vector.cpp
     Basics/voc-errors.cpp
     Basics/voc-mimetypes.cpp

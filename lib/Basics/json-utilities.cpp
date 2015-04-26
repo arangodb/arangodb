@@ -28,10 +28,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/json-utilities.h"
-
-#include "Basics/utf8-helper.h"
-#include "Basics/string-buffer.h"
+#include "Basics/fasthash.h"
 #include "Basics/hashes.h"
+#include "Basics/string-buffer.h"
+#include "Basics/Utf8Helper.h"
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private functions
@@ -51,8 +51,8 @@ static TRI_json_t* MergeRecursive (TRI_memory_zone_t* zone,
   size_t const n = rhs->_value._objects._length;
   for (size_t i = 0; i < n; i += 2) {
     // enumerate all the replacement values
-    auto key = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
-    auto value = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i + 1));
+    auto key = static_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
+    auto value = static_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i + 1));
 
     if (value->_type == TRI_JSON_NULL && nullMeansRemove) {
       // replacement value is a null and we don't want to store nulls => delete attribute from the result
@@ -191,18 +191,20 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
                            TRI_json_t const* rhs,
                            bool useUTF8) {
   // note: both lhs and rhs may be NULL!
-  int lWeight = TypeWeight(lhs);
-  int rWeight = TypeWeight(rhs);
+  {
+    int lWeight = TypeWeight(lhs);
+    int rWeight = TypeWeight(rhs);
 
-  if (lWeight < rWeight) {
-    return -1;
+    if (lWeight < rWeight) {
+      return -1;
+    }
+
+    if (lWeight > rWeight) {
+      return 1;
+    }
+
+    TRI_ASSERT_EXPENSIVE(lWeight == rWeight);
   }
-
-  if (lWeight > rWeight) {
-    return 1;
-  }
-
-  TRI_ASSERT(lWeight == rWeight);
 
   // lhs and rhs have equal weights
   if (lhs == nullptr) {
@@ -213,21 +215,23 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
 
   switch (lhs->_type) {
     case TRI_JSON_UNUSED:
-    case TRI_JSON_NULL:
+    case TRI_JSON_NULL: {
       return 0; // null == null;
+    }
 
-    case TRI_JSON_BOOLEAN:
+    case TRI_JSON_BOOLEAN: {
       if (lhs->_value._boolean == rhs->_value._boolean) {
         return 0;
       }
 
-      if (!lhs->_value._boolean && rhs->_value._boolean) {
+      if (! lhs->_value._boolean && rhs->_value._boolean) {
         return -1;
       }
 
       return 1;
+    }
 
-    case TRI_JSON_NUMBER:
+    case TRI_JSON_NUMBER: {
       if (lhs->_value._number == rhs->_value._number) {
         return 0;
       }
@@ -237,14 +241,17 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       }
 
       return 1;
+    }
 
     case TRI_JSON_STRING:
-    case TRI_JSON_STRING_REFERENCE:
+    case TRI_JSON_STRING_REFERENCE: {
       // same for STRING and STRING_REFERENCE
       int res;
       if (useUTF8) {
-        res = TRI_compare_utf8(lhs->_value._string.data, 
-                               rhs->_value._string.data);
+        res = TRI_compare_utf8(lhs->_value._string.data,
+                               lhs->_value._string.length - 1, 
+                               rhs->_value._string.data,
+                               rhs->_value._string.length - 1);
       }
       else {
         res = strcmp(lhs->_value._string.data, rhs->_value._string.data);
@@ -255,14 +262,13 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
       else if (res > 0) {
         return 1;
       }
-      else {
-        return 0;
-      }
+      return 0;
+    }
 
     case TRI_JSON_ARRAY: {
-      size_t nl = lhs->_value._objects._length;
-      size_t nr = rhs->_value._objects._length;
-      size_t i, n;
+      size_t const nl = lhs->_value._objects._length;
+      size_t const nr = rhs->_value._objects._length;
+      size_t n;
 
       if (nl > nr) {
         n = nl;
@@ -271,14 +277,12 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
         n = nr;
       }
 
-      for (i = 0; i < n; ++i) {
-        TRI_json_t* lhsValue;
-        TRI_json_t* rhsValue;
-        int result;
+      for (size_t i = 0; i < n; ++i) {
+        auto lhsValue = (i >= nl) ? nullptr : static_cast<TRI_json_t const*>(TRI_AtVector(&lhs->_value._objects, i));
+        auto rhsValue = (i >= nr) ? nullptr : static_cast<TRI_json_t const*>(TRI_AtVector(&rhs->_value._objects, i));
+        
+        int result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
 
-        lhsValue = (i >= nl) ? nullptr : reinterpret_cast<TRI_json_t*>(TRI_AtVector(&lhs->_value._objects, i));
-        rhsValue = (i >= nr) ? nullptr : reinterpret_cast<TRI_json_t*>(TRI_AtVector(&rhs->_value._objects, i));
-        result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
         if (result != 0) {
           return result;
         }
@@ -288,30 +292,22 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
     }
 
     case TRI_JSON_OBJECT: {
-      TRI_json_t* keys;
-
       TRI_ASSERT(lhs->_type == TRI_JSON_OBJECT);
       TRI_ASSERT(rhs->_type == TRI_JSON_OBJECT);
 
-      keys = GetMergedKeyList(lhs, rhs);
+      TRI_json_t* keys = GetMergedKeyList(lhs, rhs);
 
       if (keys != nullptr) {
-        size_t i, n;
+        size_t const n = keys->_value._objects._length;
 
-        n = keys->_value._objects._length;
-        for (i = 0; i < n; ++i) {
-          TRI_json_t* keyElement;
-          TRI_json_t* lhsValue;
-          TRI_json_t* rhsValue;
-          int result;
-
-          keyElement = reinterpret_cast<TRI_json_t*>(TRI_AtVector(&keys->_value._objects, i));
+        for (size_t i = 0; i < n; ++i) {
+          auto keyElement = static_cast<TRI_json_t const*>(TRI_AtVector(&keys->_value._objects, i));
           TRI_ASSERT(TRI_IsStringJson(keyElement));
 
-          lhsValue = TRI_LookupObjectJson((TRI_json_t*) lhs, keyElement->_value._string.data); // may be NULL
-          rhsValue = TRI_LookupObjectJson((TRI_json_t*) rhs, keyElement->_value._string.data); // may be NULL
+          TRI_json_t const* lhsValue = TRI_LookupObjectJson(lhs, keyElement->_value._string.data); // may be NULL
+          TRI_json_t const* rhsValue = TRI_LookupObjectJson(rhs, keyElement->_value._string.data); // may be NULL
 
-          result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
+          int result = TRI_CompareValuesJson(lhsValue, rhsValue, useUTF8);
 
           if (result != 0) {
             TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
@@ -321,13 +317,12 @@ int TRI_CompareValuesJson (TRI_json_t const* lhs,
 
         TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, keys);
       }
-
-      return 0;
+      // fall-through to returning 0
     }
 
-    default:
-      return 0;
   }
+  
+  return 0;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -803,10 +798,10 @@ static uint64_t HashJsonRecursive (uint64_t hash,
       size_t const n = object->_value._objects._length;
       uint64_t tmphash = hash;
       for (size_t i = 0;  i < n;  i += 2) {
-        TRI_json_t const* subjson = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         TRI_ASSERT(TRI_IsStringJson(subjson));
         tmphash ^= HashJsonRecursive(hash, subjson);
-        subjson = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i + 1));
+        subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i + 1));
         tmphash ^= HashJsonRecursive(hash, subjson);
       }
       return tmphash;
@@ -816,7 +811,7 @@ static uint64_t HashJsonRecursive (uint64_t hash,
       hash = HashBlock(hash, "list", 4);   // strlen("list")
       size_t const n = object->_value._objects._length;
       for (size_t i = 0;  i < n;  ++i) {
-        TRI_json_t const* subjson = static_cast<TRI_json_t const*>(TRI_AtVector(&object->_value._objects, i));
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
         hash = HashJsonRecursive(hash, subjson);
       }
       return hash;
@@ -872,6 +867,77 @@ uint64_t TRI_HashJsonByAttributes (TRI_json_t const* json,
     }
   }
   return hash;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief workhorse for fasthash computing
+////////////////////////////////////////////////////////////////////////////////
+
+static uint64_t FastHashJsonRecursive (uint64_t hash, 
+                                       TRI_json_t const* object) {
+  if (nullptr == object) {
+    return fasthash64(static_cast<const void*>("null"), 4, hash);
+  }
+
+  switch (object->_type) {
+    case TRI_JSON_UNUSED: {
+      return hash;
+    }
+
+    case TRI_JSON_NULL: {
+      return fasthash64(static_cast<const void*>("null"), 4, hash);
+    }
+
+    case TRI_JSON_BOOLEAN: {
+      if (object->_value._boolean) {
+        return fasthash64(static_cast<const void*>("true"), 4, hash);
+      }
+      return fasthash64(static_cast<const void*>("false"), 5, hash);
+    }
+
+    case TRI_JSON_NUMBER: {
+      return fasthash64(static_cast<const void*>(&object->_value._number), sizeof(object->_value._number), hash);
+    }
+
+    case TRI_JSON_STRING:
+    case TRI_JSON_STRING_REFERENCE: {
+      return fasthash64(static_cast<const void*>(object->_value._string.data), object->_value._string.length, hash);
+    }
+
+    case TRI_JSON_OBJECT: {
+      hash = fasthash64(static_cast<const void*>("object"), 6, hash);
+      size_t const n = object->_value._objects._length;
+      uint64_t tmphash = hash;
+      for (size_t i = 0;  i < n;  i += 2) {
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
+        TRI_ASSERT(TRI_IsStringJson(subjson));
+        tmphash ^= FastHashJsonRecursive(hash, subjson);
+        subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i + 1));
+        tmphash ^= FastHashJsonRecursive(hash, subjson);
+      }
+      return tmphash;
+    }
+
+    case TRI_JSON_ARRAY: {
+      hash = fasthash64(static_cast<const void*>("array"), 5, hash);
+      size_t const n = object->_value._objects._length;
+      for (size_t i = 0;  i < n;  ++i) {
+        auto subjson = static_cast<TRI_json_t const*>(TRI_AddressVector(&object->_value._objects, i));
+        hash = FastHashJsonRecursive(hash, subjson);
+      }
+    }
+  }
+  return hash;   // never reached
+}
+
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief compute a hash value for a JSON document, using fasthash64.
+/// This is slightly faster than the FNV-based hashing
+////////////////////////////////////////////////////////////////////////////////
+
+uint64_t TRI_FastHashJson (TRI_json_t const* json) {
+  return FastHashJsonRecursive(0x012345678, json);
 }
 
 // -----------------------------------------------------------------------------

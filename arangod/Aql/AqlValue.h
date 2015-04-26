@@ -32,6 +32,7 @@
 #include "Aql/Range.h"
 #include "Aql/types.h"
 #include "Basics/JsonHelper.h"
+#include "Basics/StringBuffer.h"
 #include "Utils/V8TransactionContext.h"
 #include "Utils/AqlTransaction.h"
 #include "VocBase/document-collection.h"
@@ -99,7 +100,8 @@ namespace triagens {
       }
 
       AqlValue (int64_t low, int64_t high) 
-        : _type(RANGE) {
+        : _range(nullptr),
+          _type(RANGE) {
         _range = new Range(low, high);
       }
 
@@ -118,15 +120,24 @@ namespace triagens {
 /// @brief return the value type
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline AqlValueType type () const {
+      inline AqlValueType type () const throw() {
         return _type;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief a quick method to decide whether the destroy value needs to be 
+/// called for a value
+////////////////////////////////////////////////////////////////////////////////
+
+      inline bool requiresDestruction () const throw() {
+        return (_type != EMPTY && _type != SHAPED);
       }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief a quick method to decide whether a value is empty
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isEmpty () const {
+      inline bool isEmpty () const throw() {
         return _type == EMPTY;
       }
 
@@ -134,8 +145,16 @@ namespace triagens {
 /// @brief whether or not the AqlValue is a shape
 ////////////////////////////////////////////////////////////////////////////////
 
-      inline bool isShaped () const {
+      inline bool isShaped () const throw() {
         return _type == SHAPED;
+      }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the AqlValue is a JSON
+////////////////////////////////////////////////////////////////////////////////
+
+      inline bool isJson () const throw() {
+        return _type == JSON;
       }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -159,7 +178,7 @@ namespace triagens {
 /// is used when the AqlValue is stolen and stored in another object
 ////////////////////////////////////////////////////////////////////////////////
 
-      void erase () {
+      inline void erase () throw() {
         _type = EMPTY;
         _json = nullptr;
       }
@@ -277,6 +296,13 @@ namespace triagens {
                                      TRI_document_collection_t const*) const;
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief creates a hash value for the AqlValue
+////////////////////////////////////////////////////////////////////////////////
+      
+      uint64_t hash (triagens::arango::AqlTransaction*,
+                     TRI_document_collection_t const*) const;
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief extract an attribute value from the AqlValue 
 /// this will return null if the value is not an object
 ////////////////////////////////////////////////////////////////////////////////
@@ -284,7 +310,8 @@ namespace triagens {
       triagens::basics::Json extractObjectMember (triagens::arango::AqlTransaction*,
                                                   TRI_document_collection_t const*,
                                                   char const*,
-                                                  bool) const;
+                                                  bool,
+                                                  triagens::basics::StringBuffer&) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract a value from an array AqlValue 
@@ -323,7 +350,8 @@ namespace triagens {
                           AqlValue const&,  
                           TRI_document_collection_t const*,
                           AqlValue const&, 
-                          TRI_document_collection_t const*);
+                          TRI_document_collection_t const*,
+                          bool compareUtf8);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
@@ -367,9 +395,6 @@ namespace std {
       std::hash<void const*> ptrHash;
       size_t res = intHash(static_cast<uint32_t>(x._type));
       switch (x._type) {
-        case triagens::aql::AqlValue::EMPTY: {
-          return res;
-        }
         case triagens::aql::AqlValue::JSON: {
           return res ^ ptrHash(x._json);
         }
@@ -382,11 +407,13 @@ namespace std {
         case triagens::aql::AqlValue::RANGE: {
           return res ^ ptrHash(x._range);
         }
-        default: {
-          TRI_ASSERT(false);
-          return 0;
+        case triagens::aql::AqlValue::EMPTY: {
+          return res;
         }
       }
+
+      TRI_ASSERT(false);
+      return 0;
     }
   };
 

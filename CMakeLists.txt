@@ -387,7 +387,7 @@ endif ()
 ### @brief project source
 ################################################################################
 
-include_directories(${PROJECT_SOURCE_DIR})
+include_directories(${PROJECT_SOURCE_DIR} ${CUSTOM_INCLUDES})
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                     COMMON MACROS

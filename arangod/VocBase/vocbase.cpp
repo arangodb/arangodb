@@ -234,6 +234,8 @@ static bool UnloadCollectionCallback (TRI_collection_t* col,
                                       void* data) {
   TRI_vocbase_col_t* collection = static_cast<TRI_vocbase_col_t*>(data);
 
+  TRI_ASSERT(collection != nullptr);
+
   TRI_EVENTUAL_WRITE_LOCK_STATUS_VOCBASE_COL(collection);
 
   if (collection->_status != TRI_VOC_COL_STATUS_UNLOADING) {
@@ -262,6 +264,8 @@ static bool UnloadCollectionCallback (TRI_collection_t* col,
   }
 
   TRI_document_collection_t* document = collection->_collection;
+
+  TRI_ASSERT(document != nullptr);
 
   int res = TRI_CloseDocumentCollection(document, true);
 

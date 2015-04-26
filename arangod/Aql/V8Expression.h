@@ -38,6 +38,7 @@
 namespace triagens {
   namespace aql {
 
+    class AqlItemBlock;
     class Query;
     struct Variable;
 
@@ -88,8 +89,7 @@ namespace triagens {
       AqlValue execute (v8::Isolate* isolate,
                         Query* query,
                         triagens::arango::AqlTransaction*,
-                        std::vector<TRI_document_collection_t const*>&,
-                        std::vector<AqlValue>&,
+                        AqlItemBlock const*,
                         size_t,
                         std::vector<Variable*> const&,
                         std::vector<RegisterId> const&);

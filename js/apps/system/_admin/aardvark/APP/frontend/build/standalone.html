@@ -631,9 +631,14 @@ if (list.length > 0) {
 
 <script id="demoView.ejs" type="text/template">
   <div class="headerBar">
-    <a class="arangoHeader">Demo</a>
+    <div class="pull-left">
+      <a class="arangoHeader">Demo</a>
+    </div>
+    <div class="search-field">
+      <input type="text" id="demoSearchInput" class="search-input" placeholder="Search..."><img id="demoSearchSubmit" class="search-submit-icon">
+    </div>
     <div class="styled-select">
-      <select id="flightQuerySelect" class="query-select">
+      <select id="flightQuerySelect" class="query-select" style="margin-top: 5px; height: 25px">
         <option>Please select your query</option>
         <optgroup label="Example queries"></optgroup>
       </select>
@@ -641,7 +646,7 @@ if (list.length > 0) {
   </div>
 
   <div id="demoContent" class="innerContent">
-    <div id="demo-mapdiv" style="width: 100%; height: 500px;"></div>
+    <div id="demo-mapdiv" style="width: 100%; height: 490px;"><div id="demo-mapdiv-info"></div></div>
   </div>
 </script>
 
@@ -2792,7 +2797,7 @@ var cutByResolution = function (str) {
     </div>
   </footer>
 
-<script src="app.js?version=1429424678903"></script>
+<script src="app.js?version=1429867438930"></script>
 
   </body>
 </html>

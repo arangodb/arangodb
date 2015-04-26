@@ -28,11 +28,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "tri-strings.h"
-
-#include "utf8-helper.h"
-#include <openssl/sha.h>
-
 #include "Basics/conversions.h"
+#include "Basics/Utf8Helper.h"
+#include <openssl/sha.h>
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables

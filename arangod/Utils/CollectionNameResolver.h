@@ -31,12 +31,11 @@
 #define ARANGODB_UTILS_COLLECTION_NAME_RESOLVER_H 1
 
 #include "Basics/Common.h"
-
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
-#include "VocBase/vocbase.h"
-
 #include "Cluster/ServerState.h"
 #include "Cluster/ClusterInfo.h"
+#include "VocBase/vocbase.h"
 
 namespace triagens {
   namespace arango {
@@ -83,7 +82,7 @@ namespace triagens {
         TRI_voc_cid_t getCollectionId (std::string const& name) const {
           if (name[0] >= '0' && name[0] <= '9') {
             // name is a numeric id
-            return (TRI_voc_cid_t) triagens::basics::StringUtils::uint64(name);
+            return static_cast<TRI_voc_cid_t>(triagens::basics::StringUtils::uint64(name));
           }
 
           TRI_vocbase_col_t const* collection = getCollectionStruct(name);
@@ -99,12 +98,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         TRI_vocbase_col_t const* getCollectionStruct (std::string const& name) const {
-          if (! _resolvedNames.empty()) {
-            auto it = _resolvedNames.find(name);
+          auto it = _resolvedNames.find(name);
 
-            if (it != _resolvedNames.end()) {
-              return (*it).second;
-            }
+          if (it != _resolvedNames.end()) {
+            return (*it).second;
           }
 
           TRI_vocbase_col_t const* collection = TRI_LookupCollectionByNameVocBase(_vocbase, name.c_str());
@@ -147,12 +144,10 @@ namespace triagens {
 ////////////////////////////////////////////////////////////////////////////////
 
         std::string getCollectionName (TRI_voc_cid_t cid) const {
-          if (! _resolvedIds.empty()) {
-            auto it = _resolvedIds.find(cid);
+          auto it = _resolvedIds.find(cid);
 
-            if (it != _resolvedIds.end()) {
-              return (*it).second;
-            }
+          if (it != _resolvedIds.end()) {
+            return (*it).second;
           }
 
           std::string name;
@@ -168,7 +163,7 @@ namespace triagens {
               if (found->_planId == 0) {
                 // DBserver local case
                 char* n = TRI_GetCollectionNameByIdVocBase(_vocbase, cid);
-                if (0 != n) {
+                if (n != nullptr) {
                   name = n;
                   TRI_Free(TRI_UNKNOWN_MEM_ZONE, n);
                 }
@@ -213,13 +208,11 @@ namespace triagens {
 
         size_t getCollectionName (char* buffer, 
                                   TRI_voc_cid_t cid) const {
-          if (! _resolvedIds.empty()) {
-            auto it = _resolvedIds.find(cid);
+          auto it = _resolvedIds.find(cid);
 
-            if (it != _resolvedIds.end()) {
-              memcpy(buffer, (*it).second.c_str(), (*it).second.size()); 
-              return (*it).second.size();
-            }
+          if (it != _resolvedIds.end()) {
+            memcpy(buffer, (*it).second.c_str(), (*it).second.size()); 
+            return (*it).second.size();
           }
 
           std::string&& name(getCollectionName(cid));
@@ -228,6 +221,28 @@ namespace triagens {
           return name.size();
         }
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a collection name for a collection id, this implements
+/// some magic in the cluster case: a DBserver in a cluster will automatically
+/// translate the local collection ID into a cluster wide collection name.
+///
+/// the name is copied into <buffer>. the caller is responsible for allocating
+/// a big-enough buffer (that is, at least 64 bytes). no NUL byte is appended
+/// to the buffer. the length of the collection name is returned.
+////////////////////////////////////////////////////////////////////////////////
+
+        void getCollectionName (TRI_voc_cid_t cid,
+                                triagens::basics::StringBuffer& buffer) const {
+          auto const& it = _resolvedIds.find(cid);
+
+          if (it != _resolvedIds.end()) {
+            buffer.appendText((*it).second.c_str(), (*it).second.size());
+            return;
+          }
+
+          std::string&& name(getCollectionName(cid));
+          buffer.appendText(name.c_str(), name.size());
+        }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief look up a cluster-wide collection name for a cluster-wide
@@ -290,6 +305,36 @@ namespace triagens {
 
           memcpy(buffer, "_unknown", strlen("_unknown"));
           return strlen("_unknown");
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief look up a cluster-wide collection name for a cluster-wide
+/// collection id
+////////////////////////////////////////////////////////////////////////////////
+
+        void getCollectionNameCluster (TRI_voc_cid_t cid,
+                                       triagens::basics::StringBuffer& buffer) const {
+          if (! ServerState::instance()->isRunningInCluster()) {
+            return getCollectionName(cid, buffer);
+          }
+
+          int tries = 0;
+
+          while (tries++ < 2) {
+            std::shared_ptr<CollectionInfo> ci
+              = ClusterInfo::instance()->getCollection(_vocbase->_name,
+                             triagens::basics::StringUtils::itoa(cid));
+            std::string name = ci->name();
+
+            if (name.empty()) {
+              ClusterInfo::instance()->flush();
+              continue;
+            }
+            buffer.appendText(name);
+            return;
+          }
+
+          buffer.appendText("_unknown");
         }
 
 // -----------------------------------------------------------------------------

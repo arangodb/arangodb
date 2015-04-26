@@ -520,14 +520,11 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
     case TRI_JSON_NULL:
     case TRI_JSON_BOOLEAN:
     case TRI_JSON_NUMBER:
+    case TRI_JSON_STRING_REFERENCE:
       break;
 
     case TRI_JSON_STRING:
       TRI_DestroyBlob(zone, &object->_value._string);
-      break;
-
-    case TRI_JSON_STRING_REFERENCE:
-      // we will not be destroying the string!!
       break;
 
     case TRI_JSON_OBJECT:
@@ -535,7 +532,7 @@ void TRI_DestroyJson (TRI_memory_zone_t* zone, TRI_json_t* object) {
       size_t const n = object->_value._objects._length;
 
       for (size_t i = 0;  i < n;  ++i) {
-        TRI_json_t* v = static_cast<TRI_json_t*>(TRI_AtVector(&object->_value._objects, i));
+        TRI_json_t* v = static_cast<TRI_json_t*>(TRI_AddressVector(&object->_value._objects, i));
         TRI_DestroyJson(zone, v);
       }
 
