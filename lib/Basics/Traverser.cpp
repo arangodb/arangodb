@@ -241,3 +241,74 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   return new Path(r_vertices, r_edges, _highscore);
 };
 
+/* Here is a proof for the correctness of this algorithm:
+ *
+ * Assume we are looking for a shortest path from vertex A to vertex B.
+ * 
+ * We do Dijkstra from both sides, thread 1 from A in forward direction and
+ * thread 2 from B in backward direction. That is, we administrate a (hash)
+ * table of distances from A to vertices in forward direction and one of
+ * distances from B to vertices in backward direction.
+ * 
+ * We get the following guarantees:
+ * 
+ * When thread 1 is working on a vertex X, then it knows the distance w
+ * from A to X.
+ * 
+ * When thread 2 is working on a vertex Y, then it knows the distance v
+ * from Y to B.
+ * 
+ * When thread 1 is working on a vertex X at distance w from A, then it has
+ * completed the work on all vertices X' at distance < w from A.
+ * 
+ * When thread 2 is working on a vertex Y at distance v to B, then it has
+ * completed the work on all vertices X' at (backward) distance < v to B.
+ * 
+ * This all follows from the standard Dijkstra algorithm.
+ * 
+ * Additionally, we do the following after we complete the normal work on a 
+ * vertex:
+ * 
+ * Thread 1 checks for each vertex X at distance w from A whether thread 2
+ * already knows it. If so, it makes sure that the highscore and intermediate
+ * are set to the total length. Thread 2 does the analogous thing.
+ * 
+ * If Thread 1 finds that vertex X (at distance v to B, say) has already
+ * been completed by thread 2, then we call bingo. Thread 2 does the
+ * analogous thing.
+ * 
+ * We need to prove that the result is a shortest path.
+ * 
+ * Assume that there is a shortest path of length <v+w from A to B. Let X'
+ * be the latest vertex on this path with distance w' < w from A and let Y'
+ * be the next one on the path. Then Y' is at distance w'+z' >= w from A
+ * and thus at distance v' < v to B:
+ * 
+ *    |     >=w      |   v'<v  |
+ *    |  w'<w  |  z' |         |
+ *    A -----> X' -> Y' -----> B
+ * 
+ * Therefore, X' has already been completed by thread 1 and Y' has
+ * already been completed by thread 2. 
+ * 
+ * Therefore, thread 1 has (in this temporal order) done:
+ * 
+ *   1a: discover Y' and store it in table 1 under mutex 1
+ *   1b: lookup X' in thread 2's table under mutex 2
+ *   1c: mark X' as complete in table 1 under mutex 1
+ * 
+ * And thread 2 has (in this temporal order) done:
+ * 
+ *   2a: discover X' and store it in table 2 under mutex 2
+ *   2b: lookup Y' in thread 1's table under mutex 1
+ *   2c: mark Y' as complete in table 2 under mutex 2
+ * 
+ * If 1b has happened before 2a, then 1a has happened before 2a and
+ * thus 2b, so thread 2 has found the highscore w'+z'+v' < v+w.
+ * Otherwise, 1b has happened after 2a and thus thread 1 has found the
+ * highscore.
+ * 
+ * Thus the highscore of this shortest path has already been set and the 
+ * algorithm is correct.
+ */ 
+
