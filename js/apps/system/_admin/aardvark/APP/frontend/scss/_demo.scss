@@ -1,0 +1,11 @@
+div.demo-dropdown-menu {
+  @extend %clickable;
+  @include border-radius(0 0 5px 5px);
+  background-color: $c-bar-bg;
+  margin-bottom: 5px;
+  margin-left: 5px;
+  position: absolute;
+  top: 32px;
+  width: 222px;
+  z-index: 100;
+}
