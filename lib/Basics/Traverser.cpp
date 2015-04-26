@@ -160,7 +160,12 @@ class Searcher : public Thread {
         s2->_done = true;
         b = _myInfo._pq.popMinimal(v, s, true);
       }
-      std::cout << "Thread " << _id << " done." << std::endl;
+      // We can leave this loop only under 2 conditions:
+      // 1) already bingo==true => bingo = true no effect
+      // 2) This queue is empty => if there would be a
+      //    path we would have found it here
+      //    => No path possible. Set bingo, intermediate is empty.
+      _traverser->_bingo = true;
     }
 };
 

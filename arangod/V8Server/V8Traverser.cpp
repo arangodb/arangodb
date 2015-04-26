@@ -45,6 +45,13 @@ using namespace std;
 using namespace triagens::basics;
 using namespace triagens::arango;
 
+/*
+struct DistanceInfo {
+  v8::Local<v8::String> keyDistance; = TRI_V8_ASCII_STRING("direction");
+
+}
+*/
+
 class SimpleEdgeExpander {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -79,23 +86,36 @@ class SimpleEdgeExpander {
     bool usesDist;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief an ID for the expander, just for debuggin
+/// @brief this is the information required to compute weight by a given
+///        attribute. Is only considered if usesDist==true
 ////////////////////////////////////////////////////////////////////////////////
 
-    string id;
+    // DistanceInfo distInfo;
 
   public: 
 
     SimpleEdgeExpander(TRI_edge_direction_e direction,
                        TRI_document_collection_t* edgeCollection,
                        string edgeCollectionName,
-                       CollectionNameResolver* resolver,
-                       string id) 
+                       CollectionNameResolver* resolver)
       : direction(direction), edgeCollection(edgeCollection),
-        resolver(resolver), usesDist(false), id(id)
+        resolver(resolver), usesDist(false)
     {
       edgeIdPrefix = edgeCollectionName + "/";
     };
+
+    /*
+    SimpleEdgeExpander(TRI_edge_direction_e direction,
+                       TRI_document_collection_t* edgeCollection,
+                       string edgeCollectionName,
+                       CollectionNameResolver* resolver,
+                       DistanceInfo distInfo)
+      : direction(direction), edgeCollection(edgeCollection),
+        resolver(resolver), usesDist(true), distInfo(distInfo)
+    {
+      edgeIdPrefix = edgeCollectionName + "/";
+    };
+    */
 
     Traverser::VertexId extractFromId(TRI_doc_mptr_copy_t& ptr) {
       char const* key = TRI_EXTRACT_MARKER_FROM_KEY(&ptr);
@@ -122,7 +142,6 @@ class SimpleEdgeExpander {
 
     void operator() (Traverser::VertexId source,
                      vector<Traverser::Step>& result) {
-      std::cout << "Expander " << id << " called." << std::endl;
       std::vector<TRI_doc_mptr_copy_t> edges;
       TransactionBase fake(true); // Fake a transaction to please checks. 
                                   // This is due to multi-threading
@@ -143,8 +162,7 @@ class SimpleEdgeExpander {
       }
       auto collectionCId = col->_cid;
       edges = TRI_LookupEdgesDocumentCollection(edgeCollection, direction, collectionCId, const_cast<char*>(str + split + 1));
-      std::cout << "Expander " << id << " got edges." << std::endl;
-        
+
       unordered_map<Traverser::VertexId, size_t> candidates;
       Traverser::VertexId from;
       Traverser::VertexId to;
@@ -196,13 +214,11 @@ class SimpleEdgeExpander {
           }
         }
       }
-      std::cout << "Expander " << id << " done." << std::endl;
     }
 };
 
 static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& p) {
   v8::EscapableHandleScope scope(isolate);
-  TRI_GET_GLOBALS();
   v8::Handle<v8::Object> result = v8::Object::New(isolate);
 
   uint32_t const vn = static_cast<uint32_t>(p.vertices.size());
@@ -292,21 +308,23 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
   string const targetVertex = TRI_ObjectToString(args[3]);
 
-  /*
-
-  std::string vertexColName;
-
-  if (! ExtractDocumentHandle(isolate, args[2], vertexColName, key, rid)) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
-  if (key.get() == nullptr) {
-    TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_DOCUMENT_HANDLE_BAD);
-  }
-
-  TRI_ASSERT(key.get() != nullptr);
-  */
-
+  string direction = "outbound";
+  if (args.Length() == 5) {
+    if (! args[4]->IsObject()) {
+      TRI_V8_THROW_TYPE_ERROR("expecting json for <options>");
+    }
+    v8::Handle<v8::Object> options = args[4]->ToObject();
+    v8::Local<v8::String> keyDirection = TRI_V8_ASCII_STRING("direction");
+    if (options->Has(keyDirection) ) {
+      direction = TRI_ObjectToString(options->Get(keyDirection));
+      if (   direction != "outbound"
+          && direction != "inbound"
+          && direction != "any"
+         ) {
+        TRI_V8_THROW_TYPE_ERROR("expecting direction to be 'outbound', 'inbound' or 'any'");
+      }
+    }
+  } 
   // IHHF isCoordinator
 
   // Start Transaction to collect all parts of the path
@@ -348,8 +366,21 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   TRI_document_collection_t* ecol = trx.trxCollection(col->_cid)->_collection->_collection;
   CollectionNameResolver resolver1(vocbase);
   CollectionNameResolver resolver2(vocbase);
-  SimpleEdgeExpander forwardExpander(TRI_EDGE_OUT, ecol, edgeCollectionName, &resolver1, "A");
-  SimpleEdgeExpander backwardExpander(TRI_EDGE_IN, ecol, edgeCollectionName, &resolver2, "B");
+  TRI_edge_direction_e forward;
+  TRI_edge_direction_e backward;
+  if (direction == "outbound") {
+    forward = TRI_EDGE_OUT;
+    backward = TRI_EDGE_IN;
+  } else if (direction == "inbound") {
+    forward = TRI_EDGE_IN;
+    backward = TRI_EDGE_OUT;
+  } else {
+    forward = TRI_EDGE_ANY;
+    backward = TRI_EDGE_ANY;
+  }
+
+  SimpleEdgeExpander forwardExpander(forward, ecol, edgeCollectionName, &resolver1);
+  SimpleEdgeExpander backwardExpander(backward, ecol, edgeCollectionName, &resolver2);
 
   Traverser traverser(forwardExpander, backwardExpander);
   unique_ptr<Traverser::Path> path(traverser.shortestPath(startVertex, targetVertex));
@@ -362,73 +393,4 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   res = trx.finish(res);
 
   TRI_V8_RETURN(result);
-
-  /*
-  // This is how to get the data out of the collections!
-  // Vertices
-  TRI_doc_mptr_copy_t document;
-  res = trx.readSingle(trx.trxCollection(vertexCollectionCId), &document, key.get());
-
-  // Edges TRI_EDGE_OUT is hardcoded
-  std::vector<TRI_doc_mptr_copy_t>&& edges = TRI_LookupEdgesDocumentCollection(ecol, TRI_EDGE_OUT, vertexCollectionCId, key.get());
-  */
-
-  // Add Dijkstra here
-
-  /*
-  // Now build up the result use Subtransactions for each used collection
-  if (res == TRI_ERROR_NO_ERROR) {
-    {
-      // Collect all vertices
-      SingleCollectionReadOnlyTransaction subtrx(new V8TransactionContext(true), vocbase, vertexCollectionCId);
-
-      res = subtrx.begin();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-
-      result = TRI_WrapShapedJson(isolate, subtrx, vertexCollectionCId, document.getDataPtr());
-
-      if (document.getDataPtr() == nullptr) {
-        res = TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND;
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-
-      res = subtrx.finish(res);
-    }
-
-    {
-      // Collect all edges
-      SingleCollectionReadOnlyTransaction subtrx2(new V8TransactionContext(true), vocbase, edgeCollectionCId);
-
-      res = subtrx2.begin();
-
-      if (res != TRI_ERROR_NO_ERROR) {
-        TRI_V8_THROW_EXCEPTION(res);
-      }
-
-      bool error = false;
-
-      uint32_t const n = static_cast<uint32_t>(edges.size());
-      documents = v8::Array::New(isolate, static_cast<int>(n));
-      for (size_t j = 0;  j < n;  ++j) {
-        v8::Handle<v8::Value> doc = TRI_WrapShapedJson(isolate, subtrx2, edgeCollectionCId, edges[j].getDataPtr());
-
-        if (doc.IsEmpty()) {
-          error = true;
-          break;
-        }
-        else {
-          documents->Set(static_cast<uint32_t>(j), doc);
-        }
-      }
-      if (error) {
-        TRI_V8_THROW_EXCEPTION_MEMORY();
-      }
-
-      res = subtrx2.finish(res);
-    }
-  } 
-  */
 }
