@@ -539,8 +539,8 @@ namespace triagens {
             _bingo(false),
             _intermediate(""),
             _forwardExpander(forwardExpander),
-            _backwardExpander(backwardExpander,
-            _bidirectional(bidirectional)) {
+            _backwardExpander(backwardExpander),
+            _bidirectional(bidirectional) {
         };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -615,6 +615,7 @@ namespace triagens {
 
         ExpanderFunction _forwardExpander;
         ExpanderFunction _backwardExpander;
+        bool _bidirectional;
     };
   }
 }
