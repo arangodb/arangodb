@@ -102,6 +102,7 @@ class Searcher : public Thread {
       if (!_traverser->_highscoreSet || total < _traverser->_highscore) {
         _traverser->_highscoreSet = true;
         _traverser->_highscore = total;
+        _traverser->_intermediate = vertex;
       }
 
       // Now the highscore is set!
@@ -110,8 +111,11 @@ class Searcher : public Thread {
       if (s->_done) {
         if (total <= _traverser->_highscore) {
           _traverser->_intermediate = vertex;
-          _traverser->_bingo = true;
         }
+        // Hacki says: If the highscore was set, and even if it is better
+        // than total, then this observation here proves that it will never
+        // be better, so: BINGO.
+        _traverser->_bingo = true;
         // We found a way, but somebody else found a better way, so
         // this is not the shortest path
         return;
@@ -195,12 +199,19 @@ Traverser::Path* Traverser::shortestPath (VertexId const& start,
   // Now the searcher threads:
   Searcher forwardSearcher(this, forward, backward, start,
                            _forwardExpander, "Forward");
-  Searcher backwardSearcher(this, backward, forward, target,
-                            _backwardExpander, "Backward");
+  std::unique_ptr<Searcher> backwardSearcher;
+  if (_bidirectional) {
+    backwardSearcher.reset(new Searcher(this, backward, forward, target,
+                                        _backwardExpander, "Backward"));
+  }
   forwardSearcher.start();
-  backwardSearcher.start();
+  if (_bidirectional) {
+    backwardSearcher->start();
+  }
   forwardSearcher.join();
-  backwardSearcher.join();
+  if (_bidirectional) {
+    backwardSearcher->join();
+  }
 
   if (!_bingo || _intermediate == "") {
     return nullptr;
