@@ -30,12 +30,12 @@
 
 #include "Traverser.h"
 
-#include "Basics/Thread.h"
+#include <thread>
 
 using namespace std;
 using namespace triagens::basics;
 
-class Searcher : public Thread {
+class Searcher {
 
     Traverser* _traverser;
     Traverser::ThreadInfo& _myInfo;
@@ -49,7 +49,7 @@ class Searcher : public Thread {
     Searcher (Traverser* traverser, Traverser::ThreadInfo& myInfo, 
               Traverser::ThreadInfo& peerInfo, Traverser::VertexId start,
               Traverser::ExpanderFunction expander, string id)
-      : Thread(id), _traverser(traverser), _myInfo(myInfo), 
+      : _traverser(traverser), _myInfo(myInfo), 
         _peerInfo(peerInfo), _start(start), _expander(expander), _id(id) {
     }
 
@@ -138,9 +138,7 @@ class Searcher : public Thread {
 /// direction only
 ////////////////////////////////////////////////////////////////////////////////
 
-  public:
-
-    virtual void run () {
+    void run () {
 
       Traverser::VertexId v;
       Traverser::Step s;
@@ -170,6 +168,18 @@ class Searcher : public Thread {
       //    path we would have found it here
       //    => No path possible. Set bingo, intermediate is empty.
       _traverser->_bingo = true;
+    }
+
+    std::thread _thread;
+
+  public:
+
+    void start () {
+      _thread = std::thread(&Searcher::run, this);
+    }
+
+    void join () {
+      _thread.join();
     }
 };
 
