@@ -65,7 +65,6 @@ struct WeightInfo {
 
 class SimpleEdgeExpander {
 
-  private:
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief direction of expansion
 ////////////////////////////////////////////////////////////////////////////////
@@ -140,10 +139,9 @@ class SimpleEdgeExpander {
       return col;
     };
 
-    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t ptr) {
-      char const* key = TRI_EXTRACT_MARKER_KEY(ptr);
-      // AppendAndCopy
-      return edgeIdPrefix.append(key);
+    Traverser::EdgeId extractEdgeId(TRI_doc_mptr_copy_t& ptr) {
+      char const* key = TRI_EXTRACT_MARKER_KEY(&ptr);
+      return edgeIdPrefix + key;
     };
 
     void operator() (Traverser::VertexId source,
@@ -209,7 +207,7 @@ class SimpleEdgeExpander {
       else {
         for (size_t j = 0;  j < edges.size();  ++j) {
           from = extractFromId(edges[j]);
-          to = extractFromId(edges[j]);
+          to = extractToId(edges[j]);
           if (from != source) {
             auto cand = candidates.find(from);
             if (cand == candidates.end()) {
@@ -237,20 +235,20 @@ static v8::Handle<v8::Value> pathIdsToV8(v8::Isolate* isolate, Traverser::Path& 
   v8::Handle<v8::Array> vertices = v8::Array::New(isolate, static_cast<int>(vn));
 
   for (size_t j = 0;  j < vn;  ++j) {
-    vertices->Set(static_cast<uint32_t>(j), TRI_V8_ASCII_STRING(p.vertices[j]));
+    vertices->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.vertices[j].c_str()));
   }
-  result->Set("vertices", vertices);
+  result->Set(TRI_V8_STRING("vertices"), vertices);
 
   uint32_t const en = static_cast<uint32_t>(p.edges.size());
   v8::Handle<v8::Array> edges = v8::Array::New(isolate, static_cast<int>(en));
 
   for (size_t j = 0;  j < en;  ++j) {
-    edges->Set(static_cast<uint32_t>(j), TRI_V8_ASCII_STRING(p.edges[j]));
+    edges->Set(static_cast<uint32_t>(j), TRI_V8_STRING(p.edges[j].c_str()));
   }
   result->Set(TRI_V8_STRING("edges"), edges);
   result->Set(TRI_V8_STRING("distance"), v8::Number::New(isolate, p.weight));
 
-  return result;
+  return scope.Escape<v8::Value>(result);
 };
 
 struct LocalCollectionGuard {
@@ -283,9 +281,6 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
 
   vector<string> readCollections;
   vector<string> writeCollections;
-  TRI_voc_cid_t vertexCollectionCId;
-  TRI_voc_cid_t edgeCollectionCId;
-  TRI_voc_rid_t rid;
 
   double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
   bool embed = false;
@@ -316,6 +311,12 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   if (! args[2]->IsString()) {
     TRI_V8_THROW_TYPE_ERROR("expecting string for <startVertex>");
   }
+  string const startVertex = TRI_ObjectToString(args[2]);
+
+  if (! args[3]->IsString()) {
+    TRI_V8_THROW_TYPE_ERROR("expecting string for <targetVertex>");
+  }
+  string const targetVertex = TRI_ObjectToString(args[3]);
 
   string direction = "outbound";
   bool useWeight = false;
@@ -375,7 +376,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // collection not found
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  vertexCollectionCId = col->_cid;
+
   if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
@@ -385,7 +386,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
     // collection not found
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_COLLECTION_NOT_FOUND);
   }
-  edgeCollectionCId = col->_cid;
+
   if (trx.orderBarrier(trx.trxCollection(col->_cid)) == nullptr) {
     TRI_V8_THROW_EXCEPTION_MEMORY();
   }
