@@ -4845,7 +4845,6 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 /// Return all paths of the graph "social":
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   db._query("RETURN GRAPH_PATHS('social')").toArray();
@@ -4855,7 +4854,6 @@ function AQL_PATHS (vertices, edgeCollection, direction, options) {
 /// length of 1 and a minimal length of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphPaths2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 /// | db._query(
@@ -5976,7 +5974,6 @@ function IS_EXAMPLE_SET (example) {
 /// A route planner example, shortest distance from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_SHORTEST_PATH("
@@ -5990,7 +5987,6 @@ function IS_EXAMPLE_SET (example) {
 /// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphShortestPaths2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_SHORTEST_PATH("
@@ -6122,7 +6118,6 @@ function AQL_TRAVERSAL (vertexCollection,
 /// A route planner example, start a traversal from Hamburg :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
@@ -6134,7 +6129,6 @@ function AQL_TRAVERSAL (vertexCollection,
 /// so only the direct neighbors of Hamburg are returned:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversal2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_TRAVERSAL('routeplanner', 'germanCity/Hamburg'," +
@@ -6247,7 +6241,6 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// A route planner example, distance from all french to all german cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_DISTANCE_TO("
@@ -6261,7 +6254,6 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// A route planner example, distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDistanceTo2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_DISTANCE_TO("
@@ -6320,7 +6312,6 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 /// A route planner example, start a traversal from Hamburg :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg'," +
@@ -6332,7 +6323,6 @@ function AQL_GRAPH_DISTANCE_TO (graphName,
 ///  only the direct neighbors of Hamburg are returned:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphTraversalTree2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_TRAVERSAL_TREE('routeplanner', 'germanCity/Hamburg',"+
@@ -6503,7 +6493,6 @@ function AQL_NEIGHBORS (vertexCollection,
 /// 700 or 600.:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_NEIGHBORS("
@@ -6514,7 +6503,6 @@ function AQL_NEIGHBORS (vertexCollection,
 /// A route planner example, all outbound neighbors of Hamburg with a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphNeighbors2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_NEIGHBORS("
@@ -6643,7 +6631,6 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 /// A route planner example, all edges to locations with a distance of either 700 or 600.:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_EDGES("
@@ -6654,7 +6641,6 @@ function AQL_GRAPH_NEIGHBORS (graphName,
 /// A route planner example, all outbound edges of Hamburg with a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdges2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_EDGES("
@@ -6711,7 +6697,6 @@ function AQL_GRAPH_EDGES (graphName,
 /// A route planner example, all vertices of the graph
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_VERTICES("
@@ -6721,7 +6706,6 @@ function AQL_GRAPH_EDGES (graphName,
 /// A route planner example, all vertices from collection *germanCity*.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphVertices2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_VERTICES("
@@ -6802,7 +6786,6 @@ function TRANSFER_GRAPH_NEIGHBORS_RESULT (result)  {
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
@@ -6814,7 +6797,6 @@ function TRANSFER_GRAPH_NEIGHBORS_RESULT (result)  {
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCommonNeighbors2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_COMMON_NEIGHBORS("
@@ -6913,7 +6895,6 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphProperties1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
@@ -6924,7 +6905,6 @@ function AQL_GRAPH_COMMON_NEIGHBORS (graphName,
 /// A route planner example, all cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphProperties2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("FOR e IN GRAPH_COMMON_PROPERTIES("
@@ -7102,7 +7082,6 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// A route planner example, the absolute eccentricity of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY('routeplanner', {})").toArray();
@@ -7112,7 +7091,6 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
@@ -7123,7 +7101,6 @@ function TRAVERSAL_ABSOLUTE_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsEccentricity3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_ECCENTRICITY("
@@ -7202,7 +7179,6 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// A route planner example, the eccentricity of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEccentricity1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ECCENTRICITY('routeplanner')").toArray();
@@ -7212,7 +7188,6 @@ function TRAVERSAL_ECCENTRICITY_VISITOR (config, result, node, path) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEccentricity2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ECCENTRICITY('routeplanner', {weight : 'distance'})"
@@ -7323,7 +7298,6 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 /// A route planner example, the absolute closeness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS('routeplanner', {})").toArray();
@@ -7333,7 +7307,6 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
@@ -7344,7 +7317,6 @@ function TRAVERSAL_ABSOLUTE_CLOSENESS_VISITOR (config, result, node, path) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsCloseness3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_CLOSENESS("
@@ -7470,7 +7442,6 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 /// A route planner example, the closeness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_CLOSENESS('routeplanner')").toArray();
@@ -7480,7 +7451,6 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_CLOSENESS("
@@ -7491,7 +7461,6 @@ function TRAVERSAL_CLOSENESS_VISITOR (config, result, node, path) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphCloseness3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_CLOSENESS("
@@ -7575,7 +7544,6 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 /// A route planner example, the absolute betweenness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS('routeplanner', {})").toArray();
@@ -7585,7 +7553,6 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
@@ -7596,7 +7563,6 @@ function AQL_GRAPH_CLOSENESS (graphName, options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphAbsBetweenness3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_ABSOLUTE_BETWEENNESS("
@@ -7682,7 +7648,6 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// A route planner example, the betweenness of all locations.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_BETWEENNESS('routeplanner')").toArray();
@@ -7692,7 +7657,6 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_BETWEENNESS('routeplanner', {weight : 'distance'})").toArray();
@@ -7702,7 +7666,6 @@ function AQL_GRAPH_ABSOLUTE_BETWEENNESS (graphName, options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphBetweenness3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_BETWEENNESS("
@@ -7763,7 +7726,6 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 /// A route planner example, the radius of the graph.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_RADIUS('routeplanner')").toArray();
@@ -7773,7 +7735,6 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_RADIUS('routeplanner', {weight : 'distance'})").toArray();
@@ -7783,7 +7744,6 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphRadius3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_RADIUS("
@@ -7854,7 +7814,6 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 /// A route planner example, the diameter of the graph.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_DIAMETER('routeplanner')").toArray();
@@ -7864,7 +7823,6 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 /// This considers the actual distances.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 ///   db._query("RETURN GRAPH_DIAMETER('routeplanner', {weight : 'distance'})").toArray();
@@ -7874,7 +7832,6 @@ function AQL_GRAPH_RADIUS (graphName, options) {
 /// outbound paths.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphDiameter3}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | db._query("RETURN GRAPH_DIAMETER("

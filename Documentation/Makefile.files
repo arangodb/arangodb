@@ -74,7 +74,7 @@ examples:
 		@srcdir@/arangod/RestHandler \
 		@srcdir@/arangod/V8Server \
 		@srcdir@/lib/Admin \
-		> /tmp/arangosh.examples
+		> /tmp/arangosh.examples.js
 
 	$(MAKE) start-server PID=$(PID) SERVER_START="--server.endpoint tcp://$(VOCHOST):$(VOCPORT) --server.disable-authentication true" PROTO=http
 
@@ -84,7 +84,7 @@ examples:
 		-c @srcdir@/etc/relative/arangosh.conf \
 		--server.password "" \
 		--server.endpoint tcp://$(VOCHOST):$(VOCPORT) \
-		--javascript.execute /tmp/arangosh.examples
+		--javascript.execute /tmp/arangosh.examples.js
 
 ## -----------------------------------------------------------------------------
 ## --SECTION--                                                       END-OF-FILE
