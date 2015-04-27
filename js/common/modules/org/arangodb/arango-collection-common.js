@@ -176,26 +176,26 @@ ArangoCollection.prototype.toString = function () {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionAll}
+/// @EXAMPLE_ARANGOSH_OUTPUT{001_collectionAll}
 /// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
+///   db.five.save({ name : "one" });
+///   db.five.save({ name : "two" });
+///   db.five.save({ name : "three" });
+///   db.five.save({ name : "four" });
+///   db.five.save({ name : "five" });
 ///   db.five.all().toArray();
 /// ~ db._drop("five");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// Use *limit* to restrict the documents:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionAllNext}
+/// @EXAMPLE_ARANGOSH_OUTPUT{002_collectionAllNext}
 /// ~ db._create("five");
-/// ~ db.five.save({ name : "one" });
-/// ~ db.five.save({ name : "two" });
-/// ~ db.five.save({ name : "three" });
-/// ~ db.five.save({ name : "four" });
-/// ~ db.five.save({ name : "five" });
+///   db.five.save({ name : "one" });
+///   db.five.save({ name : "two" });
+///   db.five.save({ name : "three" });
+///   db.five.save({ name : "four" });
+///   db.five.save({ name : "five" });
 ///   db.five.all().limit(2).toArray();
 /// ~ db._drop("five");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -256,11 +256,11 @@ ArangoCollection.prototype.all = function () {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExample}
+/// @EXAMPLE_ARANGOSH_OUTPUT{003_collectionByExample}
 /// ~ db._create("users");
-/// ~ db.users.save({ name: "Gerhard" });
-/// ~ db.users.save({ name: "Helmut" });
-/// ~ db.users.save({ name: "Angela" });
+///   db.users.save({ name: "Gerhard" });
+///   db.users.save({ name: "Helmut" });
+///   db.users.save({ name: "Angela" });
 ///   db.users.all().toArray();
 ///   db.users.byExample({ "_id" : "users/20" }).toArray();
 ///   db.users.byExample({ "name" : "Gerhard" }).toArray();
@@ -270,11 +270,11 @@ ArangoCollection.prototype.all = function () {
 ///
 /// Use *next* to loop over all documents:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionByExampleNext}
+/// @EXAMPLE_ARANGOSH_OUTPUT{004_collectionByExampleNext}
 /// ~ db._create("users");
-/// ~ db.users.save({ name: "Gerhard" });
-/// ~ db.users.save({ name: "Helmut" });
-/// ~ db.users.save({ name: "Angela" });
+///   db.users.save({ name: "Gerhard" });
+///   db.users.save({ name: "Helmut" });
+///   db.users.save({ name: "Angela" });
 ///   var a = db.users.byExample( {"name" : "Angela" } );
 ///   while (a.hasNext()) print(a.next());
 /// ~ db._drop("users");
@@ -446,12 +446,12 @@ ArangoCollection.prototype.byConditionSkiplist = function (index, condition) {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionRange}
+/// @EXAMPLE_ARANGOSH_OUTPUT{005_collectionRange}
 /// ~ db._create("old");
-/// ~ db.old.ensureSkiplist("age");
-/// ~ db.old.save({ age: 15 });
-/// ~ db.old.save({ age: 25 });
-/// ~ db.old.save({ age: 30 });
+///   db.old.ensureSkiplist("age");
+///   db.old.save({ age: 15 });
+///   db.old.save({ age: 25 });
+///   db.old.save({ age: 30 });
 ///   db.old.range("age", 10, 30).toArray();
 /// ~ db._drop("old")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -482,12 +482,12 @@ ArangoCollection.prototype.range = function (name, left, right) {
 ///
 /// Use *toArray* to get all documents at once:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionClosedRange}
+/// @EXAMPLE_ARANGOSH_OUTPUT{006_collectionClosedRange}
 /// ~ db._create("old");
-/// ~ db.old.ensureSkiplist("age");
-/// ~ db.old.save({ age: 15 });
-/// ~ db.old.save({ age: 25 });
-/// ~ db.old.save({ age: 30 });
+///   db.old.ensureSkiplist("age");
+///   db.old.save({ age: 15 });
+///   db.old.save({ age: 25 });
+///   db.old.save({ age: 30 });
 ///   db.old.closedRange("age", 10, 30).toArray();
 /// ~ db._drop("old")
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -680,19 +680,23 @@ ArangoCollection.prototype.geo = function(loc, order) {
 ///
 /// To get the nearst two locations:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionNear}
+/// @EXAMPLE_ARANGOSH_OUTPUT{007_collectionNear}
+/// ~ db._create("geo");
+///   db.geo.ensureGeoIndex("loc");
+///   for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
 ///   db.geo.near(0,0).limit(2).toArray();
+/// ~ db._drop("geo");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// If you need the distance as well, then you can use the *distance*
 /// operator:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionNearDistance}
-/// ~ db._drop("geo");
+/// @EXAMPLE_ARANGOSH_OUTPUT{008_collectionNearDistance}
 /// ~ db._create("geo");
-/// ~ db.geo.ensureGeoIndex("loc");
-/// ~ for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
+///   db.geo.ensureGeoIndex("loc");
+///   for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
 ///   db.geo.near(0, 0).distance().limit(2).toArray();
+/// ~ db._drop("geo");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -730,12 +734,12 @@ ArangoCollection.prototype.near = function (lat, lon) {
 ///
 /// To find all documents within a radius of 2000 km use:
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{collectionWithin}
-/// ~ db._drop("geo");
+/// @EXAMPLE_ARANGOSH_OUTPUT{009_collectionWithin}
 /// ~ db._create("geo");
 /// ~ db.geo.ensureGeoIndex("loc");
 /// ~ for (var i = -90;  i <= 90;  i += 10) { for (var j = -180; j <= 180; j += 10) { db.geo.save({ name : "Name/" + i + "/" + j, loc: [ i, j ] }); } }
 ///   db.geo.within(0, 0, 2000 * 1000).distance().toArray();
+/// ~ db._drop("geo");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
 /// @endDocuBlock
@@ -919,7 +923,7 @@ ArangoCollection.prototype.iterate = function (iterator, options) {
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionRemoveByExample}
+/// @EXAMPLE_ARANGOSH_OUTPUT{010_documentsCollectionRemoveByExample}
 /// ~ db._create("example");
 /// ~ db.example.save({ Hello : "world" });
 ///   db.example.removeByExample( {Hello : "world"} );
@@ -964,9 +968,9 @@ ArangoCollection.prototype.removeByExample = function (example, waitForSync, lim
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionReplaceByExample}
+/// @EXAMPLE_ARANGOSH_OUTPUT{011_documentsCollectionReplaceByExample}
 /// ~ db._create("example");
-/// ~ db.example.save({ Hello : "world" });
+///   db.example.save({ Hello : "world" });
 ///   db.example.replaceByExample({ Hello: "world" }, {Hello: "mars"}, false, 5);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -1016,10 +1020,10 @@ ArangoCollection.prototype.replaceByExample = function (example, newValue, waitF
 ///
 /// @EXAMPLES
 ///
-/// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionUpdateByExample}
+/// @EXAMPLE_ARANGOSH_OUTPUT{012_documentsCollectionUpdateByExample}
 /// ~ db._create("example");
-/// ~ db.example.save({ Hello : "world" });
-///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", Hello: "bar" }, false);
+///   db.example.save({ Hello : "world" });
+///   db.example.updateByExample({ Hello: "world" }, { Hello: "foo", World: "bar" }, false);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock

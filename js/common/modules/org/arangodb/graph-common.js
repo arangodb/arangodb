@@ -362,12 +362,17 @@ Edge.prototype.getOutVertex = function () {
 /// @EXAMPLES
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{edgeGetPeerVertex}
-/// ~ db._create("example");
-///   v1 = example.addVertex("1");
+/// ~ db._drop("v");
+/// ~ db._drop("e");
+///   Graph = require("org/arangodb/graph-blueprint").Graph;
+///   g = new Graph("example", "v", "e");
+///   v1 = g.addVertex("1");
 ///   v2 = g.addVertex("2");
-///   e = g.addEdge(v1, v2, "1->2", "knows");
+///   e = g.addEdge(v1, v2, "1-to-2", "knows");
 ///   e.getPeerVertex(v1);
-/// ~ db._drop("example");
+/// ~ Graph.drop("example");
+/// ~ db._drop("v");
+/// ~ db._drop("e");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ////////////////////////////////////////////////////////////////////////////////

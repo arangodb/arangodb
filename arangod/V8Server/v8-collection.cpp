@@ -1514,7 +1514,7 @@ static void RemoveVocbaseCol (bool useCollection,
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameUnknown}
 /// ~ db._create("example");
 /// ~ var myid = db.example.insert({_key: "2873916"});
-///   db.example.document("example/4472917");
+///   db.example.document("example/4472917"); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -1522,7 +1522,7 @@ static void RemoveVocbaseCol (bool useCollection,
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{documentsCollectionNameHandle}
 /// ~ db._create("example");
-///   db.example.document("");
+///   db.example.document(""); // xpError(ERROR_ARANGO_DOCUMENT_HANDLE_BAD)
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2344,7 +2344,7 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 ///   a1 = db.example.insert({ a : 1 });
 ///   db.example.document(a1);
 ///   db.example.remove(a1);
-///   db.example.document(a1);
+///   db.example.document(a1); // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2354,9 +2354,9 @@ static void JS_PropertiesVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& 
 /// ~ db._create("example");
 ///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db.example.replace(a1, { a : 2 });
-///   db.example.remove(a1);
+///   db.example.remove(a1);       // xpError(ERROR_ARANGO_CONFLICT);
 ///   db.example.remove(a1, true);
-///   db.example.document(a1);
+///   db.example.document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2498,7 +2498,7 @@ static void JS_RenameVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 /// ~ db._create("example");
 ///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db.example.replace(a1, { a : 2 });
-///   a3 = db.example.replace(a1, { a : 3 });
+///   a3 = db.example.replace(a1, { a : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -2708,7 +2708,7 @@ static void JS_RotateVocbaseCol (const v8::FunctionCallbackInfo<v8::Value>& args
 /// ~ db._create("example");
 ///   a1 = db.example.insert({"a" : 1});
 ///   a2 = db.example.update(a1, {"b" : 2, "c" : 3});
-///   a3 = db.example.update(a1, {"d" : 4});
+///   a3 = db.example.update(a1, {"d" : 4}); // xpError(ERROR_ARANGO_CONFLICT);
 ///   a4 = db.example.update(a2, {"e" : 5, "f" : 6 });
 ///   db.example.document(a4);
 ///   a5 = db.example.update(a4, {"a" : 1, c : 9, e : 42 });
@@ -2907,10 +2907,12 @@ static string GetId (const v8::FunctionCallbackInfo<v8::Value>& args, int which)
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{SaveEdgeCol}
 /// ~ db._create("vertex");
+/// ~ db._createEdgeCollection("relation");
 ///   v1 = db.vertex.insert({ name : "vertex 1" });
 ///   v2 = db.vertex.insert({ name : "vertex 2" });
 ///   e1 = db.relation.insert(v1, v2, { label : "knows" });
 ///   db._document(e1);
+/// ~ db._drop("relation");
 /// ~ db._drop("vertex");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3851,7 +3853,7 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 /// ~ db._create("example");
 ///   a1 = db.example.insert({ a : 1 });
 ///   db._remove(a1);
-///   db._remove(a1);
+///   db._remove(a1);  // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND);
 ///   db._remove(a1, true);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -3862,9 +3864,9 @@ static void JS_CompletionsVocbase (const v8::FunctionCallbackInfo<v8::Value>& ar
 /// ~ db._create("example");
 ///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db._replace(a1, { a : 2 });
-///   db._remove(a1);
+///   db._remove(a1);       // xpError(ERROR_ARANGO_CONFLICT)
 ///   db._remove(a1, true);
-///   db._document(a1);
+///   db._document(a1);     // xpError(ERROR_ARANGO_DOCUMENT_NOT_FOUND)
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -3995,7 +3997,7 @@ static void JS_ExistsVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) {
 /// ~ db._create("example");
 ///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db._replace(a1, { a : 2 });
-///   a3 = db._replace(a1, { a : 3 });
+///   a3 = db._replace(a1, { a : 3 });  // xpError(ERROR_ARANGO_CONFLICT);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -4059,7 +4061,7 @@ static void JS_ReplaceVocbase (const v8::FunctionCallbackInfo<v8::Value>& args) 
 /// ~ db._create("example");
 ///   a1 = db.example.insert({ a : 1 });
 ///   a2 = db._update(a1, { b : 2 });
-///   a3 = db._update(a1, { c : 3 });
+///   a3 = db._update(a1, { c : 3 }); // xpError(ERROR_ARANGO_CONFLICT);
 /// ~ db._drop("example");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///

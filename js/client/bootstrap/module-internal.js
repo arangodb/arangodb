@@ -157,7 +157,7 @@ exports.appendCurlRequest = function (appender) {
     var curl;
     var i;
 
-    if (typeof body !== 'string') {
+    if ((typeof body !== 'string') && (body !== undefined)) {
       body = exports.inspect(body);
     }
 
@@ -204,14 +204,14 @@ exports.appendCurlRequest = function (appender) {
 
     curl += "--dump - http://localhost:8529" + url;
 
-    appender(curl + "\n");
+    appender(curl);
 
     if (body !== undefined && body !== "" && body) {
-      appender(body + "\n");
+      appender(" <<EOF\n");
+      appender(body);
+      appender("\nEOF");
     }
-
-    appender("\n");
-
+    appender("\n\n");
     return response;
   };
 };
