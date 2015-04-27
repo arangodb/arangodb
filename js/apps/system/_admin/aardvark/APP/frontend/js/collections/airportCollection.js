@@ -36,6 +36,34 @@
       });
     },
 
+    getShortestFlight: function(from, to, callback) {
+      $.ajax({
+        type: "POST",
+        url: "/_api/cursor",
+        data: JSON.stringify({
+          query: "RETURN SHORTEST_PATH(@@flights,@@airports,@start,@dest,'outbound', {distance: 'Dist'})",
+          bindVars: {
+            "@flights": this.collectionName,
+            "@airports": "airports",
+            "start": "airports/" + from,
+            "dest": "airports/" + to
+          }
+        }),
+        contentType: "application/json",
+        processData: false,
+        success: function (data) {
+          _.each(data.result, function(airport) {
+            self.add(airport);
+          });
+          if (callback) {
+            callback();
+          }
+        },
+        error: function (data) {
+        }
+      });
+    },
+
     getFlightDistribution: function(callback) {
       $.ajax({
         type: "POST",

@@ -35,15 +35,7 @@
     */
 
     lineColors: [
-      'rgb(255,255,229)',
-      'rgb(255,247,188)',
-      'rgb(254,227,145)',
-      'rgb(254,196,79)',
-      'rgb(254,153,41)',
-      'rgb(236,112,20)',
-      'rgb(204,76,2)',
-      'rgb(153,52,4)',
-      'rgb(102,37,6)'
+      'rgb(255,255,229)'
     ],
 
     airportColor: "#222222",
@@ -278,25 +270,26 @@
         var i = 0;
 
         self.resetDataHighlighting();
-        var least = Math.log(list[0].count);
-        var best = Math.log(list[list.length - 1].count);
-        var m = 2 /(best - least);
+        var least = list[0].count^3;
+        var best = list[list.length - 1].count^3;
+        var m = 2.5 /(best - least);
         var distribute = function(x) {
           return m * x - m * least;
         };
 
         for (i = 0; i < list.length; ++i) {
           var to = list[i].Dest;
-          var count = Math.log(list[i].count);
+          var count = list[i].count^3;
           self.setAirportColor(to, self.airportHighlightColor);
 
           var toSize = distribute(count);
-          console.log(toSize);
-          if (toSize <= 0.25) {
-            toSize = 0.25;
-          }
+          toSize += 0.5;
 
           self.setAirportSize(to, toSize);
+          if (i > list.length - 11) {
+            // Top 10 Color
+            self.setAirportColor(to, "rgb(236,112,20)");
+          }
         }
 
         if ($("#demo-mapdiv-info").length === 0) {
@@ -385,8 +378,7 @@
     },
 
     calculateFlightColor: function(length, pos) {
-      var intervallColor = length/this.lineColors.length;
-      return this.lineColors[Math.floor(pos/intervallColor)];
+      return this.lineColors[0];
     },
 
     zoomToAirport: function (id) {
@@ -454,7 +446,7 @@
           svgPath: self.MAPtarget,
           color: self.airportColor,
           scale: self.airportScale,
-          selectedScale: 1.5,
+          selectedScale: 1,
           title: airport.City + " [" + airport._key + "]<br>" + airport.Name,
           rollOverColor: self.airportHoverColor,
           selectable: true
