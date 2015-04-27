@@ -126,6 +126,7 @@ namespace triagens {
         // First update the reference count, if this fails, the value is empty
         if (value.requiresDestruction()) {
           auto it = _valueCount.find(value);
+
           if (it == _valueCount.end()) {
             TRI_IF_FAILURE("AqlItemBlock::setValue") {
               THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
