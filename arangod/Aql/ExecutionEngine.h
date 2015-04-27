@@ -31,12 +31,12 @@
 #define ARANGODB_AQL_EXECUTION_ENGINE_H 1
 
 #include "Basics/Common.h"
-
-#include "arangod/Aql/AqlItemBlock.h"
-#include "arangod/Aql/ExecutionBlock.h"
-#include "arangod/Aql/ExecutionPlan.h"
-#include "arangod/Aql/ExecutionStats.h"
-#include "arangod/Aql/QueryRegistry.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/AqlItemBlockManager.h"
+#include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionStats.h"
+#include "Aql/QueryRegistry.h"
 #include "Utils/AqlTransaction.h"
 
 namespace triagens {
@@ -206,6 +206,22 @@ namespace triagens {
 
         void addBlock (ExecutionBlock*);
 
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _lockedShards
+////////////////////////////////////////////////////////////////////////////////
+
+        void setLockedShards (std::unordered_set<std::string>* lockedShards) {
+          _lockedShards = lockedShards;
+        }
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief _lockedShards
+////////////////////////////////////////////////////////////////////////////////
+
+        std::unordered_set<std::string>* lockedShards () const {
+          return _lockedShards;
+        }
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                  public variables
 // -----------------------------------------------------------------------------
@@ -220,21 +236,11 @@ namespace triagens {
         ExecutionStats               _stats;
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief _lockedShards
+/// @brief memory recycler for AqlItemBlocks
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<std::string>* lockedShards () {
-          return _lockedShards;
-        }
-        
-////////////////////////////////////////////////////////////////////////////////
-/// @brief _lockedShards
-////////////////////////////////////////////////////////////////////////////////
+        AqlItemBlockManager          _itemBlockManager;
 
-        void setLockedShards (std::unordered_set<std::string>* lockedShards) {
-          _lockedShards = lockedShards;
-        }
-        
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
 // -----------------------------------------------------------------------------
