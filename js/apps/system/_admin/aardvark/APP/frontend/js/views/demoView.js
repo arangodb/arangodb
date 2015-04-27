@@ -223,6 +223,7 @@
         this.loadAirportData("CWA");
       }
       if (currentQueryPos === "5") {
+        delete this.startPoint;
         this.loadFlightDistData();
       }
     },
@@ -519,6 +520,29 @@
       return undefined;
     },
 
+    loadShortestPath: function(from, to) {
+      var self = this;
+      this.airportCollection.getShortestFlight(from, to, function(list) {
+        console.log(list);
+        if (!list.vertices) {
+          alert("Sorry there is no flight");
+        }
+        var vertices = list.vertices;
+        for (var i = 0; i < vertices.length - 1; ++i) {
+          var from = vertices[i].split("/")[1];
+          var to = vertices[i+1].split("/")[1];
+          self.addFlightLine(from, to, 1,
+            self.calculateFlightColor(vertices.length, i),
+            self.calculateFlightWidth(vertices.length, i),
+            2,
+            true,
+            false
+          );
+        }
+        self.map.validateData();
+      });
+    },
+
     renderMap: function() {
 
       var self = this;
@@ -537,8 +561,17 @@
           images: self.imageData,
           getAreasFromMap: true
         },
-        clickMapObject: function(mapObject) {
-          self.loadAirportData(mapObject.id);
+        clickMapObject: function(mapObject, event) {
+          if (mapObject.id !== undefined) {
+            if (event.shiftKey && self.hasOwnProperty("startPoint")) {
+              self.resetDataHighlighting();
+              self.removeFlightLines(true);
+              self.loadShortestPath(self.startPoint, mapObject.id);
+            } else {
+              self.startPoint = mapObject.id;
+              self.loadAirportData(mapObject.id);
+            }
+          }
         },
         balloon: {
           adjustBorderColor: true,
