@@ -1589,12 +1589,24 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
   // We require exactly 1 or exactly 2 arguments -- anything else is an error
   // ...........................................................................
 
-  if (args.Length() < 1 || args.Length() > 2) {
-    TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>)");
+  if (args.Length() < 1 || args.Length() > 3) {
+    TRI_V8_THROW_EXCEPTION_USAGE("_create(<name>, <properties>, <type>)");
   }
 
   if (TRI_GetOperationModeServer() == TRI_VOCBASE_MODE_NO_CREATE) {
     TRI_V8_THROW_EXCEPTION(TRI_ERROR_ARANGO_READ_ONLY);
+  }
+
+  // optional, third parameter can override collection type
+  if (args.Length() == 3 && args[2]->IsString()) {
+
+    std::string typeString = TRI_ObjectToString(args[2]);
+    if (typeString == "edge") {
+      collectionType = TRI_COL_TYPE_EDGE;
+    }
+    else if (typeString == "document") {
+      collectionType = TRI_COL_TYPE_DOCUMENT;
+    }
   }
 
 

@@ -1,6 +1,8 @@
 v2.5.3 (XXXX-XX-XX)
 -------------------
 
+* issue #1318: Inconsistent db._create() syntax
+
 * issue #1315: queries to a collection fail with an empty response if the 
   collection contains specific JSON data
 
