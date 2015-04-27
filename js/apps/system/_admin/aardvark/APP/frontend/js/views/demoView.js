@@ -53,7 +53,7 @@
     airportHighlightColor: "#FF4E4E",
     airportHoverColor: "#ff8f35",
 
-    airportScale: 0.5,
+    airportScale: 0.7,
     airportHighligthScale: 0.95,
 
     imageData: [],
@@ -251,7 +251,7 @@
     },
 
     getMinMax: function(array) {
-    var min = 0, max = 0;
+      var min = 0, max = 0;
 
       _.each(array, function(object) {
         if (min === 0) {
@@ -292,7 +292,7 @@
         self.resetDataHighlighting();
         var least = list[0].count^3;
         var best = list[list.length - 1].count^3;
-        var m = 2.5 /(best - least);
+        var m = 2.625 /(best - least);
         var distribute = function(x) {
           return m * x - m * least;
         };
@@ -303,7 +303,7 @@
           self.setAirportColor(to, self.airportHighlightColor);
 
           var toSize = distribute(count);
-          toSize += 0.5;
+          toSize += 0.625;
 
           self.setAirportSize(to, toSize);
           if (i > list.length - 6) {
@@ -357,7 +357,7 @@
 
         var least = list[0].count^3;
         var best = list[list.length - 1].count^3;
-        var m = 2.5 /(best - least);
+        var m = 2.625 /(best - least);
         var distribute = function(x) {
           return m * x - m * least;
         };
@@ -365,7 +365,7 @@
         for (i = 0; i < list.length; ++i) {
           var count = list[i].count^3;
           var toSize = distribute(count);
-          toSize += 0.5;
+          toSize += 0.625;
           self.addFlightLine(
             airport,
             list[i].Dest,
@@ -575,7 +575,7 @@
           getAreasFromMap: true
         },
         clickMapObject: function(mapObject, event) {
-          if (mapObject.id !== undefined) {
+          if (mapObject.id !== undefined && mapObject.id.length === 3) {
             if (event.shiftKey && self.hasOwnProperty("startPoint")) {
               self.resetDataHighlighting();
               self.removeFlightLines(true);
