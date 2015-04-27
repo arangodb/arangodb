@@ -41,7 +41,7 @@
         type: "POST",
         url: "/_api/cursor",
         data: JSON.stringify({
-          query: "RETURN SHORTEST_PATH(@@flights,@@airports,@start,@dest,'outbound', {distance: 'Dist'})",
+          query: "RETURN SHORTEST_PATH(@@airports,@@flights,@start,@dest,'outbound',{})",
           bindVars: {
             "@flights": this.collectionName,
             "@airports": "airports",
@@ -52,12 +52,7 @@
         contentType: "application/json",
         processData: false,
         success: function (data) {
-          _.each(data.result, function(airport) {
-            self.add(airport);
-          });
-          if (callback) {
-            callback();
-          }
+          callback(data.result[0]);
         },
         error: function (data) {
         }
