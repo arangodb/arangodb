@@ -5598,6 +5598,17 @@ function AQL_SHORTEST_PATH (vertexCollection,
                             params) {
   'use strict';
 
+  if (typeof startVertex === "string" && typeof endVertex === "string") {
+    var opts = {
+      direction: direction
+    };
+    if (params.hasOwnProperty("distance") && params.hasOwnProperty("defaultDistance")) {
+      opts.distance = params.distance;
+      opts.defaultDistance = params.defaultDistance;
+    }
+    return CPP_SHORTEST_PATH(vertexCollection, edgeCollection, startVertex, endVertex, opts);
+  }
+
   params = SHORTEST_PATH_PARAMS(params);
 
   return TRAVERSAL_FUNC("SHORTEST_PATH",
