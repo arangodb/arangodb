@@ -318,7 +318,7 @@
 
         var tempHTML = "";
         tempHTML = "<b>Aggregation</b> - Flight distribution<br>" + 
-          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+          "Query needed: <b>" + (timeTaken/1000).toFixed(3) + " sec" + "</b><br>" +
           "Number destinations: <b>" + list.length + "</b><br>" + 
           "Number flights: <b>" + allFlights + "</b><br>" +
           "Top 5:<br>";
@@ -384,7 +384,7 @@
 
         var tempHTML = "";
         tempHTML = "<b>" + airportData.get("Name").substr(0,25) + "</b> - " + airport + "<br>" + 
-          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+          "Query needed: <b>" + (timeTaken/1000).toFixed(3) + " sec" + "</b><br>" +
           "Number destinations: <b>" + list.length + "</b><br>" + 
           "Number flights: <b>" + allFlights + "</b><br>" +
           "Top 5:<br>";
@@ -407,7 +407,7 @@
       //var intervallWidth = length/2;
       // return Math.floor(pos/intervallWidth) + 2;
       //TODO: no custom width for lines wanted?
-      return 1.5;
+      return 2;
     },
 
     calculateFlightColor: function(length, pos) {
@@ -542,7 +542,7 @@
         }
         var tempHTML = "";
         tempHTML = "<b>Path</b> - Shortest Flight<br>" + 
-          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+          "Query needed: <b>" + (timeTaken/1000).toFixed(3) + " sec" + "</b><br>" +
           "Number switches: <b>" + (vertices.length - 2) + "</b><br>" + 
           "Number flights: <b>" + list.edges.length + "</b><br>" +
           "Airports:<br>";
