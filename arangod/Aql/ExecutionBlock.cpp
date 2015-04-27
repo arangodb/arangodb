@@ -1101,7 +1101,6 @@ void IndexRangeBlock::buildExpressions () {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   AqlItemBlock* cur = _buffer.front();
-  vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
         
   IndexOrCondition* newCondition = nullptr;
 
@@ -2713,8 +2712,6 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::executeExpression (AqlItemBlock* result) {
-  std::vector<TRI_document_collection_t const*>& docColls(result->getDocumentCollections());
-
   result->setDocumentCollection(_outReg, nullptr);
 
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);

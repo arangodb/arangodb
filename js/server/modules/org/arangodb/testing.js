@@ -61,6 +61,7 @@ var optionsDocumentation = [
   '   - `skipTimeCritical`: if set to true, time critical tests will be skipped.',
   '   - `skipSsl`: ommit the ssl_server rspec tests.',
   '   - `skipLogAnalysis`: don\'t try to crawl the server logs',
+  '   - `skipConfig`: ommit the noisy configuration tests',
   '',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
@@ -836,6 +837,7 @@ function runInArangosh (options, instanceInfo, file, addArgs) {
   }
   var arangosh = fs.join("bin","arangosh");
   var result;
+  print(toArgv(args));
   var rc = executeAndWait(arangosh, toArgv(args));
   try {
     result = JSON.parse(fs.read("testresult.json"));
@@ -1154,7 +1156,10 @@ testFuncs.shell_client = function(options) {
   return results;
 };
 
-testFuncs.config = function () {
+testFuncs.config = function (options) {
+  if (options.skipConfig) {
+    return {};
+  }
   var topDir = findTopDir();
   var results = {};
   var ts = ["arangod",
