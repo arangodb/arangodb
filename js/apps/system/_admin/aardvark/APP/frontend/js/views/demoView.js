@@ -36,6 +36,17 @@
 
     lineColors: [
       'rgb(255,255,229)'
+      /*
+       -      'rgb(255,255,229)',
+       -      'rgb(255,247,188)',
+       -      'rgb(254,227,145)',
+       -      'rgb(254,196,79)',
+       -      'rgb(254,153,41)',
+       -      'rgb(236,112,20)',
+       -      'rgb(204,76,2)',
+       -      'rgb(153,52,4)',
+       -      'rgb(102,37,6)'
+       */
     ],
 
     airportColor: "#222222",
@@ -82,8 +93,8 @@
 
     events: {
       "change #flightQuerySelect" : "runSelectedQuery",
-      "keyup #demoSearchInput"   : "searchInput",
-      "click #searchResults ul li": "selectAirport"
+      "keyup #demoSearchInput"   : "searchInput"
+      // "click #searchResults ul li": "selectAirport"
     },
 
     selectAirport: function (e) {
@@ -157,7 +168,7 @@
       var self = this, airports = this.index.search($(e.currentTarget).val());
 
       self.resetDataHighlighting();
-      self.removeFlightLines(false);
+      self.removeFlightLines(true);
 
       _.each(airports, function(airport) {
         self.setAirportColor(airport.ref, self.airportHighlightColor, false);
@@ -169,24 +180,32 @@
         //self.zoomToAirport(airports[0].ref);
         self.showAirportBalloon(airports[0].ref); // <-- only works with single map object, not multiple :(
       }
+      /*
       if (airports.length < 6 && airports.length > 1) {
         self.insertAirportSelection(airports);
       } else {
         $("#searchResults").slideUp();
       }
+      */
       self.map.validateData();
     },
 
     insertAirportSelection: function (list) {
+      return;
+      /*
       $("#searchResults ul").html("");
       var i = 0;
       for (i = 0; i < list.length; ++i) {
         $("#searchResults ul").append("<li id='" + list[i].ref + "'>" + list[i].ref + "</li>");
       }
       $("#searchResults").slideDown();
+      */
     },
 
     runSelectedQuery: function() {
+      this.resetDataHighlighting();
+      this.removeFlightLines(true);
+
       var currentQueryPos = $( "#flightQuerySelect option:selected" ).attr('position');
       if (currentQueryPos === "0") {
         this.loadAirportData("SFO");
@@ -286,9 +305,9 @@
           toSize += 0.5;
 
           self.setAirportSize(to, toSize);
-          if (i > list.length - 11) {
+          if (i > list.length - 6) {
             // Top 10 Color
-            self.setAirportColor(to, "rgb(236,112,20)");
+            self.setAirportColor(to,'rgb(153,52,4)');
           }
         }
 
@@ -318,6 +337,7 @@
     },
 
     loadAirportData: function(airport) {
+      $("#flightQuerySelect :nth-child(1)").prop("selected", true);
       var self = this;
       var timer = new Date();
 
@@ -334,13 +354,25 @@
 
         self.resetDataHighlighting();
 
+        var least = list[0].count^3;
+        var best = list[list.length - 1].count^3;
+        var m = 2.5 /(best - least);
+        var distribute = function(x) {
+          return m * x - m * least;
+        };
+
         for (i = 0; i < list.length; ++i) {
+          var count = list[i].count^3;
+          var toSize = distribute(count);
+          toSize += 0.5;
           self.addFlightLine(
             airport,
             list[i].Dest,
             list[i].count,
             self.calculateFlightColor(list.length, i),
-            self.calculateFlightWidth(list.length, i)
+            self.calculateFlightWidth(list.length, i),
+            toSize,
+            (i > list.length - 6)
           );
           allFlights += list[i].count;
         }
@@ -350,7 +382,7 @@
         }
 
         var tempHTML = "";
-        tempHTML = "<b>" + airportData.get("Name") + "</b> - " + airport + "<br>" + 
+        tempHTML = "<b>" + airportData.get("Name").substr(0,25) + "</b> - " + airport + "<br>" + 
           "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
           "Number destinations: <b>" + list.length + "</b><br>" + 
           "Number flights: <b>" + allFlights + "</b><br>" +
@@ -358,7 +390,7 @@
 
         for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
           airportData = self.airportCollection.findWhere({_key: list[i].Dest});
-          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
+          tempHTML += airportData.get("Name").substr(0, 25) + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
           if (i > (list.length - 5)) {
             tempHTML += "<br>";
           }
@@ -432,6 +464,7 @@
           airport.color = self.airportColor;
           airport.scale = self.airportScale;
       });
+      $("#demo-mapdiv-info").html("");
     },
 
     prepareData: function (data) {
@@ -467,19 +500,23 @@
     },
 
     createFlightEntry: function(from, to, weight, lineColor, lineWidth) {
-      return {
-        longitudes: [
-          this.keyToLongLat[from].lon,
-          this.keyToLongLat[to].lon,
-        ],
-        latitudes: [
-          this.keyToLongLat[from].lat,
-          this.keyToLongLat[to].lat
-        ],
-        title: from + " - " + to + "<br>" + weight,
-        color: lineColor,
-        thickness: lineWidth
-      };
+      if (this.keyToLongLat.hasOwnProperty(from)
+        && this.keyToLongLat.hasOwnProperty(to)) {
+        return {
+          longitudes: [
+            this.keyToLongLat[from].lon,
+            this.keyToLongLat[to].lon,
+          ],
+            latitudes: [
+              this.keyToLongLat[from].lat,
+              this.keyToLongLat[to].lat
+            ],
+            title: from + " - " + to + "<br>" + weight,
+            color: lineColor,
+            thickness: lineWidth
+          };
+      }
+      return undefined;
     },
 
     renderMap: function() {
@@ -501,7 +538,6 @@
           getAreasFromMap: true
         },
         clickMapObject: function(mapObject) {
-          //console.log(mapObject);
           self.loadAirportData(mapObject.id);
         },
         balloon: {
@@ -546,21 +582,19 @@
       });
     },
 
-    addFlightLine: function(from, to, count, lineColor, lineWidth, shouldRender) {
-
-      this.lines.push(this.createFlightEntry(from, to, count, lineColor, lineWidth));
+    addFlightLine: function(from, to, count, lineColor, lineWidth, toSize, highlight, shouldRender) {
+      var f = this.createFlightEntry(from, to, count, lineColor, lineWidth);
+      if (f !== undefined) {
+        this.lines.push(f);
+      }
 
       this.setAirportColor(from, "#FFFFFF");
       this.setAirportColor(to, this.airportHighlightColor);
       this.setAirportSize(from, 1.5);
-
-      // var toSize = count * 0.001;
-      var toSize = Math.sqrt(count * 0.001);
-      if (toSize <= 0.25) {
-        toSize = 0.25;
-      }
-
       this.setAirportSize(to, toSize);
+      if (highlight) {
+        this.setAirportColor(to, 'rgb(153,52,4)');
+      }
     }
 
   });
