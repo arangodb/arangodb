@@ -658,12 +658,13 @@ QueryResult Query::execute (QueryRegistry* registry) {
     try {
       while (nullptr != (value = _engine->getSome(1, ExecutionBlock::DefaultBatchSize))) {
         auto doc = value->getDocumentCollection(0);
+
         size_t const n = value->size();
         // reserve space for n additional results at once
         jsonResult.reserve(n);
 
         for (size_t i = 0; i < n; ++i) {
-          AqlValue val = value->getValue(i, 0);
+          auto val = value->getValueReference(i, 0);
 
           if (! val.isEmpty()) {
             jsonResult.add(val.toJson(_trx, doc)); 

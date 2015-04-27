@@ -258,7 +258,7 @@ namespace triagens {
 /// @brief getter for bound
 ////////////////////////////////////////////////////////////////////////////////
 
-        triagens::basics::Json const& bound() const {
+        triagens::basics::Json const& bound () const {
           return _bound;
         }
 
@@ -691,6 +691,7 @@ namespace triagens {
 
         std::unordered_map<std::string, RangeInfo>* find (std::string const& var) {
           auto it = _ranges.find(var);
+
           if (it == _ranges.end()) {
             return nullptr;
           }
@@ -774,9 +775,11 @@ namespace triagens {
     
         triagens::basics::Json toJson() const {
           triagens::basics::Json list(triagens::basics::Json::Array);
-          for (auto x : _ranges) {
-            for (auto y: x.second) {
+
+          for (auto const& x : _ranges) {
+            for (auto const& y: x.second) {
               triagens::basics::Json item(triagens::basics::Json::Object);
+
               item("variable", triagens::basics::Json(x.first))
                   ("attribute name", triagens::basics::Json(y.first))
                   ("range info", y.second.toJson());
@@ -809,7 +812,7 @@ namespace triagens {
 /// @brief attributes: insert attributes of the variable <var> into set
 ////////////////////////////////////////////////////////////////////////////////
 
-       void attributes (std::unordered_set<std::string>& set, std::string const& var);
+       void attributes (std::unordered_set<std::string>& set, std::string const& var) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the names of variables contained in the RangeInfoMap
@@ -961,7 +964,7 @@ namespace triagens {
 /// vector).
 ////////////////////////////////////////////////////////////////////////////////
 
-        std::unordered_set<std::string> attributes (std::string const& var);
+        std::unordered_set<std::string> attributes (std::string const& var) const;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief private data
