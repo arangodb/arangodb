@@ -1022,7 +1022,7 @@ AQLGenerator.prototype._getLastRestrictableStatementInfo = function() {
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
 ///   var query = graph._vertices({name: "Alice"});
-///   query.edges().vertices().restrict(["female", "male", "products"]).toArray();
+///   query.edges().vertices().restrict(["female", "male", "products"]).toArray(); // xpError(ERROR_BAD_PARAMETER);
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -2195,7 +2195,10 @@ var updateBindCollections = function(graph) {
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphEdgeCollectionSave2}
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("social");
-///   graph.relation.save("relation/aliceAndBob", "female/alice", {type: "married", _key: "bobAndAlice"});
+///   | graph.relation.save(
+///   |  "relation/aliceAndBob",
+///   |   "female/alice",
+///      {type: "married", _key: "bobAndAlice"}); // xpError(ERROR_GRAPH_INVALID_EDGE)
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 /// @endDocuBlock
 ///
@@ -2928,7 +2931,6 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors1}
-/// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._commonNeighbors({isCapital : true}, {isCapital : true});
@@ -2938,7 +2940,6 @@ Graph.prototype._neighbors = function(vertexExample, options) {
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighbors2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._commonNeighbors(
@@ -2987,7 +2988,6 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// A route planner example, all common neighbors of capitals.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._countCommonNeighbors({isCapital : true}, {isCapital : true});
@@ -2997,7 +2997,6 @@ Graph.prototype._commonNeighbors = function(vertex1Example, vertex2Example, opti
 /// which have a maximal depth of 2 :
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleCommonNeighborsAmount2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 /// | graph._countCommonNeighbors('germanCity/Hamburg', {}, {direction : 'outbound', maxDepth : 2},
@@ -3078,7 +3077,6 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {});
@@ -3087,7 +3085,6 @@ Graph.prototype._countCommonNeighbors = function(vertex1Example, vertex2Example,
 /// A route planner example, all cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleProperties2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var graph = examples.loadGraph("routeplanner");
 ///   graph._commonProperties({}, {}, {ignoreProperties: 'population'});
@@ -3132,7 +3129,6 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// A route planner example, all locations with the same properties:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties1}
-/// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// graph._countCommonProperties({}, {});
@@ -3141,7 +3137,6 @@ Graph.prototype._commonProperties = function(vertex1Example, vertex2Example, opt
 /// A route planner example, all German cities which share same properties except for population.
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleAmountProperties2}
-/// ~ var db = require("internal").db;
 /// var examples = require("org/arangodb/graph-examples/example-graph.js");
 /// var graph = examples.loadGraph("routeplanner");
 /// | graph._countCommonProperties({}, {}, {vertex1CollectionRestriction : 'germanCity',
@@ -3207,7 +3202,6 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// Return all paths of the graph "social":
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths();
@@ -3217,7 +3211,6 @@ Graph.prototype._countCommonProperties = function(vertex1Example, vertex2Example
 /// length of 1 and a minimal length of 2:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModulePaths2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("social");
 ///   g._paths({direction : 'inbound', minLength : 1, maxLength :  2});
@@ -3304,7 +3297,6 @@ Graph.prototype._paths = function(options) {
 /// A route planner example, shortest path from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
@@ -3314,7 +3306,6 @@ Graph.prototype._paths = function(options) {
 /// A route planner example, shortest path from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleShortestPaths2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._shortestPath([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
@@ -3359,7 +3350,6 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 /// A route planner example, shortest distance from all german to all french cities:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo1}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo({}, {}, {weight : 'distance', endVertexCollectionRestriction : 'frenchCity',
@@ -3369,7 +3359,6 @@ Graph.prototype._shortestPath = function(startVertexExample, endVertexExample, o
 /// A route planner example, shortest distance from Hamburg and Cologne to Lyon:
 ///
 /// @EXAMPLE_ARANGOSH_OUTPUT{generalGraphModuleDistanceTo2}
-/// ~ var db = require("internal").db;
 ///   var examples = require("org/arangodb/graph-examples/example-graph.js");
 ///   var g = examples.loadGraph("routeplanner");
 /// | g._distanceTo([{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], 'frenchCity/Lyon',
