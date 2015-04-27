@@ -97,7 +97,7 @@ int Utf8Helper::compareUtf8 (char const* left,
   }
 
   UErrorCode status = U_ZERO_ERROR;
-  int result = _coll->compareUTF8(StringPiece(left, leftLength), StringPiece(right, rightLength), status);
+  int result = _coll->compareUTF8(StringPiece(left, (int32_t) leftLength), StringPiece(right, (int32_t) rightLength), status);
   if (U_FAILURE(status)) {
     LOG_ERROR("error in Collator::compareUTF8(...): %s", u_errorName(status));
     return (strcmp(left, right));

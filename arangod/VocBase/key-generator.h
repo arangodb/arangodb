@@ -216,20 +216,20 @@ class TraditionalKeyGenerator : public KeyGenerator {
 /// @brief generate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string generate (TRI_voc_tick_t);
+    std::string generate (TRI_voc_tick_t) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
 
     int validate (std::string const&,
-                  bool);
+                  bool) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-    void track (TRI_voc_key_t);
+    void track (TRI_voc_key_t) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the generator name
@@ -243,7 +243,7 @@ class TraditionalKeyGenerator : public KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_json_t* toJson (TRI_memory_zone_t*) const;
+    struct TRI_json_t* toJson (TRI_memory_zone_t*) const override;
 };
 
 // -----------------------------------------------------------------------------
@@ -294,20 +294,20 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 /// @brief generate a key
 ////////////////////////////////////////////////////////////////////////////////
 
-    std::string generate (TRI_voc_tick_t);
+    std::string generate (TRI_voc_tick_t) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief validate a key
 ////////////////////////////////////////////////////////////////////////////////
 
     int validate (std::string const&,
-                  bool);
+                  bool) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief track usage of a key
 ////////////////////////////////////////////////////////////////////////////////
 
-    void track (TRI_voc_key_t);
+    void track (TRI_voc_key_t) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return the generator name
@@ -321,7 +321,7 @@ class AutoIncrementKeyGenerator : public KeyGenerator {
 /// @brief return a JSON representation of the generator
 ////////////////////////////////////////////////////////////////////////////////
 
-    struct TRI_json_t* toJson (TRI_memory_zone_t*) const;
+    struct TRI_json_t* toJson (TRI_memory_zone_t*) const override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
