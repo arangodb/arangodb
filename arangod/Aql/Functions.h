@@ -66,6 +66,12 @@ namespace triagens {
       static AqlValue Keep     (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue Merge    (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
       static AqlValue Has      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Min      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Max      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Sum      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Average  (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Md5      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Sha1     (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 
   }

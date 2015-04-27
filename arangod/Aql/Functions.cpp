@@ -34,9 +34,32 @@
 #include "Basics/JsonHelper.h"
 #include "Basics/json-utilities.h"
 #include "Basics/StringBuffer.h"
+#include "Rest/SslInterface.h"
 
 using namespace triagens::aql;
 using Json = triagens::basics::Json;
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief register warning
+////////////////////////////////////////////////////////////////////////////////
+            
+static void RegisterWarning (triagens::aql::Query* query,
+                             char const* functionName,
+                             int code) {
+  std::string msg;
+
+  if (code == TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH) {
+    msg = triagens::basics::Exception::FillExceptionString(code, functionName);
+  }
+  else {
+    msg.append("in function '");
+    msg.append(functionName);
+    msg.append("()': ");
+    msg.append(TRI_errno_string(code));
+  }
+
+  query->registerWarning(code, msg.c_str());
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief register usage of an invalid function argument
@@ -44,10 +67,7 @@ using Json = triagens::basics::Json;
             
 static void RegisterInvalidArgumentWarning (triagens::aql::Query* query,
                                             char const* functionName) {
-  int code = TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH;
-
-  std::string const& msg(triagens::basics::Exception::FillExceptionString(code, functionName));
-  query->registerWarning(code, msg.c_str());
+  RegisterWarning(query, functionName, TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -545,6 +565,253 @@ AqlValue Functions::Has (triagens::aql::Query* query,
  
   bool const hasAttribute = (TRI_LookupObjectJson(value.json(), p) != nullptr);
   return AqlValue(new Json(hasAttribute));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MIN
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Min (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         TRI_document_collection_t const* collection,
+                         AqlValue const parameters) {
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "MIN", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  TRI_json_t const* valueJson = value.json();
+  size_t const n = valueJson->_value._objects._length;
+  TRI_json_t const* minValue = nullptr;;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&valueJson->_value._objects, i));
+
+    if (TRI_IsNullJson(value)) {
+      continue;
+    }
+
+    if (minValue == nullptr ||
+        TRI_CompareValuesJson(value, minValue) < 0) {
+      minValue = value;
+    }
+  } 
+
+  if (minValue != nullptr) {
+    std::unique_ptr<TRI_json_t> result(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, minValue));
+    
+    if (result != nullptr) {
+      auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+      result.release();
+      return AqlValue(jr);
+    }
+  }
+
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MAX
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Max (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         TRI_document_collection_t const* collection,
+                         AqlValue const parameters) {
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "MAX", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  TRI_json_t const* valueJson = value.json();
+  size_t const n = valueJson->_value._objects._length;
+  TRI_json_t const* maxValue = nullptr;;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&valueJson->_value._objects, i));
+
+    if (TRI_IsNullJson(value)) {
+      continue;
+    }
+
+    if (maxValue == nullptr ||
+        TRI_CompareValuesJson(value, maxValue) > 0) {
+      maxValue = value;
+    }
+  } 
+
+  if (maxValue != nullptr) {
+    std::unique_ptr<TRI_json_t> result(TRI_CopyJson(TRI_UNKNOWN_MEM_ZONE, maxValue));
+    
+    if (result != nullptr) {
+      auto jr = new Json(TRI_UNKNOWN_MEM_ZONE, result.get());
+      result.release();
+      return AqlValue(jr);
+    }
+  }
+
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function SUM
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Sum (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         TRI_document_collection_t const* collection,
+                         AqlValue const parameters) {
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "SUM", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  TRI_json_t const* valueJson = value.json();
+  size_t const n = valueJson->_value._objects._length;
+  double sum = 0.0;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&valueJson->_value._objects, i));
+
+    if (TRI_IsNullJson(value)) {
+      continue;
+    }
+
+    if (! TRI_IsNumberJson(value)) {
+      RegisterInvalidArgumentWarning(query, "SUM");
+      return AqlValue(new Json(Json::Null));
+    }
+
+    // got a numeric value
+    double const number = value->_value._number;
+
+    if (! std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      sum += number;
+    } 
+  } 
+
+  if (! std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
+    return AqlValue(new Json(sum));
+  } 
+
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function AVERAGE
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Average (triagens::aql::Query* query,
+                             triagens::arango::AqlTransaction* trx,
+                             TRI_document_collection_t const* collection,
+                             AqlValue const parameters) {
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+
+  if (! value.isArray()) {
+    // not an array
+    RegisterWarning(query, "AVERAGE", TRI_ERROR_QUERY_ARRAY_EXPECTED);
+    return AqlValue(new Json(Json::Null));
+  }
+
+  TRI_json_t const* valueJson = value.json();
+  size_t const n = valueJson->_value._objects._length;
+  double sum = 0.0;
+  size_t count = 0;
+
+  for (size_t i = 0; i < n; ++i) {
+    auto value = static_cast<TRI_json_t const*>(TRI_AtVector(&valueJson->_value._objects, i));
+
+    if (TRI_IsNullJson(value)) {
+      continue;
+    }
+
+    if (! TRI_IsNumberJson(value)) {
+      RegisterInvalidArgumentWarning(query, "AVERAGE");
+      return AqlValue(new Json(Json::Null));
+    }
+
+    // got a numeric value
+    double const number = value->_value._number;
+
+    if (! std::isnan(number) && number != HUGE_VAL && number != -HUGE_VAL) {
+      sum += number;
+      ++count;
+    } 
+  } 
+
+  if (count > 0 && 
+      ! std::isnan(sum) && sum != HUGE_VAL && sum != -HUGE_VAL) {
+    return AqlValue(new Json(sum / static_cast<size_t>(count)));
+  } 
+
+  return AqlValue(new Json(Json::Null));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function MD5
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Md5 (triagens::aql::Query* query,
+                         triagens::arango::AqlTransaction* trx,
+                         TRI_document_collection_t const* collection,
+                         AqlValue const parameters) {
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+    
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  AppendAsString(buffer, value.json());
+  
+  // create md5
+  char hash[17]; 
+  char* p = &hash[0];
+  size_t length;
+
+  triagens::rest::SslInterface::sslMD5(buffer.c_str(), buffer.length(), p, length);
+
+  // as hex
+  char hex[33];
+  p = &hex[0];
+
+  triagens::rest::SslInterface::sslHEX(hash, 16, p, length);
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, hex, 32));
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief function SHA1
+////////////////////////////////////////////////////////////////////////////////
+
+AqlValue Functions::Sha1 (triagens::aql::Query* query,
+                          triagens::arango::AqlTransaction* trx,
+                          TRI_document_collection_t const* collection,
+                          AqlValue const parameters) {
+  Json value(parameters.extractArrayMember(trx, collection, 0, false));
+    
+  triagens::basics::StringBuffer buffer(TRI_UNKNOWN_MEM_ZONE);
+  AppendAsString(buffer, value.json());
+  
+  // create sha1
+  char hash[21];
+  char* p = &hash[0];
+  size_t length;
+
+  triagens::rest::SslInterface::sslSHA1(buffer.c_str(), buffer.length(), p, length);
+
+  // as hex
+  char hex[41];
+  p = &hex[0];
+
+  triagens::rest::SslInterface::sslHEX(hash, 20, p, length);
+
+  return AqlValue(new Json(TRI_UNKNOWN_MEM_ZONE, hex, 40));
 }
 
 // -----------------------------------------------------------------------------

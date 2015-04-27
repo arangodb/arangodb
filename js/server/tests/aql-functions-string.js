@@ -1140,6 +1140,66 @@ function ahuacatlStringFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test md5 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testMd5Cxx : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MD5())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MD5(\"foo\", 2))"); 
+      assertEqual([ "d41d8cd98f00b204e9800998ecf8427e" ], getQueryResults("RETURN NOOPT(MD5(''))")); 
+      assertEqual([ "7215ee9c7d9dc229d2921a40e899ec5f" ], getQueryResults("RETURN NOOPT(MD5(' '))")); 
+      assertEqual([ "cfcd208495d565ef66e7dff9f98764da" ], getQueryResults("RETURN NOOPT(MD5('0'))")); 
+      assertEqual([ "c4ca4238a0b923820dcc509a6f75849b" ], getQueryResults("RETURN NOOPT(MD5('1'))")); 
+      assertEqual([ "6bb61e3b7bce0931da574d19d1d82c88" ], getQueryResults("RETURN NOOPT(MD5('-1'))")); 
+      assertEqual([ "0bad51c0b9b2ba77c19bf6bfbbf88dc3" ], getQueryResults("RETURN NOOPT(MD5(' 0'))")); 
+      assertEqual([ "2e5751b7cfd7f053cd29e946fb2649a4" ], getQueryResults("RETURN NOOPT(MD5('0 '))")); 
+      assertEqual([ "acbd18db4cc2f85cedef654fccc4a4d8" ], getQueryResults("RETURN NOOPT(MD5('foo'))")); 
+      assertEqual([ "901890a8e9c8cf6d5a1a542b229febff" ], getQueryResults("RETURN NOOPT(MD5('FOO'))")); 
+      assertEqual([ "1356c67d7ad1638d816bfb822dd2c25d" ], getQueryResults("RETURN NOOPT(MD5('Foo'))")); 
+      assertEqual([ "f32a26e2a3a8aa338cd77b6e1263c535" ], getQueryResults("RETURN NOOPT(MD5('FooBar'))")); 
+      assertEqual([ "c639efc1e98762233743a75e7798dd9c" ], getQueryResults("RETURN NOOPT(MD5('This is a test string'))")); 
+      assertEqual([ "f9a70133b9fe5fa12acd30056bf4aa26" ], getQueryResults("RETURN NOOPT(MD5('With\r\nLinebreaks\n'))")); 
+      assertEqual([ "1441a7909c087dbbe7ce59881b9df8b9" ], getQueryResults("RETURN NOOPT(MD5('[object Object]'))"));
+      assertEqual([ "cfcd208495d565ef66e7dff9f98764da" ], getQueryResults("RETURN NOOPT(MD5(0))")); 
+      assertEqual([ "c4ca4238a0b923820dcc509a6f75849b" ], getQueryResults("RETURN NOOPT(MD5(1))")); 
+      assertEqual([ "6bb61e3b7bce0931da574d19d1d82c88" ], getQueryResults("RETURN NOOPT(MD5(-1))")); 
+      assertEqual([ "37a6259cc0c1dae299a7866489dff0bd" ], getQueryResults("RETURN NOOPT(MD5(null))")); 
+      assertEqual([ "35dba5d75538a9bbe0b4da4422759a0e" ], getQueryResults("RETURN NOOPT(MD5('[1]'))")); 
+      assertEqual([ "1441a7909c087dbbe7ce59881b9df8b9" ], getQueryResults("RETURN NOOPT(MD5({ }))")); 
+
+      /*jshint maxlen: 5000 */
+      assertEqual([ "c7cb8c1df686c0219d540849efe3bce3" ], getQueryResults("RETURN NOOPT(MD5('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sha1 function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSha1Cxx : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHA1())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SHA1(\"foo\", 2))"); 
+      assertEqual([ "da39a3ee5e6b4b0d3255bfef95601890afd80709" ], getQueryResults("RETURN NOOPT(SHA1(''))")); 
+      assertEqual([ "b858cb282617fb0956d960215c8e84d1ccf909c6" ], getQueryResults("RETURN NOOPT(SHA1(' '))")); 
+      assertEqual([ "b6589fc6ab0dc82cf12099d1c2d40ab994e8410c" ], getQueryResults("RETURN NOOPT(SHA1('0'))")); 
+      assertEqual([ "356a192b7913b04c54574d18c28d46e6395428ab" ], getQueryResults("RETURN NOOPT(SHA1('1'))")); 
+      assertEqual([ "7984b0a0e139cabadb5afc7756d473fb34d23819" ], getQueryResults("RETURN NOOPT(SHA1('-1'))")); 
+      assertEqual([ "7ae5a5c19b16f9ee3b00ca36fc729536fb5e7307" ], getQueryResults("RETURN NOOPT(SHA1(' 0'))")); 
+      assertEqual([ "1ee9183b1f737da4d348ea42281bd1dd682c5d52" ], getQueryResults("RETURN NOOPT(SHA1('0 '))")); 
+      assertEqual([ "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33" ], getQueryResults("RETURN NOOPT(SHA1('foo'))")); 
+      assertEqual([ "feab40e1fca77c7360ccca1481bb8ba5f919ce3a" ], getQueryResults("RETURN NOOPT(SHA1('FOO'))")); 
+      assertEqual([ "201a6b3053cc1422d2c3670b62616221d2290929" ], getQueryResults("RETURN NOOPT(SHA1('Foo'))")); 
+      assertEqual([ "eb8fc41f9d9ae5855c4d801355075e4ccfb22808" ], getQueryResults("RETURN NOOPT(SHA1('FooBar'))")); 
+      assertEqual([ "e2f67c772368acdeee6a2242c535c6cc28d8e0ed" ], getQueryResults("RETURN NOOPT(SHA1('This is a test string'))")); 
+      assertEqual([ "a90b947dd16a53e717451d3c536d445ece647c52" ], getQueryResults("RETURN NOOPT(SHA1('With\r\nLinebreaks\n'))")); 
+      assertEqual([ "2be88ca4242c76e8253ac62474851065032d6833" ], getQueryResults("RETURN NOOPT(SHA1('null'))")); 
+      assertEqual([ "f629ae44b7b3dcfed444d363e626edf411ec69a8" ], getQueryResults("RETURN NOOPT(SHA1('[1]'))")); 
+      assertEqual([ "c1d44ff03aff1372856c281854f454e2e1d15b7c" ], getQueryResults("RETURN NOOPT(SHA1('[object Object]'))")); 
+
+      /*jshint maxlen: 5000 */
+      assertEqual([ "888227c44807b86059eb36f9fe0fc602a9b16fab" ], getQueryResults("RETURN NOOPT(SHA1('[1,2,4,7,11,16,22,29,37,46,56,67,79,92,106,121,137,154,172,191,211,232,254,277,301,326,352,379,407,436,466,497,529,562,596,631,667,704,742,781,821,862,904,947,991,1036,1082,1129,1177,1226,1276,1327,1379,1432,1486,1541,1597,1654,1712,1771,1831,1892,1954,2017,2081,2146,2212,2279,2347,2416,2486,2557,2629,2702,2776,2851,2927,3004,3082,3161,3241,3322,3404,3487,3571,3656,3742,3829,3917,4006,4096,4187,4279,4372,4466,4561,4657,4754,4852,4951]'))"));
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test random_token function
 ////////////////////////////////////////////////////////////////////////////////
 
