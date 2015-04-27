@@ -522,8 +522,9 @@
 
     loadShortestPath: function(from, to) {
       var self = this;
+      var timer = new Date();
       this.airportCollection.getShortestFlight(from, to, function(list) {
-        console.log(list);
+        var timeTaken = new Date() - timer;
         if (!list.vertices) {
           alert("Sorry there is no flight");
         }
@@ -539,6 +540,18 @@
             false
           );
         }
+        var tempHTML = "";
+        tempHTML = "<b>Path</b> - Shortest Flight<br>" + 
+          "Query needed: <b>" + (timeTaken/1000) + "sec" + "</b><br>" +
+          "Number switches: <b>" + (vertices.length - 2) + "</b><br>" + 
+          "Number flights: <b>" + list.edges.length + "</b><br>" +
+          "Airports:<br>";
+        for (i = 0; i < vertices.length; ++i) {
+          var airportData = self.airportCollection.findWhere({_key: vertices[i].split("/")[1]});
+          tempHTML += airportData.get("Name") + " - " + airportData.get("_key") + "<br>";
+        }
+
+        $("#demo-mapdiv-info").html(tempHTML);
         self.map.validateData();
       });
     },
