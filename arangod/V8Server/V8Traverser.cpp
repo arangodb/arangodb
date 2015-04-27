@@ -179,7 +179,7 @@ class SimpleEdgeExpander {
             auto cand = candidates.find(from);
             if (cand == candidates.end()) {
               // Add weight
-              result.emplace_back(to, from, currentWeight, extractEdgeId(edges[j]));
+              result.emplace_back(from, to, currentWeight, extractEdgeId(edges[j]));
               candidates.emplace(from, result.size() - 1);
             } else {
               // Compare weight
@@ -283,7 +283,7 @@ void TRI_RunDijkstraSearch (const v8::FunctionCallbackInfo<v8::Value>& args) {
   vector<string> writeCollections;
 
   double lockTimeout = (double) (TRI_TRANSACTION_DEFAULT_LOCK_TIMEOUT / 1000000ULL);
-  bool embed = false;
+  bool embed = true;
   bool waitForSync = false;
 
   // get the vertex collection
