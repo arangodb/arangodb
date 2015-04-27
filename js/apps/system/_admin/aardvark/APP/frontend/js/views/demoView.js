@@ -389,7 +389,7 @@
           "Number flights: <b>" + allFlights + "</b><br>" +
           "Top 5:<br>";
 
-        for (i = (list.length - 1); i > Math.max(list.length - 6, 0); --i) {
+        for (i = (list.length - 1); i >= Math.max(list.length - 5, 0); --i) {
           airportData = self.airportCollection.findWhere({_key: list[i].Dest});
           tempHTML += airportData.get("Name").substr(0, 25) + " - " + airportData.get("_key") + ": <b>" + list[i].count + "</b>";
           if (i > (list.length - 5)) {
