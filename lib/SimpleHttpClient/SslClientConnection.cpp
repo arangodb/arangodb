@@ -264,7 +264,7 @@ void SslClientConnection::disconnectSocket () {
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-bool SslClientConnection::prepare (const double timeout, const bool isWrite) const {
+bool SslClientConnection::prepare (double timeout, bool isWrite) const {
   struct timeval tv;
   fd_set fdset;
   int res;

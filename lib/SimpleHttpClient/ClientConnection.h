@@ -46,7 +46,7 @@ namespace triagens {
 /// @brief client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ClientConnection : public GeneralClientConnection {
+    class ClientConnection final : public GeneralClientConnection {
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
@@ -72,7 +72,7 @@ namespace triagens {
 /// @brief destroys a client connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        virtual ~ClientConnection ();
+        ~ClientConnection ();
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                   private methods
@@ -94,38 +94,38 @@ namespace triagens {
 /// @brief connect
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool connectSocket ();
+        bool connectSocket () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief disconnect
 ////////////////////////////////////////////////////////////////////////////////
 
-        void disconnectSocket ();
+        void disconnectSocket () override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief prepare connection for read/write I/O
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool prepare (const double, const bool) const;
+        bool prepare (double, bool) const override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief write data to the connection
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool writeClientConnection (void*, size_t, size_t*);
+        bool writeClientConnection (void*, size_t, size_t*) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief read data from the connection
 ////////////////////////////////////////////////////////////////////////////////
 
         bool readClientConnection (triagens::basics::StringBuffer&, 
-                                   bool& connectionClosed);
+                                   bool& connectionClosed) override;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief return whether the connection is readable
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool readable ();
+        bool readable () override;
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
