@@ -1853,7 +1853,7 @@ static void CreateVocBase (const v8::FunctionCallbackInfo<v8::Value>& args,
 /// @EXAMPLE_ARANGOSH_OUTPUT{collectionDatabaseCreateSpecialKey}
 ///   db._create("users", { keyOptions: { allowUserKeys: false } });
 ///   db.users.save({ name: "user 1" });
-///   db.users.save({ name: "user 2", _key: "myuser" });
+///   db.users.save({ name: "user 2", _key: "myuser" }); // xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)
 ///   db.users.save({ name: "user 3" });
 /// ~ db._drop("users");
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
