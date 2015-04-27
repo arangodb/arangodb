@@ -44,6 +44,7 @@ add_executable(
     Actions/RestActionHandler.cpp
     Aql/AggregationOptions.cpp
     Aql/AqlItemBlock.cpp
+    Aql/AqlItemBlockManager.cpp
     Aql/AqlValue.cpp
     Aql/Ast.cpp
     Aql/AstNode.cpp

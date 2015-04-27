@@ -1,5 +1,5 @@
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief standalone transaction context
+/// @brief Aql, item block manager
 ///
 /// @file
 ///
@@ -24,82 +24,62 @@
 ///
 /// @author Jan Steemann
 /// @author Copyright 2014, ArangoDB GmbH, Cologne, Germany
-/// @author Copyright 2011-2013, triAGENS GmbH, Cologne, Germany
+/// @author Copyright 2012-2013, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef ARANGODB_UTILS_STANDALONE_TRANSACTION_CONTEXT_H
-#define ARANGODB_UTILS_STANDALONE_TRANSACTION_CONTEXT_H 1
+#ifndef ARANGODB_AQL_ITEM_BLOCK_MANAGER_H
+#define ARANGODB_AQL_ITEM_BLOCK_MANAGER_H 1
 
 #include "Basics/Common.h"
-
-#include "VocBase/transaction.h"
-#include "Utils/CollectionNameResolver.h"
-#include "Utils/TransactionContext.h"
-
-struct TRI_transaction_s;
+#include "Aql/types.h"
 
 namespace triagens {
-  namespace arango {
+  namespace aql {
 
-    class StandaloneTransactionContext final : public TransactionContext {
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                class StandaloneTransactionContext
-// -----------------------------------------------------------------------------
+    class AqlItemBlock;
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                      constructors and destructors
+// --SECTION--                                         class AqlItemBlockManager
 // -----------------------------------------------------------------------------
 
-      public:
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief create the context
-////////////////////////////////////////////////////////////////////////////////
-
-        StandaloneTransactionContext (); 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief destroy the context
-////////////////////////////////////////////////////////////////////////////////
-
-        ~StandaloneTransactionContext ();
+    class AqlItemBlockManager {
 
 // -----------------------------------------------------------------------------
-// --SECTION--                                                  public functions
+// --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
 
       public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the resolver
+/// @brief create the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionNameResolver const* getResolver () const override;
+        AqlItemBlockManager ();
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief return the parent transaction (none in our case)
-////////////////////////////////////////////////////////////////////////////////
-        
-        struct TRI_transaction_s* getParentTransaction () const override;
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief register the transaction, does nothing
+/// @brief destroy the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-        int registerTransaction (struct TRI_transaction_s*) override;
+        ~AqlItemBlockManager ();
+
+// -----------------------------------------------------------------------------
+// --SECTION--                                                    public methods
+// -----------------------------------------------------------------------------
+
+      public:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief unregister the transaction, does nothing
+/// @brief request a block with the specified size
 ////////////////////////////////////////////////////////////////////////////////
 
-        int unregisterTransaction () override;
+        AqlItemBlock* requestBlock (size_t, 
+                                    RegisterId);
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the transaction is embeddable
+/// @brief return a block to the manager
 ////////////////////////////////////////////////////////////////////////////////
 
-        bool isEmbeddable () const override;
+        void returnBlock (AqlItemBlock*&);
 
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 private variables
@@ -108,10 +88,11 @@ namespace triagens {
       private:
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief collection name resolver
+/// @brief last block handed back to the manager
+/// this is the block that may be recycled
 ////////////////////////////////////////////////////////////////////////////////
 
-        CollectionNameResolver* _resolver;
+        AqlItemBlock* _last;
 
     };
 

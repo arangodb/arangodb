@@ -17,6 +17,7 @@ arangod_libarangod_a_SOURCES = \
 	arangod/Actions/RestActionHandler.cpp \
 	arangod/Aql/AggregationOptions.cpp \
 	arangod/Aql/AqlItemBlock.cpp \
+	arangod/Aql/AqlItemBlockManager.cpp \
 	arangod/Aql/AqlValue.cpp \
 	arangod/Aql/Ast.cpp \
 	arangod/Aql/AstNode.cpp \

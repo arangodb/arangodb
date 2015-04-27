@@ -352,6 +352,23 @@ AqlItemBlock* ExecutionBlock::getSome (size_t atLeast, size_t atMost) {
 // -----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief request an AqlItemBlock from the memory manager
+////////////////////////////////////////////////////////////////////////////////
+
+AqlItemBlock* ExecutionBlock::requestBlock (size_t nrItems, 
+                                            RegisterId nrRegs) {
+  return _engine->_itemBlockManager.requestBlock(nrItems, nrRegs);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief return an AqlItemBlock to the memory manager
+////////////////////////////////////////////////////////////////////////////////
+
+void ExecutionBlock::returnBlock (AqlItemBlock* block) {
+  _engine->_itemBlockManager.returnBlock(block);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief resolve a collection name and return cid and document key
 /// this is used for parsing _from, _to and _id values
 ////////////////////////////////////////////////////////////////////////////////
@@ -887,12 +904,13 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
 
   size_t available = _documents.size() - _posInDocuments;
   size_t toSend = (std::min)(atMost, available);
+  RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
-  unique_ptr<AqlItemBlock> res(new AqlItemBlock(toSend, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]));
+  unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
 
-  // only copy 1st row of registers inherited from previous frame(s)
+  // only copy 1st row of registers inherited from previous frame(s)1
   inheritRegisters(cur, res.get(), _pos);
 
   // set our collection for our output register
@@ -928,15 +946,18 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
     if (! moreDocuments(atMost)) {
       // nothing more to read, re-initialize fetching of documents
       initializeDocuments();
+
       if (++_pos >= cur->size()) {
         _buffer.pop_front();  // does not throw
-        delete cur;
+        returnBlock(cur);
         _pos = 0;
       }
     }
   }
+
   // Clear out registers no longer needed later:
   clearRegisters(res.get());
+
   return res.release();
 }
 
@@ -1080,7 +1101,6 @@ void IndexRangeBlock::buildExpressions () {
   // The following are needed to evaluate expressions with local data from
   // the current incoming item:
   AqlItemBlock* cur = _buffer.front();
-  vector<TRI_document_collection_t const*>& docColls(cur->getDocumentCollections());
         
   IndexOrCondition* newCondition = nullptr;
 
@@ -2692,8 +2712,6 @@ void CalculationBlock::fillBlockWithReference (AqlItemBlock* result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CalculationBlock::executeExpression (AqlItemBlock* result) {
-  std::vector<TRI_document_collection_t const*>& docColls(result->getDocumentCollections());
-
   result->setDocumentCollection(_outReg, nullptr);
 
   bool const hasCondition = (static_cast<CalculationNode const*>(_exeNode)->_conditionVariable != nullptr);
@@ -3531,6 +3549,7 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
                                          size_t& skipped) {
 
   TRI_ASSERT(result == nullptr && skipped == 0);
+
   if (_done) {
     return TRI_ERROR_NO_ERROR;
   }
@@ -3658,23 +3677,21 @@ int HashedAggregateBlock::getOrSkipSome (size_t atLeast,
 
           ++skipped;
           result = buildResult(cur);
-          
-          delete cur;
-          cur = nullptr;
+ 
+          returnBlock(cur);         
           _done = true;
 
           return TRI_ERROR_NO_ERROR;
         }
         catch (...) {
-          delete cur;
-          cur = nullptr;
+          returnBlock(cur);         
           throw;
         }
       }
 
       // hasMore
 
-      delete cur;
+      returnBlock(cur);
       cur = _buffer.front();
     }
   }
