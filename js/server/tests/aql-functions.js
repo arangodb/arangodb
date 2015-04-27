@@ -1854,6 +1854,182 @@ function ahuacatlFunctionsTestSuite () {
     },
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinCxx1 : function () {
+      var expected = [ null, null ]; 
+      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] RETURN NOOPT(MIN(u))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinCxx2 : function () {
+      var expected = [ 1, 1, 1, 1, 1, 1 ];
+      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] RETURN NOOPT(MIN(u))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMinCxx3 : function () {
+      var expected = [ 2, false, false, false, false, true, -1, '', 1 ];
+      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] RETURN NOOPT(MIN(u))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test min function
+////////////////////////////////////////////////////////////////////////////////
+
+    testMinCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MIN())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MIN([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MIN({ }))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMaxCxx1 : function () {
+      var expected = [ null, null ]; 
+      var actual = getQueryResults("FOR u IN [ [ ], [ null, null ] ] RETURN NOOPT(MAX(u))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMaxCxx2 : function () {
+      var expected = [ 3, 3, 3, 3, 3, 3 ];
+      var actual = getQueryResults("FOR u IN [ [ 1, 2, 3 ], [ 3, 2, 1 ], [ 1, 3, 2 ], [ 2, 3, 1 ], [ 2, 1, 3 ], [ 3, 1, 2 ] ] RETURN NOOPT(MAX(u))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testMaxCxx3 : function () {
+      var expected = [ '1', [ ], [ ], true, 0, 0, '0', '-1', [ ] ];
+      var actual = getQueryResults("FOR u IN [ [ 3, 2, '1' ], [ [ ], null, true, false, 1, '0' ], [ '0', 1, false, true, null, [ ] ], [ false, true ], [ 0, false ], [ true, 0 ], [ '0', -1 ], [ '', '-1' ], [ [ ], 1 ] ] RETURN NOOPT(MAX(u))");
+      assertEqual(expected, actual);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test max function
+////////////////////////////////////////////////////////////////////////////////
+
+    testMaxCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MAX())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(MAX([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(MAX({ }))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sum function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testCxxSum : function () {
+      var data = [
+        [ 0, [ ] ],
+        [ 0, [ null ] ],
+        [ 0, [ null, null ] ],
+        [ 1, [ 1, null, null ] ],
+        [ 2, [ 1, null, null, 1 ] ],
+        [ 15, [ 1, 2, 3, 4, 5 ] ],
+        [ 15, [ 5, 4, 3, 2, 1 ] ],
+        [ 15, [ null, 5, 4, null, 3, 2, 1, null ] ],
+        [ 0, [ -1, 1, -1, 1, -1, 1, 0 ] ],
+        [ -4, [ -1, -1, -1, -1 ] ],
+        [ 1.31, [ 0.1, 0.1, 0.01, 1.1 ] ],
+        [ -1.31, [ -0.1, -0.1, -0.01, -1.1 ] ],
+        [ 9040346.290954, [ 45.356, 256.23, -223.6767, -14512.63, 456.00222, -0.090566, 9054325.1 ] ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN SUM(NOOPT(" + JSON.stringify(value[1]) + "))");
+        assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test sum function
+////////////////////////////////////////////////////////////////////////////////
+
+    testSumCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SUM())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(SUM([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(SUM({ }))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test average function
+////////////////////////////////////////////////////////////////////////////////
+    
+    testAverageCxx : function () {
+      var data = [
+        [ null, [ ] ],
+        [ null, [ null ] ],
+        [ null, [ null, null ] ],
+        [ 1, [ 1, null, null ] ],
+        [ 1, [ 1, null, null, 1 ] ],
+        [ 2.5, [ 0, 1, 2, 3, 4, 5 ] ],
+        [ 3, [ 1, 2, 3, 4, 5 ] ],
+        [ 3, [ 5, 4, 3, 2, 1 ] ],
+        [ 3, [ 5, 4, null, null, 3, 2, 1, null ] ],
+        [ 0, [ -1, 1, -1, 1, -1, 1, 0 ] ],
+        [ -1, [ -1, -1, -1, -1 ] ],
+        [ 0.3275, [ 0.1, 0.1, 0.01, 1.1 ] ],
+        [ -0.3275, [ -0.1, -0.1, -0.01, -1.1 ] ],
+        [ 1291478.0415649, [ 45.356, 256.23, -223.6767, -14512.63, 456.00222, -0.090566, 9054325.1 ] ]
+      ];
+
+      data.forEach(function (value) {
+        var actual = getQueryResults("RETURN NOOPT(AVERAGE(" + JSON.stringify(value[1]) + "))");
+        if (actual[0] === null) {
+          assertNull(value[0]);
+        }
+        else {
+          assertEqual(value[0].toFixed(4), actual[0].toFixed(4));
+        }
+      });
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test average function
+////////////////////////////////////////////////////////////////////////////////
+
+    testAverageCxxInvalid : function () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(AVERAGE())"); 
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN NOOPT(AVERAGE([ ], 2))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(null))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(false))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(3))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE(\"yes\"))"); 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_ARRAY_EXPECTED.code, "RETURN NOOPT(AVERAGE({ }))"); 
+    },
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief test median function
 ////////////////////////////////////////////////////////////////////////////////
     
