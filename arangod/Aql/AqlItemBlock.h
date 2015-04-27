@@ -62,6 +62,8 @@ namespace triagens {
 
     class AqlItemBlock {
 
+      friend class AqlItemBlockManager;
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                        constructors / destructors
 // -----------------------------------------------------------------------------
