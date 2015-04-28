@@ -364,7 +364,7 @@ AqlItemBlock* ExecutionBlock::requestBlock (size_t nrItems,
 /// @brief return an AqlItemBlock to the memory manager
 ////////////////////////////////////////////////////////////////////////////////
 
-void ExecutionBlock::returnBlock (AqlItemBlock* block) {
+void ExecutionBlock::returnBlock (AqlItemBlock*& block) {
   _engine->_itemBlockManager.returnBlock(block);
 }
 
@@ -408,9 +408,10 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
                                        size_t srcRow,
                                        size_t dstRow) {
   RegisterId const n = src->getNrRegs();
+  auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+    if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
       auto value = src->getValueReference(srcRow, i);
 
       if (! value.isEmpty()) {
@@ -438,17 +439,20 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
                                        AqlItemBlock* dst,
                                        size_t row) {
   RegisterId const n = src->getNrRegs();
+  auto planNode = getPlanNode();
 
   for (RegisterId i = 0; i < n; i++) {
-    if (getPlanNode()->_regsToClear.find(i) == getPlanNode()->_regsToClear.end()) {
+    if (planNode->_regsToClear.find(i) == planNode->_regsToClear.end()) {
       auto value = src->getValueReference(row, i);
 
       if (! value.isEmpty()) {
         AqlValue a = value.clone();
         try {
+
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
+
           dst->setValue(0, i, a);
         }
         catch (...) {
@@ -499,15 +503,17 @@ bool ExecutionBlock::getBlock (size_t atLeast, size_t atMost) {
 /// cleanup can use this method, internal use only
 ////////////////////////////////////////////////////////////////////////////////
 
-AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout (
-                                  size_t atLeast, size_t atMost) {
+AqlItemBlock* ExecutionBlock::getSomeWithoutRegisterClearout (size_t atLeast, 
+                                                              size_t atMost) {
   TRI_ASSERT(0 < atLeast && atLeast <= atMost);
   size_t skipped = 0;
   AqlItemBlock* result = nullptr;
   int out = getOrSkipSome(atLeast, atMost, false, result, skipped);
+
   if (out != TRI_ERROR_NO_ERROR) {
     THROW_ARANGO_EXCEPTION(out);
   }
+
   return result;
 }
 
@@ -612,7 +618,7 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
       if (cur->size() - _pos > atMost - skipped) {
         // The current block is too large for atMost:
         if (! skipping) { 
-          unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
+          std::unique_ptr<AqlItemBlock> more(cur->slice(_pos, _pos + (atMost - skipped)));
 
           TRI_IF_FAILURE("ExecutionBlock::getOrSkipSome1") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -881,6 +887,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   }
 
   if (_buffer.empty()) {
+
     size_t toFetch = (std::min)(DefaultBatchSize, atMost);
     if (! ExecutionBlock::getBlock(toFetch, toFetch)) {
       _done = true;
@@ -906,7 +913,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
   size_t toSend = (std::min)(atMost, available);
   RegisterId nrRegs = getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()];
 
-  unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
+  std::unique_ptr<AqlItemBlock> res(requestBlock(toSend, nrRegs));
   // automatically freed if we throw
   TRI_ASSERT(curRegs <= res->getNrRegs());
 
@@ -920,7 +927,7 @@ AqlItemBlock* EnumerateCollectionBlock::getSome (size_t, // atLeast,
     if (j > 0) {
       // re-use already copied aqlvalues
       for (RegisterId i = 0; i < curRegs; i++) {
-        res->setValue(j, i, res->getValue(0, i));
+        res->setValue(j, i, res->getValueReference(0, i));
         // Note: if this throws, then all values will be deleted
         // properly since the first one is.
       }
@@ -2887,6 +2894,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
       // initial subquery execution or subquery is not constant
       subqueryResults = executeSubquery(); 
       TRI_ASSERT(subqueryResults != nullptr);
+
       try {
         TRI_IF_FAILURE("SubqueryBlock::getSome") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
@@ -2928,7 +2936,8 @@ std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
   auto results = new std::vector<AqlItemBlock*>;
   try {
     do {
-      unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+      std::unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
+
       if (tmp.get() == nullptr) {
         break;
       }
@@ -4112,23 +4121,29 @@ AqlItemBlock* ReturnBlock::getSome (size_t atLeast,
 
   try {
     for (size_t i = 0; i < n; i++) {
-      AqlValue a = res->getValue(i, registerId);
-      if (! a.isEmpty()) {
-        res->steal(a);
-        try {
-          TRI_IF_FAILURE("ReturnBlock::getSome") {
-            THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-          }
+      auto a = res->getValueReference(i, registerId);
 
+      if (! a.isEmpty()) {
+        if (a.requiresDestruction()) {
+          res->steal(a);
+          try {
+            TRI_IF_FAILURE("ReturnBlock::getSome") {
+              THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+            }
+
+            stripped->setValue(i, 0, a);
+          }
+          catch (...) {
+            a.destroy();
+            throw;
+          }
+          // If the following does not go well, we do not care, since
+          // the value is already stolen and installed in stripped
+          res->eraseValue(i, registerId);
+        }
+        else {
           stripped->setValue(i, 0, a);
         }
-        catch (...) {
-          a.destroy();
-          throw;
-        }
-        // If the following does not go well, we do not care, since
-        // the value is already stolen and installed in stripped
-        res->eraseValue(i, registerId);
       }
     }
   }

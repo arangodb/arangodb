@@ -157,7 +157,7 @@ std::unordered_map<std::string, Function const> const Executor::FunctionNames{
   { "VARIANCE_POPULATION",         Function("VARIANCE_POPULATION",         "AQL_VARIANCE_POPULATION", "l", true, false, true) },
   { "STDDEV_SAMPLE",               Function("STDDEV_SAMPLE",               "AQL_STDDEV_SAMPLE", "l", true, false, true) },
   { "STDDEV_POPULATION",           Function("STDDEV_POPULATION",           "AQL_STDDEV_POPULATION", "l", true, false, true) },
-  { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, false, true) },
+  { "UNIQUE",                      Function("UNIQUE",                      "AQL_UNIQUE", "l", true, false, true, &Functions::Unique) },
   { "SLICE",                       Function("SLICE",                       "AQL_SLICE", "l,n|n", true, false, true) },
   { "REVERSE",                     Function("REVERSE",                     "AQL_REVERSE", "ls", true, false, true) },    // note: REVERSE() can be applied on strings, too
   { "FIRST",                       Function("FIRST",                       "AQL_FIRST", "l", true, false, true) },

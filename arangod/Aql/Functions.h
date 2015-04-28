@@ -53,25 +53,29 @@ namespace triagens {
 /// @brief functions
 ////////////////////////////////////////////////////////////////////////////////
 
-      static AqlValue IsNull   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsBool   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsNumber (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsString (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsArray  (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue IsObject (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Length   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Concat   (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Passthru (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Unset    (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Keep     (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Merge    (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Has      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Min      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Max      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Sum      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Average  (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Md5      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
-      static AqlValue Sha1     (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsNull        (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsBool        (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsNumber      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsString      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsArray       (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue IsObject      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Length        (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Concat        (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Passthru      (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Unset         (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Keep          (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Merge         (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Has           (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Min           (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Max           (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Sum           (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Average       (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Md5           (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Sha1          (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Unique        (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Union         (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue UnionDistinct (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
+      static AqlValue Intersection  (triagens::aql::Query*, triagens::arango::AqlTransaction*, TRI_document_collection_t const*, AqlValue const);
     };
 
   }

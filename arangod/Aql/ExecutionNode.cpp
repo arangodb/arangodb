@@ -317,13 +317,14 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     Variable* oneVariable = allVars->getVariable(oneVarUsedLater->id);
 
     if (oneVariable == nullptr) {
-      std::string errmsg = "varsUsedLater: ID not found in all-list: " + StringUtils::itoa(oneVarUsedLater->id);
+      std::string errmsg = "varsUsedLater: ID not found in all-array: " + StringUtils::itoa(oneVarUsedLater->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
     _varsUsedLater.insert(oneVariable);
   }
 
   auto jsonvarsValidList = json.get("varsValid");
+
   if (! jsonvarsValidList.isArray()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "varsValid needs to be a json array"); 
   }
@@ -335,7 +336,7 @@ ExecutionNode::ExecutionNode (ExecutionPlan* plan,
     Variable* oneVariable = allVars->getVariable(oneVarValid->id);
 
     if (oneVariable == nullptr) {
-      std::string errmsg = "varsValid: ID not found in all-list: " + StringUtils::itoa(oneVarValid->id);
+      std::string errmsg = "varsValid: ID not found in all-array: " + StringUtils::itoa(oneVarValid->id);
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, errmsg); 
     }
     _varsValid.insert(oneVariable);
@@ -382,6 +383,7 @@ void ExecutionNode::CloneHelper (ExecutionNode* other,
     }
 
     other->_varsValid.reserve(_varsValid.size());
+
     for (auto orgVar: _varsValid) {
       auto var = allVars->getVariable(orgVar->id);
       TRI_ASSERT(var != nullptr);

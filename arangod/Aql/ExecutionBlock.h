@@ -253,7 +253,7 @@ namespace triagens {
 /// @brief return an AqlItemBlock to the memory manager
 ////////////////////////////////////////////////////////////////////////////////
 
-        void returnBlock (AqlItemBlock*);
+        void returnBlock (AqlItemBlock*&);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief resolve a collection name and return cid and document key
