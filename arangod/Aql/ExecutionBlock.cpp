@@ -447,8 +447,8 @@ void ExecutionBlock::inheritRegisters (AqlItemBlock const* src,
 
       if (! value.isEmpty()) {
         AqlValue a = value.clone();
-        try {
 
+        try {
           TRI_IF_FAILURE("ExecutionBlock::inheritRegisters") {
             THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
           }
@@ -701,13 +701,30 @@ int ExecutionBlock::getOrSkipSome (size_t atLeast,
 /// @brief initializeCursor, store a copy of the register values coming from above
 ////////////////////////////////////////////////////////////////////////////////
 
-int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int SingletonBlock::initializeCursor (AqlItemBlock* items, 
+                                      size_t pos) {
   // Create a deep copy of the register values given to us:
   deleteInputVariables();
   
   if (items != nullptr) {
-    _inputRegisterValues = items->slice(pos, pos + 1);
+    auto en = static_cast<SingletonNode const*>(getPlanNode());
+    auto const& registerPlan = en->getRegisterPlan()->varInfo;
+    std::unordered_set<Variable const*> const& varsUsedLater = en->getVarsUsedLater();
+    
+    // build a whitelist with all the registers that we will copy from above
+    std::unordered_set<RegisterId> whitelist;
+
+    for (auto it : varsUsedLater) {
+      auto it2 = registerPlan.find(it->id);
+
+      if (it2 != registerPlan.end()) {
+        whitelist.emplace((*it2).second.registerId);
+      }
+    }
+
+    _inputRegisterValues = items->slice(pos, whitelist);
   }
+
   _done = false;
   return TRI_ERROR_NO_ERROR;
 }
@@ -717,7 +734,6 @@ int SingletonBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
 ////////////////////////////////////////////////////////////////////////////////
 
 int SingletonBlock::shutdown (int errorCode) {
-
   int res = ExecutionBlock::shutdown(errorCode);
 
   deleteInputVariables();
@@ -726,7 +742,7 @@ int SingletonBlock::shutdown (int errorCode) {
 }
 
 int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
-                                   size_t atMost,   // atMost,
+                                   size_t atMost,
                                    bool skipping,
                                    AqlItemBlock*& result,
                                    size_t& skipped) {
@@ -739,6 +755,7 @@ int SingletonBlock::getOrSkipSome (size_t,   // atLeast,
 
   if (! skipping) {
     result = new AqlItemBlock(1, getPlanNode()->getRegisterPlan()->nrRegs[getPlanNode()->getDepth()]);
+
     try {
       if (_inputRegisterValues != nullptr) {
         skipped++;
@@ -858,7 +875,8 @@ int EnumerateCollectionBlock::initialize () {
   return ExecutionBlock::initialize();
 }
 
-int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
+int EnumerateCollectionBlock::initializeCursor (AqlItemBlock* items, 
+                                                size_t pos) {
   int res = ExecutionBlock::initializeCursor(items, pos);
 
   if (res != TRI_ERROR_NO_ERROR) {
@@ -1671,6 +1689,7 @@ bool IndexRangeBlock::readIndex (size_t atMost) {
 int IndexRangeBlock::initializeCursor (AqlItemBlock* items, size_t pos) {
   ENTER_BLOCK;
   int res = ExecutionBlock::initializeCursor(items, pos);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2348,9 +2367,11 @@ EnumerateListBlock::EnumerateListBlock (ExecutionEngine* engine,
     _inVarRegId(ExecutionNode::MaxRegisterId) {
 
   auto it = en->getRegisterPlan()->varInfo.find(en->_inVariable->id);
+
   if (it == en->getRegisterPlan()->varInfo.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "variable not found");
   }
+
   _inVarRegId = (*it).second.registerId;
   TRI_ASSERT(_inVarRegId < ExecutionNode::MaxRegisterId);
 }
@@ -2858,6 +2879,7 @@ SubqueryBlock::~SubqueryBlock () {
 
 int SubqueryBlock::initialize () {
   int res = ExecutionBlock::initialize();
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2871,8 +2893,7 @@ int SubqueryBlock::initialize () {
 
 AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
                                       size_t atMost) {
-  unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(
-                                                    atLeast, atMost));
+  std::unique_ptr<AqlItemBlock> res(ExecutionBlock::getSomeWithoutRegisterClearout(atLeast, atMost));
 
   if (res.get() == nullptr) {
     return nullptr;
@@ -2926,6 +2947,7 @@ AqlItemBlock* SubqueryBlock::getSome (size_t atLeast,
 
 int SubqueryBlock::shutdown (int errorCode) {
   int res = ExecutionBlock::shutdown(errorCode);
+
   if (res != TRI_ERROR_NO_ERROR) {
     return res;
   }
@@ -2939,6 +2961,7 @@ int SubqueryBlock::shutdown (int errorCode) {
 
 std::vector<AqlItemBlock*>* SubqueryBlock::executeSubquery () {
   auto results = new std::vector<AqlItemBlock*>;
+
   try {
     do {
       std::unique_ptr<AqlItemBlock> tmp(_subquery->getSome(DefaultBatchSize, DefaultBatchSize));
