@@ -5938,6 +5938,15 @@ function IS_EXAMPLE_SET (example) {
 ///   is used as length.
 ///   If no default is supplied the default would be positive Infinity so the path could
 ///   not be calculated.
+///   * *includeData*                      : Triggers if only *_id*'s are returned (*false*, default)
+///                                          or if data is included for all objects as well (*true*)
+///                                          This will modify the content of *vertex*, *path.vertices*
+///                                          and *path.edges*. 
+///
+/// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
+/// This parameter triggers if the result contains the real data object *true* or
+/// it just includes the *_id* values *false*.
+/// The default value is *false* as it yields performance benefits.
 ///
 /// @EXAMPLES
 ///
@@ -5949,6 +5958,7 @@ function IS_EXAMPLE_SET (example) {
 /// | db._query("FOR e IN GRAPH_SHORTEST_PATH("
 /// | + "'routeplanner', {}, {}, {" +
 /// | "weight : 'distance', endVertexCollectionRestriction : 'frenchCity', " +
+/// | "includeData: true, " +
 /// | "startVertexCollectionRestriction : 'germanCity'}) RETURN [e.startVertex, e.vertex._id, " +
 /// | "e.distance, LENGTH(e.paths)]"
 /// ).toArray();
@@ -5962,7 +5972,7 @@ function IS_EXAMPLE_SET (example) {
 /// | db._query("FOR e IN GRAPH_SHORTEST_PATH("
 /// | +"'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Munich'}], " +
 /// | "'frenchCity/Lyon', " +
-/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance, LENGTH(e.paths)]"
+/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex, e.distance, LENGTH(e.paths)]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -6205,7 +6215,9 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 ///
 /// This function is a wrapper of [GRAPH\_SHORTEST\_PATH](#graph_shortest_path).
 /// It does not return the actual path but only the distance between two vertices.
-///
+/// 
+/// NOTE: Since version 2.6 we have included a new optional parameter *includeData*.
+///       See documentation for [GRAPH\_SHORTEST\_PATH](#graph_shortest_path).
 /// @EXAMPLES
 ///
 /// A route planner example, distance from all french to all german cities:
@@ -6216,7 +6228,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// | db._query("FOR e IN GRAPH_DISTANCE_TO("
 /// | +"'routeplanner', {}, {}, { " +
 /// | " weight : 'distance', endVertexCollectionRestriction : 'germanCity', " +
-/// | "startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex._id, " +
+/// | "startVertexCollectionRestriction : 'frenchCity'}) RETURN [e.startVertex, e.vertex, " +
 /// | "e.distance]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
@@ -6229,7 +6241,7 @@ function AQL_TRAVERSAL_TREE (vertexCollection,
 /// | db._query("FOR e IN GRAPH_DISTANCE_TO("
 /// | + "'routeplanner', [{_id: 'germanCity/Cologne'},{_id: 'germanCity/Hamburg'}], " +
 /// | "'frenchCity/Lyon', " +
-/// | "{weight : 'distance'}) RETURN [e.startVertex, e.vertex._id, e.distance]"
+/// | "{weight : 'distance', includeData: true}) RETURN [e.startVertex, e.vertex, e.distance]"
 /// ).toArray();
 /// @END_EXAMPLE_ARANGOSH_OUTPUT
 ///
@@ -7658,6 +7670,9 @@ function AQL_GRAPH_BETWEENNESS (graphName, options) {
       max = result[r];
     }
   });
+  if (max === 0) {
+    return result;
+  }
   Object.keys(result).forEach(function (r) {
     result[r] = result[r] / max;
   });
