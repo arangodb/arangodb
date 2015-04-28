@@ -1,7 +1,7 @@
 /*
  ******************************************************************************
  *
- *   Copyright (C) 1998-2011, International Business Machines
+ *   Copyright (C) 1998-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  ******************************************************************************
@@ -18,6 +18,9 @@
  */
 
 #include "unicode/ustdio.h"
+
+#if !UCONFIG_NO_CONVERSION
+
 #include "unicode/putil.h"
 #include "cmemory.h"
 #include "cstring.h"
@@ -724,3 +727,4 @@ u_file_read(    UChar        *chars,
 
     return read;
 }
+#endif

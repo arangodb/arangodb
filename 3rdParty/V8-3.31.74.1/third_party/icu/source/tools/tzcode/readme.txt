@@ -1,5 +1,5 @@
 **********************************************************************
-* Copyright (c) 2003-2007, International Business Machines
+* Copyright (c) 2003-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 * Author: Alan Liu
@@ -7,8 +7,8 @@
 * Since: ICU 2.8
 **********************************************************************
 
-Note:  this directory currently contains tzcode as of tzcode2006h.tar.gz
-   with localtime.c  patches from tzcode2006i.tar.gz
+Note:  this directory currently contains tzcode as of tzcode2014b.tar.gz
+   with localtime.c  patches from tzcode2014b.tar.gz
 
 
 ----------------------------------------------------------------------
@@ -24,7 +24,7 @@ behavior, as well as the full set of Olson compatibility IDs.
 References:
 
 ICU4C:  http://www.icu-project.org/
-Olson:  ftp://elsie.nci.nih.gov/pub/
+Olson:  ftp://ftp.iana.org/tz/releases/
 
 ----------------------------------------------------------------------
 ICU4C vs. ICU4J
@@ -47,18 +47,10 @@ The zoneinfo or "Olson" time zone package is used by various systems
 to describe the behavior of time zones.  The package consists of
 several parts.  E.g.:
 
-  Index of ftp://elsie.nci.nih.gov/pub/
+  Index of ftp://ftp.iana.org/tz/releases/
 
-  classictzcode.tar.gz    65 KB        12/10/1994    12:00:00 AM
-  classictzdata.tar.gz    67 KB        12/10/1994    12:00:00 AM
-  e5+57.tar.gz            2909 KB      3/22/1993     12:00:00 AM
-  iso8601.ps.gz           16 KB        7/27/1996     12:00:00 AM
-  leastsq.xls             49 KB        4/24/1997     12:00:00 AM
-  ltroff.tar.gz           36 KB        7/16/1993     12:00:00 AM
-  pi.shar.gz              4 KB         3/9/1994      12:00:00 AM
-  tzarchive.gz            3412 KB      8/18/2003     4:00:00 AM
-  tzcode2003a.tar.gz      98 KB        3/24/2003     2:32:00 PM
-  tzdata2003a.tar.gz      132 KB       3/24/2003     2:32:00 PM
+  tzcode2014b.tar.gz      172 KB       3/25/2014     05:11:00 AM
+  tzdata2014b.tar.gz      216 KB       3/25/2014     05:11:00 AM
 
 ICU only uses the tzdataYYYYV.tar.gz files,
 where YYYY is the year and V is the version letter ('a'...'z').
@@ -74,7 +66,7 @@ HOWTO
    the FTP site given above.  Either manually download or use wget:
 
    $ cd {path_to}/icu/source/tools/tzcode
-   $ wget "ftp://elsie.nci.nih.gov/pub/tzdata*.tar.gz"
+   $ wget "ftp://ftp.iana.org/tz/releases/tzdata*.tar.gz"
 
 2. Copy only one tzdata*.tar.gz file into the icu/source/tools/tzcode/
    directory (this directory).
@@ -96,6 +88,6 @@ HOWTO
    directory.  When they produce different results, the target returns
    the error.
 
-6. Don't forget to check in the new zoneinfo.txt (from its location at
-   {path_to}/icu/source/data/misc/zoneinfo.txt) into SVN.
+6. Don't forget to check in the new zoneinfo64.txt (from its location at
+   {path_to}/icu/source/data/misc/zoneinfo64.txt) into SVN.
 

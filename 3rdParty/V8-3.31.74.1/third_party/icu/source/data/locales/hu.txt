@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/hu.xml
@@ -37,6 +37,7 @@ hu{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -165,10 +166,13 @@ hu{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.93.17"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             eras{
@@ -538,7 +542,7 @@ hu{
                 "H:mm",
                 "y. MMMM d., EEEE",
                 "y. MMMM d.",
-                "y MMM d",
+                "y. MMM d.",
                 "y. MM. dd.",
                 "{1} {0}",
                 "{1} {0}",
@@ -546,10 +550,13 @@ hu{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"dél"}
+            NoonMarkerNarrow{"dél"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d., E"}
@@ -676,6 +683,10 @@ hu{
                 wide{
                     "időszámításunk előtt",
                     "időszámításunk szerint",
+                }
+                wide%variant{
+                    "i. e.",
+                    "i. sz.",
                 }
             }
             intervalFormats{
@@ -1238,6 +1249,32 @@ hu{
                 }
             }
         }
+        day-narrow{
+            dn{"nap"}
+            relativeTime{
+                future{
+                    one{"{0} nap múlva"}
+                    other{"{0} nap múlva"}
+                }
+                past{
+                    one{"{0} napja"}
+                    other{"{0} napja"}
+                }
+            }
+        }
+        day-short{
+            dn{"nap"}
+            relativeTime{
+                future{
+                    one{"{0} nap múlva"}
+                    other{"{0} nap múlva"}
+                }
+                past{
+                    one{"{0} napja"}
+                    other{"{0} napja"}
+                }
+            }
+        }
         dayperiod{
             dn{"napszak"}
         }
@@ -1251,7 +1288,47 @@ hu{
                 "1"{"következő péntek"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"előző péntek"}
+                "0"{"ez a péntek"}
+                "1"{"következő péntek"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"előző péntek"}
+                "0"{"ez a péntek"}
+                "1"{"következő péntek"}
+            }
+        }
         hour{
+            dn{"óra"}
+            relativeTime{
+                future{
+                    one{"{0} óra múlva"}
+                    other{"{0} óra múlva"}
+                }
+                past{
+                    one{"{0} órával ezelőtt"}
+                    other{"{0} órával ezelőtt"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"óra"}
+            relativeTime{
+                future{
+                    one{"{0} óra múlva"}
+                    other{"{0} óra múlva"}
+                }
+                past{
+                    one{"{0} órával ezelőtt"}
+                    other{"{0} órával ezelőtt"}
+                }
+            }
+        }
+        hour-short{
             dn{"óra"}
             relativeTime{
                 future{
@@ -1277,7 +1354,47 @@ hu{
                 }
             }
         }
+        minute-narrow{
+            dn{"perc"}
+            relativeTime{
+                future{
+                    one{"{0} perc múlva"}
+                    other{"{0} perc múlva"}
+                }
+                past{
+                    one{"{0} perccel ezelőtt"}
+                    other{"{0} perccel ezelőtt"}
+                }
+            }
+        }
+        minute-short{
+            dn{"perc"}
+            relativeTime{
+                future{
+                    one{"{0} perc múlva"}
+                    other{"{0} perc múlva"}
+                }
+                past{
+                    one{"{0} perccel ezelőtt"}
+                    other{"{0} perccel ezelőtt"}
+                }
+            }
+        }
         mon{
+            relative{
+                "-1"{"előző hétfő"}
+                "0"{"ez a hétfő"}
+                "1"{"következő hétfő"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"előző hétfő"}
+                "0"{"ez a hétfő"}
+                "1"{"következő hétfő"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"előző hétfő"}
                 "0"{"ez a hétfő"}
@@ -1302,7 +1419,86 @@ hu{
                 }
             }
         }
+        month-narrow{
+            dn{"hónap"}
+            relativeTime{
+                future{
+                    one{"{0} hónap múlva"}
+                    other{"{0} hónap múlva"}
+                }
+                past{
+                    one{"{0} hónappal ezelőtt"}
+                    other{"{0} hónappal ezelőtt"}
+                }
+            }
+        }
+        month-short{
+            dn{"hónap"}
+            relativeTime{
+                future{
+                    one{"{0} hónap múlva"}
+                    other{"{0} hónap múlva"}
+                }
+                past{
+                    one{"{0} hónappal ezelőtt"}
+                    other{"{0} hónappal ezelőtt"}
+                }
+            }
+        }
+        quarter{
+            dn{"negyedév"}
+            relativeTime{
+                future{
+                    one{"{0} negyedév múlva"}
+                    other{"{0} negyedév múlva"}
+                }
+                past{
+                    one{"{0} negyedévvel ezelőtt"}
+                    other{"{0} negyedévvel ezelőtt"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"negyedév"}
+            relativeTime{
+                future{
+                    one{"{0} negyedév múlva"}
+                    other{"{0} negyedév múlva"}
+                }
+                past{
+                    one{"{0} negyedévvel ezelőtt"}
+                    other{"{0} negyedévvel ezelőtt"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"negyedév"}
+            relativeTime{
+                future{
+                    one{"{0} negyedév múlva"}
+                    other{"{0} negyedév múlva"}
+                }
+                past{
+                    one{"{0} negyedévvel ezelőtt"}
+                    other{"{0} negyedévvel ezelőtt"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"előző szombat"}
+                "0"{"ez a szombat"}
+                "1"{"következő szombat"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"előző szombat"}
+                "0"{"ez a szombat"}
+                "1"{"következő szombat"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"előző szombat"}
                 "0"{"ez a szombat"}
@@ -1325,7 +1521,47 @@ hu{
                 }
             }
         }
+        second-narrow{
+            dn{"másodperc"}
+            relativeTime{
+                future{
+                    one{"{0} másodperc múlva"}
+                    other{"{0} másodperc múlva"}
+                }
+                past{
+                    one{"{0} másodperccel ezelőtt"}
+                    other{"{0} másodperccel ezelőtt"}
+                }
+            }
+        }
+        second-short{
+            dn{"másodperc"}
+            relativeTime{
+                future{
+                    one{"{0} másodperc múlva"}
+                    other{"{0} másodperc múlva"}
+                }
+                past{
+                    one{"{0} másodperccel ezelőtt"}
+                    other{"{0} másodperccel ezelőtt"}
+                }
+            }
+        }
         sun{
+            relative{
+                "-1"{"előző vasárnap"}
+                "0"{"ez a vasárnap"}
+                "1"{"következő vasárnap"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"előző vasárnap"}
+                "0"{"ez a vasárnap"}
+                "1"{"következő vasárnap"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"előző vasárnap"}
                 "0"{"ez a vasárnap"}
@@ -1339,7 +1575,35 @@ hu{
                 "1"{"következő csütörtök"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"előző csütörtök"}
+                "0"{"ez a csütörtök"}
+                "1"{"következő csütörtök"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"előző csütörtök"}
+                "0"{"ez a csütörtök"}
+                "1"{"következő csütörtök"}
+            }
+        }
         tue{
+            relative{
+                "-1"{"előző kedd"}
+                "0"{"ez a kedd"}
+                "1"{"következő kedd"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"előző kedd"}
+                "0"{"ez a kedd"}
+                "1"{"következő kedd"}
+            }
+        }
+        tue-short{
             relative{
                 "-1"{"előző kedd"}
                 "0"{"ez a kedd"}
@@ -1353,6 +1617,20 @@ hu{
                 "1"{"következő szerda"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"előző szerda"}
+                "0"{"ez a szerda"}
+                "1"{"következő szerda"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"előző szerda"}
+                "0"{"ez a szerda"}
+                "1"{"következő szerda"}
+            }
+        }
         week{
             dn{"hét"}
             relative{
@@ -1360,6 +1638,32 @@ hu{
                 "0"{"ez a hét"}
                 "1"{"következő hét"}
             }
+            relativeTime{
+                future{
+                    one{"{0} hét múlva"}
+                    other{"{0} hét múlva"}
+                }
+                past{
+                    one{"{0} héttel ezelőtt"}
+                    other{"{0} héttel ezelőtt"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"hét"}
+            relativeTime{
+                future{
+                    one{"{0} hét múlva"}
+                    other{"{0} hét múlva"}
+                }
+                past{
+                    one{"{0} héttel ezelőtt"}
+                    other{"{0} héttel ezelőtt"}
+                }
+            }
+        }
+        week-short{
+            dn{"hét"}
             relativeTime{
                 future{
                     one{"{0} hét múlva"}
@@ -1392,6 +1696,32 @@ hu{
                 }
             }
         }
+        year-narrow{
+            dn{"év"}
+            relativeTime{
+                future{
+                    one{"{0} év múlva"}
+                    other{"{0} év múlva"}
+                }
+                past{
+                    one{"{0} évvel ezelőtt"}
+                    other{"{0} évvel ezelőtt"}
+                }
+            }
+        }
+        year-short{
+            dn{"év"}
+            relativeTime{
+                future{
+                    one{"{0} év múlva"}
+                    other{"{0} év múlva"}
+                }
+                past{
+                    one{"{0} évvel ezelőtt"}
+                    other{"{0} évvel ezelőtt"}
+                }
+            }
+        }
         zone{
             dn{"időzóna"}
         }
@@ -1404,6 +1734,12 @@ hu{
             start{"{0}, {1}"}
         }
         unit{
+            2{"{0} és {1}"}
+            end{"{0} és {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
             2{"{0} és {1}"}
             end{"{0} és {1}"}
             middle{"{0}, {1}"}
@@ -1432,122 +1768,5 @@ hu{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinjin"}
         x-Publishing{"Kiadásra"}
-    }
-    units{
-        compound{
-            per{"{0} per {1}"}
-        }
-        duration{
-            day{
-                one{"{0} nap"}
-                other{"{0} nap"}
-            }
-            hour{
-                one{"{0} óra"}
-                other{"{0} óra"}
-            }
-            millisecond{
-                one{"{0} ezredmásodperc"}
-                other{"{0} ezredmásodperc"}
-            }
-            minute{
-                one{"{0} perc"}
-                other{"{0} perc"}
-            }
-            month{
-                one{"{0} hónap"}
-                other{"{0} hónap"}
-            }
-            second{
-                one{"{0} másodperc"}
-                other{"{0} másodperc"}
-            }
-            week{
-                one{"{0} hét"}
-                other{"{0} hét"}
-            }
-            year{
-                one{"{0} év"}
-                other{"{0} év"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} nap"}
-                other{"{0} nap"}
-            }
-            hour{
-                one{"{0} h"}
-                other{"{0} h"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} h."}
-                other{"{0} h."}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} hét"}
-                other{"{0} hét"}
-            }
-            year{
-                one{"{0} év"}
-                other{"{0} év"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} nap"}
-                other{"{0} nap"}
-            }
-            hour{
-                one{"{0} h"}
-                other{"{0} h"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} hónap"}
-                other{"{0} hónap"}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} hét"}
-                other{"{0} hét"}
-            }
-            year{
-                one{"{0} év"}
-                other{"{0} év"}
-            }
-        }
     }
 }

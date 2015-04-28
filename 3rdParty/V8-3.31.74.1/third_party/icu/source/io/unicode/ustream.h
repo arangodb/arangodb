@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2001-2011 International Business Machines
+*   Copyright (C) 2001-2014 International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *  FILE NAME : ustream.h
@@ -17,6 +17,8 @@
 
 #include "unicode/unistr.h"
 
+#if !UCONFIG_NO_CONVERSION  // not available without conversion
+
 /**
  * \file
  * \brief C++ API: Unicode iostream like API
@@ -25,6 +27,10 @@
  * operator<< and operator>> for UnicodeString manipulation with the
  * C++ I/O stream API.
  */
+
+#if !defined(_MSC_VER)
+namespace std { class type_info; } // WORKAROUND: http://llvm.org/bugs/show_bug.cgi?id=13364
+#endif
 
 #if U_IOSTREAM_SOURCE >= 199711
 #if (__GNUC__ == 2)
@@ -58,4 +64,5 @@ U_NAMESPACE_END
 
 /* No operator for UChar because it can conflict with wchar_t  */
 
+#endif
 #endif

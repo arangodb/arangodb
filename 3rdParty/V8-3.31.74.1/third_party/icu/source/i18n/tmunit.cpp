@@ -1,13 +1,12 @@
 /*
  *******************************************************************************
- * Copyright (C) 2008-2012, Google, International Business Machines Corporation and
+ * Copyright (C) 2008-2014, Google, International Business Machines Corporation and
  * others. All Rights Reserved.
  *******************************************************************************
  */
 
-#include "utypeinfo.h"  // for 'typeid' to work
-
 #include "unicode/tmunit.h"
+#include "uassert.h"
 
 #if !UCONFIG_NO_FORMATTING
 
@@ -70,43 +69,57 @@ TimeUnit::createInstance(TimeUnit::UTimeUnitFields timeUnitField,
 
 TimeUnit::TimeUnit(TimeUnit::UTimeUnitFields timeUnitField) {
     fTimeUnitField = timeUnitField;
+    switch (fTimeUnitField) {
+    case UTIMEUNIT_YEAR:
+        initTime("year");
+        break;
+    case UTIMEUNIT_MONTH:
+        initTime("month");
+        break;
+    case UTIMEUNIT_DAY:
+        initTime("day");
+        break;
+    case UTIMEUNIT_WEEK:
+        initTime("week");
+        break;
+    case UTIMEUNIT_HOUR:
+        initTime("hour");
+        break;
+    case UTIMEUNIT_MINUTE:
+        initTime("minute");
+        break;
+    case UTIMEUNIT_SECOND:
+        initTime("second");
+        break;
+    default:
+        U_ASSERT(false);
+        break;
+    }
 }
-
 
 TimeUnit::TimeUnit(const TimeUnit& other) 
-:   MeasureUnit(other) {
-    *this = other;
+:   MeasureUnit(other), fTimeUnitField(other.fTimeUnitField) {
 }
-
 
 UObject* 
 TimeUnit::clone() const {
     return new TimeUnit(*this);
 }
 
-
 TimeUnit&
 TimeUnit::operator=(const TimeUnit& other) {
     if (this == &other) {
         return *this;
     }
+    MeasureUnit::operator=(other);
     fTimeUnitField = other.fTimeUnitField;
     return *this;
 }
-
-
-UBool 
-TimeUnit::operator==(const UObject& other) const {
-    return (typeid(*this) == typeid(other)
-            && fTimeUnitField == ((TimeUnit*)&other)->fTimeUnitField);
-}
-
 
 TimeUnit::UTimeUnitFields
 TimeUnit::getTimeUnitField() const {
     return fTimeUnitField;
 }
-
 
 TimeUnit::~TimeUnit() {
 }

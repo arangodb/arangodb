@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2008-2013, International Business Machines
+*   Copyright (C) 2008-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
@@ -15,7 +15,6 @@
 #include "cstring.h"
 #include "identifier_info.h"
 #include "scriptset.h"
-#include "udatamem.h"
 #include "umutex.h"
 #include "udataswp.h"
 #include "uassert.h"
@@ -475,6 +474,30 @@ UBool SpoofData::validateDataVersion(const SpoofDataHeader *rawData, UErrorCode 
     return TRUE;
 }
 
+static UBool U_CALLCONV
+spoofDataIsAcceptable(void *context,
+                        const char * /* type */, const char * /*name*/,
+                        const UDataInfo *pInfo) {
+    if(
+        pInfo->size >= 20 &&
+        pInfo->isBigEndian == U_IS_BIG_ENDIAN &&
+        pInfo->charsetFamily == U_CHARSET_FAMILY &&
+        pInfo->dataFormat[0] == 0x43 &&  // dataFormat="Cfu "
+        pInfo->dataFormat[1] == 0x66 &&
+        pInfo->dataFormat[2] == 0x75 &&
+        pInfo->dataFormat[3] == 0x20 &&
+        pInfo->formatVersion[0] == 1
+    ) {
+        UVersionInfo *version = static_cast<UVersionInfo *>(context);
+        if(version != NULL) {
+            uprv_memcpy(version, pInfo->dataVersion, 4);
+        }
+        return TRUE;
+    } else {
+        return FALSE;
+    }
+}
+
 //
 //  SpoofData::getDefault() - return a wrapper around the spoof data that is
 //                           baked into the default ICU data.
@@ -482,7 +505,10 @@ UBool SpoofData::validateDataVersion(const SpoofDataHeader *rawData, UErrorCode 
 SpoofData *SpoofData::getDefault(UErrorCode &status) {
     // TODO:  Cache it.  Lazy create, keep until cleanup.
 
-    UDataMemory *udm = udata_open(NULL, "cfu", "confusables", &status);
+    UDataMemory *udm = udata_openChoice(NULL, "cfu", "confusables",
+                                        spoofDataIsAcceptable, 
+                                        NULL,       // context, would receive dataVersion if supplied.
+                                        &status);
     if (U_FAILURE(status)) {
         return NULL;
     }
@@ -497,16 +523,16 @@ SpoofData *SpoofData::getDefault(UErrorCode &status) {
     return This;
 }
 
-
 SpoofData::SpoofData(UDataMemory *udm, UErrorCode &status)
 {
     reset();
     if (U_FAILURE(status)) {
         return;
     }
-    fRawData = reinterpret_cast<SpoofDataHeader *>
-                   ((char *)(udm->pHeader) + udm->pHeader->dataHeader.headerSize);
     fUDM = udm;
+    // fRawData is non-const because it may be constructed by the data builder.
+    fRawData = reinterpret_cast<SpoofDataHeader *>(
+            const_cast<void *>(udata_getMemory(udm)));
     validateDataVersion(fRawData, status);
     initPtrs(status);
 }

@@ -137,6 +137,7 @@ int32_t NGramParser::parse(InputText *det)
     return (int32_t) (rawPercent * 300.0);
 }
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 static const uint8_t unshapeMap_IBM420[] = {
 /*           -0    -1    -2    -3    -4    -5    -6    -7    -8    -9    -A    -B    -C    -D    -E    -F   */
 /* 0- */    0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 
@@ -232,6 +233,7 @@ void NGramParser_IBM420::parseCharacters(InputText *det)
         }
     }
 }
+#endif
 
 CharsetRecog_sbcs::CharsetRecog_sbcs()
 {
@@ -624,6 +626,7 @@ static const uint8_t charMap_KOI8_R[] = {
     0xD8, 0xD9, 0xDA, 0xDB, 0xDC, 0xDD, 0xDE, 0xDF, 
 };
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 static const int32_t ngrams_IBM424_he_rtl[] = {
     0x404146, 0x404148, 0x404151, 0x404171, 0x404251, 0x404256, 0x404541, 0x404546, 0x404551, 0x404556, 0x404562, 0x404569, 0x404571, 0x405441, 0x405445, 0x405641, 
     0x406254, 0x406954, 0x417140, 0x454041, 0x454042, 0x454045, 0x454054, 0x454056, 0x454069, 0x454641, 0x464140, 0x465540, 0x465740, 0x466840, 0x467140, 0x514045, 
@@ -691,6 +694,7 @@ static const uint8_t charMap_IBM420_ar[]= {
 /* E- */    0x40, 0x40, 0xA2, 0xA3, 0xA4, 0xA5, 0xA6, 0xA7, 0xA8, 0xA9, 0xEA, 0xEB, 0x40, 0xED, 0xEE, 0xEF, 
 /* F- */    0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0xFB, 0xFC, 0xFD, 0xFE, 0x40, 
 };
+#endif
 
 //ISO-8859-1,2,5,6,7,8,9 Ngrams
 
@@ -1155,6 +1159,7 @@ UBool CharsetRecog_KOI8_R::match(InputText *textIn, CharsetMatch *results) const
     return (confidence > 0);
 }
 
+#if !UCONFIG_NO_NON_HTML5_CONVERSION
 CharsetRecog_IBM424_he::~CharsetRecog_IBM424_he()
 {
     // nothing to do
@@ -1253,6 +1258,7 @@ UBool CharsetRecog_IBM420_ar_ltr::match(InputText *textIn, CharsetMatch *results
     results->set(textIn, this, confidence);
     return (confidence > 0);
 }
+#endif
 
 U_NAMESPACE_END
 #endif

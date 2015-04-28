@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bn.xml
@@ -47,7 +47,7 @@ bn{
             }
             patterns{
                 accountingFormat{"#,##,##0.00¤;(#,##,##0.00¤)"}
-                currencyFormat{"#,##,##0.00¤;(#,##,##0.00¤)"}
+                currencyFormat{"#,##,##0.00¤"}
                 decimalFormat{"#,##,##0.###"}
                 percentFormat{"#,##,##0%"}
                 scientificFormat{"#E0"}
@@ -107,12 +107,12 @@ bn{
             patternsShort{
                 decimalFormat{
                     1000{
-                        one{"0K"}
-                        other{"0K"}
+                        one{"0 হাজার"}
+                        other{"0 হাজার"}
                     }
                     10000{
-                        one{"00K"}
-                        other{"00K"}
+                        one{"00 হাজার"}
+                        other{"00 হাজার"}
                     }
                     100000{
                         one{"0 লাখ"}
@@ -168,11 +168,13 @@ bn{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
         native{"beng"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -323,14 +325,13 @@ bn{
             }
         }
         gregorian{
-            // Chromium fix for AmPm : b/1469531
             AmPmMarkers{
                 "am",
                 "pm",
             }
             AmPmMarkersNarrow{
-                "am",
-                "pm",
+                "পূর্বাহ্ণ",
+                "অপরাহ্ণ",
             }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -347,10 +348,13 @@ bn{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"noon"}
+            NoonMarkerNarrow{"দুপুর"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
@@ -423,7 +427,7 @@ bn{
                         "সোমবার",
                         "মঙ্গলবার",
                         "বুধবার",
-                        "বৃহষ্পতিবার",
+                        "বৃহস্পতিবার",
                         "শুক্রবার",
                         "শনিবার",
                     }
@@ -454,7 +458,7 @@ bn{
                         "বুঃ",
                         "বৃঃ",
                         "শুঃ",
-                        "শোঃ",
+                        "শনি",
                     }
                     wide{
                         "রবিবার",
@@ -471,6 +475,18 @@ bn{
                 abbreviated{
                     "খ্রিস্টপূর্ব",
                     "খৃষ্টাব্দ",
+                }
+                abbreviated%variant{
+                    "খ্রিষ্টপূর্বাব্দ",
+                    "খ্রিষ্টাব্দ",
+                }
+                wide{
+                    "খ্রিস্টপূর্ব",
+                    "খৃষ্টাব্দ",
+                }
+                wide%variant{
+                    "খ্রিষ্টপূর্বাব্দ",
+                    "খ্রিষ্টাব্দ",
                 }
             }
             intervalFormats{
@@ -661,10 +677,10 @@ bn{
             quarters{
                 format{
                     abbreviated{
-                        "চতুর্থাংশ ১",
-                        "চতুর্থাংশ ২",
-                        "চতুর্থাংশ ৩",
-                        "চতুর্থাংশ ৪",
+                        "প্র. ত্রৈ. এক. চতুর্থাংশ",
+                        "দ্বি.ত্রৈ.এক. চতুর্থাংশ",
+                        "তৃ.ত্রৈ.এক.চতুর্থাংশ",
+                        "চ.ত্রৈ.এক চতুর্থাংশ",
                     }
                     narrow{
                         "১",
@@ -673,18 +689,18 @@ bn{
                         "৪",
                     }
                     wide{
-                        "প্রথম চতুর্থাংশ",
-                        "দ্বিতীয় চতুর্থাংশ",
-                        "তৃতীয় চতুর্থাংশ",
-                        "চতুর্থ চতুর্থাংশ",
+                        "প্রথম ত্রৈমাসিকের এক চতুর্থাংশ",
+                        "দ্বিতীয় ত্রৈমাসিকের এক চতুর্থাংশ",
+                        "তৃতীয় ত্রৈমাসিকের এক চতুর্থাংশ",
+                        "চতুর্থ ত্রৈমাসিকের এক চতুর্থাংশ",
                     }
                 }
                 stand-alone{
                     abbreviated{
-                        "চতুর্থাংশ ১",
-                        "চতুর্থাংশ ২",
-                        "চতুর্থাংশ ৩",
-                        "চতুর্থাংশ ৪",
+                        "প্র.ত্রৈ.এক.চতুর্থাংশ",
+                        "দ্বি.ত্রৈ.এক চতুর্থাংশ",
+                        "তৃ.ত্রৈ.এক.চতুর্থাংশ",
+                        "চ.ত্রৈ.এক.চতুর্থাংশ",
                     }
                     narrow{
                         "১",
@@ -693,10 +709,10 @@ bn{
                         "৪",
                     }
                     wide{
-                        "প্রথম চতুর্থাংশ",
-                        "দ্বিতীয় চতুর্থাংশ",
-                        "তৃতীয় চতুর্থাংশ",
-                        "চতুর্থ চতুর্থাংশ",
+                        "প্রথম ত্রৈমাসিকের এক চতুর্থাংশ",
+                        "দ্বিতীয় ত্রৈমাসিকের এক চতুর্থাংশ",
+                        "তৃতীয় ত্রৈমাসিকের এক চতুর্থাংশ",
+                        "চতুর্থ ত্রৈমাসিকের এক চতুর্থাংশ",
                     }
                 }
             }
@@ -758,7 +774,7 @@ bn{
                         "জমাদিউল আউয়াল",
                         "জমাদিউস সানি",
                         "রজব",
-                        "শা'বান",
+                        "শা‘বান",
                         "রমজান",
                         "শাওয়াল",
                         "জ্বিলকদ",
@@ -816,6 +832,32 @@ bn{
                 }
             }
         }
+        day-narrow{
+            dn{"দিন"}
+            relativeTime{
+                future{
+                    one{"{0} দিনের মধ্যে"}
+                    other{"{0} দিনের মধ্যে"}
+                }
+                past{
+                    one{"{0} দিন পূর্বে"}
+                    other{"{0} দিন পূর্বে"}
+                }
+            }
+        }
+        day-short{
+            dn{"দিন"}
+            relativeTime{
+                future{
+                    one{"{0} দিনের মধ্যে"}
+                    other{"{0} দিনের মধ্যে"}
+                }
+                past{
+                    one{"{0} দিন পূর্বে"}
+                    other{"{0} দিন পূর্বে"}
+                }
+            }
+        }
         dayperiod{
             dn{"পূর্বাহ্ণ/অপরাহ্ণ"}
         }
@@ -829,7 +871,47 @@ bn{
                 "1"{"পরের শুক্রবার"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"গত শুক্রবার"}
+                "0"{"এই শুক্রবার"}
+                "1"{"পরের শুক্রবার"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"গত শুক্রবার"}
+                "0"{"এই শুক্রবার"}
+                "1"{"পরের শুক্রবার"}
+            }
+        }
         hour{
+            dn{"ঘন্টা"}
+            relativeTime{
+                future{
+                    one{"{0} ঘন্টায়"}
+                    other{"{0} ঘন্টায়"}
+                }
+                past{
+                    one{"{0} ঘন্টা আগে"}
+                    other{"{0} ঘন্টা আগে"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"ঘন্টা"}
+            relativeTime{
+                future{
+                    one{"{0} ঘন্টায়"}
+                    other{"{0} ঘন্টায়"}
+                }
+                past{
+                    one{"{0} ঘন্টা আগে"}
+                    other{"{0} ঘন্টা আগে"}
+                }
+            }
+        }
+        hour-short{
             dn{"ঘন্টা"}
             relativeTime{
                 future{
@@ -855,7 +937,47 @@ bn{
                 }
             }
         }
+        minute-narrow{
+            dn{"মিনিট"}
+            relativeTime{
+                future{
+                    one{"{0} মিনিটে"}
+                    other{"{0} মিনিটে"}
+                }
+                past{
+                    one{"{0} মিনিট পূর্বে"}
+                    other{"{0} মিনিট পূর্বে"}
+                }
+            }
+        }
+        minute-short{
+            dn{"মিনিট"}
+            relativeTime{
+                future{
+                    one{"{0} মিনিটে"}
+                    other{"{0} মিনিটে"}
+                }
+                past{
+                    one{"{0} মিনিট পূর্বে"}
+                    other{"{0} মিনিট পূর্বে"}
+                }
+            }
+        }
         mon{
+            relative{
+                "-1"{"গত সোমবার"}
+                "0"{"এই সোমবার"}
+                "1"{"পরের সোমবার"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"গত সোমবার"}
+                "0"{"এই সোমবার"}
+                "1"{"পরের সোমবার"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"গত সোমবার"}
                 "0"{"এই সোমবার"}
@@ -880,7 +1002,86 @@ bn{
                 }
             }
         }
+        month-narrow{
+            dn{"মাস"}
+            relativeTime{
+                future{
+                    one{"{0} মাসে"}
+                    other{"{0} মাসে"}
+                }
+                past{
+                    one{"{0} মাস পূর্বে"}
+                    other{"{0} মাস পূর্বে"}
+                }
+            }
+        }
+        month-short{
+            dn{"মাস"}
+            relativeTime{
+                future{
+                    one{"{0} মাসে"}
+                    other{"{0} মাসে"}
+                }
+                past{
+                    one{"{0} মাস পূর্বে"}
+                    other{"{0} মাস পূর্বে"}
+                }
+            }
+        }
+        quarter{
+            dn{"ত্রৈমাসিক"}
+            relativeTime{
+                future{
+                    one{"{0} ত্রৈমাসিকের এক চতুর্থাংশ"}
+                    other{"{0} ত্রৈমাসিকের এক চতুর্থাংশ"}
+                }
+                past{
+                    one{"{0} ত্রৈমাসিকের আগে"}
+                    other{"{0} ত্রৈমাসিকের আগে"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"ত্রৈমাসিক"}
+            relativeTime{
+                future{
+                    one{"{0} ত্রৈমাসিকের এক চতুর্থাংশ"}
+                    other{"{0} ত্রৈমাসিকের এক চতুর্থাংশ"}
+                }
+                past{
+                    one{"{0} ত্রৈমাসিকের আগে"}
+                    other{"{0} ত্রৈমাসিকের আগে"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"ত্রৈমাসিক"}
+            relativeTime{
+                future{
+                    one{"{0} ত্রৈমাসিকের এক চতুর্থাংশ"}
+                    other{"{0} ত্রৈমাসিকের এক চতুর্থাংশ"}
+                }
+                past{
+                    one{"{0} ত্রৈমাসিকের আগে"}
+                    other{"{0} ত্রৈমাসিকের আগে"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"গত শনিবার"}
+                "0"{"এই শনিবার"}
+                "1"{"পরের শনিবার"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"গত শনিবার"}
+                "0"{"এই শনিবার"}
+                "1"{"পরের শনিবার"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"গত শনিবার"}
                 "0"{"এই শনিবার"}
@@ -903,7 +1104,47 @@ bn{
                 }
             }
         }
+        second-narrow{
+            dn{"সেকেন্ড"}
+            relativeTime{
+                future{
+                    one{"{0} সেকেন্ডে"}
+                    other{"{0} সেকেন্ডে"}
+                }
+                past{
+                    one{"{0} সেকেন্ড পূর্বে"}
+                    other{"{0} সেকেন্ড পূর্বে"}
+                }
+            }
+        }
+        second-short{
+            dn{"সেকেন্ড"}
+            relativeTime{
+                future{
+                    one{"{0} সেকেন্ডে"}
+                    other{"{0} সেকেন্ডে"}
+                }
+                past{
+                    one{"{0} সেকেন্ড পূর্বে"}
+                    other{"{0} সেকেন্ড পূর্বে"}
+                }
+            }
+        }
         sun{
+            relative{
+                "-1"{"গত রবিবার"}
+                "0"{"এই রবিবার"}
+                "1"{"পরের রবিবার"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"গত রবিবার"}
+                "0"{"এই রবিবার"}
+                "1"{"পরের রবিবার"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"গত রবিবার"}
                 "0"{"এই রবিবার"}
@@ -917,7 +1158,35 @@ bn{
                 "1"{"পরের বৃহস্পতিবার"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"গত বৃহস্পতিবার"}
+                "0"{"এই বৃহস্পতিবার"}
+                "1"{"পরের বৃহস্পতিবার"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"গত বৃহস্পতিবার"}
+                "0"{"এই বৃহস্পতিবার"}
+                "1"{"পরের বৃহস্পতিবার"}
+            }
+        }
         tue{
+            relative{
+                "-1"{"গত মঙ্গলবার"}
+                "0"{"এই মঙ্গলবার"}
+                "1"{"পরের মঙ্গলবার"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"গত মঙ্গলবার"}
+                "0"{"এই মঙ্গলবার"}
+                "1"{"পরের মঙ্গলবার"}
+            }
+        }
+        tue-short{
             relative{
                 "-1"{"গত মঙ্গলবার"}
                 "0"{"এই মঙ্গলবার"}
@@ -931,6 +1200,20 @@ bn{
                 "1"{"পরের বুধবার"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"গত বুধবার"}
+                "0"{"এই বুধবার"}
+                "1"{"পরের বুধবার"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"গত বুধবার"}
+                "0"{"এই বুধবার"}
+                "1"{"পরের বুধবার"}
+            }
+        }
         week{
             dn{"সপ্তাহ"}
             relative{
@@ -938,6 +1221,32 @@ bn{
                 "0"{"এই সপ্তাহ"}
                 "1"{"পরের সপ্তাহ"}
             }
+            relativeTime{
+                future{
+                    one{"{0} সপ্তাহে"}
+                    other{"{0} সপ্তাহে"}
+                }
+                past{
+                    one{"{0} সপ্তাহ পূর্বে"}
+                    other{"{0} সপ্তাহ পূর্বে"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"সপ্তাহ"}
+            relativeTime{
+                future{
+                    one{"{0} সপ্তাহে"}
+                    other{"{0} সপ্তাহে"}
+                }
+                past{
+                    one{"{0} সপ্তাহ পূর্বে"}
+                    other{"{0} সপ্তাহ পূর্বে"}
+                }
+            }
+        }
+        week-short{
+            dn{"সপ্তাহ"}
             relativeTime{
                 future{
                     one{"{0} সপ্তাহে"}
@@ -970,6 +1279,32 @@ bn{
                 }
             }
         }
+        year-narrow{
+            dn{"বছর"}
+            relativeTime{
+                future{
+                    one{"{0} বছরে"}
+                    other{"{0} বছরে"}
+                }
+                past{
+                    one{"{0} বছর পূর্বে"}
+                    other{"{0} বছর পূর্বে"}
+                }
+            }
+        }
+        year-short{
+            dn{"বছর"}
+            relativeTime{
+                future{
+                    one{"{0} বছরে"}
+                    other{"{0} বছরে"}
+                }
+                past{
+                    one{"{0} বছর পূর্বে"}
+                    other{"{0} বছর পূর্বে"}
+                }
+            }
+        }
         zone{
             dn{"এলাকা"}
         }
@@ -987,6 +1322,12 @@ bn{
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
+        unit-narrow{
+            2{"{0} এবং {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         unit-short{
             2{"{0} এবং {1}"}
             end{"{0}, {1}"}
@@ -996,7 +1337,7 @@ bn{
     }
     measurementSystemNames{
         UK{"ইউকে"}
-        US{"মার্কিন"}
+        US{"ইউ এস"}
         metric{"মেট্রিক"}
     }
     transformNames{
@@ -1010,122 +1351,5 @@ bn{
         x-Jamo{"জ্যামো"}
         x-Pinyin{"পিনইন"}
         x-Publishing{"প্রকাশনা"}
-    }
-    units{
-        compound{
-            per{"{1} প্রতি {0}"}
-        }
-        duration{
-            day{
-                one{"{0} দিন"}
-                other{"{0} দিন"}
-            }
-            hour{
-                one{"{0} ঘন্টা"}
-                other{"{0} ঘন্টা"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} মিনিট"}
-                other{"{0} মিনিট"}
-            }
-            month{
-                one{"{0} মাস"}
-                other{"{0} মাস"}
-            }
-            second{
-                one{"{0} সেকেন্ড"}
-                other{"{0} সেকেন্ড"}
-            }
-            week{
-                one{"{0} সপ্তাহ"}
-                other{"{0} সপ্তাহ"}
-            }
-            year{
-                one{"{0} বছর"}
-                other{"{0} বছর"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} দিন"}
-                other{"{0} দিন"}
-            }
-            hour{
-                one{"{0} ঘন্টা"}
-                other{"{0} ঘন্টা"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} মিনিট"}
-                other{"{0} মিনিট"}
-            }
-            month{
-                one{"{0} মাস"}
-                other{"{0} মাস"}
-            }
-            second{
-                one{"{0} সেকেন্ড"}
-                other{"{0} সেকেন্ড"}
-            }
-            week{
-                one{"{0} সপ্তাহ"}
-                other{"{0} সপ্তাহ"}
-            }
-            year{
-                one{"{0} বছর"}
-                other{"{0} বছর"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} দিন"}
-                other{"{0} দিন"}
-            }
-            hour{
-                one{"{0} ঘন্টা"}
-                other{"{0} ঘন্টা"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} মিনিট"}
-                other{"{0} মিনিট"}
-            }
-            month{
-                one{"{0} মাস"}
-                other{"{0} মাস"}
-            }
-            second{
-                one{"{0} সেকেন্ড"}
-                other{"{0} সেকেন্ড"}
-            }
-            week{
-                one{"{0} সপ্তাহ"}
-                other{"{0} সপ্তাহ"}
-            }
-            year{
-                one{"{0} বছর"}
-                other{"{0} বছর"}
-            }
-        }
     }
 }

@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2011, International Business Machines
+*   Copyright (C) 2009-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -64,6 +64,7 @@ public:
     void setUnicodeVersion(const char *v);
 
     void writeBinaryFile(const char *filename);
+    void writeCSourceFile(const char *filename);
 
 private:
     friend class CompositionBuilder;
@@ -110,6 +111,7 @@ private:
 
     int32_t indexes[Normalizer2Impl::IX_COUNT];
     UTrie2 *norm16Trie;
+    int32_t norm16TrieLength;
     UnicodeString extraData;
     uint8_t smallFCD[0x100];
 

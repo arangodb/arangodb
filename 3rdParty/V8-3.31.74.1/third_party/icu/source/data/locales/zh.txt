@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/zh.xml
@@ -140,12 +140,14 @@ zh{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
         native{"hanidec"}
         traditional{"hans"}
     }
-    Version{"2.0.93.8"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -196,16 +198,16 @@ zh{
                 "ah:mm:ss",
                 "ah:mm",
                 {
-                    "U年MMMd日EEEE",
-                    "hanidec",
+                    "U年MMMdEEEE",
+                    "d=hanidays",
                 }
                 {
-                    "U年MMMd日",
-                    "hanidec",
+                    "U年MMMd",
+                    "d=hanidays",
                 }
                 {
-                    "U年MMMd日",
-                    "hanidec",
+                    "U年MMMd",
+                    "d=hanidays",
                 }
                 "U-M-d",
                 "{1} {0}",
@@ -227,14 +229,14 @@ zh{
                 Md{"M-d"}
                 d{"d日"}
                 y{"U年"}
-                yMd{"U年M月d日"}
+                yMd{"U年MMMd日"}
                 yyyy{"U年"}
-                yyyyM{"U年M月"}
-                yyyyMEd{"U年M月d日，E"}
+                yyyyM{"U年MMM"}
+                yyyyMEd{"U年MMMd日，E"}
                 yyyyMMM{"U年MMM"}
                 yyyyMMMEd{"U年MMMd日E"}
                 yyyyMMMd{"U年MMMd日"}
-                yyyyMd{"U年M月d日"}
+                yyyyMd{"U年MMMd日"}
                 yyyyQQQ{"U年QQQQ"}
                 yyyyQQQQ{"U年QQQQ"}
             }
@@ -254,6 +256,36 @@ zh{
                             "酉",
                             "戌",
                             "亥",
+                        }
+                    }
+                }
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "立春",
+                            "雨水",
+                            "惊蛰",
+                            "春分",
+                            "清明",
+                            "谷雨",
+                            "立夏",
+                            "小满",
+                            "芒种",
+                            "夏至",
+                            "小暑",
+                            "大暑",
+                            "立秋",
+                            "处暑",
+                            "白露",
+                            "秋分",
+                            "寒露",
+                            "霜降",
+                            "立冬",
+                            "小雪",
+                            "大雪",
+                            "冬至",
+                            "小寒",
+                            "大寒",
                         }
                     }
                 }
@@ -439,8 +471,8 @@ zh{
                         "八月",
                         "九月",
                         "十月",
-                        "十一月",
-                        "十二月",
+                        "冬月",
+                        "腊月",
                     }
                     narrow{
                         "正",
@@ -453,8 +485,8 @@ zh{
                         "八",
                         "九",
                         "十",
-                        "十一",
-                        "十二",
+                        "冬",
+                        "腊",
                     }
                     wide{
                         "正月",
@@ -467,8 +499,8 @@ zh{
                         "八月",
                         "九月",
                         "十月",
-                        "十一月",
-                        "十二月",
+                        "冬月",
+                        "腊月",
                     }
                 }
                 stand-alone{
@@ -483,8 +515,8 @@ zh{
                         "八月",
                         "九月",
                         "十月",
-                        "十一月",
-                        "十二月",
+                        "冬月",
+                        "腊月",
                     }
                     narrow{
                         "正",
@@ -497,8 +529,8 @@ zh{
                         "八",
                         "九",
                         "十",
-                        "十一",
-                        "十二",
+                        "冬",
+                        "腊",
                     }
                     wide{
                         "正月",
@@ -511,8 +543,8 @@ zh{
                         "八月",
                         "九月",
                         "十月",
-                        "十一月",
-                        "十二月",
+                        "冬月",
+                        "腊月",
                     }
                 }
             }
@@ -894,10 +926,13 @@ zh{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"中午"}
+            NoonMarkerNarrow{"中午"}
             appendItems{
                 Timezone{"{1}{0}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"EHH:mm"}
                 EHms{"EHH:mm:ss"}
                 Ed{"d日E"}
@@ -924,7 +959,7 @@ zh{
                 hms{"ah:mm:ss"}
                 ms{"mm:ss"}
                 y{"y年"}
-                yM{"y/M"}
+                yM{"y年M月"}
                 yMEd{"y/M/dE"}
                 yMM{"y年M月"}
                 yMMM{"y年M月"}
@@ -2029,6 +2064,28 @@ zh{
                 }
             }
         }
+        day-narrow{
+            dn{"日"}
+            relativeTime{
+                future{
+                    other{"{0}天后"}
+                }
+                past{
+                    other{"{0}天前"}
+                }
+            }
+        }
+        day-short{
+            dn{"日"}
+            relativeTime{
+                future{
+                    other{"{0}天后"}
+                }
+                past{
+                    other{"{0}天前"}
+                }
+            }
+        }
         dayperiod{
             dn{"上午/下午"}
         }
@@ -2042,7 +2099,43 @@ zh{
                 "1"{"下周五"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"上周五"}
+                "0"{"本周五"}
+                "1"{"下周五"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"上周五"}
+                "0"{"本周五"}
+                "1"{"下周五"}
+            }
+        }
         hour{
+            dn{"小时"}
+            relativeTime{
+                future{
+                    other{"{0}小时后"}
+                }
+                past{
+                    other{"{0}小时前"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"小时"}
+            relativeTime{
+                future{
+                    other{"{0}小时后"}
+                }
+                past{
+                    other{"{0}小时前"}
+                }
+            }
+        }
+        hour-short{
             dn{"小时"}
             relativeTime{
                 future{
@@ -2064,7 +2157,43 @@ zh{
                 }
             }
         }
+        minute-narrow{
+            dn{"分钟"}
+            relativeTime{
+                future{
+                    other{"{0}分钟后"}
+                }
+                past{
+                    other{"{0}分钟前"}
+                }
+            }
+        }
+        minute-short{
+            dn{"分钟"}
+            relativeTime{
+                future{
+                    other{"{0}分钟后"}
+                }
+                past{
+                    other{"{0}分钟前"}
+                }
+            }
+        }
         mon{
+            relative{
+                "-1"{"上周一"}
+                "0"{"本周一"}
+                "1"{"下周一"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"上周一"}
+                "0"{"本周一"}
+                "1"{"下周一"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"上周一"}
                 "0"{"本周一"}
@@ -2087,7 +2216,76 @@ zh{
                 }
             }
         }
+        month-narrow{
+            dn{"月"}
+            relativeTime{
+                future{
+                    other{"{0}个月后"}
+                }
+                past{
+                    other{"{0}个月前"}
+                }
+            }
+        }
+        month-short{
+            dn{"月"}
+            relativeTime{
+                future{
+                    other{"{0}个月后"}
+                }
+                past{
+                    other{"{0}个月前"}
+                }
+            }
+        }
+        quarter{
+            dn{"季"}
+            relativeTime{
+                future{
+                    other{"{0}季度后"}
+                }
+                past{
+                    other{"{0}季度前"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"季"}
+            relativeTime{
+                future{
+                    other{"{0}季度后"}
+                }
+                past{
+                    other{"{0}季度前"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"季"}
+            relativeTime{
+                future{
+                    other{"{0}季度后"}
+                }
+                past{
+                    other{"{0}季度前"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"上周六"}
+                "0"{"本周六"}
+                "1"{"下周六"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"上周六"}
+                "0"{"本周六"}
+                "1"{"下周六"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"上周六"}
                 "0"{"本周六"}
@@ -2108,7 +2306,43 @@ zh{
                 }
             }
         }
+        second-narrow{
+            dn{"秒钟"}
+            relativeTime{
+                future{
+                    other{"{0}秒后"}
+                }
+                past{
+                    other{"{0}秒前"}
+                }
+            }
+        }
+        second-short{
+            dn{"秒钟"}
+            relativeTime{
+                future{
+                    other{"{0}秒后"}
+                }
+                past{
+                    other{"{0}秒前"}
+                }
+            }
+        }
         sun{
+            relative{
+                "-1"{"上周日"}
+                "0"{"本周日"}
+                "1"{"下周日"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"上周日"}
+                "0"{"本周日"}
+                "1"{"下周日"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"上周日"}
                 "0"{"本周日"}
@@ -2122,6 +2356,20 @@ zh{
                 "1"{"下周四"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"上周四"}
+                "0"{"本周四"}
+                "1"{"下周四"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"上周四"}
+                "0"{"本周四"}
+                "1"{"下周四"}
+            }
+        }
         tue{
             relative{
                 "-1"{"上周二"}
@@ -2129,7 +2377,35 @@ zh{
                 "1"{"下周二"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"上周二"}
+                "0"{"本周二"}
+                "1"{"下周二"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"上周二"}
+                "0"{"本周二"}
+                "1"{"下周二"}
+            }
+        }
         wed{
+            relative{
+                "-1"{"上周三"}
+                "0"{"本周三"}
+                "1"{"下周三"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"上周三"}
+                "0"{"本周三"}
+                "1"{"下周三"}
+            }
+        }
+        wed-short{
             relative{
                 "-1"{"上周三"}
                 "0"{"本周三"}
@@ -2152,8 +2428,30 @@ zh{
                 }
             }
         }
+        week-narrow{
+            dn{"周"}
+            relativeTime{
+                future{
+                    other{"{0}周后"}
+                }
+                past{
+                    other{"{0}周前"}
+                }
+            }
+        }
+        week-short{
+            dn{"周"}
+            relativeTime{
+                future{
+                    other{"{0}周后"}
+                }
+                past{
+                    other{"{0}周前"}
+                }
+            }
+        }
         weekday{
-            dn{"星期"}
+            dn{"工作日"}
         }
         year{
             dn{"年"}
@@ -2162,6 +2460,28 @@ zh{
                 "0"{"今年"}
                 "1"{"明年"}
             }
+            relativeTime{
+                future{
+                    other{"{0}年后"}
+                }
+                past{
+                    other{"{0}年前"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"年"}
+            relativeTime{
+                future{
+                    other{"{0}年后"}
+                }
+                past{
+                    other{"{0}年前"}
+                }
+            }
+        }
+        year-short{
+            dn{"年"}
             relativeTime{
                 future{
                     other{"{0}年后"}
@@ -2183,6 +2503,12 @@ zh{
             start{"{0}、{1}"}
         }
         unit{
+            2{"{0}{1}"}
+            end{"{0}{1}"}
+            middle{"{0}{1}"}
+            start{"{0}{1}"}
+        }
+        unit-narrow{
             2{"{0}{1}"}
             end{"{0}{1}"}
             middle{"{0}{1}"}
@@ -2211,98 +2537,5 @@ zh{
         x-Jamo{"韩文字母"}
         x-Pinyin{"拼音"}
         x-Publishing{"印刷体"}
-    }
-    units{
-        compound{
-            per{"{0}每{1}"}
-        }
-        duration{
-            day{
-                other{"{0}天"}
-            }
-            hour{
-                other{"{0}小时"}
-            }
-            millisecond{
-                other{"{0}毫秒"}
-            }
-            minute{
-                other{"{0}分钟"}
-            }
-            month{
-                other{"{0}个月"}
-            }
-            second{
-                other{"{0}秒钟"}
-            }
-            week{
-                other{"{0}周"}
-            }
-            year{
-                other{"{0}年"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0}天"}
-            }
-            hour{
-                other{"{0}小时"}
-            }
-            millisecond{
-                other{"{0}毫秒"}
-            }
-            minute{
-                other{"{0}分钟"}
-            }
-            month{
-                other{"{0}个月"}
-            }
-            second{
-                other{"{0}秒"}
-            }
-            week{
-                other{"{0}周"}
-            }
-            year{
-                other{"{0}年"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0}天"}
-            }
-            hour{
-                other{"{0}小时"}
-            }
-            millisecond{
-                other{"{0}毫秒"}
-            }
-            minute{
-                other{"{0}分钟"}
-            }
-            month{
-                other{"{0}个月"}
-            }
-            second{
-                other{"{0}秒"}
-            }
-            week{
-                other{"{0}周"}
-            }
-            year{
-                other{"{0}年"}
-            }
-        }
     }
 }

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/pa_Arab.xml
@@ -17,7 +17,7 @@ pa_Arab{
             "يورو",
         }
         INR{
-            "₹",
+            "Rs.",
             "روپئیہ [INR]",
         }
         PKR{
@@ -25,5 +25,5 @@ pa_Arab{
             "روپئیہ",
         }
     }
-    Version{"2.0.92.75"}
+    Version{"2.1.6.69"}
 }

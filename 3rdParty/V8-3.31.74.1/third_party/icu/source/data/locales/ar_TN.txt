@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ar_TN.xml
@@ -19,7 +19,7 @@ ar_TN{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
     calendar{
         generic{
             DateTimePatterns{
@@ -42,6 +42,7 @@ ar_TN{
                 Md{"M/d"}
                 yyyyM{"G y/M"}
                 yyyyMM{"G y/MM"}
+                yyyyMd{"G y/M/d"}
             }
             intervalFormats{
                 M{
@@ -82,6 +83,7 @@ ar_TN{
                 Md{"M/d"}
                 yM{"y/M"}
                 yMM{"y/MM"}
+                yMd{"y/M/d"}
             }
             intervalFormats{
                 M{

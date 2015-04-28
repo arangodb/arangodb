@@ -1,34 +1,37 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fr_CA.xml
 // *
 // ***************************************************************************
 fr_CA{
-    Keys{
-        calendar{"Calendrier"}
-        collation{"ordonnancement"}
-        currency{"Devise"}
-        numbers{"Chiffres"}
-    }
     Languages{
         es_ES{"espagnol ibérique"}
         fy{"frison"}
+        gag{"gag"}
+        gsw{"suisse allemand"}
         gu{"goudjarâtî"}
+        ii{"yi de Sichuan"}
+        luo{"luo"}
         pt_PT{"portugais ibérique"}
-        si{"singhalais"}
+        rw{"kinyarwanda"}
+        si{"cingalais"}
         to{"tongan"}
         ug{"ouïgour"}
         und{"indéterminé"}
         ybb{"yémba"}
     }
+    Languages%variant{
+        ug{"ouïghour"}
+    }
     LanguagesShort{
         en_GB{"anglais (GB)"}
     }
     Scripts{
-        Beng{"bengâglî"}
+        Deva{"devanagari"}
+        Gujr{"gujarati"}
         Hans{"idéogrammes han simplifiés"}
         Hant{"idéogrammes han traditionnels"}
         Mlym{"malayâlam"}
@@ -41,57 +44,19 @@ fr_CA{
     }
     Types{
         calendar{
-            ethiopic-amete-alem{"Calendrier éthiopien de l'An de grâce"}
-            gregorian{"Calendrier grégorien"}
-            islamic{"Calendrier musulman"}
-            islamic-civil{"Calendrier civil musulman"}
+            ethiopic-amete-alem{"Calendrier éthiopien de l’An de grâce"}
             islamic-tbla{"calendrier religieux musulman"}
-            persian{"Calendrier perse"}
         }
         collation{
             dictionary{"Ordre de tri du dictionnaire"}
-            ducet{"Ordre de tri Unicode par défaut"}
             reformed{"Ordre de tri réformé"}
-            search{"Recherche générale"}
             unihan{"Ordre de tri radical et trait"}
         }
         numbers{
-            arab{"Chiffres indo-arabes"}
-            arabext{"Chiffres indo-arabes étendus"}
-            armn{"Chiffres arméniens"}
-            armnlow{"Chiffres minuscules arméniens"}
-            beng{"Chiffres bengali"}
-            deva{"Chiffres devanagari"}
-            ethi{"Chiffre éthiopiens"}
-            fullwide{"Chiffre pleine largeur"}
-            geor{"Chiffres géorgiens"}
-            grek{"Chiffres grecs"}
-            greklow{"Chiffres minuscules grecs"}
-            gujr{"Chiffres gujarati"}
-            guru{"Chiffres gurmukhī"}
-            hanidec{"Chiffres numériques chinois"}
-            hans{"Chiffres chinois simplifiés"}
-            hansfin{"Chiffres monétaires chinois simplifiés"}
-            hant{"Chiffres chinois traditionnels"}
-            hantfin{"Chiffres financiers en chinois traditionnel"}
-            hebr{"Chiffre hébreux"}
-            jpan{"Chiffres japonais"}
-            jpanfin{"Chiffres monétaires japonais"}
-            khmr{"Chiffres khmer"}
-            knda{"Chiffres canara"}
-            laoo{"Chiffres laotiens"}
-            latn{"Chiffres occidentaux"}
-            mlym{"Chiffres malayâlam"}
+            gujr{"chiffres gujarati"}
             mong{"Chiffres mongols"}
-            mymr{"Chiffres birmans"}
-            orya{"Chiffres oriya"}
-            roman{"Chiffres romains"}
-            romanlow{"Chiffres minuscules romains"}
-            taml{"Chiffres tamoul"}
-            telu{"Chiffres telugu"}
-            thai{"Chiffres thaïlandais"}
-            tibt{"Chiffres tibétains"}
+            taml{"chiffres tamouls traditionnels"}
         }
     }
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
 }

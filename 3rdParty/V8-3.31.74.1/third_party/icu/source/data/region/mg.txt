@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/mg.xml
@@ -45,8 +45,8 @@ mg{
         BY{"Belarosy"}
         BZ{"Belize"}
         CA{"Kanada"}
-        CD{"Repoblikan'i Kongo"}
-        CF{"Repoblika Ivon'Afrika"}
+        CD{"Repoblikan’i Kongo"}
+        CF{"Repoblika Ivon’Afrika"}
         CG{"Kôngô"}
         CH{"Soisa"}
         CI{"Côte d’Ivoire"}
@@ -59,7 +59,7 @@ mg{
         CU{"Kiobà"}
         CV{"Nosy Cap-Vert"}
         CY{"Sypra"}
-        CZ{"Repoblikan'i Tseky"}
+        CZ{"Repoblikan’i Tseky"}
         DE{"Alemaina"}
         DJ{"Djiboti"}
         DK{"Danmarka"}
@@ -222,7 +222,7 @@ mg{
         US{"Etazonia"}
         UY{"Orogoay"}
         UZ{"Ozbekistan"}
-        VA{"Firenen'i Vatikana"}
+        VA{"Firenen’i Vatikana"}
         VC{"Saint-Vincent-et-les Grenadines"}
         VE{"Venezoelà"}
         VG{"Nosy britanika virijiny"}
@@ -237,5 +237,5 @@ mg{
         ZM{"Zambia"}
         ZW{"Zimbaboe"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
 }

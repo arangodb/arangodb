@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sw.xml
@@ -25,6 +25,7 @@ sw{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"⩾{0}"}
@@ -100,8 +101,8 @@ sw{
                         other{"elfu 00"}
                     }
                     100000{
-                        one{"laki0"}
-                        other{"laki0"}
+                        one{"elfu 000"}
+                        other{"elfu 000"}
                     }
                     1000000{
                         one{"M0"}
@@ -153,10 +154,13 @@ sw{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -175,7 +179,7 @@ sw{
                 "{1} {0}",
             }
             availableFormats{
-                Ed{"d E"}
+                Ed{"E d"}
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
                 GyMMMEd{"E, d MMM y G"}
@@ -307,6 +311,10 @@ sw{
                 "AM",
                 "PM",
             }
+            AmPmMarkersNarrow{
+                "am",
+                "pm",
+            }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
                 "h:mm:ss a z",
@@ -322,13 +330,16 @@ sw{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"PM"}
+            NoonMarkerNarrow{"PM"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
-                Ed{"d E"}
+                Ed{"E d"}
                 Ehm{"E h:mm a"}
                 Ehms{"E h:mm:ss a"}
                 Gy{"y G"}
@@ -365,13 +376,22 @@ sw{
             dayNames{
                 format{
                     abbreviated{
-                        "J2",
-                        "J3",
-                        "J4",
-                        "J5",
-                        "Alh",
-                        "Ij",
-                        "J1",
+                        "Jumapili",
+                        "Jumatatu",
+                        "Jumanne",
+                        "Jumatano",
+                        "Alhamisi",
+                        "Ijumaa",
+                        "Jumamosi",
+                    }
+                    narrow{
+                        "S",
+                        "M",
+                        "T",
+                        "W",
+                        "T",
+                        "F",
+                        "S",
                     }
                     short{
                         "Jumapili",
@@ -393,16 +413,34 @@ sw{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "Jumapili",
+                        "Jumatatu",
+                        "Jumanne",
+                        "Jumatano",
+                        "Alhamisi",
+                        "Ijumaa",
+                        "Jumamosi",
+                    }
                     narrow{
-                        "2",
-                        "3",
-                        "4",
-                        "5",
-                        "A",
-                        "I",
-                        "1",
+                        "S",
+                        "M",
+                        "T",
+                        "W",
+                        "T",
+                        "F",
+                        "S",
                     }
                     short{
+                        "Jumapili",
+                        "Jumatatu",
+                        "Jumanne",
+                        "Jumatano",
+                        "Alhamisi",
+                        "Ijumaa",
+                        "Jumamosi",
+                    }
+                    wide{
                         "Jumapili",
                         "Jumatatu",
                         "Jumanne",
@@ -415,12 +453,20 @@ sw{
             }
             eras{
                 abbreviated{
-                    "KK",
-                    "BK",
+                    "BC",
+                    "AD",
+                }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
                 }
                 wide{
                     "Kabla ya Kristo",
                     "Baada ya Kristo",
+                }
+                wide%variant{
+                    "BCE",
+                    "CE",
                 }
             }
             intervalFormats{
@@ -534,6 +580,20 @@ sw{
                         "Nov",
                         "Des",
                     }
+                    narrow{
+                        "J",
+                        "F",
+                        "M",
+                        "A",
+                        "M",
+                        "J",
+                        "J",
+                        "A",
+                        "S",
+                        "O",
+                        "N",
+                        "D",
+                    }
                     wide{
                         "Januari",
                         "Februari",
@@ -550,6 +610,20 @@ sw{
                     }
                 }
                 stand-alone{
+                    abbreviated{
+                        "Jan",
+                        "Feb",
+                        "Mac",
+                        "Apr",
+                        "Mei",
+                        "Jun",
+                        "Jul",
+                        "Ago",
+                        "Sep",
+                        "Okt",
+                        "Nov",
+                        "Des",
+                    }
                     narrow{
                         "J",
                         "F",
@@ -564,15 +638,29 @@ sw{
                         "N",
                         "D",
                     }
+                    wide{
+                        "Januari",
+                        "Februari",
+                        "Machi",
+                        "Aprili",
+                        "Mei",
+                        "Juni",
+                        "Julai",
+                        "Agosti",
+                        "Septemba",
+                        "Oktoba",
+                        "Novemba",
+                        "Desemba",
+                    }
                 }
             }
             quarters{
                 format{
                     abbreviated{
-                        "Q1",
-                        "Q2",
-                        "Q3",
-                        "Q4",
+                        "Robo ya 1",
+                        "Robo ya 2",
+                        "Robo ya 3",
+                        "Robo ya 4",
                     }
                     narrow{
                         "1",
@@ -581,24 +669,30 @@ sw{
                         "4",
                     }
                     wide{
-                        "Robo 1",
-                        "Robo 2",
-                        "Robo 3",
-                        "Robo 4",
+                        "Robo ya 1",
+                        "Robo ya 2",
+                        "Robo ya 3",
+                        "Robo ya 4",
                     }
                 }
                 stand-alone{
                     abbreviated{
-                        "Q1",
-                        "Q2",
-                        "Q3",
-                        "Q4",
+                        "Robo ya 1",
+                        "Robo ya 2",
+                        "Robo ya 3",
+                        "Robo ya 4",
                     }
                     narrow{
                         "1",
                         "2",
                         "3",
                         "4",
+                    }
+                    wide{
+                        "Robo ya 1",
+                        "Robo ya 2",
+                        "Robo ya 3",
+                        "Robo ya 4",
                     }
                 }
             }
@@ -627,17 +721,43 @@ sw{
             }
             relativeTime{
                 future{
-                    one{"Baada ya siku {0}"}
-                    other{"Baada ya siku {0}"}
+                    one{"baada ya siku {0}"}
+                    other{"baada ya siku {0}"}
                 }
                 past{
-                    one{"Siku {0} iliyopita"}
-                    other{"Siku {0} zilizopita"}
+                    one{"siku {0} iliyopita"}
+                    other{"siku {0} zilizopita"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"siku"}
+            relativeTime{
+                future{
+                    one{"baada ya siku {0}"}
+                    other{"baada ya siku {0}"}
+                }
+                past{
+                    one{"siku {0} iliyopita"}
+                    other{"siku {0} zilizopita"}
+                }
+            }
+        }
+        day-short{
+            dn{"siku"}
+            relativeTime{
+                future{
+                    one{"baada ya siku {0}"}
+                    other{"baada ya siku {0}"}
+                }
+                past{
+                    one{"siku {0} iliyopita"}
+                    other{"siku {0} zilizopita"}
                 }
             }
         }
         dayperiod{
-            dn{"Muda wa siku"}
+            dn{"AM/PM"}
         }
         era{
             dn{"Enzi"}
@@ -649,12 +769,52 @@ sw{
                 "1"{"Ijumaa ijayo"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"Ijumaa iliyopita"}
+                "0"{"Ijumaa hii"}
+                "1"{"Ijumaa ijayo"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"Ijumaa iliyopita"}
+                "0"{"Ijumaa hii"}
+                "1"{"Ijumaa ijayo"}
+            }
+        }
         hour{
             dn{"Saa"}
             relativeTime{
                 future{
-                    one{"Baada ya saa {0}"}
-                    other{"Baada ya saa {0}"}
+                    one{"baada ya saa {0}"}
+                    other{"baada ya saa {0}"}
+                }
+                past{
+                    one{"saa {0} iliyopita"}
+                    other{"saa {0} zilizopita"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"saa"}
+            relativeTime{
+                future{
+                    one{"baada ya saa {0}"}
+                    other{"baada ya saa {0}"}
+                }
+                past{
+                    one{"Saa {0} iliyopita"}
+                    other{"Saa {0} zilizopita"}
+                }
+            }
+        }
+        hour-short{
+            dn{"saa"}
+            relativeTime{
+                future{
+                    one{"baada ya saa {0}"}
+                    other{"baada ya saa {0}"}
                 }
                 past{
                     one{"Saa {0} iliyopita"}
@@ -666,8 +826,34 @@ sw{
             dn{"Dakika"}
             relativeTime{
                 future{
-                    one{"Baada ya dakika {0}"}
-                    other{"Baada ya dakika {0}"}
+                    one{"baada ya dakika {0}"}
+                    other{"baada ya dakika {0}"}
+                }
+                past{
+                    one{"dakika {0} iliyopita"}
+                    other{"dakika {0} zilizopita"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"dakika"}
+            relativeTime{
+                future{
+                    one{"baada ya dakika {0}"}
+                    other{"baada ya dakika {0}"}
+                }
+                past{
+                    one{"Dakika {0} iliyopita"}
+                    other{"Dakika {0} zilizopita"}
+                }
+            }
+        }
+        minute-short{
+            dn{"dakika"}
+            relativeTime{
+                future{
+                    one{"baada ya dakika {0}"}
+                    other{"baada ya dakika {0}"}
                 }
                 past{
                     one{"Dakika {0} iliyopita"}
@@ -676,6 +862,20 @@ sw{
             }
         }
         mon{
+            relative{
+                "-1"{"Jumatatu iliyopita"}
+                "0"{"Jumatatu hii"}
+                "1"{"Jumatatu ijayo"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"Jumatatu iliyopita"}
+                "0"{"Jumatatu hii"}
+                "1"{"Jumatatu ijayo"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"Jumatatu iliyopita"}
                 "0"{"Jumatatu hii"}
@@ -691,16 +891,95 @@ sw{
             }
             relativeTime{
                 future{
-                    one{"Baada ya mwezi {0}"}
-                    other{"Baada ya miezi {0}"}
+                    one{"baada ya mwezi {0}"}
+                    other{"baada ya miezi {0}"}
                 }
                 past{
-                    one{"Miezi {0} iliyopita"}
-                    other{"Miezi {0} iliyopita"}
+                    one{"mwezi {0} uliopita"}
+                    other{"miezi {0} iliyopita"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"mwezi"}
+            relativeTime{
+                future{
+                    one{"baada ya mwezi {0}"}
+                    other{"baada ya miezi {0}"}
+                }
+                past{
+                    one{"mwezi {0} uliopita"}
+                    other{"miezi {0} iliyopita"}
+                }
+            }
+        }
+        month-short{
+            dn{"mwezi"}
+            relativeTime{
+                future{
+                    one{"baada ya mwezi {0}"}
+                    other{"baada ya miezi {0}"}
+                }
+                past{
+                    one{"mwezi {0} uliopita"}
+                    other{"miezi {0} iliyopita"}
+                }
+            }
+        }
+        quarter{
+            dn{"Robo"}
+            relativeTime{
+                future{
+                    one{"baada ya robo {0}"}
+                    other{"baada ya robo {0}"}
+                }
+                past{
+                    one{"robo {0} iliyopita"}
+                    other{"robo {0} zilizopita"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"robo"}
+            relativeTime{
+                future{
+                    one{"baada ya robo {0}"}
+                    other{"baada ya robo {0}"}
+                }
+                past{
+                    one{"robo {0} iliyopita"}
+                    other{"robo {0} zilizopita"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"robo"}
+            relativeTime{
+                future{
+                    one{"baada ya robo {0}"}
+                    other{"baada ya robo {0}"}
+                }
+                past{
+                    one{"robo {0} iliyopita"}
+                    other{"robo {0} zilizopita"}
                 }
             }
         }
         sat{
+            relative{
+                "-1"{"Jumamosi iliyopita"}
+                "0"{"Jumamosi hii"}
+                "1"{"Jumamosi ijayo"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"Jumamosi iliyopita"}
+                "0"{"Jumamosi hii"}
+                "1"{"Jumamosi ijayo"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"Jumamosi iliyopita"}
                 "0"{"Jumamosi hii"}
@@ -714,8 +993,34 @@ sw{
             }
             relativeTime{
                 future{
-                    one{"Baada ya sekunde {0}"}
-                    other{"Baada ya sekunde {0}"}
+                    one{"baada ya sekunde {0}"}
+                    other{"baada ya sekunde {0}"}
+                }
+                past{
+                    one{"Sekunde {0} iliyopita"}
+                    other{"Sekunde {0} zilizopita"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"sekunde"}
+            relativeTime{
+                future{
+                    one{"baada ya sekunde {0}"}
+                    other{"baada ya sekunde {0}"}
+                }
+                past{
+                    one{"Sekunde {0} iliyopita"}
+                    other{"Sekunde {0} zilizopita"}
+                }
+            }
+        }
+        second-short{
+            dn{"sekunde"}
+            relativeTime{
+                future{
+                    one{"baada ya sekunde {0}"}
+                    other{"baada ya sekunde {0}"}
                 }
                 past{
                     one{"Sekunde {0} iliyopita"}
@@ -730,7 +1035,35 @@ sw{
                 "1"{"Jumapili ijayo"}
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"Jumapili iliyopita"}
+                "0"{"Jumapili hii"}
+                "1"{"Jumapili ijayo"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"Jumapili iliyopita"}
+                "0"{"Jumapili hii"}
+                "1"{"Jumapili ijayo"}
+            }
+        }
         thu{
+            relative{
+                "-1"{"Alhamisi iliyopita"}
+                "0"{"Alhamisi hii"}
+                "1"{"Alhamisi ijayo"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"Alhamisi iliyopita"}
+                "0"{"Alhamisi hii"}
+                "1"{"Alhamisi ijayo"}
+            }
+        }
+        thu-short{
             relative{
                 "-1"{"Alhamisi iliyopita"}
                 "0"{"Alhamisi hii"}
@@ -744,7 +1077,35 @@ sw{
                 "1"{"Jumanne ijayo"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"Jumanne iliyopita"}
+                "0"{"Jumanne hii"}
+                "1"{"Jumanne ijayo"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"Jumanne iliyopita"}
+                "0"{"Jumanne hii"}
+                "1"{"Jumanne ijayo"}
+            }
+        }
         wed{
+            relative{
+                "-1"{"Jumatano iliyopita"}
+                "0"{"Jumatano hii"}
+                "1"{"Jumatano ijayo"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"Jumatano iliyopita"}
+                "0"{"Jumatano hii"}
+                "1"{"Jumatano ijayo"}
+            }
+        }
+        wed-short{
             relative{
                 "-1"{"Jumatano iliyopita"}
                 "0"{"Jumatano hii"}
@@ -760,12 +1121,38 @@ sw{
             }
             relativeTime{
                 future{
-                    one{"Baada ya wiki {0}"}
-                    other{"Baada ya wiki {0}"}
+                    one{"baada ya wiki {0}"}
+                    other{"baada ya wiki {0}"}
                 }
                 past{
-                    one{"Wiki {0} iliyopita"}
-                    other{"Wiki {0} zilizopita"}
+                    one{"wiki {0} iliyopita"}
+                    other{"wiki {0} zilizopita"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"wiki"}
+            relativeTime{
+                future{
+                    one{"baada ya wiki {0}"}
+                    other{"baada ya wiki {0}"}
+                }
+                past{
+                    one{"wiki {0} iliyopita"}
+                    other{"wiki {0} zilizopita"}
+                }
+            }
+        }
+        week-short{
+            dn{"wiki"}
+            relativeTime{
+                future{
+                    one{"baada ya wiki {0}"}
+                    other{"baada ya wiki {0}"}
+                }
+                past{
+                    one{"wiki {0} iliyopita"}
+                    other{"wiki {0} zilizopita"}
                 }
             }
         }
@@ -781,17 +1168,43 @@ sw{
             }
             relativeTime{
                 future{
-                    one{"Baada ya mwaka {0}"}
-                    other{"Baada ya miaka {0}"}
+                    one{"baada ya mwaka {0}"}
+                    other{"baada ya miaka {0}"}
                 }
                 past{
-                    one{"Mwaka {0} uliopita"}
-                    other{"Miaka {0} iliyopita"}
+                    one{"mwaka {0} uliopita"}
+                    other{"miaka {0} iliyopita"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"mwaka"}
+            relativeTime{
+                future{
+                    one{"baada ya mwaka {0}"}
+                    other{"baada ya miaka {0}"}
+                }
+                past{
+                    one{"mwaka {0} uliopita"}
+                    other{"miaka {0} iliyopita"}
+                }
+            }
+        }
+        year-short{
+            dn{"mwaka"}
+            relativeTime{
+                future{
+                    one{"baada ya mwaka {0}"}
+                    other{"baada ya miaka {0}"}
+                }
+                past{
+                    one{"mwaka {0} uliopita"}
+                    other{"miaka {0} iliyopita"}
                 }
             }
         }
         zone{
-            dn{"Majira ya saa"}
+            dn{"Saa za Eneo"}
         }
     }
     listPattern{
@@ -803,6 +1216,21 @@ sw{
         }
         unit{
             2{"{0} na {1}"}
+            end{"{0}, na {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} na {1}"}
+            end{"{0}, na {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0} na {1}"}
+            end{"{0}, na {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
         }
     }
     measurementSystemNames{
@@ -821,122 +1249,5 @@ sw{
         x-Jamo{"Kijamo"}
         x-Pinyin{"Kipinyin"}
         x-Publishing{"Inachapishwa"}
-    }
-    units{
-        compound{
-            per{"{0}kwa kila{1}"}
-        }
-        duration{
-            day{
-                one{"siku {0}"}
-                other{"siku {0}"}
-            }
-            hour{
-                one{"saa {0}"}
-                other{"saa {0}"}
-            }
-            millisecond{
-                one{"millisekunde {0}"}
-                other{"millisekunde {0}"}
-            }
-            minute{
-                one{"dakika {0}"}
-                other{"dakika {0}"}
-            }
-            month{
-                one{"mwezi {0}"}
-                other{"miezi {0}"}
-            }
-            second{
-                one{"sekunde {0}"}
-                other{"sekunde {0}"}
-            }
-            week{
-                one{"wiki {0}"}
-                other{"wiki {0}"}
-            }
-            year{
-                one{"mwaka {0}"}
-                other{"miaka {0}"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"siku {0}"}
-                other{"siku {0}"}
-            }
-            hour{
-                one{"saa {0}"}
-                other{"saa {0}"}
-            }
-            millisecond{
-                one{"ms {0}"}
-                other{"ms {0}"}
-            }
-            minute{
-                one{"dakika {0}"}
-                other{"dakika {0}"}
-            }
-            month{
-                one{"mwezi {0}"}
-                other{"miezi {0}"}
-            }
-            second{
-                one{"s {0}"}
-                other{"s {0}"}
-            }
-            week{
-                one{"wiki {0}"}
-                other{"wiki {0}"}
-            }
-            year{
-                one{"mwaka {0}"}
-                other{"miaka {0}"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"siku {0}"}
-                other{"siku {0}"}
-            }
-            hour{
-                one{"saa {0}"}
-                other{"saa {0}"}
-            }
-            millisecond{
-                one{"ms {0}"}
-                other{"ms {0}"}
-            }
-            minute{
-                one{"dakika {0}"}
-                other{"dakika {0}"}
-            }
-            month{
-                one{"mwezi {0}"}
-                other{"miezi {0}"}
-            }
-            second{
-                one{"sekunde {0}"}
-                other{"sekunde {0}"}
-            }
-            week{
-                one{"wiki {0}"}
-                other{"wiki {0}"}
-            }
-            year{
-                one{"mwaka {0}"}
-                other{"miaka {0}"}
-            }
-        }
     }
 }

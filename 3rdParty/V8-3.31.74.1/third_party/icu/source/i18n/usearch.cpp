@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2001-2011 IBM and others. All rights reserved.
+*   Copyright (C) 2001-2014 IBM and others. All rights reserved.
 **********************************************************************
 *   Date        Name        Description
 *  07/02/2001   synwee      Creation.
@@ -16,7 +16,6 @@
 #include "unicode/uchar.h"
 #include "unicode/utf16.h"
 #include "normalizer2impl.h"
-#include "ucol_imp.h"
 #include "usrchimp.h"
 #include "cmemory.h"
 #include "ucln_in.h"
@@ -28,8 +27,6 @@ U_NAMESPACE_USE
 // don't use Boyer-Moore
 // (and if we decide to turn this on again there are several new TODOs that will need to be addressed)
 #define BOYER_MOORE 0
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 // internal definition ---------------------------------------------------
 
@@ -51,17 +48,10 @@ static
 inline void setColEIterOffset(UCollationElements *elems,
                       int32_t             offset)
 {
-    collIterate *ci = &(elems->iteratordata_);
-    ci->pos         = ci->string + offset;
-    ci->CEpos       = ci->toReturn = ci->extendCEs ? ci->extendCEs : ci->CEs;
-    if (ci->flags & UCOL_ITER_INNORMBUF) {
-        ci->flags = ci->origFlags;
-    }
-    ci->fcdPosition = NULL;
-
-    ci->offsetReturn = NULL;
-    ci->offsetStore  = ci->offsetBuffer;
-    ci->offsetRepeatCount = ci->offsetRepeatValue = 0;
+    // Note: Not "fast" any more after the 2013 collation rewrite.
+    // We do not want to expose more internals than necessary.
+    UErrorCode status = U_ZERO_ERROR;
+    ucol_setOffset(elems, offset, &status);
 }
 
 /**
@@ -298,7 +288,7 @@ inline uint16_t initializePatternCETable(UStringSearch *strsrch,
 {
     UPattern *pattern            = &(strsrch->pattern);
     uint32_t  cetablesize        = INITIAL_ARRAY_SIZE_;
-    int32_t  *cetable            = pattern->CEBuffer;
+    int32_t  *cetable            = pattern->cesBuffer;
     uint32_t  patternlength      = pattern->textLength;
     UCollationElements *coleiter = strsrch->utilIter;
 
@@ -311,17 +301,14 @@ inline uint16_t initializePatternCETable(UStringSearch *strsrch,
         strsrch->utilIter = coleiter;
     }
     else {
-        uprv_init_collIterate(strsrch->collator, pattern->text,
-                         pattern->textLength,
-                         &coleiter->iteratordata_,
-                         status);
+        ucol_setText(coleiter, pattern->text, pattern->textLength, status);
     }
     if(U_FAILURE(*status)) {
         return 0;
     }
 
-    if (pattern->CE != cetable && pattern->CE) {
-        uprv_free(pattern->CE);
+    if (pattern->ces != cetable && pattern->ces) {
+        uprv_free(pattern->ces);
     }
 
     uint16_t  offset      = 0;
@@ -340,7 +327,7 @@ inline uint16_t initializePatternCETable(UStringSearch *strsrch,
                 return 0;
             }
             offset ++;
-            if (cetable != temp && cetable != pattern->CEBuffer) {
+            if (cetable != temp && cetable != pattern->cesBuffer) {
                 uprv_free(cetable);
             }
             cetable = temp;
@@ -349,8 +336,8 @@ inline uint16_t initializePatternCETable(UStringSearch *strsrch,
     }
 
     cetable[offset]   = 0;
-    pattern->CE       = cetable;
-    pattern->CELength = offset;
+    pattern->ces       = cetable;
+    pattern->cesLength = offset;
 
     return result;
 }
@@ -373,7 +360,7 @@ inline uint16_t initializePatternPCETable(UStringSearch *strsrch,
 {
     UPattern *pattern            = &(strsrch->pattern);
     uint32_t  pcetablesize       = INITIAL_ARRAY_SIZE_;
-    int64_t  *pcetable           = pattern->PCEBuffer;
+    int64_t  *pcetable           = pattern->pcesBuffer;
     uint32_t  patternlength      = pattern->textLength;
     UCollationElements *coleiter = strsrch->utilIter;
 
@@ -385,29 +372,26 @@ inline uint16_t initializePatternPCETable(UStringSearch *strsrch,
         // returned.
         strsrch->utilIter = coleiter;
     } else {
-        uprv_init_collIterate(strsrch->collator, pattern->text,
-                              pattern->textLength,
-                              &coleiter->iteratordata_,
-                              status);
+        ucol_setText(coleiter, pattern->text, pattern->textLength, status);
     }
     if(U_FAILURE(*status)) {
         return 0;
     }
 
-    if (pattern->PCE != pcetable && pattern->PCE != NULL) {
-        uprv_free(pattern->PCE);
+    if (pattern->pces != pcetable && pattern->pces != NULL) {
+        uprv_free(pattern->pces);
     }
 
     uint16_t  offset = 0;
     uint16_t  result = 0;
     int64_t   pce;
 
-    uprv_init_pce(coleiter);
+    icu::UCollationPCE iter(coleiter);
 
     // ** Should processed CEs be signed or unsigned?
     // ** (the rest of the code in this file seems to play fast-and-loose with
     // **  whether a CE is signed or unsigned. For example, look at routine above this one.)
-    while ((pce = ucol_nextProcessed(coleiter, NULL, NULL, status)) != UCOL_PROCESSED_NULLORDER &&
+    while ((pce = iter.nextProcessed(NULL, NULL, status)) != UCOL_PROCESSED_NULLORDER &&
            U_SUCCESS(*status)) {
         int64_t *temp = addTouint64_tArray(pcetable, offset, &pcetablesize,
                               pce,
@@ -420,7 +404,7 @@ inline uint16_t initializePatternPCETable(UStringSearch *strsrch,
 
         offset += 1;
 
-        if (pcetable != temp && pcetable != pattern->PCEBuffer) {
+        if (pcetable != temp && pcetable != pattern->pcesBuffer) {
             uprv_free(pcetable);
         }
 
@@ -429,8 +413,8 @@ inline uint16_t initializePatternPCETable(UStringSearch *strsrch,
     }
 
     pcetable[offset]   = 0;
-    pattern->PCE       = pcetable;
-    pattern->PCELength = offset;
+    pattern->pces       = pcetable;
+    pattern->pcesLength = offset;
 
     return result;
 }
@@ -446,6 +430,7 @@ inline uint16_t initializePatternPCETable(UStringSearch *strsrch,
 static
 inline int16_t initializePattern(UStringSearch *strsrch, UErrorCode *status)
 {
+    if (U_FAILURE(*status)) { return 0; }
           UPattern   *pattern     = &(strsrch->pattern);
     const UChar      *patterntext = pattern->text;
           int32_t     length      = pattern->textLength;
@@ -465,12 +450,12 @@ inline int16_t initializePattern(UStringSearch *strsrch, UErrorCode *status)
     }
 
     // ** HACK **
-    if (strsrch->pattern.PCE != NULL) {
-        if (strsrch->pattern.PCE != strsrch->pattern.PCEBuffer) {
-            uprv_free(strsrch->pattern.PCE);
+    if (strsrch->pattern.pces != NULL) {
+        if (strsrch->pattern.pces != strsrch->pattern.pcesBuffer) {
+            uprv_free(strsrch->pattern.pces);
         }
 
-        strsrch->pattern.PCE = NULL;
+        strsrch->pattern.pces = NULL;
     }
 
     // since intializePattern is an internal method status is a success.
@@ -557,14 +542,14 @@ static
 inline void initialize(UStringSearch *strsrch, UErrorCode *status)
 {
     int16_t expandlength  = initializePattern(strsrch, status);
-    if (U_SUCCESS(*status) && strsrch->pattern.CELength > 0) {
+    if (U_SUCCESS(*status) && strsrch->pattern.cesLength > 0) {
         UPattern *pattern = &strsrch->pattern;
-        int32_t   cesize  = pattern->CELength;
+        int32_t   cesize  = pattern->cesLength;
 
         int16_t minlength = cesize > expandlength
                             ? (int16_t)cesize - expandlength : 1;
         pattern->defaultShiftSize    = minlength;
-        setShiftTable(pattern->shift, pattern->backShift, pattern->CE,
+        setShiftTable(pattern->shift, pattern->backShift, pattern->ces,
                       cesize, expandlength, minlength, minlength);
         return;
     }
@@ -640,14 +625,14 @@ UBool isBreakUnit(const UStringSearch *strsrch, int32_t start,
                                                                       start;
                   UErrorCode          status    = U_ZERO_ERROR;
             ucol_setText(coleiter, text, end - start, &status);
-            for (int32_t count = 0; count < strsrch->pattern.CELength;
+            for (int32_t count = 0; count < strsrch->pattern.cesLength;
                  count ++) {
                 int32_t ce = getCE(strsrch, ucol_next(coleiter, &status));
                 if (ce == UCOL_IGNORABLE) {
                     count --;
                     continue;
                 }
-                if (U_FAILURE(status) || ce != strsrch->pattern.CE[count]) {
+                if (U_FAILURE(status) || ce != strsrch->pattern.ces[count]) {
                     return FALSE;
                 }
             }
@@ -748,7 +733,7 @@ inline int32_t shiftForward(UStringSearch *strsrch,
         int32_t shift = pattern->shift[hash(ce)];
         // this is to adjust for characters in the middle of the
         // substring for matching that failed.
-        int32_t adjust = pattern->CELength - patternceindex;
+        int32_t adjust = pattern->cesLength - patternceindex;
         if (adjust > 1 && shift >= adjust) {
             shift -= adjust - 1;
         }
@@ -882,7 +867,7 @@ UBool checkExtraMatchAccents(const UStringSearch *strsrch, int32_t start,
 
             UCollationElements *coleiter  = strsrch->utilIter;
             ucol_setText(coleiter, norm, size, status);
-            uint32_t            firstce   = strsrch->pattern.CE[0];
+            uint32_t            firstce   = strsrch->pattern.ces[0];
             UBool               ignorable = TRUE;
             uint32_t            ce        = UCOL_IGNORABLE;
             while (U_SUCCESS(*status) && ce != firstce && ce != (uint32_t)UCOL_NULLORDER) {
@@ -935,7 +920,7 @@ UBool hasAccentsBeforeMatch(const UStringSearch *strsrch, int32_t start,
         UErrorCode          status    = U_ZERO_ERROR;
         // we have been iterating forwards previously
         uint32_t            ignorable = TRUE;
-        int32_t             firstce   = strsrch->pattern.CE[0];
+        int32_t             firstce   = strsrch->pattern.ces[0];
 
         setColEIterOffset(coleiter, start);
         int32_t ce  = getCE(strsrch, ucol_next(coleiter, &status));
@@ -1017,7 +1002,7 @@ UBool hasAccentsAfterMatch(const UStringSearch *strsrch, int32_t start,
               int32_t      textlength = strsrch->search->textLength;
         U16_BACK_1(text, 0, temp);
         if (getFCD(text, &temp, textlength) & LAST_BYTE_MASK_) {
-            int32_t             firstce  = strsrch->pattern.CE[0];
+            int32_t             firstce  = strsrch->pattern.ces[0];
             UCollationElements *coleiter = strsrch->textIter;
             UErrorCode          status   = U_ZERO_ERROR;
             int32_t ce;
@@ -1028,7 +1013,7 @@ UBool hasAccentsAfterMatch(const UStringSearch *strsrch, int32_t start,
                 }
             }
             int32_t count = 1;
-            while (count < strsrch->pattern.CELength) {
+            while (count < strsrch->pattern.cesLength) {
                 if (getCE(strsrch, ucol_next(coleiter, &status))
                     == UCOL_IGNORABLE) {
                     // Thai can give an ignorable here.
@@ -1212,8 +1197,8 @@ UBool checkNextExactContractionMatch(UStringSearch *strsrch,
             expansion --;
         }
 
-        int32_t  *patternce       = strsrch->pattern.CE;
-        int32_t   patterncelength = strsrch->pattern.CELength;
+        int32_t  *patternce       = strsrch->pattern.ces;
+        int32_t   patterncelength = strsrch->pattern.cesLength;
         int32_t   count           = 0;
         while (count < patterncelength) {
             int32_t ce = getCE(strsrch, ucol_next(coleiter, status));
@@ -1415,8 +1400,8 @@ static
 inline UBool checkCollationMatch(const UStringSearch      *strsrch,
                                        UCollationElements *coleiter)
 {
-    int         patternceindex = strsrch->pattern.CELength;
-    int32_t    *patternce      = strsrch->pattern.CE;
+    int         patternceindex = strsrch->pattern.cesLength;
+    int32_t    *patternce      = strsrch->pattern.ces;
     UErrorCode  status = U_ZERO_ERROR;
     while (patternceindex > 0) {
         int32_t ce = getCE(strsrch, ucol_next(coleiter, &status));
@@ -1615,8 +1600,8 @@ int32_t doNextCanonicalSuffixMatch(UStringSearch *strsrch,
     ucol_setText(coleiter, safetext, safetextlength, status);
     // status checked in loop below
 
-    int32_t  *ce        = strsrch->pattern.CE;
-    int32_t   celength  = strsrch->pattern.CELength;
+    int32_t  *ce        = strsrch->pattern.ces;
+    int32_t   celength  = strsrch->pattern.cesLength;
     int       ceindex   = celength - 1;
     UBool     isSafe    = TRUE; // indication flag for position in safe zone
 
@@ -1855,8 +1840,8 @@ UBool checkNextCanonicalContractionMatch(UStringSearch *strsrch,
             expansion --;
         }
 
-        int32_t  *patternce       = strsrch->pattern.CE;
-        int32_t   patterncelength = strsrch->pattern.CELength;
+        int32_t  *patternce       = strsrch->pattern.ces;
+        int32_t   patterncelength = strsrch->pattern.cesLength;
         int32_t   count           = 0;
         int32_t   textlength      = strsrch->search->textLength;
         while (count < patterncelength) {
@@ -2053,8 +2038,8 @@ UBool checkPreviousExactContractionMatch(UStringSearch *strsrch,
             expansion --;
         }
 
-        int32_t  *patternce       = strsrch->pattern.CE;
-        int32_t   patterncelength = strsrch->pattern.CELength;
+        int32_t  *patternce       = strsrch->pattern.ces;
+        int32_t   patterncelength = strsrch->pattern.cesLength;
         int32_t   count           = patterncelength;
         while (count > 0) {
             int32_t ce = getCE(strsrch, ucol_previous(coleiter, status));
@@ -2278,8 +2263,8 @@ int32_t doPreviousCanonicalPrefixMatch(UStringSearch *strsrch,
     ucol_setText(coleiter, safetext, safetextlength, status);
     // status checked in loop below
 
-    int32_t  *ce           = strsrch->pattern.CE;
-    int32_t   celength     = strsrch->pattern.CELength;
+    int32_t  *ce           = strsrch->pattern.ces;
+    int32_t   celength     = strsrch->pattern.cesLength;
     int       ceindex      = 0;
     UBool     isSafe       = TRUE; // safe zone indication flag for position
     int32_t   prefixlength = u_strlen(strsrch->canonicalPrefixAccents);
@@ -2493,8 +2478,8 @@ UBool checkPreviousCanonicalContractionMatch(UStringSearch *strsrch,
             expansion --;
         }
 
-        int32_t  *patternce       = strsrch->pattern.CE;
-        int32_t   patterncelength = strsrch->pattern.CELength;
+        int32_t  *patternce       = strsrch->pattern.ces;
+        int32_t   patterncelength = strsrch->pattern.cesLength;
         int32_t   count           = patterncelength;
         while (count > 0) {
             int32_t ce = getCE(strsrch, ucol_previous(coleiter, status));
@@ -2700,7 +2685,7 @@ U_CAPI UStringSearch * U_EXPORT2 usearch_openFromCollator(
                                                             UCOL_SHIFTED;
         result->variableTop = ucol_getVariableTop(collator, status);
 
-        result->nfd         = Normalizer2Factory::getNFDInstance(*status);
+        result->nfd         = Normalizer2::getNFDInstance(*status);
 
         if (U_FAILURE(*status)) {
             uprv_free(result);
@@ -2719,8 +2704,8 @@ U_CAPI UStringSearch * U_EXPORT2 usearch_openFromCollator(
 
         result->pattern.text       = pattern;
         result->pattern.textLength = patternlength;
-        result->pattern.CE         = NULL;
-        result->pattern.PCE        = NULL;
+        result->pattern.ces         = NULL;
+        result->pattern.pces        = NULL;
 
         result->search->breakIter  = breakiter;
 #if !UCONFIG_NO_BREAK_ITERATION
@@ -2736,6 +2721,7 @@ U_CAPI UStringSearch * U_EXPORT2 usearch_openFromCollator(
         result->utilIter              = NULL;
         result->textIter              = ucol_openElements(collator, text,
                                                           textlength, status);
+        result->textProcessedIter     = NULL;
         if (U_FAILURE(*status)) {
             usearch_close(result);
             return NULL;
@@ -2762,16 +2748,17 @@ U_CAPI UStringSearch * U_EXPORT2 usearch_openFromCollator(
 U_CAPI void U_EXPORT2 usearch_close(UStringSearch *strsrch)
 {
     if (strsrch) {
-        if (strsrch->pattern.CE != strsrch->pattern.CEBuffer &&
-            strsrch->pattern.CE) {
-            uprv_free(strsrch->pattern.CE);
+        if (strsrch->pattern.ces != strsrch->pattern.cesBuffer &&
+            strsrch->pattern.ces) {
+            uprv_free(strsrch->pattern.ces);
         }
 
-        if (strsrch->pattern.PCE != NULL &&
-            strsrch->pattern.PCE != strsrch->pattern.PCEBuffer) {
-            uprv_free(strsrch->pattern.PCE);
+        if (strsrch->pattern.pces != NULL &&
+            strsrch->pattern.pces != strsrch->pattern.pcesBuffer) {
+            uprv_free(strsrch->pattern.pces);
         }
 
+        delete strsrch->textProcessedIter;
         ucol_closeElements(strsrch->textIter);
         ucol_closeElements(strsrch->utilIter);
 
@@ -2788,6 +2775,24 @@ U_CAPI void U_EXPORT2 usearch_close(UStringSearch *strsrch)
         uprv_free(strsrch->search);
         uprv_free(strsrch);
     }
+}
+
+namespace {
+
+UBool initTextProcessedIter(UStringSearch *strsrch, UErrorCode *status) {
+    if (U_FAILURE(*status)) { return FALSE; }
+    if (strsrch->textProcessedIter == NULL) {
+        strsrch->textProcessedIter = new icu::UCollationPCE(strsrch->textIter);
+        if (strsrch->textProcessedIter == NULL) {
+            *status = U_MEMORY_ALLOCATION_ERROR;
+            return FALSE;
+        }
+    } else {
+        strsrch->textProcessedIter->init(strsrch->textIter);
+    }
+    return TRUE;
+}
+
 }
 
 // set and get methods --------------------------------------------------
@@ -3010,6 +3015,11 @@ U_CAPI void U_EXPORT2 usearch_setCollator(      UStringSearch *strsrch,
         }
 
         if (strsrch) {
+            delete strsrch->textProcessedIter;
+            strsrch->textProcessedIter = NULL;
+            ucol_closeElements(strsrch->textIter);
+            ucol_closeElements(strsrch->utilIter);
+            strsrch->textIter = strsrch->utilIter = NULL;
             if (strsrch->ownCollator && (strsrch->collator != collator)) {
                 ucol_close((UCollator *)strsrch->collator);
                 strsrch->ownCollator = FALSE;
@@ -3028,23 +3038,19 @@ U_CAPI void U_EXPORT2 usearch_setCollator(      UStringSearch *strsrch,
                                                                 UCOL_SHIFTED;
             // if status is a failure, ucol_getVariableTop returns 0
             strsrch->variableTop = ucol_getVariableTop(collator, status);
-            if (U_SUCCESS(*status)) {
-                initialize(strsrch, status);
-                if (U_SUCCESS(*status)) {
-                    /* free offset buffer to avoid memory leak before initializing. */
-                    ucol_freeOffsetBuffer(&(strsrch->textIter->iteratordata_));
-                    uprv_init_collIterate(collator, strsrch->search->text,
-                                          strsrch->search->textLength,
-                                          &(strsrch->textIter->iteratordata_),
-                                          status);
-                    strsrch->utilIter->iteratordata_.coll = collator;
-                }
-            }
+            strsrch->textIter = ucol_openElements(collator,
+                                      strsrch->search->text,
+                                      strsrch->search->textLength,
+                                      status);
+            strsrch->utilIter = ucol_openElements(
+                    collator, strsrch->pattern.text, strsrch->pattern.textLength, status);
+            // initialize() _after_ setting the iterators for the new collator.
+            initialize(strsrch, status);
         }
 
         // **** are these calls needed?
         // **** we call uprv_init_pce in initializePatternPCETable
-        // **** and the CEBuffer constructor...
+        // **** and the CEIBuffer constructor...
 #if 0
         uprv_init_pce(strsrch->textIter);
         uprv_init_pce(strsrch->utilIter);
@@ -3222,7 +3228,7 @@ U_CAPI int32_t U_EXPORT2 usearch_next(UStringSearch *strsrch,
         }
 
         if (U_SUCCESS(*status)) {
-            if (strsrch->pattern.CELength == 0) {
+            if (strsrch->pattern.cesLength == 0) {
                 if (search->matchedIndex == USEARCH_DONE) {
                     search->matchedIndex = offset;
                 }
@@ -3333,7 +3339,7 @@ U_CAPI int32_t U_EXPORT2 usearch_previous(UStringSearch *strsrch,
         }
 
         if (U_SUCCESS(*status)) {
-            if (strsrch->pattern.CELength == 0) {
+            if (strsrch->pattern.cesLength == 0) {
                 search->matchedIndex =
                       (matchedindex == USEARCH_DONE ? offset : matchedindex);
                 if (search->matchedIndex == 0) {
@@ -3416,11 +3422,8 @@ U_CAPI void U_EXPORT2 usearch_reset(UStringSearch *strsrch)
         if (!sameCollAttribute) {
             initialize(strsrch, &status);
         }
-        /* free offset buffer to avoid memory leak before initializing. */
-        ucol_freeOffsetBuffer(&(strsrch->textIter->iteratordata_));
-        uprv_init_collIterate(strsrch->collator, strsrch->search->text,
+        ucol_setText(strsrch->textIter, strsrch->search->text,
                               strsrch->search->textLength,
-                              &(strsrch->textIter->iteratordata_),
                               &status);
         strsrch->search->matchedLength      = 0;
         strsrch->search->matchedIndex       = USEARCH_DONE;
@@ -3444,9 +3447,9 @@ struct  CEI {
 
 U_NAMESPACE_BEGIN
 
-
+namespace {
 //
-//  CEBuffer   A circular buffer of CEs from the text being searched.
+//  CEIBuffer   A circular buffer of CEs-with-index from the text being searched.
 //
 #define   DEFAULT_CEBUFFER_SIZE 96
 #define   CEBUFFER_EXTRA 32
@@ -3455,7 +3458,7 @@ U_NAMESPACE_BEGIN
 #define   MAX_TARGET_IGNORABLES_PER_PAT_JAMO_L 8
 #define   MAX_TARGET_IGNORABLES_PER_PAT_OTHER 3
 #define   MIGHT_BE_JAMO_L(c) ((c >= 0x1100 && c <= 0x115E) || (c >= 0x3131 && c <= 0x314E) || (c >= 0x3165 && c <= 0x3186))
-struct CEBuffer {
+struct CEIBuffer {
     CEI                  defBuf[DEFAULT_CEBUFFER_SIZE];
     CEI                 *buf;
     int32_t              bufSize;
@@ -3466,17 +3469,17 @@ struct CEBuffer {
 
 
 
-               CEBuffer(UStringSearch *ss, UErrorCode *status);
-               ~CEBuffer();
+               CEIBuffer(UStringSearch *ss, UErrorCode *status);
+               ~CEIBuffer();
    const CEI   *get(int32_t index);
    const CEI   *getPrevious(int32_t index);
 };
 
 
-CEBuffer::CEBuffer(UStringSearch *ss, UErrorCode *status) {
+CEIBuffer::CEIBuffer(UStringSearch *ss, UErrorCode *status) {
     buf = defBuf;
     strSearch = ss;
-    bufSize = ss->pattern.PCELength + CEBUFFER_EXTRA;
+    bufSize = ss->pattern.pcesLength + CEBUFFER_EXTRA;
     if (ss->search->elementComparisonType != 0) {
         const UChar * patText = ss->pattern.text;
         if (patText) {
@@ -3496,7 +3499,7 @@ CEBuffer::CEBuffer(UStringSearch *ss, UErrorCode *status) {
     firstIx = 0;
     limitIx = 0;
 
-    uprv_init_pce(ceIter);
+    if (!initTextProcessedIter(ss, status)) { return; }
 
     if (bufSize>DEFAULT_CEBUFFER_SIZE) {
         buf = (CEI *)uprv_malloc(bufSize * sizeof(CEI));
@@ -3509,7 +3512,7 @@ CEBuffer::CEBuffer(UStringSearch *ss, UErrorCode *status) {
 // TODO: add a reset or init function so that allocated
 //       buffers can be retained & reused.
 
-CEBuffer::~CEBuffer() {
+CEIBuffer::~CEIBuffer() {
     if (buf != defBuf) {
         uprv_free(buf);
     }
@@ -3522,7 +3525,7 @@ CEBuffer::~CEBuffer() {
 //   where n is the largest index to have been fetched by some previous call to this function.
 //   The CE value will be UCOL__PROCESSED_NULLORDER at end of input.
 //
-const CEI *CEBuffer::get(int32_t index) {
+const CEI *CEIBuffer::get(int32_t index) {
     int i = index % bufSize;
 
     if (index>=firstIx && index<limitIx) {
@@ -3550,7 +3553,7 @@ const CEI *CEBuffer::get(int32_t index) {
 
     UErrorCode status = U_ZERO_ERROR;
 
-    buf[i].ce = ucol_nextProcessed(ceIter, &buf[i].lowIndex, &buf[i].highIndex, &status);
+    buf[i].ce = strSearch->textProcessedIter->nextProcessed(&buf[i].lowIndex, &buf[i].highIndex, &status);
 
     return &buf[i];
 }
@@ -3561,7 +3564,7 @@ const CEI *CEBuffer::get(int32_t index) {
 //   where n is the largest index to have been fetched by some previous call to this function.
 //   The CE value will be UCOL__PROCESSED_NULLORDER at end of input.
 //
-const CEI *CEBuffer::getPrevious(int32_t index) {
+const CEI *CEIBuffer::getPrevious(int32_t index) {
     int i = index % bufSize;
 
     if (index>=firstIx && index<limitIx) {
@@ -3589,9 +3592,11 @@ const CEI *CEBuffer::getPrevious(int32_t index) {
 
     UErrorCode status = U_ZERO_ERROR;
 
-    buf[i].ce = ucol_previousProcessed(ceIter, &buf[i].lowIndex, &buf[i].highIndex, &status);
+    buf[i].ce = strSearch->textProcessedIter->previousProcessed(&buf[i].lowIndex, &buf[i].highIndex, &status);
 
     return &buf[i];
+}
+
 }
 
 U_NAMESPACE_END
@@ -3815,8 +3820,8 @@ U_CAPI UBool U_EXPORT2 usearch_search(UStringSearch  *strsrch,
 #ifdef USEARCH_DEBUG
     if (getenv("USEARCH_DEBUG") != NULL) {
         printf("Pattern CEs\n");
-        for (int ii=0; ii<strsrch->pattern.CELength; ii++) {
-            printf(" %8x", strsrch->pattern.CE[ii]);
+        for (int ii=0; ii<strsrch->pattern.cesLength; ii++) {
+            printf(" %8x", strsrch->pattern.ces[ii]);
         }
         printf("\n");
     }
@@ -3825,20 +3830,20 @@ U_CAPI UBool U_EXPORT2 usearch_search(UStringSearch  *strsrch,
     // Input parameter sanity check.
     //  TODO:  should input indicies clip to the text length
     //         in the same way that UText does.
-    if(strsrch->pattern.CELength == 0         ||
+    if(strsrch->pattern.cesLength == 0         ||
        startIdx < 0                           ||
        startIdx > strsrch->search->textLength ||
-       strsrch->pattern.CE == NULL) {
+       strsrch->pattern.ces == NULL) {
            *status = U_ILLEGAL_ARGUMENT_ERROR;
            return FALSE;
     }
 
-    if (strsrch->pattern.PCE == NULL) {
+    if (strsrch->pattern.pces == NULL) {
         initializePatternPCETable(strsrch, status);
     }
 
     ucol_setOffset(strsrch->textIter, startIdx, status);
-    CEBuffer ceb(strsrch, status);
+    CEIBuffer ceb(strsrch, status);
 
 
     int32_t    targetIx = 0;
@@ -3884,8 +3889,8 @@ U_CAPI UBool U_EXPORT2 usearch_search(UStringSearch  *strsrch,
             break;
         }
         
-        for (patIx=0; patIx<strsrch->pattern.PCELength; patIx++) {
-            patCE = strsrch->pattern.PCE[patIx];
+        for (patIx=0; patIx<strsrch->pattern.pcesLength; patIx++) {
+            patCE = strsrch->pattern.pces[patIx];
             targetCEI = ceb.get(targetIx+patIx+targetIxOffset);
             //  Compare CE from target string with CE from the pattern.
             //    Note that the target CE will be UCOL_PROCESSED_NULLORDER if we reach the end of input,
@@ -3905,7 +3910,7 @@ U_CAPI UBool U_EXPORT2 usearch_search(UStringSearch  *strsrch,
                 }
             }
         }
-        targetIxOffset += strsrch->pattern.PCELength; // this is now the offset in target CE space to end of the match so far
+        targetIxOffset += strsrch->pattern.pcesLength; // this is now the offset in target CE space to end of the match so far
 
         if (!found && ((targetCEI == NULL) || (targetCEI->ce != UCOL_PROCESSED_NULLORDER))) {
             // No match at this targetIx.  Try again at the next.
@@ -4082,8 +4087,8 @@ U_CAPI UBool U_EXPORT2 usearch_searchBackwards(UStringSearch  *strsrch,
 #ifdef USEARCH_DEBUG
     if (getenv("USEARCH_DEBUG") != NULL) {
         printf("Pattern CEs\n");
-        for (int ii=0; ii<strsrch->pattern.CELength; ii++) {
-            printf(" %8x", strsrch->pattern.CE[ii]);
+        for (int ii=0; ii<strsrch->pattern.cesLength; ii++) {
+            printf(" %8x", strsrch->pattern.ces[ii]);
         }
         printf("\n");
     }
@@ -4092,19 +4097,19 @@ U_CAPI UBool U_EXPORT2 usearch_searchBackwards(UStringSearch  *strsrch,
     // Input parameter sanity check.
     //  TODO:  should input indicies clip to the text length
     //         in the same way that UText does.
-    if(strsrch->pattern.CELength == 0         ||
+    if(strsrch->pattern.cesLength == 0         ||
        startIdx < 0                           ||
        startIdx > strsrch->search->textLength ||
-       strsrch->pattern.CE == NULL) {
+       strsrch->pattern.ces == NULL) {
            *status = U_ILLEGAL_ARGUMENT_ERROR;
            return FALSE;
     }
 
-    if (strsrch->pattern.PCE == NULL) {
+    if (strsrch->pattern.pces == NULL) {
         initializePatternPCETable(strsrch, status);
     }
 
-    CEBuffer ceb(strsrch, status);
+    CEIBuffer ceb(strsrch, status);
     int32_t    targetIx = 0;
 
     /*
@@ -4165,10 +4170,10 @@ U_CAPI UBool U_EXPORT2 usearch_searchBackwards(UStringSearch  *strsrch,
         //  Inner loop checks for a match beginning at each
         //  position from the outer loop.
         int32_t targetIxOffset = 0;
-        for (patIx = strsrch->pattern.PCELength - 1; patIx >= 0; patIx -= 1) {
-            int64_t patCE = strsrch->pattern.PCE[patIx];
+        for (patIx = strsrch->pattern.pcesLength - 1; patIx >= 0; patIx -= 1) {
+            int64_t patCE = strsrch->pattern.pces[patIx];
 
-            targetCEI = ceb.getPrevious(targetIx + strsrch->pattern.PCELength - 1 - patIx + targetIxOffset);
+            targetCEI = ceb.getPrevious(targetIx + strsrch->pattern.pcesLength - 1 - patIx + targetIxOffset);
             //  Compare CE from target string with CE from the pattern.
             //    Note that the target CE will be UCOL_NULLORDER if we reach the end of input,
             //    which will fail the compare, below.
@@ -4204,7 +4209,7 @@ U_CAPI UBool U_EXPORT2 usearch_searchBackwards(UStringSearch  *strsrch,
         //  There still is a chance of match failure if the CE range not correspond to
         //     an acceptable character range.
         //
-        const CEI *firstCEI = ceb.getPrevious(targetIx + strsrch->pattern.PCELength - 1 + targetIxOffset);
+        const CEI *firstCEI = ceb.getPrevious(targetIx + strsrch->pattern.pcesLength - 1 + targetIxOffset);
         mStart   = firstCEI->lowIndex;
 
         // Check for the start of the match being within a combining sequence.
@@ -4330,8 +4335,8 @@ UBool usearch_handleNextExact(UStringSearch *strsrch, UErrorCode *status)
 #if BOYER_MOORE
     UCollationElements *coleiter        = strsrch->textIter;
     int32_t             textlength      = strsrch->search->textLength;
-    int32_t            *patternce       = strsrch->pattern.CE;
-    int32_t             patterncelength = strsrch->pattern.CELength;
+    int32_t            *patternce       = strsrch->pattern.ces;
+    int32_t             patterncelength = strsrch->pattern.cesLength;
     int32_t             textoffset      = ucol_getOffset(coleiter);
 
     // status used in setting coleiter offset, since offset is checked in
@@ -4444,8 +4449,8 @@ UBool usearch_handleNextCanonical(UStringSearch *strsrch, UErrorCode *status)
 #if BOYER_MOORE
     UCollationElements *coleiter        = strsrch->textIter;
     int32_t             textlength      = strsrch->search->textLength;
-    int32_t            *patternce       = strsrch->pattern.CE;
-    int32_t             patterncelength = strsrch->pattern.CELength;
+    int32_t            *patternce       = strsrch->pattern.ces;
+    int32_t             patterncelength = strsrch->pattern.cesLength;
     int32_t             textoffset      = ucol_getOffset(coleiter);
     UBool               hasPatternAccents =
        strsrch->pattern.hasSuffixAccents || strsrch->pattern.hasPrefixAccents;
@@ -4558,8 +4563,8 @@ UBool usearch_handlePreviousExact(UStringSearch *strsrch, UErrorCode *status)
 
 #if BOYER_MOORE
     UCollationElements *coleiter        = strsrch->textIter;
-    int32_t            *patternce       = strsrch->pattern.CE;
-    int32_t             patterncelength = strsrch->pattern.CELength;
+    int32_t            *patternce       = strsrch->pattern.ces;
+    int32_t             patterncelength = strsrch->pattern.cesLength;
     int32_t             textoffset      = ucol_getOffset(coleiter);
 
     // shifting it check for setting offset
@@ -4659,8 +4664,12 @@ UBool usearch_handlePreviousExact(UStringSearch *strsrch, UErrorCode *status)
         } else {
             // move the start position at the end of possible match
             initializePatternPCETable(strsrch, status);
-            for (int32_t nPCEs = 0; nPCEs < strsrch->pattern.PCELength - 1; nPCEs++) {
-                int64_t pce = ucol_nextProcessed(strsrch->textIter, NULL, NULL, status);
+            if (!initTextProcessedIter(strsrch, status)) {
+                setMatchNotFound(strsrch);
+                return FALSE;
+            }
+            for (int32_t nPCEs = 0; nPCEs < strsrch->pattern.pcesLength - 1; nPCEs++) {
+                int64_t pce = strsrch->textProcessedIter->nextProcessed(NULL, NULL, status);
                 if (pce == UCOL_PROCESSED_NULLORDER) {
                     // at the end of the text
                     break;
@@ -4700,8 +4709,8 @@ UBool usearch_handlePreviousCanonical(UStringSearch *strsrch,
 
 #if BOYER_MOORE
     UCollationElements *coleiter        = strsrch->textIter;
-    int32_t            *patternce       = strsrch->pattern.CE;
-    int32_t             patterncelength = strsrch->pattern.CELength;
+    int32_t            *patternce       = strsrch->pattern.ces;
+    int32_t             patterncelength = strsrch->pattern.cesLength;
     int32_t             textoffset      = ucol_getOffset(coleiter);
     UBool               hasPatternAccents =
        strsrch->pattern.hasSuffixAccents || strsrch->pattern.hasPrefixAccents;
@@ -4808,8 +4817,12 @@ UBool usearch_handlePreviousCanonical(UStringSearch *strsrch,
         } else {
             // move the start position at the end of possible match
             initializePatternPCETable(strsrch, status);
-            for (int32_t nPCEs = 0; nPCEs < strsrch->pattern.PCELength - 1; nPCEs++) {
-                int64_t pce = ucol_nextProcessed(strsrch->textIter, NULL, NULL, status);
+            if (!initTextProcessedIter(strsrch, status)) {
+                setMatchNotFound(strsrch);
+                return FALSE;
+            }
+            for (int32_t nPCEs = 0; nPCEs < strsrch->pattern.pcesLength - 1; nPCEs++) {
+                int64_t pce = strsrch->textProcessedIter->nextProcessed(NULL, NULL, status);
                 if (pce == UCOL_PROCESSED_NULLORDER) {
                     // at the end of the text
                     break;

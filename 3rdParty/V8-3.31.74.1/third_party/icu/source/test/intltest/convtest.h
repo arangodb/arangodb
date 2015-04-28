@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2007, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -73,6 +73,7 @@ public:
     void TestFromUnicode();
     void TestGetUnicodeSet();
     void TestGetUnicodeSet2();
+    void TestDefaultIgnorableCallback();
 
 private:
     UBool

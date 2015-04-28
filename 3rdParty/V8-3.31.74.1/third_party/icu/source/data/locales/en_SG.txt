@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/en_SG.xml
@@ -8,7 +8,7 @@
 // ***************************************************************************
 en_SG{
     %%Parent{"en_GB"}
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
     calendar{
         generic{
             DateTimePatterns{
@@ -16,9 +16,9 @@ en_SG{
                 "h:mm:ss a z",
                 "h:mm:ss a",
                 "h:mm a",
-                "EEEE, d MMMM, y G",
-                "d MMMM, y G",
-                "d MMM, y G",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
                 "d/M/yy GGGGG",
                 "{1} {0}",
                 "{1} {0}",
@@ -29,7 +29,6 @@ en_SG{
             availableFormats{
                 MMMEd{"E, d MMM"}
                 yyyyMEd{"E, d/M/y GGGGG"}
-                yyyyMMMEd{"E, d MMM, y G"}
             }
             intervalFormats{
                 MEd{
@@ -49,14 +48,10 @@ en_SG{
                     y{"E, d/M/y – E, d/M/y G"}
                 }
                 yMMMEd{
-                    M{"E, d MMM – E, d MMM, y G"}
-                    d{"E, d MMM – E, d MMM, y G"}
-                    y{"E, d MMM, y – E, d MMM, y G"}
+                    d{"E, d MMM – E, d MMM y G"}
                 }
                 yMMMd{
-                    M{"d MMM – d MMM, y G"}
-                    d{"d-d MMM, y G"}
-                    y{"d MMM, y – d MMM, y G"}
+                    d{"d-d MMM y G"}
                 }
                 yMd{
                     M{"d/M/y – d/M/y G"}
@@ -71,15 +66,15 @@ en_SG{
                 "h:mm:ss a z",
                 "h:mm:ss a",
                 "h:mm a",
-                "EEEE, d MMMM, y",
-                "d MMMM, y",
-                "d MMM, y",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
                 "d/M/yy",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
+                "{1}, {0}",
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
             }
             availableFormats{
                 MMMEd{"E, d MMM"}
@@ -102,14 +97,10 @@ en_SG{
                     y{"E, d/M/y – E, d/M/y"}
                 }
                 yMMMEd{
-                    M{"E, d MMM – E, d MMM, y"}
-                    d{"E, d MMM – E, d MMM, y"}
-                    y{"E, d MMM, y – E, d MMM, y"}
+                    d{"E, d MMM – E, d MMM y"}
                 }
                 yMMMd{
-                    M{"d MMM – d MMM, y"}
-                    d{"d-d MMM, y"}
-                    y{"d MMM, y – d MMM, y"}
+                    d{"d-d MMM y"}
                 }
                 yMd{
                     M{"d/M/y – d/M/y"}

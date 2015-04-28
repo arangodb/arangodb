@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ml.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/ml.xml
  */
 ml{
-    AuxExemplarCharacters{"[\u200C\u200D]"}
+    AuxExemplarCharacters{"[]"}
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
@@ -28,6 +28,7 @@ ml{
         "[അ ആ ഇ ഈ ഉ ഊ ഋ എ ഏ ഐ ഒ ഓ ഔ ക ഖ ഗ ഘ ങ ച ഛ ജ ഝ ഞ ട ഠ ഡ ഢ ണ ത ഥ ദ ധ ന പ ഫ ബ ഭ മ"
         " യ ര ല വ ശ ഷ സ ഹ ള ഴ റ]"
     }
+    ExemplarCharactersPunctuation{"[\\- , ; \\: ! ? . ' ‘ ’ \u0022 “ ” ( ) \\[ \\] \\{ \\}]"}
     LocaleScript{
         "Mlym",
     }
@@ -40,9 +41,10 @@ ml{
                 range{"{0}-{1}"}
             }
             patterns{
-                currencyFormat{"#,##,##0.00¤"}
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                currencyFormat{"¤#,##0.00"}
                 decimalFormat{"#,##,##0.###"}
-                percentFormat{"#,##,##0%"}
+                percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
             patternsLong{
@@ -161,8 +163,10 @@ ml{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
         mlym{
             symbols{
                 decimal{"."}
@@ -179,7 +183,7 @@ ml{
         }
         native{"mlym"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -190,7 +194,7 @@ ml{
                 "G y, MMMM d, EEEE",
                 "G y, MMMM d",
                 "G y, MMM d",
-                "dd/MM/y GGGGG",
+                "GGGGG y-MM-dd",
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
@@ -214,7 +218,7 @@ ml{
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
                 MMdd{"dd-MM"}
-                Md{"d/M"}
+                Md{"MM-dd"}
                 d{"d"}
                 h{"h a"}
                 hm{"h:mm a"}
@@ -222,14 +226,14 @@ ml{
                 ms{"mm:ss"}
                 y{"G y"}
                 yyyy{"G y"}
-                yyyyM{"M-y G"}
-                yyyyMEd{"d-M-y G, E"}
+                yyyyM{"GGGGG y-MM"}
+                yyyyMEd{"G d-M-y, E"}
                 yyyyMM{"MM-y G"}
                 yyyyMMM{"G y MMM"}
                 yyyyMMMEd{"G y MMM d, E"}
                 yyyyMMMM{"G y MMMM"}
                 yyyyMMMd{"G y MMM d"}
-                yyyyMd{"d/M/y G"}
+                yyyyMd{"G d/M/y"}
                 yyyyQQQ{"G y QQQ"}
                 yyyyQQQQ{"G y QQQQ"}
             }
@@ -249,14 +253,14 @@ ml{
                     H{"HH–HH v"}
                 }
                 M{
-                    M{"M-M"}
+                    M{"M – M"}
                 }
                 MEd{
                     M{"d/M, E - d/M, E"}
                     d{"d/M, E - d/M, E"}
                 }
                 MMM{
-                    M{"MMM-MMM"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
                     M{"MMM d, E - MMM d, E"}
@@ -267,14 +271,14 @@ ml{
                 }
                 MMMd{
                     M{"MMM d - MMM d"}
-                    d{"MMM d-d"}
+                    d{"MMM d – d"}
                 }
                 Md{
-                    M{"d/M - d/M"}
-                    d{"d/M - d/M"}
+                    M{"M/d – M/d"}
+                    d{"M/d – M/d"}
                 }
                 d{
-                    d{"d-d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} - {1}"}
                 h{
@@ -299,13 +303,13 @@ ml{
                     y{"G y-y"}
                 }
                 yM{
-                    M{"M/y – M/y G"}
-                    y{"M/y – M/y G"}
+                    M{"M/y – M/y GGGGG"}
+                    y{"M/y – M/y GGGGG"}
                 }
                 yMEd{
-                    M{"d/M/y, E - d/M/y, E"}
-                    d{"d/M/y, E - d/M/y, E"}
-                    y{"d/M/y, E - d/M/y, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
                 }
                 yMMM{
                     M{"G y MMM-MMM"}
@@ -356,13 +360,16 @@ ml{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"ഉച്ച"}
+            NoonMarkerNarrow{"ഉച്ച"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
-                Ed{"d E"}
+                Ed{"d, E"}
                 Ehm{"E h:mm a"}
                 Ehms{"E h:mm:ss a"}
                 Gy{"G y"}
@@ -380,7 +387,7 @@ ml{
                 MMMMd{"MMMM d"}
                 MMMd{"MMM d"}
                 MMdd{"dd-MM"}
-                Md{"d/M"}
+                Md{"MM-dd"}
                 d{"d"}
                 h{"h a"}
                 hm{"h:mm a"}
@@ -408,6 +415,15 @@ ml{
                         "വ്യാഴം",
                         "വെള്ളി",
                         "ശനി",
+                    }
+                    narrow{
+                        "ഞ",
+                        "തി",
+                        "ച",
+                        "ബു",
+                        "വ",
+                        "വെ",
+                        "ശ",
                     }
                     short{
                         "ഞാ",
@@ -439,11 +455,11 @@ ml{
                         "ശനി",
                     }
                     narrow{
-                        "ഞാ",
+                        "ഞ",
                         "തി",
-                        "ചൊ",
+                        "ച",
                         "ബു",
-                        "വ്യാ",
+                        "വ",
                         "വെ",
                         "ശ",
                     }
@@ -469,28 +485,36 @@ ml{
             }
             eras{
                 abbreviated{
-                    "ക്രി.മൂ",
+                    "ക്രി.മു.",
                     "എഡി",
                 }
+                abbreviated%variant{
+                    "ബിസിഇ",
+                    "സിഇ",
+                }
                 wide{
-                    "ക്രിസ്തുവിനു് മുമ്പ്‌",
-                    "ക്രിസ്തുവിന് പിൻപ്",
+                    "ക്രിസ്‌തുവിന് മുമ്പ്",
+                    "ആന്നോ ഡൊമിനി",
+                }
+                wide%variant{
+                    "ബി.സി.ഇ.",
+                    "സി.ഇ.",
                 }
             }
             intervalFormats{
                 H{
-                    H{"HH–HH"}
+                    H{"HH – HH"}
                 }
                 Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
                 }
                 Hmv{
-                    H{"HH:mm–HH:mm v"}
-                    m{"HH:mm–HH:mm v"}
+                    H{"HH:mm – HH:mm v"}
+                    m{"HH:mm – HH:mm v"}
                 }
                 Hv{
-                    H{"HH–HH v"}
+                    H{"HH – HH v"}
                 }
                 M{
                     M{"MM–MM"}
@@ -514,33 +538,33 @@ ml{
                     d{"MMM d-d"}
                 }
                 Md{
-                    M{"d/M - d/M"}
-                    d{"d/M - d/M"}
+                    M{"M/d – M/d"}
+                    d{"M/d – M/d"}
                 }
                 d{
-                    d{"d-d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} - {1}"}
                 h{
                     a{"h a – h a"}
-                    h{"h–h a"}
+                    h{"h – h a"}
                 }
                 hm{
                     a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
                 }
                 hmv{
                     a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
-                    h{"h–h a v"}
+                    h{"h – h a v"}
                 }
                 y{
-                    y{"y-y"}
+                    y{"y - y"}
                 }
                 yM{
                     M{"M/y – M/y"}
@@ -552,7 +576,7 @@ ml{
                     y{"d/M/y, E - d/M/y, E"}
                 }
                 yMMM{
-                    M{"y MMM-MMM"}
+                    M{"y MMM – MMM"}
                     y{"y MMM - y MMM"}
                 }
                 yMMMEd{
@@ -566,7 +590,7 @@ ml{
                 }
                 yMMMd{
                     M{"y MMM d - MMM d"}
-                    d{"y MMM d-d"}
+                    d{"y MMM d – d"}
                     y{"y MMM d - y MMM d"}
                 }
                 yMd{
@@ -590,6 +614,20 @@ ml{
                         "ഒക്ടോ",
                         "നവം",
                         "ഡിസം",
+                    }
+                    narrow{
+                        "ജ",
+                        "ഫ",
+                        "മാ",
+                        "ഏ",
+                        "മെ",
+                        "ജൂ",
+                        "ജൂ",
+                        "ഓ",
+                        "സ",
+                        "ഒ",
+                        "ന",
+                        "ഡി",
                     }
                     wide{
                         "ജനുവരി",
@@ -623,14 +661,14 @@ ml{
                     }
                     narrow{
                         "ജ",
-                        "ഫെ",
+                        "ഫ",
                         "മാ",
                         "ഏ",
                         "മേ",
                         "ജൂ",
                         "ജൂ",
                         "ഓ",
-                        "സെ",
+                        "സ",
                         "ഒ",
                         "ന",
                         "ഡി",
@@ -809,6 +847,32 @@ ml{
                 }
             }
         }
+        day-narrow{
+            dn{"ദിവസം"}
+            relativeTime{
+                future{
+                    one{"{0} ദിവസത്തിൽ"}
+                    other{"{0} ദിവസത്തിൽ"}
+                }
+                past{
+                    one{"{0} ദിവസം മുമ്പ്"}
+                    other{"{0} ദിവസം മുമ്പ്"}
+                }
+            }
+        }
+        day-short{
+            dn{"ദിവസം"}
+            relativeTime{
+                future{
+                    one{"{0} ദിവസത്തിൽ"}
+                    other{"{0} ദിവസത്തിൽ"}
+                }
+                past{
+                    one{"{0} ദിവസം മുമ്പ്"}
+                    other{"{0} ദിവസം മുമ്പ്"}
+                }
+            }
+        }
         dayperiod{
             dn{"am/pm"}
         }
@@ -816,6 +880,20 @@ ml{
             dn{"കാലഘട്ടം"}
         }
         fri{
+            relative{
+                "-1"{"കഴിഞ്ഞ വെള്ളിയാഴ്ച"}
+                "0"{"ഈ വെള്ളിയാഴ്ച"}
+                "1"{"അടുത്ത വെള്ളിയാഴ്ച"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ വെള്ളിയാഴ്ച"}
+                "0"{"ഈ വെള്ളിയാഴ്ച"}
+                "1"{"അടുത്ത വെള്ളിയാഴ്ച"}
+            }
+        }
+        fri-short{
             relative{
                 "-1"{"കഴിഞ്ഞ വെള്ളിയാഴ്ച"}
                 "0"{"ഈ വെള്ളിയാഴ്ച"}
@@ -835,12 +913,64 @@ ml{
                 }
             }
         }
+        hour-narrow{
+            dn{"മണിക്കൂർ"}
+            relativeTime{
+                future{
+                    one{"{0} മണിക്കൂറിൽ"}
+                    other{"{0} മണിക്കൂറിൽ"}
+                }
+                past{
+                    one{"{0} മണിക്കൂർ മുമ്പ്"}
+                    other{"{0} മണിക്കൂർ മുമ്പ്"}
+                }
+            }
+        }
+        hour-short{
+            dn{"മണിക്കൂർ"}
+            relativeTime{
+                future{
+                    one{"{0} മണിക്കൂറിൽ"}
+                    other{"{0} മണിക്കൂറിൽ"}
+                }
+                past{
+                    one{"{0} മണിക്കൂർ മുമ്പ്"}
+                    other{"{0} മണിക്കൂർ മുമ്പ്"}
+                }
+            }
+        }
         minute{
             dn{"മിനിട്ട്"}
             relativeTime{
                 future{
                     one{"{0} മിനിറ്റിൽ"}
-                    other{"{0} മിനിറ്റിനുള്ളിൽ"}
+                    other{"{0} മിനിറ്റിൽ"}
+                }
+                past{
+                    one{"{0} മിനിറ്റ് മുമ്പ്"}
+                    other{"{0} മിനിറ്റ് മുമ്പ്"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"മിനിറ്റ്"}
+            relativeTime{
+                future{
+                    one{"{0} മിനിറ്റിൽ"}
+                    other{"{0} മിനിറ്റിൽ"}
+                }
+                past{
+                    one{"{0} മിനിറ്റ് മുമ്പ്"}
+                    other{"{0} മിനിറ്റ് മുമ്പ്"}
+                }
+            }
+        }
+        minute-short{
+            dn{"മിനിറ്റ്"}
+            relativeTime{
+                future{
+                    one{"{0} മിനിറ്റിൽ"}
+                    other{"{0} മിനിറ്റിൽ"}
                 }
                 past{
                     one{"{0} മിനിറ്റ് മുമ്പ്"}
@@ -849,6 +979,20 @@ ml{
             }
         }
         mon{
+            relative{
+                "-1"{"കഴിഞ്ഞ തിങ്കളാഴ്ച"}
+                "0"{"ഈ തിങ്കളാഴ്ച"}
+                "1"{"അടുത്ത തിങ്കളാഴ്ച"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ തിങ്കളാഴ്ച"}
+                "0"{"ഈ തിങ്കളാഴ്ച"}
+                "1"{"അടുത്ത തിങ്കളാഴ്ച"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"കഴിഞ്ഞ തിങ്കളാഴ്ച"}
                 "0"{"ഈ തിങ്കളാഴ്ച"}
@@ -873,7 +1017,86 @@ ml{
                 }
             }
         }
+        month-narrow{
+            dn{"മാസം"}
+            relativeTime{
+                future{
+                    one{"{0} മാസത്തിൽ"}
+                    other{"{0} മാസത്തിൽ"}
+                }
+                past{
+                    one{"{0} മാസം മുമ്പ്"}
+                    other{"{0} മാസം മുമ്പ്"}
+                }
+            }
+        }
+        month-short{
+            dn{"മാസം"}
+            relativeTime{
+                future{
+                    one{"{0} മാസത്തിൽ"}
+                    other{"{0} മാസത്തിൽ"}
+                }
+                past{
+                    one{"{0} മാസം മുമ്പ്"}
+                    other{"{0} മാസം മുമ്പ്"}
+                }
+            }
+        }
+        quarter{
+            dn{"പാദം"}
+            relativeTime{
+                future{
+                    one{"{0} പാദത്തിൽ"}
+                    other{"{0} പാദത്തിൽ"}
+                }
+                past{
+                    one{"{0} പാദം മുമ്പ്"}
+                    other{"{0} പാദം മുമ്പ്"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"പാദം"}
+            relativeTime{
+                future{
+                    one{"{0} പാദത്തിൽ"}
+                    other{"{0} പാദത്തിൽ"}
+                }
+                past{
+                    one{"{0} പാദം മുമ്പ്"}
+                    other{"{0} പാദം മുമ്പ്"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"പാദം"}
+            relativeTime{
+                future{
+                    one{"{0} പാദത്തിൽ"}
+                    other{"{0} പാദത്തിൽ"}
+                }
+                past{
+                    one{"{0} പാദം മുമ്പ്"}
+                    other{"{0} പാദം മുമ്പ്"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"കഴിഞ്ഞ ശനിയാഴ്ച"}
+                "0"{"ഈ ശനിയാഴ്ച"}
+                "1"{"അടുത്ത ശനിയാഴ്ച"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ശനിയാഴ്ച"}
+                "0"{"ഈ ശനിയാഴ്ച"}
+                "1"{"അടുത്ത ശനിയാഴ്ച"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ശനിയാഴ്ച"}
                 "0"{"ഈ ശനിയാഴ്ച"}
@@ -891,12 +1114,52 @@ ml{
                     other{"{0} സെക്കൻഡിൽ"}
                 }
                 past{
-                    one{"{0} സെക്കൻറ് മുമ്പ്"}
-                    other{"{0} സെക്കൻറ് മുമ്പ്"}
+                    one{"{0} സെക്കൻഡ് മുമ്പ്"}
+                    other{"{0} സെക്കൻഡ് മുമ്പ്"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"സെക്കൻഡ്"}
+            relativeTime{
+                future{
+                    one{"{0} സെക്കൻഡിൽ"}
+                    other{"{0} സെക്കൻഡിൽ"}
+                }
+                past{
+                    one{"{0} സെക്കൻഡ് മുമ്പ്"}
+                    other{"{0} സെക്കൻഡ് മുമ്പ്"}
+                }
+            }
+        }
+        second-short{
+            dn{"സെക്കൻഡ്"}
+            relativeTime{
+                future{
+                    one{"{0} സെക്കൻഡിൽ"}
+                    other{"{0} സെക്കൻഡിൽ"}
+                }
+                past{
+                    one{"{0} സെക്കൻഡ് മുമ്പ്"}
+                    other{"{0} സെക്കൻഡ് മുമ്പ്"}
                 }
             }
         }
         sun{
+            relative{
+                "-1"{"കഴിഞ്ഞ ഞായറാഴ്ച"}
+                "0"{"ഈ ഞായറാഴ്ച"}
+                "1"{"അടുത്ത ഞായറാഴ്ച"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ഞായറാഴ്ച"}
+                "0"{"ഈ ഞായറാഴ്ച"}
+                "1"{"അടുത്ത ഞായറാഴ്ച"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ഞായറാഴ്ച"}
                 "0"{"ഈ ഞായറാഴ്ച"}
@@ -910,7 +1173,35 @@ ml{
                 "1"{"അടുത്ത വ്യാഴാഴ്ച"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ വ്യാഴാഴ്ച"}
+                "0"{"ഈ വ്യാഴാഴ്ച"}
+                "1"{"അടുത്ത വ്യാഴാഴ്ച"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"കഴിഞ്ഞ വ്യാഴാഴ്ച"}
+                "0"{"ഈ വ്യാഴാഴ്ച"}
+                "1"{"അടുത്ത വ്യാഴാഴ്ച"}
+            }
+        }
         tue{
+            relative{
+                "-1"{"കഴിഞ്ഞ ചൊവാഴ്ച"}
+                "0"{"ഈ ചൊവാഴ്ച"}
+                "1"{"അടുത്ത ചൊവാഴ്ച"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ചൊവാഴ്ച"}
+                "0"{"ഈ ചൊവാഴ്ച"}
+                "1"{"അടുത്ത ചൊവാഴ്ച"}
+            }
+        }
+        tue-short{
             relative{
                 "-1"{"കഴിഞ്ഞ ചൊവാഴ്ച"}
                 "0"{"ഈ ചൊവാഴ്ച"}
@@ -924,6 +1215,20 @@ ml{
                 "1"{"അടുത്ത ബുധനാഴ്ച"}
             }
         }
+        wed-narrow{
+            relative{
+                "-1"{"കഴിഞ്ഞ ബുധനാഴ്ച"}
+                "0"{"ഈ ബുധനാഴ്ച"}
+                "1"{"അടുത്ത ബുധനാഴ്ച"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"കഴിഞ്ഞ ബുധനാഴ്ച"}
+                "0"{"ഈ ബുധനാഴ്ച"}
+                "1"{"അടുത്ത ബുധനാഴ്ച"}
+            }
+        }
         week{
             dn{"ആഴ്ച"}
             relative{
@@ -931,6 +1236,32 @@ ml{
                 "0"{"ഈ ആഴ്ച"}
                 "1"{"അടുത്ത ആഴ്ച"}
             }
+            relativeTime{
+                future{
+                    one{"{0} ആഴ്ചയിൽ"}
+                    other{"{0} ആഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ആഴ്ച മുമ്പ്"}
+                    other{"{0} ആഴ്ച മുമ്പ്"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"ആഴ്ച"}
+            relativeTime{
+                future{
+                    one{"{0} ആഴ്ചയിൽ"}
+                    other{"{0} ആഴ്ചയിൽ"}
+                }
+                past{
+                    one{"{0} ആഴ്ച മുമ്പ്"}
+                    other{"{0} ആഴ്ച മുമ്പ്"}
+                }
+            }
+        }
+        week-short{
+            dn{"ആഴ്ച"}
             relativeTime{
                 future{
                     one{"{0} ആഴ്ചയിൽ"}
@@ -963,6 +1294,32 @@ ml{
                 }
             }
         }
+        year-narrow{
+            dn{"വർഷം"}
+            relativeTime{
+                future{
+                    one{"{0} വർഷത്തിൽ"}
+                    other{"{0} വർഷത്തിൽ"}
+                }
+                past{
+                    one{"{0} വർഷം മുമ്പ്"}
+                    other{"{0} വർഷം മുമ്പ്"}
+                }
+            }
+        }
+        year-short{
+            dn{"വർഷം"}
+            relativeTime{
+                future{
+                    one{"{0} വർഷത്തിൽ"}
+                    other{"{0} വർഷത്തിൽ"}
+                }
+                past{
+                    one{"{0} വർഷം മുമ്പ്"}
+                    other{"{0} വർഷം മുമ്പ്"}
+                }
+            }
+        }
         zone{
             dn{"മേഖല"}
         }
@@ -979,6 +1336,12 @@ ml{
             end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} കൂടാതെ {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
         }
         unit-short{
             2{"{0} കൂടാതെ {1}"}
@@ -1003,122 +1366,5 @@ ml{
         x-Jamo{"ജാമോ"}
         x-Pinyin{"പിൻയിൻ"}
         x-Publishing{"പ്രസിദ്ധീകരിക്കുന്നു"}
-    }
-    units{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} ദിവസം"}
-                other{"{0} ദിവസം"}
-            }
-            hour{
-                one{"{0} മണിക്കൂർ"}
-                other{"{0} മണിക്കൂർ"}
-            }
-            millisecond{
-                one{"{0} മില്ലിസെക്കന്റ്"}
-                other{"{0} മില്ലിസെക്കന്റ്"}
-            }
-            minute{
-                one{"{0} മിനിട്ട്"}
-                other{"{0} മിനിട്ട്"}
-            }
-            month{
-                one{"{0} മാസം"}
-                other{"{0} മാസം"}
-            }
-            second{
-                one{"{0} സെക്കന്റ്"}
-                other{"{0} സെക്കന്റ്"}
-            }
-            week{
-                one{"{0} ആഴ്ച"}
-                other{"{0} ആഴ്ച"}
-            }
-            year{
-                one{"{0} വർഷം"}
-                other{"{0} വർഷം"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} ദി"}
-                other{"{0} ദി"}
-            }
-            hour{
-                one{"{0} മ"}
-                other{"{0} മ"}
-            }
-            millisecond{
-                one{"{0} മിസെ"}
-                other{"{0} മിസെ"}
-            }
-            minute{
-                one{"{0} മി"}
-                other{"{0} മി"}
-            }
-            month{
-                one{"{0} മാ"}
-                other{"{0} മാ"}
-            }
-            second{
-                one{"{0} സെ"}
-                other{"{0} സെ"}
-            }
-            week{
-                one{"{0} ആ"}
-                other{"{0} ആ"}
-            }
-            year{
-                one{"{0} വ"}
-                other{"{0} വ"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} ദിവസം‌"}
-                other{"{0} ദിവസം‌"}
-            }
-            hour{
-                one{"{0} മണിക്കൂർ‌"}
-                other{"{0} മണിക്കൂർ"}
-            }
-            millisecond{
-                one{"{0} മി.സെ"}
-                other{"{0} മി.സെ"}
-            }
-            minute{
-                one{"{0} മിനിറ്റ്"}
-                other{"{0} മിനിറ്റ്"}
-            }
-            month{
-                one{"{0} മാസം"}
-                other{"{0} മാസം"}
-            }
-            second{
-                one{"{0} സെക്കൻറ്"}
-                other{"{0} സെക്കൻറ്"}
-            }
-            week{
-                one{"{0} ആഴ്‌ച"}
-                other{"{0} ആഴ്‌ച"}
-            }
-            year{
-                one{"{0} വർ‌ഷം"}
-                other{"{0} വർ‌ഷം"}
-            }
-        }
     }
 }

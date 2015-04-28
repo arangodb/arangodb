@@ -1,13 +1,13 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ne_IN.xml
 // *
 // ***************************************************************************
 ne_IN{
-    Version{"2.0.92.80"}
+    Version{"2.1.8.19"}
     calendar{
         gregorian{
             AmPmMarkers{
@@ -42,6 +42,22 @@ ne_IN{
                         "अक्टोबर",
                         "नोभेम्बर",
                         "दिसम्बर",
+                    }
+                }
+            }
+            quarters{
+                stand-alone{
+                    abbreviated{
+                        "पहिलो सत्र",
+                        "दोस्रो सत्र",
+                        "तेस्रो सत्र",
+                        "चौथो सत्र",
+                    }
+                    wide{
+                        "पहिलो सत्र",
+                        "दोस्रो सत्र",
+                        "तेस्रो सत्र",
+                        "चौथो सत्र",
                     }
                 }
             }
@@ -98,13 +114,5 @@ ne_IN{
     }
     measurementSystemNames{
         US{"अमेरिकेली"}
-    }
-    units{
-        duration{
-            week{
-                one{"{0} साता"}
-                other{"{0} सप्ताह"}
-            }
-        }
     }
 }

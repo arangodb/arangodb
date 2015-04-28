@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ja.xml
@@ -10,7 +10,7 @@
  * ICU <specials> source: <path>/common/main/ja.xml
  */
 ja{
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     zoneStrings{
         "Africa:Abidjan"{
             ec{"アビジャン"}
@@ -319,7 +319,7 @@ ja{
             ec{"グレースベイ"}
         }
         "America:Godthab"{
-            ec{"ゴッドホープ"}
+            ec{"ヌーク"}
         }
         "America:Goose_Bay"{
             ec{"グースベイ"}
@@ -459,9 +459,6 @@ ja{
         "America:Montevideo"{
             ec{"モンテビデオ"}
         }
-        "America:Montreal"{
-            ec{"モントリオール"}
-        }
         "America:Montserrat"{
             ec{"モントセラト"}
         }
@@ -550,10 +547,7 @@ ja{
             ec{"サンパウロ"}
         }
         "America:Scoresbysund"{
-            ec{"スコルズビスーン"}
-        }
-        "America:Shiprock"{
-            ec{"シップロック"}
+            ec{"イトコルトルミット"}
         }
         "America:Sitka"{
             ec{"シトカ"}
@@ -619,7 +613,7 @@ ja{
             ec{"デービス基地"}
         }
         "Antarctica:DumontDUrville"{
-            ec{"デュモン・デュルビル基地"}
+            ec{"デュモン・デュルヴィル基地"}
         }
         "Antarctica:Macquarie"{
             ec{"マッコリー"}
@@ -636,11 +630,11 @@ ja{
         "Antarctica:Rothera"{
             ec{"ロゼラ基地"}
         }
-        "Antarctica:South_Pole"{
-            ec{"サウスポール基地"}
-        }
         "Antarctica:Syowa"{
             ec{"昭和基地"}
+        }
+        "Antarctica:Troll"{
+            ec{"トロル基地"}
         }
         "Antarctica:Vostok"{
             ec{"ボストーク基地"}
@@ -992,7 +986,7 @@ ja{
         }
         "Europe:Dublin"{
             ec{"ダブリン"}
-            ld{"アイルランド夏時間"}
+            ld{"アイルランド標準時"}
         }
         "Europe:Gibraltar"{
             ec{"ジブラルタル"}
@@ -1029,7 +1023,7 @@ ja{
             ld{"英国夏時間"}
         }
         "Europe:Luxembourg"{
-            ec{"ルクセンブルグ"}
+            ec{"ルクセンブルク"}
         }
         "Europe:Madrid"{
             ec{"マドリード"}
@@ -1286,7 +1280,7 @@ ja{
             ls{"東アフリカ時間"}
         }
         "meta:Africa_Southern"{
-            ls{"南アフリカ時間"}
+            ls{"南アフリカ標準時"}
         }
         "meta:Africa_Western"{
             ld{"西アフリカ夏時間"}
@@ -1332,6 +1326,11 @@ ja{
             ld{"アナディリ夏時間"}
             lg{"アナディリ時間"}
             ls{"アナディリ標準時"}
+        }
+        "meta:Apia"{
+            ld{"アピーア夏時間"}
+            lg{"アピーア時間"}
+            ls{"アピーア標準時"}
         }
         "meta:Aqtau"{
             ld{"アクタウ夏時間"}
@@ -1496,6 +1495,9 @@ ja{
             lg{"東ヨーロッパ時間"}
             ls{"東ヨーロッパ標準時"}
         }
+        "meta:Europe_Further_Eastern"{
+            ls{"極東ヨーロッパ時間"}
+        }
         "meta:Europe_Western"{
             ld{"西ヨーロッパ夏時間"}
             lg{"西ヨーロッパ時間"}
@@ -1548,7 +1550,7 @@ ja{
             ls{"グアム時間"}
         }
         "meta:Gulf"{
-            ls{"湾岸時間"}
+            ls{"湾岸標準時"}
         }
         "meta:Guyana"{
             ls{"ガイアナ時間"}
@@ -1569,7 +1571,7 @@ ja{
             ls{"ホブド標準時"}
         }
         "meta:India"{
-            ls{"インド時間"}
+            ls{"インド標準時"}
         }
         "meta:Indian_Ocean"{
             ls{"インド洋時間"}
@@ -1679,6 +1681,16 @@ ja{
         }
         "meta:Mawson"{
             ls{"モーソン基地時間"}
+        }
+        "meta:Mexico_Northwest"{
+            ld{"メキシコ北西部夏時間"}
+            lg{"メキシコ北西部時間"}
+            ls{"メキシコ北西部標準時"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"メキシコ太平洋夏時間"}
+            lg{"メキシコ太平洋時間"}
+            ls{"メキシコ太平洋標準時"}
         }
         "meta:Mongolia"{
             ld{"ウランバートル夏時間"}
@@ -1808,7 +1820,7 @@ ja{
             ls{"セーシェル時間"}
         }
         "meta:Singapore"{
-            ls{"シンガポール時間"}
+            ls{"シンガポール標準時"}
         }
         "meta:Solomon"{
             ls{"ソロモン諸島時間"}
@@ -1878,7 +1890,7 @@ ja{
         "meta:Volgograd"{
             ld{"ボルゴグラード夏時間"}
             lg{"ボルゴグラード時間"}
-            ls{"ヴォルゴグラード標準時"}
+            ls{"ボルゴグラード標準時"}
         }
         "meta:Vostok"{
             ls{"ボストーク基地時間"}

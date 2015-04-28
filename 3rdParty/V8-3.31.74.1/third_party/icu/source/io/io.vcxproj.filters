@@ -24,7 +24,7 @@
     <ClCompile Include="sscanf.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ucln_io.c">
+    <ClCompile Include="ucln_io.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ufile.c">
@@ -33,7 +33,7 @@
     <ClCompile Include="ufmt_cmn.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="uprintf.c">
+    <ClCompile Include="uprintf.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="uprntf_p.c">

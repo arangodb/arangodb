@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 2013, International Business Machines Corporation
+ * Copyright (c) 2014, International Business Machines Corporation
  * and others. All Rights Reserved.
  ********************************************************************/
 /* C API TEST FOR UREGION */
@@ -50,8 +50,6 @@ typedef struct KnownRegion {
   URegionType type;
   const char *containingContinent;
 } KnownRegion;
-
-#define LENGTHOF(array) (int32_t)(sizeof(array) / sizeof((array)[0]))
 
 static KnownRegion knownRegions[] = {
     // Code, Num, Parent, Type,             Containing Continent

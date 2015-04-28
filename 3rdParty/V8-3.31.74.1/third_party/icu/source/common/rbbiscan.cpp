@@ -2,7 +2,7 @@
 //
 //  file:  rbbiscan.cpp
 //
-//  Copyright (C) 2002-2012, International Business Machines Corporation and others.
+//  Copyright (C) 2002-2014, International Business Machines Corporation and others.
 //  All Rights Reserved.
 //
 //  This file contains the Rule Based Break Iterator Rule Builder functions for
@@ -34,8 +34,6 @@
 #include "rbbitblb.h"
 
 #include "uassert.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 //------------------------------------------------------------------------------
 //
@@ -581,7 +579,7 @@ void RBBIRuleScanner::error(UErrorCode e) {
             fRB->fParseError->line  = fLineNum;
             fRB->fParseError->offset = fCharNum;
             fRB->fParseError->preContext[0] = 0;
-            fRB->fParseError->preContext[0] = 0;
+            fRB->fParseError->postContext[0] = 0;
         }
     }
 }
@@ -993,7 +991,7 @@ void RBBIRuleScanner::parse() {
             if (tableEl->fCharClass >= 128 && tableEl->fCharClass < 240 &&   // Table specs a char class &&
                 fC.fEscaped == FALSE &&                                      //   char is not escaped &&
                 fC.fChar != (UChar32)-1) {                                   //   char is not EOF
-                U_ASSERT((tableEl->fCharClass-128) < LENGTHOF(fRuleSets));
+                U_ASSERT((tableEl->fCharClass-128) < UPRV_LENGTHOF(fRuleSets));
                 if (fRuleSets[tableEl->fCharClass-128].contains(fC.fChar)) {
                     // Table row specified a character class, or set of characters,
                     //   and the current char matches it.

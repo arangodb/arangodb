@@ -1,7 +1,7 @@
 /*
  ******************************************************************************
- *   Copyright (C) 1996-2012, International Business Machines                 *
- *   Corporation and others.  All Rights Reserved.                            *
+ *   Copyright (C) 1996-2014, International Business Machines
+ *   Corporation and others.  All Rights Reserved.
  ******************************************************************************
  */
 
@@ -22,10 +22,12 @@
 
 #include "unicode/uniset.h"
 #include "unicode/uset.h"
+#include "unicode/usetiter.h"
 #include "unicode/ustring.h"
 #include "hash.h"
+#include "normalizer2impl.h"
 #include "uhash.h"
-#include "ucol_imp.h"
+#include "usrchimp.h"
 #include "uassert.h"
 
 #include "colldata.h"
@@ -50,7 +52,7 @@ CEList::CEList(UCollator *coll, const UnicodeString &string, UErrorCode &status)
     }
 
     // **** only set flag if string has Han(gul) ****
-    ucol_forceHanImplicit(elems, &status);
+    // ucol_forceHanImplicit(elems, &status); -- removed for ticket #10476
 
     switch (strength)
     {
@@ -410,10 +412,22 @@ bail:
         return;
     }
 
-     UChar32 hanRanges[] = {UCOL_FIRST_HAN, UCOL_LAST_HAN, UCOL_FIRST_HAN_COMPAT, UCOL_LAST_HAN_COMPAT, UCOL_FIRST_HAN_A, UCOL_LAST_HAN_A,
-                            UCOL_FIRST_HAN_B, UCOL_LAST_HAN_B};
-     UChar  jamoRanges[] = {UCOL_FIRST_L_JAMO, UCOL_FIRST_V_JAMO, UCOL_FIRST_T_JAMO, UCOL_LAST_T_JAMO};
-     UnicodeString hanString = UnicodeString::fromUTF32(hanRanges, ARRAY_SIZE(hanRanges));
+    UnicodeSet hanRanges(UNICODE_STRING_SIMPLE("[:Unified_Ideograph:]"), status);
+    if (U_FAILURE(status)) {
+        return;
+    }
+    UnicodeSetIterator hanIter(hanRanges);
+    UnicodeString hanString;
+    while(hanIter.nextRange()) {
+        hanString.append(hanIter.getCodepoint());
+        hanString.append(hanIter.getCodepointEnd());
+    }
+    // TODO: Why U+11FF? The old code had an outdated UCOL_LAST_T_JAMO=0x11F9,
+    // but as of Unicode 6.3 the 11xx block is filled,
+    // and there are also more Jamo T at U+D7CB..U+D7FB.
+    // Maybe use [:HST=T:] and look for the end of the last range?
+    // Maybe use script boundary mappings instead of this code??
+    UChar  jamoRanges[] = {Hangul::JAMO_L_BASE, Hangul::JAMO_V_BASE, Hangul::JAMO_T_BASE + 1, 0x11FF};
      UnicodeString jamoString(FALSE, jamoRanges, ARRAY_SIZE(jamoRanges));
      CEList hanList(coll, hanString, status);
      CEList jamoList(coll, jamoString, status);

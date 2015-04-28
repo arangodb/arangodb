@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/hr.xml
@@ -22,7 +22,6 @@ hr{
         be{"bjeloruski"}
         bem{"bemba"}
         bg{"bugarski"}
-        bh{"bihari"}
         bn{"bengalski"}
         br{"bretonski"}
         bs{"bosanski"}
@@ -101,7 +100,6 @@ hr{
         mk{"makedonski"}
         ml{"malajalamski"}
         mn{"mongolski"}
-        mo{"moldavski"}
         mr{"marathski"}
         ms{"malajski"}
         mt{"malteški"}
@@ -128,6 +126,7 @@ hr{
         rm{"romanš"}
         rn{"rundi"}
         ro{"rumunjski"}
+        ro_MD{"moldavski"}
         ru{"ruski"}
         rw{"kinyarwanda"}
         sd{"sindhi"}
@@ -147,15 +146,16 @@ hr{
         te{"telugu"}
         tg{"tadžički"}
         th{"tajlandski"}
-        ti{"tigrinya"}
+        ti{"tigrinja"}
         tk{"turkmenski"}
+        tl{"tagalog"}
         tn{"cvana"}
         to{"tonganski"}
         tr{"turski"}
         tt{"tatarski"}
         tum{"tumbuka"}
         tw{"twi"}
-        ug{"uighur"}
+        ug{"ujgurski"}
         uk{"ukrajinski"}
         ur{"urdski"}
         uz{"uzbečki"}
@@ -168,6 +168,9 @@ hr{
         zh_Hans{"kineski (pojednostavljeni)"}
         zh_Hant{"kineski (tradicionalni)"}
         zu{"zulu"}
+    }
+    Languages%variant{
+        ps{"puštu"}
     }
     LanguagesShort{
         az{"azerski"}
@@ -206,7 +209,7 @@ hr{
         Egyd{"egipatsko narodno pismo"}
         Egyh{"egipatsko hijeratsko pismo"}
         Egyp{"egipatski hijeroglifi"}
-        Ethi{"etiopsko pimo"}
+        Ethi{"etiopsko pismo"}
         Geok{"gruzijsko khutsuri pismo"}
         Geor{"gruzijsko pismo"}
         Glag{"glagoljica"}
@@ -268,7 +271,7 @@ hr{
         Narb{"staro sjevernoarapsko pismo"}
         Nbat{"nabatejsko pismo"}
         Nkgb{"naxi geba pismo"}
-        Nkoo{"n'ko pismo"}
+        Nkoo{"n’ko pismo"}
         Nshu{"nushu pismo"}
         Ogam{"ogham pismo"}
         Olck{"ol chiki pismo"}
@@ -295,7 +298,7 @@ hr{
         Shaw{"shavian pismo"}
         Shrd{"sharada pismo"}
         Sind{"khudawadi pismo"}
-        Sinh{"singaleško pismo"}
+        Sinh{"sinhaleško pismo"}
         Sora{"sora sompeng pismo"}
         Sund{"sudansko pismo"}
         Sylo{"syloti nagri pismo"}
@@ -337,7 +340,10 @@ hr{
         Hans{"pojednostavljeno hansko pismo"}
         Hant{"tradicionalno hansko pismo"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"perzijsko-arapsko pismo"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Jezik: {0}"}
         script{"Pismo: {0}"}

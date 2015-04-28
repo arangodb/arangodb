@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -66,6 +66,7 @@
  */
 U_STABLE const char* U_EXPORT2 u_getDataDirectory(void);
 
+
 /** 
  * Set the ICU data directory. 
  * The data directory is where common format ICU data files (.dat files)
@@ -87,20 +88,36 @@ U_STABLE const char* U_EXPORT2 u_getDataDirectory(void);
  */
 U_STABLE void U_EXPORT2 u_setDataDirectory(const char *directory);
 
+#ifndef U_HIDE_INTERNAL_API
+/**
+  * Return the time zone files override directory, or an empty string if
+  * no directory was specified. Certain time zone resources will be preferrentially
+  * loaded from individual files in this directory.
+  *
+  * @return the time zone data override directory.
+  * @internal
+  */ 
+U_INTERNAL const char * U_EXPORT2 u_getTimeZoneFilesDirectory(UErrorCode *status);
+
+/**
+  * Set the time zone files override directory.
+  * This function is not thread safe; it must not be called concurrently with
+  *   u_getTimeZoneFilesDirectory() or any other use of ICU time zone functions.
+  * This function should only be called before using any ICU service that
+  *   will access the time zone data.
+  * @internal
+  */
+U_INTERNAL void U_EXPORT2 u_setTimeZoneFilesDirectory(const char *path, UErrorCode *status);
+#endif  /* U_HIDE_INTERNAL_API */
+
+
 /**
  * @{
  * Filesystem file and path separator characters.
  * Example: '/' and ':' on Unix, '\\' and ';' on Windows.
  * @stable ICU 2.0
  */
-#if U_PLATFORM == U_PF_CLASSIC_MACOS
-#   define U_FILE_SEP_CHAR ':'
-#   define U_FILE_ALT_SEP_CHAR ':'
-#   define U_PATH_SEP_CHAR ';'
-#   define U_FILE_SEP_STRING ":"
-#   define U_FILE_ALT_SEP_STRING ":"
-#   define U_PATH_SEP_STRING ";"
-#elif U_PLATFORM_USES_ONLY_WIN32_API
+#if U_PLATFORM_USES_ONLY_WIN32_API
 #   define U_FILE_SEP_CHAR '\\'
 #   define U_FILE_ALT_SEP_CHAR '/'
 #   define U_PATH_SEP_CHAR ';'

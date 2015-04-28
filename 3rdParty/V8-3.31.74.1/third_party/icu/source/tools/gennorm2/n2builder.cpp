@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2009-2012, International Business Machines
+*   Copyright (C) 2009-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -33,14 +33,14 @@
 #include "unicode/uniset.h"
 #include "unicode/unistr.h"
 #include "unicode/ustring.h"
+#include "charstr.h"
 #include "hash.h"
 #include "normalizer2impl.h"
 #include "toolutil.h"
 #include "unewdata.h"
 #include "utrie2.h"
 #include "uvectr32.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+#include "writesrc.h"
 
 #if !UCONFIG_NO_NORMALIZATION
 
@@ -70,7 +70,7 @@ public:
 
     HangulIterator() : rangeIndex(0) {}
     const Range *nextRange() {
-        if(rangeIndex<LENGTHOF(ranges)) {
+        if(rangeIndex<UPRV_LENGTHOF(ranges)) {
             return ranges+rangeIndex++;
         } else {
             return NULL;
@@ -170,7 +170,8 @@ enumRangeHandler(const void *context, UChar32 start, UChar32 end, uint32_t value
 U_CDECL_END
 
 Normalizer2DataBuilder::Normalizer2DataBuilder(UErrorCode &errorCode) :
-        phase(0), overrideHandling(OVERRIDE_PREVIOUS), optimization(OPTIMIZE_NORMAL) {
+        phase(0), overrideHandling(OVERRIDE_PREVIOUS), optimization(OPTIMIZE_NORMAL),
+        norm16TrieLength(0) {
     memset(unicodeVersion, 0, sizeof(unicodeVersion));
     normTrie=utrie2_open(0, 0, &errorCode);
     normMem=utm_open("gennorm2 normalization structs", 10000, 0x110100, sizeof(Norm));
@@ -1145,23 +1146,15 @@ void Normalizer2DataBuilder::processData() {
     if(minCP>=0x10000) {
         indexes[Normalizer2Impl::IX_MIN_COMP_NO_MAYBE_CP]=U16_LEAD(minCP);
     }
-}
 
-void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
-    processData();
-
-    IcuToolErrorCode errorCode("gennorm2/writeBinaryFile()");
     utrie2_freeze(norm16Trie, UTRIE2_16_VALUE_BITS, errorCode);
-    int32_t norm16TrieLength=utrie2_serialize(norm16Trie, NULL, 0, errorCode);
+    norm16TrieLength=utrie2_serialize(norm16Trie, NULL, 0, errorCode);
     if(errorCode.get()!=U_BUFFER_OVERFLOW_ERROR) {
         fprintf(stderr, "gennorm2 error: unable to freeze/serialize the normalization trie - %s\n",
                 errorCode.errorName());
         exit(errorCode.reset());
     }
     errorCode.reset();
-    LocalArray<uint8_t> norm16TrieBytes(new uint8_t[norm16TrieLength]);
-    utrie2_serialize(norm16Trie, norm16TrieBytes.getAlias(), norm16TrieLength, errorCode);
-    errorCode.assertSuccess();
 
     int32_t offset=(int32_t)sizeof(indexes);
     indexes[Normalizer2Impl::IX_NORM_TRIE_OFFSET]=offset;
@@ -1194,6 +1187,16 @@ void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
         u_versionFromString(unicodeVersion, U_UNICODE_VERSION);
     }
     memcpy(dataInfo.dataVersion, unicodeVersion, 4);
+}
+
+void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
+    processData();
+
+    IcuToolErrorCode errorCode("gennorm2/writeBinaryFile()");
+    LocalArray<uint8_t> norm16TrieBytes(new uint8_t[norm16TrieLength]);
+    utrie2_serialize(norm16Trie, norm16TrieBytes.getAlias(), norm16TrieLength, errorCode);
+    errorCode.assertSuccess();
+
     UNewDataMemory *pData=
         udata_create(NULL, NULL, filename, &dataInfo,
                      haveCopyright ? U_COPYRIGHT_STRING : NULL, errorCode);
@@ -1211,11 +1214,80 @@ void Normalizer2DataBuilder::writeBinaryFile(const char *filename) {
         fprintf(stderr, "gennorm2: error %s writing the output file\n", errorCode.errorName());
         exit(errorCode.reset());
     }
+    int32_t totalSize=indexes[Normalizer2Impl::IX_TOTAL_SIZE];
     if(writtenSize!=totalSize) {
         fprintf(stderr, "gennorm2 error: written size %ld != calculated size %ld\n",
             (long)writtenSize, (long)totalSize);
         exit(U_INTERNAL_PROGRAM_ERROR);
     }
+}
+
+void
+Normalizer2DataBuilder::writeCSourceFile(const char *filename) {
+    processData();
+
+    IcuToolErrorCode errorCode("gennorm2/writeCSourceFile()");
+    const char *basename=findBasename(filename);
+    CharString path(filename, (int32_t)(basename-filename), errorCode);
+    CharString dataName(basename, errorCode);
+    const char *extension=strrchr(basename, '.');
+    if(extension!=NULL) {
+        dataName.truncate((int32_t)(extension-basename));
+    }
+    errorCode.assertSuccess();
+
+    LocalArray<uint8_t> norm16TrieBytes(new uint8_t[norm16TrieLength]);
+    utrie2_serialize(norm16Trie, norm16TrieBytes.getAlias(), norm16TrieLength, errorCode);
+    errorCode.assertSuccess();
+
+    FILE *f=usrc_create(path.data(), basename, "icu/source/tools/gennorm2/n2builder.cpp");
+    if(f==NULL) {
+        fprintf(stderr, "gennorm2/writeCSourceFile() error: unable to create the output file %s\n",
+                filename);
+        exit(U_FILE_ACCESS_ERROR);
+        return;
+    }
+    char line[100];
+    sprintf(line, "static const UVersionInfo %s_formatVersion={", dataName.data());
+    usrc_writeArray(f, line, dataInfo.formatVersion, 8, 4, "};\n");
+    sprintf(line, "static const UVersionInfo %s_dataVersion={", dataName.data());
+    usrc_writeArray(f, line, dataInfo.dataVersion, 8, 4, "};\n\n");
+    sprintf(line, "static const int32_t %s_indexes[Normalizer2Impl::IX_COUNT]={\n",
+            dataName.data());
+    usrc_writeArray(f,
+        line,
+        indexes, 32, Normalizer2Impl::IX_COUNT,
+        "\n};\n\n");
+    sprintf(line, "static const uint16_t %s_trieIndex[%%ld]={\n", dataName.data());
+    usrc_writeUTrie2Arrays(f,
+        line, NULL,
+        norm16Trie,
+        "\n};\n\n");
+    sprintf(line, "static const uint16_t %s_extraData[%%ld]={\n", dataName.data());
+    usrc_writeArray(f,
+        line,
+        extraData.getBuffer(), 16, extraData.length(),
+        "\n};\n\n");
+    sprintf(line, "static const uint8_t %s_smallFCD[%%ld]={\n", dataName.data());
+    usrc_writeArray(f,
+        line,
+        smallFCD, 8, sizeof(smallFCD),
+        "\n};\n\n");
+    /*fputs(  // TODO
+        "static const UCaseProps %s_singleton={\n"
+        "  NULL,\n"
+        "  %s_indexes,\n"
+        "  %s_extraData,\n"
+        "  %s_smallFCD,\n",
+        f);*/
+    sprintf(line, "static const UTrie2 %s_trie={\n", dataName.data());
+    char line2[100];
+    sprintf(line2, "%s_trieIndex", dataName.data());
+    usrc_writeUTrie2Struct(f,
+        line,
+        norm16Trie, line2, NULL,
+        "};\n");
+    fclose(f);
 }
 
 U_NAMESPACE_END

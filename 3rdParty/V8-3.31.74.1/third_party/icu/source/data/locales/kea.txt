@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kea.xml
@@ -11,63 +11,121 @@
  */
 kea{
     AuxExemplarCharacters{
-        "[á à ă â å ä ã ā æ c ç é è ĕ ê ë ẽ ē h í ì ĭ î ï ĩ ī ñ ó ò ŏ ô ö õ ø ō œ q {"
-        "rr} ú ù ŭ û ü ũ ū w y ÿ]"
+        "[á à ă â å ä ã ā æ c ç é è ĕ ê ë ẽ ē í ì ĭ î ï ĩ ī {n\u0308} ó ò ŏ ô ö õ ø ō"
+        " œ q {rr} ú ù ŭ û ü ũ ū w ÿ]"
     }
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
         medial{"{0}…{1}"}
+        word-final{"{0} …"}
+        word-initial{"… {0}"}
+        word-medial{"{0} … {1}"}
     }
-    ExemplarCharacters{"[a b d {dj} e f g i j k l {lh} m n {n\u0308} {nh} o p r s t {tx} u v x z]"}
+    ExemplarCharacters{"[a b d {dj} e f g h i j k l {lh} m n ñ {nh} o p r s t {tx} u v x y z]"}
     ExemplarCharactersIndex{"[A B D E F G H I J K L M N O P R S T U V X Z]"}
     LocaleScript{
         "Latn",
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
+            miscPatterns{
+                atLeast{"+{0}"}
+                range{"{0}–{1}"}
+            }
             patterns{
-                currencyFormat{"#,##0.00¤"}
+                accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
+                currencyFormat{"#,##0.00 ¤"}
                 decimalFormat{"#,##0.###"}
                 percentFormat{"#,##0%"}
                 scientificFormat{"#E0"}
             }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        other{"0 mil"}
+                    }
+                    10000{
+                        other{"00 mil"}
+                    }
+                    100000{
+                        other{"000 mil"}
+                    }
+                    1000000{
+                        other{"0 milhãu"}
+                    }
+                    10000000{
+                        other{"00 milhãu"}
+                    }
+                    100000000{
+                        other{"000 milhãu"}
+                    }
+                    1000000000{
+                        other{"0 mil milhãu"}
+                    }
+                    10000000000{
+                        other{"00 mil milhãu"}
+                    }
+                    100000000000{
+                        other{"000 mil milhãu"}
+                    }
+                    1000000000000{
+                        other{"0 bilhãu"}
+                    }
+                    10000000000000{
+                        other{"00 bilhãu"}
+                    }
+                    100000000000000{
+                        other{"000 bilhãu"}
+                    }
+                }
+            }
             patternsShort{
                 decimalFormat{
                     1000{
-                        other{"0K"}
+                        other{"0 mil"}
                     }
                     10000{
-                        other{"00K"}
+                        other{"00 mil"}
                     }
                     100000{
-                        other{"000K"}
+                        other{"000 mil"}
                     }
                     1000000{
-                        other{"0M"}
+                        other{"0 M"}
                     }
                     10000000{
-                        other{"00M"}
+                        other{"00 M"}
                     }
                     100000000{
-                        other{"000M"}
+                        other{"000 M"}
+                    }
+                    1000000000{
+                        other{"0 MM"}
+                    }
+                    10000000000{
+                        other{"00 MM"}
+                    }
+                    100000000000{
+                        other{"000 MM"}
                     }
                     1000000000000{
-                        other{"0T"}
+                        other{"0 Bi"}
                     }
                     10000000000000{
-                        other{"00T"}
+                        other{"00 Bi"}
                     }
                     100000000000000{
-                        other{"000T"}
+                        other{"000 Bi"}
                     }
                 }
             }
             symbols{
                 decimal{","}
                 exponential{"E"}
-                group{"."}
+                group{" "}
                 infinity{"∞"}
                 list{";"}
                 minusSign{"-"}
@@ -75,10 +133,14 @@ kea{
                 perMille{"‰"}
                 percentSign{"%"}
                 plusSign{"+"}
+                superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -88,16 +150,20 @@ kea{
                 "HH:mm",
                 "EEEE, d 'di' MMMM 'di' y G",
                 "d 'di' MMMM 'di' y G",
-                "d 'di' MMM 'di' y G",
+                "d MMM y G",
                 "d/M/y GGGGG",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
             }
             availableFormats{
                 Ed{"E, d"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, d MMM y G"}
+                GyMMMd{"d MMM y G"}
                 H{"HH"}
                 HHmm{"HH:mm"}
                 HHmmss{"HH:mm:ss"}
@@ -122,13 +188,22 @@ kea{
                 yM{"MM/y"}
                 yMEd{"E, dd/MM/y"}
                 yMM{"MM/y"}
-                yMMM{"MMM 'di' y"}
-                yMMMEd{"E, d 'di' MMM 'di' y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, d MMM y"}
                 yMMMM{"MMMM 'di' y"}
                 yMMMd{"d MMM y"}
                 yMd{"dd/MM/y"}
                 yQQQ{"QQQ y"}
-                yQQQQ{"QQQQ y"}
+                yQQQQ{"QQQQ 'di' y"}
+                yyyy{"y G"}
+                yyyyM{"MM/y GGGGG"}
+                yyyyMEd{"E, dd/MM/y GGGGG"}
+                yyyyMMM{"MMM y G"}
+                yyyyMMMEd{"E, d MMM y G"}
+                yyyyMMMd{"d MMM y G"}
+                yyyyMd{"dd/MM/y GGGGG"}
+                yyyyQQQ{"QQQ y G"}
+                yyyyQQQQ{"QQQQ 'di' y G"}
             }
             intervalFormats{
                 H{
@@ -146,29 +221,29 @@ kea{
                     H{"HH–HH v"}
                 }
                 M{
-                    M{"M–M"}
+                    M{"M – M"}
                 }
                 MEd{
                     M{"E, dd/MM – E, dd/MM"}
                     d{"E, dd/MM – E, dd/MM"}
                 }
                 MMM{
-                    M{"LLL–LLL"}
+                    M{"MMM – MMM"}
                 }
                 MMMEd{
-                    M{"E, dd/MM – E, dd/MM"}
-                    d{"E, dd/MM – E, dd/MM"}
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
                 }
                 MMMd{
-                    M{"dd/MM – dd/MM"}
-                    d{"d–d MMM"}
+                    M{"d MMM – d MMM"}
+                    d{"d – d MMM"}
                 }
                 Md{
                     M{"dd/MM – dd/MM"}
                     d{"dd/MM – dd/MM"}
                 }
                 d{
-                    d{"d–d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} – {1}"}
                 h{
@@ -190,7 +265,7 @@ kea{
                     h{"h–h a v"}
                 }
                 y{
-                    y{"y–y"}
+                    y{"y – y"}
                 }
                 yM{
                     M{"MM/y – MM/y"}
@@ -202,7 +277,7 @@ kea{
                     y{"E, dd/MM/y – E, dd/MM/y"}
                 }
                 yMMM{
-                    M{"MMM–MMM y"}
+                    M{"MMM – MMM y"}
                     y{"MMM y – MMM y"}
                 }
                 yMMMEd{
@@ -211,12 +286,12 @@ kea{
                     y{"E, d MMM y – E, d MMM y"}
                 }
                 yMMMM{
-                    M{"MMMM–MMMM y"}
-                    y{"MMMM y – MMMM y"}
+                    M{"MMMM – MMMM 'di' y G"}
+                    y{"MMMM 'di' y – MMMM 'di' y G"}
                 }
                 yMMMd{
                     M{"d MMM – d MMM y"}
-                    d{"d–d MMM y"}
+                    d{"d – d MMM y"}
                     y{"d MMM y – d MMM y"}
                 }
                 yMd{
@@ -231,6 +306,10 @@ kea{
                 "am",
                 "pm",
             }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "HH:mm:ss zzzz",
                 "HH:mm:ss z",
@@ -238,7 +317,7 @@ kea{
                 "HH:mm",
                 "EEEE, d 'di' MMMM 'di' y",
                 "d 'di' MMMM 'di' y",
-                "d 'di' MMM 'di' y",
+                "d MMM y",
                 "d/M/y",
                 "{1} {0}",
                 "{1} {0}",
@@ -246,8 +325,22 @@ kea{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"mei-dia"}
+            NoonMarkerNarrow{"m"}
+            appendItems{
+                Timezone{"{0} {1}"}
+            }
             availableFormats{
+                E{"ccc"}
+                EHm{"E, HH:mm"}
+                EHms{"E, HH:mm:ss"}
                 Ed{"E, d"}
+                Ehm{"E, h:mm a"}
+                Ehms{"E, h:mm:ss a"}
+                Gy{"y G"}
+                GyMMM{"MMM 'di' y G"}
+                GyMMMEd{"E, d 'di' MMM 'di' y G"}
+                GyMMMd{"d 'di' MMM 'di' y G"}
                 H{"HH"}
                 HHmm{"HH:mm"}
                 HHmmss{"HH:mm:ss"}
@@ -273,12 +366,12 @@ kea{
                 yMEd{"E, dd/MM/y"}
                 yMM{"MM/y"}
                 yMMM{"MMM 'di' y"}
-                yMMMEd{"E, d 'di' MMM 'di' y"}
+                yMMMEd{"E, d MMM y"}
                 yMMMM{"MMMM 'di' y"}
                 yMMMd{"d MMM y"}
                 yMd{"dd/MM/y"}
                 yQQQ{"QQQ y"}
-                yQQQQ{"QQQQ y"}
+                yQQQQ{"QQQQ 'di' y"}
             }
             dayNames{
                 format{
@@ -292,13 +385,13 @@ kea{
                         "sab",
                     }
                     narrow{
-                        "d",
-                        "s",
-                        "t",
-                        "k",
-                        "k",
-                        "s",
-                        "s",
+                        "D",
+                        "S",
+                        "T",
+                        "K",
+                        "K",
+                        "S",
+                        "S",
                     }
                     short{
                         "du",
@@ -363,35 +456,43 @@ kea{
                     "AK",
                     "DK",
                 }
+                abbreviated%variant{
+                    "AEK",
+                    "EK",
+                }
                 wide{
                     "Antis di Kristu",
                     "Dispos di Kristu",
                 }
+                wide%variant{
+                    "Antis di Era Kumun",
+                    "Era Kumun",
+                }
             }
             intervalFormats{
                 H{
-                    H{"HH–HH"}
+                    H{"HH – HH"}
                 }
                 Hm{
-                    H{"HH:mm–HH:mm"}
-                    m{"HH:mm–HH:mm"}
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
                 }
                 Hmv{
-                    H{"HH:mm–HH:mm v"}
-                    m{"HH:mm–HH:mm v"}
+                    H{"HH:mm – HH:mm v"}
+                    m{"HH:mm – HH:mm v"}
                 }
                 Hv{
-                    H{"HH–HH v"}
+                    H{"HH – HH v"}
                 }
                 M{
-                    M{"M–M"}
+                    M{"M – M"}
                 }
                 MEd{
                     M{"E, dd/MM – E, dd/MM"}
                     d{"E, dd/MM – E, dd/MM"}
                 }
                 MMM{
-                    M{"LLL–LLL"}
+                    M{"LLL – LLL"}
                 }
                 MMMEd{
                     M{"E, dd/MM – E, dd/MM"}
@@ -399,36 +500,36 @@ kea{
                 }
                 MMMd{
                     M{"dd/MM – dd/MM"}
-                    d{"d–d MMM"}
+                    d{"d – d MMM"}
                 }
                 Md{
                     M{"dd/MM – dd/MM"}
                     d{"dd/MM – dd/MM"}
                 }
                 d{
-                    d{"d–d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} – {1}"}
                 h{
                     a{"h a – h a"}
-                    h{"h–h a"}
+                    h{"h – h a"}
                 }
                 hm{
                     a{"h:mm a – h:mm a"}
-                    h{"h:mm–h:mm a"}
-                    m{"h:mm–h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
                 }
                 hmv{
                     a{"h:mm a – h:mm a v"}
-                    h{"h:mm–h:mm a v"}
-                    m{"h:mm–h:mm a v"}
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
                 }
                 hv{
                     a{"h a – h a v"}
-                    h{"h–h a v"}
+                    h{"h – h a v"}
                 }
                 y{
-                    y{"y–y"}
+                    y{"y – y"}
                 }
                 yM{
                     M{"MM/y – MM/y"}
@@ -440,7 +541,7 @@ kea{
                     y{"E, dd/MM/y – E, dd/MM/y"}
                 }
                 yMMM{
-                    M{"MMM–MMM y"}
+                    M{"MMM – MMM y"}
                     y{"MMM y – MMM y"}
                 }
                 yMMMEd{
@@ -449,12 +550,12 @@ kea{
                     y{"E, d MMM y – E, d MMM y"}
                 }
                 yMMMM{
-                    M{"MMMM–MMMM y"}
+                    M{"MMMM – MMMM 'di' y"}
                     y{"MMMM y – MMMM y"}
                 }
                 yMMMd{
                     M{"d MMM – d MMM y"}
-                    d{"d–d MMM y"}
+                    d{"d – d MMM y"}
                     y{"d MMM y – d MMM y"}
                 }
                 yMd{
@@ -467,7 +568,7 @@ kea{
                 format{
                     abbreviated{
                         "Jan",
-                        "Fev",
+                        "Feb",
                         "Mar",
                         "Abr",
                         "Mai",
@@ -495,7 +596,7 @@ kea{
                     }
                     wide{
                         "Janeru",
-                        "Fevereru",
+                        "Febreru",
                         "Marsu",
                         "Abril",
                         "Maiu",
@@ -511,7 +612,7 @@ kea{
                 stand-alone{
                     abbreviated{
                         "Jan",
-                        "Fev",
+                        "Feb",
                         "Mar",
                         "Abr",
                         "Mai",
@@ -539,7 +640,7 @@ kea{
                     }
                     wide{
                         "Janeru",
-                        "Fevereru",
+                        "Febreru",
                         "Marsu",
                         "Abril",
                         "Maiu",
@@ -568,10 +669,10 @@ kea{
                         "4",
                     }
                     wide{
-                        "Primeru Trimestri",
-                        "Sigundu Trimestri",
-                        "Terseru Trimestri",
-                        "Kuartu Trimestri",
+                        "1º trimestri",
+                        "2º trimestri",
+                        "3º trimestri",
+                        "4º trimestri",
                     }
                 }
                 stand-alone{
@@ -588,10 +689,10 @@ kea{
                         "4",
                     }
                     wide{
-                        "Primeru Trimestri",
-                        "Sigundu Trimestri",
-                        "Terseru Trimestri",
-                        "Kuartu Trimestri",
+                        "1º trimestri",
+                        "2º trimestri",
+                        "3º trimestri",
+                        "4º trimestri",
                     }
                 }
             }
@@ -603,14 +704,41 @@ kea{
         quotationEnd{"”"}
         quotationStart{"“"}
     }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
+    }
     fields{
         day{
             dn{"Dia"}
             relative{
-                "-1"{"Onti"}
-                "0"{"Oji"}
-                "1"{"Manha"}
+                "-1"{"onti"}
+                "0"{"oji"}
+                "1"{"manha"}
             }
+            relativeTime{
+                future{
+                    other{"di li {0} dia"}
+                }
+                past{
+                    other{"a ten {0} dia"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"dia"}
+            relativeTime{
+                future{
+                    other{"di li {0} dia"}
+                }
+                past{
+                    other{"a ten {0} dia"}
+                }
+            }
+        }
+        day-short{
+            dn{"dia"}
             relativeTime{
                 future{
                     other{"di li {0} dia"}
@@ -626,8 +754,50 @@ kea{
         era{
             dn{"Era"}
         }
+        fri{
+            relative{
+                "-1"{"sesta-fera pasadu"}
+                "0"{"es sesta-fera li"}
+                "1"{"prósimu sesta-fera"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"ses. pasadu"}
+                "0"{"es ses. li"}
+                "1"{"prósimu ses."}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"ses. pasadu"}
+                "0"{"es ses. li"}
+                "1"{"prósimu ses."}
+            }
+        }
         hour{
             dn{"Ora"}
+            relativeTime{
+                future{
+                    other{"di li {0} ora"}
+                }
+                past{
+                    other{"a ten {0} ora"}
+                }
+            }
+        }
+        hour-narrow{
+            relativeTime{
+                future{
+                    other{"di li {0} ora"}
+                }
+                past{
+                    other{"a ten {0} ora"}
+                }
+            }
+        }
+        hour-short{
+            dn{"ora"}
             relativeTime{
                 future{
                     other{"di li {0} ora"}
@@ -648,8 +818,56 @@ kea{
                 }
             }
         }
+        minute-narrow{
+            dn{"m"}
+            relativeTime{
+                future{
+                    other{"di li {0} m"}
+                }
+                past{
+                    other{"a ten {0} m"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    other{"di li {0} min"}
+                }
+                past{
+                    other{"a ten {0} min"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"sigunda-fera pasadu"}
+                "0"{"es sigunda-fera li"}
+                "1"{"prósimu sigunda-fera"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"sig. pasadu"}
+                "0"{"es sig. li"}
+                "1"{"prósimu sig."}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"sig. pasadu"}
+                "0"{"es sig. li"}
+                "1"{"prósimu sig."}
+            }
+        }
         month{
             dn{"Mes"}
+            relative{
+                "-1"{"mes pasadu"}
+                "0"{"es mes li"}
+                "1"{"prósimu mes"}
+            }
             relativeTime{
                 future{
                     other{"di li {0} mes"}
@@ -657,6 +875,82 @@ kea{
                 past{
                     other{"a ten {0} mes"}
                 }
+            }
+        }
+        month-narrow{
+            dn{"mes"}
+            relativeTime{
+                future{
+                    other{"di li {0} mes"}
+                }
+                past{
+                    other{"a ten {0} mes"}
+                }
+            }
+        }
+        month-short{
+            dn{"mes"}
+            relativeTime{
+                future{
+                    other{"di li {0} mes"}
+                }
+                past{
+                    other{"a ten {0} mes"}
+                }
+            }
+        }
+        quarter{
+            dn{"Trimestri"}
+            relativeTime{
+                future{
+                    other{"di li {0} trimestri"}
+                }
+                past{
+                    other{"a ten {0} trimestri"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    other{"di li {0} trim."}
+                }
+                past{
+                    other{"a ten {0} trim."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    other{"di li {0} trim."}
+                }
+                past{
+                    other{"a ten {0} trim."}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"sabadu pasadu"}
+                "0"{"es sabadu li"}
+                "1"{"prósimu sabadu"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"sab. pasadu"}
+                "0"{"es sab. li"}
+                "1"{"prósimu sab."}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"sab. pasadu"}
+                "0"{"es sab. li"}
+                "1"{"prósimu sab."}
             }
         }
         second{
@@ -670,8 +964,119 @@ kea{
                 }
             }
         }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    other{"di li {0} s"}
+                }
+                past{
+                    other{"a ten {0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"sig"}
+            relativeTime{
+                future{
+                    other{"di li {0} sig"}
+                }
+                past{
+                    other{"a ten {0} sig"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"dumingu pasadu"}
+                "0"{"es dumingu li"}
+                "1"{"prósimu dumingu"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"dum. pasadu"}
+                "0"{"es dum. li"}
+                "1"{"prósimu dum."}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"dum. pasadu"}
+                "0"{"es dum. li"}
+                "1"{"prósimu dum."}
+            }
+        }
+        thu{
+            relative{
+                "-1"{"kinta-fera pasadu"}
+                "0"{"es kinta-fera li"}
+                "1"{"prósimu kinta-fera"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"kin. pasadu"}
+                "0"{"es kin. li"}
+                "1"{"prósimu kin."}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"kin. pasadu"}
+                "0"{"es kin. li"}
+                "1"{"prósimu kin."}
+            }
+        }
+        tue{
+            relative{
+                "-1"{"tersa-fera pasadu"}
+                "0"{"es tersa-fera li"}
+                "1"{"prósimu tersa-fera"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"ter. pasadu"}
+                "0"{"es ter. li"}
+                "1"{"prósimu ter."}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"ter. pasadu"}
+                "0"{"es ter. li"}
+                "1"{"prósimu ter."}
+            }
+        }
+        wed{
+            relative{
+                "-1"{"kuarta-fera pasadu"}
+                "0"{"es kuarta-fera li"}
+                "1"{"prósimu kuarta-fera"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"kua. pasadu"}
+                "0"{"es kua. li"}
+                "1"{"prósimu kua."}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"kua. pasadu"}
+                "0"{"es kua. li"}
+                "1"{"prósimu kua."}
+            }
+        }
         week{
             dn{"Simana"}
+            relative{
+                "-1"{"simana pasadu"}
+                "0"{"es simana li"}
+                "1"{"prósimu simana"}
+            }
             relativeTime{
                 future{
                     other{"di li {0} simana"}
@@ -681,11 +1086,60 @@ kea{
                 }
             }
         }
+        week-narrow{
+            dn{"sim."}
+            relativeTime{
+                future{
+                    other{"di li {0} sim."}
+                }
+                past{
+                    other{"a ten {0} sim."}
+                }
+            }
+        }
+        week-short{
+            dn{"sim."}
+            relativeTime{
+                future{
+                    other{"di li {0} sim."}
+                }
+                past{
+                    other{"a ten {0} sim."}
+                }
+            }
+        }
         weekday{
             dn{"Dia di simana"}
         }
         year{
             dn{"Anu"}
+            relative{
+                "-1"{"anu pasadu"}
+                "0"{"es anu li"}
+                "1"{"prósimu anu"}
+            }
+            relativeTime{
+                future{
+                    other{"di li {0} anu"}
+                }
+                past{
+                    other{"a ten {0} anu"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"anu"}
+            relativeTime{
+                future{
+                    other{"di li {0} anu"}
+                }
+                past{
+                    other{"a ten {0} anu"}
+                }
+            }
+        }
+        year-short{
+            dn{"anu"}
             relativeTime{
                 future{
                     other{"di li {0} anu"}
@@ -706,35 +1160,20 @@ kea{
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
+        unit{
+            2{"{0} y {1}"}
+            end{"{0} y {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-short{
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
     }
     measurementSystemNames{
         UK{"Ingles"}
         US{"Merkanu"}
         metric{"Metriku"}
-    }
-    units{
-        duration{
-            day{
-                other{"{0} dia"}
-            }
-            hour{
-                other{"{0} ora"}
-            }
-            minute{
-                other{"{0} minutu"}
-            }
-            month{
-                other{"{0} mes"}
-            }
-            second{
-                other{"{0} sigundu"}
-            }
-            week{
-                other{"{0} simana"}
-            }
-            year{
-                other{"{0} anu"}
-            }
-        }
     }
 }

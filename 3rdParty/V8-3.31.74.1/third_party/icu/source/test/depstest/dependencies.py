@@ -1,7 +1,7 @@
 #! /usr/bin/python
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011, International Business Machines
+# Copyright (C) 2011-2014, International Business Machines
 # Corporation and others. All Rights Reserved.
 #
 # file name: dependencies.py
@@ -22,6 +22,7 @@ Attributes:
     The one "system_symbols" item and its groups have sets of "system_symbols"
     with standard-library system symbol names.
   libraries: Set of library names mentioned in the dependencies file.
+  file_to_item: Map from a symbol (ushoe.o) to library or group (shoesize)
 """
 __author__ = "Markus W. Scherer"
 
@@ -35,6 +36,7 @@ import sys
 files = set()
 items = {}
 libraries = set()
+file_to_item = {}
 
 _line_number = 0
 _groups_to_be_defined = set()
@@ -85,6 +87,7 @@ def _ReadFiles(deps_file, item, library_name):
         sys.exit("Error:%d: file %s listed in multiple groups" % (_line_number, file_name))
       files.add(file_name)
       item_files.add(file_name)
+      file_to_item[file_name] = item["name"]
 
 def _IsLibrary(item): return item and item["type"] == "library"
 
@@ -151,7 +154,7 @@ def Load():
         if name in items:
           sys.exit("Error:%d: library definition using duplicate name %s" % (_line_number, name))
         libraries.add(name)
-        item = items[name] = {"type": "library"}
+        item = items[name] = {"type": "library", "name": name}
         line = _ReadFiles(deps_file, item, name)
       elif line.startswith("group: "):
         current_type = "group"
@@ -164,6 +167,7 @@ def Load():
           sys.exit("Error:%d: group definition using duplicate name %s" % (_line_number, name))
         _groups_to_be_defined.remove(name)
         item = items[name]
+        item["name"] = name
         library_name = item.get("library")
         if library_name:
           line = _ReadFiles(deps_file, item, library_name)
@@ -184,7 +188,7 @@ def Load():
         current_type = "system_symbols"
         if current_type in items:
           sys.exit("Error:%d: duplicate entry for system_symbols" % _line_number)
-        item = items[current_type] = {"type": current_type}
+        item = items[current_type] = {"type": current_type, "name": current_type}
         line = _ReadSystemSymbols(deps_file, item)
       else:
         sys.exit("Syntax error:%d: %s" % (_line_number, line))

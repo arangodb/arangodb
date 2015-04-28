@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <!--
-  Copyright (c) 1999-2013 International Business Machines
+  Copyright (c) 1999-2014 International Business Machines
   Corporation and others. All rights reserved.
 -->
 
@@ -104,6 +104,16 @@
   <test-case id="Nafees Nastaleeq Cursive Positioning Test" script="arab">
     <test-font name="Nafees Nastaleeq v1.02.ttf"/>
     <test-text>فتح بینچ خلیج شیخ پہنچ</test-text>
+  </test-case>
+
+  <test-case id="Malayalam Crash Test 9948" script="mlym">
+    <test-font name="lohit_ml.ttf"/>
+    <test-text>ഹോം</test-text>
+  </test-case>
+
+  <test-case id="Malayalam Crash II" script="mlym">
+    <test-font name="LucidaSansRegular.ttf"/>
+    <test-text>റ്1്',s</test-text>
   </test-case>
 
   <test-case id="Malayalam Samvruthokaram Test" script="mlym">

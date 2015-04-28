@@ -1,6 +1,6 @@
 //*******************************************************************************
 //*
-//*   Copyright (C) 1998-2013, International Business Machines
+//*   Copyright (C) 1998-2014, International Business Machines
 //*   Corporation and others.  All Rights Reserved.
 //*
 //*******************************************************************************
@@ -11,8 +11,8 @@
 root
 {
     Version { 44.0 }
-    ExpectCLDRVersionAtLeast { 24.0 } // 'base' cldr version. Allow up to version =.=.* of this
-    CurrentCLDRVersion { 24.0 } // Current CLDR version as of the test update. Warn if not an exact match.
+    ExpectCLDRVersionAtLeast { 26.0 } // 'base' cldr version. Allow up to version =.=.* of this
+    CurrentCLDRVersion { 26.0 } // Current CLDR version as of the test update. Warn if not an exact match.
 
     ShortLanguage { xxx }
 

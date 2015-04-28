@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 1997-2011, International Business Machines
+*   Copyright (C) 1997-2011,2014 International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   Date        Name        Description
@@ -19,6 +19,7 @@
 #include "unicode/urep.h"
 #include "unicode/parseerr.h"
 #include "unicode/uenum.h"
+#include "unicode/uset.h"
 
 /********************************************************************
  * General Notes
@@ -507,6 +508,56 @@ utrans_transIncrementalUChars(const UTransliterator* trans,
                               int32_t textCapacity,
                               UTransPosition* pos,
                               UErrorCode* status);
+
+#ifndef U_HIDE_DRAFT_API
+/**
+ * Create a rule string that can be passed to utrans_openU to recreate this
+ * transliterator.
+ *
+ * @param trans     The transliterator
+ * @param escapeUnprintable if TRUE then convert unprintable characters to their
+ *                  hex escape representations, \\uxxxx or \\Uxxxxxxxx.
+ *                  Unprintable characters are those other than
+ *                  U+000A, U+0020..U+007E.
+ * @param result    A pointer to a buffer to receive the rules.
+ * @param resultLength The maximum size of result.
+ * @param status    A pointer to the UErrorCode. In case of error status, the
+ *                  contents of result are undefined.
+ * @return int32_t   The length of the rule string (may be greater than resultLength,
+ *                  in which case an error is returned).
+ * @draft ICU 53
+ */
+U_DRAFT int32_t U_EXPORT2
+utrans_toRules(     const UTransliterator* trans,
+                    UBool escapeUnprintable,
+                    UChar* result, int32_t resultLength,
+                    UErrorCode* status);
+
+/**
+ * Returns the set of all characters that may be modified in the input text by
+ * this UTransliterator, optionally ignoring the transliterator's current filter.
+ * @param trans     The transliterator.
+ * @param ignoreFilter If FALSE, the returned set incorporates the
+ *                  UTransliterator's current filter; if the filter is changed,
+ *                  the return value of this function will change. If TRUE, the
+ *                  returned set ignores the effect of the UTransliterator's
+ *                  current filter.
+ * @param fillIn    Pointer to a USet object to receive the modifiable characters
+ *                  set. Previous contents of fillIn are lost. <em>If fillIn is
+ *                  NULL, then a new USet is created and returned. The caller
+ *                  owns the result and must dispose of it by calling uset_close.</em>
+ * @param status    A pointer to the UErrorCode.
+ * @return USet*    Either fillIn, or if fillIn is NULL, a pointer to a
+ *                  newly-allocated USet that the user must close. In case of
+ *                  error, NULL is returned.
+ * @draft ICU 53
+ */
+U_DRAFT USet* U_EXPORT2
+utrans_getSourceSet(const UTransliterator* trans,
+                    UBool ignoreFilter,
+                    USet* fillIn,
+                    UErrorCode* status);
+#endif  /* U_HIDE_DRAFT_API */
 
 /* deprecated API ----------------------------------------------------------- */
 

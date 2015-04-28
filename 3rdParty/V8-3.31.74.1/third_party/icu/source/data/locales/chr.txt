@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/chr.xml
@@ -43,7 +43,7 @@ chr{
             }
         }
     }
-    Version{"2.0.93.15"}
+    Version{"2.1.6.69"}
     calendar{
         generic{
             DateTimePatterns{
@@ -156,6 +156,7 @@ chr{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"ᎢᎦ"}
             availableFormats{
                 Gy{"y G"}
                 GyMMM{"MMM y G"}
@@ -285,7 +286,7 @@ chr{
                         "ᏚᎵ",
                         "ᏚᏂ",
                         "ᏅᏓ",
-                        "ᎤᏍ",
+                        "ᎥᏍ",
                     }
                     wide{
                         "ᎤᏃᎸᏔᏅ",
@@ -299,7 +300,7 @@ chr{
                         "ᏚᎵᏍᏗ",
                         "ᏚᏂᏅᏗ",
                         "ᏅᏓᏕᏆ",
-                        "ᎤᏍᎩᏱ",
+                        "ᎥᏍᎩᏱ",
                     }
                 }
                 stand-alone{
@@ -315,7 +316,7 @@ chr{
                         "Ꮪ",
                         "Ꮪ",
                         "Ꮕ",
-                        "Ꭴ",
+                        "Ꭵ",
                     }
                 }
             }
@@ -367,37 +368,5 @@ chr{
     measurementSystemNames{
         US{"ᎣᏂᏏ"}
         metric{"ᎺᏘᎩ"}
-    }
-    units{
-        duration{
-            day{
-                one{"{0} ᏏᎦ"}
-                other{"{0} ᏧᏒᎯᏓ"}
-            }
-            hour{
-                one{"{0} ᏑᏣᎶᏓ"}
-                other{"{0} ᎢᏧᏣᎶᏓ"}
-            }
-            minute{
-                one{"{0} ᎢᏯᏔᏬᏍᏔᏅ"}
-                other{"{0} ᎢᏧᏔᏬᏍᏔᏅ"}
-            }
-            month{
-                one{"{0} ᏏᏅᏓ"}
-                other{"{0} ᎢᏯᏅᏓ"}
-            }
-            second{
-                one{"{0} ᎠᏎᏢ"}
-                other{"{0} ᏗᏎᏢ"}
-            }
-            week{
-                one{"{0} ᏒᎾᏙᏓᏆᏍᏗ"}
-                other{"{0} ᎢᏳᎾᏙᏓᏆᏍᏗ"}
-            }
-            year{
-                one{"{0} ᏑᏕᏘᏴᏓ"}
-                other{"{0} ᏧᏕᏘᏴᏓ"}
-            }
-        }
     }
 }

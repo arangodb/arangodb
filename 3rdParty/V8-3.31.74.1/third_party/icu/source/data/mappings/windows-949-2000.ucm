@@ -32,17 +32,20 @@
 # Suggested ICU specific alias information
 #<icu:alias>                  "windows-949_VPUA"
 
-# CHROME: Uses the generated state table. 
+# Chromium: Uses the generated state table.
 <icu:state>                  0-80, 81-fe:1, ff
 <icu:state>                  41-5a, 61-7a, 81-fe
-#<icu:state>                   0-80, 81-fe:1, ff
-#<icu:state>                   40-7e, 80-fe
 
 # build an extension-only (delta) .cnv file
 # requires the base .cnv file at runtime
-# CHROME: We don't want to include ibm-1363.
+# Chromium: We don't want to include ibm-1363
 #<icu:base>                    "ibm-1363_P11B-1998"
 
+# The following was the generated state table.
+# This does not account for unassigned characters
+#<icu:state>                  0-80, 81-fe:1, ff
+#<icu:state>                  41-5a, 61-7a, 81-fe
+#
 CHARMAP
 <U0000> \x00 |0
 <U0001> \x01 |0

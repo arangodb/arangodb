@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ee.xml
@@ -110,7 +110,7 @@ ee{
         GU{"Guam nutome"}
         GW{"Gini-Bisao nutome"}
         GY{"Guyanadu"}
-        HK{"Hɔng Kɔng SAR Tsaina nutome"}
+        HK{"Hɔng Kɔng nutome"}
         HM{"Heard kple Mcdonald ƒudomekpowo nutome"}
         HN{"Hondurasdu"}
         HR{"Kroatsia nutome"}
@@ -164,7 +164,7 @@ ee{
         ML{"Mali nutome"}
         MM{"Myanmar (Burma) nutome"}
         MN{"Mongolia nutome"}
-        MO{"Macau SAR Tsaina nutome"}
+        MO{"Macau nutome"}
         MP{"Dziehe Marina ƒudomekpowo nutome"}
         MQ{"Martiniki nutome"}
         MR{"Mauritania nutome"}
@@ -267,9 +267,13 @@ ee{
         ZW{"Zimbabwe nutome"}
         ZZ{"nutome manya"}
     }
-    CountriesShort{
-        HK{"Hɔng Kɔng nutome"}
-        MO{"Macau nutome"}
+    Countries%variant{
+        CD{"Kongo demokratik repɔblik nutome"}
+        CG{"Kongo repɔblik nutome"}
+        CI{"Ivory Kost nutome"}
+        FK{"Falkland ƒudomekpowo (Islas Malvinas) nutome"}
+        MK{"Makedonia (FYROM) nutome"}
+        TL{"Ɣedzeƒe Timɔ nutome"}
     }
-    Version{"2.0.93.8"}
+    Version{"2.1.8.9"}
 }

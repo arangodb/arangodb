@@ -1,13 +1,45 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fr_CA.xml
 // *
 // ***************************************************************************
 fr_CA{
-    Version{"2.0.92.80"}
+    NumberElements{
+        latn{
+            patternsShort{
+                decimalFormat{
+                    1000000000{
+                        one{"0 G"}
+                        other{"0 G"}
+                    }
+                    10000000000{
+                        one{"00 G"}
+                        other{"00 G"}
+                    }
+                    100000000000{
+                        one{"000 G"}
+                        other{"000 G"}
+                    }
+                    1000000000000{
+                        one{"0 T"}
+                        other{"0 T"}
+                    }
+                    10000000000000{
+                        one{"00 T"}
+                        other{"00 T"}
+                    }
+                    100000000000000{
+                        one{"000 T"}
+                        other{"000 T"}
+                    }
+                }
+            }
+        }
+    }
+    Version{"2.1.8.19"}
     calendar{
         generic{
             DateTimePatterns{
@@ -50,9 +82,15 @@ fr_CA{
                 Hv{
                     H{"HH–HH v"}
                 }
+                M{
+                    M{"M–M"}
+                }
                 MEd{
                     M{"E MM-dd – E MM-dd"}
                     d{"E MM-dd – E MM-dd"}
+                }
+                MMMEd{
+                    d{"E d – E d MMM"}
                 }
                 Md{
                     M{"MM-dd – MM-dd"}
@@ -95,9 +133,6 @@ fr_CA{
                     d{"'du' E d 'au' E d MMM y G"}
                     y{"'du' E d MMM y 'au' E d MMM y G"}
                 }
-                yMMMM{
-                    M{"MMMM – MMMM y G"}
-                }
                 yMMMd{
                     M{"'du' d MMM 'au' d MMM y G"}
                     y{"'du' d MMM y 'au' d MMM y G"}
@@ -110,6 +145,10 @@ fr_CA{
             }
         }
         gregorian{
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "HH 'h' mm 'min' ss 's' zzzz",
                 "HH:mm:ss z",
@@ -120,8 +159,8 @@ fr_CA{
                 "y-MM-dd",
                 "yy-MM-dd",
                 "{1} {0}",
-                "{1} {0}",
-                "{1} {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
                 "{1} {0}",
                 "{1} {0}",
             }
@@ -134,6 +173,43 @@ fr_CA{
                 yMEd{"E y-MM-dd"}
                 yMM{"y-MM"}
                 yMd{"y-MM-dd"}
+            }
+            dayNames{
+                stand-alone{
+                    abbreviated{
+                        "dim.",
+                        "lun.",
+                        "mar.",
+                        "mer.",
+                        "jeu.",
+                        "ven.",
+                        "sam.",
+                    }
+                    short{
+                        "dim.",
+                        "lun.",
+                        "mar.",
+                        "mer.",
+                        "jeu.",
+                        "ven.",
+                        "sam.",
+                    }
+                    wide{
+                        "dimanche",
+                        "lundi",
+                        "mardi",
+                        "mercredi",
+                        "jeudi",
+                        "vendredi",
+                        "samedi",
+                    }
+                }
+            }
+            eras{
+                wide%variant{
+                    "avant l’ère commune",
+                    "ère commune",
+                }
             }
             intervalFormats{
                 H{
@@ -162,6 +238,7 @@ fr_CA{
                     d{"d–d"}
                 }
                 h{
+                    a{"h 'h' a – h 'h' a"}
                     h{"h–h a"}
                 }
                 hm{
@@ -173,6 +250,7 @@ fr_CA{
                     m{"h:mm–h:mm a v"}
                 }
                 hv{
+                    a{"h 'h' a – h 'h' a v"}
                     h{"h–h a v"}
                 }
                 yM{
@@ -202,11 +280,72 @@ fr_CA{
                     y{"y-MM-dd – y-MM-dd"}
                 }
             }
+            monthNames{
+                stand-alone{
+                    abbreviated{
+                        "janv.",
+                        "févr.",
+                        "mars",
+                        "avr.",
+                        "mai",
+                        "juin",
+                        "juil.",
+                        "août",
+                        "sept.",
+                        "oct.",
+                        "nov.",
+                        "déc.",
+                    }
+                    wide{
+                        "janvier",
+                        "février",
+                        "mars",
+                        "avril",
+                        "mai",
+                        "juin",
+                        "juillet",
+                        "août",
+                        "septembre",
+                        "octobre",
+                        "novembre",
+                        "décembre",
+                    }
+                }
+            }
+        }
+        islamic{
+            DateTimePatterns{
+                "HH 'h' mm 'min' ss 's' zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "y-MM-dd GGGGG",
+                "{1} {0}",
+                "{1} 'à' {0}",
+                "{1} 'à' {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                MEd{"E d MMM"}
+                Md{"MM-dd"}
+                yyyyM{"y-MM GGGGG"}
+                yyyyMEd{"E y-MM-dd GGGGG"}
+                yyyyMd{"y-MM-dd GGGGG"}
+            }
         }
     }
     delimiters{
         alternateQuotationEnd{"›"}
         alternateQuotationStart{"‹"}
+    }
+    durationUnits{
+        hm{"h:mm"}
+        hms{"h:mm:ss"}
+        ms{"m:ss"}
     }
     fields{
         day{
@@ -219,6 +358,24 @@ fr_CA{
                     one{"Il y a {0} jour"}
                     other{"Il y a {0} jours"}
                 }
+            }
+        }
+        day-short{
+            relativeTime{
+                future{
+                    one{"dans {0} j"}
+                    other{"dans {0} j"}
+                }
+            }
+        }
+        dayperiod{
+            dn{"système horaire"}
+        }
+        fri-narrow{
+            relative{
+                "-1"{"ven. dernier"}
+                "0"{"ce ven."}
+                "1"{"ven. prochain"}
             }
         }
         hour{
@@ -245,12 +402,14 @@ fr_CA{
                 }
             }
         }
-        month{
+        mon-narrow{
             relative{
-                "-1"{"Le mois dernier"}
-                "0"{"Ce mois-ci"}
-                "1"{"Le mois prochain"}
+                "-1"{"lun. dernier"}
+                "0"{"ce lun."}
+                "1"{"lun. prochain"}
             }
+        }
+        month{
             relativeTime{
                 future{
                     one{"Dans {0} mois"}
@@ -260,6 +419,16 @@ fr_CA{
                     one{"Il y a {0} mois"}
                     other{"Il y a {0} mois"}
                 }
+            }
+        }
+        month-narrow{
+            dn{"m."}
+        }
+        sat-narrow{
+            relative{
+                "-1"{"sam. dernier"}
+                "0"{"ce sam."}
+                "1"{"sam. prochain"}
             }
         }
         second{
@@ -274,12 +443,43 @@ fr_CA{
                 }
             }
         }
-        week{
-            relative{
-                "-1"{"La semaine dernière"}
-                "0"{"Cette semaine"}
-                "1"{"La semaine prochaine"}
+        second-narrow{
+            relativeTime{
+                future{
+                    one{"+ {0} s"}
+                    other{"+{0} s"}
+                }
             }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"dim. dernier"}
+                "0"{"ce dim."}
+                "1"{"dim. prochain"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"jeu. dernier"}
+                "0"{"ce jeu."}
+                "1"{"jeu. prochain"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"mar. dernier"}
+                "0"{"ce mar."}
+                "1"{"mar. prochain"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"mer. dernier"}
+                "0"{"ce mer."}
+                "1"{"ce mer."}
+            }
+        }
+        week{
             relativeTime{
                 future{
                     one{"Dans {0} semaine"}
@@ -292,11 +492,6 @@ fr_CA{
             }
         }
         year{
-            relative{
-                "-1"{"L'année dernière"}
-                "0"{"Cette année"}
-                "1"{"L'année prochaine"}
-            }
             relativeTime{
                 future{
                     one{"Dans {0} an"}
@@ -308,9 +503,6 @@ fr_CA{
                 }
             }
         }
-    }
-    measurementSystemNames{
-        UK{"R-U"}
     }
     transformNames{
         Numeric{"Chiffres"}

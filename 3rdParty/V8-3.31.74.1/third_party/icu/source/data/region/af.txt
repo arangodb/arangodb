@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/af.xml
@@ -49,13 +49,13 @@ af{
         BT{"Bhoetan"}
         BV{"Bouveteiland"}
         BW{"Botswana"}
-        BY{"Wit-Rusland"}
+        BY{"Belarus"}
         BZ{"Belize"}
         CA{"Kanada"}
         CC{"Cocos- (Keeling) eilande"}
         CD{"Demokratiese Republiek van die Kongo"}
         CF{"Sentraal-Afrikaanse Republiek"}
-        CG{"Kongo"}
+        CG{"Republiek van die Kongo"}
         CH{"Switserland"}
         CI{"Ivoorkus"}
         CK{"Cookeilande"}
@@ -118,7 +118,7 @@ af{
         HR{"Kroasië"}
         HT{"Haïti"}
         HU{"Hongarye"}
-        IC{"Kanarie-eilande"}
+        IC{"Kanariese Eilande"}
         ID{"Indonesië"}
         IE{"Ierland"}
         IL{"Israel"}
@@ -143,7 +143,7 @@ af{
         KR{"Suid-Korea"}
         KW{"Koeweit"}
         KY{"Kaaimanseilande"}
-        KZ{"Kasakstan"}
+        KZ{"Kazakstan"}
         LA{"Laos"}
         LB{"Libanon"}
         LC{"Sint Lucia"}
@@ -157,16 +157,16 @@ af{
         LY{"Libië"}
         MA{"Marokko"}
         MC{"Monaco"}
-        MD{"Moldova"}
+        MD{"Moldowa"}
         ME{"Montenegro"}
         MF{"Sint Martin"}
         MG{"Madagaskar"}
         MH{"Marshalleilande"}
         MK{"Macedonië"}
         ML{"Mali"}
-        MM{"Mianmar"}
+        MM{"Mianmar (Birma)"}
         MN{"Mongolië"}
-        MO{"Macau SAR China"}
+        MO{"Macau"}
         MP{"Noordelike Mariana-eilande"}
         MQ{"Martinique"}
         MR{"Mauritanië"}
@@ -273,12 +273,15 @@ af{
         ZW{"Zimbabwe"}
         ZZ{"Onbekende gebied"}
     }
+    Countries%variant{
+        CD{"Kongo (DRK)"}
+        CG{"Kongo (Republiek)"}
+        FK{"Falklandeilande (Malvinas)"}
+        MK{"Macedonië (VJRM)"}
+    }
     CountriesShort{
         GB{"VK"}
-        HK{"Hongkong"}
-        MO{"Macau"}
-        PS{"Palestina"}
         US{"VSA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

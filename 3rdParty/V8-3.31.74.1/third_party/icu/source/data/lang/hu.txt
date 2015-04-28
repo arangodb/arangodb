@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/hu.xml
@@ -22,7 +22,6 @@ hu{
         be{"belorusz"}
         bem{"bemba"}
         bg{"bolgár"}
-        bh{"bihari"}
         bn{"bengáli"}
         br{"breton"}
         bs{"bosnyák"}
@@ -101,7 +100,6 @@ hu{
         mk{"macedón"}
         ml{"malajálam"}
         mn{"mongol"}
-        mo{"moldvai"}
         mr{"marathi"}
         ms{"maláj"}
         mt{"máltai"}
@@ -128,6 +126,7 @@ hu{
         rm{"réto-román"}
         rn{"kirundi"}
         ro{"román"}
+        ro_MD{"moldvai"}
         ru{"orosz"}
         rw{"kiruanda"}
         sd{"szindhi"}
@@ -149,6 +148,7 @@ hu{
         th{"thai"}
         ti{"tigrinja"}
         tk{"türkmén"}
+        tl{"tagalog"}
         tn{"szecsuáni"}
         to{"tonga"}
         tr{"török"}
@@ -171,6 +171,7 @@ hu{
     }
     LanguagesShort{
         az{"azeri"}
+        en_GB{"angol (UK)"}
         en_US{"angol (USA)"}
     }
     Scripts{
@@ -250,7 +251,7 @@ hu{
         Moon{"Moon"}
         Mtei{"Meitei mayek"}
         Mymr{"Burmai"}
-        Nkoo{"N'ko"}
+        Nkoo{"N’ko"}
         Ogam{"Ogham"}
         Olck{"Ol chiki"}
         Orkh{"Orhon"}
@@ -308,7 +309,10 @@ hu{
         Hans{"Egyszerűsített Han"}
         Hant{"Hagyományos kínai"}
     }
-    Version{"2.0.93.17"}
+    Scripts%variant{
+        Arab{"Perzsa-arab"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Nyelv: {0}"}
         script{"Írásrendszer: {0}"}

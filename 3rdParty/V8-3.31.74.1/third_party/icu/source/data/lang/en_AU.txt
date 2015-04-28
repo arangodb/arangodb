@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/en_AU.xml
@@ -9,10 +9,15 @@
 en_AU{
     %%Parent{"en_GB"}
     Languages{
-        en_US{"US English"}
+        bax{"Bamum"}
+        en_US{"United States English"}
     }
     Scripts{
+        Cham{"Cham"}
+        Loma{"Loma"}
+        Modi{"Modi"}
+        Moon{"Moon"}
         Thai{"Thai"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.19"}
 }

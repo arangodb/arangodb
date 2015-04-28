@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sr_Latn.xml
@@ -28,6 +28,7 @@ sr_Latn{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -107,64 +108,64 @@ sr_Latn{
             patternsShort{
                 decimalFormat{
                     1000{
-                        few{"0"}
-                        one{"0"}
-                        other{"0"}
+                        few{"0 hilj'.'"}
+                        one{"0 hilj'.'"}
+                        other{"0 hilj'.'"}
                     }
                     10000{
-                        few{"00K"}
-                        one{"00 hilj"}
-                        other{"00 hilj"}
+                        few{"00 hilj'.'"}
+                        one{"00 hilj'.'"}
+                        other{"00 hilj'.'"}
                     }
                     100000{
-                        few{"000K"}
-                        one{"000 hilj"}
-                        other{"000 hilj"}
+                        few{"000 hilj'.'"}
+                        one{"000 hilj'.'"}
+                        other{"000 hilj'.'"}
                     }
                     1000000{
-                        few{"0 mil"}
-                        one{"0 mil"}
-                        other{"0 mil"}
+                        few{"0 mil'.'"}
+                        one{"0 mil'.'"}
+                        other{"0 mil'.'"}
                     }
                     10000000{
-                        few{"00 mil"}
-                        one{"00 mil"}
-                        other{"00 mil"}
+                        few{"00 mil'.'"}
+                        one{"00 mil'.'"}
+                        other{"00 mil'.'"}
                     }
                     100000000{
-                        few{"000 mil"}
-                        one{"000 mil"}
-                        other{"000 mil"}
+                        few{"000 mil'.'"}
+                        one{"000 mil'.'"}
+                        other{"000 mil'.'"}
                     }
                     1000000000{
-                        few{"0 mlrd"}
-                        one{"0 mlrd"}
-                        other{"0 mlrd"}
+                        few{"0 mlrd'.'"}
+                        one{"0 mlrd'.'"}
+                        other{"0 mlrd'.'"}
                     }
                     10000000000{
-                        few{"00 mlrd"}
-                        one{"00 mlrd"}
-                        other{"00 mlrd"}
+                        few{"00 mlrd'.'"}
+                        one{"00 mlrd'.'"}
+                        other{"00 mlrd'.'"}
                     }
                     100000000000{
-                        few{"000 mlrd"}
-                        one{"000 mlrd"}
-                        other{"000 mlrd"}
+                        few{"000 mlrd'.'"}
+                        one{"000 mlrd'.'"}
+                        other{"000 mlrd'.'"}
                     }
                     1000000000000{
-                        few{"0 bil"}
-                        one{"0 bil"}
-                        other{"0 bil"}
+                        few{"0 bil'.'"}
+                        one{"0 bil'.'"}
+                        other{"0 bil'.'"}
                     }
                     10000000000000{
-                        few{"00 bil"}
-                        one{"00 bil"}
-                        other{"00 bil"}
+                        few{"00 bil'.'"}
+                        one{"00 bil'.'"}
+                        other{"00 bil'.'"}
                     }
                     100000000000000{
-                        few{"000 bil"}
-                        one{"000 bil"}
-                        other{"000 bil"}
+                        few{"000 bil'.'"}
+                        one{"000 bil'.'"}
+                        other{"000 bil'.'"}
                     }
                 }
             }
@@ -180,10 +181,13 @@ sr_Latn{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.20"}
     calendar{
         buddhist{
             eras{
@@ -265,7 +269,6 @@ sr_Latn{
                 MMMEd{"E d. MMM"}
                 MMMMEd{"E d. MMMM"}
                 MMMMd{"d. MMMM"}
-                MMMMdd{"dd. MMMM"}
                 MMMd{"d. MMM"}
                 MMMdd{"dd.MMM"}
                 MMdd{"MM-dd"}
@@ -277,14 +280,14 @@ sr_Latn{
                 ms{"mm.ss"}
                 y{"y. G"}
                 yyyy{"y. G"}
-                yyyyM{"M. y. G"}
+                yyyyM{"M.y. G"}
                 yyyyMEd{"E, d.M.y. G"}
-                yyyyMM{"MM.y G"}
+                yyyyMM{"MM.y. G"}
                 yyyyMMM{"MMM y. G"}
                 yyyyMMMEd{"E, d. MMM y. G"}
                 yyyyMMMM{"MMMM y. G"}
                 yyyyMMMd{"d. MMM y. G"}
-                yyyyMMdd{"dd.MM.y G"}
+                yyyyMMdd{"dd.MM.y. G"}
                 yyyyMd{"d.M.y. G"}
                 yyyyQQQ{"QQQ, y. G"}
                 yyyyQQQQ{"QQQQ y. G"}
@@ -388,7 +391,11 @@ sr_Latn{
         gregorian{
             AmPmMarkers{
                 "pre podne",
-                "popodne",
+                "po podne",
+            }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
             }
             DateTimePatterns{
                 "HH.mm.ss zzzz",
@@ -405,10 +412,13 @@ sr_Latn{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"u podne"}
+            NoonMarkerNarrow{"n"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"E"}
                 EHm{"E, HH:mm"}
                 EHms{"E, HH:mm:ss"}
                 Ed{"E d."}
@@ -427,7 +437,6 @@ sr_Latn{
                 MMMEd{"E d. MMM"}
                 MMMMEd{"E d. MMMM"}
                 MMMMd{"d. MMMM"}
-                MMMMdd{"dd. MMMM"}
                 MMMd{"d. MMM"}
                 MMMdd{"dd.MMM"}
                 MMdd{"MM-dd"}
@@ -438,15 +447,15 @@ sr_Latn{
                 hms{"hh.mm.ss a"}
                 ms{"mm.ss"}
                 y{"y."}
-                yM{"y-M"}
-                yMEd{"E, d. M. y."}
-                yMM{"MM.y"}
+                yM{"M.y."}
+                yMEd{"E, d.M.y."}
+                yMM{"MM.y."}
                 yMMM{"MMM y."}
                 yMMMEd{"E, d. MMM y."}
                 yMMMM{"MMMM y."}
                 yMMMd{"d. MMM y."}
-                yMMdd{"dd.MM.y"}
-                yMd{"d. M. y."}
+                yMMdd{"dd.MM.y."}
+                yMd{"d.M.y."}
                 yQQQ{"QQQ. y"}
                 yQQQQ{"QQQQ. y"}
             }
@@ -540,6 +549,10 @@ sr_Latn{
                 wide{
                     "Pre nove ere",
                     "Nove ere",
+                }
+                wide%variant{
+                    "p. n. e.",
+                    "n. e.",
                 }
             }
             intervalFormats{
@@ -1130,7 +1143,7 @@ sr_Latn{
     }
     delimiters{
         alternateQuotationEnd{"‘"}
-        alternateQuotationStart{"‚"}
+        alternateQuotationStart{"‘"}
         quotationEnd{"“"}
         quotationStart{"„"}
     }
@@ -1162,8 +1175,38 @@ sr_Latn{
                 }
             }
         }
+        day-narrow{
+            dn{"d."}
+            relativeTime{
+                future{
+                    few{"za {0} d."}
+                    one{"za {0} d."}
+                    other{"za {0} d."}
+                }
+                past{
+                    few{"pre {0} d."}
+                    one{"pre {0} d."}
+                    other{"pre {0} d."}
+                }
+            }
+        }
+        day-short{
+            dn{"d."}
+            relativeTime{
+                future{
+                    few{"za {0} d."}
+                    one{"za {0} d."}
+                    other{"za {0} d."}
+                }
+                past{
+                    few{"pre {0} d."}
+                    one{"pre {0} d."}
+                    other{"pre {0} d."}
+                }
+            }
+        }
         dayperiod{
-            dn{"pre podne/popodne"}
+            dn{"pre podne/po podne"}
         }
         era{
             dn{"era"}
@@ -1171,12 +1214,26 @@ sr_Latn{
         fri{
             relative{
                 "-1"{"prošlog petka"}
-                "0"{"ovog petka"}
+                "0"{"u petak"}
                 "1"{"sledećeg petka"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"prošlog pet"}
+                "0"{"u pet"}
+                "1"{"sledećeg pet"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"prošlog pet"}
+                "0"{"u pet"}
+                "1"{"sledećeg pet"}
+            }
+        }
         hour{
-            dn{"čas"}
+            dn{"sat"}
             relativeTime{
                 future{
                     few{"za {0} sata"}
@@ -1187,6 +1244,36 @@ sr_Latn{
                     few{"pre {0} sata"}
                     one{"pre {0} sata"}
                     other{"pre {0} sati"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"č."}
+            relativeTime{
+                future{
+                    few{"za {0} č."}
+                    one{"za {0} č."}
+                    other{"za {0} č."}
+                }
+                past{
+                    few{"pre {0} č."}
+                    one{"pre {0} č."}
+                    other{"pre {0} č."}
+                }
+            }
+        }
+        hour-short{
+            dn{"č."}
+            relativeTime{
+                future{
+                    few{"za {0} č."}
+                    one{"za {0} č."}
+                    other{"za {0} č."}
+                }
+                past{
+                    few{"pre {0} č."}
+                    one{"pre {0} č."}
+                    other{"pre {0} č."}
                 }
             }
         }
@@ -1205,19 +1292,63 @@ sr_Latn{
                 }
             }
         }
+        minute-narrow{
+            dn{"min."}
+            relativeTime{
+                future{
+                    few{"za {0} min."}
+                    one{"za {0} min."}
+                    other{"za {0} min."}
+                }
+                past{
+                    few{"pre {0} min."}
+                    one{"pre {0} min."}
+                    other{"pre {0} min."}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    few{"za {0} min."}
+                    one{"za {0} min."}
+                    other{"za {0} min."}
+                }
+                past{
+                    few{"pre {0} min."}
+                    one{"pre {0} min."}
+                    other{"pre {0} min."}
+                }
+            }
+        }
         mon{
             relative{
                 "-1"{"prošlog ponedeljka"}
-                "0"{"ovog ponedeljka"}
+                "0"{"u ponedeljak"}
                 "1"{"sledećeg ponedeljka"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"prošlog pon"}
+                "0"{"u pon"}
+                "1"{"sledećeg pon"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"prošlog pon"}
+                "0"{"u pon"}
+                "1"{"sledećeg pon"}
             }
         }
         month{
             dn{"mesec"}
             relative{
-                "-1"{"Prošlog meseca"}
-                "0"{"Ovog meseca"}
-                "1"{"Sledećeg meseca"}
+                "-1"{"prošlog meseca"}
+                "0"{"ovog meseca"}
+                "1"{"sledećeg meseca"}
             }
             relativeTime{
                 future{
@@ -1232,11 +1363,100 @@ sr_Latn{
                 }
             }
         }
+        month-narrow{
+            dn{"m."}
+            relativeTime{
+                future{
+                    few{"za {0} m."}
+                    one{"za {0} m."}
+                    other{"za {0} m."}
+                }
+                past{
+                    few{"pre {0} m."}
+                    one{"pre {0} m."}
+                    other{"pre {0} m."}
+                }
+            }
+        }
+        month-short{
+            dn{"mes."}
+            relativeTime{
+                future{
+                    few{"za {0} mes."}
+                    one{"za {0} mes."}
+                    other{"za {0} mes."}
+                }
+                past{
+                    few{"pre {0} mes."}
+                    one{"pre {0} mes."}
+                    other{"pre {0} mes."}
+                }
+            }
+        }
+        quarter{
+            dn{"kvartal"}
+            relativeTime{
+                future{
+                    few{"za {0} kvartala"}
+                    one{"za {0} kvartal"}
+                    other{"za {0} kvartala"}
+                }
+                past{
+                    few{"pre {0} kvartala"}
+                    one{"pre {0} kvartala"}
+                    other{"pre {0} kvartala"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"kvartal"}
+            relativeTime{
+                future{
+                    few{"za {0} kvartala"}
+                    one{"za {0} kvartala"}
+                    other{"za {0} kvartala"}
+                }
+                past{
+                    few{"pre {0} kvartala"}
+                    one{"pre {0} kvartala"}
+                    other{"pre {0} kvartala"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"kvartal"}
+            relativeTime{
+                future{
+                    few{"za {0} kvartala"}
+                    one{"za {0} kvartala"}
+                    other{"za {0} kvartala"}
+                }
+                past{
+                    few{"pre {0} kvartala"}
+                    one{"pre {0} kvartala"}
+                    other{"pre {0} kvartala"}
+                }
+            }
+        }
         sat{
             relative{
                 "-1"{"prošle subote"}
-                "0"{"ove subote"}
+                "0"{"u subotu"}
                 "1"{"sledeće subote"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"prošle sub"}
+                "0"{"u sub"}
+                "1"{"sledeće sub"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"prošle sub"}
+                "0"{"u sub"}
+                "1"{"sledeće sub"}
             }
         }
         second{
@@ -1257,40 +1477,126 @@ sr_Latn{
                 }
             }
         }
+        second-narrow{
+            dn{"s."}
+            relativeTime{
+                future{
+                    few{"za {0} s."}
+                    one{"za {0} s."}
+                    other{"za {0} s."}
+                }
+                past{
+                    few{"pre {0} s."}
+                    one{"pre {0} s."}
+                    other{"pre {0} s."}
+                }
+            }
+        }
+        second-short{
+            dn{"sek."}
+            relativeTime{
+                future{
+                    few{"za {0} sek."}
+                    one{"za {0} sek."}
+                    other{"za {0} sek."}
+                }
+                past{
+                    few{"pre {0} sek."}
+                    one{"pre {0} sek."}
+                    other{"pre {0} sek."}
+                }
+            }
+        }
         sun{
             relative{
                 "-1"{"prošle nedelje"}
-                "0"{"ove nedelje"}
+                "0"{"u nedelju"}
                 "1"{"sledeće nedelje"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"prošle ned"}
+                "0"{"u ned"}
+                "1"{"sledeće ned"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"prošle ned"}
+                "0"{"u ned"}
+                "1"{"sledeće ned"}
             }
         }
         thu{
             relative{
                 "-1"{"prošlog četvrtka"}
-                "0"{"ovog četvrtka"}
+                "0"{"u četvrtak"}
                 "1"{"sledećeg četvrtka"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"prošlog čet"}
+                "0"{"u čet"}
+                "1"{"sledećeg čet"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"prošlog čet"}
+                "0"{"u čet"}
+                "1"{"sledećeg čet"}
             }
         }
         tue{
             relative{
                 "-1"{"prošlog utorka"}
-                "0"{"ovog utorka"}
+                "0"{"u utorak"}
                 "1"{"sledećeg utorka"}
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"prošlog uto"}
+                "0"{"u uto"}
+                "1"{"sledećeg uto"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"prošlog uto"}
+                "0"{"u uto"}
+                "1"{"sledećeg uto"}
             }
         }
         wed{
             relative{
                 "-1"{"prošle srede"}
-                "0"{"ove srede"}
+                "0"{"u sredu"}
                 "1"{"sledeće srede"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"prošle sre"}
+                "0"{"u sre"}
+                "1"{"sledeće sre"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"prošle sre"}
+                "0"{"u sre"}
+                "1"{"sledeće sre"}
             }
         }
         week{
             dn{"nedelja"}
             relative{
-                "-1"{"Prošle nedelje"}
-                "0"{"Ove nedelje"}
-                "1"{"Sledeće nedelje"}
+                "-1"{"prošle nedelje"}
+                "0"{"ove nedelje"}
+                "1"{"sledeće nedelje"}
             }
             relativeTime{
                 future{
@@ -1305,15 +1611,45 @@ sr_Latn{
                 }
             }
         }
+        week-narrow{
+            dn{"n."}
+            relativeTime{
+                future{
+                    few{"za {0} n."}
+                    one{"za {0} n."}
+                    other{"za {0} n."}
+                }
+                past{
+                    few{"pre {0} n."}
+                    one{"pre {0} n."}
+                    other{"pre {0} n."}
+                }
+            }
+        }
+        week-short{
+            dn{"ned."}
+            relativeTime{
+                future{
+                    few{"za {0} ned."}
+                    one{"za {0} ned."}
+                    other{"za {0} ned."}
+                }
+                past{
+                    few{"pre {0} ned."}
+                    one{"pre {0} ned."}
+                    other{"pre {0} ned."}
+                }
+            }
+        }
         weekday{
             dn{"dan u nedelji"}
         }
         year{
             dn{"godina"}
             relative{
-                "-1"{"Prošle godine"}
-                "0"{"Ove godine"}
-                "1"{"Sledeće godine"}
+                "-1"{"prošle godine"}
+                "0"{"ove godine"}
+                "1"{"sledeće godine"}
             }
             relativeTime{
                 future{
@@ -1328,8 +1664,38 @@ sr_Latn{
                 }
             }
         }
+        year-narrow{
+            dn{"g."}
+            relativeTime{
+                future{
+                    few{"za {0} g."}
+                    one{"za {0} g."}
+                    other{"za {0} g."}
+                }
+                past{
+                    few{"pre {0} g."}
+                    one{"pre {0} g."}
+                    other{"pre {0} g."}
+                }
+            }
+        }
+        year-short{
+            dn{"god."}
+            relativeTime{
+                future{
+                    few{"za {0} god."}
+                    one{"za {0} god."}
+                    other{"za {0} god."}
+                }
+                past{
+                    few{"pre {0} god."}
+                    one{"pre {0} god."}
+                    other{"pre {0} god."}
+                }
+            }
+        }
         zone{
-            dn{"zona"}
+            dn{"vremenska zona"}
         }
     }
     listPattern{
@@ -1345,6 +1711,12 @@ sr_Latn{
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
+        unit-narrow{
+            2{"{0} i {1}"}
+            end{"{0} i {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
         unit-short{
             2{"{0} i {1}"}
             end{"{0} i {1}"}
@@ -1353,7 +1725,7 @@ sr_Latn{
         }
     }
     measurementSystemNames{
-        UK{"imperijalni"}
+        UK{"UK"}
         US{"SAD"}
         metric{"Metrički"}
     }
@@ -1368,146 +1740,5 @@ sr_Latn{
         x-Jamo{"Džamo"}
         x-Pinyin{"Pinjin"}
         x-Publishing{"Izdavački"}
-    }
-    units{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} dana"}
-                one{"{0} dan"}
-                other{"{0} dana"}
-            }
-            hour{
-                few{"{0} sata"}
-                one{"{0} sat"}
-                other{"{0} sati"}
-            }
-            millisecond{
-                few{"{0} milisekunde"}
-                one{"{0} milisekunda"}
-                other{"{0} milisekundi"}
-            }
-            minute{
-                few{"{0} minuta"}
-                one{"{0} minut"}
-                other{"{0} minuta"}
-            }
-            month{
-                few{"{0} meseca"}
-                one{"{0} mesec"}
-                other{"{0} meseci"}
-            }
-            second{
-                few{"{0} sekunde"}
-                one{"{0} sekunda"}
-                other{"{0} sekundi"}
-            }
-            week{
-                few{"{0} nedelje"}
-                one{"{0} nedelja"}
-                other{"{0} nedelja"}
-            }
-            year{
-                few{"{0} godine"}
-                one{"{0} godina"}
-                other{"{0} godina"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} d"}
-                one{"{0} d"}
-                other{"{0} d"}
-            }
-            hour{
-                few{"{0} sata"}
-                one{"{0} sat"}
-                other{"{0} sati"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                few{"{0} m"}
-                one{"{0} m"}
-                other{"{0} m"}
-            }
-            month{
-                few{"{0} m"}
-                one{"{0} m"}
-                other{"{0} m"}
-            }
-            second{
-                few{"{0} sek"}
-                one{"{0} sek"}
-                other{"{0} sek"}
-            }
-            week{
-                few{"{0} n"}
-                one{"{0} n"}
-                other{"{0} n"}
-            }
-            year{
-                few{"{0} g"}
-                one{"{0} g"}
-                other{"{0} g"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                few{"{0} dana"}
-                one{"{0} dan"}
-                other{"{0} dana"}
-            }
-            hour{
-                few{"{0} sata"}
-                one{"{0} sat"}
-                other{"{0} sati"}
-            }
-            millisecond{
-                few{"{0} ms"}
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                few{"{0} min"}
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                few{"{0} mes"}
-                one{"{0} mes"}
-                other{"{0} mes"}
-            }
-            second{
-                few{"{0} sek"}
-                one{"{0} sek"}
-                other{"{0} sek"}
-            }
-            week{
-                few{"{0} ned"}
-                one{"{0} ned"}
-                other{"{0} ned"}
-            }
-            year{
-                few{"{0} god"}
-                one{"{0} god"}
-                other{"{0} god"}
-            }
-        }
     }
 }

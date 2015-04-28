@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nb.xml
@@ -39,9 +39,9 @@ nb{
         BH{"Bahrain"}
         BI{"Burundi"}
         BJ{"Benin"}
-        BL{"Saint Barthélemy"}
+        BL{"Saint-Barthélemy"}
         BM{"Bermuda"}
-        BN{"Brunei Darussalam"}
+        BN{"Brunei"}
         BO{"Bolivia"}
         BQ{"Karibisk Nederland"}
         BR{"Brasil"}
@@ -86,7 +86,7 @@ nb{
         ER{"Eritrea"}
         ES{"Spania"}
         ET{"Etiopia"}
-        EU{"Den europeiske union"}
+        EU{"EU"}
         FI{"Finland"}
         FJ{"Fiji"}
         FK{"Falklandsøyene"}
@@ -112,8 +112,8 @@ nb{
         GU{"Guam"}
         GW{"Guinea-Bissau"}
         GY{"Guyana"}
-        HK{"Hongkong S.A.R. Kina"}
-        HM{"Heardøya og McDonaldøyene"}
+        HK{"Hongkong"}
+        HM{"Heard- og McDonaldøyene"}
         HN{"Honduras"}
         HR{"Kroatia"}
         HT{"Haiti"}
@@ -152,7 +152,7 @@ nb{
         LR{"Liberia"}
         LS{"Lesotho"}
         LT{"Litauen"}
-        LU{"Luxembourg"}
+        LU{"Luxemburg"}
         LV{"Latvia"}
         LY{"Libya"}
         MA{"Marokko"}
@@ -166,7 +166,7 @@ nb{
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
-        MO{"Macao S.A.R. Kina"}
+        MO{"Macao"}
         MP{"Nord-Marianene"}
         MQ{"Martinique"}
         MR{"Mauritania"}
@@ -201,7 +201,7 @@ nb{
         PM{"St. Pierre og Miquelon"}
         PN{"Pitcairn"}
         PR{"Puerto Rico"}
-        PS{"Det palestinske området"}
+        PS{"Palestina"}
         PT{"Portugal"}
         PW{"Palau"}
         PY{"Paraguay"}
@@ -273,12 +273,15 @@ nb{
         ZW{"Zimbabwe"}
         ZZ{"ukjent område"}
     }
+    Countries%variant{
+        CD{"Den demokratiske republikken Kongo"}
+        CG{"Republikken Kongo"}
+        FK{"Falklandsøyene (Islas Malvinas)"}
+        MK{"Makedonia (FYROM)"}
+    }
     CountriesShort{
         GB{"Storbritannia"}
-        HK{"Hongkong"}
-        MO{"Macao"}
-        PS{"Palestina"}
         US{"USA"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

@@ -1,4 +1,4 @@
-﻿# Copyright (c) 2001-2013 International Business Machines
+﻿# Copyright (c) 2001-2014 International Business Machines
 # Corporation and others. All Rights Reserved.
 #
 # RBBI Test Data
@@ -33,11 +33,10 @@
 
 
 #   Temp debugging tests 
-<word>
-<data>•Isn't<200></data>
-<char>
-<data>•\U00010020•\U00010000\N{COMBINING MACRON}•</data>
+<sent>
+<data>•\u00c0.•</data>
 
+#<data>•\u5487\u67ff\ue591\u5017\u61b3\u60a1\u9510\u8165:"JAVA\u821c\u8165\u7fc8\u51ce\u306d,\u2494\u56d8\u4ec0\u60b1\u8560\u51ba\u611d\u57b6\u2510\u5d46".\u2029•</data>
 ########################################################################################
 #
 #
@@ -179,8 +178,8 @@
 <data>•芽キャベツ<400>芽キャﾍﾞツ<400></data>
 
 # more Japanese tests
-# TODO: Currently, U+30FC and other characters (script=common) in the Hiragana
-# and the Katakana block are not treated correctly. Enable this later.
+# TODO: some script=common characters in the Hiragana and the Katakana block may not be treated correctly
+# (was formerly true for U+30FC); need to check and fix if so.
 #<data>•どー<400>せ<400>日本語<400>を<400>勉強<400>する<400>理由<400>について<400>　•て<400>こと<400>は<400>我<400>でも<400>知<400>ら<400>も<400>い<400>こと<400>なん<400>だ<400>。•</data>
 <data>•日本語<400>を<400>勉強<400>する<400>理由<400>について<400>　•て<400>こと<400>は<400>我<400>でも<400>知<400>ら<400>も<400>い<400>こと<400>なん<400>だ<400>。•</data>
 
@@ -593,7 +592,9 @@ What is the proper use of the abbreviation pp.? •Yes, I am definatelly 12" tal
 <data>•123  •Start •with •a •number.•</data>
 
 <data>•'•start •with •a •case-•ignorable •cha'r'a'cter•</data>
-
+<data>•'  '' •start •with •case-•ignorable & •case-•insensitive •cha'r'a'cter•</data>
+<data>•  ''•aaa' •bbb '•ccc' '•ddd''' '''•eee   '''•fff'''   •ggg  ''•</data>
+# Note: apostrophe is case-ignorable. space is not cased.
 
 ##########################################################################################
 #
@@ -691,6 +692,18 @@ Bangkok)•</data>
 <data>•ใช•มั้ย•</data>
 <data>•มั๊ยล่ะ•ที่รัก•</data>
 
+# Test for #10593
+<line>
+<data>•เล่น•ผ่าน•ทาง•บลูทูธ•บน•อุปกรณ์•</data>
+
+# Test for city names #10691
+<line>
+<data>•ไป•ที่•ซานฟรานซิสโก•</data>
+
+# Test for #10630, #10631
+<line>
+<data>•แท็ก•แอปพลิเคชัน•เป็น•พิเศษ•</data>
+
 ##########################################################################################
 #
 #   Lao Tests
@@ -703,6 +716,19 @@ Bangkok)•</data>
 <data>•ດີ•ຂອບໃຈ•</data>
 <data>•ເຈົ້າ•ເວົ້າ•ພາສາ•ອັງກິດ•ໄດ້•ບໍ່•</data>
 <data>•ກະລຸນາ•ເວົ້າ•ຊ້າ•ໆ•</data>
+
+##########################################################################################
+#
+#   Burmese/Myanmar Tests
+#
+##########################################################################################
+<locale en>
+# Basic sanity check for #10326 (some text from http://www.unicode.org/udhr/d/udhr_mya.txt)
+<line>
+<data>•လူ•တိုင်း•သည် •တူညီ •လွတ်လပ်•သော •ဂုဏ်•သိ•က္•ခါ•ဖြ•င့် •လည်းကောင်း၊ •</data>
+<data>•တူညီ•လွတ်လပ်•သော •အ•ခွ•င့်•အရေး•များ•ဖြ•င့် •လည်းကောင်း၊ •မွေး•ဖွား•လာ•သူများ •ဖြစ်သည်။•</data>
+<data>•ထို•သူ•တို့၌ •ပိုင်းခြား •ဝေဖန်•တတ်•သော •ဉာဏ်•နှ•င့် •ကျ•င့်•ဝတ် •သိတတ်•သော •စိတ်•တို့•ရှိ•ကြ၍ •</data>
+<data>•ထို•သူ•တို့သည် •အချင်းချင်း •မေတ္တာ•ထား၍ •ဆက်ဆံ•ကျ•င့်•သုံး•</data>
 
 ##########################################################################################
 #
@@ -796,6 +822,8 @@ Bangkok)•</data>
 <data>•私<400>達<400>に<400>一<400>〇<400>〇〇<400>の<400>コンピュータ<400>が<400>ある<400>。<0>奈々<400>は<400>ワード<400>で<400>ある<400>。•</data>
 # The following test is for #10300
 <data>•例えば<400>オーストラリア<400>。•</data>
+# The following test is for #10571
+<data>•一部<400>の<400>地域<400>では<400>、<0>ブラジル<400>、<0>インドネシア<400>、<0>オーストリア<400>、<0>ニュージーランド<400>で<400>ある<400>。•</data>
 
 # UBreakIteratorType UBRK_SENTENCE, Locale "el"
 # Add break after Greek question mark (cldrbug #2069).
@@ -822,7 +850,7 @@ Bangkok)•</data>
 
 <locale en_US_POSIX>
 <word>
-<data>•Can't<200> •have<200> •breaks<200> •in<200> •xx:yy<200> •or<200> •struct<200>.•field<200> \
+<data>•Can't<200> •have<200> •breaks<200> •in<200> •xx<200>:•yy<200> •or<200> •struct<200>.•field<200> \
 •for<200> •CS<200>-•types<200>.•</data>
 <data>•\u06c9<200>\uc799\ufffa•</data>
 <data>•\uFF92\uFF76\uFF9E<400> •</data>

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/tr.xml
@@ -22,13 +22,12 @@ tr{
         be{"Beyaz Rusça"}
         bem{"Bemba"}
         bg{"Bulgarca"}
-        bh{"Bihari"}
         bn{"Bengalce"}
-        br{"Breton"}
+        br{"Bretonca"}
         bs{"Boşnakça"}
         ca{"Katalanca"}
         ceb{"Cebuano"}
-        chr{"Cherokee"}
+        chr{"Çerokice"}
         ckb{"Orta Kürtçe"}
         co{"Korsikaca"}
         cs{"Çekçe"}
@@ -85,6 +84,7 @@ tr{
         km{"Kmerce"}
         kn{"Kannada"}
         ko{"Korece"}
+        kri{"Krio"}
         ku{"Kürtçe"}
         ky{"Kırgızca"}
         la{"Latince"}
@@ -101,7 +101,6 @@ tr{
         mk{"Makedonca"}
         ml{"Malayalam"}
         mn{"Moğolca"}
-        mo{"Moldovaca"}
         mr{"Marathi"}
         ms{"Malayca"}
         mt{"Maltaca"}
@@ -128,6 +127,7 @@ tr{
         rm{"Romanşça"}
         rn{"Kirundi"}
         ro{"Romence"}
+        ro_MD{"Moldovaca"}
         ru{"Rusça"}
         rw{"Kinyarwanda"}
         sd{"Sindhi"}
@@ -149,6 +149,7 @@ tr{
         th{"Tayca"}
         ti{"Tigrinya"}
         tk{"Türkmence"}
+        tl{"Takalotça"}
         tn{"Setsvana"}
         to{"Tongaca"}
         tr{"Türkçe"}
@@ -163,7 +164,7 @@ tr{
         wo{"Volofça"}
         xh{"Zosa"}
         yi{"Yidiş"}
-        yo{"Yoruba"}
+        yo{"Yorubaca"}
         zh{"Çince"}
         zh_Hans{"Basitleştirilmiş Çince"}
         zh_Hant{"Geleneksel Çince"}
@@ -175,6 +176,7 @@ tr{
     }
     Scripts{
         Afak{"Afaka"}
+        Aghb{"Kafkas Albanyası"}
         Arab{"Arap"}
         Armi{"İmparatorluk Aramicesi"}
         Armn{"Ermeni"}
@@ -206,6 +208,7 @@ tr{
         Egyd{"Demotik Mısır"}
         Egyh{"Hiyeratik Mısır"}
         Egyp{"Mısır Hiyeroglifleri"}
+        Elba{"Elbasan"}
         Ethi{"Etiyopya"}
         Geok{"Hutsuri Gürcü"}
         Geor{"Gürcü"}
@@ -213,7 +216,7 @@ tr{
         Goth{"Gotik"}
         Gran{"Grantha"}
         Grek{"Yunan"}
-        Gujr{"Gucerat"}
+        Gujr{"Gücerat"}
         Guru{"Gurmukhi"}
         Hang{"Hangıl"}
         Hani{"Han"}
@@ -253,6 +256,7 @@ tr{
         Loma{"Loma"}
         Lyci{"Likya"}
         Lydi{"Lidya"}
+        Mahj{"Mahajani"}
         Mand{"Manden"}
         Mani{"Mani"}
         Maya{"Maya Hiyeroglifleri"}
@@ -260,6 +264,7 @@ tr{
         Merc{"Meroitik El Yazısı"}
         Mero{"Meroitik"}
         Mlym{"Malayalam"}
+        Modi{"Modi"}
         Mong{"Moğol"}
         Moon{"Moon"}
         Mroo{"Mro"}
@@ -276,6 +281,7 @@ tr{
         Orya{"Oriya"}
         Osma{"Osmanya"}
         Palm{"Palmira"}
+        Pauc{"Pau Cin Hau"}
         Perm{"Eski Permik"}
         Phag{"Phags-pa"}
         Phli{"Pehlevi Kitabe Dili"}
@@ -294,6 +300,7 @@ tr{
         Sgnw{"İşaret Dili"}
         Shaw{"Shavian"}
         Shrd{"Sharada"}
+        Sidd{"Siddham"}
         Sind{"Khudabadi"}
         Sinh{"Seylan"}
         Sora{"Sora Sompeng"}
@@ -337,7 +344,10 @@ tr{
         Hans{"Basitleştirilmiş Han"}
         Hant{"Geleneksel Han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Fars-Arap"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Dil: {0}"}
         script{"Alfabe: {0}"}

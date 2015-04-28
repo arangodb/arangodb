@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2009, International Business Machines
+ * Copyright (c) 1997-2014, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************/
 
@@ -1030,7 +1030,7 @@ NewResourceBundleTest::TestNewTypes() {
     ResourceBundle bundle(testdatapath, Locale("te_IN"),status);
 
     UnicodeString emptyStr = theBundle.getStringEx("emptystring", status);
-    if(!emptyStr.length()==0) {
+    if(emptyStr.length() != 0) {
       logln("Empty string returned invalid value\n");
     }
 

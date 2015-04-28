@@ -7,7 +7,7 @@
     # specify the dependency for iOS here.
     ['icu_use_data_file_flag==1 and (OS=="linux" or OS=="win" or OS=="mac" or OS=="android")', {
       'variables': {
-        'isolate_dependency_tracked': [
+        'files': [
           '<(PRODUCT_DIR)/icudtl.dat',
         ],
       },
@@ -15,7 +15,7 @@
     # When icu data is not used, other platforms link it statically.
     ['icu_use_data_file_flag==0 and OS=="win"', {
       'variables': {
-          'isolate_dependency_tracked': [
+          'files': [
             '<(PRODUCT_DIR)/icudt.dll',
         ],
       },

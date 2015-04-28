@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2005-2013, International Business Machines
+*   Copyright (C) 2005-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -46,8 +46,6 @@ U_NAMESPACE_USE
 // TODO: add --matchmode=regex for using the ICU regex engine for item name pattern matching?
 
 // general definitions ----------------------------------------------------- ***
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 // main() ------------------------------------------------------------------ ***
 
@@ -266,7 +264,7 @@ main(int argc, char *argv[]) {
     /* get the program basename */
     pname=findBasename(argv[0]);
 
-    argc=u_parseArgs(argc, argv, LENGTHOF(options), options);
+    argc=u_parseArgs(argc, argv, UPRV_LENGTHOF(options), options);
     isHelp=options[OPT_HELP_H].doesOccur || options[OPT_HELP_QUESTION_MARK].doesOccur;
     if(isHelp) {
         printUsage(pname, TRUE);

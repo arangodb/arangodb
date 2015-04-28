@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (C) 1998-2012, International Business Machines Corporation
+* Copyright (C) 1998-2014, International Business Machines Corporation
 * and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -25,8 +25,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 #include <string.h>
-
-#define LENGTHOF(array) (sizeof(array)/sizeof((array)[0]))
 
 #define BUF_SIZE 128
 
@@ -127,7 +125,7 @@ U_CFUNC int u_wmsg(FILE *fp, const char *tag, ... )
     va_list ap;
 #endif
     UChar   result[4096];
-    int32_t resultLength = LENGTHOF(result);
+    int32_t resultLength = UPRV_LENGTHOF(result);
 
     if(gBundle == NULL)
     {
@@ -146,7 +144,7 @@ U_CFUNC int u_wmsg(FILE *fp, const char *tag, ... )
 
 #if UCONFIG_NO_FORMATTING
     resultLength = sizeof(gNoFormatting) / U_SIZEOF_UCHAR;
-    if((msgLen + resultLength) <= LENGTHOF(result)) {
+    if((msgLen + resultLength) <= UPRV_LENGTHOF(result)) {
         memcpy(result, msg, msgLen * U_SIZEOF_UCHAR);
         memcpy(result + msgLen, gNoFormatting, resultLength);
         resultLength += msgLen;

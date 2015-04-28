@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/et.xml
@@ -22,7 +22,6 @@ et{
         be{"valgevene"}
         bem{"bemba"}
         bg{"bulgaaria"}
-        bh{"bihari"}
         bn{"bengali"}
         br{"bretooni"}
         bs{"bosnia"}
@@ -88,13 +87,12 @@ et{
         lt{"leedu"}
         lua{"luba-lulua"}
         lv{"läti"}
-        mfe{"Mauritaania kreooli"}
+        mfe{"Mauritiuse kreoolkeel"}
         mg{"malagassi"}
         mi{"maoori"}
         mk{"makedoonia"}
         ml{"malajalami"}
         mn{"mongoli"}
-        mo{"moldova"}
         mr{"marathi"}
         ms{"malai"}
         mt{"malta"}
@@ -109,7 +107,7 @@ et{
         ny{"njandža"}
         nyn{"nkole"}
         oc{"provansi"}
-        om{"oromo keel"}
+        om{"oromo"}
         or{"oria"}
         pa{"pandžabi"}
         pl{"poola"}
@@ -120,6 +118,7 @@ et{
         rm{"retoromaani"}
         rn{"rundi"}
         ro{"rumeenia"}
+        ro_MD{"moldova"}
         ru{"vene"}
         rw{"ruanda"}
         sd{"sindhi"}
@@ -141,6 +140,7 @@ et{
         th{"tai"}
         ti{"tigrinja"}
         tk{"türkmeeni"}
+        tl{"tagalogi"}
         tn{"tsvana"}
         to{"tonga"}
         tr{"türgi"}
@@ -157,8 +157,8 @@ et{
         yi{"jidiši"}
         yo{"joruba"}
         zh{"hiina"}
-        zh_Hans{"hiina keel - lihtsustatud"}
-        zh_Hant{"hiina keel - traditsiooniline"}
+        zh_Hans{"hiina (lihtsustatud)"}
+        zh_Hant{"hiina (traditsiooniline)"}
         zu{"suulu"}
     }
     LanguagesShort{
@@ -277,7 +277,10 @@ et{
         Hans{"lihtsustatud han"}
         Hant{"traditsiooniline han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"pärsia-araabia"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Keel: {0}"}
         script{"Skript: {0}"}

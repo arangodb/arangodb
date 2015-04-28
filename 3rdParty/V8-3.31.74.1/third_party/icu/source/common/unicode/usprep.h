@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2010, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -238,7 +238,7 @@ U_NAMESPACE_END
  * @param destCapacity  The capacity of destination array
  * @param options       A bit set of options:
  *
- *  - USPREP_NONE               Prohibit processing of unassigned code points in the input
+ *  - USPREP_DEFAULT            Prohibit processing of unassigned code points in the input
  *
  *  - USPREP_ALLOW_UNASSIGNED   Treat the unassigned code points are in the input 
  *                              as normal Unicode code points.

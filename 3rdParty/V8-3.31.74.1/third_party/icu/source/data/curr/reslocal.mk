@@ -1,6 +1,6 @@
 # *   Copyright (C) 1998-2010, International Business Machines
 # *   Corporation and others.  All Rights Reserved.
-CURR_CLDR_VERSION = 1.9
+CURR_CLDR_VERSION = %version%
 # A list of txt's to build
 # The downstream packager may not need this file at all if their package is not
 # constrained by
@@ -31,18 +31,16 @@ CURR_SOURCE =\
  ca.txt\
  cs.txt\
  da.txt\
- de.txt\
+ de.txt de_CH.txt\
  el.txt\
- en.txt\
- es.txt\
- es_AR.txt es_CO.txt es_EC.txt es_HN.txt es_UY.txt\
- es_MX.txt es_CL.txt\
- es_GT.txt es_PR.txt es_US.txt\
+ en.txt en_001.txt en_150.txt\
+ en_AU.txt en_CA.txt en_GB.txt en_NZ.txt en_ZA.txt\
+ es.txt es_419.txt es_AR.txt es_MX.txt es_US.txt\
  et.txt\
  fa.txt\
  fi.txt\
  fil.txt\
- fr.txt\
+ fr.txt fr_CA.txt\
  gu.txt\
  he.txt\
  hi.txt\

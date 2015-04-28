@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-* Copyright (C) 2007-2013, International Business Machines Corporation and    *
+* Copyright (C) 2007-2014, International Business Machines Corporation and    *
 * others. All Rights Reserved.                                                *
 *******************************************************************************
 */
@@ -76,6 +76,7 @@ TimeZoneFormatTest::runIndexedTest( int32_t index, UBool exec, const char* &name
         TESTCASE(2, TestParse);
         TESTCASE(3, TestISOFormat);
         TESTCASE(4, TestFormat);
+        TESTCASE(5, TestFormatTZDBNames);
         default: name = ""; break;
     }
 }
@@ -334,6 +335,40 @@ TimeZoneFormatTest::TestTimeZoneRoundTrip(void) {
     delete tzids;
 }
 
+// Special exclusions in TestTimeZoneRoundTrip.
+// These special cases do not round trip time as designed.
+static UBool isSpecialTimeRoundTripCase(const char* loc,
+                                        const UnicodeString& id,
+                                        const char* pattern,
+                                        UDate time) {
+    struct {
+        const char* loc;
+        const char* id;
+        const char* pattern;
+        UDate time;
+    } EXCLUSIONS[] = {
+        {NULL, "Asia/Chita", "zzzz", 1414252800000.0},
+        {NULL, "Asia/Chita", "vvvv", 1414252800000.0},
+        {NULL, "Asia/Srednekolymsk", "zzzz", 1414241999999.0},
+        {NULL, "Asia/Srednekolymsk", "vvvv", 1414241999999.0},
+        {NULL, NULL, NULL, U_DATE_MIN}
+    };
+
+    UBool isExcluded = FALSE;
+    for (int32_t i = 0; EXCLUSIONS[i].id != NULL; i++) {
+        if (EXCLUSIONS[i].loc == NULL || uprv_strcmp(loc, EXCLUSIONS[i].loc) == 0) {
+            if (id.compare(EXCLUSIONS[i].id) == 0) {
+                if (EXCLUSIONS[i].pattern == NULL || uprv_strcmp(pattern, EXCLUSIONS[i].pattern) == 0) {
+                    if (EXCLUSIONS[i].time == U_DATE_MIN || EXCLUSIONS[i].time == time) {
+                        isExcluded = TRUE;
+                    }
+                }
+            }
+        }
+    }
+    return isExcluded;
+}
+
 struct LocaleData {
     int32_t index;
     int32_t testCounts;
@@ -457,6 +492,11 @@ public:
                         }
                     }
 
+                    if (*tzid == "Pacific/Apia" && uprv_strcmp(PATTERNS[patidx], "vvvv") == 0
+                            && log.logKnownIssue("11052", "Ambiguous zone name - Samoa Time")) {
+                        continue;
+                    }
+
                     BasicTimeZone *tz = (BasicTimeZone*) TimeZone::createTimeZone(*tzid);
                     sdf->setTimeZone(*tz);
 
@@ -526,7 +566,9 @@ public:
                                 UnicodeString msg = (UnicodeString) "Time round trip failed for " + "tzid=" + *tzid + ", locale=" + data.locales[locidx].getName() + ", pattern=" + PATTERNS[patidx]
                                         + ", text=" + text + ", time=" + testTimes[testidx] + ", restime=" + parsedDate + ", diff=" + (parsedDate - testTimes[testidx]);
                                 // Timebomb for TZData update
-                                if (expectedRoundTrip[testidx]) {
+                                if (expectedRoundTrip[testidx]
+                                        && !isSpecialTimeRoundTripCase(data.locales[locidx].getName(), *tzid,
+                                                PATTERNS[patidx], testTimes[testidx])) {
                                     log.errln((UnicodeString) "FAIL: " + msg);
                                 } else if (REALLY_VERBOSE) {
                                     log.logln(msg);
@@ -685,7 +727,7 @@ typedef struct {
     int32_t         inPos;
     const char*     locale;
     UTimeZoneFormatStyle    style;
-    UBool           parseAll;
+    uint32_t        parseOptions;
     const char*     expected;
     int32_t         outPos;
     UTimeZoneFormatTimeType timeType;
@@ -694,26 +736,94 @@ typedef struct {
 void
 TimeZoneFormatTest::TestParse(void) {
     const ParseTestData DATA[] = {
-        //   text               inPos   locale      style                               parseAll    expected            outPos  timeType
-            {"Z",               0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,     false,      "Etc/GMT",          1,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"Z",               0,      "en_US",    UTZFMT_STYLE_SPECIFIC_LONG,         false,      "Etc/GMT",          1,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"Zambia time",     0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,     true,       "Etc/GMT",          1,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"Zambia time",     0,      "en_US",    UTZFMT_STYLE_GENERIC_LOCATION,      false,      "Africa/Lusaka",    11,     UTZFMT_TIME_TYPE_UNKNOWN},
-            {"Zambia time",     0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,  true,       "Africa/Lusaka",    11,     UTZFMT_TIME_TYPE_UNKNOWN},
-            {"+00:00",          0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,     false,      "Etc/GMT",          6,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"-01:30:45",       0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,     false,      "GMT-01:30:45",     9,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"-7",              0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,  false,      "GMT-07:00",        2,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"-2222",           0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,  false,      "GMT-22:22",        5,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"-3333",           0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,  false,      "GMT-03:33",        4,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"XXX+01:30YYY",    3,      "en_US",    UTZFMT_STYLE_LOCALIZED_GMT,         false,      "GMT+01:30",        9,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"GMT0",            0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,        false,      "Etc/GMT",          3,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"EST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,        false,      "America/New_York", 3,      UTZFMT_TIME_TYPE_STANDARD},
-            {"ESTx",            0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,        false,      "America/New_York", 3,      UTZFMT_TIME_TYPE_STANDARD},
-            {"EDTx",            0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,        false,      "America/New_York", 3,      UTZFMT_TIME_TYPE_DAYLIGHT},
-            {"EST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_LONG,         false,      NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN},
-            {"EST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_LONG,         true,       "America/New_York", 3,      UTZFMT_TIME_TYPE_STANDARD},
-            {"EST",             0,      "en_CA",    UTZFMT_STYLE_SPECIFIC_SHORT,        false,      "America/Toronto",  3,      UTZFMT_TIME_TYPE_STANDARD},
-            {NULL,              0,      NULL,       UTZFMT_STYLE_GENERIC_LOCATION,      false,      NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN}
+        //   text               inPos   locale      style
+        //      parseOptions                        expected            outPos  timeType
+            {"Z",               0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,
+                UTZFMT_PARSE_OPTION_NONE,           "Etc/GMT",          1,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"Z",               0,      "en_US",    UTZFMT_STYLE_SPECIFIC_LONG,
+                UTZFMT_PARSE_OPTION_NONE,           "Etc/GMT",          1,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"Zambia time",     0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,
+                UTZFMT_PARSE_OPTION_ALL_STYLES,     "Etc/GMT",          1,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"Zambia time",     0,      "en_US",    UTZFMT_STYLE_GENERIC_LOCATION,
+                UTZFMT_PARSE_OPTION_NONE,           "Africa/Lusaka",    11,     UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"Zambia time",     0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,
+                UTZFMT_PARSE_OPTION_ALL_STYLES,     "Africa/Lusaka",    11,     UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"+00:00",          0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,
+                UTZFMT_PARSE_OPTION_NONE,           "Etc/GMT",          6,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"-01:30:45",       0,      "en_US",    UTZFMT_STYLE_ISO_EXTENDED_FULL,
+                UTZFMT_PARSE_OPTION_NONE,           "GMT-01:30:45",     9,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"-7",              0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,
+                UTZFMT_PARSE_OPTION_NONE,           "GMT-07:00",        2,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"-2222",           0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,
+                UTZFMT_PARSE_OPTION_NONE,           "GMT-22:22",        5,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"-3333",           0,      "en_US",    UTZFMT_STYLE_ISO_BASIC_LOCAL_FULL,
+                UTZFMT_PARSE_OPTION_NONE,           "GMT-03:33",        4,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"XXX+01:30YYY",    3,      "en_US",    UTZFMT_STYLE_LOCALIZED_GMT,
+                UTZFMT_PARSE_OPTION_NONE,           "GMT+01:30",        9,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"GMT0",            0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           "Etc/GMT",          3,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"EST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           "America/New_York", 3,      UTZFMT_TIME_TYPE_STANDARD},
+
+            {"ESTx",            0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           "America/New_York", 3,      UTZFMT_TIME_TYPE_STANDARD},
+
+            {"EDTx",            0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           "America/New_York", 3,      UTZFMT_TIME_TYPE_DAYLIGHT},
+
+            {"EST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_LONG,
+                UTZFMT_PARSE_OPTION_NONE,           NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"EST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_LONG,
+                UTZFMT_PARSE_OPTION_ALL_STYLES,     "America/New_York", 3,      UTZFMT_TIME_TYPE_STANDARD},
+
+            {"EST",             0,      "en_CA",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           "America/Toronto",  3,      UTZFMT_TIME_TYPE_STANDARD},
+
+            {"CST",             0,      "en_US",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           "America/Chicago",  3,      UTZFMT_TIME_TYPE_STANDARD},
+
+            {"CST",             0,      "en_GB",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_NONE,           NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"CST",             0,      "en_GB",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS,  "America/Chicago",  3,  UTZFMT_TIME_TYPE_STANDARD},
+
+            {"--CST--",           2,    "en_GB",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS,  "America/Chicago",  5,  UTZFMT_TIME_TYPE_STANDARD},
+
+            {"CST",             0,      "zh_CN",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS,  "Asia/Shanghai",    3,  UTZFMT_TIME_TYPE_STANDARD},
+
+            {"AEST",            0,      "en_AU",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS,  "Australia/Sydney", 4,  UTZFMT_TIME_TYPE_STANDARD},
+
+            {"AST",             0,      "ar_SA",    UTZFMT_STYLE_SPECIFIC_SHORT,
+                UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS,  "Asia/Riyadh",      3,  UTZFMT_TIME_TYPE_STANDARD},
+
+            {"AQTST",           0,      "en",       UTZFMT_STYLE_SPECIFIC_LONG,
+                UTZFMT_PARSE_OPTION_NONE,           NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"AQTST",           0,      "en",       UTZFMT_STYLE_SPECIFIC_LONG,
+                UTZFMT_PARSE_OPTION_ALL_STYLES,     NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN},
+
+            {"AQTST",           0,      "en",       UTZFMT_STYLE_SPECIFIC_LONG,
+                UTZFMT_PARSE_OPTION_ALL_STYLES | UTZFMT_PARSE_OPTION_TZ_DATABASE_ABBREVIATIONS, "Asia/Aqtobe",  5,  UTZFMT_TIME_TYPE_DAYLIGHT},
+
+            {NULL,              0,      NULL,       UTZFMT_STYLE_GENERIC_LOCATION,
+                UTZFMT_PARSE_OPTION_NONE,           NULL,               0,      UTZFMT_TIME_TYPE_UNKNOWN}
     };
 
     for (int32_t i = 0; DATA[i].text; i++) {
@@ -725,8 +835,7 @@ TimeZoneFormatTest::TestParse(void) {
         }
         UTimeZoneFormatTimeType ttype = UTZFMT_TIME_TYPE_UNKNOWN;
         ParsePosition pos(DATA[i].inPos);
-        int32_t parseOptions = DATA[i].parseAll ? UTZFMT_PARSE_OPTION_ALL_STYLES : UTZFMT_PARSE_OPTION_NONE;
-        TimeZone* tz = tzfmt->parse(DATA[i].style, DATA[i].text, pos, parseOptions, &ttype);
+        TimeZone* tz = tzfmt->parse(DATA[i].style, DATA[i].text, pos, DATA[i].parseOptions, &ttype);
 
         UnicodeString errMsg;
         if (tz) {
@@ -1024,5 +1133,103 @@ TimeZoneFormatTest::TestFormat(void) {
         }
     }
 }
+
+void
+TimeZoneFormatTest::TestFormatTZDBNames(void) {
+    UDate dateJan = 1358208000000.0;    // 2013-01-15T00:00:00Z
+    UDate dateJul = 1373846400000.0;    // 2013-07-15T00:00:00Z
+
+    const FormatTestData DATA[] = {
+        {
+            "en",
+            "America/Chicago", 
+            dateJan,
+            UTZFMT_STYLE_SPECIFIC_SHORT,
+            "CST",
+            UTZFMT_TIME_TYPE_STANDARD
+        },
+        {
+            "en",
+            "Asia/Shanghai", 
+            dateJan,
+            UTZFMT_STYLE_SPECIFIC_SHORT,
+            "CST",
+            UTZFMT_TIME_TYPE_STANDARD
+        },
+        {
+            "zh_Hans",
+            "Asia/Shanghai", 
+            dateJan,
+            UTZFMT_STYLE_SPECIFIC_SHORT,
+            "CST",
+            UTZFMT_TIME_TYPE_STANDARD
+        },
+        {
+            "en",
+            "America/Los_Angeles",
+            dateJul,
+            UTZFMT_STYLE_SPECIFIC_LONG,
+            "GMT-07:00",    // No long display names
+            UTZFMT_TIME_TYPE_DAYLIGHT
+        },
+        {
+            "ja",
+            "America/Los_Angeles",
+            dateJul,
+            UTZFMT_STYLE_SPECIFIC_SHORT,
+            "PDT",
+            UTZFMT_TIME_TYPE_DAYLIGHT
+        },
+        {
+            "en",
+            "Australia/Sydney",
+            dateJan,
+            UTZFMT_STYLE_SPECIFIC_SHORT,
+            "AEDT",
+            UTZFMT_TIME_TYPE_DAYLIGHT
+        },
+        {
+            "en",
+            "Australia/Sydney",
+            dateJul,
+            UTZFMT_STYLE_SPECIFIC_SHORT,
+            "AEST",
+            UTZFMT_TIME_TYPE_STANDARD
+        },
+
+        {0, 0, 0.0, UTZFMT_STYLE_GENERIC_LOCATION, 0, UTZFMT_TIME_TYPE_UNKNOWN}
+    };
+
+    for (int32_t i = 0; DATA[i].locale; i++) {
+        UErrorCode status = U_ZERO_ERROR;
+        Locale loc(DATA[i].locale);
+        LocalPointer<TimeZoneFormat> tzfmt(TimeZoneFormat::createInstance(loc, status));
+        if (U_FAILURE(status)) {
+            dataerrln("Fail TimeZoneFormat::createInstance: %s", u_errorName(status));
+            continue;
+        }
+        TimeZoneNames *tzdbNames = TimeZoneNames::createTZDBInstance(loc, status);
+        if (U_FAILURE(status)) {
+            dataerrln("Fail TimeZoneNames::createTZDBInstance: %s", u_errorName(status));
+            continue;
+        }
+        tzfmt->adoptTimeZoneNames(tzdbNames);
+
+        LocalPointer<TimeZone> tz(TimeZone::createTimeZone(DATA[i].tzid));
+        UnicodeString out;
+        UTimeZoneFormatTimeType timeType;
+
+        tzfmt->format(DATA[i].style, *(tz.getAlias()), DATA[i].date, out, &timeType);
+        UnicodeString expected(DATA[i].expected, -1, US_INV);
+        expected = expected.unescape();
+
+        assertEquals(UnicodeString("Format result for ") + DATA[i].tzid + " (Test Case " + i + ")", expected, out);
+        if (DATA[i].timeType != timeType) {
+            dataerrln(UnicodeString("Formatted time zone type (Test Case ") + i + "), returned="
+                + timeType + ", expected=" + DATA[i].timeType);
+        }
+    }
+}
+
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

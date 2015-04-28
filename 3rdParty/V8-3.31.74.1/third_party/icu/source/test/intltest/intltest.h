@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 
@@ -113,6 +113,30 @@ UnicodeString toString(UBool b);
                 logln(#test "---"); \
                 logln(); \
                 test(); \
+            } \
+            break; \
+        }
+
+#define TESTCASE_AUTO_CLASS(TestClass) \
+        if (index == testCaseAutoNumber++) { \
+            name = #TestClass; \
+            if (exec) { \
+                logln(#TestClass "---"); \
+                logln(); \
+                TestClass test; \
+                callTest(test, par); \
+            } \
+            break; \
+        }
+
+#define TESTCASE_AUTO_CREATE_CLASS(TestClass) \
+        if (index == testCaseAutoNumber++) { \
+            name = #TestClass; \
+            if (exec) { \
+                logln(#TestClass "---"); \
+                logln(); \
+                LocalPointer<IntlTest> test(create##TestClass()); \
+                callTest(*test, par); \
             } \
             break; \
         }
@@ -347,6 +371,7 @@ public:
     static const char* loadTestData(UErrorCode& err);
     virtual const char* getTestDataPath(UErrorCode& err);
     static const char* getSourceTestData(UErrorCode& err);
+    static char *getUnidataPath(char path[]);
 
 // static members
 public:

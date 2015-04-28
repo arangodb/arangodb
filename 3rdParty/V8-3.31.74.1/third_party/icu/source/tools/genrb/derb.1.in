@@ -2,9 +2,9 @@
 .\"
 .\" derb.1: manual page for the derb utility
 .\"
-.\" Copyright (C) 2000-2002 IBM, Inc. and others.
+.\" Copyright (C) 2000-2014 IBM, Inc. and others.
 .\"
-.TH DERB 1 "16 April 2002" "ICU MANPAGE" "ICU @VERSION@ Manual"
+.TH DERB 1 "7 Mar 2014" "ICU MANPAGE" "ICU @VERSION@ Manual"
 .SH NAME
 .B derb
 \- disassemble a resource bundle
@@ -24,9 +24,6 @@
 ]
 [
 .BI "\-\-bom"
-]
-[
-.BI "\-l\fP, \fB\-\-locale" " locale"
 ]
 [
 .BI "\-t\fP, \fB\-\-truncate" " \fR[ \fPsize\fR ]\fP"
@@ -69,9 +66,7 @@ since the locale name is not accessible directly from the compiled
 resource bundle, and to know which locale to ask for when opening
 the bundle.
 .B derb
-will produce a file whose base name is either the value of the
-.BI "\-l\fP, \fB\-\-locale"
-option, or the same as the base name of the compiled resource file itself.
+will produce a file whose base name is the base name of the compiled resource file itself.
 If the
 .BI "\-\-to\-stdout\fP, \fB\-c\fP"
 option is used, however, the text will be written on the standard output.
@@ -87,6 +82,9 @@ and exit.
 .TP
 .BR "\-v\fP, \fB\-\-verbose"
 Display extra informative messages during execution.
+.TP
+.BR "\-A\fP, \fB\-\-suppressAliases"
+Don't follow aliases when producing output.
 .TP
 .BI "\-e\fP, \fB\-\-encoding" " encoding"
 Set the encoding used to write output files to

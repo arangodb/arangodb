@@ -9,12 +9,6 @@
 ** whereas the output of asctime is supposed to be constant.
 */
 
-#ifndef lint
-#ifndef NOID
-static char	elsieid[] = "@(#)asctime.c	8.2";
-#endif /* !defined NOID */
-#endif /* !defined lint */
-
 /*LINTLIBRARY*/
 
 #include "private.h"
@@ -75,9 +69,7 @@ static char	buf_asctime[MAX_ASCTIME_BUF_SIZE];
 */
 
 char *
-asctime_r(timeptr, buf)
-register const struct tm *	timeptr;
-char *				buf;
+asctime_r(register const struct tm *timeptr, char *buf)
 {
 	static const char	wday_name[][3] = {
 		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"
@@ -91,6 +83,10 @@ char *				buf;
 	char			year[INT_STRLEN_MAXIMUM(int) + 2];
 	char			result[MAX_ASCTIME_BUF_SIZE];
 
+	if (timeptr == NULL) {
+		errno = EINVAL;
+		return strcpy(buf, "??? ??? ?? ??:??:?? ????\n");
+	}
 	if (timeptr->tm_wday < 0 || timeptr->tm_wday >= DAYSPERWEEK)
 		wn = "???";
 	else	wn = wday_name[timeptr->tm_wday];
@@ -113,10 +109,9 @@ char *				buf;
 		timeptr->tm_mday, timeptr->tm_hour,
 		timeptr->tm_min, timeptr->tm_sec,
 		year);
-	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime) {
-		(void) strcpy(buf, result);
-		return buf;
-	} else {
+	if (strlen(result) < STD_ASCTIME_BUF_SIZE || buf == buf_asctime)
+		return strcpy(buf, result);
+	else {
 #ifdef EOVERFLOW
 		errno = EOVERFLOW;
 #else /* !defined EOVERFLOW */
@@ -131,8 +126,7 @@ char *				buf;
 */
 
 char *
-asctime(timeptr)
-register const struct tm *	timeptr;
+asctime(register const struct tm *timeptr)
 {
 	return asctime_r(timeptr, buf_asctime);
 }

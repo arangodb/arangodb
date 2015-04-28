@@ -1,7 +1,7 @@
 /*
 ********************************************************************************
 *
-*   Copyright (C) 1996-2013, International Business Machines
+*   Copyright (C) 1996-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ********************************************************************************
@@ -523,6 +523,7 @@ runTests ( const TestNode *root )
         fprintf(stdout, "(To run suppressed tests, use the -K option.) \n\n");
       }
       udbg_knownIssue_close(knownList);
+      knownList = NULL;
     }
 
     if (ERROR_COUNT)
@@ -706,9 +707,9 @@ static UBool vlog_knownIssue(const char *ticket, const char *pattern, va_list ap
                                      &firstForTicket, &firstForWhere);
 
     if(firstForTicket || firstForWhere) {
-      log_info("(Known issue #%s) %s", ticket, buf);
+      log_info("(Known issue #%s) %s\n", ticket, buf);
     } else {
-      log_verbose("(Known issue #%s) %s", ticket, buf);
+      log_verbose("(Known issue #%s) %s\n", ticket, buf);
     }
 
     return TRUE;

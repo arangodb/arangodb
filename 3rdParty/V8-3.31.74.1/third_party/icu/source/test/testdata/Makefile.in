@@ -1,6 +1,6 @@
 #******************************************************************************
 #
-#   Copyright (C) 1998-2012, International Business Machines
+#   Copyright (C) 1998-2014, International Business Machines
 #   Corporation and others.  All Rights Reserved.
 #
 #******************************************************************************
@@ -140,10 +140,10 @@ include $(TESTSRCDATADIR)/tstfiles.mk
 -include $(TESTSRCDATADIR)/tstlocal.mk
 
 # TEST_RES_SOURCE comes from tstfiles.mk
-TEST_RES = $(TEST_RES_SOURCE) $(TEST_RES_LOCAL) casing.txt mc.txt root.txt sh.txt sh_YU.txt te.txt te_IN.txt te_IN_REVISED.txt testtypes.txt testaliases.txt testempty.txt structLocale.txt idna_rules.txt conversion.txt icuio.txt testtable32.txt
+TEST_RES = $(TEST_RES_SOURCE) $(TEST_RES_LOCAL) casing.txt mc.txt root.txt sh.txt sh_YU.txt te.txt te_IN.txt te_IN_REVISED.txt testtypes.txt testaliases.txt testempty.txt structLocale.txt idna_rules.txt conversion.txt icuio.txt testtable32.txt metaZones.txt timezoneTypes.txt windowsZones.txt zoneinfo64.txt
 TEST_RES_FILES=$(TEST_RES:%.txt=$(TESTBUILDDIR)/%.res) $(TESTBUILDDIR)/iscii.res $(TESTBUILDDIR)/old_l_testtypes.res $(TESTBUILDDIR)/old_e_testtypes.res
 
-ALL_TEST_FILES = $(TEST_DAT_FILES) $(TEST_SPP_FILES) $(TEST_BRK_FILES) $(TEST_CNV_FILES) $(TEST_NRM_FILES) $(TEST_RES_FILES) $(TESTOUTDIR)/$(TESTDT)/nam.typ
+ALL_TEST_FILES = $(TEST_DAT_FILES) $(TEST_SPP_FILES) $(TEST_BRK_FILES) $(TEST_CNV_FILES) $(TEST_NRM_FILES) $(TEST_RES_FILES) $(TESTOUTDIR)/$(TESTDT)/nam.typ $(TESTOUTDIR)/$(TESTDT)/zoneinfo64.res
 
 # list
 
@@ -214,6 +214,8 @@ $(TESTOUTDIR)/$(TESTDT)/nam.typ: $(TESTBUILDDIR)/te_IN.res
 $(TESTBUILDDIR)/old_l_testtypes.res: $(TESTSRCDATADIR)/old_l_testtypes.res
 	cp $< $@
 $(TESTBUILDDIR)/old_e_testtypes.res: $(TESTSRCDATADIR)/old_e_testtypes.res
+	cp $< $@
+$(TESTOUTDIR)/$(TESTDT)/zoneinfo64.res: $(TESTBUILDDIR)/zoneinfo64.res
 	cp $< $@
 
 testdata: build-dir $(ALL_TEST_FILES) $(UNPACKAGEDTESTDATA)

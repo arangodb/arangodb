@@ -1,6 +1,6 @@
 /***********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation
+ * Copyright (c) 1997-2014, International Business Machines Corporation
  * and others. All Rights Reserved.
  ***********************************************************************/
 
@@ -134,6 +134,7 @@ public:
     * Tests the setters and getters of variable top
     */
     void TestVariableTopSetting();
+    void TestMaxVariable();
 
     /**
     * Tests GetLocale for a Collator
@@ -166,7 +167,9 @@ public:
     void TestNULLCharTailoring();
 
     void TestClone();
+    void TestCloneBinary();
     void TestIterNumeric();
+    void TestBadKeywords();
 
 private:
     // If this is too small for the test data, just increase it.

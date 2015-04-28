@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/rbnf/he.xml
@@ -258,7 +258,6 @@ he{
             "8: \u05E9\u05DE\u05D5\u05E0\u05EA;",
             "9: \u05EA\u05E9\u05E2\u05EA;",
             "10: \u05E2\u05E9\u05E8\u05EA;",
-            "0: =%spellout-cardinal-masculine= ;",
             "%%and-masculine:",
             "1: \u05D5=%%spellout-numbering-m=;",
             "20: \u05E2\u05E9\u05E8\u05D9\u05DD;",
@@ -351,5 +350,5 @@ he{
             "11: =%spellout-numbering=;",
         }
     }
-    Version{"2.0.82.42"}
+    Version{"2.1.5.89"}
 }

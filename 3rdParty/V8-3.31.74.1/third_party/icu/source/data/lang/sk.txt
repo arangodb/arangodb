@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sk.xml
@@ -16,13 +16,12 @@ sk{
         ak{"akančina"}
         am{"amharčina"}
         ar{"arabčina"}
-        ar_001{"moderná štandardná arabčina"}
+        ar_001{"arabčina (moderná štandardná)"}
         az{"azerbajdžančina"}
         ban{"balijčina"}
         be{"bieloruština"}
         bem{"bemba"}
         bg{"bulharčina"}
-        bh{"bihárske jazyky"}
         bn{"bengálčina"}
         br{"bretónčina"}
         bs{"bosniačtina"}
@@ -35,20 +34,20 @@ sk{
         cy{"waleština"}
         da{"dánčina"}
         de{"nemčina"}
-        de_AT{"rakúska nemčina"}
-        de_CH{"švajčiarska spisovná nemčina"}
-        ee{"eweština"}
+        de_AT{"nemčina (rakúska)"}
+        de_CH{"nemčina (švajčiarska spisovná)"}
+        ee{"ewe"}
         el{"gréčtina"}
         en{"angličtina"}
-        en_AU{"austrálska angličtina"}
-        en_CA{"kanadská angličtina"}
-        en_GB{"britská angličtina"}
-        en_US{"americká angličtina"}
+        en_AU{"angličtina (austrálska)"}
+        en_CA{"angličtina (kanadská)"}
+        en_GB{"angličtina (britská)"}
+        en_US{"angličtina (americká)"}
         eo{"esperanto"}
         es{"španielčina"}
-        es_419{"latinskoamerická španielčina"}
-        es_ES{"iberská španielčina"}
-        es_MX{"mexická španielčina"}
+        es_419{"španielčina (latinskoamerická)"}
+        es_ES{"španielčina (európska)"}
+        es_MX{"španielčina (mexická)"}
         et{"estónčina"}
         eu{"baskičtina"}
         fa{"perzština"}
@@ -56,8 +55,8 @@ sk{
         fil{"filipínčina"}
         fo{"faerčina"}
         fr{"francúzština"}
-        fr_CA{"kanadská francúzština"}
-        fr_CH{"švajčiarska francúzština"}
+        fr_CA{"francúzština (kanadská)"}
+        fr_CH{"francúzština (švajčiarska)"}
         fy{"západná frízština"}
         ga{"írčina"}
         gaa{"ga"}
@@ -82,7 +81,7 @@ sk{
         ka{"gruzínčina"}
         kg{"kongčina"}
         kk{"kazaština"}
-        km{"kambodžská khmérčina"}
+        km{"khmérčina"}
         kn{"kannadčina"}
         ko{"kórejčina"}
         ku{"kurdčina"}
@@ -101,7 +100,6 @@ sk{
         mk{"macedónčina"}
         ml{"malajálamčina"}
         mn{"mongolčina"}
-        mo{"moldavčina"}
         mr{"maráthčina"}
         ms{"malajčina"}
         mt{"maltčina"}
@@ -120,16 +118,17 @@ sk{
         or{"uríjčina"}
         pa{"pandžábčina"}
         pl{"poľština"}
-        ps{"paštúnčina"}
+        ps{"paštčina"}
         pt{"portugalčina"}
-        pt_BR{"brazílska portugalčina"}
-        pt_PT{"iberská portugalčina"}
+        pt_BR{"portugalčina (brazílska)"}
+        pt_PT{"portugalčina (európska)"}
         qu{"kečuánčina"}
         rm{"rétorománčina"}
-        rn{"rundčina"}
+        rn{"kirundčina"}
         ro{"rumunčina"}
+        ro_MD{"moldavčina"}
         ru{"ruština"}
-        rw{"rwandčina"}
+        rw{"kiňarwanda"}
         sd{"sindhčina"}
         sh{"srbochorvátčina"}
         si{"sinhalčina"}
@@ -142,13 +141,14 @@ sk{
         st{"južná sothčina"}
         su{"sundčina"}
         sv{"švédčina"}
-        sw{"swahilčina"}
+        sw{"svahilčina"}
         ta{"tamilčina"}
         te{"telugčina"}
         tg{"tadžičtina"}
         th{"thajčina"}
         ti{"tigriňa"}
         tk{"turkménčina"}
+        tl{"tagalčina"}
         tn{"tswančina"}
         to{"tongčina"}
         tr{"turečtina"}
@@ -165,14 +165,14 @@ sk{
         yi{"jidiš"}
         yo{"jorubčina"}
         zh{"čínština"}
-        zh_Hans{"zjednodušená čínština"}
-        zh_Hant{"tradičná čínština"}
+        zh_Hans{"čínština (zjednodušená)"}
+        zh_Hant{"čínština (tradičná)"}
         zu{"zuluština"}
     }
     LanguagesShort{
-        az{"azerčina"}
-        en_GB{"angličtina (UK)"}
-        en_US{"angličtina (USA)"}
+        az{"azerbajdžančina"}
+        en_GB{"angličtina (britská)"}
+        en_US{"angličtina (americká)"}
     }
     Scripts{
         Arab{"arabské"}
@@ -193,7 +193,7 @@ sk{
         Guru{"gurmukhi"}
         Hang{"hangul"}
         Hani{"han"}
-        Hans{"Zjednodušené čínske"}
+        Hans{"zjednodušené"}
         Hant{"tradičné"}
         Hebr{"hebrejské"}
         Hira{"hiragana"}
@@ -209,7 +209,7 @@ sk{
         Maya{"mayské hieroglyfy"}
         Mlym{"malajálamske"}
         Mong{"mongolské"}
-        Mymr{"mjanmarské"}
+        Mymr{"barmské"}
         Orya{"uríjske"}
         Osma{"osmanský"}
         Runr{"Runové písmo"}
@@ -228,7 +228,10 @@ sk{
         Hans{"han – zjednodušené"}
         Hant{"han – tradičné"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"perzsko-arabské"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Jazyk: {0}"}
         script{"Písmo: {0}"}

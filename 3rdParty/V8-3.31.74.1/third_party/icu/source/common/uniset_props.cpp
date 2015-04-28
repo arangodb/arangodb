@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -46,8 +46,6 @@
 #include "hash.h"
 
 U_NAMESPACE_USE
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 // initial storage. Must be >= 0
 // *** same as in uniset.cpp ! ***

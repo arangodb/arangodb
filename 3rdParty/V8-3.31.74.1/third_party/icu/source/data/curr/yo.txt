@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/yo.xml
@@ -27,10 +27,6 @@ yo{
             "BHD",
             "Dina ti Orílẹ́ède Báránì",
         }
-        BIF{
-            "BIF",
-            "Faransi ti Orílẹ́ède Bùùrúndì",
-        }
         BWP{
             "BWP",
             "Pula ti Orílẹ́ède Bọ̀tìsúwánà",
@@ -51,14 +47,6 @@ yo{
             "CN¥",
             "Reminibi ti Orílẹ́ède ṣáínà",
         }
-        CVE{
-            "CVE",
-            "Kabofediano ti Orílẹ́ède Esuodo",
-        }
-        DJF{
-            "DJF",
-            "Faransi ti Orílẹ́ède Dibouti",
-        }
         DZD{
             "DZD",
             "Dina ti Orílẹ́ède Àlùgèríánì",
@@ -66,10 +54,6 @@ yo{
         EGP{
             "EGP",
             "pọọn ti Orílẹ́ède Egipiti",
-        }
-        ERN{
-            "ERN",
-            "Nakifa ti Orílẹ́ède Eriteriani",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ yo{
             "£",
             "Pọọn ti Orílẹ́ède Bírítísì",
         }
-        GMD{
-            "GMD",
-            "Dalasi ti Orílẹ́ède Gamibia",
-        }
-        GNS{
-            "GNS",
-            "Faransi ti Orílẹ́ède Gini",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rupi ti Orílẹ́ède Indina",
         }
         JPY{
@@ -102,18 +78,6 @@ yo{
         KES{
             "KES",
             "ṣiili ti Orílẹ́ède Kenya",
-        }
-        KMF{
-            "KMF",
-            "Faransi ti Orílẹ́ède ṣomoriani",
-        }
-        LRD{
-            "LRD",
-            "Dọla ti Orílẹ́ède Liberia",
-        }
-        LSL{
-            "LSL",
-            "Loti ti Orílẹ́ède Lesoto",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ yo{
             "SAR",
             "Riya ti Orílẹ́ède Saudi",
         }
-        SCR{
-            "SCR",
-            "Rupi ti Orílẹ́ède Sayiselesi",
-        }
         SDG{
             "SDG",
             "Dina ti Orílẹ́ède Sudani",
         }
-        SHP{
-            "SHP",
-            "Pọọun ti Orílẹ́ède ̣Elena",
-        }
         SLL{
             "SLL",
             "Lioni",
-        }
-        SOS{
-            "SOS",
-            "Sile ti Orílẹ́ède Somali",
-        }
-        STD{
-            "STD",
-            "Dobira ti Orílẹ́ède Sao tome Ati Pirisipe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ yo{
             "Kawaṣa ti Orílẹ́ède Saabia",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

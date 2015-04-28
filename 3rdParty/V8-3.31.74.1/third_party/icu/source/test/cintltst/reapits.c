@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT: 
- * Copyright (c) 2004-2013, International Business Machines Corporation and
+ * Copyright (c) 2004-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /********************************************************************************
@@ -28,12 +28,13 @@
 #include "unicode/ustring.h"
 #include "unicode/utext.h"
 #include "cintltst.h"
+#include "cmemory.h"
 
 #define TEST_ASSERT_SUCCESS(status) {if (U_FAILURE(status)) { \
-log_data_err("Failure at file %s, line %d, error = %s (Are you missing data?)\n", __FILE__, __LINE__, u_errorName(status));}}
+log_data_err("Failure at file %s:%d - error = %s (Are you missing data?)\n", __FILE__, __LINE__, u_errorName(status));}}
 
 #define TEST_ASSERT(expr) {if ((expr)==FALSE) { \
-log_data_err("Test Failure at file %s, line %d (Are you missing data?)\n", __FILE__, __LINE__);}}
+log_err("Test Failure at file %s:%d - ASSERT(%s) failed.\n", __FILE__, __LINE__, #expr);}}
 
 /*
  *   TEST_SETUP and TEST_TEARDOWN
@@ -158,6 +159,7 @@ static void TestBug4315(void);
 static void TestUTextAPI(void);
 static void TestRefreshInput(void);
 static void TestBug8421(void);
+static void TestBug10815(void);
 
 void addURegexTest(TestNode** root);
 
@@ -168,6 +170,7 @@ void addURegexTest(TestNode** root)
     addTest(root, &TestUTextAPI,  "regex/TestUTextAPI");
     addTest(root, &TestRefreshInput, "regex/TestRefreshInput");
     addTest(root, &TestBug8421,   "regex/TestBug8421");
+    addTest(root, &TestBug10815,   "regex/TestBug10815");
 }
 
 /*
@@ -204,7 +207,7 @@ static void TestRegexCAPI(void) {
     memset(&minus1, -1, sizeof(minus1));
 
     /* Mimimalist open/close */
-    u_uastrncpy(pat, "abc*", sizeof(pat)/2);
+    u_uastrncpy(pat, "abc*", UPRV_LENGTHOF(pat));
     re = uregex_open(pat, -1, 0, 0, &status);
     if (U_FAILURE(status)) {
          log_data_err("Failed to open regular expression, %s:%d, error is \"%s\" (Are you missing data?)\n", __FILE__, __LINE__, u_errorName(status));
@@ -256,7 +259,7 @@ static void TestRegexCAPI(void) {
 
         /* The TEST_ASSERT_SUCCESS above should change too... */
         if(U_SUCCESS(status)) {
-            u_uastrncpy(pat, "abc*", sizeof(pat)/2);
+            u_uastrncpy(pat, "abc*", UPRV_LENGTHOF(pat));
             TEST_ASSERT(u_strcmp(pat, p) == 0);
             TEST_ASSERT(len==(int32_t)strlen("abc*"));
         }
@@ -296,8 +299,8 @@ static void TestRegexCAPI(void) {
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT(clone3 != NULL);
 
-        u_uastrncpy(testString1, "abcccd", sizeof(pat)/2);
-        u_uastrncpy(testString2, "xxxabcccd", sizeof(pat)/2);
+        u_uastrncpy(testString1, "abcccd", UPRV_LENGTHOF(pat));
+        u_uastrncpy(testString2, "xxxabcccd", UPRV_LENGTHOF(pat));
 
         status = U_ZERO_ERROR;
         uregex_setText(clone1, testString1, -1, &status);
@@ -328,7 +331,7 @@ static void TestRegexCAPI(void) {
     {
         const UChar  *resultPat;
         int32_t       resultLen;
-        u_uastrncpy(pat, "hello", sizeof(pat)/2);
+        u_uastrncpy(pat, "hello", UPRV_LENGTHOF(pat));
         status = U_ZERO_ERROR;
         re = uregex_open(pat, -1, 0, NULL, &status);
         resultPat = uregex_pattern(re, &resultLen, &status);
@@ -394,10 +397,10 @@ static void TestRegexCAPI(void) {
         UChar  text2[50];
         UBool  result;
 
-        u_uastrncpy(text1, "abcccd",  sizeof(text1)/2);
-        u_uastrncpy(text2, "abcccxd", sizeof(text2)/2);
+        u_uastrncpy(text1, "abcccd",  UPRV_LENGTHOF(text1));
+        u_uastrncpy(text2, "abcccxd", UPRV_LENGTHOF(text2));
         status = U_ZERO_ERROR;
-        u_uastrncpy(pat, "abc*d", sizeof(pat)/2);
+        u_uastrncpy(pat, "abc*d", UPRV_LENGTHOF(pat));
         re = uregex_open(pat, -1, 0, NULL, &status);
         TEST_ASSERT_SUCCESS(status);
 
@@ -449,10 +452,10 @@ static void TestRegexCAPI(void) {
         const UChar   *result;
         int32_t  textLength;
 
-        u_uastrncpy(text1, "abcccd",  sizeof(text1)/2);
-        u_uastrncpy(text2, "abcccxd", sizeof(text2)/2);
+        u_uastrncpy(text1, "abcccd",  UPRV_LENGTHOF(text1));
+        u_uastrncpy(text2, "abcccxd", UPRV_LENGTHOF(text2));
         status = U_ZERO_ERROR;
-        u_uastrncpy(pat, "abc*d", sizeof(pat)/2);
+        u_uastrncpy(pat, "abc*d", UPRV_LENGTHOF(pat));
         re = uregex_open(pat, -1, 0, NULL, &status);
 
         uregex_setText(re, text1, -1, &status);
@@ -486,9 +489,9 @@ static void TestRegexCAPI(void) {
         int     len;
         UChar   nullString[] = {0,0,0};
 
-        u_uastrncpy(text1, "abcccde",  sizeof(text1)/2);
+        u_uastrncpy(text1, "abcccde",  UPRV_LENGTHOF(text1));
         status = U_ZERO_ERROR;
-        u_uastrncpy(pat, "abc*d", sizeof(pat)/2);
+        u_uastrncpy(pat, "abc*d", UPRV_LENGTHOF(pat));
         re = uregex_open(pat, -1, 0, NULL, &status);
 
         uregex_setText(re, text1, -1, &status);
@@ -538,7 +541,7 @@ static void TestRegexCAPI(void) {
     {
         UChar    text1[50];
         UBool    result;
-        u_uastrncpy(text1, "012rx5rx890rxrx...",  sizeof(text1)/2);
+        u_uastrncpy(text1, "012rx5rx890rxrx...",  UPRV_LENGTHOF(text1));
         status = U_ZERO_ERROR;
         re = uregex_openC("rx", 0, NULL, &status);
 
@@ -621,7 +624,7 @@ static void TestRegexCAPI(void) {
         UChar    buf[80];
         UBool    result;
         int32_t  resultSz;
-        u_uastrncpy(text1, "noise abc interior def, and this is off the end",  sizeof(text1)/2);
+        u_uastrncpy(text1, "noise abc interior def, and this is off the end",  UPRV_LENGTHOF(text1));
 
         status = U_ZERO_ERROR;
         re = uregex_openC("abc(.*?)def", 0, NULL, &status);
@@ -634,21 +637,21 @@ static void TestRegexCAPI(void) {
 
         /*  Capture Group 0, the full match.  Should succeed.  */
         status = U_ZERO_ERROR;
-        resultSz = uregex_group(re, 0, buf, sizeof(buf)/2, &status);
+        resultSz = uregex_group(re, 0, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("abc interior def", buf, TRUE);
         TEST_ASSERT(resultSz == (int32_t)strlen("abc interior def"));
 
         /*  Capture group #1.  Should succeed. */
         status = U_ZERO_ERROR;
-        resultSz = uregex_group(re, 1, buf, sizeof(buf)/2, &status);
+        resultSz = uregex_group(re, 1, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING(" interior ", buf, TRUE);
         TEST_ASSERT(resultSz == (int32_t)strlen(" interior "));
 
         /*  Capture group out of range.  Error. */
         status = U_ZERO_ERROR;
-        uregex_group(re, 2, buf, sizeof(buf)/2, &status);
+        uregex_group(re, 2, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT(status == U_INDEX_OUTOFBOUNDS_ERROR);
 
         /* NULL buffer, pure pre-flight */
@@ -692,7 +695,7 @@ static void TestRegexCAPI(void) {
         TEST_ASSERT(uregex_regionStart(re, &status) == 3);
         TEST_ASSERT(uregex_regionEnd(re, &status) == 6);
         TEST_ASSERT(uregex_findNext(re, &status));
-        TEST_ASSERT(uregex_group(re, 0, resultString, sizeof(resultString)/2, &status) == 3)
+        TEST_ASSERT(uregex_group(re, 0, resultString, UPRV_LENGTHOF(resultString), &status) == 3)
         TEST_ASSERT_STRING("345", resultString, TRUE);
         TEST_TEARDOWN;
         
@@ -816,9 +819,9 @@ static void TestRegexCAPI(void) {
         UChar    replText[80];
         UChar    buf[80];
         int32_t  resultSz;
-        u_uastrncpy(text1, "Replace xaax x1x x...x.",  sizeof(text1)/2);
-        u_uastrncpy(text2, "No match here.",  sizeof(text2)/2);
-        u_uastrncpy(replText, "<$1>", sizeof(replText)/2);
+        u_uastrncpy(text1, "Replace xaax x1x x...x.",  UPRV_LENGTHOF(text1));
+        u_uastrncpy(text2, "No match here.",  UPRV_LENGTHOF(text2));
+        u_uastrncpy(replText, "<$1>", UPRV_LENGTHOF(replText));
 
         status = U_ZERO_ERROR;
         re = uregex_openC("x(.*?)x", 0, NULL, &status);
@@ -826,7 +829,7 @@ static void TestRegexCAPI(void) {
 
         /*  Normal case, with match */
         uregex_setText(re, text1, -1, &status);
-        resultSz = uregex_replaceFirst(re, replText, -1, buf, sizeof(buf)/2, &status);
+        resultSz = uregex_replaceFirst(re, replText, -1, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("Replace <aa> x1x x...x.", buf, TRUE);
         TEST_ASSERT(resultSz == (int32_t)strlen("Replace xaax x1x x...x."));
@@ -834,7 +837,7 @@ static void TestRegexCAPI(void) {
         /* No match.  Text should copy to output with no changes.  */
         status = U_ZERO_ERROR;
         uregex_setText(re, text2, -1, &status);
-        resultSz = uregex_replaceFirst(re, replText, -1, buf, sizeof(buf)/2, &status);
+        resultSz = uregex_replaceFirst(re, replText, -1, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("No match here.", buf, TRUE);
         TEST_ASSERT(resultSz == (int32_t)strlen("No match here."));
@@ -896,10 +899,10 @@ static void TestRegexCAPI(void) {
         int32_t  expectedResultSize2;
         int32_t  i;
 
-        u_uastrncpy(text1, "Replace xaax x1x x...x.",  sizeof(text1)/2);
-        u_uastrncpy(text2, "No match here.",  sizeof(text2)/2);
-        u_uastrncpy(replText, "<$1>", sizeof(replText)/2);
-        u_uastrncpy(replText2, "<<$1>>", sizeof(replText2)/2);
+        u_uastrncpy(text1, "Replace xaax x1x x...x.",  UPRV_LENGTHOF(text1));
+        u_uastrncpy(text2, "No match here.",  UPRV_LENGTHOF(text2));
+        u_uastrncpy(replText, "<$1>", UPRV_LENGTHOF(replText));
+        u_uastrncpy(replText2, "<<$1>>", UPRV_LENGTHOF(replText2));
         expectedResultSize = strlen(expectedResult);
         expectedResultSize2 = strlen(expectedResult2);
 
@@ -909,7 +912,7 @@ static void TestRegexCAPI(void) {
 
         /*  Normal case, with match */
         uregex_setText(re, text1, -1, &status);
-        resultSize = uregex_replaceAll(re, replText, -1, buf, sizeof(buf)/2, &status);
+        resultSize = uregex_replaceAll(re, replText, -1, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING(expectedResult, buf, TRUE);
         TEST_ASSERT(resultSize == expectedResultSize);
@@ -917,7 +920,7 @@ static void TestRegexCAPI(void) {
         /* No match.  Text should copy to output with no changes.  */
         status = U_ZERO_ERROR;
         uregex_setText(re, text2, -1, &status);
-        resultSize = uregex_replaceAll(re, replText, -1, buf, sizeof(buf)/2, &status);
+        resultSize = uregex_replaceAll(re, replText, -1, buf, UPRV_LENGTHOF(buf), &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("No match here.", buf, TRUE);
         TEST_ASSERT(resultSize == u_strlen(text2));
@@ -1001,15 +1004,15 @@ static void TestRegexCAPI(void) {
         re = uregex_openC(".*", 0, 0, &status);
         TEST_ASSERT_SUCCESS(status);
 
-        u_uastrncpy(text, "whatever",  sizeof(text)/2);
-        u_uastrncpy(repl, "some other", sizeof(repl)/2);
+        u_uastrncpy(text, "whatever",  UPRV_LENGTHOF(text));
+        u_uastrncpy(repl, "some other", UPRV_LENGTHOF(repl));
         uregex_setText(re, text, -1, &status);
 
         /* match covers whole target string */
         uregex_find(re, 0, &status);
         TEST_ASSERT_SUCCESS(status);
         bufPtr = buf;
-        bufCap = sizeof(buf) / 2;
+        bufCap = UPRV_LENGTHOF(buf);
         uregex_appendReplacement(re, repl, -1, &bufPtr, &bufCap, &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("some other", buf, TRUE);
@@ -1018,8 +1021,8 @@ static void TestRegexCAPI(void) {
         uregex_find(re, 0, &status);
         TEST_ASSERT_SUCCESS(status);
         bufPtr = buf;
-        bufCap = sizeof(buf) / 2;
-        u_uastrncpy(repl, "abc\\u0041\\U00000042 \\\\ $ \\abc", sizeof(repl)/2);
+        bufCap = UPRV_LENGTHOF(buf);
+        u_uastrncpy(repl, "abc\\u0041\\U00000042 \\\\ $ \\abc", UPRV_LENGTHOF(repl));
         uregex_appendReplacement(re, repl, -1, &bufPtr, &bufCap, &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("abcAB \\ $ abc", buf, TRUE); 
@@ -1054,8 +1057,8 @@ static void TestRegexCAPI(void) {
         int32_t  spaceNeeded;
         int32_t  sz;
 
-        u_uastrncpy(textToSplit, "first : second:  third",  sizeof(textToSplit)/2);
-        u_uastrncpy(text2, "No match here.",  sizeof(text2)/2);
+        u_uastrncpy(textToSplit, "first : second:  third",  UPRV_LENGTHOF(textToSplit));
+        u_uastrncpy(text2, "No match here.",  UPRV_LENGTHOF(text2));
 
         status = U_ZERO_ERROR;
         re = uregex_openC(":", 0, NULL, &status);
@@ -1070,7 +1073,7 @@ static void TestRegexCAPI(void) {
         if (U_SUCCESS(status)) {
             memset(fields, -1, sizeof(fields));
             numFields = 
-                uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 10, &status);
+                uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 10, &status);
             TEST_ASSERT_SUCCESS(status);
 
             /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1102,7 +1105,7 @@ static void TestRegexCAPI(void) {
         if(U_SUCCESS(status)) {
             memset(fields, -1, sizeof(fields));
             numFields = 
-                uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 2, &status);
+                uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 2, &status);
             TEST_ASSERT_SUCCESS(status);
 
             /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1160,7 +1163,7 @@ static void TestRegexCAPI(void) {
         int32_t  spaceNeeded;
         int32_t  sz;
 
-        u_uastrncpy(textToSplit, "first <tag-a> second<tag-b>  third",  sizeof(textToSplit)/2);
+        u_uastrncpy(textToSplit, "first <tag-a> second<tag-b>  third",  UPRV_LENGTHOF(textToSplit));
 
         status = U_ZERO_ERROR;
         re = uregex_openC("<(.*?)>", 0, NULL, &status);
@@ -1172,7 +1175,7 @@ static void TestRegexCAPI(void) {
         if(U_SUCCESS(status)) {
             memset(fields, -1, sizeof(fields));
             numFields = 
-                uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 10, &status);
+                uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 10, &status);
             TEST_ASSERT_SUCCESS(status);
 
             /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1193,7 +1196,7 @@ static void TestRegexCAPI(void) {
         status = U_ZERO_ERROR;
         memset(fields, -1, sizeof(fields));
         numFields = 
-            uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 2, &status);
+            uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 2, &status);
         TEST_ASSERT_SUCCESS(status);
 
         /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1211,7 +1214,7 @@ static void TestRegexCAPI(void) {
         status = U_ZERO_ERROR;
         memset(fields, -1, sizeof(fields));
         numFields = 
-            uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 3, &status);
+            uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 3, &status);
         TEST_ASSERT_SUCCESS(status);
 
         /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1230,7 +1233,7 @@ static void TestRegexCAPI(void) {
         status = U_ZERO_ERROR;
         memset(fields, -1, sizeof(fields));
         numFields = 
-            uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 5, &status);
+            uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 5, &status);
         TEST_ASSERT_SUCCESS(status);
 
         /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1257,7 +1260,7 @@ static void TestRegexCAPI(void) {
         if(U_SUCCESS(status)) {
             memset(fields, -1, sizeof(fields));
             numFields = 
-                uregex_split(re, buf, sizeof(buf)/2, &requiredCapacity, fields, 9, &status);
+                uregex_split(re, buf, UPRV_LENGTHOF(buf), &requiredCapacity, fields, 9, &status);
             TEST_ASSERT_SUCCESS(status);
 
             /* The TEST_ASSERT_SUCCESS call above should change too... */
@@ -1464,8 +1467,8 @@ static void TestUTextAPI(void) {
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT(clone3 != NULL);
 
-        u_uastrncpy(testString1, "abcccd", sizeof(pat)/2);
-        u_uastrncpy(testString2, "xxxabcccd", sizeof(pat)/2);
+        u_uastrncpy(testString1, "abcccd", UPRV_LENGTHOF(pat));
+        u_uastrncpy(testString2, "xxxabcccd", UPRV_LENGTHOF(pat));
 
         status = U_ZERO_ERROR;
         uregex_setText(clone1, testString1, -1, &status);
@@ -1499,7 +1502,7 @@ static void TestUTextAPI(void) {
         UText        *resultText;
         const char str_hello[] = { 0x68, 0x65, 0x6c, 0x6c, 0x6f, 0x00 }; /* hello */
         const char str_hel[] = { 0x68, 0x65, 0x6c, 0x00 }; /* hel */
-        u_uastrncpy(pat, "hello", sizeof(pat)/2); /* for comparison */
+        u_uastrncpy(pat, "hello", UPRV_LENGTHOF(pat)); /* for comparison */
         status = U_ZERO_ERROR;
         
         utext_openUTF8(&patternText, str_hello, -1, &status);
@@ -1602,7 +1605,7 @@ static void TestUTextAPI(void) {
 
         status = U_ZERO_ERROR;
         utext_openUTF8(&text1, str_abcccd, -1, &status);
-        u_uastrncpy(text2Chars, str_abcccxd, sizeof(text2)/2);
+        u_uastrncpy(text2Chars, str_abcccxd, UPRV_LENGTHOF(text2Chars));
         utext_openUChars(&text2, text2Chars, -1, &status);
         
         utext_openUTF8(&patternText, str_abcd, -1, &status);
@@ -1698,7 +1701,7 @@ static void TestUTextAPI(void) {
     {
         UChar    text1[50];
         UBool    result;
-        u_uastrncpy(text1, "012rx5rx890rxrx...",  sizeof(text1)/2);
+        u_uastrncpy(text1, "012rx5rx890rxrx...",  UPRV_LENGTHOF(text1));
         status = U_ZERO_ERROR;
         re = uregex_openC("rx", 0, NULL, &status);
 
@@ -1762,7 +1765,7 @@ static void TestUTextAPI(void) {
         const char str_interior[] = { 0x20, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x69, 0x6f, 0x72, 0x20, 0x00 }; /* ' interior ' */
         
 
-        u_uastrncpy(text1, "noise abc interior def, and this is off the end",  sizeof(text1)/2);
+        u_uastrncpy(text1, "noise abc interior def, and this is off the end",  UPRV_LENGTHOF(text1));
 
         status = U_ZERO_ERROR;
         re = uregex_openC("abc(.*?)def", 0, NULL, &status);
@@ -1840,8 +1843,8 @@ static void TestUTextAPI(void) {
         const char str_1x[] = { 0x3c, 0x24, 0x31, 0x3e, 0x00 }; /* <$1> */
         const char str_ReplaceAaaBax1xxx[] = { 0x52, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x20, 0x5c, 0x41, 0x61, 0x61, 0x42, 0x24, 0x61, 0x20, 0x78, 0x31, 0x78, 0x20, 0x78, 0x2e, 0x2e, 0x2e, 0x78, 0x2e, 0x00 }; /* Replace \AaaB$a x1x x...x. */
         status = U_ZERO_ERROR;
-        u_uastrncpy(text1, "Replace xaax x1x x...x.",  sizeof(text1)/2);
-        u_uastrncpy(text2, "No match here.",  sizeof(text2)/2);
+        u_uastrncpy(text1, "Replace xaax x1x x...x.",  UPRV_LENGTHOF(text1));
+        u_uastrncpy(text2, "No match here.",  UPRV_LENGTHOF(text2));
         utext_openUTF8(&replText, str_1x, -1, &status);
 
         re = uregex_openC("x(.*?)x", 0, NULL, &status);
@@ -1886,8 +1889,8 @@ static void TestUTextAPI(void) {
         const char str_Replaceaa1[] = { 0x52, 0x65, 0x70, 0x6c, 0x61, 0x63, 0x65, 0x20, 0x3c, 0x61, 0x61, 0x3e, 0x20, 0x3c, 0x31, 0x3e, 0x20, 0x3c, 0x2e, 0x2e, 0x2e, 0x3e, 0x2e, 0x00 }; /* Replace <aa> <1> <...>. */
         const char str_Nomatchhere[] = { 0x4e, 0x6f, 0x20, 0x6d, 0x61, 0x74, 0x63, 0x68, 0x20, 0x68, 0x65, 0x72, 0x65, 0x2e, 0x00 }; /* No match here. */
         status = U_ZERO_ERROR;
-        u_uastrncpy(text1, "Replace xaax x1x x...x.",  sizeof(text1)/2);
-        u_uastrncpy(text2, "No match here.",  sizeof(text2)/2);
+        u_uastrncpy(text1, "Replace xaax x1x x...x.",  UPRV_LENGTHOF(text1));
+        u_uastrncpy(text2, "No match here.",  UPRV_LENGTHOF(text2));
         utext_openUTF8(&replText, str_1, -1, &status);
 
         re = uregex_openC("x(.*?)x", 0, NULL, &status);
@@ -1926,15 +1929,15 @@ static void TestUTextAPI(void) {
         re = uregex_openC(".*", 0, 0, &status);
         TEST_ASSERT_SUCCESS(status);
 
-        u_uastrncpy(text, "whatever",  sizeof(text)/2);
-        u_uastrncpy(repl, "some other", sizeof(repl)/2);
+        u_uastrncpy(text, "whatever",  UPRV_LENGTHOF(text));
+        u_uastrncpy(repl, "some other", UPRV_LENGTHOF(repl));
         uregex_setText(re, text, -1, &status);
 
         /* match covers whole target string */
         uregex_find(re, 0, &status);
         TEST_ASSERT_SUCCESS(status);
         bufPtr = buf;
-        bufCap = sizeof(buf) / 2;
+        bufCap = UPRV_LENGTHOF(buf);
         uregex_appendReplacement(re, repl, -1, &bufPtr, &bufCap, &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("some other", buf, TRUE);
@@ -1943,8 +1946,8 @@ static void TestUTextAPI(void) {
         uregex_find(re, 0, &status);
         TEST_ASSERT_SUCCESS(status);
         bufPtr = buf;
-        bufCap = sizeof(buf) / 2;
-        u_uastrncpy(repl, "abc\\u0041\\U00000042 \\\\ $ \\abc", sizeof(repl)/2);
+        bufCap = UPRV_LENGTHOF(buf);
+        u_uastrncpy(repl, "abc\\u0041\\U00000042 \\\\ $ \\abc", UPRV_LENGTHOF(repl));
         uregex_appendReplacement(re, repl, -1, &bufPtr, &bufCap, &status);
         TEST_ASSERT_SUCCESS(status);
         TEST_ASSERT_STRING("abcAB \\ $ abc", buf, TRUE); 
@@ -1967,8 +1970,8 @@ static void TestUTextAPI(void) {
         int32_t  numFields;
         int32_t i;
 
-        u_uastrncpy(textToSplit, "first : second:  third",  sizeof(textToSplit)/2);
-        u_uastrncpy(text2, "No match here.",  sizeof(text2)/2);
+        u_uastrncpy(textToSplit, "first : second:  third",  UPRV_LENGTHOF(textToSplit));
+        u_uastrncpy(text2, "No match here.",  UPRV_LENGTHOF(text2));
 
         status = U_ZERO_ERROR;
         re = uregex_openC(":", 0, NULL, &status);
@@ -2043,7 +2046,7 @@ static void TestUTextAPI(void) {
         int32_t  numFields;
         int32_t i;
 
-        u_uastrncpy(textToSplit, "first <tag-a> second<tag-b>  third",  sizeof(textToSplit)/2);
+        u_uastrncpy(textToSplit, "first <tag-a> second<tag-b>  third",  UPRV_LENGTHOF(textToSplit));
 
         status = U_ZERO_ERROR;
         re = uregex_openC("<(.*?)>", 0, NULL, &status);
@@ -2262,6 +2265,61 @@ static void TestBug8421(void) {
     limit = uregex_getTimeLimit(re, &status);
     TEST_ASSERT_SUCCESS(status);
     TEST_ASSERT(limit == 100);
+
+    uregex_close(re);
+}
+
+static UBool U_CALLCONV FindCallback(const void* context , int64_t matchIndex) {
+    return FALSE;
+}
+
+static UBool U_CALLCONV MatchCallback(const void *context, int32_t steps) {
+    return FALSE;
+}
+
+static void TestBug10815() {
+  /* Bug 10815:   uregex_findNext() does not set U_REGEX_STOPPED_BY_CALLER 
+   *              when the callback function specified by uregex_setMatchCallback() returns FALSE
+   */
+    URegularExpression *re;
+    UErrorCode status = U_ZERO_ERROR;
+    UChar    text[100];
+
+
+    // findNext() with a find progress callback function.
+
+    re = uregex_openC(".z", 0, 0, &status);
+    TEST_ASSERT_SUCCESS(status);
+
+    u_uastrncpy(text, "Hello, World.",  UPRV_LENGTHOF(text));
+    uregex_setText(re, text, -1, &status);
+    TEST_ASSERT_SUCCESS(status);
+
+    uregex_setFindProgressCallback(re, FindCallback, NULL, &status);
+    TEST_ASSERT_SUCCESS(status);
+
+    uregex_findNext(re, &status);
+    TEST_ASSERT(status == U_REGEX_STOPPED_BY_CALLER);
+
+    uregex_close(re);
+
+    // findNext() with a match progress callback function.
+
+    status = U_ZERO_ERROR;
+    re = uregex_openC("((xxx)*)*y", 0, 0, &status);
+    TEST_ASSERT_SUCCESS(status);
+
+    // Pattern + this text gives an exponential time match. Without the callback to stop the match,
+    // it will appear to be stuck in a (near) infinite loop.
+    u_uastrncpy(text, "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",  UPRV_LENGTHOF(text));
+    uregex_setText(re, text, -1, &status);
+    TEST_ASSERT_SUCCESS(status);
+
+    uregex_setMatchCallback(re, MatchCallback, NULL, &status);
+    TEST_ASSERT_SUCCESS(status);
+
+    uregex_findNext(re, &status);
+    TEST_ASSERT(status == U_REGEX_STOPPED_BY_CALLER);
 
     uregex_close(re);
 }

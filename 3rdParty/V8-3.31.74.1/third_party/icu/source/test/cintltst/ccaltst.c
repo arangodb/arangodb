@@ -1,5 +1,5 @@
 /********************************************************************
- * Copyright (c) 1997-2013, International Business Machines
+ * Copyright (c) 1997-2014, International Business Machines
  * Corporation and others. All Rights Reserved.
  ********************************************************************
  *
@@ -259,7 +259,7 @@ static void TestCalendar()
     resultlength = ucal_getCanonicalTimeZoneID(PST, -1,
         canonicalID, sizeof(canonicalID)/sizeof(UChar), &isSystemID, &status);
     if (U_FAILURE(status)) {
-        log_err("FAIL: error in ucal_getCanonicalTimeZoneID : %s\n", u_errorName(status));
+        log_data_err("FAIL: error in ucal_getCanonicalTimeZoneID : %s\n", u_errorName(status));
     } else {
         if (u_strcmp(AMERICA_LOS_ANGELES, canonicalID) != 0) {
             log_data_err("FAIL: ucal_getCanonicalTimeZoneID(%s) returned %s : expected - %s (Are you missing data?)\n",
@@ -1679,12 +1679,12 @@ static const TestWeekendDates weekendDates_en_US[] = {
 static const TestWeekendDates weekendDates_ar_OM[] = {
     { 2000, UCAL_MARCH, 15, 23,  0, 0 }, /* Wed 23:00        */
     { 2000, UCAL_MARCH, 16,  0, -1, 0 }, /* Wed 23:59:59.999 */
-    { 2000, UCAL_MARCH, 16,  0,  0, 1 }, /* Thu 00:00        */
-    { 2000, UCAL_MARCH, 16, 15,  0, 1 }, /* Thu 15:00        */
+    { 2000, UCAL_MARCH, 16,  0,  0, 0 }, /* Thu 00:00        */
+    { 2000, UCAL_MARCH, 16, 15,  0, 0 }, /* Thu 15:00        */
     { 2000, UCAL_MARCH, 17, 23,  0, 1 }, /* Fri 23:00        */
     { 2000, UCAL_MARCH, 18,  0, -1, 1 }, /* Fri 23:59:59.999 */
-    { 2000, UCAL_MARCH, 18,  0,  0, 0 }, /* Sat 00:00        */
-    { 2000, UCAL_MARCH, 18,  8,  0, 0 }, /* Sat 08:00        */
+    { 2000, UCAL_MARCH, 18,  0,  0, 1 }, /* Sat 00:00        */
+    { 2000, UCAL_MARCH, 18,  8,  0, 1 }, /* Sat 08:00        */
 };
 static const TestWeekendDatesList testDates[] = {
     { "en_US", weekendDates_en_US, sizeof(weekendDates_en_US)/sizeof(weekendDates_en_US[0]) },
@@ -1708,11 +1708,11 @@ static const TestDaysOfWeek daysOfWeek_en_US[] = {
     { UCAL_SATURDAY, UCAL_WEEKEND,       0        },
     { UCAL_SUNDAY,   UCAL_WEEKEND,       0        },
 };
-static const TestDaysOfWeek daysOfWeek_ar_OM[] = { /* Thursday:Friday */
+static const TestDaysOfWeek daysOfWeek_ar_OM[] = { /* Friday:Saturday */
     { UCAL_WEDNESDAY,UCAL_WEEKDAY,       0        },
-    { UCAL_SATURDAY, UCAL_WEEKDAY,       0        },
-    { UCAL_THURSDAY, UCAL_WEEKEND,       0        },
+    { UCAL_THURSDAY, UCAL_WEEKDAY,       0        },
     { UCAL_FRIDAY,   UCAL_WEEKEND,       0        },
+    { UCAL_SATURDAY, UCAL_WEEKEND,       0        },
 };
 static const TestDaysOfWeek daysOfWeek_hi_IN[] = { /* Sunday only */
     { UCAL_MONDAY,   UCAL_WEEKDAY,       0        },
@@ -2295,7 +2295,7 @@ static const UChar zoneIceland[]   = { 0x41,0x74,0x6C,0x61,0x6E,0x74,0x69,0x63,0
 static const TZTransitionItem tzTransitionItems[] = {
     { "USPacific mid 2012", zoneUSPacific, 2012, UCAL_JULY, 1, TRUE , TRUE  },
     { "USPacific mid  100", zoneUSPacific,  100, UCAL_JULY, 1, FALSE, TRUE  }, /* no transitions before 100 CE... */
-    { "Cairo     mid 2012", zoneCairo,     2012, UCAL_JULY, 1, TRUE , FALSE }, /* DST cancelled since 2011 */
+    { "Cairo     mid 2012", zoneCairo,     2012, UCAL_JULY, 1, TRUE , TRUE  }, /* DST cancelled since 2011 (Changed since 2014c) */
     { "Iceland   mid 2012", zoneIceland,   2012, UCAL_JULY, 1, TRUE , FALSE }, /* always on DST */
     { NULL,                 NULL,             0,         0, 0, FALSE, FALSE } /* terminator */
 };

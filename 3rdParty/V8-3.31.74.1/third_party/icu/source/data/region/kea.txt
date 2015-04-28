@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kea.xml
@@ -112,7 +112,7 @@ kea{
         GU{"Guam"}
         GW{"Gine-Bisau"}
         GY{"Giana"}
-        HK{"Rejiãu Administrativu Special di Ong Kong"}
+        HK{"Ong Kong"}
         HM{"Ilha Heard i Ilhas McDonald"}
         HN{"Onduras"}
         HR{"Kroasia"}
@@ -166,7 +166,7 @@ kea{
         ML{"Mali"}
         MM{"Mianmar"}
         MN{"Mongolia"}
-        MO{"Rejiãu Administrativu Special di Makau"}
+        MO{"Makau"}
         MP{"Ilhas Marianas di Norti"}
         MQ{"Martinika"}
         MR{"Mauritania"}
@@ -258,13 +258,14 @@ kea{
         UZ{"Uzbekistãu"}
         VA{"Vatikanu"}
         VC{"Sãu Bisenti i Granadinas"}
-        VE{"Vinizuea"}
+        VE{"Vinizuela"}
         VG{"Ilhas Virjens Britanikas"}
         VI{"Ilhas Virjens Merkanu"}
         VN{"Vietnam"}
         VU{"Vanuatu"}
         WF{"Ualis i Futuna"}
         WS{"Samoa"}
+        XK{"Kozovu"}
         YE{"Iemen"}
         YT{"Maiote"}
         ZA{"Afrika di Sul"}
@@ -272,9 +273,15 @@ kea{
         ZW{"Zimbabui"}
         ZZ{"Rejiãu Diskonxedu"}
     }
-    CountriesShort{
-        HK{"Ong Kong"}
-        MO{"Makau"}
+    Countries%variant{
+        CD{"Republika Dimokratika di Kongu"}
+        CG{"Republika di Kongu"}
+        CI{"Kosta di Marfin (Côte d’Ivoire)"}
+        MK{"Masidonia (FYROM)"}
     }
-    Version{"2.0.92.87"}
+    CountriesShort{
+        GB{"R.U."}
+        US{"S.U."}
+    }
+    Version{"2.1.7.39"}
 }

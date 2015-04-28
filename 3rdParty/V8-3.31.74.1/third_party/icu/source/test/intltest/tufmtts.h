@@ -50,6 +50,12 @@ public:
      */
     void testGreekWithSanitization();
 
+    /**
+     * Performs unit test for ticket 10219 making sure that plurals work
+     * correctly with rounding.
+     */
+    void test10219Plurals();
+
 };
 
 #endif /* #if !UCONFIG_NO_FORMATTING */

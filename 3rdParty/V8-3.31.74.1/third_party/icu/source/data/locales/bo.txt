@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/bo.xml
@@ -44,7 +44,7 @@ bo{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
     calendar{
         generic{
             DateTimePatterns{
@@ -53,7 +53,7 @@ bo{
                 "HH:mm:ss",
                 "HH:mm",
                 "G y MMMM d, EEEE",
-                "G སྦྱི་ལོ་y MMMMའི་ཙེས་dད",
+                "G སྤྱི་ལོ་y MMMMའི་ཙེས་dད",
                 "G y ལོ་འི་MMMཙེས་d",
                 "GGGGG y-MM-dd",
                 "{1} {0}",
@@ -63,8 +63,9 @@ bo{
                 "{1} {0}",
             }
             availableFormats{
-                yMMMMd{"སྦྱི་ལོ་y MMMMའི་ཙེས་dད"}
-                yMMMd{"y ལོ་འི་MMMཙེས་d"}
+                yMMMMd{"G སྤྱི་ལོ་y MMMMའི་ཙེས་dད"}
+                yMMMd{"G y ལོ་འི་MMMཙེས་d"}
+                yyyyMMMd{"G y ལོ་འི་MMMཙེས་d"}
             }
         }
         gregorian{
@@ -78,7 +79,7 @@ bo{
                 "HH:mm:ss",
                 "HH:mm",
                 "y MMMM d, EEEE",
-                "སྦྱི་ལོ་y MMMMའི་ཙེས་dད",
+                "སྤྱི་ལོ་y MMMMའི་ཙེས་dད",
                 "y ལོ་འི་MMMཙེས་d",
                 "y-MM-dd",
                 "{1} {0}",
@@ -88,7 +89,7 @@ bo{
                 "{1} {0}",
             }
             availableFormats{
-                yMMMMd{"སྦྱི་ལོ་y MMMMའི་ཙེས་dད"}
+                yMMMMd{"སྤྱི་ལོ་y MMMMའི་ཙེས་dད"}
                 yMMMd{"y ལོ་འི་MMMཙེས་d"}
             }
             dayNames{
@@ -97,27 +98,27 @@ bo{
                         "ཉི་མ་",
                         "ཟླ་བ་",
                         "མིག་དམར་",
-                        "ཧླག་པ་",
+                        "ལྷག་པ་",
                         "ཕུར་བུ་",
-                        "སངས་",
+                        "པ་སངས་",
                         "སྤེན་པ་",
                     }
                     narrow{
                         "ཉི",
                         "ཟླ",
                         "མི",
-                        "ཧླག",
+                        "ལྷ",
                         "ཕུ",
-                        "ས",
+                        "པ",
                         "སྤེ",
                     }
                     wide{
                         "གཟའ་ཉི་མ་",
                         "གཟའ་ཟླ་བ་",
                         "གཟའ་མིག་དམར་",
-                        "གཟའ་ཧླག་པ་",
+                        "གཟའ་ལྷག་པ་",
                         "གཟའ་ཕུར་བུ་",
-                        "གཟའ་སངས་",
+                        "གཟའ་པ་སངས་",
                         "གཟའ་སྤེན་པ་",
                     }
                 }
@@ -126,27 +127,27 @@ bo{
                         "ཉི་མ་",
                         "ཟླ་བ་",
                         "མིག་དམར་",
-                        "ཧླག་པ་",
+                        "ལྷག་པ་",
                         "ཕུར་བུ་",
-                        "སངས་",
+                        "པ་སངས་",
                         "སྤེན་པ་",
                     }
                     narrow{
                         "ཉི",
                         "ཟླ",
                         "མི",
-                        "ཧླ",
+                        "ལྷ",
                         "ཕུ",
-                        "ས",
+                        "པ",
                         "སྤེ",
                     }
                     wide{
                         "གཟའ་ཉི་མ་",
                         "གཟའ་ཟླ་བ་",
                         "གཟའ་མིག་དམར་",
-                        "གཟའ་ཧླག་པ་",
+                        "གཟའ་ལྷག་པ་",
                         "གཟའ་ཕུར་བུ་",
-                        "གཟའ་སངས་",
+                        "གཟའ་པ་སངས་",
                         "གཟའ་སྤེན་པ་",
                     }
                 }

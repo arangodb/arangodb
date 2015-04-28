@@ -1,10 +1,10 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 2012-2013, International Business Machines Corporation and
+ * Copyright (c) 2012-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 //
-//   file:  alphaindex.h
+//   file:  alphaindextst.h
 //          Alphabetic Index Tests.
 //
 
@@ -45,6 +45,8 @@ public:
      * Test with the Bopomofo-phonetic tailoring.
      */
     void TestChineseZhuyin();
+    void TestJapaneseKanji();
+    void TestChineseUnihan();
 };
 
 #endif

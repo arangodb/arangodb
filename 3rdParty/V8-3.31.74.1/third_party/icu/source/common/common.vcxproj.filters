@@ -121,6 +121,9 @@
     <ClCompile Include="ulist.c">
       <Filter>collections</Filter>
     </ClCompile>
+    <ClCompile Include="unifiedcache.cpp">
+      <Filter>collections</Filter>
+    </ClCompile>
     <ClCompile Include="ustack.cpp">
       <Filter>collections</Filter>
     </ClCompile>
@@ -229,7 +232,7 @@
     <ClCompile Include="ucnvlat1.c">
       <Filter>conversion</Filter>
     </ClCompile>
-    <ClCompile Include="ucnvmbcs.c">
+    <ClCompile Include="ucnvmbcs.cpp">
       <Filter>conversion</Filter>
     </ClCompile>
     <ClCompile Include="ucnvscsu.c">
@@ -241,7 +244,10 @@
     <ClCompile Include="cmemory.c">
       <Filter>data &amp; memory</Filter>
     </ClCompile>
-    <ClCompile Include="ucln_cmn.c">
+    <ClCompile Include="sharedobject.cpp">
+      <Filter>data &amp; memory</Filter>
+    </ClCompile>
+    <ClCompile Include="ucln_cmn.cpp">
       <Filter>data &amp; memory</Filter>
     </ClCompile>
     <ClCompile Include="ucmndata.c">
@@ -269,6 +275,9 @@
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="parsepos.cpp">
+      <Filter>formatting</Filter>
+    </ClCompile>
+    <ClCompile Include="simplepatternformatter.cpp">
       <Filter>formatting</Filter>
     </ClCompile>
     <ClCompile Include="ustrfmt.c">
@@ -340,6 +349,9 @@
     <ClCompile Include="filterednormalizer2.cpp">
       <Filter>normalization</Filter>
     </ClCompile>
+    <ClCompile Include="loadednormalizer2impl.cpp">
+      <Filter>normalization</Filter>
+    </ClCompile>
     <ClCompile Include="normalizer2.cpp">
       <Filter>normalization</Filter>
     </ClCompile>
@@ -350,9 +362,6 @@
       <Filter>normalization</Filter>
     </ClCompile>
     <ClCompile Include="unorm.cpp">
-      <Filter>normalization</Filter>
-    </ClCompile>
-    <ClCompile Include="unorm_it.c">
       <Filter>normalization</Filter>
     </ClCompile>
     <ClCompile Include="unormcmp.cpp">
@@ -414,9 +423,6 @@
     </ClCompile>
     <ClCompile Include="usetiter.cpp">
       <Filter>properties &amp; sets</Filter>
-    </ClCompile>
-    <ClCompile Include="icuplug.c">
-      <Filter>registration</Filter>
     </ClCompile>
     <ClCompile Include="serv.cpp">
       <Filter>registration</Filter>
@@ -496,7 +502,7 @@
     <ClCompile Include="unistr_titlecase_brkiter.cpp">
       <Filter>strings</Filter>
     </ClCompile>
-    <ClCompile Include="ustr_cnv.c">
+    <ClCompile Include="ustr_cnv.cpp">
       <Filter>strings</Filter>
     </ClCompile>
     <ClCompile Include="ustr_titlecase_brkiter.cpp">
@@ -562,6 +568,10 @@
     <ClCompile Include="stringtriebuilder.cpp">
       <Filter>collections</Filter>
     </ClCompile>
+    <ClCompile Include="icuplug.cpp" />
+    <ClCompile Include="uloc_keytype.cpp">
+      <Filter>locales &amp; resources</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ubidi_props.h">
@@ -625,6 +635,9 @@
       <Filter>collections</Filter>
     </ClInclude>
     <ClInclude Include="ulist.h">
+      <Filter>collections</Filter>
+    </ClInclude>
+    <ClInclude Include="unifiedcache.h">
       <Filter>collections</Filter>
     </ClInclude>
     <ClInclude Include="ustrenum.h">
@@ -696,6 +709,9 @@
     <ClInclude Include="cmemory.h">
       <Filter>data &amp; memory</Filter>
     </ClInclude>
+    <ClInclude Include="sharedobject.h">
+      <Filter>data &amp; memory</Filter>
+    </ClInclude>
     <ClInclude Include="ucln.h">
       <Filter>data &amp; memory</Filter>
     </ClInclude>
@@ -716,6 +732,9 @@
     </ClInclude>
     <ClInclude Include="umapfile.h">
       <Filter>data &amp; memory</Filter>
+    </ClInclude>
+    <ClInclude Include="simplepatternformatter.h">
+      <Filter>formatting</Filter>
     </ClInclude>
     <ClInclude Include="ustrfmt.h">
       <Filter>formatting</Filter>
@@ -744,10 +763,10 @@
     <ClInclude Include="ureslocs.h">
       <Filter>locales &amp; resources</Filter>
     </ClInclude>
-    <ClInclude Include="normalizer2impl.h">
+    <ClInclude Include="norm2allmodes.h">
       <Filter>normalization</Filter>
     </ClInclude>
-    <ClInclude Include="unorm_it.h">
+    <ClInclude Include="normalizer2impl.h">
       <Filter>normalization</Filter>
     </ClInclude>
     <ClInclude Include="unormimp.h">

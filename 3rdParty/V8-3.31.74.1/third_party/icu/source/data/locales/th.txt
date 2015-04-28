@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/th.xml
@@ -139,11 +139,13 @@ th{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
         native{"thai"}
     }
-    Version{"2.0.93.18"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -335,6 +337,36 @@ th{
                         }
                     }
                 }
+                solarTerms{
+                    format{
+                        abbreviated{
+                            "ลี่ชุน",
+                            "rain water",
+                            "insects awaken",
+                            "spring equinox",
+                            "bright and clear",
+                            "grain rain",
+                            "summer begins",
+                            "grain full",
+                            "grain in ear",
+                            "summer solstice",
+                            "minor heat",
+                            "major heat",
+                            "autumn begins",
+                            "end of heat",
+                            "white dew",
+                            "autumn equinox",
+                            "cold dew",
+                            "frost descends",
+                            "winter begins",
+                            "minor snow",
+                            "major snow",
+                            "winter solstice",
+                            "minor cold",
+                            "major cold",
+                        }
+                    }
+                }
                 years{
                     format{
                         abbreviated{
@@ -347,7 +379,7 @@ th{
                             "เกิงอู้",
                             "ซินเว่ย",
                             "เหรินเซิน",
-                            "กุุ๋่ยโหย่ว",
+                            "กุ๋่ยโหย่ว",
                             "เจ่ียซู",
                             "อี๋ฮ่าย",
                             "ปิ๋ิ่งจื่อ",
@@ -387,7 +419,7 @@ th{
                             "เกิงซู",
                             "ซินฮ่าย",
                             "เหรินจ่ือ",
-                            "กุุ๋่ยโฉ่ว",
+                            "กุ๋่ยโฉ่ว",
                             "เจี่ยอิ๋น",
                             "อ๋ีเหม่า",
                             "ปิ่งเฉิน",
@@ -656,7 +688,7 @@ th{
                             "เกิงอู้",
                             "ซินเว่ย",
                             "เหรินเซิน",
-                            "กุุ๋่ยโหย่ว",
+                            "กุ๋่ยโหย่ว",
                             "เจ่ียซู",
                             "อี๋ฮ่าย",
                             "ปิ๋ิ่งจื่อ",
@@ -696,7 +728,7 @@ th{
                             "เกิงซู",
                             "ซินฮ่าย",
                             "เหรินจ่ือ",
-                            "กุุ๋่ยโฉ่ว",
+                            "กุ๋่ยโฉ่ว",
                             "เจี่ยอิ๋น",
                             "อ๋ีเหม่า",
                             "ปิ่งเฉิน",
@@ -1067,13 +1099,17 @@ th{
                 "ก่อนเที่ยง",
                 "หลังเที่ยง",
             }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
             DateTimePatterns{
                 "H นาฬิกา mm นาที ss วินาที zzzz",
                 "H นาฬิกา mm นาที ss วินาที z",
                 "HH:mm:ss",
                 "HH:mm",
                 "EEEEที่ d MMMM G y",
-                "d MMMM y",
+                "d MMMM G y",
                 "d MMM y",
                 "d/M/yy",
                 "{1} {0}",
@@ -1082,10 +1118,13 @@ th{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"เที่ยง"}
+            NoonMarkerNarrow{"n"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d"}
@@ -1206,13 +1245,25 @@ th{
                     "ปีก่อน ค.ศ.",
                     "ค.ศ.",
                 }
+                abbreviated%variant{
+                    "ก.ส.ศ.",
+                    "ส.ศ.",
+                }
                 narrow{
                     "ก่อน ค.ศ.",
                     "ค.ศ.",
                 }
+                narrow%variant{
+                    "ก.ส.ศ.",
+                    "ส.ศ.",
+                }
                 wide{
                     "ปีก่อนคริสต์ศักราช",
                     "คริสต์ศักราช",
+                }
+                wide%variant{
+                    "ก่อนสามัญศักราช",
+                    "สามัญศักราช",
                 }
             }
             intervalFormats{
@@ -1234,7 +1285,7 @@ th{
                     M{"M-M"}
                 }
                 MEd{
-                    M{"E d - E d/M"}
+                    M{"E d/M - E d/M"}
                     d{"E d - E d/M"}
                 }
                 MMM{
@@ -1313,6 +1364,20 @@ th{
             monthNames{
                 format{
                     abbreviated{
+                        "ม.ค.",
+                        "ก.พ.",
+                        "มี.ค.",
+                        "เม.ย.",
+                        "พ.ค.",
+                        "มิ.ย.",
+                        "ก.ค.",
+                        "ส.ค.",
+                        "ก.ย.",
+                        "ต.ค.",
+                        "พ.ย.",
+                        "ธ.ค.",
+                    }
+                    narrow{
                         "ม.ค.",
                         "ก.พ.",
                         "มี.ค.",
@@ -1468,6 +1533,22 @@ th{
                         "เอลอุล",
                         "อาดาร์ II",
                     }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                        "7",
+                    }
                     wide{
                         "ทิชรี",
                         "เฮวาน",
@@ -1501,6 +1582,22 @@ th{
                         "อัฟ",
                         "เอลอุล",
                         "อาดาร์ II",
+                    }
+                    narrow{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                        "8",
+                        "9",
+                        "10",
+                        "11",
+                        "12",
+                        "13",
+                        "7",
                     }
                     wide{
                         "ทิชรี",
@@ -1635,6 +1732,11 @@ th{
                 "{1} {0}",
             }
             availableFormats{
+                Ed{"E d"}
+                Gy{"G y"}
+                GyMMM{"MMM G y"}
+                GyMMMEd{"E d MMM G y"}
+                GyMMMd{"d MMM G y"}
                 M{"L"}
                 MEd{"E, d/M"}
                 MMM{"LLL"}
@@ -1643,6 +1745,15 @@ th{
                 Md{"d/M"}
                 d{"d"}
                 y{"G y"}
+                yyyy{"G y"}
+                yyyyM{"M/y G"}
+                yyyyMEd{"E d/M/y GGGGG"}
+                yyyyMMM{"MMM G y"}
+                yyyyMMMEd{"E d MMM G y"}
+                yyyyMMMd{"d MMM G y"}
+                yyyyMd{"d/M/y GGGGG"}
+                yyyyQQQ{"QQQ G y"}
+                yyyyQQQQ{"QQQQ G y"}
             }
             eras{
                 abbreviated{
@@ -1693,8 +1804,8 @@ th{
                         "ชะอะบาน",
                         "รอมะดอน",
                         "เชาวัล",
-                        "ดฮุุอัลกิดะห์",
-                        "ดฮุอัลฮิจจะห์",
+                        "ซุลกิอฺดะฮฺ",
+                        "ซุลหิจญะฮฺ",
                     }
                 }
                 stand-alone{
@@ -1737,7 +1848,7 @@ th{
                         "ชะอะบาน",
                         "รอมะดอน",
                         "เชาวัล",
-                        "ดฮุุอัลกิดะห์",
+                        "ดฮุอัลกิดะห์",
                         "ดฮุอัลฮิจจะห์",
                     }
                 }
@@ -2137,7 +2248,7 @@ th{
                 "EEEEที่ d MMMM ปีGที่ y",
                 "d MMMM ปีG y",
                 "d MMM G y",
-                "d/M/yy",
+                "d/M/y G",
                 "{1} {0}",
                 "{1} {0}",
                 "{1} {0}",
@@ -2212,6 +2323,28 @@ th{
                 }
             }
         }
+        day-narrow{
+            dn{"วัน"}
+            relativeTime{
+                future{
+                    other{"ใน {0} วัน"}
+                }
+                past{
+                    other{"{0} วันที่แล้ว"}
+                }
+            }
+        }
+        day-short{
+            dn{"วัน"}
+            relativeTime{
+                future{
+                    other{"ใน {0} วัน"}
+                }
+                past{
+                    other{"{0} วันที่แล้ว"}
+                }
+            }
+        }
         dayperiod{
             dn{"ช่วงวัน"}
         }
@@ -2219,6 +2352,20 @@ th{
             dn{"สมัย"}
         }
         fri{
+            relative{
+                "-1"{"ศุกร์ที่แล้ว"}
+                "0"{"ศุกร์นี้"}
+                "1"{"ศุกร์หน้า"}
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"ศุกร์ที่แล้ว"}
+                "0"{"ศุกร์นี้"}
+                "1"{"ศุกร์หน้า"}
+            }
+        }
+        fri-short{
             relative{
                 "-1"{"ศุกร์ที่แล้ว"}
                 "0"{"ศุกร์นี้"}
@@ -2236,6 +2383,28 @@ th{
                 }
             }
         }
+        hour-narrow{
+            dn{"ชม."}
+            relativeTime{
+                future{
+                    other{"ใน {0} ชม."}
+                }
+                past{
+                    other{"{0} ชม. ที่แล้ว"}
+                }
+            }
+        }
+        hour-short{
+            dn{"ชม."}
+            relativeTime{
+                future{
+                    other{"ใน {0} ชม."}
+                }
+                past{
+                    other{"{0} ชม. ที่แล้ว"}
+                }
+            }
+        }
         minute{
             dn{"นาที"}
             relativeTime{
@@ -2247,7 +2416,43 @@ th{
                 }
             }
         }
+        minute-narrow{
+            dn{"น."}
+            relativeTime{
+                future{
+                    other{"ใน {0} นาที"}
+                }
+                past{
+                    other{"{0} นาทีที่แล้ว"}
+                }
+            }
+        }
+        minute-short{
+            dn{"น."}
+            relativeTime{
+                future{
+                    other{"ใน {0} นาที"}
+                }
+                past{
+                    other{"{0} นาทีที่แล้ว"}
+                }
+            }
+        }
         mon{
+            relative{
+                "-1"{"จันทร์ที่แล้ว"}
+                "0"{"จันทร์นี้"}
+                "1"{"จันทร์หน้า"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"จันทร์ที่แล้ว"}
+                "0"{"จันทร์นี้"}
+                "1"{"จันทร์หน้า"}
+            }
+        }
+        mon-short{
             relative{
                 "-1"{"จันทร์ที่แล้ว"}
                 "0"{"จันทร์นี้"}
@@ -2270,7 +2475,76 @@ th{
                 }
             }
         }
+        month-narrow{
+            dn{"เดือน"}
+            relativeTime{
+                future{
+                    other{"ใน {0} เดือน"}
+                }
+                past{
+                    other{"{0} เดือนที่แล้ว"}
+                }
+            }
+        }
+        month-short{
+            dn{"เดือน"}
+            relativeTime{
+                future{
+                    other{"ใน {0} เดือน"}
+                }
+                past{
+                    other{"{0} เดือนที่แล้ว"}
+                }
+            }
+        }
+        quarter{
+            dn{"ไตรมาส"}
+            relativeTime{
+                future{
+                    other{"ในอีก {0} ไตรมาส"}
+                }
+                past{
+                    other{"{0} ไตรมาสที่แล้ว"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"ไตรมาส"}
+            relativeTime{
+                future{
+                    other{"ใน {0} ไตรมาส"}
+                }
+                past{
+                    other{"{0} ไตรมาสที่แล้ว"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"ไตรมาส"}
+            relativeTime{
+                future{
+                    other{"ใน {0} ไตรมาส"}
+                }
+                past{
+                    other{"{0} ไตรมาสที่แล้ว"}
+                }
+            }
+        }
         sat{
+            relative{
+                "-1"{"เสาร์ที่แล้ว"}
+                "0"{"เสาร์นี้"}
+                "1"{"เสาร์หน้า"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"เสาร์ที่แล้ว"}
+                "0"{"เสาร์นี้"}
+                "1"{"เสาร์หน้า"}
+            }
+        }
+        sat-short{
             relative{
                 "-1"{"เสาร์ที่แล้ว"}
                 "0"{"เสาร์นี้"}
@@ -2291,7 +2565,43 @@ th{
                 }
             }
         }
+        second-narrow{
+            dn{"วิ"}
+            relativeTime{
+                future{
+                    other{"ใน {0} วินาที"}
+                }
+                past{
+                    other{"{0} วินาทีที่แล้ว"}
+                }
+            }
+        }
+        second-short{
+            dn{"วิ"}
+            relativeTime{
+                future{
+                    other{"ใน {0} วินาที"}
+                }
+                past{
+                    other{"{0} วินาทีที่แล้ว"}
+                }
+            }
+        }
         sun{
+            relative{
+                "-1"{"อาทิตย์ที่แล้ว"}
+                "0"{"อาทิตย์นี้"}
+                "1"{"อาทิตย์หน้า"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"อาทิตย์ที่แล้ว"}
+                "0"{"อาทิตย์นี้"}
+                "1"{"อาทิตย์หน้า"}
+            }
+        }
+        sun-short{
             relative{
                 "-1"{"อาทิตย์ที่แล้ว"}
                 "0"{"อาทิตย์นี้"}
@@ -2305,6 +2615,20 @@ th{
                 "1"{"พฤหัสหน้า"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"พฤหัสที่แล้ว"}
+                "0"{"พฤหัสนี้"}
+                "1"{"พฤหัสหน้า"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"พฤหัสที่แล้ว"}
+                "0"{"พฤหัสนี้"}
+                "1"{"พฤหัสหน้า"}
+            }
+        }
         tue{
             relative{
                 "-1"{"อังคารที่แล้ว"}
@@ -2312,7 +2636,35 @@ th{
                 "1"{"อังคารหน้า"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"อังคารที่แล้ว"}
+                "0"{"อังคารนี้"}
+                "1"{"อังคารหน้า"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"อังคารที่แล้ว"}
+                "0"{"อังคารนี้"}
+                "1"{"อังคารหน้า"}
+            }
+        }
         wed{
+            relative{
+                "-1"{"พุธที่แล้ว"}
+                "0"{"พุธนี้"}
+                "1"{"พุธหน้า"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"พุธที่แล้ว"}
+                "0"{"พุธนี้"}
+                "1"{"พุธหน้า"}
+            }
+        }
+        wed-short{
             relative{
                 "-1"{"พุธที่แล้ว"}
                 "0"{"พุธนี้"}
@@ -2335,6 +2687,28 @@ th{
                 }
             }
         }
+        week-narrow{
+            dn{"สัปดาห์"}
+            relativeTime{
+                future{
+                    other{"ใน {0} สัปดาห์"}
+                }
+                past{
+                    other{"{0} สัปดาห์ที่แล้ว"}
+                }
+            }
+        }
+        week-short{
+            dn{"สัปดาห์"}
+            relativeTime{
+                future{
+                    other{"ใน {0} สัปดาห์"}
+                }
+                past{
+                    other{"{0} สัปดาห์ที่แล้ว"}
+                }
+            }
+        }
         weekday{
             dn{"วันในสัปดาห์"}
         }
@@ -2348,6 +2722,28 @@ th{
             relativeTime{
                 future{
                     other{"ในอีก {0} ปี"}
+                }
+                past{
+                    other{"{0} ปีที่แล้ว"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"ปี"}
+            relativeTime{
+                future{
+                    other{"ใน {0} ปี"}
+                }
+                past{
+                    other{"{0} ปีที่แล้ว"}
+                }
+            }
+        }
+        year-short{
+            dn{"ปี"}
+            relativeTime{
+                future{
+                    other{"ใน {0} ปี"}
                 }
                 past{
                     other{"{0} ปีที่แล้ว"}
@@ -2400,98 +2796,5 @@ th{
         x-Jamo{"จาโม"}
         x-Pinyin{"พินอิน"}
         x-Publishing{"เพื่อเผยแพร่"}
-    }
-    units{
-        compound{
-            per{"{0}ต่อ{1}"}
-        }
-        duration{
-            day{
-                other{"{0} วัน"}
-            }
-            hour{
-                other{"{0} ชั่วโมง"}
-            }
-            millisecond{
-                other{"{0} มิลลิวินาที"}
-            }
-            minute{
-                other{"{0} นาที"}
-            }
-            month{
-                other{"{0} เดือน"}
-            }
-            second{
-                other{"{0} วินาที"}
-            }
-            week{
-                other{"{0} สัปดาห์"}
-            }
-            year{
-                other{"{0} ปี"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0}วัน"}
-            }
-            hour{
-                other{"{0}ชม."}
-            }
-            millisecond{
-                other{"{0} มิลลิวิ"}
-            }
-            minute{
-                other{"{0}นาที"}
-            }
-            month{
-                other{"{0}เดือน"}
-            }
-            second{
-                other{"{0}วิ"}
-            }
-            week{
-                other{"{0}สัปดาห์"}
-            }
-            year{
-                other{"{0}ปี"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                other{"{0} วัน"}
-            }
-            hour{
-                other{"{0} ชม."}
-            }
-            millisecond{
-                other{"{0} มิลลิวินาที"}
-            }
-            minute{
-                other{"{0} นาที"}
-            }
-            month{
-                other{"{0} เดือน"}
-            }
-            second{
-                other{"{0} วิ"}
-            }
-            week{
-                other{"{0} สัปดาห์"}
-            }
-            year{
-                other{"{0} ปี"}
-            }
-        }
     }
 }

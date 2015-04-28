@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/km.xml
@@ -163,7 +163,7 @@ km{
         MH{"កោះ​ម៉ាស់សល"}
         MK{"ម៉ាសេដន"}
         ML{"ម៉ាលី"}
-        MM{"មីយ៉ាន់ម៉ា"}
+        MM{"មីយ៉ាន់ម៉ា (ភូមា)"}
         MN{"ម៉ុងហ្គោលី"}
         MO{"ម៉ាកាវ"}
         MP{"កោះ​ម៉ារីណា​ខាង​ជើង"}
@@ -200,7 +200,7 @@ km{
         PM{"សង់ព្យែរ និង​មីគីឡុង"}
         PN{"កោះ​ភីតខារិន"}
         PR{"ព័រតូរីកូ"}
-        PS{"ដែន​ប៉ាលេស្ទីន"}
+        PS{"ប៉ាលេស្ទីន"}
         PT{"ព័រទុយហ្កាល់"}
         PW{"ផៅឡូ"}
         PY{"ប៉ារ៉ាហ្គាយ"}
@@ -272,12 +272,17 @@ km{
         ZW{"ហ្ស៊ីមបាបវ៉េ"}
         ZZ{"មិន​ស្គាល់​តំបន់"}
     }
+    Countries%variant{
+        CD{"កុងហ្គោ (សាធារណរដ្ឋ​ប្រជាធិបតេយ្យ)"}
+        CG{"កុងហ្គោ (សធារណៈរដ្ឋ)"}
+        CI{"កូតឌីវ័រ"}
+        FK{"កោះ​ហ្វក់ឡែន (Islas Malvinas)"}
+        MK{"ម៉ាសេដ្វាន"}
+        TL{"ទីម័រ​ខាង​កើត"}
+    }
     CountriesShort{
         GB{"ច.អ."}
-        HK{"ហុងកុង"}
-        MO{"ម៉ាកាវ"}
-        PS{"ប៉ាលេស្ទីន"}
         US{"ស.រ.អ"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

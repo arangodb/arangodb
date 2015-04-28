@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2004-2013, International Business Machines
+*   Copyright (C) 2004-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -90,6 +90,8 @@ enum {
 
     UBIDI_IX_JG_START,
     UBIDI_IX_JG_LIMIT,
+    UBIDI_IX_JG_START2,  /* new in format version 2.2, ICU 54 */
+    UBIDI_IX_JG_LIMIT2,
 
     UBIDI_MAX_VALUES_INDEX=15,
     UBIDI_IX_TOP=16

@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 1997-2012, International Business Machines
+*   Copyright (C) 1997-2012,2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -230,6 +230,7 @@ ures_countArrayItems(const UResourceBundle* resourceBundle,
                      const char* resourceKey,
                      UErrorCode* err);
 #endif  /* U_HIDE_DEPRECATED_API */
+
 /**
  * Close a resource bundle, all pointers returned from the various ures_getXXX calls
  * on this particular bundle should be considered invalid henceforth.

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/lv.xml
@@ -112,7 +112,7 @@ lv{
         GU{"Guama"}
         GW{"Gvineja-Bisava"}
         GY{"Gajāna"}
-        HK{"Ķīnas īpašās pārvaldes apgabals Honkonga"}
+        HK{"Honkonga"}
         HM{"Hērda un Makdonalda salas"}
         HN{"Hondurasa"}
         HR{"Horvātija"}
@@ -166,7 +166,7 @@ lv{
         ML{"Mali"}
         MM{"Mjanma (Birma)"}
         MN{"Mongolija"}
-        MO{"Ķīnas īpašās pārvaldes apgabals Makao"}
+        MO{"Makao"}
         MP{"Ziemeļu Marianas salas"}
         MQ{"Martinika"}
         MR{"Mauritānija"}
@@ -214,7 +214,7 @@ lv{
         RW{"Ruanda"}
         SA{"Saūda Arābija"}
         SB{"Zālamana salas"}
-        SC{"Seišeļu salas"}
+        SC{"Šeišelu salas"}
         SD{"Sudāna"}
         SE{"Zviedrija"}
         SG{"Singapūra"}
@@ -273,12 +273,16 @@ lv{
         ZW{"Zimbabve"}
         ZZ{"nezināms reģions"}
     }
+    Countries%variant{
+        CD{"Kongo Demokrātiskā Republika"}
+        CG{"Kongo (Republika)"}
+        CI{"Ziloņkaula krasts"}
+        FK{"Folklenda (Malvinu) salas"}
+        MK{"Maķedonija (BDRM)"}
+    }
     CountriesShort{
         GB{"Lielbritānija"}
-        HK{"Honkonga"}
-        MO{"Makao"}
-        PS{"Palestīna"}
         US{"ASV"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

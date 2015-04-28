@@ -15,16 +15,6 @@
 ** Thank you!
 */
 
-/*
-** ID
-*/
-
-#ifndef lint
-#ifndef NOID
-static char	privatehid[] = "@(#)private.h	8.6";
-#endif /* !defined NOID */
-#endif /* !defined lint */
-
 #define GRANDPARENTED	"Local time zone must be set--see zic manual page"
 
 /*
@@ -43,6 +33,10 @@ static char	privatehid[] = "@(#)private.h	8.6";
 #ifndef HAVE_INCOMPATIBLE_CTIME_R
 #define HAVE_INCOMPATIBLE_CTIME_R	0
 #endif /* !defined INCOMPATIBLE_CTIME_R */
+
+#ifndef HAVE_LINK
+#define HAVE_LINK		1
+#endif /* !defined HAVE_LINK */
 
 #ifndef HAVE_SETTIMEOFDAY
 #define HAVE_SETTIMEOFDAY	3
@@ -134,18 +128,75 @@ static char	privatehid[] = "@(#)private.h	8.6";
 #include "stdint.h"
 #endif /* !HAVE_STDINT_H */
 
+#ifndef HAVE_INTTYPES_H
+# define HAVE_INTTYPES_H HAVE_STDINT_H
+#endif
+#if HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+
 #ifndef INT_FAST64_MAX
 /* Pre-C99 GCC compilers define __LONG_LONG_MAX__ instead of LLONG_MAX.  */
 #if defined LLONG_MAX || defined __LONG_LONG_MAX__
 typedef long long	int_fast64_t;
+# ifdef LLONG_MAX
+#  define INT_FAST64_MIN LLONG_MIN
+#  define INT_FAST64_MAX LLONG_MAX
+# else
+#  define INT_FAST64_MIN __LONG_LONG_MIN__
+#  define INT_FAST64_MAX __LONG_LONG_MAX__
+# endif
+# define SCNdFAST64 "lld"
 #else /* ! (defined LLONG_MAX || defined __LONG_LONG_MAX__) */
 #if (LONG_MAX >> 31) < 0xffffffff
 Please use a compiler that supports a 64-bit integer type (or wider);
 you may need to compile with "-DHAVE_STDINT_H".
 #endif /* (LONG_MAX >> 31) < 0xffffffff */
 typedef long		int_fast64_t;
+# define INT_FAST64_MIN LONG_MIN
+# define INT_FAST64_MAX LONG_MAX
+# define SCNdFAST64 "ld"
 #endif /* ! (defined LLONG_MAX || defined __LONG_LONG_MAX__) */
 #endif /* !defined INT_FAST64_MAX */
+
+#ifndef INT_FAST32_MAX
+# if INT_MAX >> 31 == 0
+typedef long int_fast32_t;
+# else
+typedef int int_fast32_t;
+# endif
+#endif
+
+#ifndef INTMAX_MAX
+# if defined LLONG_MAX || defined __LONG_LONG_MAX__
+typedef long long intmax_t;
+#  define strtoimax strtoll
+#  define PRIdMAX "lld"
+#  ifdef LLONG_MAX
+#   define INTMAX_MAX LLONG_MAX
+#   define INTMAX_MIN LLONG_MIN
+#  else
+#   define INTMAX_MAX __LONG_LONG_MAX__
+#   define INTMAX_MIN __LONG_LONG_MIN__
+#  endif
+# else
+typedef long intmax_t;
+#  define strtoimax strtol
+#  define PRIdMAX "ld"
+#  define INTMAX_MAX LONG_MAX
+#  define INTMAX_MIN LONG_MIN
+# endif
+#endif
+
+#ifndef UINTMAX_MAX
+# if defined ULLONG_MAX || defined __LONG_LONG_MAX__
+typedef unsigned long long uintmax_t;
+#  define PRIuMAX "llu"
+# else
+typedef unsigned long uintmax_t;
+#  define PRIuMAX "lu"
+# endif
+#endif
 
 #ifndef INT32_MAX
 #define INT32_MAX 0x7fffffff
@@ -153,6 +204,32 @@ typedef long		int_fast64_t;
 #ifndef INT32_MIN
 #define INT32_MIN (-1 - INT32_MAX)
 #endif /* !defined INT32_MIN */
+
+#ifndef SIZE_MAX
+#define SIZE_MAX ((size_t) -1)
+#endif
+
+#if 2 < __GNUC__ + (96 <= __GNUC_MINOR__)
+# define ATTRIBUTE_CONST __attribute__ ((const))
+# define ATTRIBUTE_PURE __attribute__ ((__pure__))
+# define ATTRIBUTE_FORMAT(spec) __attribute__ ((__format__ spec))
+#else
+# define ATTRIBUTE_CONST /* empty */
+# define ATTRIBUTE_PURE /* empty */
+# define ATTRIBUTE_FORMAT(spec) /* empty */
+#endif
+
+#if !defined _Noreturn && __STDC_VERSION__ < 201112
+# if 2 < __GNUC__ + (8 <= __GNUC_MINOR__)
+#  define _Noreturn __attribute__ ((__noreturn__))
+# else
+#  define _Noreturn
+# endif
+#endif
+
+#if __STDC_VERSION__ < 199901 && !defined restrict
+# define restrict /* empty */
+#endif
 
 /*
 ** Workarounds for compilers/systems.
@@ -169,16 +246,63 @@ extern char *	asctime_r(struct tm const *, char *);
 #endif
 
 /*
+** Compile with -Dtime_tz=T to build the tz package with a private
+** time_t type equivalent to T rather than the system-supplied time_t.
+** This debugging feature can test unusual design decisions
+** (e.g., time_t wider than 'long', or unsigned time_t) even on
+** typical platforms.
+*/
+#ifdef time_tz
+static time_t sys_time(time_t *x) { return time(x); }
+
+# undef  ctime
+# define ctime tz_ctime
+# undef  ctime_r
+# define ctime_r tz_ctime_r
+# undef  difftime
+# define difftime tz_difftime
+# undef  gmtime
+# define gmtime tz_gmtime
+# undef  gmtime_r
+# define gmtime_r tz_gmtime_r
+# undef  localtime
+# define localtime tz_localtime
+# undef  localtime_r
+# define localtime_r tz_localtime_r
+# undef  mktime
+# define mktime tz_mktime
+# undef  time
+# define time tz_time
+# undef  time_t
+# define time_t tz_time_t
+
+typedef time_tz time_t;
+
+char *ctime(time_t const *);
+char *ctime_r(time_t const *, char *);
+double difftime(time_t, time_t);
+struct tm *gmtime(time_t const *);
+struct tm *gmtime_r(time_t const *restrict, struct tm *restrict);
+struct tm *localtime(time_t const *);
+struct tm *localtime_r(time_t const *restrict, struct tm *restrict);
+time_t mktime(struct tm *);
+
+static time_t
+time(time_t *p)
+{
+	time_t r = sys_time(0);
+	if (p)
+		*p = r;
+	return r;
+}
+#endif
+
+/*
 ** Private function declarations.
 */
 
-char *		icalloc(int nelem, int elsize);
 char *		icatalloc(char * old, const char * new);
 char *		icpyalloc(const char * string);
-char *		imalloc(int n);
-void *		irealloc(void * pointer, int size);
-void		icfree(char * pointer);
-void		ifree(char * pointer);
 const char *	scheck(const char * string, const char * format);
 
 /*
@@ -201,14 +325,15 @@ const char *	scheck(const char * string, const char * format);
 #define TYPE_SIGNED(type) (((type) -1) < 0)
 #endif /* !defined TYPE_SIGNED */
 
-/*
-** Since the definition of TYPE_INTEGRAL contains floating point numbers,
-** it cannot be used in preprocessor directives.
-*/
-
-#ifndef TYPE_INTEGRAL
-#define TYPE_INTEGRAL(type) (((type) 0.5) != 0.5)
-#endif /* !defined TYPE_INTEGRAL */
+/* The minimum and maximum finite time values.  */
+static time_t const time_t_min =
+  (TYPE_SIGNED(time_t)
+   ? (time_t) -1 << (CHAR_BIT * sizeof (time_t) - 1)
+   : 0);
+static time_t const time_t_max =
+  (TYPE_SIGNED(time_t)
+   ? - (~ 0 < 0) - ((time_t) -1 << (CHAR_BIT * sizeof (time_t) - 1))
+   : -1);
 
 #ifndef INT_STRLEN_MAXIMUM
 /*

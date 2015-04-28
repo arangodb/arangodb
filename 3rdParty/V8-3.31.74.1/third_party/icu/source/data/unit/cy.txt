@@ -1,0 +1,227 @@
+﻿// ***************************************************************************
+// *
+// * Copyright (C) 2014 International Business Machines
+// * Corporation and others. All Rights Reserved.
+// * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
+// * Source File: <path>/common/main/cy.xml
+// *
+// ***************************************************************************
+/**
+ * ICU <specials> source: <path>/common/main/cy.xml
+ */
+cy{
+    Version{"2.1.7.80"}
+    units{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                few{"{0} diwrnod"}
+                many{"{0} diwrnod"}
+                one{"{0} diwrnod"}
+                other{"{0} diwrnod"}
+                two{"{0} ddiwrnod"}
+                zero{"{0} diwrnod"}
+            }
+            hour{
+                few{"{0} awr"}
+                many{"{0} awr"}
+                one{"{0} awr"}
+                other{"{0} awr"}
+                two{"{0} awr"}
+                zero{"{0} awr"}
+            }
+            millisecond{
+                few{"{0} milieiliad"}
+                many{"{0} milieiliad"}
+                one{"{0} milieiliad"}
+                other{"{0} milieiliad"}
+                two{"{0} filieiliad"}
+                zero{"{0} milieiliad"}
+            }
+            minute{
+                few{"{0} munud"}
+                many{"{0} munud"}
+                one{"{0} munud"}
+                other{"{0} munud"}
+                two{"{0} funud"}
+                zero{"{0} munud"}
+            }
+            month{
+                few{"{0} mis"}
+                many{"{0} mis"}
+                one{"{0} mis"}
+                other{"{0} mis"}
+                two{"{0} fis"}
+                zero{"{0} mis"}
+            }
+            second{
+                few{"{0} eiliad"}
+                many{"{0} eiliad"}
+                one{"{0} eiliad"}
+                other{"{0} eiliad"}
+                two{"{0} eiliad"}
+                zero{"{0} eiliad"}
+            }
+            week{
+                few{"{0} wythnos"}
+                many{"{0} wythnos"}
+                one{"{0} wythnos"}
+                other{"{0} wythnos"}
+                two{"{0} wythnos"}
+                zero{"{0} wythnos"}
+            }
+            year{
+                few{"{0} blynedd"}
+                many{"{0} blynedd"}
+                one{"{0} flwyddyn"}
+                other{"{0} mlynedd"}
+                two{"{0} flynedd"}
+                zero{"{0} mlynedd"}
+            }
+        }
+    }
+    unitsNarrow{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                few{"{0}d"}
+                many{"{0}d"}
+                one{"{0}d"}
+                other{"{0}d"}
+                two{"{0}d"}
+                zero{"{0}d"}
+            }
+            hour{
+                few{"{0} awr"}
+                many{"{0} awr"}
+                one{"{0} awr"}
+                other{"{0} awr"}
+                two{"{0} awr"}
+                zero{"{0} awr"}
+            }
+            millisecond{
+                few{"{0}ms"}
+                many{"{0}ms"}
+                one{"{0}ms"}
+                other{"{0}ms"}
+                two{"{0}ms"}
+                zero{"{0}ms"}
+            }
+            minute{
+                few{"{0} mun"}
+                many{"{0} mun"}
+                one{"{0} mun"}
+                other{"{0} mun"}
+                two{"{0} mun"}
+                zero{"{0} mun"}
+            }
+            month{
+                few{"{0}m"}
+                many{"{0}m"}
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+                zero{"{0}m"}
+            }
+            second{
+                few{"{0} eil"}
+                many{"{0} eil"}
+                one{"{0} eil"}
+                other{"{0} eil"}
+                two{"{0} eil"}
+                zero{"{0} eil"}
+            }
+            week{
+                few{"{0}w"}
+                many{"{0}w"}
+                one{"{0}w"}
+                other{"{0}w"}
+                two{"{0}w"}
+                zero{"{0}w"}
+            }
+            year{
+                few{"{0}bl"}
+                many{"{0}bl"}
+                one{"{0}bl"}
+                other{"{0}bl"}
+                two{"{0}bl"}
+                zero{"{0}bl"}
+            }
+        }
+    }
+    unitsShort{
+        compound{
+            per{"{0}/{1}"}
+        }
+        duration{
+            day{
+                few{"{0} diwrnod"}
+                many{"{0} diwrnod"}
+                one{"{0} diwrnod"}
+                other{"{0} diwrnod"}
+                two{"{0} ddiwrnod"}
+                zero{"{0} diwrnod"}
+            }
+            hour{
+                few{"{0} awr"}
+                many{"{0} awr"}
+                one{"{0} awr"}
+                other{"{0} awr"}
+                two{"{0} awr"}
+                zero{"{0} awr"}
+            }
+            millisecond{
+                few{"{0} ms"}
+                many{"{0} ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+                two{"{0} ms"}
+                zero{"{0} ms"}
+            }
+            minute{
+                few{"{0} mun"}
+                many{"{0} mun"}
+                one{"{0} mun"}
+                other{"{0} mun"}
+                two{"{0} mun"}
+                zero{"{0} mun"}
+            }
+            month{
+                few{"{0} mis"}
+                many{"{0} mis"}
+                one{"{0} mis"}
+                other{"{0} mis"}
+                two{"{0} fis"}
+                zero{"{0} mis"}
+            }
+            second{
+                few{"{0} eil"}
+                many{"{0} eil"}
+                one{"{0} eil"}
+                other{"{0} eil"}
+                two{"{0} eil"}
+                zero{"{0} eil"}
+            }
+            week{
+                few{"{0} wythnos"}
+                many{"{0} wythnos"}
+                one{"{0} wythnos"}
+                other{"{0} wythnos"}
+                two{"{0} wythnos"}
+                zero{"{0} wythnos"}
+            }
+            year{
+                few{"{0} bl"}
+                many{"{0} bl"}
+                one{"{0} bl"}
+                other{"{0} bl"}
+                two{"{0} bl"}
+                zero{"{0} bl"}
+            }
+        }
+    }
+}

@@ -1,6 +1,6 @@
 /*
 ********************************************************************************
-*   Copyright (C) 2012, International Business Machines
+*   Copyright (C) 2012-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ********************************************************************************/
 
@@ -17,7 +17,8 @@ U_NAMESPACE_BEGIN
 enum EDecimalFormatFastpathStatus {
   kFastpathNO = 0,
   kFastpathYES = 1,
-  kFastpathUNKNOWN = 2 /* not yet set */
+  kFastpathUNKNOWN = 2, /* not yet set */
+  kFastpathMAYBE = 3 /* depends on value being formatted. */
 };
 
 /**
@@ -26,7 +27,12 @@ enum EDecimalFormatFastpathStatus {
 struct DecimalFormatInternal {
   uint8_t    fFastFormatStatus;
   uint8_t    fFastParseStatus;
-  
+
+  DecimalFormatInternal &operator=(const DecimalFormatInternal& rhs) {
+    fFastParseStatus = rhs.fFastParseStatus;
+    fFastFormatStatus = rhs.fFastFormatStatus;
+    return *this;
+  }
 #ifdef FMT_DEBUG
   void dump() const {
     printf("DecimalFormatInternal: fFastFormatStatus=%c, fFastParseStatus=%c\n",
@@ -34,7 +40,7 @@ struct DecimalFormatInternal {
            "NY?"[(int)fFastParseStatus&3]
            );
   }
-#endif  
+#endif
 };
 
 

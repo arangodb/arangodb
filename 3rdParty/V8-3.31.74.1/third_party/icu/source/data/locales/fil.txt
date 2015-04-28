@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fil.xml
@@ -26,6 +26,7 @@ fil{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"{0}+"}
@@ -154,10 +155,13 @@ fil{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         generic{
             DateTimePatterns{
@@ -170,8 +174,8 @@ fil{
                 "MMM d, y G",
                 "M/d/y GGGGG",
                 "{1}, {0}",
-                "{1} 'ng' {0}",
-                "{1} 'ng' {0}",
+                "{1} 'nang' {0}",
+                "{1} 'nang' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
             }
@@ -311,6 +315,10 @@ fil{
                 "AM",
                 "PM",
             }
+            AmPmMarkersAbbr{
+                "AM",
+                "PM",
+            }
             AmPmMarkersNarrow{
                 "a",
                 "p",
@@ -325,24 +333,27 @@ fil{
                 "MMM d, y",
                 "M/d/yy",
                 "{1}, {0}",
-                "{1} 'ng' {0}",
-                "{1} 'ng' {0}",
+                "{1} 'nang' {0}",
+                "{1} 'nang' {0}",
                 "{1}, {0}",
                 "{1}, {0}",
             }
+            NoonMarker{"tanghali"}
+            NoonMarkerNarrow{"tanghali"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"d E"}
                 Ehm{"E h:mm a"}
                 Ehms{"E h:mm:ss a"}
-                Gy{"y G"}
-                GyMMM{"MMM y G"}
-                GyMMMEd{"E, MMM d, y G"}
-                GyMMMd{"MMM d, y G"}
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y MMM d, E"}
+                GyMMMd{"G y MMM d"}
                 H{"HH"}
                 Hm{"HH:mm"}
                 Hms{"HH:mm:ss"}
@@ -453,6 +464,18 @@ fil{
                 abbreviated{
                     "BC",
                     "AD",
+                }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
+                wide{
+                    "BC",
+                    "AD",
+                }
+                wide%variant{
+                    "BCE",
+                    "CE",
                 }
             }
             intervalFormats{
@@ -699,20 +722,46 @@ fil{
         day{
             dn{"Araw"}
             relative{
-                "-1"{"Kahapon"}
+                "-1"{"kahapon"}
                 "-2"{"Araw bago ang kahapon"}
-                "0"{"Ngayon"}
-                "1"{"Bukas"}
+                "0"{"ngayong araw"}
+                "1"{"bukas"}
                 "2"{"Samakalawa"}
             }
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} araw"}
-                    other{"Sa loob ng {0} araw"}
+                    one{"sa {0} araw"}
+                    other{"sa {0} (na) araw"}
                 }
                 past{
                     one{"{0} araw ang nakalipas"}
-                    other{"{0} araw ang nakalipas"}
+                    other{"{0} (na) araw ang nakalipas"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"Araw"}
+            relativeTime{
+                future{
+                    one{"sa {0} araw"}
+                    other{"sa {0} (na) araw"}
+                }
+                past{
+                    one{"{0} araw ang nakalipas"}
+                    other{"{0} (na) araw nakalipas"}
+                }
+            }
+        }
+        day-short{
+            dn{"Araw"}
+            relativeTime{
+                future{
+                    one{"sa {0} araw"}
+                    other{"sa {0} (na) araw"}
+                }
+                past{
+                    one{"{0} araw ang nakalipas"}
+                    other{"{0} (na) araw nakalipas"}
                 }
             }
         }
@@ -729,16 +778,56 @@ fil{
                 "1"{"susunod na Biyernes"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"nakaraang Biy."}
+                "0"{"ngayong Biy."}
+                "1"{"susunod na Biy."}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"nakaraang Biy."}
+                "0"{"ngayong Biy."}
+                "1"{"susunod na Biy."}
+            }
+        }
         hour{
             dn{"Oras"}
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} oras"}
-                    other{"Sa loob ng {0} oras"}
+                    one{"sa {0} oras"}
+                    other{"sa {0} (na) oras"}
                 }
                 past{
                     one{"{0} oras ang nakalipas"}
-                    other{"{0} oras ang nakalipas"}
+                    other{"{0} (na) oras ang nakalipas"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"hr."}
+            relativeTime{
+                future{
+                    one{"sa {0} oras"}
+                    other{"sa {0} (na) oras"}
+                }
+                past{
+                    one{"{0} oras nakalipas"}
+                    other{"{0} (na) oras nakalipas"}
+                }
+            }
+        }
+        hour-short{
+            dn{"hr."}
+            relativeTime{
+                future{
+                    one{"sa {0} oras"}
+                    other{"sa {0} (na) oras"}
+                }
+                past{
+                    one{"{0} oras nakalipas"}
+                    other{"{0} (na) oras nakalipas"}
                 }
             }
         }
@@ -746,12 +835,38 @@ fil{
             dn{"Minuto"}
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} minuto"}
-                    other{"Sa loob ng {0} minuto"}
+                    one{"sa {0} minuto"}
+                    other{"sa {0} (na) minuto"}
                 }
                 past{
                     one{"{0} minuto ang nakalipas"}
-                    other{"{0} minuto ang nakalipas"}
+                    other{"sa {0} (na) minuto"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"min."}
+            relativeTime{
+                future{
+                    one{"sa {0} min."}
+                    other{"sa {0} (na) min."}
+                }
+                past{
+                    one{"{0} min. ang nakalipas"}
+                    other{"{0} (na) min. ang nakalipas"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    one{"sa {0} min."}
+                    other{"sa {0} (na) min."}
+                }
+                past{
+                    one{"{0} min. ang nakalipas"}
+                    other{"{0} (na) min. ang nakalipas"}
                 }
             }
         }
@@ -760,6 +875,20 @@ fil{
                 "-1"{"nakaraang Lunes"}
                 "0"{"ngayong Lunes"}
                 "1"{"susunod na Lunes"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"nakaraang Lun."}
+                "0"{"ngayong Lun."}
+                "1"{"susunod na Lun."}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"nakaraang Lun."}
+                "0"{"ngayong Lun."}
+                "1"{"susunod na Lun."}
             }
         }
         month{
@@ -771,12 +900,77 @@ fil{
             }
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} buwan"}
-                    other{"Sa loob ng {0} buwan"}
+                    one{"sa {0} buwan"}
+                    other{"sa {0} (na) buwan"}
                 }
                 past{
                     one{"{0} buwan ang nakalipas"}
-                    other{"{0} buwan ang nakalipas"}
+                    other{"{0} (na) buwan ang nakalipas"}
+                }
+            }
+        }
+        month-narrow{
+            dn{"mo."}
+            relativeTime{
+                future{
+                    one{"sa {0} buwan"}
+                    other{"sa {0} (na) buwan"}
+                }
+                past{
+                    one{"{0} buwan ang nakalipas"}
+                    other{"{0} (na) buwan ang nakalipas"}
+                }
+            }
+        }
+        month-short{
+            dn{"mo."}
+            relativeTime{
+                future{
+                    one{"sa {0} buwan"}
+                    other{"sa {0} (na) buwan"}
+                }
+                past{
+                    one{"{0} buwan ang nakalipas"}
+                    other{"{0} (na) buwan ang nakalipas"}
+                }
+            }
+        }
+        quarter{
+            dn{"Quarter"}
+            relativeTime{
+                future{
+                    one{"sa {0} quarter"}
+                    other{"sa {0} (na) quarter"}
+                }
+                past{
+                    one{"{0} quarter ang nakalipas"}
+                    other{"{0} (na) quarter ang nakalipas"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"qtr."}
+            relativeTime{
+                future{
+                    one{"sa {0} quarter"}
+                    other{"sa {0} (na) quarter"}
+                }
+                past{
+                    one{"{0} quarter ang nakalipas"}
+                    other{"{0} (na) quarter ang nakalipas"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"qtr."}
+            relativeTime{
+                future{
+                    one{"sa {0} (na) quarter"}
+                    other{"sa {0} (na) quarter"}
+                }
+                past{
+                    one{"{0} quarter ang nakalipas"}
+                    other{"{0} (na) quarter ang nakalipas"}
                 }
             }
         }
@@ -787,6 +981,20 @@ fil{
                 "1"{"susunod na Sabado"}
             }
         }
+        sat-narrow{
+            relative{
+                "-1"{"nakaraang Sab."}
+                "0"{"ngayong Sab."}
+                "1"{"susunod na Sab."}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"nakaraang Sab."}
+                "0"{"ngayong Sab."}
+                "1"{"susunod na Sab."}
+            }
+        }
         second{
             dn{"Segundo"}
             relative{
@@ -794,12 +1002,38 @@ fil{
             }
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} segundo"}
-                    other{"Sa loob ng {0} segundo"}
+                    one{"sa {0} segundo"}
+                    other{"sa {0} (na) segundo"}
                 }
                 past{
                     one{"{0} segundo ang nakalipas"}
-                    other{"{0} segundo ang nakalipas"}
+                    other{"{0} (na) segundo ang nakalipas"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"seg."}
+            relativeTime{
+                future{
+                    one{"sa {0} seg."}
+                    other{"sa {0} (na) seg."}
+                }
+                past{
+                    one{"{0} seg. nakalipas"}
+                    other{"{0} (na) seg. nakalipas"}
+                }
+            }
+        }
+        second-short{
+            dn{"seg."}
+            relativeTime{
+                future{
+                    one{"sa {0} seg."}
+                    other{"sa {0} (na) seg."}
+                }
+                past{
+                    one{"{0} seg. ang nakalipas"}
+                    other{"{0} (na) seg. nakalipas"}
                 }
             }
         }
@@ -810,11 +1044,39 @@ fil{
                 "1"{"susunod na Linggo"}
             }
         }
+        sun-narrow{
+            relative{
+                "-1"{"nakaraang Lin."}
+                "0"{"ngayong Lin."}
+                "1"{"susunod na Lin."}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"nakaraang Lin."}
+                "0"{"ngayong Lin."}
+                "1"{"susunod na Lin."}
+            }
+        }
         thu{
             relative{
-                "-1"{"nakaraan Huwebes"}
+                "-1"{"nakaraang Huwebes"}
                 "0"{"ngayong Huwebes"}
                 "1"{"susunod na Huwebes"}
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"nakaraang Huw."}
+                "0"{"ngayong Huw."}
+                "1"{"susunod na Huw."}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"nakaraang Huw."}
+                "0"{"ngayong Huw."}
+                "1"{"susunod na Huw."}
             }
         }
         tue{
@@ -824,11 +1086,39 @@ fil{
                 "1"{"susunod na Martes"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"nakaraang Mar."}
+                "0"{"ngayong Mar."}
+                "1"{"susunod na Mar."}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"nakaraang Mar."}
+                "0"{"ngayong Mar."}
+                "1"{"susunod na Mar."}
+            }
+        }
         wed{
             relative{
                 "-1"{"nakaraang Miyerkules"}
                 "0"{"ngayong Miyerkules"}
                 "1"{"susunod na Miyerkules"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"nakaraang Miy."}
+                "0"{"ngayong Miy."}
+                "1"{"susunod na Miy."}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"nakaraang Miy."}
+                "0"{"ngayong Miy."}
+                "1"{"susunod na Miy."}
             }
         }
         week{
@@ -840,12 +1130,38 @@ fil{
             }
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} linggo"}
-                    other{"Sa loob ng {0} linggo"}
+                    one{"sa {0} linggo"}
+                    other{"sa {0} (na) linggo"}
                 }
                 past{
-                    one{"{0} na linggo ang nakalipas"}
-                    other{"{0} linggo ang nakalipas"}
+                    one{"{0} linggo ang nakalipas"}
+                    other{"{0} (na) linggo ang nakalipas"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"wk."}
+            relativeTime{
+                future{
+                    one{"sa {0} linggo"}
+                    other{"sa {0} (na) linggo"}
+                }
+                past{
+                    one{"{0} linggo ang nakalipas"}
+                    other{"{0} (na) linggo ang nakalipas"}
+                }
+            }
+        }
+        week-short{
+            dn{"wk."}
+            relativeTime{
+                future{
+                    one{"sa {0} linggo"}
+                    other{"sa {0} (na) linggo"}
+                }
+                past{
+                    one{"{0} linggo ang nakalipas"}
+                    other{"{0} (na) linggo ang nakalipas"}
                 }
             }
         }
@@ -861,12 +1177,38 @@ fil{
             }
             relativeTime{
                 future{
-                    one{"Sa loob ng {0} taon"}
-                    other{"Sa loob ng {0} taon"}
+                    one{"sa {0} taon"}
+                    other{"sa {0} (na) taon"}
                 }
                 past{
                     one{"{0} taon ang nakalipas"}
-                    other{"{0} taon ang nakalipas"}
+                    other{"{0} (na) taon ang nakalipas"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"yr."}
+            relativeTime{
+                future{
+                    one{"sa {0} taon"}
+                    other{"sa {0} (na) taon"}
+                }
+                past{
+                    one{"{0} taon ang nakalipas"}
+                    other{"{0} (na) taon ang nakalipas"}
+                }
+            }
+        }
+        year-short{
+            dn{"yr."}
+            relativeTime{
+                future{
+                    one{"sa {0} taon"}
+                    other{"sa {0} (na) taon"}
+                }
+                past{
+                    one{"{0} taon ang nakalipas"}
+                    other{"{0} (na) taon ang nakalipas"}
                 }
             }
         }
@@ -877,13 +1219,19 @@ fil{
     listPattern{
         standard{
             2{"{0} at {1}"}
-            end{"{0}, and {1}"}
+            end{"{0}, at {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
         unit{
-            2{"{0} at {1}"}
-            end{"{0}, and {1}"}
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
             middle{"{0}, {1}"}
             start{"{0}, {1}"}
         }
@@ -910,122 +1258,5 @@ fil{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Publishing"}
-    }
-    units{
-        compound{
-            per{"{0} bawat {1}"}
-        }
-        duration{
-            day{
-                one{"{0} araw"}
-                other{"{0} araw"}
-            }
-            hour{
-                one{"{0} oras"}
-                other{"{0} oras"}
-            }
-            millisecond{
-                one{"{0} millisecond"}
-                other{"{0} millisecond"}
-            }
-            minute{
-                one{"{0} minuto"}
-                other{"{0} minuto"}
-            }
-            month{
-                one{"{0} buwan"}
-                other{"{0} buwan"}
-            }
-            second{
-                one{"{0} segundo"}
-                other{"{0} segundo"}
-            }
-            week{
-                one{"{0} linggo"}
-                other{"{0} linggo"}
-            }
-            year{
-                one{"{0} taon"}
-                other{"{0} taon"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0}d"}
-                other{"{0}d"}
-            }
-            hour{
-                one{"{0}h"}
-                other{"{0}h"}
-            }
-            millisecond{
-                one{"{0}ms"}
-                other{"{0}ms"}
-            }
-            minute{
-                one{"{0}m"}
-                other{"{0}m"}
-            }
-            month{
-                one{"{0}m"}
-                other{"{0}m"}
-            }
-            second{
-                one{"{0}s"}
-                other{"{0}s"}
-            }
-            week{
-                one{"{0}w"}
-                other{"{0}w"}
-            }
-            year{
-                one{"{0}y"}
-                other{"{0}y"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} araw"}
-                other{"{0} araw"}
-            }
-            hour{
-                one{"{0} hr"}
-                other{"{0} hrs"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} mins"}
-            }
-            month{
-                one{"{0} mth"}
-                other{"{0} mths"}
-            }
-            second{
-                one{"{0} sec"}
-                other{"{0} secs"}
-            }
-            week{
-                one{"{0} wk"}
-                other{"{0} wks"}
-            }
-            year{
-                one{"{0} yr"}
-                other{"{0} yrs"}
-            }
-        }
     }
 }

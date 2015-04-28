@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 2012-2013, International Business Machines
+*   Copyright (C) 2012-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -182,8 +182,8 @@ void ListFormatterTest::TestZulu() {
     UnicodeString results[4] = {
         one,
         "I-" + one + " ne-" + two,
-        one + ", " + two + ", no-" + three,
-        one + ", " + two + ", " + three + ", no-" + four
+        one + ", " + two + ", ne-" + three,
+        one + ", " + two + ", " + three + ", ne-" + four
     };
 
     CheckFourCases("zu", one, two, three, four, results);
@@ -199,7 +199,7 @@ void ListFormatterTest::TestOutOfOrderPatterns() {
 
     ListFormatData data("{1} after {0}", "{1} after the first {0}",
                         "{1} after {0}", "{1} in the last after {0}");
-    ListFormatter formatter(&data);
+    ListFormatter formatter(data);
 
     UnicodeString input1[] = {one};
     CheckFormatting(&formatter, input1, 1, results[0]);

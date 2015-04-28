@@ -1,25 +1,29 @@
-static char	elsieid[] = "@(#)zdump.c	8.8";
+/*
+** This file is in the public domain, so clarified as of
+** 2009-05-17 by Arthur David Olson.
+*/
+
+#include "version.h"
 
 /*
 ** This code has been made independent of the rest of the time
 ** conversion package to increase confidence in the verification it provides.
 ** You can use this code to help in verifying other implementations.
+**
+** However, include private.h when debugging, so that it overrides
+** time_t consistently with the rest of the package.
 */
 
-/*
- * ICU note: Mr. Arthur David Olson (olsona@dc37a.nci.nih.gov) stated that
- * "zdump.c is indeed in the public domain" in e-mail on Feb 22, 2007.
- * This version of zdump.c is modified by ICU team to change output format
- * and some additional options.
- */
-
+#ifdef time_tz
+# include "private.h"
+#endif
 
 #include "stdio.h"	/* for stdout, stderr, perror */
 #include "string.h"	/* for strcpy */
 #include "sys/types.h"	/* for time_t */
 #include "time.h"	/* for struct tm */
 #include "stdlib.h"	/* for exit, malloc, atoi */
-#include "float.h"	/* for FLT_MAX and DBL_MAX */
+#include "limits.h"	/* for CHAR_BIT, LLONG_MAX */
 #include "ctype.h"	/* for isalpha et al. */
 
 /* Enable extensions and modifications for ICU. */
@@ -32,6 +36,52 @@ static char	elsieid[] = "@(#)zdump.c	8.8";
 #ifndef isascii
 #define isascii(x) 1
 #endif /* !defined isascii */
+
+/*
+** Substitutes for pre-C99 compilers.
+** Much of this section of code is stolen from private.h.
+*/
+
+#ifndef HAVE_STDINT_H
+# define HAVE_STDINT_H \
+    (199901 <= __STDC_VERSION__ || 2 < (__GLIBC__ + (0 < __GLIBC_MINOR__)))
+#endif
+#if HAVE_STDINT_H
+# include "stdint.h"
+#endif
+#ifndef HAVE_INTTYPES_H
+# define HAVE_INTTYPES_H HAVE_STDINT_H
+#endif
+#if HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+
+#ifndef INT_FAST32_MAX
+# if INT_MAX >> 31 == 0
+typedef long int_fast32_t;
+# else
+typedef int int_fast32_t;
+# endif
+#endif
+
+#ifndef INTMAX_MAX
+# if defined LLONG_MAX || defined __LONG_LONG_MAX__
+typedef long long intmax_t;
+#  define strtoimax strtoll
+#  define PRIdMAX "lld"
+#  ifdef LLONG_MAX
+#   define INTMAX_MAX LLONG_MAX
+#  else
+#   define INTMAX_MAX __LONG_LONG_MAX__
+#  endif
+# else
+typedef long intmax_t;
+#  define strtoimax strtol
+#  define PRIdMAX "ld"
+#  define INTMAX_MAX LONG_MAX
+# endif
+#endif
+
 
 #ifndef ZDUMP_LO_YEAR
 #define ZDUMP_LO_YEAR	(-500)
@@ -100,9 +150,20 @@ static char	elsieid[] = "@(#)zdump.c	8.8";
 #define isleap_sum(a, b)	isleap((a) % 400 + (b) % 400)
 #endif /* !defined isleap_sum */
 
-#define SECSPERDAY	((long) SECSPERHOUR * HOURSPERDAY)
+#define SECSPERDAY	((int_fast32_t) SECSPERHOUR * HOURSPERDAY)
 #define SECSPERNYEAR	(SECSPERDAY * DAYSPERNYEAR)
 #define SECSPERLYEAR	(SECSPERNYEAR + SECSPERDAY)
+#define SECSPER400YEARS	(SECSPERNYEAR * (intmax_t) (300 + 3)	\
+			 + SECSPERLYEAR * (intmax_t) (100 - 3))
+
+/*
+** True if SECSPER400YEARS is known to be representable as an
+** intmax_t.  It's OK that SECSPER400YEARS_FITS can in theory be false
+** even if SECSPER400YEARS is representable, because when that happens
+** the code merely runs a bit more slowly, and this slowness doesn't
+** occur on any practical platform.
+*/
+enum { SECSPER400YEARS_FITS = SECSPERLYEAR <= INTMAX_MAX / 400 };
 
 #ifndef HAVE_GETTEXT
 #define HAVE_GETTEXT 0
@@ -122,13 +183,11 @@ static char	elsieid[] = "@(#)zdump.c	8.8";
 #endif /* !defined lint */
 #endif /* !defined GNUC_or_lint */
 
-#ifndef INITIALIZE
-#ifdef GNUC_or_lint
-#define INITIALIZE(x)	((x) = 0)
-#else /* !defined GNUC_or_lint */
-#define INITIALIZE(x)
-#endif /* !defined GNUC_or_lint */
-#endif /* !defined INITIALIZE */
+#if 2 < __GNUC__ || (__GNUC__ == 2 && 96 <= __GNUC_MINOR__)
+# define ATTRIBUTE_PURE __attribute__ ((__pure__))
+#else
+# define ATTRIBUTE_PURE /* empty */
+#endif
 
 /*
 ** For the benefit of GNU folk...
@@ -155,21 +214,27 @@ extern char *	optarg;
 extern int	optind;
 extern char *	tzname[2];
 
-static time_t	absolute_min_time;
-static time_t	absolute_max_time;
+/* The minimum and maximum finite time values.  */
+static time_t const absolute_min_time =
+  ((time_t) -1 < 0
+   ? (time_t) -1 << (CHAR_BIT * sizeof (time_t) - 1)
+   : 0);
+static time_t const absolute_max_time =
+  ((time_t) -1 < 0
+   ? - (~ 0 < 0) - ((time_t) -1 << (CHAR_BIT * sizeof (time_t) - 1))
+   : -1);
 static size_t	longest;
 static char *	progname;
 static int	warned;
 
 static char *	abbr(struct tm * tmp);
 static void	abbrok(const char * abbrp, const char * zone);
-static long	delta(struct tm * newp, struct tm * oldp);
+static intmax_t	delta(struct tm * newp, struct tm * oldp) ATTRIBUTE_PURE;
 static void	dumptime(const struct tm * tmp);
 static time_t	hunt(char * name, time_t lot, time_t	hit);
-static void	setabsolutes(void);
 static void	show(char * zone, time_t t, int v);
 static const char *	tformat(void);
-static time_t	yeartot(long y);
+static time_t	yeartot(intmax_t y) ATTRIBUTE_PURE;
 #ifdef ICU
 typedef struct listentry {
 	char *		name;
@@ -187,8 +252,7 @@ static void getzones(char * basedir, char * subdir, struct listentry ** last, in
 #define my_localtime	localtime
 #else /* !defined TYPECHECK */
 static struct tm *
-my_localtime(tp)
-time_t *	tp;
+my_localtime(time_t *tp)
 {
 	register struct tm *	tmp;
 
@@ -199,7 +263,7 @@ time_t *	tp;
 
 		tm = *tmp;
 		t = mktime(&tm);
-		if (t - *tp >= 1 || *tp - t >= 1) {
+		if (t != *tp) {
 			(void) fflush(stdout);
 			(void) fprintf(stderr, "\n%s: ", progname);
 			(void) fprintf(stderr, tformat(), *tp);
@@ -221,12 +285,10 @@ time_t *	tp;
 #endif /* !defined TYPECHECK */
 
 static void
-abbrok(abbrp, zone)
-const char * const	abbrp;
-const char * const	zone;
+abbrok(const char *const abbrp, const char *const zone)
 {
 	register const char *	cp;
-	register char *		wp;
+	register const char *	wp;
 
 	if (warned)
 		return;
@@ -259,27 +321,24 @@ const char * const	zone;
 }
 
 static void
-usage(const char *progname, FILE *stream, int status)
+usage(FILE * const stream, const int status)
 {
 	(void) fprintf(stream,
-_("%s: usage is %s [ --version ] [ --help ] [ -v ] [ -c [loyear,]hiyear ] zonename ...\n\
-\n\
-Report bugs to tz@elsie.nci.nih.gov.\n"),
-		       progname, progname);
+_("%s: usage: %s [--version] [--help] [-{vV}] [-{ct} [lo,]hi] zonename ...\n"
+  "\n"
+  "Report bugs to %s.\n"),
+		       progname, progname, REPORT_BUGS_TO);
 	exit(status);
 }
 
 int
-main(argc, argv)
-int	argc;
-char *	argv[];
+main(int argc, char *argv[])
 {
 	register int		i;
-	register int		c;
 	register int		vflag;
+	register int		Vflag;
 	register char *		cutarg;
-	register long		cutloyear = ZDUMP_LO_YEAR;
-	register long		cuthiyear = ZDUMP_HI_YEAR;
+	register char *		cuttimes;
 	register time_t		cutlotime;
 	register time_t		cuthitime;
 	register char **	fakeenv;
@@ -299,8 +358,8 @@ char *	argv[];
 	FILE *	fp = stdout;
 #endif
 
-	INITIALIZE(cutlotime);
-	INITIALIZE(cuthitime);
+	cutlotime = absolute_min_time;
+	cuthitime = absolute_max_time;
 #if HAVE_GETTEXT
 	(void) setlocale(LC_ALL, "");
 #ifdef TZ_DOMAINDIR
@@ -311,49 +370,54 @@ char *	argv[];
 	progname = argv[0];
 	for (i = 1; i < argc; ++i)
 		if (strcmp(argv[i], "--version") == 0) {
-			(void) printf("%s\n", elsieid);
+			(void) printf("zdump %s%s\n", PKGVERSION, TZVERSION);
 			exit(EXIT_SUCCESS);
 		} else if (strcmp(argv[i], "--help") == 0) {
-			usage(progname, stdout, EXIT_SUCCESS);
+			usage(stdout, EXIT_SUCCESS);
 		}
-	vflag = 0;
-	cutarg = NULL;
+	vflag = Vflag = 0;
+	cutarg = cuttimes = NULL;
 #ifdef ICU
 	aflag = 0;
 	iflag = 0;
 	dirarg = NULL;
-	nextopt = 1;
-	while(nextopt) {
-		c = getopt(argc, argv, "ac:d:iv");
-		switch(c) {
-		case 'a':
-			aflag = 1;
-			break;
-		case 'c':
-			cutarg = optarg;
-			break;
-		case 'd':
-			dirarg = optarg;
-			break;
-		case 'i':
-			iflag = 1;
-			break;
-		case 'v':
-			vflag = 1;
-			break;
+	for (;;)
+		switch(getopt(argc, argv, "ac:d:it:vV")) {
+		case 'a': aflag = 1; break;
+		case 'c': cutarg = optarg; break;
+		case 'd': dirarg = optarg; break;
+		case 'i': iflag = 1; break;
+		case 't': cuttimes = optarg; break;
+		case 'v': vflag = 1; break;
+		case 'V': Vflag = 1; break;
+		case -1:
+			if (! (optind == argc - 1 && strcmp(argv[optind], "=") == 0))
+				goto arg_processing_done;
+		/* Fall through.  */
 		default:
-			nextopt = 0;
-			break;
-		}
-	}
-	if ((c != EOF && c != -1) ||
-		(optind == argc - 1 && strcmp(argv[optind], "=") == 0)) {
 			(void) fprintf(stderr,
-				_("%s: usage is %s [ --version ] [ -a ] [ -v ] [ -i ] [ -c [loyear,]hiyear ] [ -d dir ] [ zonename ... ]\n"),
+				_("%s: usage is %s [ --version ] [ -a ] [ -v ] [ -V ] [ -i ] [ -c [loyear,]hiyear ] [ -t [lotime,]hitime] ][ -d dir ] [ zonename ... ]\n"),
 				progname, progname);
 			exit(EXIT_FAILURE);
-	}
+		}
+#else
+	for (;;)
+	  switch (getopt(argc, argv, "c:t:vV")) {
+	  case 'c': cutarg = optarg; break;
+	  case 't': cuttimes = optarg; break;
+	  case 'v': vflag = 1; break;
+	  case 'V': Vflag = 1; break;
+	  case -1:
+	    if (! (optind == argc - 1 && strcmp(argv[optind], "=") == 0))
+	      goto arg_processing_done;
+	    /* Fall through.  */
+	  default:
+	    usage(stderr, EXIT_FAILURE);
+	  }
+#endif
+ arg_processing_done:;
 
+#ifdef ICU
 	if (dirarg != NULL) {
 		DIR *	dp;
 		/* create the output directory */
@@ -364,37 +428,63 @@ char *	argv[];
 		}
 		closedir(dp);
 	}
-#else
-	while ((c = getopt(argc, argv, "c:v")) == 'c' || c == 'v')
-		if (c == 'v')
-			vflag = 1;
-		else	cutarg = optarg;
-	if ((c != EOF && c != -1) ||
-		(optind == argc - 1 && strcmp(argv[optind], "=") == 0)) {
-			usage(progname, stderr, EXIT_FAILURE);
-	}
-#endif
-	if (vflag) {
-		if (cutarg != NULL) {
-			long	lo;
-			long	hi;
-			char	dummy;
+#endif ICU
 
-			if (sscanf(cutarg, "%ld%c", &hi, &dummy) == 1) {
+	if (vflag | Vflag) {
+		intmax_t	lo;
+		intmax_t	hi;
+		char *loend, *hiend;
+		register intmax_t cutloyear = ZDUMP_LO_YEAR;
+		register intmax_t cuthiyear = ZDUMP_HI_YEAR;
+		if (cutarg != NULL) {
+			lo = strtoimax(cutarg, &loend, 10);
+			if (cutarg != loend && !*loend) {
+				hi = lo;
 				cuthiyear = hi;
-			} else if (sscanf(cutarg, "%ld,%ld%c",
-				&lo, &hi, &dummy) == 2) {
-					cutloyear = lo;
-					cuthiyear = hi;
+			} else if (cutarg != loend && *loend == ','
+				   && (hi = strtoimax(loend + 1, &hiend, 10),
+				       loend + 1 != hiend && !*hiend)) {
+				cutloyear = lo;
+				cuthiyear = hi;
 			} else {
 (void) fprintf(stderr, _("%s: wild -c argument %s\n"),
 					progname, cutarg);
 				exit(EXIT_FAILURE);
 			}
 		}
-		setabsolutes();
-		cutlotime = yeartot(cutloyear);
-		cuthitime = yeartot(cuthiyear);
+		if (cutarg != NULL || cuttimes == NULL) {
+			cutlotime = yeartot(cutloyear);
+			cuthitime = yeartot(cuthiyear);
+		}
+		if (cuttimes != NULL) {
+			lo = strtoimax(cuttimes, &loend, 10);
+			if (cuttimes != loend && !*loend) {
+				hi = lo;
+				if (hi < cuthitime) {
+					if (hi < absolute_min_time)
+						hi = absolute_min_time;
+					cuthitime = hi;
+				}
+			} else if (cuttimes != loend && *loend == ','
+				   && (hi = strtoimax(loend + 1, &hiend, 10),
+				       loend + 1 != hiend && !*hiend)) {
+				if (cutlotime < lo) {
+					if (absolute_max_time < lo)
+						lo = absolute_max_time;
+					cutlotime = lo;
+				}
+				if (hi < cuthitime) {
+					if (hi < absolute_min_time)
+						hi = absolute_min_time;
+					cuthitime = hi;
+				}
+			} else {
+				(void) fprintf(stderr,
+					_("%s: wild -t argument %s\n"),
+					progname, cuttimes);
+				exit(EXIT_FAILURE);
+			}
+		}
 	}
 
 #ifdef ICU
@@ -434,10 +524,9 @@ char *	argv[];
 
 		for (i = 0; environ[i] != NULL; ++i)
 			continue;
-		fakeenv = (char **) malloc((size_t) ((i + 2) *
-			sizeof *fakeenv));
-		if (fakeenv == NULL ||
-			(fakeenv[0] = (char *) malloc(longest + 4)) == NULL) {
+		fakeenv = malloc((i + 2) * sizeof *fakeenv);
+		if (fakeenv == NULL
+		    || (fakeenv[0] = malloc(longest + 4)) == NULL) {
 					(void) perror(progname);
 					exit(EXIT_FAILURE);
 		}
@@ -453,7 +542,7 @@ char *	argv[];
 		static char	buf[MAX_STRING_LENGTH];
 
 		(void) strcpy(&fakeenv[0][3], argv[i]);
-		if (!vflag) {
+		if (! (vflag | Vflag)) {
 			show(argv[i], now, FALSE);
 			continue;
 		}
@@ -493,9 +582,11 @@ char *	argv[];
 		 * a transition when -i option is set */
 		if (!iflag) {
 #endif
-		show(argv[i], t, TRUE);
-		t += SECSPERHOUR * HOURSPERDAY;
-		show(argv[i], t, TRUE);
+		if (!Vflag) {
+			show(argv[i], t, TRUE);
+			t += SECSPERDAY;
+			show(argv[i], t, TRUE);
+		}
 #ifdef ICU
 		}
 #endif
@@ -507,9 +598,11 @@ char *	argv[];
 			(void) strncpy(buf, abbr(&tm), (sizeof buf) - 1);
 		}
 		for ( ; ; ) {
-			if (t >= cuthitime || t >= cuthitime - SECSPERHOUR * 12)
+			newt = (t < absolute_max_time - SECSPERDAY / 2
+				? t + SECSPERDAY / 2
+				: absolute_max_time);
+			if (cuthitime <= newt)
 				break;
-			newt = t + SECSPERHOUR * 12;
 			newtmp = localtime(&newt);
 			if (newtmp != NULL)
 				newtm = *newtmp;
@@ -556,12 +649,13 @@ char *	argv[];
 		/* skip displaying info for the highest time, which is actually not
 		 * a transition when -i option is used*/
 #endif
-		t = absolute_max_time;
-		t -= SECSPERHOUR * HOURSPERDAY;
-		show(argv[i], t, TRUE);
-		t += SECSPERHOUR * HOURSPERDAY;
-		show(argv[i], t, TRUE);
-
+		if (!Vflag) {
+			t = absolute_max_time;
+			t -= SECSPERDAY;
+			show(argv[i], t, TRUE);
+			t += SECSPERDAY;
+			show(argv[i], t, TRUE);
+		}
 #ifdef ICU
 		}
 		/* close file */
@@ -592,79 +686,45 @@ char *	argv[];
 	return EXIT_FAILURE;
 }
 
-static void
-setabsolutes(void)
-{
-	if (0.5 == (time_t) 0.5) {
-		/*
-		** time_t is floating.
-		*/
-		if (sizeof (time_t) == sizeof (float)) {
-			absolute_min_time = (time_t) -FLT_MAX;
-			absolute_max_time = (time_t) FLT_MAX;
-		} else if (sizeof (time_t) == sizeof (double)) {
-			absolute_min_time = (time_t) -DBL_MAX;
-			absolute_max_time = (time_t) DBL_MAX;
-		} else {
-			(void) fprintf(stderr,
-_("%s: use of -v on system with floating time_t other than float or double\n"),
-				progname);
-			exit(EXIT_FAILURE);
-		}
-	} else if (0 > (time_t) -1) {
-		/*
-		** time_t is signed.  Assume overflow wraps around.
-		*/
-		time_t t = 0;
-		time_t t1 = 1;
-
-		while (t < t1) {
-			t = t1;
-			t1 = 2 * t1 + 1;
-		}
-
-		absolute_max_time = t;
-		t = -t;
-		absolute_min_time = t - 1;
-		if (t < absolute_min_time)
-			absolute_min_time = t;
-	} else {
-		/*
-		** time_t is unsigned.
-		*/
-		absolute_min_time = 0;
-		absolute_max_time = absolute_min_time - 1;
-	}
-}
-
 static time_t
-yeartot(y)
-const long	y;
+yeartot(const intmax_t y)
 {
-	register long	myy;
-	register long	seconds;
-	register time_t	t;
+	register intmax_t	myy, seconds, years;
+	register time_t		t;
 
 	myy = EPOCH_YEAR;
 	t = 0;
-	while (myy != y) {
-		if (myy < y) {
+	while (myy < y) {
+		if (SECSPER400YEARS_FITS && 400 <= y - myy) {
+			intmax_t diff400 = (y - myy) / 400;
+			if (INTMAX_MAX / SECSPER400YEARS < diff400)
+				return absolute_max_time;
+			seconds = diff400 * SECSPER400YEARS;
+			years = diff400 * 400;
+                } else {
 			seconds = isleap(myy) ? SECSPERLYEAR : SECSPERNYEAR;
-			++myy;
-			if (t > absolute_max_time - seconds) {
-				t = absolute_max_time;
-				break;
-			}
-			t += seconds;
-		} else {
-			--myy;
-			seconds = isleap(myy) ? SECSPERLYEAR : SECSPERNYEAR;
-			if (t < absolute_min_time + seconds) {
-				t = absolute_min_time;
-				break;
-			}
-			t -= seconds;
+			years = 1;
 		}
+		myy += years;
+		if (t > absolute_max_time - seconds)
+			return absolute_max_time;
+		t += seconds;
+	}
+	while (y < myy) {
+		if (SECSPER400YEARS_FITS && y + 400 <= myy && myy < 0) {
+			intmax_t diff400 = (myy - y) / 400;
+			if (INTMAX_MAX / SECSPER400YEARS < diff400)
+				return absolute_min_time;
+			seconds = diff400 * SECSPER400YEARS;
+			years = diff400 * 400;
+		} else {
+			seconds = isleap(myy - 1) ? SECSPERLYEAR : SECSPERNYEAR;
+			years = 1;
+		}
+		myy -= years;
+		if (t < absolute_min_time + seconds)
+			return absolute_min_time;
+		t -= seconds;
 	}
 	return t;
 }
@@ -673,7 +733,6 @@ static time_t
 hunt(char *name, time_t lot, time_t hit)
 {
 	time_t			t;
-	long			diff;
 	struct tm		lotm;
 	register struct tm *	lotmp;
 	struct tm		tm;
@@ -686,7 +745,7 @@ hunt(char *name, time_t lot, time_t hit)
 		(void) strncpy(loab, abbr(&lotm), (sizeof loab) - 1);
 	}
 	for ( ; ; ) {
-		diff = (long) (hit - lot);
+		time_t diff = hit - lot;
 		if (diff < 2)
 			break;
 		t = lot;
@@ -716,13 +775,11 @@ hunt(char *name, time_t lot, time_t hit)
 ** Thanks to Paul Eggert for logic used in delta.
 */
 
-static long
-delta(newp, oldp)
-struct tm *	newp;
-struct tm *	oldp;
+static intmax_t
+delta(struct tm * newp, struct tm *oldp)
 {
-	register long	result;
-	register int	tmy;
+	register intmax_t	result;
+	register int		tmy;
 
 	if (newp->tm_year < oldp->tm_year)
 		return -delta(oldp, newp);
@@ -751,7 +808,7 @@ show(char *zone, time_t t, int v)
 			(void) printf(tformat(), t);
 		} else {
 			dumptime(tmp);
-			(void) printf(" UTC");
+			(void) printf(" UT");
 		}
 		(void) printf(" = ");
 	}
@@ -773,8 +830,7 @@ show(char *zone, time_t t, int v)
 }
 
 static char *
-abbr(tmp)
-struct tm *	tmp;
+abbr(struct tm *tmp)
 {
 	register char *	result;
 	static char	nada;
@@ -793,18 +849,19 @@ struct tm *	tmp;
 static const char *
 tformat(void)
 {
-	if (0.5 == (time_t) 0.5) {	/* floating */
-		if (sizeof (time_t) > sizeof (double))
-			return "%Lg";
-		return "%g";
-	}
 	if (0 > (time_t) -1) {		/* signed */
+		if (sizeof (time_t) == sizeof (intmax_t))
+			return "%"PRIdMAX;
 		if (sizeof (time_t) > sizeof (long))
 			return "%lld";
 		if (sizeof (time_t) > sizeof (int))
 			return "%ld";
 		return "%d";
 	}
+#ifdef PRIuMAX
+	if (sizeof (time_t) == sizeof (uintmax_t))
+		return "%"PRIuMAX;
+#endif
 	if (sizeof (time_t) > sizeof (unsigned long))
 		return "%llu";
 	if (sizeof (time_t) > sizeof (unsigned int))
@@ -813,8 +870,7 @@ tformat(void)
 }
 
 static void
-dumptime(timeptr)
-register const struct tm *	timeptr;
+dumptime(register const struct tm *timeptr)
 {
 	static const char	wday_name[][3] = {
 		"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"

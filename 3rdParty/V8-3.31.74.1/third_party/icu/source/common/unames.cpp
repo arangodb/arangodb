@@ -1,7 +1,7 @@
 /*
 ******************************************************************************
 *
-*   Copyright (C) 1999-2013, International Business Machines
+*   Copyright (C) 1999-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 ******************************************************************************
@@ -32,8 +32,6 @@
 U_NAMESPACE_BEGIN
 
 /* prototypes ------------------------------------------------------------- */
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 static const char DATA_NAME[] = "unames";
 static const char DATA_TYPE[] = "icu";
@@ -438,7 +436,7 @@ static const char *getCharCatName(UChar32 cp) {
     /* Return unknown if the table of names above is not up to
        date. */
 
-    if (cat >= LENGTHOF(charCatNames)) {
+    if (cat >= UPRV_LENGTHOF(charCatNames)) {
         return "unknown";
     } else {
         return charCatNames[cat];
@@ -1277,7 +1275,7 @@ static int32_t
 calcExtNameSetsLengths(int32_t maxNameLength) {
     int32_t i, length;
 
-    for(i=0; i<LENGTHOF(charCatNames); ++i) {
+    for(i=0; i<UPRV_LENGTHOF(charCatNames); ++i) {
         /*
          * for each category, count the length of the category name
          * plus 9=
@@ -1440,13 +1438,17 @@ calcNameSetsLengths(UErrorCode *pErrorCode) {
     return TRUE;
 }
 
+U_NAMESPACE_END
+
 /* public API --------------------------------------------------------------- */
+
+U_NAMESPACE_USE
 
 U_CAPI int32_t U_EXPORT2
 u_charName(UChar32 code, UCharNameChoice nameChoice,
            char *buffer, int32_t bufferLength,
            UErrorCode *pErrorCode) {
-    AlgorithmicRange *algRange;
+     AlgorithmicRange *algRange;
     uint32_t *p;
     uint32_t i;
     int32_t length;
@@ -1552,15 +1554,16 @@ u_charFromName(UCharNameChoice nameChoice,
         *pErrorCode = U_ILLEGAL_CHAR_FOUND;
         return error;
     }
+    // i==strlen(name)==strlen(lower)==strlen(upper)
 
     /* try extended names first */
     if (lower[0] == '<') {
         if (nameChoice == U_EXTENDED_CHAR_NAME) {
-            if (lower[--i] == '>') {
-                for (--i; lower[i] && lower[i] != '-'; --i) {
-                }
+            // Parse a string like "<category-HHHH>" where HHHH is a hex code point.
+            if (lower[--i] == '>' && i >= 3 && lower[--i] != '-') {
+                while (i >= 3 && lower[--i] != '-') {}
 
-                if (lower[i] == '-') { /* We've got a category. */
+                if (i >= 2 && lower[i] == '-') {
                     uint32_t cIdx;
 
                     lower[i] = 0;
@@ -1580,7 +1583,7 @@ u_charFromName(UCharNameChoice nameChoice,
                        We could use a binary search, or a trie, if
                        we really wanted to. */
 
-                    for (lower[i] = 0, cIdx = 0; cIdx < LENGTHOF(charCatNames); ++cIdx) {
+                    for (lower[i] = 0, cIdx = 0; cIdx < UPRV_LENGTHOF(charCatNames); ++cIdx) {
 
                         if (!uprv_strcmp(lower + 1, charCatNames[cIdx])) {
                             if (getCharCat(cp) == cIdx) {
@@ -2085,8 +2088,6 @@ uchar_swapNames(const UDataSwapper *ds,
 
     return headerSize+(int32_t)offset;
 }
-
-U_NAMESPACE_END
 
 /*
  * Hey, Emacs, please set the following:

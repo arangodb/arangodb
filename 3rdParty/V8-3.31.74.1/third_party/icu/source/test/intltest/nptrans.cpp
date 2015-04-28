@@ -1,7 +1,7 @@
 /*
  *******************************************************************************
  *
- *   Copyright (C) 2003-2010, International Business Machines
+ *   Copyright (C) 2003-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  *
  *******************************************************************************
@@ -27,7 +27,7 @@
 #include "ustr_imp.h"
 #include "intltest.h"
 
-#ifdef DEBUG 
+#ifdef NPTRANS_DEBUG 
 #include <stdio.h>
 #endif
 
@@ -84,14 +84,14 @@ NamePrepTransform::NamePrepTransform(UParseError& parseError, UErrorCode& status
         pattern =  ures_getStringByKey(bundle,"ProhibitedSet",&patternLen, &status);
         UnicodeString test(pattern,patternLen);
         prohibited.applyPattern(test,status);
-#ifdef DEBUG
+#ifdef NPTRANS_DEBUG
         if(U_FAILURE(status)){
             printf("Construction of Unicode set failed\n");
         }
 
         if(U_SUCCESS(status)){
             if(prohibited.contains((UChar) 0x644)){
-                printf("The string contains 0x644 ... damn !!\n");
+                printf("The string contains 0x644 ... !!\n");
             }
             UnicodeString temp;
             prohibited.toPattern(temp,TRUE);

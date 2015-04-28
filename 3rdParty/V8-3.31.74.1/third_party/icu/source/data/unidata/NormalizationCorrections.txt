@@ -1,10 +1,10 @@
-# NormalizationCorrections-6.3.0.txt
-# Date: 2013-01-02, 08:39:00 GMT [KW, LI]
+# NormalizationCorrections-7.0.0.txt
+# Date: 2013-12-17, 00:00:00 GMT [KW, LI]
 #
 # This file is a normative contributory data file in the
 # Unicode Character Database.
 #
-# Copyright (c) 1991-2013 Unicode, Inc.
+# Copyright (c) 1991-2014 Unicode, Inc.
 # For terms of use, see http://www.unicode.org/terms_of_use.html
 #
 # The normalization stability policy of the Unicode Consortium

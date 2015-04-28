@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/sw.xml
@@ -15,7 +15,7 @@ sw{
         AC{"Kisiwa cha Ascension"}
         AD{"Andora"}
         AE{"Falme za Kiarabu"}
-        AF{"Afuganistani"}
+        AF{"Afghanistan"}
         AG{"Antigua na Barbuda"}
         AI{"Anguilla"}
         AL{"Albania"}
@@ -38,7 +38,7 @@ sw{
         BG{"Bulgaria"}
         BH{"Bahareni"}
         BI{"Burundi"}
-        BJ{"Benini"}
+        BJ{"Benin"}
         BL{"Santabathelemi"}
         BM{"Bermuda"}
         BN{"Brunei"}
@@ -69,7 +69,7 @@ sw{
         CV{"Kepuvede"}
         CW{"Kurakao"}
         CX{"Kisiwa cha Krismasi"}
-        CY{"Kuprosi"}
+        CY{"Saiprasi"}
         CZ{"Jamhuri ya Cheki"}
         DE{"Ujerumani"}
         DG{"Diego Garcia"}
@@ -112,7 +112,7 @@ sw{
         GU{"Gwam"}
         GW{"Ginebisau"}
         GY{"Guyana"}
-        HK{"Hong Kong SAR China"}
+        HK{"Hong Kong"}
         HM{"Kisiwa cha Heard na Visiwa vya McDonald"}
         HN{"Hondurasi"}
         HR{"Korasia"}
@@ -126,7 +126,7 @@ sw{
         IN{"India"}
         IO{"Eneo la Uingereza katika Bahari Hindi"}
         IQ{"Iraki"}
-        IR{"Uajemi"}
+        IR{"Iran"}
         IS{"Aislandi"}
         IT{"Italia"}
         JE{"Jersey"}
@@ -147,7 +147,7 @@ sw{
         LA{"Laosi"}
         LB{"Lebanoni"}
         LC{"Santalusia"}
-        LI{"Lishenteni"}
+        LI{"Liechtenstein"}
         LK{"Sirilanka"}
         LR{"Liberia"}
         LS{"Lesoto"}
@@ -160,13 +160,13 @@ sw{
         MD{"Moldova"}
         ME{"Montenegro"}
         MF{"Saint Martin"}
-        MG{"Bukini"}
+        MG{"Madagaska"}
         MH{"Visiwa vya Marshal"}
         MK{"Masedonia"}
         ML{"Mali"}
         MM{"Myanmar (Burma)"}
         MN{"Mongolia"}
-        MO{"Macau SAR China"}
+        MO{"Macau"}
         MP{"Visiwa vya Mariana vya Kaskazini"}
         MQ{"Martiniki"}
         MR{"Moritania"}
@@ -181,7 +181,7 @@ sw{
         NA{"Namibia"}
         NC{"Nyukaledonia"}
         NE{"Nijeri"}
-        NF{"Kisiwa cha Norfok"}
+        NF{"Kisiwa cha Norfolk"}
         NG{"Nigeria"}
         NI{"Nikaragwa"}
         NL{"Uholanzi"}
@@ -201,7 +201,7 @@ sw{
         PM{"Santapieri na Mikeloni"}
         PN{"Pitkairni"}
         PR{"Pwetoriko"}
-        PS{"Maeneo ya Palestina"}
+        PS{"Palestina"}
         PT{"Ureno"}
         PW{"Palau"}
         PY{"Paragwai"}
@@ -273,11 +273,15 @@ sw{
         ZW{"Zimbabwe"}
         ZZ{"Eneo lisilojulikana"}
     }
+    Countries%variant{
+        CG{"Jamhuri ya Kongo"}
+        CI{"Ivory Coast"}
+        FK{"Visiwa vya Falkland (Islas Malvinas)"}
+        MK{"Masedonia (FYROM)"}
+    }
     CountriesShort{
         GB{"Uingereza"}
-        HK{"Hong Kong"}
-        MO{"Macau"}
-        PS{"Palestina"}
+        US{"US"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
 }

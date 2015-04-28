@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/supplementalMetadata.xml
@@ -14,11 +14,13 @@ metadata:table(nofallback){
         afr{"af"}
         aju{"jrb"}
         aka{"ak"}
+        alb{"sq"}
         als{"sq"}
         amh{"am"}
         ara{"ar"}
         arb{"ar"}
         arg{"an"}
+        arm{"hy"}
         art_lojban{"jbo"}
         asm{"as"}
         ava{"av"}
@@ -29,6 +31,7 @@ metadata:table(nofallback){
         azj{"az"}
         bak{"ba"}
         bam{"bm"}
+        baq{"eu"}
         bcc{"bal"}
         bcl{"bik"}
         bel{"be"}
@@ -39,12 +42,14 @@ metadata:table(nofallback){
         bos{"bs"}
         bre{"br"}
         bul{"bg"}
+        bur{"my"}
         bxk{"luy"}
         bxr{"bua"}
         cat{"ca"}
         ces{"cs"}
         cha{"ch"}
         che{"ce"}
+        chi{"zh"}
         chu{"cu"}
         chv{"cv"}
         cld{"syr"}
@@ -54,6 +59,7 @@ metadata:table(nofallback){
         cre{"cr"}
         cwd{"cr"}
         cym{"cy"}
+        cze{"cs"}
         dan{"da"}
         deu{"de"}
         dgo{"doi"}
@@ -61,6 +67,7 @@ metadata:table(nofallback){
         dik{"din"}
         diq{"zza"}
         div{"dv"}
+        dut{"nl"}
         dzo{"dz"}
         ekk{"et"}
         ell{"el"}
@@ -77,16 +84,20 @@ metadata:table(nofallback){
         fij{"fj"}
         fin{"fi"}
         fra{"fr"}
+        fre{"fr"}
         fry{"fy"}
         fuc{"ff"}
         ful{"ff"}
         gaz{"om"}
         gbo{"grb"}
+        geo{"ka"}
+        ger{"de"}
         gla{"gd"}
         gle{"ga"}
         glg{"gl"}
         glv{"gv"}
         gno{"gon"}
+        gre{"el"}
         grn{"gn"}
         gug{"gn"}
         guj{"gu"}
@@ -115,6 +126,7 @@ metadata:table(nofallback){
         i_tay{"tay"}
         i_tsu{"tsu"}
         ibo{"ig"}
+        ice{"is"}
         ido{"io"}
         iii{"ii"}
         ike{"iu"}
@@ -163,16 +175,19 @@ metadata:table(nofallback){
         lub{"lu"}
         lug{"lg"}
         lvs{"lv"}
+        mac{"mk"}
         mah{"mh"}
         mal{"ml"}
+        mao{"mi"}
         mar{"mr"}
+        may{"ms"}
         mhr{"chm"}
         mkd{"mk"}
         mlg{"mg"}
         mlt{"mt"}
         mnk{"man"}
-        mo{"ro"}
-        mol{"ro"}
+        mo{"ro_MD"}
+        mol{"ro_MD"}
         mon{"mn"}
         mri{"mi"}
         msa{"ms"}
@@ -204,6 +219,7 @@ metadata:table(nofallback){
         oss{"os"}
         pan{"pa"}
         pbu{"ps"}
+        per{"fa"}
         pes{"fa"}
         pli{"pi"}
         plt{"mg"}
@@ -212,10 +228,11 @@ metadata:table(nofallback){
         por{"pt"}
         pus{"ps"}
         que{"qu"}
-        qxp{"qu"}
+        quz{"qu"}
         rmy{"rom"}
         roh{"rm"}
         ron{"ro"}
+        rum{"ro"}
         run{"rn"}
         rus{"ru"}
         sag{"sg"}
@@ -226,6 +243,7 @@ metadata:table(nofallback){
         sh{"sr_Latn"}
         sin{"si"}
         slk{"sk"}
+        slo{"sk"}
         slv{"sl"}
         sme{"se"}
         smo{"sm"}
@@ -251,6 +269,7 @@ metadata:table(nofallback){
         tgk{"tg"}
         tgl{"fil"}
         tha{"th"}
+        tib{"bo"}
         tir{"ti"}
         tl{"fil"}
         ton{"to"}
@@ -270,6 +289,7 @@ metadata:table(nofallback){
         ven{"ve"}
         vie{"vi"}
         vol{"vo"}
+        wel{"cy"}
         wln{"wa"}
         wol{"wo"}
         xho{"xh"}

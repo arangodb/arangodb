@@ -1,6 +1,6 @@
 /************************************************************************
  * COPYRIGHT: 
- * Copyright (c) 1997-2013, International Business Machines Corporation
+ * Copyright (c) 1997-2014, International Business Machines Corporation
  * and others. All Rights Reserved.
  ************************************************************************/
 #include "unicode/utypes.h"
@@ -29,6 +29,14 @@
             dataerrln("%s:%d: Test failure.  status=%s", __FILE__, __LINE__, u_errorName(status)); \
         } else { \
             errln("%s:%d: Test failure.  status=%s", __FILE__, __LINE__, u_errorName(status)); \
+        } return;}}
+
+#define TEST_CHECK_STATUS_LOCALE(testlocale) { \
+    if (U_FAILURE(status)) { \
+        if (status == U_MISSING_RESOURCE_ERROR) { \
+            dataerrln("%s:%d: Test failure, locale %s.  status=%s", __FILE__, __LINE__, testlocale, u_errorName(status)); \
+        } else { \
+            errln("%s:%d: Test failure, locale %s.  status=%s", __FILE__, __LINE__, testlocale, u_errorName(status)); \
         } return;}}
 
 #define TEST_ASSERT(expr) {if ((expr)==FALSE) {errln("%s:%d: Test failure \n", __FILE__, __LINE__);};}
@@ -298,6 +306,27 @@ void CalendarTest::runIndexedTest( int32_t index, UBool exec, const char* &name,
             TestIslamicTabularDates();
           }
           break;
+        case 33:
+          name = "TestHebrewMonthValidation";
+          if(exec) {
+            logln("TestHebrewMonthValidation---"); logln("");
+            TestHebrewMonthValidation();
+          }
+          break;
+        case 34:
+          name = "TestWeekData";
+          if(exec) {
+            logln("TestWeekData---"); logln("");
+            TestWeekData();
+          }
+          break;
+        case 35:
+          name = "TestAddAcrossZoneTransition";
+          if(exec) {
+            logln("TestAddAcrossZoneTransition---"); logln("");
+            TestAddAcrossZoneTransition();
+          }
+          break;
         default: name = ""; break;
     }
 }
@@ -353,12 +382,12 @@ CalendarTest::TestGenericAPI()
 
     SimpleTimeZone *zone = new SimpleTimeZone(tzoffset, tzid);
     Calendar *cal = Calendar::createInstance(zone->clone(), status);
-    if (failure(status, "Calendar::createInstance", TRUE)) return;
+    if (failure(status, "Calendar::createInstance #1", TRUE)) return;
 
     if (*zone != cal->getTimeZone()) errln("FAIL: Calendar::getTimeZone failed");
 
     Calendar *cal2 = Calendar::createInstance(cal->getTimeZone(), status);
-    if (failure(status, "Calendar::createInstance")) return;
+    if (failure(status, "Calendar::createInstance #2")) return;
     cal->setTime(when, status);
     cal2->setTime(when, status);
     if (failure(status, "Calendar::setTime")) return;
@@ -503,17 +532,20 @@ CalendarTest::TestGenericAPI()
         for (i=0; i<count; ++i)
         {
             cal = Calendar::createInstance(loc[i], status);
-            if (failure(status, "Calendar::createInstance")) return;
+            if (U_FAILURE(status)) {
+                errcheckln(status, UnicodeString("FAIL: Calendar::createInstance #3, locale ") +  loc[i].getName() + " , error " + u_errorName(status));
+                return;
+            }
             delete cal;
         }
     }
 
     cal = Calendar::createInstance(TimeZone::createDefault(), Locale::getEnglish(), status);
-    if (failure(status, "Calendar::createInstance")) return;
+    if (failure(status, "Calendar::createInstance #4")) return;
     delete cal;
 
     cal = Calendar::createInstance(*zone, Locale::getEnglish(), status);
-    if (failure(status, "Calendar::createInstance")) return;
+    if (failure(status, "Calendar::createInstance #5")) return;
     delete cal;
 
     GregorianCalendar *gc = new GregorianCalendar(*zone, status);
@@ -555,7 +587,7 @@ CalendarTest::TestGenericAPI()
 
     /* Code coverage for Calendar class. */
     cal = Calendar::createInstance(status);
-    if (failure(status, "Calendar::createInstance")) {
+    if (failure(status, "Calendar::createInstance #6")) {
         return;
     }else {
         ((Calendar *)cal)->roll(UCAL_HOUR, (int32_t)100, status);
@@ -569,7 +601,7 @@ CalendarTest::TestGenericAPI()
 
     status = U_ZERO_ERROR;
     cal = Calendar::createInstance(Locale("he_IL@calendar=hebrew"), status);
-    if (failure(status, "Calendar::createInstance")) {
+    if (failure(status, "Calendar::createInstance #7")) {
         return;
     } else {
         cal->roll(Calendar::MONTH, (int32_t)100, status);
@@ -2408,12 +2440,13 @@ CalendarTest::TestAmbiguousWallTimeAPIs(void) {
 
 class CalFields {
 public:
-    CalFields(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t min, int32_t sec);
+    CalFields(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t min, int32_t sec, int32_t ms = 0);
     CalFields(const Calendar& cal, UErrorCode& status);
     void setTo(Calendar& cal) const;
     char* toString(char* buf, int32_t len) const;
     UBool operator==(const CalFields& rhs) const;
     UBool operator!=(const CalFields& rhs) const;
+    UBool isEquivalentTo(const Calendar& cal, UErrorCode& status) const;
 
 private:
     int32_t year;
@@ -2422,10 +2455,11 @@ private:
     int32_t hour;
     int32_t min;
     int32_t sec;
+    int32_t ms;
 };
 
-CalFields::CalFields(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t min, int32_t sec)
-    : year(year), month(month), day(day), hour(hour), min(min), sec(sec) {
+CalFields::CalFields(int32_t year, int32_t month, int32_t day, int32_t hour, int32_t min, int32_t sec, int32_t ms)
+    : year(year), month(month), day(day), hour(hour), min(min), sec(sec), ms(ms) {
 }
 
 CalFields::CalFields(const Calendar& cal, UErrorCode& status) {
@@ -2435,18 +2469,20 @@ CalFields::CalFields(const Calendar& cal, UErrorCode& status) {
     hour = cal.get(UCAL_HOUR_OF_DAY, status);
     min = cal.get(UCAL_MINUTE, status);
     sec = cal.get(UCAL_SECOND, status);
+    ms = cal.get(UCAL_MILLISECOND, status);
 }
 
 void
 CalFields::setTo(Calendar& cal) const {
     cal.clear();
     cal.set(year, month - 1, day, hour, min, sec);
+    cal.set(UCAL_MILLISECOND, ms);
 }
 
 char*
 CalFields::toString(char* buf, int32_t len) const {
     char local[32];
-    sprintf(local, "%04d-%02d-%02d %02d:%02d:%02d", year, month, day, hour, min, sec);
+    sprintf(local, "%04d-%02d-%02d %02d:%02d:%02d.%03d", year, month, day, hour, min, sec, ms);
     uprv_strncpy(buf, local, len - 1);
     buf[len - 1] = 0;
     return buf;
@@ -2459,12 +2495,24 @@ CalFields::operator==(const CalFields& rhs) const {
         && day == rhs.day
         && hour == rhs.hour
         && min == rhs.min
-        && sec == rhs.sec;
+        && sec == rhs.sec
+        && ms == rhs.ms;
 }
 
 UBool
 CalFields::operator!=(const CalFields& rhs) const {
     return !(*this == rhs);
+}
+
+UBool
+CalFields::isEquivalentTo(const Calendar& cal, UErrorCode& status) const {
+    return year == cal.get(UCAL_YEAR, status)
+        && month == cal.get(UCAL_MONTH, status) + 1
+        && day == cal.get(UCAL_DAY_OF_MONTH, status)
+        && hour == cal.get(UCAL_HOUR_OF_DAY, status)
+        && min == cal.get(UCAL_MINUTE, status)
+        && sec == cal.get(UCAL_SECOND, status)
+        && ms == cal.get(UCAL_MILLISECOND, status);
 }
 
 typedef struct {
@@ -2771,7 +2819,7 @@ void CalendarTest::TestIslamicUmAlQura() {
     UErrorCode status = U_ZERO_ERROR;
     Locale islamicLoc("ar_SA@calendar=islamic-umalqura"); 
     Calendar* tstCal = Calendar::createInstance(islamicLoc, status);
-    
+
     IslamicCalendar* iCal = (IslamicCalendar*)tstCal;
     if(strcmp(iCal->getType(), "islamic-umalqura") != 0) {
         errln("wrong type of calendar created - %s", iCal->getType());
@@ -2840,8 +2888,8 @@ void CalendarTest::TestIslamicUmAlQura() {
     int32_t is_month = is_cal->get(UCAL_MONTH,status);
     int32_t is_year = is_cal->get(UCAL_YEAR,status);
     TEST_CHECK_STATUS;
-    if(is_day != 29 || is_month != IslamicCalendar::RABI_2 || is_year != 1395)
-        errln("unexpected conversion date month %i not %i or day %i not 20 or year %i not 1395", is_month, IslamicCalendar::RABI_2, is_day, is_year);
+    if(is_day != 24 || is_month != IslamicCalendar::RABI_2 || is_year != 1395)
+        errln("unexpected conversion date month %i not %i or day %i not 24 or year %i not 1395", is_month, IslamicCalendar::RABI_2, is_day, is_year);
         
     UDate date2 = is_cal->getTime(status);
     TEST_CHECK_STATUS;
@@ -2858,7 +2906,7 @@ void CalendarTest::TestIslamicTabularDates() {
     UErrorCode status = U_ZERO_ERROR;
     Locale islamicLoc("ar_SA@calendar=islamic-civil"); 
     Locale tblaLoc("ar_SA@calendar=islamic-tbla"); 
-    SimpleDateFormat* formatter = new SimpleDateFormat("yyyy-MM-dd", Locale::getUS(), status);            
+    SimpleDateFormat* formatter = new SimpleDateFormat("yyyy-MM-dd", Locale::getUS(), status);
     UDate date = formatter->parse("1975-05-06", status);
 
     Calendar* tstCal = Calendar::createInstance(islamicLoc, status);
@@ -2885,6 +2933,252 @@ void CalendarTest::TestIslamicTabularDates() {
     delete formatter;
 }
 
+void CalendarTest::TestHebrewMonthValidation() {
+    UErrorCode status = U_ZERO_ERROR;
+    LocalPointer<Calendar>  cal(Calendar::createInstance(Locale::createFromName("he_IL@calendar=hebrew"), status));
+    if (failure(status, "Calendar::createInstance, locale:he_IL@calendar=hebrew", TRUE)) return;
+    Calendar *pCal = cal.getAlias();
+
+    UDate d;
+    pCal->setLenient(FALSE);
+
+    // 5776 is a leap year and has month Adar I
+    pCal->set(5776, HebrewCalendar::ADAR_1, 1);
+    d = pCal->getTime(status);
+    if (U_FAILURE(status)) {
+        errln("Fail: 5776 Adar I 1 is a valid date.");
+    }
+    status = U_ZERO_ERROR;
+
+    // 5777 is NOT a lear year and does not have month Adar I
+    pCal->set(5777, HebrewCalendar::ADAR_1, 1);
+    d = pCal->getTime(status);
+    (void)d;
+    if (status == U_ILLEGAL_ARGUMENT_ERROR) {
+        logln("Info: U_ILLEGAL_ARGUMENT_ERROR, because 5777 Adar I 1 is not a valid date.");
+    } else {
+        errln("Fail: U_ILLEGAL_ARGUMENT_ERROR should be set for input date 5777 Adar I 1.");
+    }
+}
+
+void CalendarTest::TestWeekData() {
+    // Each line contains two locales using the same set of week rule data.
+    const char* LOCALE_PAIRS[] = {
+        "en",       "en_US",
+        "de",       "de_DE",
+        "de_DE",    "en_DE",
+        "en_GB",    "und_GB",
+        "ar_EG",    "en_EG",
+        "ar_SA",    "fr_SA",
+        0
+    };
+
+    UErrorCode status;
+
+    for (int32_t i = 0; LOCALE_PAIRS[i] != 0; i += 2) {
+        status = U_ZERO_ERROR;
+        LocalPointer<Calendar>  cal1(Calendar::createInstance(LOCALE_PAIRS[i], status));
+        LocalPointer<Calendar>  cal2(Calendar::createInstance(LOCALE_PAIRS[i + 1], status));
+        TEST_CHECK_STATUS_LOCALE(LOCALE_PAIRS[i]);
+
+        // First day of week
+        UCalendarDaysOfWeek dow1 = cal1->getFirstDayOfWeek(status);
+        UCalendarDaysOfWeek dow2 = cal2->getFirstDayOfWeek(status);
+        TEST_CHECK_STATUS;
+        TEST_ASSERT(dow1 == dow2);
+
+        // Minimum days in first week
+        uint8_t minDays1 = cal1->getMinimalDaysInFirstWeek();
+        uint8_t minDays2 = cal2->getMinimalDaysInFirstWeek();
+        TEST_ASSERT(minDays1 == minDays2);
+
+        // Weekdays and Weekends
+        for (int32_t d = UCAL_SUNDAY; d <= UCAL_SATURDAY; d++) {
+            status = U_ZERO_ERROR;
+            UCalendarWeekdayType wdt1 = cal1->getDayOfWeekType((UCalendarDaysOfWeek)d, status);
+            UCalendarWeekdayType wdt2 = cal2->getDayOfWeekType((UCalendarDaysOfWeek)d, status);
+            TEST_CHECK_STATUS;
+            TEST_ASSERT(wdt1 == wdt2);
+        }
+    }
+}
+
+typedef struct {
+    const char* zone;
+    const CalFields base;
+    int32_t deltaDays;
+    UCalendarWallTimeOption skippedWTOpt;
+    const CalFields expected;
+} TestAddAcrossZoneTransitionData;
+
+static const TestAddAcrossZoneTransitionData AAZTDATA[] =
+{
+    // Time zone                Base wall time                      day(s)  Skipped time options
+    //                          Expected wall time
+    
+    // Add 1 day, from the date before DST transition
+    {"America/Los_Angeles",     CalFields(2014,3,8,1,59,59,999),    1,      UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,1,59,59,999)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,1,59,59,999),    1,      UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,1,59,59,999)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,1,59,59,999),    1,      UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,1,59,59,999)},
+
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,2,0,0,0),        1,      UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,1,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,2,0,0,0),        1,      UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,2,0,0,0),        1,      UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,2,30,0,0),       1,      UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,1,30,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,2,30,0,0),       1,      UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,3,30,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,2,30,0,0),       1,      UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,3,0,0,0),        1,      UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,3,0,0,0),        1,      UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,8,3,0,0,0),        1,      UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    // Subtract 1 day, from one day after DST transition
+    {"America/Los_Angeles",     CalFields(2014,3,10,1,59,59,999),   -1,     UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,1,59,59,999)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,1,59,59,999),   -1,     UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,1,59,59,999)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,1,59,59,999),   -1,     UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,1,59,59,999)},
+
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,2,0,0,0),       -1,     UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,1,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,2,0,0,0),       -1,     UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,2,0,0,0),       -1,     UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,2,30,0,0),      -1,     UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,1,30,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,2,30,0,0),      -1,     UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,3,30,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,2,30,0,0),      -1,     UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,3,0,0,0),       -1,     UCAL_WALLTIME_FIRST,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,3,0,0,0),       -1,     UCAL_WALLTIME_LAST,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+    {"America/Los_Angeles",     CalFields(2014,3,10,3,0,0,0),       -1,     UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2014,3,9,3,0,0,0)},
+
+
+    // Test case for ticket#10544
+    {"America/Santiago",        CalFields(2013,4,27,0,0,0,0),       134,    UCAL_WALLTIME_FIRST,
+                                CalFields(2013,9,7,23,0,0,0)},
+
+    {"America/Santiago",        CalFields(2013,4,27,0,0,0,0),       134,    UCAL_WALLTIME_LAST,
+                                CalFields(2013,9,8,1,0,0,0)},
+
+    {"America/Santiago",        CalFields(2013,4,27,0,0,0,0),       134,    UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2013,9,8,1,0,0,0)},
+
+
+    {"America/Santiago",        CalFields(2013,4,27,0,30,0,0),      134,    UCAL_WALLTIME_FIRST,
+                                CalFields(2013,9,7,23,30,0,0)},
+
+    {"America/Santiago",        CalFields(2013,4,27,0,30,0,0),      134,    UCAL_WALLTIME_LAST,
+                                CalFields(2013,9,8,1,30,0,0)},
+
+    {"America/Santiago",        CalFields(2013,4,27,0,30,0,0),      134,    UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2013,9,8,1,0,0,0)},
+
+
+    // Extreme transition - Pacific/Apia completely skips 2011-12-30
+    {"Pacific/Apia",            CalFields(2011,12,29,0,0,0,0),      1,      UCAL_WALLTIME_FIRST,
+                                CalFields(2011,12,31,0,0,0,0)},
+
+    {"Pacific/Apia",            CalFields(2011,12,29,0,0,0,0),      1,      UCAL_WALLTIME_LAST,
+                                CalFields(2011,12,31,0,0,0,0)},
+
+    {"Pacific/Apia",            CalFields(2011,12,29,0,0,0,0),      1,      UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2011,12,31,0,0,0,0)},
+
+
+    {"Pacific/Apia",            CalFields(2011,12,31,12,0,0,0),     -1,     UCAL_WALLTIME_FIRST,
+                                CalFields(2011,12,29,12,0,0,0)},
+
+    {"Pacific/Apia",            CalFields(2011,12,31,12,0,0,0),     -1,     UCAL_WALLTIME_LAST,
+                                CalFields(2011,12,29,12,0,0,0)},
+
+    {"Pacific/Apia",            CalFields(2011,12,31,12,0,0,0),     -1,     UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2011,12,29,12,0,0,0)},
+
+
+    // 30 minutes DST - Australia/Lord_Howe
+    {"Australia/Lord_Howe",     CalFields(2013,10,5,2,15,0,0),      1,      UCAL_WALLTIME_FIRST,
+                                CalFields(2013,10,6,1,45,0,0)},
+
+    {"Australia/Lord_Howe",     CalFields(2013,10,5,2,15,0,0),      1,      UCAL_WALLTIME_LAST,
+                                CalFields(2013,10,6,2,45,0,0)},
+
+    {"Australia/Lord_Howe",     CalFields(2013,10,5,2,15,0,0),      1,      UCAL_WALLTIME_NEXT_VALID,
+                                CalFields(2013,10,6,2,30,0,0)},
+
+    {NULL, CalFields(0,0,0,0,0,0,0), 0, UCAL_WALLTIME_LAST, CalFields(0,0,0,0,0,0,0)}
+};
+
+void CalendarTest::TestAddAcrossZoneTransition() {
+    UErrorCode status = U_ZERO_ERROR;
+    GregorianCalendar cal(status);
+    TEST_CHECK_STATUS;
+
+    for (int32_t i = 0; AAZTDATA[i].zone; i++) {
+        status = U_ZERO_ERROR;
+        TimeZone *tz = TimeZone::createTimeZone(AAZTDATA[i].zone);
+        cal.adoptTimeZone(tz);
+        cal.setSkippedWallTimeOption(AAZTDATA[i].skippedWTOpt);
+        AAZTDATA[i].base.setTo(cal);
+        cal.add(UCAL_DATE, AAZTDATA[i].deltaDays, status);
+        TEST_CHECK_STATUS;
+
+        if (!AAZTDATA[i].expected.isEquivalentTo(cal, status)) {
+            CalFields res(cal, status);
+            TEST_CHECK_STATUS;
+            char buf[32];
+            const char *optDisp = AAZTDATA[i].skippedWTOpt == UCAL_WALLTIME_FIRST ? "FIRST" :
+                    AAZTDATA[i].skippedWTOpt == UCAL_WALLTIME_LAST ? "LAST" : "NEXT_VALID";
+            dataerrln(UnicodeString("Error: base:") + AAZTDATA[i].base.toString(buf, sizeof(buf)) + ", tz:" + AAZTDATA[i].zone
+                        + ", delta:" + AAZTDATA[i].deltaDays + " day(s), opt:" + optDisp
+                        + ", result:" + res.toString(buf, sizeof(buf))
+                        + " - expected:" + AAZTDATA[i].expected.toString(buf, sizeof(buf)));
+        }
+    }
+}
 
 #endif /* #if !UCONFIG_NO_FORMATTING */
 

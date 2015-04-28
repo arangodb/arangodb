@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/it.xml
@@ -22,7 +22,6 @@ it{
         be{"bielorusso"}
         bem{"wemba"}
         bg{"bulgaro"}
-        bh{"bihari"}
         bn{"bengalese"}
         br{"bretone"}
         bs{"bosniaco"}
@@ -63,9 +62,9 @@ it{
         gaa{"ga"}
         gd{"gaelico scozzese"}
         gl{"galiziano"}
-        gn{"guarana"}
+        gn{"guaraní"}
         gu{"gujarati"}
-        ha{"haussa"}
+        ha{"hausa"}
         haw{"hawaiano"}
         he{"ebraico"}
         hi{"hindi"}
@@ -86,7 +85,7 @@ it{
         kn{"kannada"}
         ko{"coreano"}
         ku{"curdo"}
-        ky{"kirghiso"}
+        ky{"chirghiso"}
         la{"latino"}
         lg{"ganda"}
         ln{"lingala"}
@@ -101,12 +100,11 @@ it{
         mk{"macedone"}
         ml{"malayalam"}
         mn{"mongolo"}
-        mo{"moldavo"}
         mr{"marathi"}
         ms{"malese"}
         mt{"maltese"}
         my{"birmano"}
-        nb{"norvegese bokmal"}
+        nb{"norvegese bokmål"}
         ne{"nepalese"}
         nl{"olandese"}
         nl_BE{"fiammingo"}
@@ -128,6 +126,7 @@ it{
         rm{"romancio"}
         rn{"rundi"}
         ro{"rumeno"}
+        ro_MD{"moldavo"}
         ru{"russo"}
         rw{"kinyarwanda"}
         sd{"sindhi"}
@@ -145,17 +144,18 @@ it{
         sw{"swahili"}
         ta{"tamil"}
         te{"telugu"}
-        tg{"tagicco"}
+        tg{"tagico"}
         th{"thai"}
         ti{"tigrino"}
         tk{"turcomanno"}
+        tl{"tagalog"}
         tn{"tswana"}
         to{"tongano"}
         tr{"turco"}
-        tt{"tatarico"}
+        tt{"tataro"}
         tum{"tumbuka"}
         tw{"ci"}
-        ug{"uigurico"}
+        ug{"uiguro"}
         uk{"ucraino"}
         ur{"urdu"}
         uz{"usbeco"}
@@ -184,7 +184,7 @@ it{
         Bamu{"bamum"}
         Bass{"Bassa Vah"}
         Batk{"batak"}
-        Beng{"bengali"}
+        Beng{"bengalese"}
         Blis{"simboli bliss"}
         Bopo{"bopomofo"}
         Brah{"brahmi"}
@@ -220,7 +220,7 @@ it{
         Hani{"han"}
         Hano{"hanunoo"}
         Hans{"semplificato"}
-        Hant{"han tradizionale"}
+        Hant{"tradizionale"}
         Hebr{"ebraico"}
         Hira{"hiragana"}
         Hluw{"geroglifici anatolici"}
@@ -265,11 +265,11 @@ it{
         Moon{"moon"}
         Mroo{"mro"}
         Mtei{"meetei mayek"}
-        Mymr{"myanmar"}
+        Mymr{"birmano"}
         Narb{"arabo settentrionale antico"}
         Nbat{"nabateo"}
         Nkgb{"geba naxi"}
-        Nkoo{"n'ko"}
+        Nkoo{"n’ko"}
         Nshu{"nushu"}
         Ogam{"ogham"}
         Olck{"ol chiki"}
@@ -316,7 +316,7 @@ it{
         Tfng{"tifinagh"}
         Tglg{"tagalog"}
         Thaa{"thaana"}
-        Thai{"tailandese"}
+        Thai{"thailandese"}
         Tibt{"tibetano"}
         Tirh{"tirhuta"}
         Ugar{"ugarita"}
@@ -335,10 +335,13 @@ it{
         Zzzz{"ignoto o non valido"}
     }
     Scripts%stand-alone{
-        Hans{"han semplificato"}
-        Hant{"han tradizionale"}
+        Hans{"Han semplificato"}
+        Hant{"Han tradizionale"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"arabo-persiano"}
+    }
+    Version{"2.1.8.32"}
     codePatterns{
         language{"Lingua: {0}"}
         script{"Scrittura: {0}"}

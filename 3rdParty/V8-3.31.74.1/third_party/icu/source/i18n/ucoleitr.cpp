@@ -1,6 +1,6 @@
 /*
 ******************************************************************************
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 ******************************************************************************
 *
@@ -11,18 +11,21 @@
 * Date        Name        Description
 * 02/15/2001  synwee      Modified all methods to process its own function 
 *                         instead of calling the equivalent c++ api (coleitr.h)
+* 2012-2014   markus      Rewritten in C++ again.
 ******************************************************************************/
 
 #include "unicode/utypes.h"
 
 #if !UCONFIG_NO_COLLATION
 
+#include "unicode/coleitr.h"
+#include "unicode/tblcoll.h"
 #include "unicode/ucoleitr.h"
 #include "unicode/ustring.h"
 #include "unicode/sortkey.h"
 #include "unicode/uobject.h"
-#include "ucol_imp.h"
 #include "cmemory.h"
+#include "usrchimp.h"
 
 U_NAMESPACE_USE
 
@@ -40,8 +43,6 @@ U_NAMESPACE_USE
 #define GROW_ARRAY(array, newSize) uprv_realloc((void *) (array), (newSize) * sizeof (array)[0])
 
 #define DELETE_ARRAY(array) uprv_free((void *) (array))
-
-typedef struct icu::collIterate collIterator;
 
 struct RCEI
 {
@@ -71,7 +72,7 @@ RCEBuffer::RCEBuffer()
 {
     buffer = defaultBuffer;
     bufferIndex = 0;
-    bufferSize = DEFAULT_BUFFER_SIZE;
+    bufferSize = UPRV_LENGTHOF(defaultBuffer);
 }
 
 RCEBuffer::~RCEBuffer()
@@ -117,34 +118,11 @@ const RCEI *RCEBuffer::get()
     return NULL;
 }
 
-struct PCEI
-{
-    uint64_t ce;
-    int32_t  low;
-    int32_t  high;
-};
-
-struct PCEBuffer
-{
-    PCEI    defaultBuffer[DEFAULT_BUFFER_SIZE];
-    PCEI   *buffer;
-    int32_t bufferIndex;
-    int32_t bufferSize;
-
-    PCEBuffer();
-    ~PCEBuffer();
-
-    void  reset();
-    UBool empty() const;
-    void  put(uint64_t ce, int32_t ixLow, int32_t ixHigh);
-    const PCEI *get();
-};
-
 PCEBuffer::PCEBuffer()
 {
     buffer = defaultBuffer;
     bufferIndex = 0;
-    bufferSize = DEFAULT_BUFFER_SIZE;
+    bufferSize = UPRV_LENGTHOF(defaultBuffer);
 }
 
 PCEBuffer::~PCEBuffer()
@@ -195,43 +173,28 @@ const PCEI *PCEBuffer::get()
     return NULL;
 }
 
-/*
- * This inherits from UObject so that
- * it can be allocated by new and the
- * constructor for PCEBuffer is called.
- */
-struct UCollationPCE : public UObject
-{
-    PCEBuffer          pceBuffer;
-    UCollationStrength strength;
-    UBool              toShift;
-    UBool              isShifted;
-    uint32_t           variableTop;
+UCollationPCE::UCollationPCE(UCollationElements *elems) { init(elems); }
 
-    UCollationPCE(UCollationElements *elems);
-    ~UCollationPCE();
+UCollationPCE::UCollationPCE(CollationElementIterator *iter) { init(iter); }
 
-    void init(const UCollator *coll);
-
-    virtual UClassID getDynamicClassID() const;
-    static UClassID getStaticClassID();
-};
-
-UOBJECT_DEFINE_RTTI_IMPLEMENTATION(UCollationPCE)
-
-UCollationPCE::UCollationPCE(UCollationElements *elems)
-{
-    init(elems->iteratordata_.coll);
+void UCollationPCE::init(UCollationElements *elems) {
+    init(CollationElementIterator::fromUCollationElements(elems));
 }
 
-void UCollationPCE::init(const UCollator *coll)
+void UCollationPCE::init(CollationElementIterator *iter)
+{
+    cei = iter;
+    init(*iter->rbc_);
+}
+
+void UCollationPCE::init(const Collator &coll)
 {
     UErrorCode status = U_ZERO_ERROR;
 
-    strength    = ucol_getStrength(coll);
-    toShift     = ucol_getAttribute(coll, UCOL_ALTERNATE_HANDLING, &status) == UCOL_SHIFTED;
+    strength    = coll.getAttribute(UCOL_STRENGTH, status);
+    toShift     = coll.getAttribute(UCOL_ALTERNATE_HANDLING, status) == UCOL_SHIFTED;
     isShifted   = FALSE;
-    variableTop = coll->variableTopValue << 16;
+    variableTop = coll.getVariableTop(status);
 }
 
 UCollationPCE::~UCollationPCE()
@@ -239,18 +202,14 @@ UCollationPCE::~UCollationPCE()
     // nothing to do
 }
 
-
-U_NAMESPACE_END
-
-
-inline uint64_t processCE(UCollationElements *elems, uint32_t ce)
+uint64_t UCollationPCE::processCE(uint32_t ce)
 {
     uint64_t primary = 0, secondary = 0, tertiary = 0, quaternary = 0;
 
     // This is clean, but somewhat slow...
     // We could apply the mask to ce and then
     // just get all three orders...
-    switch(elems->pce->strength) {
+    switch(strength) {
     default:
         tertiary = ucol_tertiaryOrder(ce);
         /* note fall-through */
@@ -271,39 +230,31 @@ inline uint64_t processCE(UCollationElements *elems, uint32_t ce)
     // **** the *second* CE is marked as a continuation, so ****
     // **** we always have to peek ahead to know how long   ****
     // **** the primary is...                               ****
-    if ((elems->pce->toShift && elems->pce->variableTop > ce && primary != 0)
-                || (elems->pce->isShifted && primary == 0)) {
+    if ((toShift && variableTop > ce && primary != 0)
+                || (isShifted && primary == 0)) {
 
         if (primary == 0) {
             return UCOL_IGNORABLE;
         }
 
-        if (elems->pce->strength >= UCOL_QUATERNARY) {
+        if (strength >= UCOL_QUATERNARY) {
             quaternary = primary;
         }
 
         primary = secondary = tertiary = 0;
-        elems->pce->isShifted = TRUE;
+        isShifted = TRUE;
     } else {
-        if (elems->pce->strength >= UCOL_QUATERNARY) {
+        if (strength >= UCOL_QUATERNARY) {
             quaternary = 0xFFFF;
         }
 
-        elems->pce->isShifted = FALSE;
+        isShifted = FALSE;
     }
 
     return primary << 48 | secondary << 32 | tertiary << 16 | quaternary;
 }
 
-U_CAPI void U_EXPORT2
-uprv_init_pce(const UCollationElements *elems)
-{
-    if (elems->pce != NULL) {
-        elems->pce->init(elems->iteratordata_.coll);
-    }
-}
-
-
+U_NAMESPACE_END
 
 /* public methods ---------------------------------------------------- */
 
@@ -316,118 +267,58 @@ ucol_openElements(const UCollator  *coll,
     if (U_FAILURE(*status)) {
         return NULL;
     }
+    if (coll == NULL || (text == NULL && textLength != 0)) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return NULL;
+    }
+    const RuleBasedCollator *rbc = RuleBasedCollator::rbcFromUCollator(coll);
+    if (rbc == NULL) {
+        *status = U_UNSUPPORTED_ERROR;  // coll is a Collator but not a RuleBasedCollator
+        return NULL;
+    }
 
-    UCollationElements *result = new UCollationElements;
-    if (result == NULL) {
+    UnicodeString s((UBool)(textLength < 0), text, textLength);
+    CollationElementIterator *cei = rbc->createCollationElementIterator(s);
+    if (cei == NULL) {
         *status = U_MEMORY_ALLOCATION_ERROR;
         return NULL;
     }
 
-    result->reset_ = TRUE;
-    result->isWritable = FALSE;
-    result->pce = NULL;
-
-    if (text == NULL) {
-        textLength = 0;
-    }
-    uprv_init_collIterate(coll, text, textLength, &result->iteratordata_, status);
-
-    return result;
+    return cei->toUCollationElements();
 }
 
 
 U_CAPI void U_EXPORT2
 ucol_closeElements(UCollationElements *elems)
 {
-	if (elems != NULL) {
-	  collIterate *ci = &elems->iteratordata_;
-
-	  if (ci->extendCEs) {
-		  uprv_free(ci->extendCEs);
-	  }
-
-	  if (ci->offsetBuffer) {
-		  uprv_free(ci->offsetBuffer);
-	  }
-
-	  if (elems->isWritable && elems->iteratordata_.string != NULL)
-	  {
-		uprv_free((UChar *)elems->iteratordata_.string);
-	  }
-
-	  if (elems->pce != NULL) {
-		  delete elems->pce;
-	  }
-
-	  delete elems;
-	}
+    delete CollationElementIterator::fromUCollationElements(elems);
 }
 
 U_CAPI void U_EXPORT2
 ucol_reset(UCollationElements *elems)
 {
-    collIterate *ci = &(elems->iteratordata_);
-    elems->reset_   = TRUE;
-    ci->pos         = ci->string;
-    if ((ci->flags & UCOL_ITER_HASLEN) == 0 || ci->endp == NULL) {
-        ci->endp      = ci->string + u_strlen(ci->string);
-    }
-    ci->CEpos       = ci->toReturn = ci->CEs;
-    ci->flags       = (ci->flags & UCOL_FORCE_HAN_IMPLICIT) | UCOL_ITER_HASLEN;
-    if (ci->coll->normalizationMode == UCOL_ON) {
-        ci->flags |= UCOL_ITER_NORM;
-    }
-
-    ci->writableBuffer.remove();
-    ci->fcdPosition = NULL;
-
-  //ci->offsetReturn = ci->offsetStore = NULL;
-	ci->offsetRepeatCount = ci->offsetRepeatValue = 0;
-}
-
-U_CAPI void U_EXPORT2
-ucol_forceHanImplicit(UCollationElements *elems, UErrorCode *status)
-{
-    if (U_FAILURE(*status)) {
-        return;
-    }
-
-    if (elems == NULL) {
-        *status = U_ILLEGAL_ARGUMENT_ERROR;
-        return;
-    }
-
-    elems->iteratordata_.flags |= UCOL_FORCE_HAN_IMPLICIT;
+    CollationElementIterator::fromUCollationElements(elems)->reset();
 }
 
 U_CAPI int32_t U_EXPORT2
 ucol_next(UCollationElements *elems, 
           UErrorCode         *status)
 {
-    int32_t result;
     if (U_FAILURE(*status)) {
         return UCOL_NULLORDER;
     }
 
-    elems->reset_ = FALSE;
-
-    result = (int32_t)ucol_getNextCE(elems->iteratordata_.coll,
-                                     &elems->iteratordata_, 
-                                     status);
-
-    if (result == UCOL_NO_MORE_CES) {
-        result = UCOL_NULLORDER;
-    }
-    return result;
+    return CollationElementIterator::fromUCollationElements(elems)->next(*status);
 }
 
-U_CAPI int64_t U_EXPORT2
-ucol_nextProcessed(UCollationElements *elems,
+U_NAMESPACE_BEGIN
+
+int64_t
+UCollationPCE::nextProcessed(
                    int32_t            *ixLow,
                    int32_t            *ixHigh,
                    UErrorCode         *status)
 {
-    const UCollator *coll = elems->iteratordata_.coll;
     int64_t result = UCOL_IGNORABLE;
     uint32_t low = 0, high = 0;
 
@@ -435,25 +326,19 @@ ucol_nextProcessed(UCollationElements *elems,
         return UCOL_PROCESSED_NULLORDER;
     }
 
-    if (elems->pce == NULL) {
-        elems->pce = new UCollationPCE(elems);
-    } else {
-        elems->pce->pceBuffer.reset();
-    }
-
-    elems->reset_ = FALSE;
+    pceBuffer.reset();
 
     do {
-        low = ucol_getOffset(elems);
-        uint32_t ce = (uint32_t) ucol_getNextCE(coll, &elems->iteratordata_, status);
-        high = ucol_getOffset(elems);
+        low = cei->getOffset();
+        int32_t ce = cei->next(*status);
+        high = cei->getOffset();
 
-        if (ce == UCOL_NO_MORE_CES) {
+        if (ce == UCOL_NULLORDER) {
              result = UCOL_PROCESSED_NULLORDER;
              break;
         }
 
-        result = processCE(elems, ce);
+        result = processCE((uint32_t)ce);
     } while (result == UCOL_IGNORABLE);
 
     if (ixLow != NULL) {
@@ -467,6 +352,8 @@ ucol_nextProcessed(UCollationElements *elems,
     return result;
 }
 
+U_NAMESPACE_END
+
 U_CAPI int32_t U_EXPORT2
 ucol_previous(UCollationElements *elems,
               UErrorCode         *status)
@@ -474,84 +361,38 @@ ucol_previous(UCollationElements *elems,
     if(U_FAILURE(*status)) {
         return UCOL_NULLORDER;
     }
-    else
-    {
-        int32_t result;
-
-        if (elems->reset_ && (elems->iteratordata_.pos == elems->iteratordata_.string)) {
-            if (elems->iteratordata_.endp == NULL) {
-                elems->iteratordata_.endp = elems->iteratordata_.string + 
-                                            u_strlen(elems->iteratordata_.string);
-                elems->iteratordata_.flags |= UCOL_ITER_HASLEN;
-            }
-            elems->iteratordata_.pos = elems->iteratordata_.endp;
-            elems->iteratordata_.fcdPosition = elems->iteratordata_.endp;
-        }
-
-        elems->reset_ = FALSE;
-
-        result = (int32_t)ucol_getPrevCE(elems->iteratordata_.coll,
-                                         &(elems->iteratordata_), 
-                                         status);
-
-        if (result == UCOL_NO_MORE_CES) {
-            result = UCOL_NULLORDER;
-        }
-
-        return result;
-    }
+    return CollationElementIterator::fromUCollationElements(elems)->previous(*status);
 }
 
-U_CAPI int64_t U_EXPORT2
-ucol_previousProcessed(UCollationElements *elems,
+U_NAMESPACE_BEGIN
+
+int64_t
+UCollationPCE::previousProcessed(
                    int32_t            *ixLow,
                    int32_t            *ixHigh,
                    UErrorCode         *status)
 {
-    const UCollator *coll = elems->iteratordata_.coll;
     int64_t result = UCOL_IGNORABLE;
- // int64_t primary = 0, secondary = 0, tertiary = 0, quaternary = 0;
- // UCollationStrength strength = ucol_getStrength(coll);
- //  UBool toShift   = ucol_getAttribute(coll, UCOL_ALTERNATE_HANDLING, status) ==  UCOL_SHIFTED;
- // uint32_t variableTop = coll->variableTopValue;
     int32_t  low = 0, high = 0;
 
     if (U_FAILURE(*status)) {
         return UCOL_PROCESSED_NULLORDER;
     }
 
-    if (elems->reset_ && 
-        (elems->iteratordata_.pos == elems->iteratordata_.string)) {
-        if (elems->iteratordata_.endp == NULL) {
-            elems->iteratordata_.endp = elems->iteratordata_.string + 
-                                        u_strlen(elems->iteratordata_.string);
-            elems->iteratordata_.flags |= UCOL_ITER_HASLEN;
-        }
+    // pceBuffer.reset();
 
-        elems->iteratordata_.pos = elems->iteratordata_.endp;
-        elems->iteratordata_.fcdPosition = elems->iteratordata_.endp;
-    }
-
-    if (elems->pce == NULL) {
-        elems->pce = new UCollationPCE(elems);
-    } else {
-      //elems->pce->pceBuffer.reset();
-    }
-
-    elems->reset_ = FALSE;
-
-    while (elems->pce->pceBuffer.empty()) {
+    while (pceBuffer.empty()) {
         // buffer raw CEs up to non-ignorable primary
         RCEBuffer rceb;
-        uint32_t ce;
+        int32_t ce;
         
         // **** do we need to reset rceb, or will it always be empty at this point ****
         do {
-            high = ucol_getOffset(elems);
-            ce   = ucol_getPrevCE(coll, &elems->iteratordata_, status);
-            low  = ucol_getOffset(elems);
+            high = cei->getOffset();
+            ce   = cei->previous(*status);
+            low  = cei->getOffset();
 
-            if (ce == UCOL_NO_MORE_CES) {
+            if (ce == UCOL_NULLORDER) {
                 if (! rceb.empty()) {
                     break;
                 }
@@ -559,23 +400,23 @@ ucol_previousProcessed(UCollationElements *elems,
                 goto finish;
             }
 
-            rceb.put(ce, low, high);
-        } while ((ce & UCOL_PRIMARYMASK) == 0);
+            rceb.put((uint32_t)ce, low, high);
+        } while ((ce & UCOL_PRIMARYORDERMASK) == 0 || isContinuation(ce));
 
         // process the raw CEs
         while (! rceb.empty()) {
             const RCEI *rcei = rceb.get();
 
-            result = processCE(elems, rcei->ce);
+            result = processCE(rcei->ce);
 
             if (result != UCOL_IGNORABLE) {
-                elems->pce->pceBuffer.put(result, rcei->low, rcei->high);
+                pceBuffer.put(result, rcei->low, rcei->high);
             }
         }
     }
 
 finish:
-    if (elems->pce->pceBuffer.empty()) {
+    if (pceBuffer.empty()) {
         // **** Is -1 the right value for ixLow, ixHigh? ****
     	if (ixLow != NULL) {
     		*ixLow = -1;
@@ -588,7 +429,7 @@ finish:
         return UCOL_PROCESSED_NULLORDER;
     }
 
-    const PCEI *pcei = elems->pce->pceBuffer.get();
+    const PCEI *pcei = pceBuffer.get();
 
     if (ixLow != NULL) {
         *ixLow = pcei->low;
@@ -601,66 +442,23 @@ finish:
     return pcei->ce;
 }
 
+U_NAMESPACE_END
+
 U_CAPI int32_t U_EXPORT2
 ucol_getMaxExpansion(const UCollationElements *elems,
                            int32_t            order)
 {
-    uint8_t result;
+    return CollationElementIterator::fromUCollationElements(elems)->getMaxExpansion(order);
 
-#if 0
-    UCOL_GETMAXEXPANSION(elems->iteratordata_.coll, (uint32_t)order, result);
-#else
-    const UCollator *coll = elems->iteratordata_.coll;
-    const uint32_t *start;
-    const uint32_t *limit;
-    const uint32_t *mid;
-          uint32_t strengthMask = 0;
-          uint32_t mOrder = (uint32_t) order;
-
-    switch (coll->strength) 
-    {
-    default:
-        strengthMask |= UCOL_TERTIARYORDERMASK;
-        /* fall through */
-
-    case UCOL_SECONDARY:
-        strengthMask |= UCOL_SECONDARYORDERMASK;
-        /* fall through */
-
-    case UCOL_PRIMARY:
-        strengthMask |= UCOL_PRIMARYORDERMASK;
-    }
-
-    mOrder &= strengthMask;
-    start = (coll)->endExpansionCE;
-    limit = (coll)->lastEndExpansionCE;
-
-    while (start < limit - 1) {
-        mid = start + ((limit - start) >> 1);
-        if (mOrder <= (*mid & strengthMask)) {
-          limit = mid;
-        } else {
-          start = mid;
-        }
-    }
+    // TODO: The old code masked the order according to strength and then did a binary search.
+    // However this was probably at least partially broken because of the following comment.
+    // Still, it might have found a match when this version may not.
 
     // FIXME: with a masked search, there might be more than one hit,
     // so we need to look forward and backward from the match to find all
     // of the hits...
-    if ((*start & strengthMask) == mOrder) {
-        result = *((coll)->expansionCESize + (start - (coll)->endExpansionCE));
-    } else if ((*limit & strengthMask) == mOrder) {
-         result = *(coll->expansionCESize + (limit - coll->endExpansionCE));
-   } else if ((mOrder & 0xFFFF) == 0x00C0) {
-        result = 2;
-   } else {
-       result = 1;
-   }
-#endif
-
-    return result;
 }
- 
+
 U_CAPI void U_EXPORT2
 ucol_setText(      UCollationElements *elems,
              const UChar              *text,
@@ -671,56 +469,18 @@ ucol_setText(      UCollationElements *elems,
         return;
     }
 
-    if (elems->isWritable && elems->iteratordata_.string != NULL)
-    {
-        uprv_free((UChar *)elems->iteratordata_.string);
+    if ((text == NULL && textLength != 0)) {
+        *status = U_ILLEGAL_ARGUMENT_ERROR;
+        return;
     }
-
-    if (text == NULL) {
-        textLength = 0;
-    }
-
-    elems->isWritable = FALSE;
-    
-    /* free offset buffer to avoid memory leak before initializing. */
-    ucol_freeOffsetBuffer(&(elems->iteratordata_));
-    /* Ensure that previously allocated extendCEs is freed before setting to NULL. */
-    if (elems->iteratordata_.extendCEs != NULL) {
-        uprv_free(elems->iteratordata_.extendCEs);
-    }
-    uprv_init_collIterate(elems->iteratordata_.coll, text, textLength, 
-                          &elems->iteratordata_, status);
-
-    elems->reset_   = TRUE;
+    UnicodeString s((UBool)(textLength < 0), text, textLength);
+    return CollationElementIterator::fromUCollationElements(elems)->setText(s, *status);
 }
 
 U_CAPI int32_t U_EXPORT2
 ucol_getOffset(const UCollationElements *elems)
 {
-  const collIterate *ci = &(elems->iteratordata_);
-
-  if (ci->offsetRepeatCount > 0 && ci->offsetRepeatValue != 0) {
-      return ci->offsetRepeatValue;
-  }
-
-  if (ci->offsetReturn != NULL) {
-      return *ci->offsetReturn;
-  }
-
-  // while processing characters in normalization buffer getOffset will 
-  // return the next non-normalized character. 
-  // should be inline with the old implementation since the old codes uses
-  // nextDecomp in normalizer which also decomposes the string till the 
-  // first base character is found.
-  if (ci->flags & UCOL_ITER_INNORMBUF) {
-      if (ci->fcdPosition == NULL) {
-        return 0;
-      }
-      return (int32_t)(ci->fcdPosition - ci->string);
-  }
-  else {
-      return (int32_t)(ci->pos - ci->string);
-  }
+    return CollationElementIterator::fromUCollationElements(elems)->getOffset();
 }
 
 U_CAPI void U_EXPORT2
@@ -732,53 +492,25 @@ ucol_setOffset(UCollationElements    *elems,
         return;
     }
 
-    // this methods will clean up any use of the writable buffer and points to 
-    // the original string
-    collIterate *ci = &(elems->iteratordata_);
-    ci->pos         = ci->string + offset;
-    ci->CEpos       = ci->toReturn = ci->CEs;
-    if (ci->flags & UCOL_ITER_INNORMBUF) {
-        ci->flags = ci->origFlags;
-    }
-    if ((ci->flags & UCOL_ITER_HASLEN) == 0) {
-        ci->endp  = ci->string + u_strlen(ci->string);
-        ci->flags |= UCOL_ITER_HASLEN;
-    }
-    ci->fcdPosition = NULL;
-    elems->reset_ = FALSE;
-
-	ci->offsetReturn = NULL;
-    ci->offsetStore = ci->offsetBuffer;
-	ci->offsetRepeatCount = ci->offsetRepeatValue = 0;
+    CollationElementIterator::fromUCollationElements(elems)->setOffset(offset, *status);
 }
 
 U_CAPI int32_t U_EXPORT2
 ucol_primaryOrder (int32_t order) 
 {
-    order &= UCOL_PRIMARYMASK;
-    return (order >> UCOL_PRIMARYORDERSHIFT);
+    return (order >> 16) & 0xffff;
 }
 
 U_CAPI int32_t U_EXPORT2
 ucol_secondaryOrder (int32_t order) 
 {
-    order &= UCOL_SECONDARYMASK;
-    return (order >> UCOL_SECONDARYORDERSHIFT);
+    return (order >> 8) & 0xff;
 }
 
 U_CAPI int32_t U_EXPORT2
 ucol_tertiaryOrder (int32_t order) 
 {
-    return (order & UCOL_TERTIARYMASK);
-}
-
-
-void ucol_freeOffsetBuffer(collIterate *s) {
-    if (s != NULL && s->offsetBuffer != NULL) {
-        uprv_free(s->offsetBuffer);
-        s->offsetBuffer = NULL;
-        s->offsetBufferSize = 0;
-    }
+    return order & 0xff;
 }
 
 #endif /* #if !UCONFIG_NO_COLLATION */

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ewo.xml
@@ -27,10 +27,6 @@ ewo{
             "BHD",
             "Dinár yá Bahərɛ́n",
         }
-        BIF{
-            "BIF",
-            "Fəláŋ yá Burundí",
-        }
         BWP{
             "BWP",
             "Púlá yá Botswána",
@@ -51,14 +47,6 @@ ewo{
             "CN¥",
             "Yuán Renəminəbí yá Tsainís",
         }
-        CVE{
-            "CVE",
-            "Esəkúdo yá Kápə́vɛ́rə",
-        }
-        DJF{
-            "DJF",
-            "Fəláŋ yá dzibutí",
-        }
         DZD{
             "DZD",
             "Dinár yá Alehérí",
@@ -66,10 +54,6 @@ ewo{
         EGP{
             "EGP",
             "Lívə́lə yá Ehíbətía",
-        }
-        ERN{
-            "ERN",
-            "Náfəka yá Eritelé",
         }
         ETB{
             "ETB",
@@ -83,16 +67,8 @@ ewo{
             "£",
             "Lívə́lə Sətərəlíŋ",
         }
-        GMD{
-            "GMD",
-            "Dalasí yá Gámbía",
-        }
-        GNS{
-            "GNS",
-            "Síli yá Giné",
-        }
         INR{
-            "₹",
+            "Rs.",
             "Rupí yá ɛ́ndía",
         }
         JPY{
@@ -102,18 +78,6 @@ ewo{
         KES{
             "KES",
             "Silíŋ yá Keniá",
-        }
-        KMF{
-            "KMF",
-            "Fəláŋ yá Komória",
-        }
-        LRD{
-            "LRD",
-            "Dolár yá Libéria",
-        }
-        LSL{
-            "LSL",
-            "Lotí yá Lesotó",
         }
         LYD{
             "LYD",
@@ -155,33 +119,13 @@ ewo{
             "SAR",
             "Riál yá Arabí Saudí",
         }
-        SCR{
-            "SCR",
-            "Rupí yá Sɛsɛ́l",
-        }
         SDG{
             "SDG",
             "Lívələ yá Sudán",
         }
-        SHP{
-            "SHP",
-            "Lívələ yá Ǹfúfúb Elɛ́n",
-        }
         SLL{
             "SLL",
             "Leóne yá Sierá-leónə",
-        }
-        SOS{
-            "SOS",
-            "Silíŋ yá Somalí",
-        }
-        STD{
-            "STD",
-            "Dóbə́ra yá Saó Tomé ai Pəlinəsípe",
-        }
-        SZL{
-            "SZL",
-            "Lilangeni yá Swazí",
         }
         TND{
             "TND",
@@ -216,5 +160,5 @@ ewo{
             "Kwatsa yá Zambí",
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
 }

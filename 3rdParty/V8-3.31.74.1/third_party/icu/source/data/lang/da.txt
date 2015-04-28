@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/da.xml
@@ -22,7 +22,6 @@ da{
         be{"hviderussisk"}
         bem{"bemba"}
         bg{"bulgarsk"}
-        bh{"bihari"}
         bn{"bengali"}
         br{"bretonsk"}
         bs{"bosnisk"}
@@ -101,7 +100,6 @@ da{
         mk{"makedonsk"}
         ml{"malayalam"}
         mn{"mongolsk"}
-        mo{"moldovisk"}
         mr{"marathisk"}
         ms{"malay"}
         mt{"maltesisk"}
@@ -128,6 +126,7 @@ da{
         rm{"rætoromansk"}
         rn{"rundi"}
         ro{"rumænsk"}
+        ro_MD{"moldovisk"}
         ru{"russisk"}
         rw{"kinyarwanda"}
         sd{"sindhi"}
@@ -149,6 +148,7 @@ da{
         th{"thailandsk"}
         ti{"tigrinya"}
         tk{"turkmensk"}
+        tl{"tagalog"}
         tn{"tswana"}
         to{"tongansk"}
         tr{"tyrkisk"}
@@ -168,6 +168,10 @@ da{
         zh_Hans{"forenklet kinesisk"}
         zh_Hant{"traditionelt kinesisk"}
         zu{"zulu"}
+    }
+    Languages%variant{
+        ps{"pushto"}
+        ug{"uighurisk"}
     }
     LanguagesShort{
         az{"azeri"}
@@ -268,7 +272,7 @@ da{
         Narb{"gammelt nordarabisk"}
         Nbat{"nabateisk"}
         Nkgb{"nakhi geba"}
-        Nkoo{"n'ko"}
+        Nkoo{"n’ko"}
         Nshu{"nüshu"}
         Ogam{"ogham"}
         Olck{"ol-chiki"}
@@ -337,7 +341,10 @@ da{
         Hans{"forenklet han"}
         Hant{"traditionelt han"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"persisk-arabisk"}
+    }
+    Version{"2.1.9.62"}
     codePatterns{
         language{"Sprog: {0}"}
         script{"Instruks: {0}"}

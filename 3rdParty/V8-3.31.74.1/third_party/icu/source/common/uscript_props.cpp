@@ -1,6 +1,6 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2013, International Business Machines
+*   Copyright (C) 2013-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *   file name:  uscript_props.cpp
@@ -17,8 +17,7 @@
 #include "unicode/uscript.h"
 #include "unicode/utf16.h"
 #include "ustr_imp.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+#include "cmemory.h"
 
 namespace {
 
@@ -43,7 +42,7 @@ const int32_t CASED = 1 << 26;
 const int32_t SCRIPT_PROPS[] = {
     // Begin copy-paste output from
     // tools/trunk/unicode/py/parsescriptmetadata.py
-    0x0040 | UNKNOWN,  // Zyyy
+    0x0040 | RECOMMENDED,  // Zyyy
     0x0308 | UNKNOWN,  // Zinh
     0x0628 | RECOMMENDED | RTL,  // Arab
     0x0531 | RECOMMENDED | CASED,  // Armn
@@ -105,7 +104,7 @@ const int32_t SCRIPT_PROPS[] = {
     0x1980 | LIMITED_USE | LB_LETTERS,  // Talu
     0x2D30 | ASPIRATIONAL,  // Tfng
     0x103A0 | EXCLUSION,  // Xpeo
-    0x1B05 | LIMITED_USE | LB_LETTERS,  // Bali
+    0x1B05 | LIMITED_USE,  // Bali
     0x1BC0 | LIMITED_USE,  // Batk
     0,
     0x11005 | EXCLUSION,  // Brah
@@ -118,21 +117,21 @@ const int32_t SCRIPT_PROPS[] = {
     0,
     0x5B57 | RECOMMENDED | LB_LETTERS,  // Hans
     0x5B57 | RECOMMENDED | LB_LETTERS,  // Hant
+    0x16B1C | EXCLUSION,  // Hmng
     0,
     0,
-    0,
-    0xA984 | LIMITED_USE | LB_LETTERS,  // Java
+    0xA984 | LIMITED_USE,  // Java
     0xA90A | LIMITED_USE,  // Kali
     0,
     0,
     0x1C00 | LIMITED_USE,  // Lepc
-    0,
+    0x10647 | EXCLUSION,  // Lina
     0x0840 | LIMITED_USE | RTL,  // Mand
     0,
     0x10980 | EXCLUSION | RTL,  // Mero
     0x07CA | LIMITED_USE | RTL,  // Nkoo
     0x10C00 | EXCLUSION | RTL,  // Orkh
-    0,
+    0x1036B | EXCLUSION,  // Perm
     0xA840 | EXCLUSION,  // Phag
     0x10900 | EXCLUSION | RTL,  // Phnx
     0x16F00 | ASPIRATIONAL,  // Plrd
@@ -164,9 +163,9 @@ const int32_t SCRIPT_PROPS[] = {
     0x11103 | LIMITED_USE,  // Cakm
     0xAC00 | RECOMMENDED,  // Kore
     0x11083 | EXCLUSION,  // Kthi
-    0,
+    0x10AD8 | EXCLUSION | RTL,  // Mani
     0x10B60 | EXCLUSION | RTL,  // Phli
-    0,
+    0x10B8F | EXCLUSION | RTL,  // Phlp
     0,
     0x10B40 | EXCLUSION | RTL,  // Prti
     0x0800 | EXCLUSION | RTL,  // Samr
@@ -177,22 +176,22 @@ const int32_t SCRIPT_PROPS[] = {
     0xA4D0 | LIMITED_USE,  // Lisu
     0,
     0x10A60 | EXCLUSION | RTL,  // Sarb
+    0x16AE6 | EXCLUSION,  // Bass
+    0x1BC20 | EXCLUSION,  // Dupl
+    0x10500 | EXCLUSION,  // Elba
+    0x11315 | EXCLUSION,  // Gran
     0,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    0x1E802 | EXCLUSION | RTL,  // Mend
     0x109A0 | EXCLUSION | RTL,  // Merc
+    0x10A95 | EXCLUSION | RTL,  // Narb
+    0x10896 | EXCLUSION | RTL,  // Nbat
+    0x10873 | EXCLUSION | RTL,  // Palm
+    0x112BE | EXCLUSION,  // Sind
+    0x118B4 | EXCLUSION | CASED,  // Wara
     0,
     0,
-    0,
-    0,
-    0,
-    0,
-    0,
-    0,
+    0x16A4F | EXCLUSION,  // Mroo
     0,
     0x11183 | EXCLUSION,  // Shrd
     0x110D0 | EXCLUSION,  // Sora
@@ -200,15 +199,21 @@ const int32_t SCRIPT_PROPS[] = {
     0,
     0,
     0,
+    0x11208 | EXCLUSION,  // Khoj
+    0x11484 | EXCLUSION,  // Tirh
+    0x10537 | EXCLUSION,  // Aghb
+    0x11152 | EXCLUSION,  // Mahj
     0,
     0,
+    0x1160E | EXCLUSION,  // Modi
     0,
-    0,
+    0x11AC0 | EXCLUSION,  // Pauc
+    0x1158E | EXCLUSION,  // Sidd
     // End copy-paste from parsescriptmetadata.py
 };
 
 int32_t getScriptProps(UScriptCode script) {
-    if (0 <= script && script < LENGTHOF(SCRIPT_PROPS)) {
+    if (0 <= script && script < UPRV_LENGTHOF(SCRIPT_PROPS)) {
         return SCRIPT_PROPS[script];
     } else {
         return 0;

@@ -1,6 +1,6 @@
 /********************************************************************
  * COPYRIGHT:
- * Copyright (c) 1997-2013, International Business Machines Corporation and
+ * Copyright (c) 1997-2014, International Business Machines Corporation and
  * others. All Rights Reserved.
  ********************************************************************/
 /*****************************************************************************
@@ -36,7 +36,6 @@
 #include "unicode/uldnames.h"
 #include "unicode/parseerr.h" /* may not be included with some uconfig switches */
 #include "udbgutil.h"
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 static void TestNullDefault(void);
 static void TestNonexistentLanguageExemplars(void);
@@ -45,6 +44,8 @@ static void TestLanguageExemplarsFallbacks(void);
 static void TestDisplayNameBrackets(void);
 
 static void TestUnicodeDefines(void);
+
+static void TestIsRightToLeft(void);
 
 void PrintDataTable();
 
@@ -98,7 +99,7 @@ static const char* const rawData2[LOCALE_INFO_SIZE][LOCALE_SIZE] = {
     /* display name (French) */
     {   "anglais (\\u00C9tats-Unis)", "fran\\u00E7ais (France)", "catalan (Espagne)", 
         "grec (Gr\\u00E8ce)", "norv\\u00E9gien (Norv\\u00E8ge, NY)",  "chinois (simplifi\\u00e9, Chine)", 
-        "allemand (Allemagne, ordre de tri=Ordre de l\\u2019annuaire)", "espagnol (ordre de tri=Ordre traditionnel)", "japonais (Japon, calendrier=Calendrier japonais)" },
+        "allemand (Allemagne, ordre de tri=Ordre de l\\u2019annuaire)", "espagnol (ordre de tri=Ordre traditionnel)", "japonais (Japon, calendrier=calendrier japonais)" },
 
     /* display language (Catalan) */
     {   "angl\\u00E8s", "franc\\u00E8s", "catal\\u00E0", "grec",  "noruec", "xin\\u00E8s", "alemany", "espanyol", "japon\\u00E8s"    },
@@ -248,6 +249,11 @@ void addLocaleTest(TestNode** root)
     TESTCASE(TestUnicodeDefines);
     TESTCASE(TestEnglishExemplarCharacters);
     TESTCASE(TestDisplayNameBrackets);
+    TESTCASE(TestIsRightToLeft);
+    TESTCASE(TestToUnicodeLocaleKey);
+    TESTCASE(TestToLegacyKey);
+    TESTCASE(TestToUnicodeLocaleType);
+    TESTCASE(TestToLegacyType);
 }
 
 
@@ -665,7 +671,7 @@ static void TestDisplayNames()
 
     /* test that the default locale has a display name for its own language */
     errorCode=U_ZERO_ERROR;
-    length=uloc_getDisplayLanguage(NULL, NULL, buffer, LENGTHOF(buffer), &errorCode);
+    length=uloc_getDisplayLanguage(NULL, NULL, buffer, UPRV_LENGTHOF(buffer), &errorCode);
     if(U_FAILURE(errorCode) || (length<=3 && buffer[0]<=0x7f)) {
         /* check <=3 to reject getting the language code as a display name */
         log_data_err("unable to get a display string for the language of the default locale - %s (Are you missing data?)\n", u_errorName(errorCode));
@@ -673,14 +679,14 @@ static void TestDisplayNames()
 
     /* test that we get the language code itself for an unknown language, and a default warning */
     errorCode=U_ZERO_ERROR;
-    length=uloc_getDisplayLanguage("qq", "rr", buffer, LENGTHOF(buffer), &errorCode);
+    length=uloc_getDisplayLanguage("qq", "rr", buffer, UPRV_LENGTHOF(buffer), &errorCode);
     if(errorCode!=U_USING_DEFAULT_WARNING || length!=2 || buffer[0]!=0x71 || buffer[1]!=0x71) {
         log_err("error getting the display string for an unknown language - %s\n", u_errorName(errorCode));
     }
     
     /* test that we get a default warning for a display name where one component is unknown (4255) */
     errorCode=U_ZERO_ERROR;
-    length=uloc_getDisplayName("qq_US_POSIX", "en_US", buffer, LENGTHOF(buffer), &errorCode);
+    length=uloc_getDisplayName("qq_US_POSIX", "en_US", buffer, UPRV_LENGTHOF(buffer), &errorCode);
     if(errorCode!=U_USING_DEFAULT_WARNING) {
         log_err("error getting the display name for a locale with an unknown language - %s\n", u_errorName(errorCode));
     }
@@ -693,14 +699,14 @@ static void TestDisplayNames()
             "ca_ES",
             "el_GR" };
         static const char *expect[] = { "Spanish (Calendar=Japanese Calendar, Sort Order=Traditional Sort Order)", /* note sorted order of keywords */
-            "espagnol (calendrier=Calendrier japonais, ordre de tri=Ordre traditionnel)",
+            "espagnol (calendrier=calendrier japonais, ordre de tri=Ordre traditionnel)",
             "espanyol (calendari=calendari japon\\u00e8s, ordenaci\\u00f3=ordre tradicional)",
             "\\u0399\\u03c3\\u03c0\\u03b1\\u03bd\\u03b9\\u03ba\\u03ac (\\u0397\\u03bc\\u03b5\\u03c1\\u03bf\\u03bb\\u03cc\\u03b3\\u03b9\\u03bf=\\u0399\\u03b1\\u03c0\\u03c9\\u03bd\\u03b9\\u03ba\\u03cc \\u03b7\\u03bc\\u03b5\\u03c1\\u03bf\\u03bb\\u03cc\\u03b3\\u03b9\\u03bf, \\u03a3\\u03b5\\u03b9\\u03c1\\u03ac \\u03c4\\u03b1\\u03be\\u03b9\\u03bd\\u03cc\\u03bc\\u03b7\\u03c3\\u03b7\\u03c2=\\u03a0\\u03b1\\u03c1\\u03b1\\u03b4\\u03bf\\u03c3\\u03b9\\u03b1\\u03ba\\u03ae \\u03c3\\u03b5\\u03b9\\u03c1\\u03ac \\u03c4\\u03b1\\u03be\\u03b9\\u03bd\\u03cc\\u03bc\\u03b7\\u03c3\\u03b7\\u03c2)" };
         UChar *expectBuffer;
 
-        for(i=0;i<LENGTHOF(testL);i++) {
+        for(i=0;i<UPRV_LENGTHOF(testL);i++) {
             errorCode = U_ZERO_ERROR;
-            uloc_getDisplayName(aLocale, testL[i], buffer, LENGTHOF(buffer), &errorCode);
+            uloc_getDisplayName(aLocale, testL[i], buffer, UPRV_LENGTHOF(buffer), &errorCode);
             if(U_FAILURE(errorCode)) {
                 log_err("FAIL in uloc_getDisplayName(%s,%s,..) -> %s\n", aLocale, testL[i], u_errorName(errorCode));
             } else {
@@ -732,7 +738,7 @@ static void TestDisplayNames()
         if(ec==U_BUFFER_OVERFLOW_ERROR) {
             ec=U_ZERO_ERROR;
         }
-        len=uloc_getDisplayName(locale, displayLocale, result, LENGTHOF(result), &ec);
+        len=uloc_getDisplayName(locale, displayLocale, result, UPRV_LENGTHOF(result), &ec);
         if(U_FAILURE(ec)) {
             log_err("uloc_getDisplayName(%s, %s...) returned error: %s",
                     locale, displayLocale, u_errorName(ec));
@@ -1094,6 +1100,7 @@ static void TestDisplayNameBrackets()
             log_data_err("uldn_open fails for displayLocale %s, status=%s\n", itemPtr->displayLocale, u_errorName(status));
         }
 #endif
+    (void)ulen;   /* Suppress variable not used warning */
     }
 }
 
@@ -2778,7 +2785,7 @@ static void TestCalendar() {
         log_err_status(status, "Could not open res_index.res. Exiting. Error: %s\n", u_errorName(status));
         return;
     }
-    for (i=0; i<LENGTHOF(LOCALE_ALIAS); i++) {
+    for (i=0; i<UPRV_LENGTHOF(LOCALE_ALIAS); i++) {
         const char* oldLoc = LOCALE_ALIAS[i][0];
         const char* newLoc = LOCALE_ALIAS[i][1];
         UCalendar* c1 = NULL;
@@ -2814,7 +2821,7 @@ static void TestDateFormat() {
         log_err_status(status, "Could not open res_index.res. Exiting. Error: %s\n", u_errorName(status));
         return;
     }
-    for (i=0; i<LENGTHOF(LOCALE_ALIAS); i++) {
+    for (i=0; i<UPRV_LENGTHOF(LOCALE_ALIAS); i++) {
         const char* oldLoc = LOCALE_ALIAS[i][0];
         const char* newLoc = LOCALE_ALIAS[i][1];
         UDateFormat* df1 = NULL;
@@ -2857,7 +2864,7 @@ static void TestCollation() {
         log_err_status(status, "Could not open res_index.res. Exiting. Error: %s\n", u_errorName(status));
         return;
     }
-    for (i=0; i<LENGTHOF(LOCALE_ALIAS); i++) {
+    for (i=0; i<UPRV_LENGTHOF(LOCALE_ALIAS); i++) {
         const char* oldLoc = LOCALE_ALIAS[i][0];
         const char* newLoc = LOCALE_ALIAS[i][1];
         UCollator* c1 = NULL;
@@ -2981,7 +2988,7 @@ static void  TestULocale() {
         log_err_status(status, "Could not open res_index.res. Exiting. Error: %s\n", u_errorName(status));
         return;
     }
-    for (i=0; i<LENGTHOF(LOCALE_ALIAS); i++) {
+    for (i=0; i<UPRV_LENGTHOF(LOCALE_ALIAS); i++) {
         const char* oldLoc = LOCALE_ALIAS[i][0];
         const char* newLoc = LOCALE_ALIAS[i][1];
         UChar name1[256], name2[256];
@@ -3027,7 +3034,7 @@ static void TestUResourceBundle() {
         return;
     }
     resIndex = ures_open(NULL,"res_index", &status);
-    for (i=0; i<LENGTHOF(LOCALE_ALIAS); i++) {
+    for (i=0; i<UPRV_LENGTHOF(LOCALE_ALIAS); i++) {
 
         const char* oldLoc = LOCALE_ALIAS[i][0];
         const char* newLoc = LOCALE_ALIAS[i][1];
@@ -3072,7 +3079,7 @@ static void TestDisplayName() {
     int32_t capacity = 256;
     int i =0;
     int j=0;
-    for (i=0; i<LENGTHOF(LOCALE_ALIAS); i++) {
+    for (i=0; i<UPRV_LENGTHOF(LOCALE_ALIAS); i++) {
         const char* oldLoc = LOCALE_ALIAS[i][0];
         const char* newLoc = LOCALE_ALIAS[i][1];
         UErrorCode status = U_ZERO_ERROR;
@@ -4717,8 +4724,8 @@ const char* const full_data[][3] = {
     "uz"
   }, {
     "und_VA",
-    "la_Latn_VA",
-    "la"
+    "it_Latn_VA",
+    "it_VA"
   }, {
     "und_VE",
     "es_Latn_VE",
@@ -5670,7 +5677,6 @@ static void TestLikelySubtags()
 }
 
 const char* const locale_to_langtag[][3] = {
-    {"@x=elmer",    "x-elmer",      "x-elmer"},
     {"",            "und",          "und"},
     {"en",          "en",           "en"},
     {"en_US",       "en-US",        "en-US"},
@@ -5704,9 +5710,9 @@ const char* const locale_to_langtag[][3] = {
     {"en@timezone=America/New_York;calendar=japanese",    "en-u-ca-japanese-tz-usnyc",    "en-u-ca-japanese-tz-usnyc"},
     {"en@timezone=US/Eastern",  "en-u-tz-usnyc",    "en-u-tz-usnyc"},
     {"en@x=x-y-z;a=a-b-c",  "en-x-x-y-z",   NULL},
-    {"it@collation=badcollationtype;colStrength=identical;cu=usd-eur", "it-u-ks-identic",  NULL},
+    {"it@collation=badcollationtype;colStrength=identical;cu=usd-eur", "it-u-cu-usd-eur-ks-identic",  NULL},
     {"en_US_POSIX", "en-US-u-va-posix", "en-US-u-va-posix"},
-    {"en_US_POSIX@calendar=japanese;currency=EUR","en-US-u-ca-japanese-cu-EUR-va-posix", "en-US-u-ca-japanese-cu-EUR-va-posix"},
+    {"en_US_POSIX@calendar=japanese;currency=EUR","en-US-u-ca-japanese-cu-eur-va-posix", "en-US-u-ca-japanese-cu-eur-va-posix"},
     {"@x=elmer",    "x-elmer",      "x-elmer"},
     {"en@x=elmer",  "en-x-elmer",   "en-x-elmer"},
     {"@x=elmer;a=exta", "und-a-exta-x-elmer",   "und-a-exta-x-elmer"},
@@ -5776,6 +5782,7 @@ static const struct {
     const char  *locID;
     int32_t     len;
 } langtag_to_locale[] = {
+    {"ja-u-ijkl-efgh-abcd-ca-japanese-xx-yyy-zzz-kn",   "ja@attribute=abcd-efgh-ijkl;calendar=japanese;colnumeric=yes;xx=yyy-zzz",  FULL_LENGTH},
     {"en",                  "en",                   FULL_LENGTH},
     {"en-us",               "en_US",                FULL_LENGTH},
     {"und-US",              "_US",                  FULL_LENGTH},
@@ -5845,7 +5852,7 @@ static void TestForLanguageTag(void) {
                 langtag_to_locale[i].bcpID, u_errorName(status));
         } else {
             if (uprv_strcmp(langtag_to_locale[i].locID, locale) != 0) {
-                log_err("uloc_forLanguageTag returned locale [%s] for input language tag [%s] - expected: [%s]\n",
+                log_data_err("uloc_forLanguageTag returned locale [%s] for input language tag [%s] - expected: [%s]\n",
                     locale, langtag_to_locale[i].bcpID, langtag_to_locale[i].locID);
             }
             if (parsedLen != expParsedLen) {
@@ -5855,6 +5862,187 @@ static void TestForLanguageTag(void) {
         }
     }
 }
+
+static void TestToUnicodeLocaleKey(void)
+{
+    /* $IN specifies the result should be the input pointer itself */
+    static const char* DATA[][2] = {
+        {"calendar",    "ca"},
+        {"CALEndar",    "ca"},  /* difference casing */
+        {"ca",          "ca"},  /* bcp key itself */
+        {"kv",          "kv"},  /* no difference between legacy and bcp */
+        {"foo",         NULL},  /* unknown, bcp ill-formed */
+        {"ZZ",          "$IN"}, /* unknown, bcp well-formed -  */
+        {NULL,          NULL}
+    };
+
+    int32_t i;
+    for (i = 0; DATA[i][0] != NULL; i++) {
+        const char* keyword = DATA[i][0];
+        const char* expected = DATA[i][1];
+        const char* bcpKey = NULL;
+
+        bcpKey = uloc_toUnicodeLocaleKey(keyword);
+        if (expected == NULL) {
+            if (bcpKey != NULL) {
+                log_err("toUnicodeLocaleKey: keyword=%s => %s, expected=NULL\n", keyword, bcpKey);
+            }
+        } else if (bcpKey == NULL) {
+            log_data_err("toUnicodeLocaleKey: keyword=%s => NULL, expected=%s\n", keyword, expected);
+        } else if (uprv_strcmp(expected, "$IN") == 0) {
+            if (bcpKey != keyword) {
+                log_err("toUnicodeLocaleKey: keyword=%s => %s, expected=%s(input pointer)\n", keyword, bcpKey, keyword);
+            }
+        } else if (uprv_strcmp(bcpKey, expected) != 0) {
+            log_err("toUnicodeLocaleKey: keyword=%s => %s, expected=%s\n", keyword, bcpKey, expected);
+        }
+    }
+}
+
+static void TestToLegacyKey(void)
+{
+    /* $IN specifies the result should be the input pointer itself */
+    static const char* DATA[][2] = {
+        {"kb",          "colbackwards"},
+        {"kB",          "colbackwards"},    /* different casing */
+        {"Collation",   "collation"},   /* keyword itself with different casing */
+        {"kv",          "kv"},  /* no difference between legacy and bcp */
+        {"foo",         "$IN"}, /* unknown, bcp ill-formed */
+        {"ZZ",          "$IN"}, /* unknown, bcp well-formed */
+        {"e=mc2",       NULL},  /* unknown, bcp/legacy ill-formed */
+        {NULL,          NULL}
+    };
+
+    int32_t i;
+    for (i = 0; DATA[i][0] != NULL; i++) {
+        const char* keyword = DATA[i][0];
+        const char* expected = DATA[i][1];
+        const char* legacyKey = NULL;
+
+        legacyKey = uloc_toLegacyKey(keyword);
+        if (expected == NULL) {
+            if (legacyKey != NULL) {
+                log_err("toLegacyKey: keyword=%s => %s, expected=NULL\n", keyword, legacyKey);
+            }
+        } else if (legacyKey == NULL) {
+            log_err("toLegacyKey: keyword=%s => NULL, expected=%s\n", keyword, expected);
+        } else if (uprv_strcmp(expected, "$IN") == 0) {
+            if (legacyKey != keyword) {
+                log_err("toLegacyKey: keyword=%s => %s, expected=%s(input pointer)\n", keyword, legacyKey, keyword);
+            }
+        } else if (uprv_strcmp(legacyKey, expected) != 0) {
+            log_data_err("toUnicodeLocaleKey: keyword=%s, %s, expected=%s\n", keyword, legacyKey, expected);
+        }
+    }
+}
+
+static void TestToUnicodeLocaleType(void)
+{
+    /* $IN specifies the result should be the input pointer itself */
+    static const char* DATA[][3] = {
+        {"tz",              "Asia/Kolkata",     "inccu"},
+        {"calendar",        "gregorian",        "gregory"},
+        {"ca",              "gregorian",        "gregory"},
+        {"ca",              "Gregorian",        "gregory"},
+        {"ca",              "buddhist",         "buddhist"},
+        {"Calendar",        "Japanese",         "japanese"},
+        {"calendar",        "Islamic-Civil",    "islamic-civil"},
+        {"calendar",        "islamicc",         "islamic-civil"},   /* bcp type alias */
+        {"colalternate",    "NON-IGNORABLE",    "noignore"},
+        {"colcaselevel",    "yes",              "true"},
+        {"tz",              "america/new_york", "usnyc"},
+        {"tz",              "Asia/Kolkata",     "inccu"},
+        {"timezone",        "navajo",           "usden"},
+        {"ca",              "aaaa",             "$IN"},     /* unknown type, well-formed type */
+        {"ca",              "gregory-japanese-islamic", "$IN"}, /* unknown type, well-formed type */
+        {"zz",              "gregorian",        NULL},      /* unknown key, ill-formed type */
+        {"co",              "foo-",             NULL},      /* unknown type, ill-formed type */
+        {"variableTop",     "00A0",             "$IN"},     /* valid codepoints type */
+        {"variableTop",     "wxyz",             "$IN"},     /* invalid codepoints type - return as is for now */
+        {"kr",              "space-punct",      "space-punct"}, /* valid reordercode type */
+        {"kr",              "digit-spacepunct", NULL},      /* invalid (bcp ill-formed) reordercode type */
+        {NULL,              NULL,               NULL}
+    };
+
+    int32_t i;
+    for (i = 0; DATA[i][0] != NULL; i++) {
+        const char* keyword = DATA[i][0];
+        const char* value = DATA[i][1];
+        const char* expected = DATA[i][2];
+        const char* bcpType = NULL;
+
+        bcpType = uloc_toUnicodeLocaleType(keyword, value);
+        if (expected == NULL) {
+            if (bcpType != NULL) {
+                log_err("toUnicodeLocaleType: keyword=%s, value=%s => %s, expected=NULL\n", keyword, value, bcpType);
+            }
+        } else if (bcpType == NULL) {
+            log_data_err("toUnicodeLocaleType: keyword=%s, value=%s => NULL, expected=%s\n", keyword, value, expected);
+        } else if (uprv_strcmp(expected, "$IN") == 0) {
+            if (bcpType != value) {
+                log_err("toUnicodeLocaleType: keyword=%s, value=%s => %s, expected=%s(input pointer)\n", keyword, value, bcpType, value);
+            }
+        } else if (uprv_strcmp(bcpType, expected) != 0) {
+            log_data_err("toUnicodeLocaleType: keyword=%s, value=%s => %s, expected=%s\n", keyword, value, bcpType, expected);
+        }
+    }
+}
+
+static void TestToLegacyType(void)
+{
+    /* $IN specifies the result should be the input pointer itself */
+    static const char* DATA[][3] = {
+        {"calendar",        "gregory",          "gregorian"},
+        {"ca",              "gregory",          "gregorian"},
+        {"ca",              "Gregory",          "gregorian"},
+        {"ca",              "buddhist",         "buddhist"},
+        {"Calendar",        "Japanese",         "japanese"},
+        {"calendar",        "Islamic-Civil",    "islamic-civil"},
+        {"calendar",        "islamicc",         "islamic-civil"},   /* bcp type alias */
+        {"colalternate",    "noignore",         "non-ignorable"},
+        {"colcaselevel",    "true",             "yes"},
+        {"tz",              "usnyc",            "America/New_York"},
+        {"tz",              "inccu",            "Asia/Calcutta"},
+        {"timezone",        "usden",            "America/Denver"},
+        {"timezone",        "usnavajo",         "America/Denver"},  /* bcp type alias */
+        {"colstrength",     "quarternary",      "quaternary"},  /* type alias */
+        {"ca",              "aaaa",             "$IN"}, /* unknown type */
+        {"calendar",        "gregory-japanese-islamic", "$IN"}, /* unknown type, well-formed type */
+        {"zz",              "gregorian",        "$IN"}, /* unknown key, bcp ill-formed type */
+        {"ca",              "gregorian-calendar",   "$IN"}, /* known key, bcp ill-formed type */
+        {"co",              "e=mc2",            NULL},  /* known key, ill-formed bcp/legacy type */
+        {"variableTop",     "00A0",             "$IN"},     /* valid codepoints type */
+        {"variableTop",     "wxyz",             "$IN"},    /* invalid codepoints type - return as is for now */
+        {"kr",              "space-punct",      "space-punct"}, /* valid reordercode type */
+        {"kr",              "digit-spacepunct", "digit-spacepunct"},    /* invalid reordercode type, but ok for legacy syntax */
+        {NULL,              NULL,               NULL}
+    };
+
+    int32_t i;
+    for (i = 0; DATA[i][0] != NULL; i++) {
+        const char* keyword = DATA[i][0];
+        const char* value = DATA[i][1];
+        const char* expected = DATA[i][2];
+        const char* legacyType = NULL;
+
+        legacyType = uloc_toLegacyType(keyword, value);
+        if (expected == NULL) {
+            if (legacyType != NULL) {
+                log_err("toLegacyType: keyword=%s, value=%s => %s, expected=NULL\n", keyword, value, legacyType);
+            }
+        } else if (legacyType == NULL) {
+            log_err("toLegacyType: keyword=%s, value=%s => NULL, expected=%s\n", keyword, value, expected);
+        } else if (uprv_strcmp(expected, "$IN") == 0) {
+            if (legacyType != value) {
+                log_err("toLegacyType: keyword=%s, value=%s => %s, expected=%s(input pointer)\n", keyword, value, legacyType, value);
+            }
+        } else if (uprv_strcmp(legacyType, expected) != 0) {
+            log_data_err("toLegacyType: keyword=%s, value=%s => %s, expected=%s\n", keyword, value, legacyType, expected);
+        }
+    }
+}
+
+
 
 static void test_unicode_define(const char *namech, char ch, const char *nameu, UChar uch)
 {
@@ -5875,4 +6063,11 @@ static void TestUnicodeDefines(void) {
   TEST_UNICODE_DEFINE(ULOC_KEYWORD_SEPARATOR, ULOC_KEYWORD_SEPARATOR_UNICODE);
   TEST_UNICODE_DEFINE(ULOC_KEYWORD_ASSIGN, ULOC_KEYWORD_ASSIGN_UNICODE);
   TEST_UNICODE_DEFINE(ULOC_KEYWORD_ITEM_SEPARATOR, ULOC_KEYWORD_ITEM_SEPARATOR_UNICODE);
+}
+
+static void TestIsRightToLeft() {
+    // API test only. More test cases in intltest/LocaleTest.
+    if(uloc_isRightToLeft("root") || !uloc_isRightToLeft("EN-HEBR")) {
+        log_err("uloc_isRightToLeft() failed");
+    }
 }

@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fi.xml
@@ -10,22 +10,28 @@
  * ICU <specials> source: <path>/common/main/fi.xml
  */
 fi{
-    AuxExemplarCharacters{"[á à â ã č ç đ é è ê ë ǧ ǥ ȟ í î ï ǩ ń ñ ŋ ô õ œ ř ß ŧ ú ù û ÿ ü ʒ ǯ æ ø]"}
+    AuxExemplarCharacters{
+        "[á à ă â ã ą ā ć č ċ ç ď ð đ é è ê ě ë ė ę ē ğ ǧ ģ ǥ ȟ ħ í î ï İ į ī ı ǩ ķ ĺ"
+        " ľ ļ ł ń ň ñ ņ ŋ ó ò ô ő õ œ ŕ ř ś ŝ ş ß ť ţ ŧ ú ù û ů ű ų ū ý ÿ ü ź ż ʒ ǯ þ"
+        " æ ø]"
+    }
     Ellipsis{
         final{"{0}…"}
         initial{"…{0}"}
         medial{"{0}…{1}"}
         word-final{"{0}…"}
         word-initial{"…{0}"}
-        word-medial{"{0} … {1}"}
+        word-medial{"{0}… {1}"}
     }
     ExemplarCharacters{"[a b c d e f g h i j k l m n o p q r s š t u v w x y z ž å ä ö]"}
     ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Å Ä Ö]"}
+    ExemplarCharactersPunctuation{"[‐ – , ; \\: ! ? . … ’ ” » ( ) \\[ \\] § @ * / \\\\ \\& #]"}
     LocaleScript{
         "Latn",
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"vähintään {0}"}
@@ -154,12 +160,55 @@ fi{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{"."}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
+            DateTimePatterns{
+                "H.mm.ss zzzz",
+                "H.mm.ss z",
+                "H.mm.ss",
+                "H.mm",
+                "cccc d. MMMM y G",
+                "d. MMMM y G",
+                "d.M.y G",
+                "d.M.y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E d."}
+                Gy{"y G"}
+                GyMMM{"LLL y G"}
+                GyMMMEd{"E d. MMM y G"}
+                GyMMMd{"d. MMM y G"}
+                M{"L"}
+                MEd{"E d.M."}
+                MMM{"LLL"}
+                MMMEd{"ccc d. MMM"}
+                MMMd{"d. MMM"}
+                Md{"d.M."}
+                d{"d"}
+                y{"y G"}
+                yyyy{"y G"}
+                yyyyM{"L.y G"}
+                yyyyMEd{"E d.M.y G"}
+                yyyyMMM{"LLL y G"}
+                yyyyMMMEd{"E d. MMM y G"}
+                yyyyMMMM{"LLLL y G"}
+                yyyyMMMd{"d. MMM y G"}
+                yyyyMd{"d.M.y G"}
+                yyyyQQQ{"QQQ y G"}
+                yyyyQQQQ{"QQQQ y G"}
+            }
             eras{
                 abbreviated{
                     "BE",
@@ -218,6 +267,7 @@ fi{
                 "{1} {0}",
             }
             availableFormats{
+                E{"ccc"}
                 Ed{"E d."}
                 Gy{"y G"}
                 GyMMM{"LLL y G"}
@@ -355,6 +405,10 @@ fi{
                 "ap.",
                 "ip.",
             }
+            AmPmMarkersAbbr{
+                "ap.",
+                "ip.",
+            }
             AmPmMarkersNarrow{
                 "ap.",
                 "ip.",
@@ -374,10 +428,13 @@ fi{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"keskipäivä"}
+            NoonMarkerNarrow{"kp."}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"ccc"}
                 EHm{"E H.mm"}
                 EHms{"E H.mm.ss"}
                 Ed{"E d."}
@@ -497,13 +554,25 @@ fi{
                     "eKr.",
                     "jKr.",
                 }
+                abbreviated%variant{
+                    "eaa.",
+                    "jaa.",
+                }
                 narrow{
                     "eK",
                     "jK",
                 }
+                narrow%variant{
+                    "eaa",
+                    "jaa",
+                }
                 wide{
                     "ennen Kristuksen syntymää",
                     "jälkeen Kristuksen syntymän",
+                }
+                wide%variant{
+                    "ennen ajanlaskun alkua",
+                    "jälkeen ajanlaskun alun",
                 }
             }
             intervalFormats{
@@ -827,6 +896,22 @@ fi{
                         "dhu-l-hiddža",
                     }
                 }
+                stand-alone{
+                    wide{
+                        "muharram",
+                        "safar",
+                        "rabi’ al-awwal",
+                        "rabi’ al-akhir",
+                        "džumada-l-ula",
+                        "džumada-l-akhira",
+                        "radžab",
+                        "ša’ban",
+                        "ramadan",
+                        "šawwal",
+                        "dhu-l-qa’da",
+                        "dhu-l-hiddža",
+                    }
+                }
             }
         }
         japanese{
@@ -860,7 +945,7 @@ fi{
             1,
             0,
         }
-        tense:intvector{
+        relative:intvector{
             0,
             1,
         }
@@ -881,7 +966,7 @@ fi{
             dn{"päivä"}
             relative{
                 "-1"{"eilen"}
-                "-2"{"toissapäivänä"}
+                "-2"{"toissa päivänä"}
                 "0"{"tänään"}
                 "1"{"huomenna"}
                 "2"{"ylihuomenna"}
@@ -894,6 +979,32 @@ fi{
                 past{
                     one{"{0} päivä sitten"}
                     other{"{0} päivää sitten"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"pv"}
+            relativeTime{
+                future{
+                    one{"{0} pv päästä"}
+                    other{"{0} pv päästä"}
+                }
+                past{
+                    one{"{0} pv sitten"}
+                    other{"{0} pv sitten"}
+                }
+            }
+        }
+        day-short{
+            dn{"pv"}
+            relativeTime{
+                future{
+                    one{"{0} pv päästä"}
+                    other{"{0} pv päästä"}
+                }
+                past{
+                    one{"{0} pv sitten"}
+                    other{"{0} pv sitten"}
                 }
             }
         }
@@ -910,6 +1021,20 @@ fi{
                 "1"{"ensi perjantaina"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"viime pe"}
+                "0"{"tänä pe"}
+                "1"{"ensi pe"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"viime pe"}
+                "0"{"tänä pe"}
+                "1"{"ensi pe"}
+            }
+        }
         hour{
             dn{"tunti"}
             relativeTime{
@@ -920,6 +1045,32 @@ fi{
                 past{
                     one{"{0} tunti sitten"}
                     other{"{0} tuntia sitten"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"t"}
+            relativeTime{
+                future{
+                    one{"{0} t päästä"}
+                    other{"{0} t päästä"}
+                }
+                past{
+                    one{"{0} t sitten"}
+                    other{"{0} t sitten"}
+                }
+            }
+        }
+        hour-short{
+            dn{"t"}
+            relativeTime{
+                future{
+                    one{"{0} t päästä"}
+                    other{"{0} t päästä"}
+                }
+                past{
+                    one{"{0} t sitten"}
+                    other{"{0} t sitten"}
                 }
             }
         }
@@ -936,11 +1087,51 @@ fi{
                 }
             }
         }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"{0} min päästä"}
+                    other{"{0} min päästä"}
+                }
+                past{
+                    one{"{0} min sitten"}
+                    other{"{0} min sitten"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"{0} min päästä"}
+                    other{"{0} min päästä"}
+                }
+                past{
+                    one{"{0} min sitten"}
+                    other{"{0} min sitten"}
+                }
+            }
+        }
         mon{
             relative{
                 "-1"{"viime maanantaina"}
                 "0"{"tänä maanantaina"}
                 "1"{"ensi maanantaina"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"viime ma"}
+                "0"{"tänä ma"}
+                "1"{"ensi ma"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"viime ma"}
+                "0"{"tänä ma"}
+                "1"{"ensi ma"}
             }
         }
         month{
@@ -961,11 +1152,90 @@ fi{
                 }
             }
         }
+        month-narrow{
+            dn{"kk"}
+            relativeTime{
+                future{
+                    one{"{0} kk päästä"}
+                    other{"{0} kk päästä"}
+                }
+                past{
+                    one{"{0} kk sitten"}
+                    other{"{0} kk sitten"}
+                }
+            }
+        }
+        month-short{
+            dn{"kk"}
+            relativeTime{
+                future{
+                    one{"{0} kk päästä"}
+                    other{"{0} kk päästä"}
+                }
+                past{
+                    one{"{0} kk sitten"}
+                    other{"{0} kk sitten"}
+                }
+            }
+        }
+        quarter{
+            dn{"neljännesvuosi"}
+            relativeTime{
+                future{
+                    one{"{0} neljännesvuoden päästä"}
+                    other{"{0} neljännesvuoden päästä"}
+                }
+                past{
+                    one{"{0} neljännesvuosi sitten"}
+                    other{"{0} neljännesvuotta sitten"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"nelj."}
+            relativeTime{
+                future{
+                    one{"{0} nelj. päästä"}
+                    other{"{0} nelj. päästä"}
+                }
+                past{
+                    one{"{0} nelj. sitten"}
+                    other{"{0} nelj. sitten"}
+                }
+            }
+        }
+        quarter-short{
+            dn{"neljännes"}
+            relativeTime{
+                future{
+                    one{"{0} neljänneksen päästä"}
+                    other{"{0} neljänneksen päästä"}
+                }
+                past{
+                    one{"{0} neljännes sitten"}
+                    other{"{0} neljännes sitten"}
+                }
+            }
+        }
         sat{
             relative{
                 "-1"{"viime lauantaina"}
                 "0"{"tänä lauantaina"}
                 "1"{"ensi lauantaina"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"viime la"}
+                "0"{"tänä la"}
+                "1"{"ensi la"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"viime la"}
+                "0"{"tänä la"}
+                "1"{"ensi la"}
             }
         }
         second{
@@ -984,11 +1254,51 @@ fi{
                 }
             }
         }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"{0} s päästä"}
+                    other{"{0} s päästä"}
+                }
+                past{
+                    one{"{0} s sitten"}
+                    other{"{0} s sitten"}
+                }
+            }
+        }
+        second-short{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"{0} s päästä"}
+                    other{"{0} s päästä"}
+                }
+                past{
+                    one{"{0} s sitten"}
+                    other{"{0} s sitten"}
+                }
+            }
+        }
         sun{
             relative{
                 "-1"{"viime sunnuntaina"}
                 "0"{"tänä sunnuntaina"}
                 "1"{"ensi sunnuntaina"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"viime su"}
+                "0"{"tänä su"}
+                "1"{"ensi su"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"viime su"}
+                "0"{"tänä su"}
+                "1"{"ensi su"}
             }
         }
         thu{
@@ -998,6 +1308,20 @@ fi{
                 "1"{"ensi torstaina"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"viime to"}
+                "0"{"tänä to"}
+                "1"{"ensi to"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"viime to"}
+                "0"{"tänä to"}
+                "1"{"ensi to"}
+            }
+        }
         tue{
             relative{
                 "-1"{"viime tiistaina"}
@@ -1005,11 +1329,39 @@ fi{
                 "1"{"ensi tiistaina"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"viime ti"}
+                "0"{"tänä ti"}
+                "1"{"ensi ti"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"viime ti"}
+                "0"{"tänä ti"}
+                "1"{"ensi ti"}
+            }
+        }
         wed{
             relative{
                 "-1"{"viime keskiviikkona"}
                 "0"{"tänä keskiviikkona"}
                 "1"{"ensi keskiviikkona"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"viime ke"}
+                "0"{"tänä ke"}
+                "1"{"ensi ke"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"viime ke"}
+                "0"{"tänä ke"}
+                "1"{"ensi ke"}
             }
         }
         week{
@@ -1030,6 +1382,32 @@ fi{
                 }
             }
         }
+        week-narrow{
+            dn{"vk"}
+            relativeTime{
+                future{
+                    one{"{0} vk päästä"}
+                    other{"{0} vk päästä"}
+                }
+                past{
+                    one{"{0} vk sitten"}
+                    other{"{0} vk sitten"}
+                }
+            }
+        }
+        week-short{
+            dn{"vk"}
+            relativeTime{
+                future{
+                    one{"{0} vk päästä"}
+                    other{"{0} vk päästä"}
+                }
+                past{
+                    one{"{0} vk sitten"}
+                    other{"{0} vk sitten"}
+                }
+            }
+        }
         weekday{
             dn{"viikonpäivä"}
         }
@@ -1047,6 +1425,32 @@ fi{
                 }
                 past{
                     one{"{0} vuosi sitten"}
+                    other{"{0} vuotta sitten"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"v"}
+            relativeTime{
+                future{
+                    one{"{0} v päästä"}
+                    other{"{0} v päästä"}
+                }
+                past{
+                    one{"{0} v sitten"}
+                    other{"{0} v sitten"}
+                }
+            }
+        }
+        year-short{
+            dn{"v"}
+            relativeTime{
+                future{
+                    one{"{0} vuoden päästä"}
+                    other{"{0} vuoden päästä"}
+                }
+                past{
+                    one{"{0} vuotta sitten"}
                     other{"{0} vuotta sitten"}
                 }
             }
@@ -1087,132 +1491,15 @@ fi{
         metric{"metrinen"}
     }
     transformNames{
-        BGN{"BGN"}
-        Numeric{"Numerot"}
-        Tone{"Sävy"}
-        UNGEGN{"UNGEGN"}
-        x-Accents{"Aksenttimerkit"}
-        x-Fullwidth{"Leveä"}
-        x-Halfwidth{"Kapea"}
-        x-Jamo{"Jamo"}
-        x-Pinyin{"Pinyin"}
-        x-Publishing{"Julkaisu"}
-    }
-    units{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} päivä"}
-                other{"{0} päivää"}
-            }
-            hour{
-                one{"{0} tunti"}
-                other{"{0} tuntia"}
-            }
-            millisecond{
-                one{"{0} millisekunti"}
-                other{"{0} millisekuntia"}
-            }
-            minute{
-                one{"{0} minuutti"}
-                other{"{0} minuuttia"}
-            }
-            month{
-                one{"{0} kuukausi"}
-                other{"{0} kuukautta"}
-            }
-            second{
-                one{"{0} sekunti"}
-                other{"{0} sekuntia"}
-            }
-            week{
-                one{"{0} viikko"}
-                other{"{0} viikkoa"}
-            }
-            year{
-                one{"{0} vuosi"}
-                other{"{0} vuotta"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0}pv"}
-                other{"{0}pv"}
-            }
-            hour{
-                one{"{0}t"}
-                other{"{0}t"}
-            }
-            millisecond{
-                one{"{0}ms"}
-                other{"{0}ms"}
-            }
-            minute{
-                one{"{0}min"}
-                other{"{0}min"}
-            }
-            month{
-                one{"{0}kk"}
-                other{"{0}kk"}
-            }
-            second{
-                one{"{0}s"}
-                other{"{0}s"}
-            }
-            week{
-                one{"{0}vk"}
-                other{"{0}vk"}
-            }
-            year{
-                one{"{0}v"}
-                other{"{0}v"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} pv"}
-                other{"{0} pv"}
-            }
-            hour{
-                one{"{0} t"}
-                other{"{0} t"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} kk"}
-                other{"{0} kk"}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} vk"}
-                other{"{0} vk"}
-            }
-            year{
-                one{"{0} v"}
-                other{"{0} v"}
-            }
-        }
+        BGN{"BGN-latinaistus"}
+        Numeric{"numeerinen muunnos"}
+        Tone{"tooni"}
+        UNGEGN{"UNGEGN-latinaistus"}
+        x-Accents{"aksenttimerkit"}
+        x-Fullwidth{"ideogrammin levyinen"}
+        x-Halfwidth{"ideogrammin puolikkaan levyinen"}
+        x-Jamo{"jamo"}
+        x-Pinyin{"pinyin-latinaistus"}
+        x-Publishing{"julkaisuvalinta"}
     }
 }

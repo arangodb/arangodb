@@ -1,6 +1,6 @@
 /*  
  **********************************************************************
- *   Copyright (C) 2010-2012, International Business Machines
+ *   Copyright (C) 2010-2014, International Business Machines
  *   Corporation and others.  All Rights Reserved.
  **********************************************************************
  *  file name:  dicttrieperf.cpp
@@ -37,8 +37,7 @@
 #include "ucbuf.h"  // struct ULine
 #include "uoptions.h"
 #include "uvectr32.h"
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
+#include "cmemory.h" // for UPRV_LENGTHOF
 
 // Test object.
 class DictionaryTriePerfTest : public UPerfTest {
@@ -449,7 +448,7 @@ public:
             utext_openUChars(&text, lines[i].name, lines[i].len, pErrorCode);
             int32_t count=0;
             ucharsTrieMatches(*trie, &text, lines[i].len,
-                              lengths, count, LENGTHOF(lengths));
+                              lengths, count, UPRV_LENGTHOF(lengths));
             if(count==0 || lengths[count-1]!=lines[i].len) {
                 fprintf(stderr, "word %ld (0-based) not found\n", (long)i);
             }
@@ -598,7 +597,7 @@ public:
             utext_openUChars(&text, lines[i].name, lines[i].len, pErrorCode);
             int32_t count=0;
             bytesTrieMatches(*trie, &text, lines[i].len,
-                             lengths, count, LENGTHOF(lengths));
+                             lengths, count, UPRV_LENGTHOF(lengths));
             if(count==0 || lengths[count-1]!=lines[i].len) {
                 fprintf(stderr, "word %ld (0-based) not found\n", (long)i);
             }

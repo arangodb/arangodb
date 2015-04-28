@@ -1,6 +1,6 @@
 /*
  *******************************************************************************
- * Copyright (C) 2013, International Business Machines Corporation and others.
+ * Copyright (C) 2014, International Business Machines Corporation and others.
  * All Rights Reserved.
  *******************************************************************************
  */
@@ -17,7 +17,6 @@
 #include "unicode/uregion.h"
 
 #if !UCONFIG_NO_FORMATTING
-#ifndef U_HIDE_DRAFT_API
 
 #include "unicode/uobject.h"
 #include "unicode/uniset.h"
@@ -63,26 +62,26 @@ U_NAMESPACE_BEGIN
  * The Region class is not intended for public subclassing.
  *
  * @author       John Emmons
- * @draft ICU 51
+ * @stable ICU 51
  */
 
 class U_I18N_API Region : public UObject {
 public:
     /**
      * Destructor.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     virtual ~Region();
 
     /**
      * Returns true if the two regions are equal.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     UBool operator==(const Region &that) const;
 
     /**
      * Returns true if the two regions are NOT equal; that is, if operator ==() returns false.
-     * @draft ICU 51
+     * @stable ICU 51
      */
     UBool operator!=(const Region &that) const;
  
@@ -91,28 +90,30 @@ public:
      * 3-letter ISO code,  UNM.49 numeric code, or other valid Unicode Region Code as defined by the LDML specification.
      * The identifier will be canonicalized internally using the supplemental metadata as defined in the CLDR.
      * If the region code is NULL or not recognized, the appropriate error code will be set ( U_ILLEGAL_ARGUMENT_ERROR )
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     static const Region* U_EXPORT2 getInstance(const char *region_code, UErrorCode &status);
 
     /**
      * Returns a pointer to a Region using the given numeric region code. If the numeric region code is not recognized,
      * the appropriate error code will be set ( U_ILLEGAL_ARGUMENT_ERROR ).
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     static const Region* U_EXPORT2 getInstance (int32_t code, UErrorCode &status);
 
+#ifndef U_HIDE_DRAFT_API
     /**
      * Returns an enumeration over the IDs of all known regions that match the given type.
-     * @draft ICU 51 
+     * @draft ICU 51
      */
     static StringEnumeration* U_EXPORT2 getAvailable(URegionType type);
+#endif /* U_HIDE_DRAFT_API */
    
     /**
      * Returns a pointer to the region that contains this region.  Returns NULL if this region is code "001" (World)
      * or "ZZ" (Unknown region). For example, calling this method with region "IT" (Italy) returns the
      * region "039" (Southern Europe).
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     const Region* getContainingRegion() const;
 
@@ -122,10 +123,11 @@ public:
      * that matches the given type. Note: The URegionTypes = "URGN_GROUPING", "URGN_DEPRECATED", or "URGN_UNKNOWN"
      * are not appropriate for use in this API. NULL will be returned in this case. For example, calling this method
      * with region "IT" (Italy) for type "URGN_CONTINENT" returns the region "150" ( Europe ).
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     const Region* getContainingRegion(URegionType type) const;
 
+#ifndef U_HIDE_DRAFT_API
     /**
      * Return an enumeration over the IDs of all the regions that are immediate children of this region in the
      * region hierarchy. These returned regions could be either macro regions, territories, or a mixture of the two,
@@ -145,13 +147,15 @@ public:
      * @draft ICU 51 
      */
     StringEnumeration* getContainedRegions( URegionType type ) const;
+#endif /* U_HIDE_DRAFT_API */
  
     /**
      * Returns true if this region contains the supplied other region anywhere in the region hierarchy.
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     UBool contains(const Region &other) const;
 
+#ifndef U_HIDE_DRAFT_API
     /**
      * For deprecated regions, return an enumeration over the IDs of the regions that are the preferred replacement
      * regions for this region.  Returns null for a non-deprecated region.  For example, calling this method with region
@@ -159,24 +163,24 @@ public:
      * @draft ICU 51 
      */
     StringEnumeration* getPreferredValues() const;
- 
+#endif /* U_HIDE_DRAFT_API */
 
     /**
      * Return this region's canonical region code.
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     const char* getRegionCode() const;
 
     /**
      * Return this region's numeric code.
      * Returns a negative value if the given region does not have a numeric code assigned to it.
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     int32_t getNumericCode() const;
 
     /**
      * Returns the region type of this region.
-     * @draft ICU 51 
+     * @stable ICU 51 
      */
     URegionType getType() const;
 
@@ -212,13 +216,12 @@ private:
      * anything meaningful.
      */
 
-    static void loadRegionData();
+    static void loadRegionData(UErrorCode &status);
 
 };
 
 U_NAMESPACE_END
 
-#endif  /* U_HIDE_DRAFT_API */
 #endif /* #if !UCONFIG_NO_FORMATTING */
 #endif // REGION_H
 

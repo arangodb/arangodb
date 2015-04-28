@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/kln.xml
@@ -24,7 +24,7 @@ kln{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -70,6 +70,10 @@ kln{
             AmPmMarkers{
                 "Beet",
                 "Kemo",
+            }
+            AmPmMarkersAbbr{
+                "BE",
+                "KE",
             }
             DateTimePatterns{
                 "h:mm:ss a zzzz",
@@ -123,9 +127,9 @@ kln{
                     wide{
                         "Betutab tisap",
                         "Betut netai",
-                        "Betutab aeng'",
+                        "Betutab aeng’",
                         "Betutab somok",
-                        "Betutab ang'wan",
+                        "Betutab ang’wan",
                         "Betutab mut",
                         "Betutab lo",
                     }
@@ -170,10 +174,10 @@ kln{
                     }
                     wide{
                         "Mulgul",
-                        "Ng'atyato",
+                        "Ng’atyato",
                         "Kiptamo",
                         "Iwat kut",
-                        "Ng'eiyet",
+                        "Ng’eiyet",
                         "Waki",
                         "Roptui",
                         "Kipkogaga",
@@ -210,9 +214,9 @@ kln{
                     }
                     wide{
                         "Robo netai",
-                        "Robo nebo aeng'",
+                        "Robo nebo aeng’",
                         "Robo nebo somok",
-                        "Robo nebo ang'wan",
+                        "Robo nebo ang’wan",
                     }
                 }
             }

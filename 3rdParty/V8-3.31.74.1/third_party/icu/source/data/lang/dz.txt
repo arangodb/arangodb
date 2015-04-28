@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/dz.xml
@@ -69,14 +69,12 @@ dz{
         haw{"ཧ་ཝ་ཡིའི་ཁ"}
         he{"ཧེ་བྲུ་ཁ"}
         hi{"ཧིན་དི་ཁ"}
-        him{"ཧི་མ་ཅ་ལི་ཁ"}
         hr{"ཀྲོ་ཨེ་ཤི་ཡཱན་ཁ"}
         ht{"ཧེ་ཏི་ཡཱན་ཁ"}
         hu{"ཧཱང་གྷ་རི་ཡཱན་ཁ"}
         hy{"ཨར་མི་ནི་ཡཱན་ཁ"}
         id{"ཨིན་ཌོ་ནེ་ཤི་ཡཱན་ཁ"}
         ig{"ཨིག་བོ་ཁ"}
-        inc{"ཨིན་ཌིཀ་ཁ་སྐད"}
         is{"ཨ་ཡིས་ལེན་ཌིཀ་ཁ"}
         it{"ཨི་ཊ་ལི་ཡཱན་ཁ"}
         ja{"ཇཱ་པཱ་ནིས་ཁ"}
@@ -245,7 +243,7 @@ dz{
             tibt{"ང་བཅས་ཀྱི་ཨང་ཡིག"}
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.6.69"}
     codePatterns{
         language{"ཁ་སྐད་: {0}"}
         script{"ཡིག་གཟུགས་: {0}"}

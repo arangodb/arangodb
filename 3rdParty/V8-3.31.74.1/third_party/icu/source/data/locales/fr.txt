@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/fr.xml
@@ -30,10 +30,11 @@ fr{
     }
     MoreInformation{"?"}
     NumberElements{
+        default{"latn"}
         latn{
             miscPatterns{
                 atLeast{"au moins {0}"}
-                range{"de {0} à {1}"}
+                range{"{0}–{1}"}
             }
             patterns{
                 accountingFormat{"#,##0.00 ¤;(#,##0.00 ¤)"}
@@ -158,10 +159,13 @@ fr{
                 percentSign{"%"}
                 plusSign{"+"}
                 superscriptingExponent{"×"}
+                timeSeparator{":"}
             }
         }
+        minimumGroupingDigits{"1"}
+        native{"latn"}
     }
-    Version{"2.0.93.10"}
+    Version{"2.1.8.9"}
     calendar{
         buddhist{
             DateTimePatterns{
@@ -447,10 +451,10 @@ fr{
                     H{"HH – HH v"}
                 }
                 M{
-                    M{"M–M"}
+                    M{"M – M"}
                 }
                 MEd{
-                    M{"E dd/MM - E dd/MM"}
+                    M{"E dd/MM – E dd/MM"}
                     d{"E dd/MM - E dd/MM"}
                 }
                 MMM{
@@ -458,18 +462,18 @@ fr{
                 }
                 MMMEd{
                     M{"E d MMM – E d MMM"}
-                    d{"E d – E d MMM"}
+                    d{"E d MMM – E d MMM"}
                 }
                 MMMd{
                     M{"d MMM – d MMM"}
                     d{"d–d MMM"}
                 }
                 Md{
-                    M{"dd/MM - dd/MM"}
-                    d{"dd/MM - dd/MM"}
+                    M{"dd/MM – dd/MM"}
+                    d{"dd/MM – dd/MM"}
                 }
                 d{
-                    d{"d-d"}
+                    d{"d – d"}
                 }
                 fallback{"{0} – {1}"}
                 h{
@@ -491,7 +495,7 @@ fr{
                     h{"h – h a v"}
                 }
                 y{
-                    y{"y-y G"}
+                    y{"y – y G"}
                 }
                 yM{
                     M{"MM/y – MM/y G"}
@@ -512,7 +516,7 @@ fr{
                     y{"E d MMM y – E d MMM y G"}
                 }
                 yMMMM{
-                    M{"MMMM–MMMM y G"}
+                    M{"MMMM – MMMM y G"}
                     y{"MMMM y – MMMM y G"}
                 }
                 yMMMd{
@@ -529,6 +533,10 @@ fr{
         }
         gregorian{
             AmPmMarkers{
+                "AM",
+                "PM",
+            }
+            AmPmMarkersAbbr{
                 "AM",
                 "PM",
             }
@@ -551,10 +559,13 @@ fr{
                 "{1} {0}",
                 "{1} {0}",
             }
+            NoonMarker{"midi"}
+            NoonMarkerNarrow{"midi"}
             appendItems{
                 Timezone{"{0} {1}"}
             }
             availableFormats{
+                E{"E"}
                 EHm{"E HH:mm"}
                 EHms{"E HH:mm:ss"}
                 Ed{"E d"}
@@ -630,13 +641,13 @@ fr{
                 }
                 stand-alone{
                     abbreviated{
-                        "dim.",
-                        "lun.",
-                        "mar.",
-                        "mer.",
-                        "jeu.",
-                        "ven.",
-                        "sam.",
+                        "Dim.",
+                        "Lun.",
+                        "Mar.",
+                        "Mer.",
+                        "Jeu.",
+                        "Ven.",
+                        "Sam.",
                     }
                     narrow{
                         "D",
@@ -648,22 +659,22 @@ fr{
                         "S",
                     }
                     short{
-                        "dim.",
-                        "lun.",
-                        "mar.",
-                        "mer.",
-                        "jeu.",
-                        "ven.",
-                        "sam.",
+                        "Di",
+                        "Lu",
+                        "Ma",
+                        "Me",
+                        "Je",
+                        "Ve",
+                        "Sa",
                     }
                     wide{
-                        "dimanche",
-                        "lundi",
-                        "mardi",
-                        "mercredi",
-                        "jeudi",
-                        "vendredi",
-                        "samedi",
+                        "Dimanche",
+                        "Lundi",
+                        "Mardi",
+                        "Mercredi",
+                        "Jeudi",
+                        "Vendredi",
+                        "Samedi",
                     }
                 }
             }
@@ -672,13 +683,25 @@ fr{
                     "av. J.-C.",
                     "ap. J.-C.",
                 }
+                abbreviated%variant{
+                    "AEC",
+                    "EC",
+                }
                 narrow{
                     "av. J.-C.",
                     "ap. J.-C.",
                 }
+                narrow%variant{
+                    "AEC",
+                    "EC",
+                }
                 wide{
                     "avant Jésus-Christ",
                     "après Jésus-Christ",
+                }
+                wide%variant{
+                    "AEC",
+                    "EC",
                 }
             }
             intervalFormats{
@@ -823,18 +846,18 @@ fr{
                 }
                 stand-alone{
                     abbreviated{
-                        "janv.",
-                        "févr.",
-                        "mars",
-                        "avr.",
-                        "mai",
-                        "juin",
-                        "juil.",
-                        "août",
-                        "sept.",
-                        "oct.",
-                        "nov.",
-                        "déc.",
+                        "Janv.",
+                        "Févr.",
+                        "Mars",
+                        "Avr.",
+                        "Mai",
+                        "Juin",
+                        "Juil.",
+                        "Août",
+                        "Sept.",
+                        "Oct.",
+                        "Nov.",
+                        "Déc.",
                     }
                     narrow{
                         "J",
@@ -851,18 +874,18 @@ fr{
                         "D",
                     }
                     wide{
-                        "janvier",
-                        "février",
-                        "mars",
-                        "avril",
-                        "mai",
-                        "juin",
-                        "juillet",
-                        "août",
-                        "septembre",
-                        "octobre",
-                        "novembre",
-                        "décembre",
+                        "Janvier",
+                        "Février",
+                        "Mars",
+                        "Avril",
+                        "Mai",
+                        "Juin",
+                        "Juillet",
+                        "Août",
+                        "Septembre",
+                        "Octobre",
+                        "Novembre",
+                        "Décembre",
                     }
                 }
             }
@@ -1181,9 +1204,9 @@ fr{
         quotationStart{"«"}
     }
     durationUnits{
-        hm{"h:mm"}
-        hms{"h:mm:ss"}
-        ms{"m:ss"}
+        hm{"hh:mm"}
+        hms{"hh:mm:ss"}
+        ms{"mm:ss"}
     }
     fields{
         day{
@@ -1206,6 +1229,32 @@ fr{
                 }
             }
         }
+        day-narrow{
+            dn{"j"}
+            relativeTime{
+                future{
+                    one{"+{0} j"}
+                    other{"+{0} j"}
+                }
+                past{
+                    one{"-{0} j"}
+                    other{"-{0} j"}
+                }
+            }
+        }
+        day-short{
+            dn{"j"}
+            relativeTime{
+                future{
+                    one{"dans {0} j"}
+                    other{"dans {0} j"}
+                }
+                past{
+                    one{"il y a {0} j"}
+                    other{"il y a {0} j"}
+                }
+            }
+        }
         dayperiod{
             dn{"cadran"}
         }
@@ -1219,6 +1268,20 @@ fr{
                 "1"{"vendredi prochain"}
             }
         }
+        fri-narrow{
+            relative{
+                "-1"{"ven dernier"}
+                "0"{"ce ven"}
+                "1"{"ven prochain"}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"ven. dernier"}
+                "0"{"ce ven."}
+                "1"{"ven. prochain"}
+            }
+        }
         hour{
             dn{"heure"}
             relativeTime{
@@ -1229,6 +1292,32 @@ fr{
                 past{
                     one{"il y a {0} heure"}
                     other{"il y a {0} heures"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"h"}
+            relativeTime{
+                future{
+                    one{"+{0} h"}
+                    other{"+{0} h"}
+                }
+                past{
+                    one{"-{0} h"}
+                    other{"-{0} h"}
+                }
+            }
+        }
+        hour-short{
+            dn{"h"}
+            relativeTime{
+                future{
+                    one{"dans {0} h"}
+                    other{"dans {0} h"}
+                }
+                past{
+                    one{"il y a {0} h"}
+                    other{"il y a {0} h"}
                 }
             }
         }
@@ -1245,11 +1334,51 @@ fr{
                 }
             }
         }
+        minute-narrow{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"+{0} min"}
+                    other{"+{0} min"}
+                }
+                past{
+                    one{"-{0} min"}
+                    other{"-{0} min"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min"}
+            relativeTime{
+                future{
+                    one{"dans {0} min"}
+                    other{"dans {0} min"}
+                }
+                past{
+                    one{"il y a {0} min"}
+                    other{"il y a {0} min"}
+                }
+            }
+        }
         mon{
             relative{
                 "-1"{"lundi dernier"}
                 "0"{"ce lundi"}
                 "1"{"lundi prochain"}
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"lun dernier"}
+                "0"{"ce lun"}
+                "1"{"lun prochain"}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"lun. dernier"}
+                "0"{"ce lun."}
+                "1"{"lun. prochain"}
             }
         }
         month{
@@ -1270,11 +1399,90 @@ fr{
                 }
             }
         }
+        month-narrow{
+            dn{"m"}
+            relativeTime{
+                future{
+                    one{"+{0} m."}
+                    other{"+{0} m."}
+                }
+                past{
+                    one{"-{0} m."}
+                    other{"-{0} m."}
+                }
+            }
+        }
+        month-short{
+            dn{"m."}
+            relativeTime{
+                future{
+                    one{"dans {0} m."}
+                    other{"dans {0} m."}
+                }
+                past{
+                    one{"il y a {0} m."}
+                    other{"il y a {0} m."}
+                }
+            }
+        }
+        quarter{
+            dn{"trimestre"}
+            relativeTime{
+                future{
+                    one{"dans {0} trimestre"}
+                    other{"dans {0} trimestres"}
+                }
+                past{
+                    one{"il y a {0} trimestre"}
+                    other{"il y a {0} trimestres"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    one{"+{0} trim."}
+                    other{"+{0} trim."}
+                }
+                past{
+                    one{"-{0} trim."}
+                    other{"-{0} trim."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"trim."}
+            relativeTime{
+                future{
+                    one{"dans {0} trim."}
+                    other{"dans {0} trim."}
+                }
+                past{
+                    one{"il y a {0} trim."}
+                    other{"il y a {0} trim."}
+                }
+            }
+        }
         sat{
             relative{
                 "-1"{"samedi dernier"}
                 "0"{"ce samedi"}
                 "1"{"samedi prochain"}
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"sam dernier"}
+                "0"{"ce sam"}
+                "1"{"sam prochain"}
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"sam. dernier"}
+                "0"{"ce sam."}
+                "1"{"sam. prochain"}
             }
         }
         second{
@@ -1293,11 +1501,51 @@ fr{
                 }
             }
         }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"+{0} s"}
+                    other{"+{0} s"}
+                }
+                past{
+                    one{"-{0} s"}
+                    other{"-{0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"s"}
+            relativeTime{
+                future{
+                    one{"dans {0} s"}
+                    other{"dans {0} s"}
+                }
+                past{
+                    one{"il y a {0} s"}
+                    other{"il y a {0} s"}
+                }
+            }
+        }
         sun{
             relative{
                 "-1"{"dimanche dernier"}
                 "0"{"ce dimanche"}
                 "1"{"dimanche prochain"}
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"dim dernier"}
+                "0"{"ce dim"}
+                "1"{"dim prochain"}
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"dim. dernier"}
+                "0"{"ce dim."}
+                "1"{"dim. prochain"}
             }
         }
         thu{
@@ -1307,6 +1555,20 @@ fr{
                 "1"{"jeudi prochain"}
             }
         }
+        thu-narrow{
+            relative{
+                "-1"{"jeu dernier"}
+                "0"{"ce jeu"}
+                "1"{"jeu prochain"}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"jeu. dernier"}
+                "0"{"ce jeu."}
+                "1"{"jeu. prochain"}
+            }
+        }
         tue{
             relative{
                 "-1"{"mardi dernier"}
@@ -1314,11 +1576,39 @@ fr{
                 "1"{"mardi prochain"}
             }
         }
+        tue-narrow{
+            relative{
+                "-1"{"mar dernier"}
+                "0"{"ce mar"}
+                "1"{"mar prochain"}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"mar. dernier"}
+                "0"{"ce mar."}
+                "1"{"mar. prochain"}
+            }
+        }
         wed{
             relative{
                 "-1"{"mercredi dernier"}
                 "0"{"ce mercredi"}
                 "1"{"mercredi prochain"}
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"mer dernier"}
+                "0"{"ce mer"}
+                "1"{"mer prochain"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"mer. dernier"}
+                "0"{"ce mer."}
+                "1"{"mer. prochain"}
             }
         }
         week{
@@ -1336,6 +1626,32 @@ fr{
                 past{
                     one{"il y a {0} semaine"}
                     other{"il y a {0} semaines"}
+                }
+            }
+        }
+        week-narrow{
+            dn{"sem."}
+            relativeTime{
+                future{
+                    one{"+{0} sem."}
+                    other{"+{0} sem."}
+                }
+                past{
+                    one{"-{0} sem."}
+                    other{"-{0} sem."}
+                }
+            }
+        }
+        week-short{
+            dn{"sem."}
+            relativeTime{
+                future{
+                    one{"dans {0} sem."}
+                    other{"dans {0} sem."}
+                }
+                past{
+                    one{"il y a {0} sem."}
+                    other{"il y a {0} sem."}
                 }
             }
         }
@@ -1357,6 +1673,32 @@ fr{
                 past{
                     one{"il y a {0} an"}
                     other{"il y a {0} ans"}
+                }
+            }
+        }
+        year-narrow{
+            dn{"a"}
+            relativeTime{
+                future{
+                    one{"+{0} a"}
+                    other{"+{0} a"}
+                }
+                past{
+                    one{"-{0} a"}
+                    other{"-{0} a"}
+                }
+            }
+        }
+        year-short{
+            dn{"a"}
+            relativeTime{
+                future{
+                    one{"dans {0} a"}
+                    other{"dans {0} a"}
+                }
+                past{
+                    one{"il y a {0} a"}
+                    other{"il y a {0} a"}
                 }
             }
         }
@@ -1406,122 +1748,5 @@ fr{
         x-Jamo{"Jamo"}
         x-Pinyin{"Pinyin"}
         x-Publishing{"Publication"}
-    }
-    units{
-        compound{
-            per{"{0} par {1}"}
-        }
-        duration{
-            day{
-                one{"{0} jour"}
-                other{"{0} jours"}
-            }
-            hour{
-                one{"{0} heure"}
-                other{"{0} heures"}
-            }
-            millisecond{
-                one{"{0} milliseconde"}
-                other{"{0} millisecondes"}
-            }
-            minute{
-                one{"{0} minute"}
-                other{"{0} minutes"}
-            }
-            month{
-                one{"{0} mois"}
-                other{"{0} mois"}
-            }
-            second{
-                one{"{0} seconde"}
-                other{"{0} secondes"}
-            }
-            week{
-                one{"{0} semaine"}
-                other{"{0} semaines"}
-            }
-            year{
-                one{"{0} année"}
-                other{"{0} années"}
-            }
-        }
-    }
-    unitsNarrow{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0}j"}
-                other{"{0}j"}
-            }
-            hour{
-                one{"{0}h"}
-                other{"{0}h"}
-            }
-            millisecond{
-                one{"{0}ms"}
-                other{"{0}ms"}
-            }
-            minute{
-                one{"{0}m"}
-                other{"{0}m"}
-            }
-            month{
-                one{"{0}m"}
-                other{"{0}m"}
-            }
-            second{
-                one{"{0}s"}
-                other{"{0}s"}
-            }
-            week{
-                one{"{0}sem"}
-                other{"{0}sem"}
-            }
-            year{
-                one{"{0}a"}
-                other{"{0}a"}
-            }
-        }
-    }
-    unitsShort{
-        compound{
-            per{"{0}/{1}"}
-        }
-        duration{
-            day{
-                one{"{0} j"}
-                other{"{0} j"}
-            }
-            hour{
-                one{"{0} h"}
-                other{"{0} h"}
-            }
-            millisecond{
-                one{"{0} ms"}
-                other{"{0} ms"}
-            }
-            minute{
-                one{"{0} min"}
-                other{"{0} min"}
-            }
-            month{
-                one{"{0} m"}
-                other{"{0} m"}
-            }
-            second{
-                one{"{0} s"}
-                other{"{0} s"}
-            }
-            week{
-                one{"{0} sem."}
-                other{"{0} sem."}
-            }
-            year{
-                one{"{0} an"}
-                other{"{0} ans"}
-            }
-        }
     }
 }

@@ -1,16 +1,15 @@
 /*
 **********************************************************************
-* Copyright (c) 2002-2009, International Business Machines
+* Copyright (c) 2002-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 */
 #include "unicode/uset.h"
 #include "unicode/ustring.h"
 #include "cintltst.h"
+#include "cmemory.h"
 #include <stdlib.h>
 #include <string.h>
-
-#define LENGTHOF(array) (int32_t)(sizeof(array)/sizeof((array)[0]))
 
 #define TEST(x) addTest(root, &x, "uset/" # x)
 
@@ -492,7 +491,7 @@ TestSerialized() {
         return;
     }
 
-    length=uset_serialize(set, buffer, LENGTHOF(buffer), &errorCode);
+    length=uset_serialize(set, buffer, UPRV_LENGTHOF(buffer), &errorCode);
     if(U_FAILURE(errorCode)) {
         log_err("unable to uset_serialize([:Cf:]) - %s\n", u_errorName(errorCode));
         uset_close(set);

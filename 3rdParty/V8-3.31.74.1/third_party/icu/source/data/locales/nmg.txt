@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/nmg.xml
@@ -12,9 +12,9 @@
 nmg{
     AuxExemplarCharacters{"[q x z]"}
     ExemplarCharacters{
-        "[a á ă â ä ā b ɓ c d e é ĕ ê ē ǝ {ǝ\u0301} {ǝ\u0306} {ǝ\u0302} {ǝ\u0304} ɛ {"
-        "ɛ\u0301} {ɛ\u0306} {ɛ\u0302} {ɛ\u0304} f g h i í ĭ î ï ī j k l m n ń ŋ o ó ŏ"
-        " ô ö ō ɔ {ɔ\u0301} {ɔ\u0306} {ɔ\u0302} {ɔ\u0304} p r ŕ s t u ú ŭ û ū v w y]"
+        "[a á â ǎ ä ā b ɓ c d e é ê ě ē ǝ {ǝ\u0301} {ǝ\u0302} {ǝ\u030C} {ǝ\u0304} ɛ {"
+        "ɛ\u0301} {ɛ\u0302} {ɛ\u030C} {ɛ\u0304} f g h i í î ǐ ï ī j k l m n ń ŋ o ó ô"
+        " ǒ ö ō ɔ {ɔ\u0301} {ɔ\u0302} {ɔ\u030C} {ɔ\u0304} p r ŕ s t u ú û ǔ ū v w y]"
     }
     ExemplarCharactersIndex{"[A B Ɓ C D E Ǝ Ɛ F G H I J K L M N Ŋ O Ɔ P R S T U V W Y]"}
     LocaleScript{
@@ -33,7 +33,7 @@ nmg{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -190,7 +190,7 @@ nmg{
                         "ngwɛn lɔmbi",
                         "ngwɛn rɛbvuâ",
                         "ngwɛn wum",
-                        "ngwɛn wum navŭr",
+                        "ngwɛn wum navǔr",
                         "krísimin",
                     }
                 }

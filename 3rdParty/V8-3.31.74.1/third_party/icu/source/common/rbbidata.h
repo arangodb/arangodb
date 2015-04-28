@@ -1,7 +1,7 @@
 /*
 *******************************************************************************
 *
-*   Copyright (C) 1999-2013 International Business Machines
+*   Copyright (C) 1999-2014 International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *
 *******************************************************************************
@@ -150,6 +150,7 @@ public:
     RBBIDataWrapper(UDataMemory* udm, UErrorCode &status);
     ~RBBIDataWrapper();
 
+    void                  init0();
     void                  init(const RBBIDataHeader *data, UErrorCode &status);
     RBBIDataWrapper      *addReference();
     void                  removeReference();
@@ -182,7 +183,7 @@ public:
 
 private:
     u_atomic_int32_t    fRefCount;
-    UDataMemory        *fUDataMem;
+    UDataMemory  *fUDataMem;
     UnicodeString       fRuleString;
     UBool               fDontFreeData;
 

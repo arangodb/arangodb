@@ -1,6 +1,6 @@
 ## -*-makefile-*-
 ## Cygwin/MinGW specific setup
-## Copyright (c) 2001-2013, International Business Machines Corporation and
+## Copyright (c) 2001-2014, International Business Machines Corporation and
 ## others. All Rights Reserved.
 
 # TODO: Finish the rest of this port. This platform port is incomplete.
@@ -44,8 +44,8 @@ LINK.c=       $(CXX) $(CXXFLAGS) $(LDFLAGS)
 LD_SOOPTIONS= -Wl,-Bsymbolic
 
 ## Commands to make a shared library
-SHLIB.c=	$(CC) $(CFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
-SHLIB.cc=	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
+SHLIB.c=	$(CC) $(CFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)lib$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
+SHLIB.cc=	$(CXX) $(CXXFLAGS) $(LDFLAGS) -shared $(LD_SOOPTIONS) -Wl,--enable-auto-import -Wl,--out-implib=$(dir $@)lib$(notdir $(@:$(SO_TARGET_VERSION_MAJOR).$(SO)=))$(IMPORT_LIB_EXT)#M#
 
 ## Compiler switch to embed a runtime search path
 LD_RPATH=	
@@ -79,6 +79,18 @@ LIBPREFIX=
 DATA_STUBNAME = dt
 I18N_STUBNAME = in
 LIBICU = $(STATIC_PREFIX_WHEN_USED)$(ICUPREFIX)
+
+#SH### copied from Makefile.inc
+#SH## for icu-config to test with
+#SH#ICULIBS_COMMON_LIB_NAME="${LIBICU}${COMMON_STUBNAME}${ICULIBSUFFIX}${ICULIBSUFFIX_VERSION}.${SO}"
+#SH#ICULIBS_COMMON_LIB_NAME_A="${LIBICU}${COMMON_STUBNAME}${ICULIBSUFFIX}.${A}"
+
+#SH#ICULIBS_DATA="-l$(ICUPREFIX)$(DATA_STUBNAME)$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)"
+#SH#ICULIBS_I18N="-l$(ICUPREFIX)$(I18N_STUBNAME)$(ICULIBSUFFIX)$(ICULIBSUFFIX_VERSION)"
+#SH#
+#SH## ICULIBS is the set of libraries your application should link
+#SH## with usually. Many applications will want to add ${ICULIBS_I18N} as well. 
+#SH#ICULIBS="${ICULIBS_BASE} ${ICULIBS_I18N} ${ICULIBS_COMMON} ${ICULIBS_DATA} "
 
 # The #M# is used to delete lines for icu-config
 # Current full path directory.
@@ -118,7 +130,7 @@ CURR_SRCCODE_FULL_DIR=$(subst \,/,$(shell cmd /c cd))#M# for Cygwin shell
 FINAL_SO_TARGET=$(basename $(SO_TARGET))$(SO_TARGET_VERSION_MAJOR).$(SO)
 MIDDLE_SO_TARGET=$(FINAL_SO_TARGET)
 
-FINAL_IMPORT_LIB = $(dir $(SO_TARGET))$(notdir $(basename $(SO_TARGET)))$(IMPORT_LIB_EXT)#M#
+FINAL_IMPORT_LIB = $(dir $(SO_TARGET))lib$(notdir $(basename $(SO_TARGET)))$(IMPORT_LIB_EXT)#M#
 IMPORT_LIB = $(FINAL_IMPORT_LIB)#M#
 MIDDLE_IMPORT_LIB = $(FINAL_IMPORT_LIB)#M#
 

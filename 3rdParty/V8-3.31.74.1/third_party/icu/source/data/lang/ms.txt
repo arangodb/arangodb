@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/ms.xml
@@ -21,7 +21,6 @@ ms{
         be{"Belarus"}
         bem{"Bemba"}
         bg{"Bulgaria"}
-        bh{"Bihari"}
         bn{"Benggala"}
         br{"Breton"}
         bs{"Bosnia"}
@@ -125,6 +124,7 @@ ms{
         rm{"Romansh"}
         rn{"Rundi"}
         ro{"Romania"}
+        ro_MD{"Moldavia"}
         ru{"Rusia"}
         rw{"Kinyarwanda"}
         sd{"Sindhi"}
@@ -152,7 +152,7 @@ ms{
         tt{"Tatar"}
         tum{"Tumbuka"}
         tw{"Twi"}
-        ug{"Uighur"}
+        ug{"Uyghur"}
         uk{"Ukraine"}
         ur{"Urdu"}
         uz{"Uzbekistan"}
@@ -166,6 +166,10 @@ ms{
         zh_Hant{"Cina Tradisional"}
         zu{"Zulu"}
     }
+    Languages%variant{
+        ps{"Pushto"}
+        ug{"Uighur"}
+    }
     LanguagesShort{
         az{"Azeri"}
         en_GB{"Inggeris U.K."}
@@ -174,9 +178,12 @@ ms{
     Scripts{
         Arab{"Arab"}
         Armn{"Armenia"}
+        Bali{"Bali"}
+        Bamu{"Bamu"}
         Beng{"Bengali"}
         Bopo{"Bopomofo"}
         Brai{"Braille"}
+        Cans{"Cans"}
         Cyrl{"Cyril"}
         Deva{"Devanagari"}
         Ethi{"Ethiopia"}
@@ -216,7 +223,10 @@ ms{
         Hans{"Han Ringkas"}
         Hant{"Han Tradisional"}
     }
-    Version{"2.0.92.87"}
+    Scripts%variant{
+        Arab{"Perso-Arab"}
+    }
+    Version{"2.1.8.9"}
     codePatterns{
         language{"Bahasa: {0}"}
         script{"Skrip: {0}"}

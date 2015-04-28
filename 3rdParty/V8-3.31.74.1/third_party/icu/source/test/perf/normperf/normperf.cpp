@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-* Copyright (c) 2002-2005, International Business Machines
+* Copyright (c) 2002-2014, International Business Machines
 * Corporation and others.  All Rights Reserved.
 **********************************************************************
 **********************************************************************
@@ -13,9 +13,8 @@
  */
 #include "normperf.h"
 #include "uoptions.h"
+#include "cmemory.h" // for UPRV_LENGTHOF
 #include <stdio.h>
-
-#define LENGTHOF(array) (sizeof(array)/sizeof((array)[0]))
 
 UPerfFunction* NormalizerPerformanceTest::runIndexedTest(int32_t index, UBool exec,const char* &name, char* par) {
     switch (index) {
@@ -132,7 +131,7 @@ NormalizerPerformanceTest::NormalizerPerformanceTest(int32_t argc, const char* a
         return;
     }
 
-    _remainingArgc = u_parseArgs(_remainingArgc, (char **)argv, (int32_t)(LENGTHOF(cmdLineOptions)), cmdLineOptions);
+    _remainingArgc = u_parseArgs(_remainingArgc, (char **)argv, (int32_t)(UPRV_LENGTHOF(cmdLineOptions)), cmdLineOptions);
     if(cmdLineOptions[0].doesOccur && cmdLineOptions[0].value!=NULL) {
         options=(int32_t)strtol(cmdLineOptions[0].value, NULL, 16);
     }

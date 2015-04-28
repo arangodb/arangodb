@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (C) 2013, International Business Machines
+*   Copyright (C) 2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 **********************************************************************
 *
@@ -171,11 +171,6 @@ class U_I18N_API IdentifierInfo : public UMemory {
      */
     static UnicodeString &displayAlternates(UnicodeString &dest, const UHashtable *alternates, UErrorCode &status);
 
-    /**
-     * Static memory cleanup function.
-     * @internal
-     */
-    static UBool      cleanup();
   private:
 
     IdentifierInfo  & clear();
@@ -187,15 +182,6 @@ class U_I18N_API IdentifierInfo : public UMemory {
     ScriptSet         *fCommonAmongAlternates;
     UnicodeSet        *fNumerics;
     UnicodeSet        *fIdentifierProfile;
-
-    static UnicodeSet *ASCII;
-    static ScriptSet  *JAPANESE;
-    static ScriptSet  *CHINESE;
-    static ScriptSet  *KOREAN;
-    static ScriptSet  *CONFUSABLE_WITH_LATIN;
-
-
-
 };
 
 U_NAMESPACE_END

@@ -1,6 +1,6 @@
 /*
 **********************************************************************
-*   Copyright (c) 2002-2012, International Business Machines Corporation
+*   Copyright (c) 2002-2014, International Business Machines Corporation
 *   and others.  All Rights Reserved.
 **********************************************************************
 *   Date        Name        Description
@@ -15,6 +15,8 @@
 #include "tridpars.h"
 #include "hash.h"
 #include "mutex.h"
+#include "transreg.h"
+#include "uassert.h"
 #include "ucln_in.h"
 #include "unicode/parsepos.h"
 #include "unicode/translit.h"
@@ -41,6 +43,7 @@ static const int32_t FORWARD = UTRANS_FORWARD;
 static const int32_t REVERSE = UTRANS_REVERSE;
 
 static Hashtable* SPECIAL_INVERSES = NULL;
+static UInitOnce gSpecialInversesInitOnce = U_INITONCE_INITIALIZER;
 
 /**
  * The mutex controlling access to SPECIAL_INVERSES
@@ -644,7 +647,7 @@ void TransliteratorIDParser::registerSpecialInverse(const UnicodeString& target,
                                                     const UnicodeString& inverseTarget,
                                                     UBool bidirectional,
                                                     UErrorCode &status) {
-    init(status);
+    umtx_initOnce(gSpecialInversesInitOnce, init, status);
     if (U_FAILURE(status)) {
         return;
     }
@@ -851,7 +854,10 @@ TransliteratorIDParser::specsToSpecialInverse(const Specs& specs, UErrorCode &st
     if (0!=specs.source.caseCompare(ANY, 3, U_FOLD_CASE_DEFAULT)) {
         return NULL;
     }
-    init(status);
+    umtx_initOnce(gSpecialInversesInitOnce, init, status);
+    if (U_FAILURE(status)) {
+        return NULL;
+    }
 
     UnicodeString* inverseTarget;
 
@@ -894,30 +900,18 @@ Transliterator* TransliteratorIDParser::createBasicInstance(const UnicodeString&
 }
 
 /**
- * Initialize static memory.
+ * Initialize static memory. Called through umtx_initOnce only.
  */
 void TransliteratorIDParser::init(UErrorCode &status) {
-    if (SPECIAL_INVERSES != NULL) {
-        return;
-    }
+    U_ASSERT(SPECIAL_INVERSES == NULL);
+    ucln_i18n_registerCleanup(UCLN_I18N_TRANSLITERATOR, utrans_transliterator_cleanup);
 
-    Hashtable* special_inverses = new Hashtable(TRUE, status);
-    // Null pointer check
-    if (special_inverses == NULL) {
+    SPECIAL_INVERSES = new Hashtable(TRUE, status);
+    if (SPECIAL_INVERSES == NULL) {
     	status = U_MEMORY_ALLOCATION_ERROR;
     	return;
     }
-    special_inverses->setValueDeleter(uprv_deleteUObject);
-
-    umtx_lock(&LOCK);
-    if (SPECIAL_INVERSES == NULL) {
-        SPECIAL_INVERSES = special_inverses;
-        special_inverses = NULL;
-    }
-    umtx_unlock(&LOCK);
-    delete special_inverses; /*null instance*/
-
-    ucln_i18n_registerCleanup(UCLN_I18N_TRANSLITERATOR, utrans_transliterator_cleanup);
+    SPECIAL_INVERSES->setValueDeleter(uprv_deleteUObject);
 }
 
 /**
@@ -928,6 +922,7 @@ void TransliteratorIDParser::cleanup() {
         delete SPECIAL_INVERSES;
         SPECIAL_INVERSES = NULL;
     }
+    gSpecialInversesInitOnce.reset();
 }
 
 U_NAMESPACE_END

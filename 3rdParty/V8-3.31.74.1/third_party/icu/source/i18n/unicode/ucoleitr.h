@@ -1,10 +1,10 @@
 /*
 *******************************************************************************
-*   Copyright (C) 2001-2011, International Business Machines
+*   Copyright (C) 2001-2014, International Business Machines
 *   Corporation and others.  All Rights Reserved.
 *******************************************************************************
 *
-* File ucoleitr.cpp
+* File ucoleitr.h
 *
 * Modification History:
 *
@@ -27,16 +27,6 @@
  */
 #define UCOL_NULLORDER        ((int32_t)0xFFFFFFFF)
 
-#ifndef U_HIDE_INTERNAL_API
-/**
- * This indicates an error has occured during processing or there are no more CEs 
- * to be returned.
- *
- * @internal
- */
-#define UCOL_PROCESSED_NULLORDER        ((int64_t)U_INT64_MAX)
-#endif  /* U_HIDE_INTERNAL_API */
-
 #include "unicode/ucol.h"
 
 /** 
@@ -55,12 +45,12 @@ typedef struct UCollationElements UCollationElements;
  * ordering priority of the positioned character. The ordering priority of a 
  * character, which we refer to as a key, defines how a character is collated 
  * in the given collation object.
- * For example, consider the following in Spanish:
+ * For example, consider the following in Slovak and in traditional Spanish collation:
  * <pre>
  * .       "ca" -> the first key is key('c') and second key is key('a').
  * .       "cha" -> the first key is key('ch') and second key is key('a').
  * </pre>
- * And in German,
+ * And in German phonebook collation,
  * <pre>
  * .       "<ae ligature>b"-> the first key is key('a'), the second key is key('e'), and
  * .       the third key is key('b').
@@ -99,10 +89,10 @@ typedef struct UCollationElements UCollationElements;
  * undefined.
  * The result of a forward iterate (ucol_next) and reversed result of the  
  * backward iterate (ucol_prev) on the same string are equivalent, if 
- * collation orders with the value UCOL_IGNORABLE are ignored.
+ * collation orders with the value 0 are ignored.
  * Character based on the comparison level of the collator.  A collation order 
  * consists of primary order, secondary order and tertiary order.  The data 
- * type of the collation order is <strong>t_int32</strong>. 
+ * type of the collation order is <strong>int32_t</strong>. 
  *
  * @see UCollator
  */
@@ -113,7 +103,7 @@ typedef struct UCollationElements UCollationElements;
  * @param coll The collator containing the desired collation rules.
  * @param text The text to iterate over.
  * @param textLength The number of characters in text, or -1 if null-terminated
- * @param status A pointer to an UErrorCode to receive any errors.
+ * @param status A pointer to a UErrorCode to receive any errors.
  * @return a struct containing collation element information
  * @stable ICU 2.0
  */
@@ -155,27 +145,11 @@ ucol_closeElements(UCollationElements *elems);
 U_STABLE void U_EXPORT2 
 ucol_reset(UCollationElements *elems);
 
-#ifndef U_HIDE_INTERNAL_API
-/**
- * Set the collation elements to use implicit ordering for Han
- * even if they've been tailored. This will also force Hangul
- * syllables to be ordered by decomposing them to their component
- * Jamo.
- *
- * @param elems The UCollationElements containing the text.
- * @param status A pointer to a UErrorCode to reveive any errors.
- *
- * @internal
- */
-U_INTERNAL void U_EXPORT2
-ucol_forceHanImplicit(UCollationElements *elems, UErrorCode *status);
-#endif  /* U_HIDE_INTERNAL_API */
-
 /**
  * Get the ordering priority of the next collation element in the text.
  * A single character may contain more than one collation element.
  * @param elems The UCollationElements containing the text.
- * @param status A pointer to an UErrorCode to receive any errors.
+ * @param status A pointer to a UErrorCode to receive any errors.
  * @return The next collation elements ordering, otherwise returns NULLORDER 
  *         if an error has occured or if the end of string has been reached
  * @stable ICU 2.0
@@ -187,11 +161,8 @@ ucol_next(UCollationElements *elems, UErrorCode *status);
  * Get the ordering priority of the previous collation element in the text.
  * A single character may contain more than one collation element.
  * Note that internally a stack is used to store buffered collation elements. 
- * It is very rare that the stack will overflow, however if such a case is 
- * encountered, the problem can be solved by increasing the size 
- * UCOL_EXPAND_CE_BUFFER_SIZE in ucol_imp.h.
  * @param elems The UCollationElements containing the text.
- * @param status A pointer to an UErrorCode to receive any errors. Noteably 
+ * @param status A pointer to a UErrorCode to receive any errors. Noteably 
  *               a U_BUFFER_OVERFLOW_ERROR is returned if the internal stack
  *               buffer has been exhausted.
  * @return The previous collation elements ordering, otherwise returns 
@@ -201,47 +172,6 @@ ucol_next(UCollationElements *elems, UErrorCode *status);
  */
 U_STABLE int32_t U_EXPORT2 
 ucol_previous(UCollationElements *elems, UErrorCode *status);
-
-#ifndef U_HIDE_INTERNAL_API
-/**
- * Get the processed ordering priority of the next collation element in the text.
- * A single character may contain more than one collation element.
- *
- * @param elems The UCollationElements containing the text.
- * @param ixLow a pointer to an int32_t to receive the iterator index before fetching the CE.
- * @param ixHigh a pointer to an int32_t to receive the iterator index after fetching the CE.
- * @param status A pointer to an UErrorCode to receive any errors.
- * @return The next collation elements ordering, otherwise returns UCOL_PROCESSED_NULLORDER 
- *         if an error has occured or if the end of string has been reached
- *
- * @internal
- */
-U_INTERNAL int64_t U_EXPORT2
-ucol_nextProcessed(UCollationElements *elems, int32_t *ixLow, int32_t *ixHigh, UErrorCode *status);
-
-/**
- * Get the processed ordering priority of the previous collation element in the text.
- * A single character may contain more than one collation element.
- * Note that internally a stack is used to store buffered collation elements. 
- * It is very rare that the stack will overflow, however if such a case is 
- * encountered, the problem can be solved by increasing the size 
- * UCOL_EXPAND_CE_BUFFER_SIZE in ucol_imp.h.
- *
- * @param elems The UCollationElements containing the text.
- * @param ixLow A pointer to an int32_t to receive the iterator index after fetching the CE
- * @param ixHigh A pointer to an int32_t to receiver the iterator index before fetching the CE
- * @param status A pointer to an UErrorCode to receive any errors. Noteably 
- *               a U_BUFFER_OVERFLOW_ERROR is returned if the internal stack
- *               buffer has been exhausted.
- * @return The previous collation elements ordering, otherwise returns 
- *         UCOL_PROCESSED_NULLORDER if an error has occured or if the start of
- *         string has been reached.
- *
- * @internal
- */
-U_INTERNAL int64_t U_EXPORT2
-ucol_previousProcessed(UCollationElements *elems, int32_t *ixLow, int32_t *ixHigh, UErrorCode *status);
-#endif  /* U_HIDE_INTERNAL_API */
 
 /**
  * Get the maximum length of any expansion sequences that end with the 
@@ -265,7 +195,7 @@ ucol_getMaxExpansion(const UCollationElements *elems, int32_t order);
  * @param elems The UCollationElements to set.
  * @param text The source text containing the collation elements.
  * @param textLength The length of text, or -1 if null-terminated.
- * @param status A pointer to an UErrorCode to receive any errors.
+ * @param status A pointer to a UErrorCode to receive any errors.
  * @see ucol_getText
  * @stable ICU 2.0
  */
@@ -295,7 +225,7 @@ ucol_getOffset(const UCollationElements *elems);
  * the API reset() has to be called.
  * @param elems The UCollationElements to set.
  * @param offset The desired character offset.
- * @param status A pointer to an UErrorCode to receive any errors.
+ * @param status A pointer to a UErrorCode to receive any errors.
  * @see ucol_getOffset
  * @stable ICU 2.0
  */

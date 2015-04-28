@@ -1,6 +1,6 @@
 ﻿// ***************************************************************************
 // *
-// * Copyright (C) 2013 International Business Machines
+// * Copyright (C) 2014 International Business Machines
 // * Corporation and others. All Rights Reserved.
 // * Tool: org.unicode.cldr.icu.NewLdml2IcuConverter
 // * Source File: <path>/common/main/saq.xml
@@ -24,7 +24,7 @@ saq{
             }
         }
     }
-    Version{"2.0.92.87"}
+    Version{"2.1.7.39"}
     calendar{
         generic{
             DateTimePatterns{
@@ -123,7 +123,7 @@ saq{
                     wide{
                         "Mderot ee are",
                         "Mderot ee kuni",
-                        "Mderot ee ong'wan",
+                        "Mderot ee ong’wan",
                         "Mderot ee inet",
                         "Mderot ee ile",
                         "Mderot ee sapa",
@@ -172,7 +172,7 @@ saq{
                         "Lapa le obo",
                         "Lapa le waare",
                         "Lapa le okuni",
-                        "Lapa le ong'wan",
+                        "Lapa le ong’wan",
                         "Lapa le imet",
                         "Lapa le ile",
                         "Lapa le sapa",
@@ -228,7 +228,7 @@ saq{
         day{
             dn{"Mpari"}
             relative{
-                "-1"{"Ng'ole"}
+                "-1"{"Ng’ole"}
                 "0"{"Duo"}
                 "1"{"Taisere"}
             }

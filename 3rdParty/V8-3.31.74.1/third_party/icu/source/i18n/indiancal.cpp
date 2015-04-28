@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2003-2009, International Business Machines Corporation
+ * Copyright (C) 2003-2014, International Business Machines Corporation
  * and others. All Rights Reserved.
  ******************************************************************************
  *
@@ -16,7 +16,6 @@
 #include "gregoimp.h" // Math
 #include "astro.h" // CalendarAstronomer
 #include "uhash.h"
-#include "ucln_in.h"
 
 // Debugging
 #ifdef U_DEBUG_INDIANCAL
