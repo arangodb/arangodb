@@ -319,7 +319,7 @@ static void JS_GetTask (const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 
   v8::Handle<v8::Value> result = TRI_ObjectJson(isolate, json);
-  TRI_Free(TRI_UNKNOWN_MEM_ZONE, json);
+  TRI_FreeJson(TRI_UNKNOWN_MEM_ZONE, json);
 
   TRI_V8_RETURN(result);
 }
