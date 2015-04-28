@@ -2811,37 +2811,7 @@ function AQL_UNION_DISTINCT () {
 
   return result;
 }
-/*
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function for each element in the input list
-////////////////////////////////////////////////////////////////////////////////
 
-function AQL_CALL (values, name) {
-  'use strict';
-
-  var args = [ null ], i;
-  for (i = 2; i < arguments.length; ++i) {
-    args.push(arguments[i]);
-  }
-
-  return FCALL_DYNAMIC("CALL", false, values, name, args);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief call a function for each element in the input list
-////////////////////////////////////////////////////////////////////////////////
-
-function AQL_APPLY (values, name, parameters) {
-  'use strict';
-
-  var args = [ null ], i;
-  if (Array.isArray(parameters)) {
-    args = args.concat(parameters);
-  }
-
-  return FCALL_DYNAMIC("APPLY", false, values, name, args);
-}
-*/
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief call a function for each element in the input list
 ////////////////////////////////////////////////////////////////////////////////
