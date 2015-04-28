@@ -715,7 +715,10 @@ static void SkiplistIndex_findHelper (SkiplistIndex* skiplistIndex,
       temp = skiplistIndex->skiplist->leftKeyLookup(&values);
       TRI_ASSERT(nullptr != temp);
       interval._leftEndPoint = temp;
-      if (skiplistIndex->unique) {
+
+      bool const allAttributesCoveredByCondition = (values._numFields == skiplistIndex->_numFields);
+
+      if (skiplistIndex->unique && allAttributesCoveredByCondition) {
         // At most one hit:
         temp = temp->nextNode();
         if (nullptr != temp) {
