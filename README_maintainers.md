@@ -333,3 +333,39 @@ bin/arangod /tmp/dataUT --javascript.unit-tests="js/server/tests/aql-escaping.js
 make unittest
 
 js/common/modules/loadtestrunner.js
+
+
+arangod Example tool
+--------------------
+--------------------
+
+`make example` picks examples from the source code documentation, executes them, and creates a transcript including their results.
+Heres how its details work:
+  - all ending with *.cpp*, *.js* and *.mdpp* are matched.
+  - all lines starting with '///' are matched
+  - example starts are marked with *@EXAMPLE_ARANGOSH_OUTPUT* or *@EXAMPLE_ARANGOSH_RUN*
+  - the example is named by the string provided in brackets after the above key
+  - the output is written to *Documentation/Examples/<name>.generated*
+  - examples end with *@END_EXAMPLE_*
+  - all code inbetween is executed as javascript in the **arangosh** while talking to a valid **arangod**.
+
+OUTPUT and RUN Specialities
+---------------------------
+ - OUTPUT is intended to create samples that the users can cut'n'paste into their arangosh. Its used for javascript api documentation.
+  - it is excuted line by line. If a line is intended to fail (aka throw an exception), you have to specify *// xpError(ERROR_ARANGO_DOCUMENT_KEY_UNEXPECTED)* so the exception will be caught; else the example is marked as broken.
+ - RUN is intended to be pasted into a unix shell with *cURL* to demonstrate how the REST-HTTP-APIs work. The whole chunk of code is executet at once, and is expected **not to throw**. You should use **assert(condition)** to ensure the result is what you've expected.
+
+Additional Example syntax
+-------------------------
+* wrapped lines:
+  Lines starting with a pipe ('/// |') are joined together with the next following line. You have to do this, if you want to execute loops, functions or commands which shouldn't be torn appart by the framework.
+* Lines starting with *var*:
+  The command behaves similar to the arangosh: the server reply won't be printed. Hovever, the variable will be in the scope of the other lines.
+* Lines starting with a Tilde ('/// ~'):
+  These lines can be used for setup/teardown purposes. They are completely invisible in the generated example transscript.
+
+Do's and Don'ts
+---------------
+* examples have to be complete in themselves, and musn't depend on preconditions of other examples.
+* examples should clean up their additions again, so the next example finds a predictable clean enrironment.
+
