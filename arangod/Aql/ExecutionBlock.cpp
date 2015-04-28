@@ -1513,8 +1513,8 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
   size_t shortest = (std::min)(_prefix.at(i).size(), _prefix.at(j).size());
 
   for (size_t k = 0; k < shortest; k++) {
-    RangeInfo lhs = _condition->at(l).at(_prefix.at(l).at(k));
-    RangeInfo rhs = _condition->at(r).at(_prefix.at(r).at(k));
+    RangeInfo const& lhs = _condition->at(l).at(_prefix.at(l).at(k));
+    RangeInfo const& rhs = _condition->at(r).at(_prefix.at(r).at(k));
     int cmp;
       
     if (lhs.is1ValueRangeInfo() && rhs.is1ValueRangeInfo()) {
@@ -1549,16 +1549,16 @@ bool IndexRangeBlock::SortFunc::operator() (size_t const& i, size_t const& j) {
 /// value if the intersection is valid. 
 ////////////////////////////////////////////////////////////////////////////////
 
-std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (
-    std::vector<RangeInfo>& riv1, 
-    std::vector<RangeInfo>& riv2) {
- 
+std::vector<RangeInfo> IndexRangeBlock::andCombineRangeInfoVecs (std::vector<RangeInfo>& riv1, 
+                                                                 std::vector<RangeInfo>& riv2) {
   std::vector<RangeInfo> out;
-  for (RangeInfo ri1: riv1) {
-    for (RangeInfo ri2: riv2) {
-      RangeInfo x = ri1.clone();
+
+  for (RangeInfo const& ri1: riv1) {
+    for (RangeInfo const& ri2: riv2) {
+      RangeInfo x(ri1.clone());
       x.fuse(ri2);
-      if (x.isValid()){
+
+      if (x.isValid()) {
         TRI_IF_FAILURE("IndexRangeBlock::andCombineRangeInfoVecs") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
@@ -1692,7 +1692,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
     return nullptr;
   }
 
-  unique_ptr<AqlItemBlock> res(nullptr);
+  std::unique_ptr<AqlItemBlock> res(nullptr);
 
   do {
     // repeatedly try to get more stuff from upstream
@@ -1768,7 +1768,7 @@ AqlItemBlock* IndexRangeBlock::getSome (size_t atLeast,
         if (j > 0) {
           // re-use already copied aqlvalues
           for (RegisterId i = 0; i < curRegs; i++) {
-            res->setValue(j, i, res->getValue(0, i));
+            res->setValue(j, i, res->getValueReference(0, i));
             // Note: if this throws, then all values will be deleted
             // properly since the first one is.
           }
@@ -1842,11 +1842,11 @@ size_t IndexRangeBlock::skipSome (size_t atLeast,
 
       // let's read the index if bounds are variable:
       if (! _buffer.empty()) {
-          if (! initRanges()) {
-            _done = true;
-            return skipped;
-          }
-          readIndex(atMost);
+        if (! initRanges()) {
+          _done = true;
+          return skipped;
+        }
+        readIndex(atMost);
       }
       _posInDocs = 0;
       
@@ -1868,7 +1868,8 @@ void IndexRangeBlock::readPrimaryIndex (IndexOrCondition const& ranges) {
   
   for (size_t i = 0; i < ranges.size(); i++) {
     std::string key;
-    for (auto x : ranges[i]) {
+
+    for (auto const& x : ranges[i]) {
       if (x._attr == std::string(TRI_VOC_ATTRIBUTE_ID)) {
         // lookup by _id
 
@@ -1959,7 +1960,7 @@ void IndexRangeBlock::getEdgeIndexIterator (IndexAndCondition const& ranges) {
     }
   };
 
-  for (auto x : ranges) {
+  for (auto const& x : ranges) {
     if (x._attr == std::string(TRI_VOC_ATTRIBUTE_FROM)) {
       // we can use lower bound because only equality is supported
       TRI_ASSERT(x.is1ValueRangeInfo());
@@ -2466,7 +2467,7 @@ AqlItemBlock* EnumerateListBlock::getSome (size_t, size_t atMost) {
         if (j > 0) {
           // re-use already copied aqlvalues
           for (RegisterId i = 0; i < cur->getNrRegs(); i++) {
-            res->setValue(j, i, res->getValue(0, i));
+            res->setValue(j, i, res->getValueReference(0, i));
             // Note that if this throws, all values will be
             // deleted properly, since the first row is.
           }
