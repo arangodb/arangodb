@@ -2176,13 +2176,16 @@ void IndexRangeBlock::getSkiplistIterator (IndexAndCondition const& ranges) {
   if (_skiplistIterator != nullptr) {
     TRI_FreeSkiplistIterator(_skiplistIterator);
   }
+
   _skiplistIterator = TRI_LookupSkiplistIndex(idx, skiplistOperator, en->_reverse);
+
   if (skiplistOperator != nullptr) {
     TRI_FreeIndexOperator(skiplistOperator);
   }
 
   if (_skiplistIterator == nullptr) {
     int res = TRI_errno();
+
     if (res == TRI_RESULT_ELEMENT_NOT_FOUND) {
       return;
     }
@@ -2201,7 +2204,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
   if (_skiplistIterator == nullptr) {
     return;
   }
-  
+
   try {
     size_t nrSent = 0;
     while (nrSent < atMost && _skiplistIterator !=nullptr) { 
@@ -2218,6 +2221,7 @@ void IndexRangeBlock::readSkiplistIndex (size_t atMost) {
         TRI_IF_FAILURE("IndexRangeBlock::readSkiplistIndex") {
           THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
         }
+        
         _documents.emplace_back(*(indexElement->_document));
         ++nrSent;
         ++_engine->_stats.scannedIndex;

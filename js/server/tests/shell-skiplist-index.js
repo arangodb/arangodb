@@ -695,6 +695,38 @@ function SkipListSuite() {
       assertEqual(0, result.length);
       result = collection.byConditionSkiplist(idx.id, { value: [[">", null], ["<=", true ]] }).toArray();
       assertEqual(1, result.length);
+    },
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: find documents
+////////////////////////////////////////////////////////////////////////////////
+
+    testQueriesDocumentsPartial : function () {
+      var idx = collection.ensureSkiplist("a", "b", { sparse: false, unique: true });
+
+      assertEqual("skiplist", idx.type);
+      assertEqual(true, idx.unique);
+      assertEqual(false, idx.sparse);
+      assertEqual(["a", "b"], idx.fields);
+      assertEqual(true, idx.isNewlyCreated);
+
+      collection.save({ a: "1", "b": "0" });
+      collection.save({ a: "1", "b": "1" });
+      
+      var result = collection.byConditionSkiplist(idx.id, { a: [["==", "1"]] }).toArray();
+      assertEqual(2, result.length);
+      
+      result = collection.byConditionSkiplist(idx.id, { a: [["==", "0"]] }).toArray();
+      assertEqual(0, result.length);
+      
+      result = collection.byConditionSkiplist(idx.id, { a: [["==", "1"]], b: [["==", "0"]] }).toArray();
+      assertEqual(1, result.length);
+      
+      result = collection.byConditionSkiplist(idx.id, { a: [["==", "1"]], b: [["==", "1"]] }).toArray();
+      assertEqual(1, result.length);
+      
+      result = collection.byConditionSkiplist(idx.id, { a: [["==", "1"]], b: [["==", "2"]] }).toArray();
+      assertEqual(0, result.length);
     }
 
   };
